@@ -163,25 +163,27 @@
     if (trimmed === '') {
       clearAll();
       parseError = null;
-      return;
-    }
-    if (!passesFormatGate(trimmed)) {
+    } else if (!passesFormatGate(trimmed)) {
       visibleText = next;
       committedHex = '';
       committedRgba = null;
       parseError = defaultErrorMessage();
-      return;
+    } else {
+      const parsed = parseColor(trimmed);
+      if (parsed === null) {
+        visibleText = next;
+        committedHex = '';
+        committedRgba = null;
+        parseError = defaultErrorMessage();
+      } else {
+        seedFromParts(parsed);
+        parseError = null;
+      }
     }
-    const parsed = parseColor(trimmed);
-    if (parsed === null) {
-      visibleText = next;
-      committedHex = '';
-      committedRgba = null;
-      parseError = defaultErrorMessage();
-      return;
-    }
-    seedFromParts(parsed);
-    parseError = null;
+    // Keep native validity in lockstep with parseError through this single
+    // synchronous path — replaces the prior `void parseError` effect that
+    // lagged one microtask behind controlled-sync and alpha-toggle writes.
+    syncCustomValidity();
   }
 
   $effect(() => {
@@ -216,39 +218,27 @@
     visibleText = nextHex;
   });
 
-  // Keep customValidity synchronized with parseError so that any state change
-  // — controlled sync, formats toggle, alpha toggle, blur, Enter — leaves the
-  // native input in a state that matches what the user sees.
-  $effect(() => {
-    void parseError;
-    syncCustomValidity();
-  });
-
   // ── formats runtime changes — display-only validation ───────────────────
 
   // A `formats` change only affects the input-time gate. It must never mutate
   // committed state. If there's a current parse error, re-run the gate on the
-  // visible text and clear the error when the value now passes.
+  // visible text and clear the error when the value now passes. `passesFormatGate`
+  // and `defaultErrorMessage` both read `acceptedFormats` through closure, so the
+  // effect re-runs on `formats` changes without an explicit dependency pin.
   $effect(() => {
-    void acceptedFormats;
     if (parseError === null) return;
     const text = visibleText.trim();
     if (text === '') {
       parseError = null;
-      return;
-    }
-    if (!passesFormatGate(text)) {
+    } else if (!passesFormatGate(text)) {
       // Refresh the message so its wording reflects the new `formats` set,
       // not the wording that was current when the error was first raised.
       parseError = defaultErrorMessage();
-      return;
+    } else {
+      const parsed = parseColor(text);
+      parseError = parsed === null ? defaultErrorMessage() : null;
     }
-    const parsed = parseColor(text);
-    if (parsed === null) {
-      parseError = defaultErrorMessage();
-      return;
-    }
-    parseError = null;
+    syncCustomValidity();
   });
 
   // ── Commit pipeline (blur + Enter) ──────────────────────────────────────

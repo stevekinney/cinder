@@ -73,6 +73,28 @@ export function findCard<Card>(
   return null;
 }
 
+/**
+ * Index every card by its key in a single O(total-cards) pass so callers can
+ * resolve a card's original column/index in O(1). Calling `findCard` once per
+ * card during render is O(N²); building this map once and looking up by key
+ * collapses that to O(N). On duplicate keys the first occurrence wins, matching
+ * the left-to-right scan order of `findCard`.
+ */
+export function buildCardLocationMap<Card>(
+  columns: KanbanBoardColumn<Card>[],
+  getCardKey: (card: Card) => string | number,
+): Map<string | number, LocatedCard<Card>> {
+  const locations = new Map<string | number, LocatedCard<Card>>();
+  for (const [columnIndex, column] of columns.entries()) {
+    column.cards.forEach((card, cardIndex) => {
+      const cardKey = getCardKey(card);
+      if (locations.has(cardKey)) return;
+      locations.set(cardKey, { card, cardKey, column, columnIndex, cardIndex });
+    });
+  }
+  return locations;
+}
+
 export function moveKanbanCard<Card>(
   columns: KanbanBoardColumn<Card>[],
   getCardKey: (card: Card) => string | number,

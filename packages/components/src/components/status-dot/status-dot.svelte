@@ -31,8 +31,7 @@
 
   const normalizedAriaLabel = $derived(ariaLabel?.trim() ? ariaLabel.trim() : undefined);
   const normalizedLabel = $derived(label?.trim() ? label.trim() : undefined);
-  const hasLabelText = $derived(normalizedLabel !== undefined);
-  const hasVisibleLabel = $derived(showLabel && hasLabelText);
+  const hasVisibleLabel = $derived(showLabel && normalizedLabel !== undefined);
 
   // `role="img"` needs an author-provided name. Blank labels are treated as
   // absent so status is never communicated by color alone.

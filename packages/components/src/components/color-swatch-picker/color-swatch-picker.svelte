@@ -44,13 +44,11 @@
   const selected = $derived(value ?? internalValue);
 
   // Track focus index driven by user interaction. null = derive from selection.
+  // No palette-change reset effect is needed: `effectiveFocusIndex` below already
+  // falls through to the selected-or-first-enabled swatch whenever `userFocusIndex`
+  // is out of bounds or points at a now-disabled entry, so appends and inline
+  // `colors={[...]}` re-renders never clobber a still-valid focus mid-interaction.
   let userFocusIndex = $state<number | null>(null);
-
-  // Reset stale focus index when palette identity changes.
-  $effect(() => {
-    void colors;
-    userFocusIndex = null;
-  });
 
   const effectiveFocusIndex = $derived.by(() => {
     if (colors.length === 0) return -1;

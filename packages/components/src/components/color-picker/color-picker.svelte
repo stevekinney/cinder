@@ -20,7 +20,7 @@
     ColorSwatch,
     ColorSwatchPickerProps,
   } from '../color-swatch-picker/color-swatch-picker.types.ts';
-  import { tick, untrack } from 'svelte';
+  import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
@@ -461,8 +461,6 @@
 
   // ── Swatch composition ──────────────────────────────────────────────────
 
-  const swatchList = $derived(swatches ?? []);
-
   /**
    * Canonicalize a swatch string to the same hex format the picker emits, so
    * value-matching in ColorSwatchPicker works regardless of input syntax
@@ -482,7 +480,7 @@
    * never matches the selected value, so it can never show as selected or be committed.
    */
   const normalizedSwatchColors = $derived<ColorSwatch[]>(
-    swatchList.map((swatch) => ({
+    (swatches ?? []).map((swatch) => ({
       color: normalizeSwatch(swatch) ?? swatch,
     })),
   );
@@ -503,10 +501,10 @@
   let hiddenInput: HTMLInputElement | null = $state(null);
 
   $effect(() => {
-    const input: HTMLInputElement | null = hiddenInput;
+    const input = hiddenInput;
     if (input === null) return;
-    const resolvedInput: HTMLInputElement = input;
-    let currentForm: HTMLFormElement | null = null;
+    const form = input.closest('form');
+    if (form === null) return;
 
     function resetToDefault(): void {
       const fallback = defaultValue ?? '';
@@ -528,19 +526,9 @@
       if (value !== undefined) value = hex;
     }
 
-    function attach(): void {
-      const next = resolvedInput.form;
-      if (next === currentForm) return;
-      currentForm?.removeEventListener('reset', resetToDefault);
-      currentForm = next;
-      currentForm?.addEventListener('reset', resetToDefault);
-    }
-
-    attach();
-    void tick().then(attach);
-
+    form.addEventListener('reset', resetToDefault);
     return () => {
-      currentForm?.removeEventListener('reset', resetToDefault);
+      form.removeEventListener('reset', resetToDefault);
     };
   });
 
@@ -583,6 +571,7 @@
     id={gradientId}
     role="application"
     aria-label="Color saturation and lightness. Use a pointer to select; arrow keys provide coarse keyboard adjustment."
+    aria-describedby={previewId}
     aria-disabled={disabled ? 'true' : undefined}
     class="cinder-color-picker__gradient"
     style="--cinder-color-picker-hue: {hueColor};"

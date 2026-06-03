@@ -71,6 +71,10 @@
   const generatedPanelId = $props.id();
   const panelId = $derived(panelIdProp ?? generatedPanelId);
 
+  // `triggerRef.isConnected` is a native DOM read, not a reactive source: this
+  // derived only re-evaluates when the triggerRef prop reference changes, not when
+  // the same element is detached/re-attached without a prop change. That edge is
+  // not supported — pass a fresh ref (or toggle it) to re-resolve the anchor.
   const anchorElement = $derived<HTMLElement | null>(
     triggerRef && triggerRef.isConnected
       ? triggerRef
@@ -141,7 +145,10 @@
   $effect(() => {
     if (!open) return;
     if (!anchorElement) return;
-    openSessionFocusManagement = focusManagement;
+    // Snapshot focusManagement at open time. untrack so a consumer changing the
+    // prop while open (even via a parent re-render) does not tear down and re-run
+    // this effect — matching the resolvedAnchorAtOpen snapshot below.
+    openSessionFocusManagement = untrack(() => focusManagement);
     if (openSessionFocusManagement === 'panel') {
       capturedFocus = captureFocus();
       pendingInitialFocus = true;

@@ -58,6 +58,16 @@
     return reorder(items, from, controller.liftedTo);
   });
 
+  // Stable key → original-index map, rebuilt only when `items` (or `getKey`)
+  // changes. The each block consults this in O(1) instead of `items.indexOf`,
+  // which was O(n) per row and O(n²) per drag frame (the each block re-renders
+  // on every pointer-move step while lifted).
+  const originalIndexByKey = $derived.by(() => {
+    const lookup = new Map<ReturnType<typeof getKey>, number>();
+    items.forEach((item, index) => lookup.set(getKey(item), index));
+    return lookup;
+  });
+
   // Reconcile lifted key when items changes externally during a lift.
   // Reading each key forces deep tracking so in-place array mutations are caught.
   $effect(() => {
@@ -115,7 +125,7 @@
   </li>
 
   {#each visualItems as rowItem, visualIndex (getKey(rowItem))}
-    {@const originalIndex = items.indexOf(rowItem)}
+    {@const originalIndex = originalIndexByKey.get(getKey(rowItem)) ?? -1}
     {@const rowItemLabel = getItemLabel(rowItem, originalIndex >= 0 ? originalIndex : visualIndex)}
     <SortableItem
       item={rowItem}

@@ -33,6 +33,7 @@
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import SortableItem from '../_sortable-item.svelte';
   import {
+    buildCardLocationMap,
     findCard,
     findNextVisibleColumn,
     moveKanbanCard,
@@ -89,6 +90,12 @@
 
   const keyValidation = $derived(validateKanbanBoardKeys(columns, getCardKey));
   const invalidKeys = $derived(!keyValidation.valid);
+
+  // Index cards by key once per render so the card loop can resolve each card's
+  // original column/index in O(1) instead of calling findCard per-card (O(N²)).
+  // Built from the source `columns` (original positions) — getCardLabel must stay
+  // stable on the source position while visualColumns shows the preview reorder.
+  const cardLocations = $derived(buildCardLocationMap(columns, getCardKey));
 
   const visualColumns = $derived.by(() => {
     if (cardController.phase !== 'lifted' || cardController.liftedKey === null || !cardTarget) {
@@ -520,7 +527,7 @@
           >
             {#each column.cards as currentCard, cardIndex (invalidKeys ? `${getCardKey(currentCard)}-${cardIndex}` : getCardKey(currentCard))}
               {@const cardKey = getCardKey(currentCard)}
-              {@const original = findCard(columns, getCardKey, cardKey)}
+              {@const original = cardLocations.get(cardKey) ?? null}
               {@const itemLabel = getCardLabel(
                 currentCard,
                 original?.column ?? column,

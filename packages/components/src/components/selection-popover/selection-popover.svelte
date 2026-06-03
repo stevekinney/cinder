@@ -20,6 +20,7 @@
 
 <script lang="ts">
   import type { SelectionPopoverProps } from './selection-popover.types.ts';
+  import { tick } from 'svelte';
   import { innerHeight, innerWidth } from 'svelte/reactivity/window';
 
   import { createClickOutside } from '../../utilities/attachments.ts';
@@ -39,9 +40,12 @@
 
   let expanded = $state(false);
   let commentBody = $state('');
-  let textareaElement = $state<HTMLTextAreaElement | null>(null);
+  // Plain refs: only ever read imperatively (focus calls in handlers / tick
+  // callbacks), never inside a $derived, $effect dependency, or the template, so
+  // $state's reactive proxy would be unused overhead.
+  let textareaElement: HTMLTextAreaElement | null = null;
   let popoverElement = $state<HTMLDivElement | null>(null);
-  let restoreFocusElement = $state<HTMLElement | null>(null);
+  let restoreFocusElement: HTMLElement | null = null;
   let measuredWidth = $state(0);
   let measuredHeight = $state(0);
   let wasOpen = false;
@@ -97,7 +101,10 @@
     rememberFocus();
     expanded = true;
     onexpand?.();
-    requestAnimationFrame(() => textareaElement?.focus());
+    // tick() resolves once Svelte flushes the expanded state to the DOM (so the
+    // textarea exists), aligned with the codebase's flush timing — faster and
+    // more idiomatic than waiting a paint frame via requestAnimationFrame.
+    void tick().then(() => textareaElement?.focus());
   }
 
   function handleCancel(): void {

@@ -47,6 +47,7 @@
     error,
     class: className,
     onchange,
+    'aria-describedby': consumerDescribedBy,
     ...rest
   }: NumberInputProps = $props();
 
@@ -473,7 +474,12 @@
   const internalErrorId = $derived(internalErrorMessage ? `${id}-internal-error` : undefined);
 
   const describedBy = $derived(
-    composeDescribedBy(resolvedDescriptionId, resolvedErrorId, internalErrorId),
+    composeDescribedBy(
+      resolvedDescriptionId,
+      resolvedErrorId,
+      internalErrorId,
+      consumerDescribedBy,
+    ),
   );
   const resolvedAriaInvalid = $derived(
     error || malformedError || requiredEmptyError

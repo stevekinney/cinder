@@ -192,15 +192,34 @@ export function resolveCountryList(allowed: readonly CountryCode[] | undefined):
 }
 
 /**
+ * Per-locale cache of region `Intl.DisplayNames` instances. Construction
+ * negotiates the locale and loads internal data, so it is far more expensive
+ * than a property access. `countryOptions` calls `displayNameForCountry` once
+ * per country (~250 with the default list), so without this cache every locale
+ * or allow-list change would re-instantiate it hundreds of times. A `null`
+ * entry records a locale whose construction threw, so the fallback path stays
+ * memoized too.
+ */
+const displayNamesCache = new Map<string, Intl.DisplayNames | null>();
+
+/**
  * Resolve the human-readable display label for a country, with a built-in
  * fallback to the bare country code when `Intl.DisplayNames` is not
  * available (older runtimes or SSR-frozen contexts).
  */
 export function displayNameForCountry(country: CountryCode, locale: string): string {
+  let display = displayNamesCache.get(locale);
+  if (display === undefined) {
+    try {
+      display = new Intl.DisplayNames([locale], { type: 'region' });
+    } catch {
+      display = null;
+    }
+    displayNamesCache.set(locale, display);
+  }
+  if (!display) return country;
   try {
-    const display = new Intl.DisplayNames([locale], { type: 'region' });
-    const name = display.of(country);
-    return name ?? country;
+    return display.of(country) ?? country;
   } catch {
     return country;
   }

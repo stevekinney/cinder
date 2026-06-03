@@ -146,7 +146,7 @@
               {@render wordChangeRenderer({ changes: diff.wordChanges })}
             {:else}
               <span class="word-changes">
-                {#each diff.wordChanges as wordChange, widx (widx)}
+                {#each diff.wordChanges as wordChange, widx (`${widx}:${wordChange.type}:${wordChange.text}`)}
                   {#if wordChange.type === 'same'}
                     <span>{wordChange.text}</span>
                   {:else if wordChange.type === 'removed'}
@@ -172,7 +172,7 @@
               {@render wordChangeRenderer({ changes: diff.wordChanges })}
             {:else}
               <span class="word-changes">
-                {#each diff.wordChanges as wordChange, widx (widx)}
+                {#each diff.wordChanges as wordChange, widx (`${widx}:${wordChange.type}:${wordChange.text}`)}
                   {#if wordChange.type === 'same'}
                     <span>{wordChange.text}</span>
                   {:else if wordChange.type === 'removed'}

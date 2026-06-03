@@ -61,7 +61,7 @@
       }}
     />
   {:else if initials}
-    <span class="cinder-avatar__initials" aria-hidden={!!name && !alt}>{initials}</span>
+    <span class="cinder-avatar__initials" aria-hidden="true">{initials}</span>
     {#if accessibleAlt}
       <VisuallyHidden>{accessibleAlt}</VisuallyHidden>
     {/if}

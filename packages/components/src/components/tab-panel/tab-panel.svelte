@@ -21,7 +21,7 @@
   import { getTabsContext } from '../tabs/tabs-context.ts';
   import { cn } from '../../utilities/class-names.ts';
 
-  let { value, class: className, children }: TabPanelProps = $props();
+  let { value, ariaLabelledby, class: className, children }: TabPanelProps = $props();
 
   const tabs = getTabsContext();
 
@@ -31,7 +31,10 @@
   // This mirrors the pattern in tab.svelte; the root Tabs provides `baseId`
   // via context to namespace every Tab/TabPanel pair it owns.
   const panelId = $derived(`${tabs.baseId}-panel-${value}`);
-  const labelledBy = $derived(`${tabs.baseId}-tab-${value}`);
+  // Default to the context-derived Tab id. A consumer who overrode the paired
+  // Tab's `id` can pass `ariaLabelledby` to re-point this at the real element,
+  // closing the escape hatch the audit flagged.
+  const labelledBy = $derived(ariaLabelledby ?? `${tabs.baseId}-tab-${value}`);
 </script>
 
 {#if isActive}

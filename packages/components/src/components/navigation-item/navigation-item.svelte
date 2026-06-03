@@ -28,9 +28,14 @@
   // the template `{#if isLink}` discriminant has already chosen the correct element —
   // this mirrors the pattern used in button.svelte for the same reason.
   const {
-    active,
-    disabled,
-    variant,
+    active = false,
+    disabled = false,
+    variant = 'horizontal',
+    // `aria-current` token emitted when the item is active. Defaults to `'page'`
+    // (correct for navigation bars / breadcrumb-adjacent links). Section/view
+    // switchers should pass `current="true"` (or another standard token) since
+    // `'page'` specifically signals the current page in the browsing context.
+    current = 'page',
     class: customClassName,
     children,
     onclick,
@@ -44,11 +49,9 @@
   const isLink = $derived(href !== undefined);
 
   const resolvedClass = $derived(classNames('cinder-navigation-item', customClassName));
-  const isActive = $derived(active ?? false);
-  const isDisabled = $derived(disabled ?? false);
-  const resolvedVariant = $derived(variant ?? 'horizontal');
   // Disabled forces tabindex=-1; otherwise the consumer's value (or undefined) is kept.
-  const resolvedTabindex = $derived(isDisabled ? -1 : tabindex);
+  const resolvedTabindex = $derived(disabled ? -1 : tabindex);
+  const ariaCurrent = $derived(active ? current : undefined);
 
   const anchorAttributes = $derived(
     rest as Omit<HTMLAnchorAttributes, 'class' | 'href' | 'onclick' | 'tabindex'>,
@@ -58,7 +61,7 @@
   );
 
   function handleClick(event: MouseEvent): void {
-    if (isDisabled) {
+    if (disabled) {
       event.preventDefault();
       return;
     }
@@ -85,13 +88,13 @@
   -->
   <a
     {...anchorAttributes}
-    href={isDisabled ? undefined : href}
-    aria-current={isActive ? 'page' : undefined}
-    aria-disabled={isDisabled ? true : undefined}
+    href={disabled ? undefined : href}
+    aria-current={ariaCurrent}
+    aria-disabled={disabled ? true : undefined}
     tabindex={resolvedTabindex}
-    data-active={isActive}
+    data-active={active}
     data-cinder-navigation-item
-    data-variant={resolvedVariant}
+    data-variant={variant}
     onclick={handleClick}
     class={resolvedClass}
   >
@@ -101,13 +104,13 @@
   <button
     {...buttonAttributes}
     type="button"
-    aria-current={isActive ? 'page' : undefined}
-    aria-disabled={isDisabled ? true : undefined}
-    disabled={isDisabled}
+    aria-current={ariaCurrent}
+    aria-disabled={disabled ? true : undefined}
+    {disabled}
     tabindex={resolvedTabindex}
-    data-active={isActive}
+    data-active={active}
     data-cinder-navigation-item
-    data-variant={resolvedVariant}
+    data-variant={variant}
     onclick={handleClick}
     class={resolvedClass}
   >

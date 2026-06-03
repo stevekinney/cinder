@@ -9,6 +9,8 @@ setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
 const { default: TabPanel } = await import('./tab-panel.svelte');
+const { default: AriaLabelledbyHarness } =
+  await import('./tab-panel-aria-labelledby-harness.svelte');
 
 const emptySnippet = createRawSnippet(() => ({ render: () => '<span></span>', setup: () => {} }));
 
@@ -51,5 +53,16 @@ describe('TabPanel', () => {
     const tab = container.querySelector('[role="tab"][aria-selected="true"]');
     const panel = container.querySelector('[role="tabpanel"]');
     expect(tab?.getAttribute('aria-controls')).toBe(panel?.id);
+  });
+
+  test('ariaLabelledby override re-wires the panel to a custom Tab id', () => {
+    const customTabId = 'my-custom-tab-id';
+    const { container } = render(AriaLabelledbyHarness, { value: 'a', customTabId });
+    const tab = container.querySelector('[role="tab"]');
+    const panel = container.querySelector('[role="tabpanel"]');
+    // The Tab's id was overridden; the panel's aria-labelledby points at it,
+    // keeping the ARIA tab→panel relationship intact for the custom-id case.
+    expect(tab?.id).toBe(customTabId);
+    expect(panel?.getAttribute('aria-labelledby')).toBe(customTabId);
   });
 });

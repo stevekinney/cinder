@@ -21,6 +21,7 @@
 <script lang="ts">
   import type { DescriptionListProps } from './description-list.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     items,
@@ -29,6 +30,29 @@
     actions,
     ...rest
   }: DescriptionListProps = $props();
+
+  // The each-block keys on `item.id ?? item.term`. Two rows that share a term and
+  // omit `id` collide, which Svelte surfaces as a hard `each_key_duplicate` error
+  // in dev and as broken DOM reconciliation in production. Surface the misuse with
+  // an actionable diagnostic before the reconciler trips, so the consumer is told
+  // to supply `id` rather than left to debug a cryptic error.
+  const duplicateKey = $derived.by(() => {
+    const seen = new Set<string | number>();
+    for (const item of items) {
+      const key = item.id ?? item.term;
+      if (seen.has(key)) return key;
+      seen.add(key);
+    }
+    return undefined;
+  });
+
+  $effect(() => {
+    if (duplicateKey !== undefined) {
+      devWarn(
+        `[cinder/DescriptionList] Duplicate key "${duplicateKey}". Two items share a term and no \`id\`. Provide a unique \`id\` on each DescriptionListItem to avoid broken reconciliation.`,
+      );
+    }
+  });
 </script>
 
 <dl

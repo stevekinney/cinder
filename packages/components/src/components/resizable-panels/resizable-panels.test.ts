@@ -166,7 +166,7 @@ describe('ResizablePanels', () => {
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
 
     expect(handle.getAttribute('aria-valuenow')).toBe('50');
-    expect(handle.getAttribute('aria-valuetext')).toBe('50% (0px)');
+    expect(handle.getAttribute('aria-valuetext')).toBe('0px (50%)');
   });
 
   test('collapsed panes clip and hide their children from focus navigation', async () => {

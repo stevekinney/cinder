@@ -91,13 +91,18 @@
   let ignoreSyntheticInput = false;
   let completionPointerIndex = $state<number | null>(null);
   let pendingRequestController: AbortController | null = null;
-  let previousOpen = false;
   let autocompleteDismissed = true;
 
   let requestVersion = 0;
 
   const renderedSuggestions = $derived(suggestions.slice(0, resolvedMaxVisibleSuggestions));
   const enabledIndexes = $derived(getEnabledIndexes(renderedSuggestions));
+  // Mirror loading/empty messaging into an always-present live region. Freshly
+  // mounted role="status" nodes inside the popover are not reliably announced by
+  // NVDA/JAWS, so the announcement path lives outside the popover.
+  const statusMessage = $derived(
+    loading ? loadingMessage : open && renderedSuggestions.length === 0 ? emptyMessage : '',
+  );
   const activeDescendant = $derived(
     activeIndex === null ? undefined : `${resolvedId}-option-${activeIndex}`,
   );
@@ -135,21 +140,6 @@
   $effect(() => {
     void renderedSuggestions;
     clampActiveIndex(renderedSuggestions);
-  });
-
-  $effect(() => {
-    const wasOpen = previousOpen;
-    previousOpen = open;
-
-    if (!open || !wasOpen) return;
-
-    pendingRequestController?.abort();
-    pendingRequestController = null;
-    requestVersion += 1;
-    autocompleteDismissed = true;
-    loading = false;
-    activeIndex = null;
-    suggestions = [];
   });
 
   function closePopup(): void {
@@ -436,6 +426,13 @@
   {#if error}
     <p id={field.ownErrorId} class="cinder-autocomplete__error" aria-live="polite">{error}</p>
   {/if}
+
+  <!-- Always in DOM so screen readers hear loading/empty messages when text is
+       injected. Freshly mounted role="status" nodes are not reliably announced
+       by NVDA/JAWS, so this lives outside the popover. -->
+  <div class="cinder-sr-only" role="status">
+    {statusMessage}
+  </div>
 </div>
 
 <Popover
@@ -471,7 +468,7 @@
       {emptyMessage}
     </div>
   {:else}
-    {#each renderedSuggestions as suggestion, index (`${suggestion.value}-${index}`)}
+    {#each renderedSuggestions as suggestion, index (suggestion.value)}
       {@const suggestionLabel = suggestion.label ?? suggestion.value}
       {@const parts = highlightParts(suggestionLabel, value)}
       <div

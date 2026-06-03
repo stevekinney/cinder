@@ -150,24 +150,22 @@
       {/if}
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
         {#each model.yTicks as tick, index}
+          {@const tickY =
+            model.geometry.plotHeight -
+            ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
+              model.geometry.plotHeight}
           <line
             class="cinder-area-chart__gridline"
             x1="0"
             x2={model.geometry.plotWidth}
-            y1={model.geometry.plotHeight -
-              ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
-                model.geometry.plotHeight}
-            y2={model.geometry.plotHeight -
-              ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
-                model.geometry.plotHeight}
+            y1={tickY}
+            y2={tickY}
             aria-hidden="true"
           />
           <text
             class="cinder-area-chart__tick-label"
             x="-8"
-            y={model.geometry.plotHeight -
-              ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
-                model.geometry.plotHeight}
+            y={tickY}
             text-anchor="end"
             dominant-baseline="middle">{formatNumericValue(tick, yAxis, undefined, { index })}</text
           >
@@ -181,7 +179,7 @@
           >
         {/each}
         <!-- Series-specific rendering: filled area paths + stroke line paths. -->
-        {#each model.normalizedSeries as item}
+        {#each model.normalizedSeries as item (item.id)}
           {#if !item.hidden && item.areaPath}
             <path
               class="cinder-area-chart__area"
@@ -271,7 +269,7 @@
         ><tr><th scope="col">Series</th><th scope="col">X</th><th scope="col">Value</th></tr></thead
       >
       <tbody
-        >{#each model.tableRows as row}<tr
+        >{#each model.tableRows as row (row.id)}<tr
             ><th scope="row">{row.seriesLabel}</th><td>{row.xLabel}</td><td>{row.valueLabel}</td
             ></tr
           >{/each}</tbody

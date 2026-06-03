@@ -109,6 +109,14 @@
   const resolvedMax = $derived(
     Number.isFinite(max) ? Math.max(0, Math.floor(max as number)) : undefined,
   );
+  // Memoize the delimiter matcher: a RegExp delimiter only changes when the prop
+  // changes, so build the expression once here instead of allocating a new
+  // RegExp on every keydown. The global flag is stripped so `.test()` is stateless.
+  const delimiterExpression = $derived(
+    typeof delimiter === 'string'
+      ? null
+      : new RegExp(delimiter.source, delimiter.flags.replaceAll('g', '')),
+  );
   const labelledBy = $derived(composeDescribedBy(context?.labelId, consumerAriaLabelledBy));
   const ariaLabel = $derived(
     labelledBy ? undefined : consumerAriaLabel?.trim() ? consumerAriaLabel : undefined,
@@ -200,8 +208,7 @@
 
   function matchesDelimiter(key: string): boolean {
     if (typeof delimiter === 'string') return key === delimiter;
-    const expression = new RegExp(delimiter.source, delimiter.flags.replaceAll('g', ''));
-    return expression.test(key);
+    return delimiterExpression?.test(key) ?? false;
   }
 
   function commitDraft(): boolean {
@@ -346,7 +353,11 @@
       aria-label={ariaLabel}
       aria-labelledby={labelledBy}
     >
-      {#each currentTags as tag, index (`${index}:${tag}`)}
+      <!-- When duplicates are disallowed (the default) the tag value is unique,
+           so key by value to reuse chip DOM on removal instead of recreating
+           every chip after the removed index. Duplicates make a pure value key
+           ambiguous, so fall back to a position-qualified composite. -->
+      {#each currentTags as tag, index (allowDuplicates ? `${index}:${tag}` : tag)}
         <li class="cinder-tag-input__chip">
           <span class="cinder-tag-input__chip-label">{tag}</span>
           {#if !field.disabled && !resolvedReadonly}

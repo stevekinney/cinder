@@ -64,15 +64,13 @@
     widthMode: () => 'content',
   });
 
-  // Form state (reset by $effect when popover opens)
-  let url = $state('');
-  let text = $state('');
-
-  // Reset form state when initial values change (e.g., when opening for different link)
-  $effect(() => {
-    url = initialUrl;
-    text = initialText;
-  });
+  // Form state. The popover is mounted fresh on every open (the parent gates it
+  // behind `{#if linkPopoverOpen && mode === 'wysiwyg'}`), so initializing from
+  // the incoming props here captures the correct values for this open session.
+  // A prop-sync $effect would be redundant and would clobber the user's
+  // in-progress edits if `initialUrl` / `initialText` recomputed mid-open.
+  let url = $state(initialUrl);
+  let text = $state(initialText);
 
   // Allowed URL protocols (safe for links)
   const ALLOWED_PROTOCOLS = [

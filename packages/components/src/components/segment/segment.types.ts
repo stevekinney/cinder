@@ -1,6 +1,10 @@
 import type { Snippet } from 'svelte';
 import type { HTMLButtonAttributes } from 'svelte/elements';
 
+// Attributes the component owns and computes itself, so a consumer value would
+// be silently overridden. `onfocus` / `onblur` are intentionally NOT here: the
+// component implements no focus handling, so forwarding them through `...rest`
+// lets consumers wire focus-driven behavior (tooltips, analytics) on a segment.
 type SegmentOwnedAttributes =
   | 'role'
   | 'type'
@@ -12,9 +16,7 @@ type SegmentOwnedAttributes =
   | 'aria-pressed'
   | 'aria-controls'
   | 'aria-disabled'
-  | 'onclick'
-  | 'onfocus'
-  | 'onblur';
+  | 'onclick';
 
 export type SegmentProps = Omit<HTMLButtonAttributes, SegmentOwnedAttributes> & {
   /** Value this segment represents. Must be unique within the parent control. */

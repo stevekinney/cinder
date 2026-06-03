@@ -65,7 +65,7 @@
 
   {#if expanded}
     <div id={contentId} class="front-matter-content">
-      {#each diffs as lineDiff, idx (`fm-${idx}`)}
+      {#each diffs as lineDiff, idx (`fm-${idx}:${lineDiff.type}:${lineDiff.type === 'modified' ? lineDiff.newText : lineDiff.text}`)}
         <DiffLine diff={lineDiff} {viewMode} {wordChangeRenderer} />
       {/each}
     </div>

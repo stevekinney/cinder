@@ -34,6 +34,18 @@
     return Object.entries(value as Record<string, unknown>);
   });
 
+  // The key label renders in a sibling <span> outside the <button>, so a screen
+  // reader announces the toggle without any indication of which node it belongs
+  // to. Compose a distinguishing accessible name from the key (when present) and
+  // the collection shape so sibling toggles are tellable apart.
+  const itemCount = $derived(entries.length);
+  const collectionLabel = $derived(
+    `${isArray ? 'array' : 'object'}, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`,
+  );
+  const toggleLabel = $derived(
+    keyName === undefined ? collectionLabel : `${keyName}: ${collectionLabel}`,
+  );
+
   function valueClass(v: unknown): string {
     if (v === null) return 'null';
     if (typeof v === 'string') return 'string';
@@ -52,6 +64,7 @@
       type="button"
       class="cinder-json-viewer__toggle"
       aria-expanded={!collapsed}
+      aria-label={toggleLabel}
       onclick={() => (collapsed = !collapsed)}
     >
       <span class="cinder-json-viewer__caret" data-cinder-collapsed={collapsed || undefined}></span>
@@ -59,12 +72,21 @@
         {isArray ? '[' : '{'}
       </span>
       {#if collapsed}
-        <span class="cinder-json-viewer__summary">{entries.length} items</span>
+        <span class="cinder-json-viewer__summary"
+          >{itemCount} {itemCount === 1 ? 'item' : 'items'}</span
+        >
         <span class="cinder-json-viewer__brace">{isArray ? ']' : '}'}</span>
       {/if}
     </button>
     {#if !collapsed}
       <ul class="cinder-json-viewer__children">
+        <!--
+          For objects `k` is the property name — a stable, correct key. For arrays
+          `k` is the index: JSON array elements carry no intrinsic identity, so if
+          the consumer swaps in a different array each child's collapsed $state
+          stays associated with its position rather than its value. This is an
+          accepted tradeoff given arrays have no stable per-item key.
+        -->
         {#each entries as [k, v] (k)}
           <li>
             <Self value={v} keyName={k} depth={depth + 1} {initialDepth} {maxDepth} />

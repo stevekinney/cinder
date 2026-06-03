@@ -17,9 +17,13 @@
 
 <script lang="ts">
   import type { HTMLAttributes } from 'svelte/elements';
+  import { tick } from 'svelte';
 
   import { cn } from '../../utilities/class-names.ts';
   import type { AlertProps } from './alert.types.ts';
+
+  const FOCUSABLE_SELECTOR =
+    'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   let {
     variant = 'info',
@@ -32,10 +36,50 @@
   }: AlertProps = $props();
 
   let visible = $state(true);
+  let rootElement: HTMLDivElement | undefined = $state();
 
-  function handleDismiss() {
+  async function handleDismiss() {
+    if (!visible) return;
+    const focusTarget = rootElement ? resolveFocusTarget(rootElement) : null;
     visible = false;
+    await tick();
+    if (focusTarget?.isConnected) focusTarget.focus();
     onDismiss?.();
+  }
+
+  function resolveFocusTarget(alertElement: HTMLElement): HTMLElement | null {
+    const alertDocument = alertElement.ownerDocument;
+    const activeElement = alertDocument.activeElement;
+    if (!(activeElement instanceof HTMLElement) || !alertElement.contains(activeElement)) {
+      return null;
+    }
+    return findFocusTarget(alertElement, alertDocument, activeElement);
+  }
+
+  function findFocusTarget(
+    alertElement: HTMLElement,
+    alertDocument: Document,
+    activeElement: HTMLElement,
+  ): HTMLElement {
+    const candidates = Array.from(
+      alertDocument.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+    ).filter(
+      (element) =>
+        element !== activeElement &&
+        !alertElement.contains(element) &&
+        !element.hidden &&
+        element.getAttribute('aria-hidden') !== 'true' &&
+        !element.closest('[hidden], [inert], [aria-hidden="true"]'),
+    );
+
+    const next = candidates.find((element) =>
+      Boolean(alertElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
+    const previous = candidates.findLast((element) =>
+      Boolean(alertElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING),
+    );
+
+    return next ?? previous ?? alertDocument.body;
   }
 
   // P6-C2 locks Alert as the live-region notification: `role="alert"` is
@@ -59,6 +103,7 @@
 
 {#if visible}
   <div
+    bind:this={rootElement}
     {...restWithoutForbidden}
     class={cn('cinder-alert', 'cinder-_status-surface', className)}
     data-cinder-variant={variant}

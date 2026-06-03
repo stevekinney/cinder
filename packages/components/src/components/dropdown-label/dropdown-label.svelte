@@ -22,7 +22,7 @@
   let { class: customClassName, children, ...rest }: DropdownLabelProps = $props();
 </script>
 
-<div class={classNames('cinder-dropdown-label', customClassName)} {...rest}>
+<div class={classNames('cinder-dropdown-label', customClassName)} role="presentation" {...rest}>
   {#if children}
     {@render children()}
   {/if}

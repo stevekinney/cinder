@@ -111,18 +111,21 @@
 
   const state = createEditorState(stateOptions);
 
-  // Sync mutable props into the state container when the *prop* changes.
-  // We track the last applied value locally so the effect only calls the
-  // setter on real prop transitions — without that, the effect re-runs on
-  // every reactive read inside setReadonly/setDraftOverride and loops.
-  let lastReadonly = untrack(() => readonly);
-  let lastDraftOverride: JsonSchemaKnownDraft | undefined = untrack(() => draftOverride);
+  // Sync `readonly` into the state container whenever the prop changes.
+  // `setReadonly` only assigns the flag, so re-applying the construction-seeded
+  // value on the initial effect run is a harmless no-op — no sentinel needed.
   $effect(() => {
-    if (readonly !== lastReadonly) {
-      lastReadonly = readonly;
-      state.setReadonly(readonly);
-    }
+    state.setReadonly(readonly);
   });
+
+  // Sync `draftOverride` into the state container when the *prop* changes.
+  // Unlike `setReadonly`, `setDraftOverride` re-runs validation and emits an
+  // `onvalidate` event, so we must skip the initial effect run (the value was
+  // already seeded at construction) to avoid a spurious mount-time validation
+  // emit. The sentinel detects a genuine prop transition; it is not guarding a
+  // reactive loop — the setter writes closure-private state, never back to the
+  // `draftOverride` prop.
+  let lastDraftOverride: JsonSchemaKnownDraft | undefined = untrack(() => draftOverride);
   $effect(() => {
     if (draftOverride !== lastDraftOverride) {
       lastDraftOverride = draftOverride;
@@ -138,17 +141,31 @@
 
   // schemaKey-triggered reset. Track the previous key explicitly so we don't
   // reload on initial mount (state was already seeded above) or on re-renders
-  // that don't change the key.
+  // that don't change the key. Only `schemaKey` is a tracked dependency — the
+  // documented contract is "change schemaKey to reset". `schema`/`original` are
+  // read untracked so a parent live-patching those props (without changing the
+  // key) does not silently re-run this effect; when the key *does* change we
+  // still read their current values fresh inside the untracked block.
   let lastSchemaKey: string | undefined = untrack(() => schemaKey);
   $effect(() => {
     if (schemaKey !== lastSchemaKey) {
       lastSchemaKey = schemaKey;
-      state.reload(schema, original);
+      untrack(() => {
+        state.reload(schema, original);
+      });
       announcer.announce('Schema reloaded');
     }
   });
 
-  // Forward bindable view <-> state.view.
+  // Sync the bindable `view` prop into `state.view`. The flow is intentionally
+  // one-directional: `view` is the single source of truth. The parent's
+  // `bind:view` and the `Tabs` `bind:value={view}` both write the prop directly,
+  // and `state` never changes its view autonomously (`reload()` does not touch
+  // `view`), so there is no state→prop direction to mirror. A write-back effect
+  // that mirrored `state.view` onto the prop would force an extra render of the
+  // tab tree on every unrelated state change; if a future code path ever mutates
+  // `state.view` independently, that path must also update the `view` prop (or
+  // expose an onViewChange callback) rather than rely on a mirror effect here.
   $effect(() => {
     if (state.view !== view) state.setView(view);
   });

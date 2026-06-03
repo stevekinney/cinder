@@ -16,6 +16,7 @@
 
 <script lang="ts">
   import { cn } from '../../utilities/class-names.ts';
+  import type { TimelineHeadingLevel } from '../timeline/timeline.types.ts';
   import type { TimelineItemProps } from './timeline-item.types.ts';
 
   let {
@@ -31,6 +32,11 @@
     marker,
     ...rest
   }: TimelineItemProps = $props();
+
+  // Render a native h1–h6 rather than `<div role="heading">`. Native headings
+  // carry stronger, more widely supported semantics (outline navigation, implicit
+  // level) and match the codebase pattern in section-heading and form-section.
+  const groupHeaderTag = $derived(`h${groupHeaderLevel}` satisfies `h${TimelineHeadingLevel}`);
 </script>
 
 <li
@@ -40,9 +46,9 @@
   data-cinder-connector-after={connectorAfter}
 >
   {#if groupHeader}
-    <div class="cinder-timeline__group-header" role="heading" aria-level={groupHeaderLevel}>
+    <svelte:element this={groupHeaderTag} class="cinder-timeline__group-header">
       {groupHeader}
-    </div>
+    </svelte:element>
   {/if}
   <div class="cinder-timeline-item__event">
     <span class="cinder-timeline-item__marker" aria-hidden="true" inert>

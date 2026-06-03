@@ -66,6 +66,7 @@
   style={`anchor-name: --${context.menuId};`}
   aria-haspopup="menu"
   aria-expanded={context.isOpen}
+  aria-controls={context.menuId}
   popovertarget={context.supportsPopover ? context.menuId : undefined}
   onclick={handleClick}
   {...rest}

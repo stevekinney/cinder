@@ -84,7 +84,7 @@ describe('TimelineItem', () => {
     expect(marker?.textContent).toContain('●');
   });
 
-  test('renders a group heading with the requested aria level when groupHeader is set', () => {
+  test('renders a native heading at the requested level when groupHeader is set', () => {
     const { container } = render(TimelineItem, {
       ...baseProps,
       groupHeader: 'May 23',
@@ -92,8 +92,10 @@ describe('TimelineItem', () => {
     });
     const heading = container.querySelector('.cinder-timeline__group-header');
     expect(heading).not.toBeNull();
-    expect(heading?.getAttribute('role')).toBe('heading');
-    expect(heading?.getAttribute('aria-level')).toBe('2');
+    // Native heading element conveys the level implicitly — no role/aria-level.
+    expect(heading?.tagName).toBe('H2');
+    expect(heading?.hasAttribute('role')).toBe(false);
+    expect(heading?.hasAttribute('aria-level')).toBe(false);
     expect(heading?.textContent?.trim()).toBe('May 23');
   });
 

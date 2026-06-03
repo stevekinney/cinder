@@ -114,21 +114,30 @@ export function useChatUnreadState(options?: UseChatUnreadStateOptions): UseChat
   const displayUnreadCount = $derived(formatUnreadCount(unreadCount));
   const hasLargeCount = $derived(isLargeCount(unreadCount));
 
-  // Fire indicator change callback when state changes
-  $effect(() => {
+  /**
+   * Fire the indicator-change callback from the mutation sites that actually
+   * change `unreadCount` / `hasNewMessageIndicator`. Driving it here (rather
+   * than from an `$effect`) avoids the spurious `{ unreadCount: 0,
+   * hasNewMessageIndicator: false }` notification that an effect would emit on
+   * mount, and keeps the contract aligned with `onScrollStateChange`, which
+   * only fires from its own mutation site.
+   */
+  function notifyIndicatorChange(): void {
     onUnreadIndicatorChange?.({
       unreadCount,
       hasNewMessageIndicator,
     });
-  });
+  }
 
   /**
    * Mark all messages as read (resets unread state).
    */
   function markAllAsRead(): void {
+    const changed = unreadCount !== 0 || hasNewMessageIndicator;
     unreadCount = 0;
     hasNewMessageIndicator = false;
     firstUnreadId = null;
+    if (changed) notifyIndicatorChange();
   }
 
   /**
@@ -194,6 +203,10 @@ export function useChatUnreadState(options?: UseChatUnreadStateOptions): UseChat
         announcer.announce(
           unreadCount === 1 ? 'New message received' : `${unreadCount} new messages received`,
         );
+
+        // Notify the consumer at the mutation site so the callback reflects the
+        // freshly-updated unread state and never fires spuriously on mount.
+        notifyIndicatorChange();
       }
     }
 

@@ -13,6 +13,10 @@
    * @related grid-list-item, table-row, avatar
    */
   export type { StackedListItemDensity, StackedListItemProps } from './stacked-list-item.types.ts';
+
+  // Attributes stripped from forwarded `rest` to keep the <li> non-interactive.
+  // Module-scoped so the Set is allocated once, not per component instance.
+  const BLOCKED_ATTRS = new Set(['role', 'tabindex']);
 </script>
 
 <script lang="ts">
@@ -57,17 +61,27 @@
   // leak through at runtime (e.g. from dynamic spreads or JS consumers).
   // Strips on* event handlers plus role and tabindex to prevent the <li> from
   // becoming interactive — matching the accessibility contract in the a11y docs.
+  // `rest` is already typed as `ForwardedLiAttributes` (no on* keys), so the
+  // inferred record from `Object.fromEntries` needs no assertion to spread.
   // $derived so the filtered set re-evaluates when rest changes.
-  const BLOCKED_ATTRS = new Set(['role', 'tabindex']);
   const safeRest = $derived(
     Object.fromEntries(
       Object.entries(rest).filter(([key]) => !key.startsWith('on') && !BLOCKED_ATTRS.has(key)),
-    ) as Omit<typeof rest, `on${string}`>,
+    ),
   );
 
-  // When target="_blank" and no rel is supplied, default to "noreferrer" to
-  // prevent reverse-tabnapping. $derived so it re-evaluates when target or rel changes.
-  const resolvedRel = $derived(target === '_blank' && !rel ? 'noopener noreferrer' : rel);
+  // Compose `rel` for the title anchor. When target matches "_blank"
+  // (case-insensitive), merge "noopener" and "noreferrer" into whatever the
+  // consumer supplied, deduplicating tokens so reverse-tabnapping protection is
+  // never silently dropped. Mirrors the sibling grid-list-item. $derived so it
+  // re-evaluates when target or rel changes.
+  const resolvedRel = $derived.by(() => {
+    if (target?.toLowerCase() !== '_blank') return rel;
+    const tokens = new Set((rel ?? '').split(/\s+/).filter(Boolean));
+    tokens.add('noopener');
+    tokens.add('noreferrer');
+    return [...tokens].join(' ');
+  });
 </script>
 
 <li

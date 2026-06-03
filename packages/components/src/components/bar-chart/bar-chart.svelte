@@ -186,7 +186,7 @@
           >
         {/each}
         <!-- Series-specific rendering: rectangular bars. -->
-        {#each model.bars as bar}
+        {#each model.bars as bar (bar.id)}
           <rect
             class="cinder-bar-chart__bar"
             x={bar.x}
@@ -199,7 +199,7 @@
             data-cinder-category={bar.categoryLabel}
           />
         {/each}
-        {#each model.categoryTicks as tick}
+        {#each model.categoryTicks as tick (tick.label)}
           <!--
             Category axis labels differ by orientation:
             - Vertical: labels appear below bars (middle-anchored x, no baseline).

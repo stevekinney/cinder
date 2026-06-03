@@ -186,7 +186,9 @@ describe('ResizablePanels SSR contract', () => {
 
   test('emits the equal-split unmeasured fallback aria values for the handle', async () => {
     // With two panes and no measurements, `getUnmeasuredHandleAriaState` produces
-    // a 50/50 split: valueNow=50, valueMin=0, valueMax=100, valueText='50% (0px)'.
+    // a 50/50 split: valueNow=50, valueMin=0, valueMax=100, valueText='0px (50%)'.
+    // The format (pixels first, percent in parens) matches the measured-state
+    // `getHandleAriaState` so the announced string does not invert on first paint.
     // This proves the SSR path took the safe `getUnmeasuredHandleAriaState` branch
     // rather than calling `getHandleAriaState` (which requires a non-null layoutState).
     const html = await renderComponentToServerHtml();
@@ -194,7 +196,7 @@ describe('ResizablePanels SSR contract', () => {
     expect(html).toContain('aria-valuenow="50"');
     expect(html).toContain('aria-valuemin="0"');
     expect(html).toContain('aria-valuemax="100"');
-    expect(html).toContain('aria-valuetext="50% (0px)"');
+    expect(html).toContain('aria-valuetext="0px (50%)"');
   });
 
   test('does not emit pixel-based panel size styles in SSR HTML', async () => {

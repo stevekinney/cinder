@@ -25,7 +25,13 @@ export type TableRowSelectionProps =
       selectionDisabled: true;
       selected?: undefined;
       onSelectedChange?: undefined;
-      selectionLabel?: undefined;
+      /**
+       * Accessible name for the disabled selection checkbox. Provide a localised
+       * string to override the English default ("Selection not allowed for this
+       * row"). The library cannot localise on the consumer's behalf, so this is
+       * the seam for non-English applications or custom phrasing.
+       */
+      selectionLabel?: string;
     }
   | {
       selected?: undefined;

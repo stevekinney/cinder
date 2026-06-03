@@ -36,33 +36,40 @@
   let requestInFlight = $state(false);
   let errorState = $state(false);
   let retryCount = $state(0);
-  let previousHasMore = $state(hasMore);
-  let statusText = $state('');
+  // Tracks the last `hasMore` value the component reconciled against so a
+  // parent-driven false -> true flip (new page of data arrived) can clear the
+  // retry budget and error latch exactly once per transition.
+  let previousHasMore = hasMore;
 
   const mergedClassName = $derived(classNames('cinder-load-more', customClassName));
   const busy = $derived(loading || requestInFlight);
   const sentinelEnabled = $derived(
     hasMore && !loading && !errorState && !requestInFlight && retryCount < maxRetries,
   );
-  const sentinelIntersection = $derived(
-    useIntersection(handleIntersect, {
-      root,
-      rootMargin,
-      enabled: () => sentinelEnabled,
-    }),
-  );
+  // `enabled` is a getter, so `useIntersection`'s own `$effect` re-evaluates
+  // `sentinelEnabled` reactively and toggles the observer in place. Constructing
+  // the attachment once (rather than inside `$derived`) avoids tearing down and
+  // recreating the IntersectionObserver every time `sentinelEnabled` flips.
+  const sentinelIntersection = useIntersection(handleIntersect, {
+    root,
+    rootMargin,
+    enabled: () => sentinelEnabled,
+  });
   const buttonText = $derived(errorState ? retryLabel : buttonLabel);
   const buttonDisabled = $derived(busy && !errorState);
+  // End-of-list message is a pure function of `hasMore`; no sentinel effect needed.
+  const statusText = $derived(hasMore ? '' : endOfListMessage);
 
+  // The only remaining effect: re-arm the sentinel when the parent flips
+  // `hasMore` back to true (a fresh page arrived). This is a genuine reaction to
+  // a prop *transition* — not a derivable value — so the previous-value diff is
+  // intentional. `statusText` (pure) is a `$derived` above; `requestInFlight` is
+  // cleared in `requestNextPage`'s `finally`, so neither needs an effect.
   $effect(() => {
-    if (previousHasMore && !hasMore) {
-      statusText = endOfListMessage;
-    } else if (!previousHasMore && hasMore) {
-      statusText = '';
+    if (!previousHasMore && hasMore) {
       retryCount = 0;
       errorState = false;
     }
-
     previousHasMore = hasMore;
   });
 
@@ -87,13 +94,13 @@
       if (source === 'button') {
         retryCount = 0;
       }
-      if (!loading) {
-        requestInFlight = false;
-      }
     } catch (error) {
-      requestInFlight = false;
       errorState = true;
       onError?.(error);
+    } finally {
+      // Always clear the in-flight guard once the request settles, regardless of
+      // whether the parent has flipped its own `loading` prop yet.
+      requestInFlight = false;
     }
   }
 
@@ -101,12 +108,6 @@
     if (!entry.isIntersecting) return;
     void requestNextPage('sentinel');
   }
-
-  $effect(() => {
-    if (!loading) {
-      requestInFlight = false;
-    }
-  });
 </script>
 
 <div class={mergedClassName} aria-busy={busy}>
@@ -119,6 +120,7 @@
       type="button"
       class="cinder-load-more__button"
       disabled={buttonDisabled}
+      aria-busy={busy}
       onclick={() => void requestNextPage('button')}
     >
       <span>{buttonText}</span>
