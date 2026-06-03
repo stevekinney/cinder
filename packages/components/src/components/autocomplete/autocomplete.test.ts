@@ -133,6 +133,24 @@ describe('Autocomplete — suggestions and free-form input', () => {
     });
   });
 
+  test('match highlight uses the theme-aware warning surface tokens, not a hard-coded light value', async () => {
+    // Regression: the highlight previously hard-coded a near-white background
+    // (`oklch(from var(--cinder-warning) 96.5% …)`) in BOTH themes with
+    // `color: inherit`, so in dark mode the matched glyph became a white-on-white
+    // box and the letter disappeared. The fix uses the `--cinder-color-warning-bg`
+    // / `--cinder-color-warning-fg` light-dark() pair, which contrasts in either
+    // theme. happy-dom does not apply stylesheets, so assert against the CSS source.
+    const css = await Bun.file(new URL('./autocomplete.css', import.meta.url)).text();
+    const matchRule = css.slice(css.indexOf('.cinder-autocomplete__match'));
+    const ruleBody = matchRule.slice(0, matchRule.indexOf('}'));
+    expect(ruleBody).toContain('var(--cinder-color-warning-bg)');
+    expect(ruleBody).toContain('var(--cinder-color-warning-fg)');
+    // The broken hard-coded near-white background must be gone.
+    expect(ruleBody).not.toMatch(/oklch\(from var\(--cinder-warning\)\s*9[0-9]/);
+    // color: inherit was the second half of the bug (light text on light bg).
+    expect(ruleBody).not.toMatch(/color:\s*inherit/);
+  });
+
   test('eligible empty results keep the popup open with the empty row', async () => {
     const { container } = render(Autocomplete, {
       props: {
