@@ -13,7 +13,7 @@ const schema = {
     href: {
       type: 'string',
       description:
-        'The URL the link points to. Required for enabled links; ignored when `disabled` is true.',
+        'The URL the link points to. Optional ONLY because a `disabled` link renders a\n`<span>` with no href. For any enabled (non-disabled) link you must provide it —\nan `<a>` without `href` is not keyboard-focusable and is not exposed as a link to\nassistive technology, so an enabled Link without `href` is a bug, not a feature.',
     },
     underline: {
       enum: ['always', 'hover', 'none'],
@@ -43,7 +43,7 @@ const schema = {
         },
       ],
       description:
-        'Forwarded to the rendered `<a>`. Merged with `external`-derived `noopener noreferrer` when `external` is true.',
+        'Forwarded to the rendered `<a>`. `"noopener noreferrer"` is merged in whenever the link\nopens in a new tab — `external` is true OR the resolved target is `"_blank"`\n(case-insensitive) — and the whole value is de-duplicated case-insensitively.',
     },
     class: {
       type: 'string',
@@ -51,7 +51,6 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['href'],
   metadata: {
     unsupportedProps: [
       {

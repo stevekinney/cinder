@@ -27,6 +27,9 @@
     disabled = false,
     target,
     rel,
+    // Pulled out of `rest` so a consumer-supplied tabindex never lands on the disabled
+    // <span> (which would make a "disabled" link focusable). Applied only to the enabled <a>.
+    tabindex,
     class: className,
     children,
     ...rest
@@ -40,21 +43,39 @@
     rest as Omit<HTMLAttributes<HTMLSpanElement>, 'class' | 'aria-disabled'>,
   );
 
-  // Merge external-derived values with consumer-supplied values.
-  // Consumer target takes precedence; external only supplies "_blank" when the consumer
-  // did not pass a target. For rel, "noopener noreferrer" is always appended when external
-  // is true so the security guarantee is not accidentally stripped by a consumer rel.
+  // Consumer target takes precedence; `external` only supplies "_blank" when the consumer
+  // did not pass a target.
   const resolvedTarget = $derived(disabled ? undefined : external && !target ? '_blank' : target);
 
+  // Merge "noopener noreferrer" into rel whenever the link opens in a NEW TAB —
+  // either via `external` or any resolved target of "_blank" (case-insensitively, since
+  // HTML target keywords are case-insensitive) — so a `target="_blank"` passed without
+  // `external` can't open a reverse-tabnabbing window. The whole rel is de-duplicated
+  // case-insensitively: a consumer rel of "noopener noopener" or "NoOpener" collapses to
+  // a single token and the safe tokens aren't re-added.
   const resolvedRel = $derived.by(() => {
     if (disabled) return undefined;
-    if (!external) return rel ?? undefined;
-    const externalRel = 'noopener noreferrer';
-    if (!rel) return externalRel;
-    // Avoid duplicating rel values that the consumer already supplied.
-    const existingParts = rel.split(/\s+/).filter(Boolean);
-    const missing = externalRel.split(/\s+/).filter((part) => !existingParts.includes(part));
-    return missing.length > 0 ? `${rel} ${missing.join(' ')}` : rel;
+    const needsSafeRel = external || resolvedTarget?.toLowerCase() === '_blank';
+    const consumerParts = (rel ?? '').split(/\s+/).filter(Boolean);
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    // De-dupe consumer-provided tokens too (keep first occurrence, original casing).
+    for (const part of consumerParts) {
+      const key = part.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(part);
+      }
+    }
+    if (needsSafeRel) {
+      for (const part of ['noopener', 'noreferrer']) {
+        if (!seen.has(part)) {
+          seen.add(part);
+          merged.push(part);
+        }
+      }
+    }
+    return merged.length > 0 ? merged.join(' ') : undefined;
   });
 
   const resolvedClass = $derived(classNames('cinder-link', className));
@@ -81,6 +102,7 @@
   <a
     {...rest}
     {href}
+    {tabindex}
     target={resolvedTarget}
     rel={resolvedRel}
     class={resolvedClass}
