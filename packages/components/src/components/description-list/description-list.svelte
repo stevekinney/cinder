@@ -46,8 +46,17 @@
     return undefined;
   });
 
+  // Warn at most once per distinct duplicate key. devWarn does not dedupe, so without
+  // this latch the effect would re-spam the console on every reactive update (item
+  // edits, unrelated prop changes) while the duplicate persists.
+  let lastWarnedDuplicateKey: string | undefined;
   $effect(() => {
-    if (duplicateKey !== undefined) {
+    if (duplicateKey === undefined) {
+      lastWarnedDuplicateKey = undefined;
+      return;
+    }
+    if (duplicateKey !== lastWarnedDuplicateKey) {
+      lastWarnedDuplicateKey = duplicateKey;
       devWarn(
         `[cinder/DescriptionList] Duplicate key "${duplicateKey}". Two items share a term and no \`id\`. Provide a unique \`id\` on each DescriptionListItem to avoid broken reconciliation.`,
       );
