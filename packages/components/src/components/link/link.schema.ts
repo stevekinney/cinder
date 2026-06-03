@@ -8,7 +8,7 @@ const schema = {
       enum: ['primary', 'inherit'],
       description:
         "Controls the link color.\n- `'primary'` — uses the accent/primary color token.\n- `'inherit'` — inherits the surrounding text color.",
-      default: "'primary'",
+      default: 'primary',
     },
     href: {
       type: 'string',
@@ -19,7 +19,7 @@ const schema = {
       enum: ['always', 'hover', 'none'],
       description:
         "Controls text-decoration behavior.\n- `'always'` — underline is always visible.\n- `'hover'` — underline appears on hover and focus (default).\n- `'none'` — underline is never shown.",
-      default: "'hover'",
+      default: 'hover',
     },
     external: {
       type: 'boolean',
@@ -33,13 +33,15 @@ const schema = {
         'When true, renders a `<span aria-disabled="true">` instead of `<a>`. The href is not\nemitted and pointer-events are disabled. Use to show a link that is contextually\nunavailable without removing it from the visual layout.',
       default: false,
     },
-    target: {
-      type: 'string',
-      description:
-        'Forwarded to the rendered `<a>`. Merged with `external`-derived values when `external` is true.',
-    },
     rel: {
-      type: 'string',
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
       description:
         'Forwarded to the rendered `<a>`. Merged with `external`-derived `noopener noreferrer` when `external` is true.',
     },
@@ -55,6 +57,10 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'target',
+        reason: 'unknown-shape',
       },
     ],
   },

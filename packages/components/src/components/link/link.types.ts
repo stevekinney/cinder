@@ -26,14 +26,14 @@ export type LinkProps = Omit<HTMLAnchorAttributes, 'class' | 'href' | 'target' |
    * - `'always'` — underline is always visible.
    * - `'hover'` — underline appears on hover and focus (default).
    * - `'none'` — underline is never shown.
-   * @default 'hover'
+   * @default "hover"
    */
   underline?: LinkUnderline;
   /**
    * Controls the link color.
    * - `'primary'` — uses the accent/primary color token.
    * - `'inherit'` — inherits the surrounding text color.
-   * @default 'primary'
+   * @default "primary"
    */
   color?: LinkColor;
   /**
@@ -50,9 +50,9 @@ export type LinkProps = Omit<HTMLAnchorAttributes, 'class' | 'href' | 'target' |
    */
   disabled?: boolean;
   /** Forwarded to the rendered `<a>`. Merged with `external`-derived values when `external` is true. */
-  target?: string;
+  target?: HTMLAnchorAttributes['target'];
   /** Forwarded to the rendered `<a>`. Merged with `external`-derived `noopener noreferrer` when `external` is true. */
-  rel?: string;
+  rel?: HTMLAnchorAttributes['rel'];
   /** Additional class names merged with `.cinder-link`. */
   class?: string;
   /** The link text or composed content. Required. */
