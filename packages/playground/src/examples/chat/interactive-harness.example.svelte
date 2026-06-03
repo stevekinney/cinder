@@ -261,7 +261,9 @@
   // --- Inject a tool call + paired result (all outcomes) ---
   function injectToolCall(): void {
     if (!parsedToolArguments.ok) return;
-    const callId = `call-${logCounter + 1}`;
+    // Unique per injection — deriving from logCounter would reuse the same id
+    // for repeated injections that don't add a log entry, breaking pairing.
+    const callId = `call-${crypto.randomUUID()}`;
     const result =
       toolOutcome === 'error'
         ? {

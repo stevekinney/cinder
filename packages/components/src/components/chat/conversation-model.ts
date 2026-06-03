@@ -120,7 +120,7 @@ export type ConversationStatus = 'active' | 'archived' | 'deleted';
  *
  * `ids` is the canonical message ordering; `messages` is a record keyed by id
  * (NOT an array). Resolve a message by walking `ids` and looking each up in
- * `messages` — see {@link getMessages} in `./utilities/utilities.ts`.
+ * `messages` — see {@link getMessages} in `./utilities/conversation.ts`.
  */
 export type ConversationHistory = {
   schemaVersion: number;

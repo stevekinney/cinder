@@ -128,34 +128,41 @@
   const hasImages = $derived(imageParts.length > 0);
 
   // Role detection
-  const isToolUse = $derived(message.role === 'tool-call');
+  const isToolCall = $derived(message.role === 'tool-call');
   const isToolResult = $derived(message.role === 'tool-result');
 
   // Find matching tool pair for tool-call messages
   const toolPair = $derived.by(() => {
-    if (!isToolUse || !message.toolCall) return null;
+    if (!isToolCall || !message.toolCall) return null;
     return toolCallPairs.find((pair) => pair.call.id === message.toolCall?.id) ?? null;
   });
 
-  // Safe stringify for tool result content (handles circular refs, etc.)
-  // For error outcomes, prefer toolResult.error.message over content.
-  // Return strings as-is to preserve formatting.
+  // Check result outcome for styling + branching.
+  const isToolResultError = $derived(isToolResult && message.toolResult?.outcome === 'error');
+  const isToolResultActionRequired = $derived(
+    isToolResult && message.toolResult?.outcome === 'action_required',
+  );
+
+  // Safe stringify for tool result content (handles circular refs, etc.).
+  // - error: prefer the structured error's message (a ToolError OBJECT, so
+  //   render `.message`, not the object — which would stringify to
+  //   `[object Object]`).
+  // - action_required: surface the requested action's message (matching
+  //   ToolCallGroup), falling back to a neutral label so it's never blank.
+  // - otherwise: stringify the content.
   const formattedToolResult = $derived.by(() => {
     if (!isToolResult || !message.toolResult) return null;
-    const { outcome, content, error } = message.toolResult;
+    const { outcome, content, error, action } = message.toolResult;
 
-    // For errors, always prefer the structured error's message when available.
-    // `error` is a ToolError object, so render its `message`, not the object
-    // (which would stringify to `[object Object]`).
     if (outcome === 'error' && error) {
       return error.message;
+    }
+    if (outcome === 'action_required') {
+      return action?.message ?? 'This tool call requires action.';
     }
 
     return stringify(content);
   });
-
-  // Check if this is an error result for styling
-  const isToolResultError = $derived(isToolResult && message.toolResult?.outcome === 'error');
 
   // Content truncation threshold (characters)
   const TRUNCATE_THRESHOLD = 500;
@@ -176,15 +183,15 @@
   data-hidden={message.hidden || undefined}
   data-failed={isFailed || undefined}
   data-search-match={searchMatch || undefined}
-  data-tool-pair={isToolUse && toolPair ? '' : undefined}
+  data-tool-pair={isToolCall && toolPair ? '' : undefined}
   {...rest}
 >
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <article
     id={messageId}
     class="chat-message"
-    aria-labelledby={isToolUse && toolPair ? undefined : roleId}
-    aria-label={isToolUse && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
+    aria-labelledby={isToolCall && toolPair ? undefined : roleId}
+    aria-label={isToolCall && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
     {tabindex}
   >
     <header class="chat-message-header">
@@ -197,12 +204,20 @@
     </header>
 
     <div class="chat-message-body">
-      {#if isToolUse && toolPair}
+      {#if isToolCall && toolPair}
         <ToolCallGroup pair={toolPair} {expanded} ontoggle={toggleExpanded} />
       {:else if isToolResult && formattedToolResult !== null}
-        <div class="chat-message-tool-result" data-error={isToolResultError || undefined}>
+        <div
+          class="chat-message-tool-result"
+          data-error={isToolResultError || undefined}
+          data-action-required={isToolResultActionRequired || undefined}
+        >
           {#if isToolResultError}
             <div class="chat-message-tool-error" role="alert">
+              {formattedToolResult}
+            </div>
+          {:else if isToolResultActionRequired}
+            <div class="chat-message-tool-action" role="status">
               {formattedToolResult}
             </div>
           {:else}

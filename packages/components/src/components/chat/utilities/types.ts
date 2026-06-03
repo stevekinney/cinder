@@ -15,16 +15,9 @@ import type { ToMarkdownOptions } from '../conversation-model.ts';
 export type DeliveryStatus = 'draft' | 'sending' | 'sent' | 'failed';
 
 /**
- * Project-specific export options extending the vendored ToMarkdownOptions.
- *
- * Adds `includeHidden` for controlling hidden message handling, which is
- * not part of the base options.
+ * Options for exporting a chat transcript. Equivalent to the vendored
+ * {@link ToMarkdownOptions} (which already carries `includeHidden`,
+ * `redactHiddenContent`, and the redaction controls); exposed under a
+ * chat-specific name for the public `cinder/chat` surface.
  */
-export interface ChatExportOptions extends ToMarkdownOptions {
-  /**
-   * Whether to include hidden messages in the export.
-   * When true, hidden messages are included but their content is replaced with '[REDACTED]'.
-   * @default false
-   */
-  includeHidden?: boolean;
-}
+export type ChatExportOptions = ToMarkdownOptions;

@@ -60,6 +60,10 @@ function extractSvelteScripts(source: string): string {
 }
 
 describe('chat import boundary', () => {
+  // Walks every chat/ source and parses it with the TypeScript compiler. In
+  // isolation this is ~2s, but it can blow the default 5s budget when the box is
+  // thrashing (e.g. concurrent pre-push gates), so give it explicit headroom —
+  // the work is bounded and a timeout here is always load, never a real finding.
   it('no file under chat/ imports conversationalist', async () => {
     const glob = new Glob('**/*.{ts,svelte}');
     const offenders: string[] = [];
@@ -83,5 +87,5 @@ describe('chat import boundary', () => {
       offenders,
       `chat/ files must not import '${FORBIDDEN_PACKAGE}': ${offenders.join(', ')}`,
     ).toEqual([]);
-  });
+  }, 30_000);
 });
