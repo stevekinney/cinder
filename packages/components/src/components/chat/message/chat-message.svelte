@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { Message, ToolCallPair } from 'conversationalist';
+  import type { Message, ToolCallPair } from '../conversation-model.ts';
 
   /**
    * Role labels for display purposes.
@@ -12,15 +12,15 @@
     assistant: 'Assistant',
     system: 'System',
     developer: 'Developer',
-    'tool-use': 'Tool Call',
+    'tool-call': 'Tool Call',
     'tool-result': 'Tool Result',
     snapshot: 'Snapshot',
   };
 
   export type ChatMessageProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
-    /** The message to render (from conversationalist) */
+    /** The message to render */
     message: Message;
-    /** Paired tool calls (from pairToolCallsWithResults) - used for tool-use messages */
+    /** Paired tool calls (from pairToolCallsWithResults) - used for tool-call messages */
     toolCallPairs?: ToolCallPair[];
     /** Whether long content is expanded */
     expanded?: boolean;
@@ -128,34 +128,41 @@
   const hasImages = $derived(imageParts.length > 0);
 
   // Role detection
-  const isToolUse = $derived(message.role === 'tool-use');
+  const isToolCall = $derived(message.role === 'tool-call');
   const isToolResult = $derived(message.role === 'tool-result');
 
-  // Find matching tool pair for tool-use messages
+  // Find matching tool pair for tool-call messages
   const toolPair = $derived.by(() => {
-    if (!isToolUse || !message.toolCall) return null;
+    if (!isToolCall || !message.toolCall) return null;
     return toolCallPairs.find((pair) => pair.call.id === message.toolCall?.id) ?? null;
   });
 
-  // Safe stringify for tool result content (handles circular refs, etc.)
-  // For error outcomes, prefer toolResult.error over content.
-  // Return strings as-is to preserve formatting.
+  // Check result outcome for styling + branching.
+  const isToolResultError = $derived(isToolResult && message.toolResult?.outcome === 'error');
+  const isToolResultActionRequired = $derived(
+    isToolResult && message.toolResult?.outcome === 'action_required',
+  );
+
+  // Safe stringify for tool result content (handles circular refs, etc.).
+  // - error: prefer the structured error's message (a ToolError OBJECT, so
+  //   render `.message`, not the object — which would stringify to
+  //   `[object Object]`).
+  // - action_required: surface the requested action's message (matching
+  //   ToolCallGroup), falling back to a neutral label so it's never blank.
+  // - otherwise: stringify the content.
   const formattedToolResult = $derived.by(() => {
     if (!isToolResult || !message.toolResult) return null;
-    const { outcome, content, error } = message.toolResult;
+    const { outcome, content, error, action } = message.toolResult;
 
-    // For errors, always prefer the error message when available.
-    // This matches tool-call-group.svelte behavior and ensures users see
-    // the actual error, not request metadata that may be in content.
     if (outcome === 'error' && error) {
-      return error;
+      return error.message;
+    }
+    if (outcome === 'action_required') {
+      return action?.message ?? 'This tool call requires action.';
     }
 
     return stringify(content);
   });
-
-  // Check if this is an error result for styling
-  const isToolResultError = $derived(isToolResult && message.toolResult?.outcome === 'error');
 
   // Content truncation threshold (characters)
   const TRUNCATE_THRESHOLD = 500;
@@ -176,15 +183,15 @@
   data-hidden={message.hidden || undefined}
   data-failed={isFailed || undefined}
   data-search-match={searchMatch || undefined}
-  data-tool-pair={isToolUse && toolPair ? '' : undefined}
+  data-tool-pair={isToolCall && toolPair ? '' : undefined}
   {...rest}
 >
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <article
     id={messageId}
     class="chat-message"
-    aria-labelledby={isToolUse && toolPair ? undefined : roleId}
-    aria-label={isToolUse && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
+    aria-labelledby={isToolCall && toolPair ? undefined : roleId}
+    aria-label={isToolCall && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
     {tabindex}
   >
     <header class="chat-message-header">
@@ -197,12 +204,20 @@
     </header>
 
     <div class="chat-message-body">
-      {#if isToolUse && toolPair}
+      {#if isToolCall && toolPair}
         <ToolCallGroup pair={toolPair} {expanded} ontoggle={toggleExpanded} />
       {:else if isToolResult && formattedToolResult !== null}
-        <div class="chat-message-tool-result" data-error={isToolResultError || undefined}>
+        <div
+          class="chat-message-tool-result"
+          data-error={isToolResultError || undefined}
+          data-action-required={isToolResultActionRequired || undefined}
+        >
           {#if isToolResultError}
             <div class="chat-message-tool-error" role="alert">
+              {formattedToolResult}
+            </div>
+          {:else if isToolResultActionRequired}
+            <div class="chat-message-tool-action" role="status">
               {formattedToolResult}
             </div>
           {:else}
@@ -331,8 +346,10 @@
   }
 
   .chat-message:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Search match highlight — subtle accent-tinted ring */
@@ -391,21 +408,21 @@
     color: var(--cinder-color-warning-fg);
   }
 
-  .chat-message-wrapper[data-role='tool-use'],
+  .chat-message-wrapper[data-role='tool-call'],
   .chat-message-wrapper[data-role='tool-result'] {
     margin-inline-end: auto;
     min-width: min(18rem, 100%);
     max-width: min(100%, 48rem);
   }
 
-  .chat-message-wrapper[data-role='tool-use'] .chat-message,
+  .chat-message-wrapper[data-role='tool-call'] .chat-message,
   .chat-message-wrapper[data-role='tool-result'] .chat-message {
     background: var(--cinder-surface-inset);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
   }
 
-  /* When a tool-use has a paired result, ToolCallGroup is the canonical card.
+  /* When a tool-call has a paired result, ToolCallGroup is the canonical card.
    * Strip the outer bubble shell (background, border, padding, role label, footer)
    * so the unified card is the only visible boundary. The wrapper expands
    * within the same readability cap as regular bubbles — chat bubbles hug
@@ -553,8 +570,10 @@
   }
 
   .chat-message-expand:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Failed message styling */
@@ -602,8 +621,10 @@
   }
 
   .chat-message-retry:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Footer — absolutely positioned outside the bubble's flow so revealing it on
@@ -679,7 +700,7 @@
     .chat-message-wrapper[data-role='assistant'] .chat-message-footer,
     .chat-message-wrapper[data-role='system'] .chat-message-footer,
     .chat-message-wrapper[data-role='developer'] .chat-message-footer,
-    .chat-message-wrapper[data-role='tool-use'] .chat-message-footer,
+    .chat-message-wrapper[data-role='tool-call'] .chat-message-footer,
     .chat-message-wrapper[data-role='tool-result'] .chat-message-footer,
     .chat-message-wrapper[data-role='snapshot'] .chat-message-footer {
       top: 100%;
@@ -735,8 +756,10 @@
   }
 
   :global(.chat-message-action-button:focus-visible) {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Touch devices: without hover discoverability, bare icons read as
@@ -824,8 +847,10 @@
   }
 
   .chat-message-edit-save:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   .chat-message-edit-cancel {
@@ -851,8 +876,10 @@
   }
 
   .chat-message-edit-cancel:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Responsive sizing for narrow viewports */
@@ -864,6 +891,22 @@
 
     .chat-message {
       padding: var(--cinder-space-2) var(--cinder-space-3);
+    }
+  }
+
+  /* Forced-colors: box-shadow rings are suppressed in Windows High Contrast Mode,
+     so repaint the reserved transparent outline channel with a system color.
+     Every selector here is button-shaped or a clickable region → ButtonText.
+     Placed after the base rules per the focus-ring policy's cascade note. */
+  @media (forced-colors: active) {
+    .chat-message:focus-visible,
+    .chat-message-expand:focus-visible,
+    .chat-message-retry:focus-visible,
+    :global(.chat-message-action-button:focus-visible),
+    .chat-message-edit-save:focus-visible,
+    .chat-message-edit-cancel:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
     }
   }
 </style>

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Message } from 'conversationalist';
+import type { Message } from '../conversation-model.ts';
 
 import {
   buildMessagesWithDateSeparators,
@@ -22,7 +22,7 @@ describe('chat message grouping', () => {
     const messages = [
       message({
         id: 'call',
-        role: 'tool-use',
+        role: 'tool-call',
         toolCall: { id: 'call-1', name: 'read_file', arguments: { path: 'README.md' } },
       }),
       message({
@@ -50,7 +50,7 @@ describe('chat message grouping', () => {
     const messages = [
       message({
         id: 'call',
-        role: 'tool-use',
+        role: 'tool-call',
         createdAt: '2026-05-04T12:00:00.000Z',
         toolCall: { id: 'call-1', name: 'read_file', arguments: { path: 'README.md' } },
       }),

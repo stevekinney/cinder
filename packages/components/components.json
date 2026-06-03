@@ -510,7 +510,7 @@
       "tags": ["chat", "conversation", "domain-suite"],
       "useWhen": [
         "Shipping a full chat surface with composer, scroll-anchor, unread indicator, and attachments bundled as one heavyweight drop-in.",
-        "Building an AI assistant or support thread where conversation state is modeled via the conversationalist package."
+        "Building an AI assistant or support thread where conversation state is modeled as a transcript of role-tagged messages."
       ],
       "avoidWhen": [
         "Rendering a one-off message list — compose lighter primitives directly instead of pulling the full suite.",

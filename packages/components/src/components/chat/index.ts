@@ -15,6 +15,42 @@ export default Chat;
 export type { ChatProps } from './chat.types.ts';
 export { Chat };
 
+// Conversation builders — an ergonomic, immutable way to construct the
+// ConversationHistory Chat renders, for apps without their own conversation state.
+export {
+  appendAssistantMessage,
+  appendMessages,
+  appendUserMessage,
+  createConversation,
+} from './builders.ts';
+
+// Conversation data model — the vendored shapes Chat renders. Public so consumers
+// can type the `conversation` prop and construct messages without depending on a
+// conversation-state library. Structurally compatible with `conversationalist`.
+export type {
+  ConversationHistory,
+  ConversationStatus,
+  ExportOptions,
+  ImageContent,
+  // JSONValue types the public `ToolCall.arguments` / `metadata` / `content`
+  // fields, so consumers constructing those need it. (JSONPrimitive is an
+  // internal building block and is intentionally not re-exported.)
+  JSONValue,
+  Message,
+  MessageInput,
+  MessageRole,
+  MultiModalContent,
+  TextContent,
+  ToMarkdownOptions,
+  TokenUsage,
+  ToolAction,
+  ToolCall,
+  ToolCallPair,
+  ToolError,
+  ToolErrorCategory,
+  ToolResult,
+} from './conversation-model.ts';
+
 // Utilities
 export {
   formatMessageAsMarkdown,

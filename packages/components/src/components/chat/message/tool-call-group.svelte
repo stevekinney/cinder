@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { ToolCallPair } from 'conversationalist';
+  import type { ToolCallPair } from '../conversation-model.ts';
 
   export type ToolCallGroupProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /** The tool call pair (call + optional result) */
@@ -19,6 +19,7 @@
   import { stringify } from '../../../utilities/stringify.ts';
   import Check from 'lucide-svelte/icons/check';
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
+  import CircleAlert from 'lucide-svelte/icons/circle-alert';
   import MoreHorizontal from 'lucide-svelte/icons/more-horizontal';
   import X from 'lucide-svelte/icons/x';
   import ToolPayloadCode from './tool-payload-code.svelte';
@@ -39,6 +40,20 @@
   const hasResult = $derived(!!pair.result);
   const isError = $derived(pair.result?.outcome === 'error');
   const isSuccess = $derived(pair.result?.outcome === 'success');
+  const isActionRequired = $derived(pair.result?.outcome === 'action_required');
+
+  // Status string drives data-status, the header icon, and the label.
+  const status = $derived(
+    isError ? 'error' : isSuccess ? 'success' : isActionRequired ? 'action-required' : 'pending',
+  );
+
+  // The structured error's message (never the ToolError object, which would
+  // render as `[object Object]`).
+  const errorMessage = $derived(pair.result?.error?.message ?? '');
+
+  // For an action_required result, surface the requested action's message; fall
+  // back to a neutral label when no action detail is present (never blank).
+  const actionMessage = $derived(pair.result?.action?.message ?? 'This tool call requires action.');
 
   // Format arguments for display
   const formattedArguments = $derived(stringify(pair.call.arguments));
@@ -53,11 +68,7 @@
   }
 </script>
 
-<div
-  class={classNames('tool-call-group', className)}
-  data-status={isError ? 'error' : isSuccess ? 'success' : 'pending'}
-  {...rest}
->
+<div class={classNames('tool-call-group', className)} data-status={status} {...rest}>
   <button
     type="button"
     class="tool-call-header"
@@ -71,6 +82,8 @@
         <X class="icon-xs" />
       {:else if isSuccess}
         <Check class="icon-xs" />
+      {:else if isActionRequired}
+        <CircleAlert class="icon-xs" />
       {:else}
         <MoreHorizontal class="icon-xs" />
       {/if}
@@ -81,6 +94,8 @@
         Failed
       {:else if isSuccess}
         Complete
+      {:else if isActionRequired}
+        Action required
       {:else}
         Pending
       {/if}
@@ -100,11 +115,15 @@
       {#if hasResult}
         <div class="tool-call-section" data-error={isError || undefined}>
           <h4 class="tool-call-section-title">Result</h4>
-          {#if isError && pair.result?.error}
+          {#if isError}
             <div class="tool-call-error" role="alert">
-              {pair.result.error}
+              {errorMessage || formattedResult}
             </div>
-          {:else if formattedResult !== null}
+          {:else if isActionRequired}
+            <div class="tool-call-action" role="status">
+              {actionMessage}
+            </div>
+          {:else}
             <ToolPayloadCode code={formattedResult} />
           {/if}
         </div>
@@ -129,6 +148,10 @@
 
   .tool-call-group[data-status='success'] {
     border-color: var(--cinder-success);
+  }
+
+  .tool-call-group[data-status='action-required'] {
+    border-color: var(--cinder-warning);
   }
 
   /* Uses min-height for WCAG 2.2 AA touch target compliance */
@@ -179,6 +202,10 @@
     color: var(--cinder-success);
   }
 
+  .tool-call-group[data-status='action-required'] .tool-call-icon {
+    color: var(--cinder-warning);
+  }
+
   .tool-call-name {
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
@@ -203,6 +230,10 @@
 
   .tool-call-group[data-status='success'] .tool-call-status {
     color: var(--cinder-success);
+  }
+
+  .tool-call-group[data-status='action-required'] .tool-call-status {
+    color: var(--cinder-warning);
   }
 
   .tool-call-chevron {
@@ -252,5 +283,13 @@
 
   .tool-call-section[data-error] :global(.cinder-code-block) {
     border-color: var(--cinder-color-danger-border);
+  }
+
+  .tool-call-action {
+    padding: var(--cinder-space-3);
+    background: var(--cinder-color-warning-bg);
+    border-radius: var(--cinder-radius-md);
+    color: var(--cinder-color-warning-fg);
+    font-size: var(--cinder-text-sm);
   }
 </style>

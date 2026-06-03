@@ -6,8 +6,8 @@
  * - Tool call pairs indexed by call ID for O(1) lookup
  */
 
-import type { Message, ToolCallPair } from 'conversationalist';
-import { pairToolCallsWithResults } from 'conversationalist';
+import type { Message, ToolCallPair } from '../conversation-model.ts';
+import { pairToolCallsWithResults } from '../utilities';
 
 // ==========================================================================
 // Types
@@ -28,8 +28,8 @@ export type MessageItem = {
 /** Union type for items in the messages-with-dates list */
 export type MessageWithDateItem = DateItem | MessageItem;
 
-// Re-export ToolCallPair type from conversationalist for convenience
-export type { ToolCallPair } from 'conversationalist';
+// Re-export ToolCallPair type for convenience.
+export type { ToolCallPair } from '../conversation-model.ts';
 
 /** Options for the message groups helper */
 export interface UseChatMessageGroupsOptions {
@@ -51,13 +51,13 @@ export interface UseChatMessageGroupsReturn {
 // Helper
 // ==========================================================================
 
-/** Find result message IDs that are already represented by paired tool-use messages. */
+/** Find result message IDs that are already represented by paired tool-call messages. */
 export function findPairedToolResultIds(messages: readonly Message[]): Set<string> {
   const visibleToolCallIds = new Set<string>();
   const pairedResultIds = new Set<string>();
 
   for (const message of messages) {
-    if (message.role === 'tool-use' && message.toolCall) {
+    if (message.role === 'tool-call' && message.toolCall) {
       visibleToolCallIds.add(message.toolCall.id);
     }
   }

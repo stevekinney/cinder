@@ -5,7 +5,7 @@
  * They accept scroll state as input and return computed values.
  */
 
-import type { Message } from 'conversationalist';
+import type { Message } from '../conversation-model.ts';
 
 /**
  * Represents the scroll state of a container element.

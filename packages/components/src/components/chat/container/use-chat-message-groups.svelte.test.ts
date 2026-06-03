@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Message } from 'conversationalist';
+import type { Message } from '../conversation-model.ts';
 
 import { useChatMessageGroups, type MessageItem } from './use-chat-message-groups.svelte.ts';
 
@@ -21,7 +21,7 @@ function userMessage(id: string, content = 'hi'): Message {
 function toolUseMessage(id: string, callId: string, name = 'exports_check'): Message {
   const message: Message = {
     id,
-    role: 'tool-use',
+    role: 'tool-call',
     content: '',
     createdAt: baseTimestamp,
     position: 0,
@@ -63,7 +63,7 @@ function messages(items: MessageItem[]) {
 }
 
 describe('useChatMessageGroups paired tool-result filtering', () => {
-  test('paired tool-use + tool-result with matching callId: only tool-use renders', () => {
+  test('paired tool-call + tool-result with matching callId: only tool-call renders', () => {
     const conversation = [
       userMessage('m1', 'check it'),
       toolUseMessage('m2', 'call-1'),
@@ -79,7 +79,7 @@ describe('useChatMessageGroups paired tool-result filtering', () => {
     expect(messages(messageItems)).toEqual(['m1', 'm2']);
   });
 
-  test('orphan tool-result with no matching tool-use: still renders', () => {
+  test('orphan tool-result with no matching tool-call: still renders', () => {
     const conversation = [userMessage('m1'), toolResultMessage('orphan', 'call-missing')];
 
     const groups = useChatMessageGroups({ getMessages: () => conversation });
@@ -91,7 +91,7 @@ describe('useChatMessageGroups paired tool-result filtering', () => {
     expect(messages(messageItems)).toEqual(['m1', 'orphan']);
   });
 
-  test('pending tool-use with no result yet: renders normally', () => {
+  test('pending tool-call with no result yet: renders normally', () => {
     const conversation = [userMessage('m1'), toolUseMessage('pending', 'call-pending')];
 
     const groups = useChatMessageGroups({ getMessages: () => conversation });

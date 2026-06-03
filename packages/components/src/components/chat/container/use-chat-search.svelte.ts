@@ -8,7 +8,7 @@
  * - Current match index for navigation
  */
 
-import type { Message } from 'conversationalist';
+import type { Message } from '../conversation-model.ts';
 import { getMessageText } from '../utilities/utilities.js';
 
 // ==========================================================================

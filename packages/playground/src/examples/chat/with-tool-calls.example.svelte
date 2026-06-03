@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Chat } from 'cinder/chat';
-  import { appendMessages, appendUserMessage, createConversation } from 'conversationalist';
+  import { Chat, appendMessages, appendUserMessage, createConversation } from 'cinder/chat';
 
   let conversation = $state(
     appendMessages(
@@ -14,7 +13,7 @@
         'Check whether the package has drift.',
       ),
       {
-        role: 'tool-use',
+        role: 'tool-call',
         content: '',
         toolCall: {
           id: 'call-exports-check',

@@ -15,8 +15,6 @@ export const ALLOWED_EXAMPLE_PACKAGES: readonly string[] = [
   'svelte/elements',
   'svelte/attachments',
   'svelte/reactivity',
-  // Runtime dependency of cinder; powers Chat conversation state helpers.
-  'conversationalist',
   // Typical consumer-supplied syntax highlighter for CodeBlock's `highlighter` prop.
   'shiki',
 ];

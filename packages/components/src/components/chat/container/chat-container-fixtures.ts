@@ -1,20 +1,67 @@
 /**
  * Test fixtures for ChatContainer component.
  *
- * These fixtures create mock conversations using conversationalist data structures
- * for use in Storybook stories and tests.
- *
- * All fixture functions use the conversationalist library functions to ensure
- * proper message structure (position, metadata, createdAt as ISO strings, etc.).
+ * These fixtures build mock conversations as the vendored {@link ConversationHistory}
+ * shape for use in Storybook stories and tests, using small local builders that
+ * mimic the message structure (position, metadata, createdAt as ISO strings, etc.)
+ * produced by conversation-state libraries.
  */
 
-import type { Conversation } from 'conversationalist';
-import { appendAssistantMessage, appendUserMessage, createConversation } from 'conversationalist';
+import type { ConversationHistory, MessageRole } from '../conversation-model.ts';
+
+let fixtureMessageCounter = 0;
+
+/** Creates an empty conversation history. */
+function createConversation(): ConversationHistory {
+  const now = new Date().toISOString();
+  return {
+    schemaVersion: 4,
+    id: `fixture-conversation-${++fixtureMessageCounter}`,
+    status: 'active',
+    metadata: {},
+    ids: [],
+    messages: {},
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/** Appends a message of the given role, returning a new conversation snapshot. */
+function appendMessage(
+  conversation: ConversationHistory,
+  role: MessageRole,
+  content: string,
+): ConversationHistory {
+  const id = `fixture-message-${++fixtureMessageCounter}`;
+  const now = new Date().toISOString();
+  return {
+    ...conversation,
+    ids: [...conversation.ids, id],
+    messages: {
+      ...conversation.messages,
+      [id]: {
+        id,
+        role,
+        content,
+        position: conversation.ids.length,
+        createdAt: now,
+        metadata: {},
+        hidden: false,
+      },
+    },
+    updatedAt: now,
+  };
+}
+
+const appendUserMessage = (conversation: ConversationHistory, content: string) =>
+  appendMessage(conversation, 'user', content);
+const appendAssistantMessage = (conversation: ConversationHistory, content: string) =>
+  appendMessage(conversation, 'assistant', content);
 
 /**
  * Creates a conversation with the specified number of alternating user/assistant messages.
  */
-export function createMockConversation(messageCount: number = 10): Conversation {
+export function createMockConversation(messageCount: number = 10): ConversationHistory {
   let conversation = createConversation();
 
   for (let i = 0; i < messageCount; i++) {
@@ -32,10 +79,9 @@ export function createMockConversation(messageCount: number = 10): Conversation 
 
 /**
  * Creates a conversation with messages containing images.
- * Note: Uses text-only content since the exact MultiModalContent type
- * varies by conversationalist version.
+ * Note: uses text-only content as a stand-in for image attachments.
  */
-export function createConversationWithImages(count: number = 10): Conversation {
+export function createConversationWithImages(count: number = 10): ConversationHistory {
   let conversation = createConversation();
 
   for (let i = 0; i < count; i++) {
@@ -57,21 +103,21 @@ export function createConversationWithImages(count: number = 10): Conversation {
 /**
  * Creates an empty conversation.
  */
-export function createEmptyConversation(): Conversation {
+export function createEmptyConversation(): ConversationHistory {
   return createConversation();
 }
 
 /**
  * Creates a short conversation (3 messages that fit in viewport).
  */
-export function createShortConversation(): Conversation {
+export function createShortConversation(): ConversationHistory {
   return createMockConversation(3);
 }
 
 /**
  * Creates a long conversation for scroll testing.
  */
-export function createLongConversation(): Conversation {
+export function createLongConversation(): ConversationHistory {
   return createMockConversation(50);
 }
 
@@ -79,14 +125,14 @@ export function createLongConversation(): Conversation {
  * Creates a very long conversation for content-visibility performance testing.
  * This tests the CSS content-visibility optimization with 500+ messages.
  */
-export function createVeryLongConversation(): Conversation {
+export function createVeryLongConversation(): ConversationHistory {
   return createMockConversation(500);
 }
 
 /**
  * Creates a conversation with a mix of short and long messages.
  */
-export function createMixedLengthConversation(): Conversation {
+export function createMixedLengthConversation(): ConversationHistory {
   let conversation = createConversation();
 
   const messages = [
@@ -127,7 +173,7 @@ This combination ensures a smooth experience whether you're reading history or f
 /**
  * Creates a conversation with code blocks for testing rendering.
  */
-export function createConversationWithCode(): Conversation {
+export function createConversationWithCode(): ConversationHistory {
   let conversation = createConversation();
 
   conversation = appendUserMessage(
@@ -193,9 +239,9 @@ The component automatically tracks this when new messages arrive while the user 
  * Simulates adding a new message to a conversation (for testing new message indicators).
  */
 export function addMessageToConversation(
-  conversation: Conversation,
+  conversation: ConversationHistory,
   isUserMessage: boolean = false,
-): Conversation {
+): ConversationHistory {
   if (isUserMessage) {
     return appendUserMessage(
       conversation,

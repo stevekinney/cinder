@@ -1,4 +1,3 @@
-import type { Conversation, Message } from 'conversationalist';
 import type { Snippet } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 import type { HTMLAttributes } from 'svelte/elements';
@@ -9,12 +8,21 @@ import type {
   ChatSubmitEvent,
   ChatUnreadIndicatorChangeEvent,
 } from './container/chat-events.ts';
+import type { ConversationHistory, Message } from './conversation-model.ts';
 import type { ChatAttachment } from './input/chat-attachment.ts';
 
 /** Props for the Chat component. */
-export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
+// `onsubmit` is redefined below with a ChatSubmitEvent payload, so strip the
+// native DOM SubmitEvent handler from the base attributes to avoid an
+// intersection that no handler can satisfy.
+export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> & {
   id: string;
-  conversation: Conversation;
+  /**
+   * The conversation transcript to render. Pass a {@link ConversationHistory}
+   * snapshot; consumers holding a stateful conversation object pass its current
+   * snapshot (e.g. `conversation.current`).
+   */
+  conversation: ConversationHistory;
   isAtBottom?: boolean;
   unreadCount?: number;
   hasNewMessageIndicator?: boolean;

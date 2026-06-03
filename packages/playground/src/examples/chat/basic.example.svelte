@@ -4,8 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Chat } from 'cinder/chat';
-  import { appendAssistantMessage, appendUserMessage, createConversation } from 'conversationalist';
+  import { Chat, appendAssistantMessage, appendUserMessage, createConversation } from 'cinder/chat';
 
   let conversation = $state(
     appendAssistantMessage(

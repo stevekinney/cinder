@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
   import type { HTMLFormAttributes } from 'svelte/elements';
-  import type { MessageInput } from 'conversationalist';
+  import type { MessageInput } from '../conversation-model.ts';
   import type { ChatAttachment } from './chat-attachment.ts';
   import type { AttachmentKind } from './attachment-kind.js';
 
