@@ -141,12 +141,19 @@ describe('Autocomplete — suggestions and free-form input', () => {
     // / `--cinder-color-warning-fg` light-dark() pair, which contrasts in either
     // theme. happy-dom does not apply stylesheets, so assert against the CSS source.
     const css = await Bun.file(new URL('./autocomplete.css', import.meta.url)).text();
-    const matchRule = css.slice(css.indexOf('.cinder-autocomplete__match'));
+    // Strip CSS comments first — the explanatory comment in this rule intentionally
+    // quotes the old broken values, so the negative assertions below must run
+    // against the declarations only, not the comment text.
+    const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const matchRule = cssWithoutComments.slice(
+      cssWithoutComments.indexOf('.cinder-autocomplete__match'),
+    );
     const ruleBody = matchRule.slice(0, matchRule.indexOf('}'));
-    expect(ruleBody).toContain('var(--cinder-color-warning-bg)');
-    expect(ruleBody).toContain('var(--cinder-color-warning-fg)');
-    // The broken hard-coded near-white background must be gone.
-    expect(ruleBody).not.toMatch(/oklch\(from var\(--cinder-warning\)\s*9[0-9]/);
+    // Pin to the actual background:/color: declarations.
+    expect(ruleBody).toMatch(/background:\s*var\(--cinder-color-warning-bg\)/);
+    expect(ruleBody).toMatch(/color:\s*var\(--cinder-color-warning-fg\)/);
+    // The broken hard-coded near-white background must be gone from the declarations.
+    expect(ruleBody).not.toMatch(/oklch\(from var\(--cinder-warning\)/);
     // color: inherit was the second half of the bug (light text on light bg).
     expect(ruleBody).not.toMatch(/color:\s*inherit/);
   });
