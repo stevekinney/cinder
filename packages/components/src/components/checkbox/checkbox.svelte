@@ -29,6 +29,7 @@
     description,
     error,
     disabled,
+    required,
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -54,6 +55,9 @@
       consumerDescribedBy,
       consumerInvalid,
       disabled,
+      // HTMLInputAttributes types `required` as boolean | null | undefined; the helper
+      // wants boolean | undefined, so coerce a null to undefined (keeps false/true).
+      required: required ?? undefined,
     }),
   );
 
@@ -76,6 +80,7 @@
         id={field.id}
         type="checkbox"
         disabled={field.disabled}
+        required={field.required}
         bind:checked
         class={classNames('cinder-checkbox', className)}
         aria-invalid={field.ariaInvalid}

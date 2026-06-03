@@ -189,6 +189,20 @@ describe('Checkbox — FormField context wiring', () => {
     expect(input.disabled).toBe(true);
   });
 
+  test('inherits required state from FormField context (sets the native required attr)', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        required: true,
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    // A required FormField must make the control actually required for validation + AT,
+    // not just show the visual marker.
+    expect(input.required).toBe(true);
+  });
+
   test('id wiring: id, label[for], and aria-describedby all use the resolved id', () => {
     const { container } = render(FormFieldCheckboxFixture, {
       props: {
