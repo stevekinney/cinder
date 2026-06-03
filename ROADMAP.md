@@ -34,7 +34,6 @@ Audit of the existing Svelte component set in `packages/components/src/component
 | Surface             | REVIEW   | `surface.svelte` (existing — reconcile tone vs. variant API) |
 | Color swatch picker | ADD      | `color-swatch-picker.svelte`                                 |
 | Date picker         | ADD      | `date-picker.svelte`                                         |
-| Time picker         | ADD      | `time-picker.svelte`                                         |
 | Number input        | ADD      | `number-input.svelte`                                        |
 | File upload         | ADD      | `file-upload.svelte`                                         |
 | Slider              | ADD      | `slider.svelte`                                              |
@@ -461,20 +460,6 @@ Best-practice notes: the trigger input uses `type="text"` with `aria-haspopup="d
 - [ ] Participate in form reset by reverting to `defaultValue` on the nearest `<form>` reset event.
 - [ ] Tests: keyboard navigation (arrows, Page Up/Down, Home/End, Enter, Escape); locale formatting round-trip; range selection sets start then end; min/max disables out-of-range days; form reset reverts value; `aria-selected` reflects chosen date.
 - [ ] Storybook: single date, range, with min/max, with locale (`de-DE`, `ja-JP`), disabled, inside a `form-field`.
-
-### Time picker — ADD `time-picker.svelte`
-
-Sibling to `date-picker`. A text input accepting `HH:MM` (or `HH:MM:SS`) with an optional scroll-list popover for hour/minute/second columns. Locale-aware 12h/24h display. Like the date picker, locale support is MVP—don't defer it.
-
-Best-practice notes: prefer `<input type="time">` where native UX is acceptable (mobile especially); the custom popover is an enhancement for desktop; each scroll column is a `role="listbox"` with `role="option"` items, `aria-selected`, and arrow-key navigation; columns connect via `aria-label` ("Hours", "Minutes", "Seconds") so screen readers announce context; AM/PM toggle (12h mode) is a pair of `role="radio"` buttons inside a `role="radiogroup"`.
-
-- [ ] Create `time-picker.svelte` with props `value?: string` (ISO `HH:MM` or `HH:MM:SS`, controlled), `defaultValue?: string`, `hourCycle?: 'h11' | 'h12' | 'h23' | 'h24'` (defaults from `Intl`), `seconds?: boolean = false`, `min?: string`, `max?: string`, `step?: number`, `disabled?: boolean`, `name?: string`, `class?: string`, plus `onchange?: (value: string) => void`.
-- [ ] Primary input is `<input type="time">`; custom scroll-list popover is a progressive enhancement rendered via `<dialog>`.
-- [ ] Each time column is a `<ul role="listbox">` with `<li role="option">` items; arrow Up/Down navigate the column, Tab advances to the next column, Escape closes the popover.
-- [ ] In 12h mode, render an AM/PM `role="radiogroup"` as the final column.
-- [ ] Compose with `form-field.svelte` for label/description/error wiring.
-- [ ] Note in `time-picker.a11y.md` that `date-picker` and `time-picker` share a scroll-list column primitive—if both are being built simultaneously, extract that into an internal `_internal/time-column.svelte` to avoid duplication.
-- [ ] Tests: arrow-key column navigation; 12h/24h emit format; AM/PM toggle; min/max clamping; form reset.
 
 ### Number input — ADD `number-input.svelte`
 
