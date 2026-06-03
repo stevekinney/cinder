@@ -13,7 +13,7 @@ const schema = {
     href: {
       type: 'string',
       description:
-        'The URL the link points to. Required for enabled links; ignored when `disabled` is true.',
+        'The URL the link points to. Optional because a `disabled` link renders a\n`<span>` with no href — provide it for any enabled (non-disabled) link.',
     },
     underline: {
       enum: ['always', 'hover', 'none'],
@@ -51,7 +51,6 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['href'],
   metadata: {
     unsupportedProps: [
       {

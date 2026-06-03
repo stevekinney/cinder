@@ -19,8 +19,11 @@ export type LinkColor = 'primary' | 'inherit';
  * the component needs to add to them).
  */
 export type LinkProps = Omit<HTMLAnchorAttributes, 'class' | 'href' | 'target' | 'rel'> & {
-  /** The URL the link points to. Required for enabled links; ignored when `disabled` is true. */
-  href: string;
+  /**
+   * The URL the link points to. Optional because a `disabled` link renders a
+   * `<span>` with no href — provide it for any enabled (non-disabled) link.
+   */
+  href?: string;
   /**
    * Controls text-decoration behavior.
    * - `'always'` — underline is always visible.

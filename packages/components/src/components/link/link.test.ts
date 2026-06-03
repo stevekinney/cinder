@@ -163,6 +163,32 @@ describe('Link external prop', () => {
     });
     expect(container.querySelector('a')?.getAttribute('target')).toBeNull();
   });
+
+  test('adds noopener noreferrer when target="_blank" is passed without external', () => {
+    // Reverse-tabnabbing guard: any link opening in a new tab gets the safe rel,
+    // not just ones flagged external.
+    const { container } = render(Link, {
+      props: { href: 'https://example.com', target: '_blank', children: textSnippet('Blank') },
+    });
+    const rel = container.querySelector('a')?.getAttribute('rel') ?? '';
+    expect(rel).toContain('noopener');
+    expect(rel).toContain('noreferrer');
+  });
+
+  test('de-dupes rel case-insensitively (no duplicate noopener for "NoOpener")', () => {
+    const { container } = render(Link, {
+      props: {
+        href: 'https://example.com',
+        external: true,
+        rel: 'NoOpener',
+        children: textSnippet('External'),
+      },
+    });
+    const rel = container.querySelector('a')?.getAttribute('rel') ?? '';
+    // Only the consumer's "NoOpener" remains for that token; "noreferrer" is appended.
+    expect(rel.toLowerCase().split('noopener').length - 1).toBe(1);
+    expect(rel).toContain('noreferrer');
+  });
 });
 
 describe('Link disabled prop', () => {
@@ -215,6 +241,22 @@ describe('Link disabled prop', () => {
       props: { href: '/about', children: textSnippet('About') },
     });
     expect(container.querySelector('[data-disabled]')).toBeNull();
+  });
+
+  test('a consumer tabindex is NOT forwarded onto the disabled <span>', () => {
+    // tabindex is pulled out of rest and applied only to the enabled <a>, so a disabled
+    // link can't be made focusable via a passthrough tabindex.
+    const { container } = render(Link, {
+      props: { href: '/about', disabled: true, tabindex: 0, children: textSnippet('About') },
+    });
+    expect(container.querySelector('span')?.hasAttribute('tabindex')).toBe(false);
+  });
+
+  test('a consumer tabindex IS forwarded onto the enabled <a>', () => {
+    const { container } = render(Link, {
+      props: { href: '/about', tabindex: -1, children: textSnippet('About') },
+    });
+    expect(container.querySelector('a')?.getAttribute('tabindex')).toBe('-1');
   });
 });
 

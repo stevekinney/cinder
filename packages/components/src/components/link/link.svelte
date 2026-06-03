@@ -27,6 +27,9 @@
     disabled = false,
     target,
     rel,
+    // Pulled out of `rest` so a consumer-supplied tabindex never lands on the disabled
+    // <span> (which would make a "disabled" link focusable). Applied only to the enabled <a>.
+    tabindex,
     class: className,
     children,
     ...rest
@@ -40,21 +43,29 @@
     rest as Omit<HTMLAttributes<HTMLSpanElement>, 'class' | 'aria-disabled'>,
   );
 
-  // Merge external-derived values with consumer-supplied values.
-  // Consumer target takes precedence; external only supplies "_blank" when the consumer
-  // did not pass a target. For rel, "noopener noreferrer" is always appended when external
-  // is true so the security guarantee is not accidentally stripped by a consumer rel.
+  // Consumer target takes precedence; `external` only supplies "_blank" when the consumer
+  // did not pass a target.
   const resolvedTarget = $derived(disabled ? undefined : external && !target ? '_blank' : target);
 
+  // Merge "noopener noreferrer" into rel whenever the link opens in a NEW TAB —
+  // either via `external` or any resolved target of "_blank" — so a `target="_blank"`
+  // passed without `external` can't open a reverse-tabnabbing window. The merge is
+  // case-insensitive and de-dupes, so a consumer rel of "noopener noopener" or
+  // "NoOpener" won't produce duplicates.
   const resolvedRel = $derived.by(() => {
     if (disabled) return undefined;
-    if (!external) return rel ?? undefined;
-    const externalRel = 'noopener noreferrer';
-    if (!rel) return externalRel;
-    // Avoid duplicating rel values that the consumer already supplied.
-    const existingParts = rel.split(/\s+/).filter(Boolean);
-    const missing = externalRel.split(/\s+/).filter((part) => !existingParts.includes(part));
-    return missing.length > 0 ? `${rel} ${missing.join(' ')}` : rel;
+    const needsSafeRel = external || resolvedTarget === '_blank';
+    const consumerParts = (rel ?? '').split(/\s+/).filter(Boolean);
+    if (!needsSafeRel) return consumerParts.length > 0 ? consumerParts.join(' ') : undefined;
+    const seen = new Set(consumerParts.map((part) => part.toLowerCase()));
+    const merged = [...consumerParts];
+    for (const part of ['noopener', 'noreferrer']) {
+      if (!seen.has(part)) {
+        merged.push(part);
+        seen.add(part);
+      }
+    }
+    return merged.join(' ');
   });
 
   const resolvedClass = $derived(classNames('cinder-link', className));
@@ -81,6 +92,7 @@
   <a
     {...rest}
     {href}
+    {tabindex}
     target={resolvedTarget}
     rel={resolvedRel}
     class={resolvedClass}
