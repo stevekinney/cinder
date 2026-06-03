@@ -209,12 +209,9 @@
 
   const computedHunks = $derived(groupIntoHunks(lineDiffs));
 
-  // Mirror the computed hunks onto the bindable prop so `bind:hunks` consumers
-  // get reactive access. A bindable prop cannot itself be a `$derived`, so this
-  // mirror effect is the idiomatic seam; the guard reads `bindableHunks` and
-  // only writes on a real change, avoiding a redundant assignment each flush.
+  // Sync computed hunks to bindable prop for reactive parent access
   $effect(() => {
-    if (bindableHunks !== computedHunks) bindableHunks = computedHunks;
+    bindableHunks = computedHunks;
   });
 
   /**
@@ -257,13 +254,9 @@
    * Public method to get hunks for programmatic access.
    * Useful for imperative access patterns.
    * For reactive access, use `bind:hunks` instead.
-   *
-   * Reads `computedHunks` directly rather than the `bindableHunks` mirror so a
-   * synchronous call right after a prop change returns the current frame's hunks
-   * — the `$effect` that pushes into `bindableHunks` has not flushed yet.
    */
   export function getHunks() {
-    return computedHunks;
+    return bindableHunks;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
