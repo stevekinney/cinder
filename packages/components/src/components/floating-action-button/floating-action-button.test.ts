@@ -8,7 +8,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { cleanup, render } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: FloatingActionButton } = await import('./floating-action-button.svelte');
 const { createRawSnippet } = await import('svelte');
 
@@ -163,6 +163,45 @@ describe('FloatingActionButton — disabled state', () => {
     const anchor = container.querySelector('a');
     expect(anchor?.getAttribute('href')).toBe('/new');
     expect(anchor?.hasAttribute('tabindex')).toBe(false);
+  });
+
+  test('enabled link honors a consumer-supplied tabindex', () => {
+    const { container } = render(FloatingActionButton, {
+      props: { href: '/new', tabindex: 0, 'aria-label': 'Create', children: iconSnippet() },
+    });
+    expect(container.querySelector('a')?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('disabled link does not fire a consumer onclick handler', async () => {
+    // pointer-events:none + tabindex=-1 block the usual paths, but a consumer onclick in
+    // rest would still fire on programmatic/keyboard activation — so it's withheld when disabled.
+    let fired = 0;
+    const { container } = render(FloatingActionButton, {
+      props: {
+        href: '/new',
+        disabled: true,
+        onclick: () => (fired += 1),
+        'aria-label': 'Create',
+        children: iconSnippet(),
+      },
+    });
+    const anchor = container.querySelector('a') as HTMLElement;
+    await fireEvent.click(anchor);
+    expect(fired).toBe(0);
+  });
+
+  test('enabled link fires the consumer onclick handler', async () => {
+    let fired = 0;
+    const { container } = render(FloatingActionButton, {
+      props: {
+        href: '/new',
+        onclick: () => (fired += 1),
+        'aria-label': 'Create',
+        children: iconSnippet(),
+      },
+    });
+    await fireEvent.click(container.querySelector('a') as HTMLElement);
+    expect(fired).toBe(1);
   });
 });
 

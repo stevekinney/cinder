@@ -36,8 +36,18 @@
     href,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
+    // Pulled out of `rest` so we can control them per disabled-state:
+    // - tabindex: a disabled item forces -1, an enabled one honors the consumer value.
+    // - onclick: a disabled anchor must not run a consumer handler (pointer-events:none
+    //   blocks the mouse, but a handler in `rest` would still fire on keyboard/programmatic
+    //   activation). The button arm already blocks both via the native `disabled` attribute.
+    tabindex,
+    onclick,
     ...rest
   }: FloatingActionButtonProps = $props();
+
+  // Disabled forces -1 (out of the tab order); otherwise the consumer value (or undefined).
+  const resolvedTabindex = $derived(disabled ? -1 : tabindex);
 
   const mergedClassName = $derived(classNames('cinder-fab', customClassName));
 
@@ -61,12 +71,15 @@
   // Typed rest casts: TypeScript cannot narrow a destructured remainder per branch,
   // so each template arm casts `rest` to the attribute shape its element accepts.
   const anchorAttributes = $derived(
-    rest as Omit<HTMLAnchorAttributes, 'class' | 'href' | 'aria-label' | 'aria-labelledby'>,
+    rest as Omit<
+      HTMLAnchorAttributes,
+      'class' | 'href' | 'aria-label' | 'aria-labelledby' | 'tabindex' | 'onclick'
+    >,
   );
   const buttonAttributes = $derived(
     rest as Omit<
       HTMLButtonAttributes,
-      'class' | 'type' | 'disabled' | 'aria-label' | 'aria-labelledby'
+      'class' | 'type' | 'disabled' | 'aria-label' | 'aria-labelledby' | 'tabindex' | 'onclick'
     >,
   );
 
@@ -106,7 +119,8 @@
     aria-label={resolvedAriaLabel}
     aria-labelledby={resolvedAriaLabelledBy}
     aria-disabled={disabled || undefined}
-    tabindex={disabled ? -1 : undefined}
+    tabindex={resolvedTabindex}
+    onclick={disabled ? undefined : onclick}
   >
     {#if children}
       {@render children()}
@@ -121,6 +135,8 @@
     {disabled}
     aria-label={resolvedAriaLabel}
     aria-labelledby={resolvedAriaLabelledBy}
+    tabindex={resolvedTabindex}
+    {onclick}
   >
     {#if children}
       {@render children()}

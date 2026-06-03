@@ -21,10 +21,9 @@
 
     cursor: pointer;
 
-    /* Elevation shadow — FABs float above the page surface */
-    box-shadow:
-      0 var(--cinder-space-1) var(--cinder-space-4) oklch(0% 0 0 / 0.2),
-      0 var(--cinder-space-0-5) var(--cinder-space-1-5) oklch(0% 0 0 / 0.12);
+    /* Elevation shadow — FABs float above the page surface. Uses the shared shadow
+     * token so the raw-color audit stays clean and elevation themes consistently. */
+    box-shadow: var(--cinder-shadow-md);
 
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -155,9 +154,8 @@
 
   @media (hover: hover) {
     .cinder-fab:hover:not(:disabled):not([aria-disabled='true']) {
-      box-shadow:
-        0 var(--cinder-space-2) var(--cinder-space-6) oklch(0% 0 0 / 0.24),
-        0 var(--cinder-space-1) var(--cinder-space-2) oklch(0% 0 0 / 0.14);
+      /* Raise the elevation on hover (md → lg) using shared shadow tokens. */
+      box-shadow: var(--cinder-shadow-lg);
     }
 
     .cinder-fab[data-cinder-color='primary']:hover:not(:disabled):not([aria-disabled='true']) {
