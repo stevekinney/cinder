@@ -148,6 +148,34 @@ export const ALLOWLIST: AllowlistEntry[] = [
     reason:
       'CommandPalette requires a triggerRef (HTMLElement) for focus-return. The trigger button uses bind:this to capture the element reference for that purpose. It also applies heavy inline styles that exist to demo the styled-keyboard-shortcut pattern; until the example is rewritten with a styled Cinder Button, the raw element is intentional.',
   },
+  {
+    relativePath: 'chat/interactive-harness.example.svelte',
+    tagName: 'textarea',
+    occurrenceIndex: 0,
+    reason:
+      'The interactive harness is test instrumentation, not exemplary consumer usage — its control panel drives the Chat component under Playwright to exercise every callback. This is the "reply text" input bound to local harness state; a raw textarea keeps the harness decoupled from the components it tests.',
+  },
+  {
+    relativePath: 'chat/interactive-harness.example.svelte',
+    tagName: 'textarea',
+    occurrenceIndex: 1,
+    reason:
+      'Harness control-panel input ("tool arguments" JSON editor) bound to local state to inject tool calls into the Chat component under test. Intentionally raw test instrumentation, not a usage example.',
+  },
+  {
+    relativePath: 'chat/interactive-harness.example.svelte',
+    tagName: 'input',
+    occurrenceIndex: 0,
+    reason:
+      'Harness control-panel input ("tool name") bound to local state to inject tool calls into the Chat component under test. Intentionally raw test instrumentation, not a usage example.',
+  },
+  {
+    relativePath: 'chat/interactive-harness.example.svelte',
+    tagName: 'button',
+    occurrenceIndex: 0,
+    reason:
+      'Harness message-action control rendered into Chat’s messageActions snippet to verify callback wiring under Playwright. Intentionally raw test instrumentation, not a usage example.',
+  },
 ];
 
 // ── Comment/String Stripping ───────────────────────────────────────────────────
