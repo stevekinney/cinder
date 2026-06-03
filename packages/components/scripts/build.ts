@@ -10,6 +10,7 @@ import { DEPRECATED_EXPERIMENTAL_ALIASES } from './generate-exports.ts';
 import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
+import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
 import { sveltePlugin } from './svelte-plugin.ts';
 
@@ -188,7 +189,7 @@ for (const component of components) {
   const cssPath = componentCssSource(component);
   if (!existsSync(cssPath)) continue;
   const indexSource = await Bun.file(componentEntrypoint(component)).text();
-  if (!indexSource.includes(`./${component.name}.css`)) {
+  if (!hasSourceCssImport(indexSource, component.name)) {
     sourceCssImportViolations.push(componentEntrypoint(component));
   }
 }

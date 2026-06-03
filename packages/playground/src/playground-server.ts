@@ -1136,12 +1136,12 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
         var data = event.data;
         if (!data || typeof data !== 'object') return;
         if (data.type !== 'cinder:set-theme') return;
+        // Only light/dark are valid theme overrides; ignore anything else (a
+        // stale/foreign message must never push the iframe into an unsupported
+        // 'system' state — that value was removed from ThemeChoice).
         if (data.value === 'light' || data.value === 'dark') {
           document.documentElement.style.colorScheme = data.value;
           document.documentElement.dataset.cinderTheme = data.value;
-        } else if (data.value === 'system') {
-          document.documentElement.style.colorScheme = '';
-          document.documentElement.dataset.cinderTheme = 'system';
         }
       });
     </script>
@@ -1200,12 +1200,12 @@ function renderFixturePageHtml(
         var data = event.data;
         if (!data || typeof data !== 'object') return;
         if (data.type !== 'cinder:set-theme') return;
+        // Only light/dark are valid theme overrides; ignore anything else (a
+        // stale/foreign message must never push the iframe into an unsupported
+        // 'system' state — that value was removed from ThemeChoice).
         if (data.value === 'light' || data.value === 'dark') {
           document.documentElement.style.colorScheme = data.value;
           document.documentElement.dataset.cinderTheme = data.value;
-        } else if (data.value === 'system') {
-          document.documentElement.style.colorScheme = '';
-          document.documentElement.dataset.cinderTheme = 'system';
         }
       });
     </script>

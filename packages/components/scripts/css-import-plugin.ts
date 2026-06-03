@@ -67,24 +67,42 @@ export type CssImportPluginOptions = {
  * re-export the promoted component, whose subpath entry already injects its
  * own styles in this same pass — so they need no special handling.
  */
+/** Normalize a filesystem path to forward slashes so path comparisons hold
+ *  regardless of the OS separator Bun reports — matches `svelte-plugin.ts`. */
+function normalizePath(path: string): string {
+  return path.replaceAll('\\', '/');
+}
+
 export function cssImportPlugin(options: CssImportPluginOptions): BunPlugin {
   const barrelInjection = options.rootBarrelStyleSpecifiers
     .map((specifier) => `import '${specifier}';`)
     .join('\n');
+  // Normalize the entrypoint key and the per-component map up front so an
+  // OS-separator mismatch between these keys and Bun's `onLoad` path can never
+  // silently skip injection (which would ship unstyled components or fail the
+  // build gate).
+  const rootBarrelEntrypoint = normalizePath(options.rootBarrelEntrypoint);
+  const perComponentStyleSpecifiers = new Map(
+    [...options.perComponentStyleSpecifiers].map(([path, specifier]) => [
+      normalizePath(path),
+      specifier,
+    ]),
+  );
   return {
     name: 'cinder-css-import',
     setup(builder) {
       builder.onLoad({ filter: /\/index\.ts$/ }, async ({ path }) => {
         const source = await Bun.file(path).text();
+        const normalized = normalizePath(path);
 
-        if (path === options.rootBarrelEntrypoint) {
+        if (normalized === rootBarrelEntrypoint) {
           return {
             contents: barrelInjection === '' ? source : `${barrelInjection}\n${source}`,
             loader: 'ts',
           };
         }
 
-        const specifier = options.perComponentStyleSpecifiers.get(path);
+        const specifier = perComponentStyleSpecifiers.get(normalized);
         if (specifier === undefined) {
           return { contents: source, loader: 'ts' };
         }

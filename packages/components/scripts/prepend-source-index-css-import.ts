@@ -51,46 +51,65 @@ function sidecarPath(name: string, isExperimental: boolean): string {
 }
 
 /**
+ * True when the source contains an actual side-effect `import './<name>.css'`
+ * STATEMENT (single or double quoted), not merely the substring `./<name>.css`.
+ * A bare substring check would be fooled by a comment or string that mentions
+ * the path, leaving the real import missing while the check passes — which would
+ * silently leave `svelte`-condition consumers unstyled.
+ *
+ * Exported so the build gate (build.ts) applies the exact same matcher.
+ */
+export function hasSourceCssImport(source: string, name: string): boolean {
+  // Escape regex metacharacters in the component name (kebab `-` is literal, but
+  // be defensive). Match `import './name.css'` / `import "./name.css"` with
+  // optional trailing semicolon and surrounding whitespace.
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`import\\s+['"]\\./${escaped}\\.css['"]`).test(source);
+}
+
+/**
  * Return the entry source with `import './<name>.css';` as its first line, or
  * `null` when the import is already present (no rewrite needed). The import is
  * a leading side-effect line so the sidecar loads before the component module.
  */
 function withCssImport(source: string, name: string): string | null {
-  const importLine = `import './${name}.css';`;
-  // Tolerate single/double quotes and an existing import anywhere in the file.
-  if (source.includes(`./${name}.css`)) return null;
-  return `${importLine}\n${source}`;
+  if (hasSourceCssImport(source, name)) return null;
+  return `import './${name}.css';\n${source}`;
 }
 
-const checkOnly = process.argv.includes('--check');
-const components = await discoverComponents();
+// Run the rewrite/check only when invoked directly as a CLI — guarded so that
+// importing `hasSourceCssImport` (e.g. from build.ts) doesn't trigger a rewrite.
+if (import.meta.main) {
+  const checkOnly = process.argv.includes('--check');
+  const components = await discoverComponents();
 
-const drifted: string[] = [];
-for (const component of components) {
-  const sidecar = sidecarPath(component.name, component.isExperimental);
-  // Only components WITH a sidecar should import one.
-  if (!existsSync(sidecar)) continue;
-  const path = indexPath(component.name, component.isExperimental);
-  if (!existsSync(path)) continue;
-  const source = await Bun.file(path).text();
-  const rewritten = withCssImport(source, component.name);
-  if (rewritten === null) continue;
-  drifted.push(path);
-  if (!checkOnly) await Bun.write(path, rewritten);
-}
+  const drifted: string[] = [];
+  for (const component of components) {
+    const sidecar = sidecarPath(component.name, component.isExperimental);
+    // Only components WITH a sidecar should import one.
+    if (!existsSync(sidecar)) continue;
+    const path = indexPath(component.name, component.isExperimental);
+    if (!existsSync(path)) continue;
+    const source = await Bun.file(path).text();
+    const rewritten = withCssImport(source, component.name);
+    if (rewritten === null) continue;
+    drifted.push(path);
+    if (!checkOnly) await Bun.write(path, rewritten);
+  }
 
-if (checkOnly && drifted.length > 0) {
-  process.stderr.write(
-    `Source index CSS-import drift: ${drifted.length} entr(ies) missing their\n` +
-      `leading \`import './<name>.css';\`. Run \`bun run scripts/prepend-source-index-css-import.ts\`:\n` +
-      drifted.map((path) => `  ${path}`).join('\n') +
-      '\n',
+  if (checkOnly && drifted.length > 0) {
+    process.stderr.write(
+      `Source index CSS-import drift: ${drifted.length} entr(ies) missing their\n` +
+        `leading \`import './<name>.css';\`. Run \`bun run scripts/prepend-source-index-css-import.ts\`:\n` +
+        drifted.map((path) => `  ${path}`).join('\n') +
+        '\n',
+    );
+    process.exit(1);
+  }
+
+  process.stdout.write(
+    checkOnly
+      ? `Source index CSS-import: all ${components.length} components OK.\n`
+      : `Source index CSS-import: rewrote ${drifted.length} entr(ies).\n`,
   );
-  process.exit(1);
 }
-
-process.stdout.write(
-  checkOnly
-    ? `Source index CSS-import: all ${components.length} components OK.\n`
-    : `Source index CSS-import: rewrote ${drifted.length} entr(ies).\n`,
-);

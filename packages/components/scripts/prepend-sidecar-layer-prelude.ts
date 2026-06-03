@@ -3,8 +3,10 @@
  *
  * Prepends the `@layer` order-declaration prelude
  * (`@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;`,
- * see {@link LAYER_ORDER_PRELUDE}) as the FIRST line of every component CSS
- * sidecar (`src/components/[experimental/]<name>/<name>.css`).
+ * see {@link LAYER_ORDER_PRELUDE}) as the first NON-COMMENT node of every
+ * component CSS sidecar (`src/components/[experimental/]<name>/<name>.css`) — a
+ * leading license comment is preserved above it, matching the CSS linter's
+ * "first non-comment node" contract.
  *
  * Why: the build now injects `import 'cinder/<name>/styles'` into every browser
  * component entry, so a component's CSS can land in the document BEFORE
@@ -15,7 +17,8 @@
  * when the sidecar loads first. The prelude is enforced as line 1 by
  * `check-component-css.ts`.
  *
- * Idempotent: a sidecar that already begins with the prelude is left untouched.
+ * Idempotent: a sidecar whose first non-comment node is already the prelude is
+ * left untouched (including the valid comment-then-prelude shape).
  *
  * Usage:
  *   bun run scripts/prepend-sidecar-layer-prelude.ts          # rewrite in place
@@ -25,8 +28,28 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { LAYER_ORDER_PRELUDE } from './check-component-css.ts';
+import { parse } from 'postcss';
+
+import { LAYER_ORDER, LAYER_ORDER_PRELUDE } from './check-component-css.ts';
 import { discoverComponents } from './lib/discover-components.ts';
+
+/** Whether a parsed node is the `@layer <order>;` prelude statement (no block). */
+function isLayerOrderPrelude(node: {
+  type: string;
+  name?: string;
+  params?: string;
+  nodes?: unknown;
+}): boolean {
+  return (
+    node.type === 'atrule' &&
+    node.name === 'layer' &&
+    node.nodes === undefined &&
+    (node.params ?? '')
+      .split(',')
+      .map((part) => part.trim())
+      .join(', ') === LAYER_ORDER.join(', ')
+  );
+}
 
 const repositoryRoot = process.cwd();
 const componentsRoot = join(repositoryRoot, 'src', 'components');
@@ -41,14 +64,31 @@ function sidecarPath(name: string, isExperimental: boolean): string {
 }
 
 /**
- * Return the sidecar source with the layer-order prelude as its first line,
- * or `null` when the prelude is already present (no rewrite needed).
+ * Return the sidecar source with the layer-order prelude as its first
+ * NON-COMMENT node, or `null` when it is already there (no rewrite needed).
+ *
+ * The CSS linter permits a leading license comment before the prelude, so we
+ * parse rather than string-match: a comment-first sidecar that already has the
+ * prelude must NOT be flagged as drift (and must NOT get a second prelude
+ * prepended above the comment). When the prelude is missing it is inserted
+ * before the first non-comment node, preserving any leading comment.
  */
 function withPrelude(source: string): string | null {
-  // Compare against the trimmed leading line so a trailing-whitespace or CRLF
-  // variant of the prelude still counts as present.
-  if (source.trimStart().startsWith(LAYER_ORDER_PRELUDE)) return null;
-  return `${LAYER_ORDER_PRELUDE}\n${source}`;
+  const root = parse(source);
+  const firstNonComment = root.nodes.find((node) => node.type !== 'comment');
+
+  // Already correct: the first non-comment node is the prelude.
+  if (firstNonComment !== undefined && isLayerOrderPrelude(firstNonComment)) return null;
+
+  if (firstNonComment === undefined) {
+    // Only comments (or empty): append the prelude after them.
+    return `${source.replace(/\s*$/, '')}\n${LAYER_ORDER_PRELUDE}\n`;
+  }
+
+  // Insert the prelude immediately before the first non-comment node, keeping
+  // any leading comment(s) above it.
+  const insertAt = firstNonComment.source?.start?.offset ?? 0;
+  return `${source.slice(0, insertAt)}${LAYER_ORDER_PRELUDE}\n${source.slice(insertAt)}`;
 }
 
 const checkOnly = process.argv.includes('--check');
