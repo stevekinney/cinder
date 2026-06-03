@@ -175,9 +175,11 @@ describe('ResizablePanels', () => {
     ).text();
     const styleSheet = await Bun.file(new URL('./resizable-panels.css', import.meta.url)).text();
 
-    expect(componentSource).toContain(
-      'context.collapsed || (layoutState.availablePanePixels > 0 && context.pixelSize <= 0)',
-    );
+    // isPaneHiddenFromInteraction reads layoutState into a local and guards the
+    // local before dereferencing — SSR-safe (single read, returns false when
+    // unmeasured) and behavior-preserving.
+    expect(componentSource).toContain('const currentLayoutState = layoutState;');
+    expect(componentSource).toContain('if (currentLayoutState === null) return false;');
     expect(componentSource).toContain("aria-hidden={hiddenFromInteraction ? 'true' : undefined}");
     expect(componentSource).toContain('inert={hiddenFromInteraction || undefined}');
     expect(styleSheet).toContain('.cinder-resizable-panels__pane[data-cinder-collapsed]');
