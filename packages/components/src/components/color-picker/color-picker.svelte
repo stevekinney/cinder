@@ -503,7 +503,10 @@
   $effect(() => {
     const input = hiddenInput;
     if (input === null) return;
-    const form = input.closest('form');
+    // Use input.form (not closest('form')): HTMLInputElement.form honors the `form`
+    // attribute association, so a hidden input linked to a non-ancestor form via
+    // <input form="id"> still wires up its reset listener.
+    const form = input.form;
     if (form === null) return;
 
     function resetToDefault(): void {
