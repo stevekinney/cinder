@@ -19,7 +19,7 @@
   import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
-  import type { TreeContext, TreeItemParentContext } from '../../_internal/tree-context.ts';
+  import type { TreeContext } from '../../_internal/tree-context.ts';
   import {
     getTreeContext,
     setTreeItemParentContext,
@@ -62,7 +62,7 @@
     get level() {
       return level + 1;
     },
-  } as TreeItemParentContext);
+  });
 
   // ---------------------------------------------------------------------------
   // Local state

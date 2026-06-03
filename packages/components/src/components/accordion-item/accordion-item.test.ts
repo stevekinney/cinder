@@ -100,7 +100,7 @@ test('throws if rendered outside an Accordion', () => {
         })),
       },
     });
-  }).toThrow(/Context was not set in a parent component/);
+  }).toThrow(/missing_context/);
 });
 
 describe('AccordionItem', () => {

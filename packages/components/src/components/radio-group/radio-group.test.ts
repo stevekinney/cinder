@@ -133,6 +133,9 @@ describe('RadioGroup', () => {
       error = err instanceof Error ? err : new Error(String(err));
     }
     expect(error).not.toBeNull();
+    // Verify the throw comes from Svelte's context machinery (createContext missing_context),
+    // not from an unrelated code path.
+    expect(error?.message).toMatch(/missing_context/);
   });
 
   // Reference imports so tree-shaking doesn't drop them; they're used through

@@ -19,9 +19,9 @@ const items = [
 
 describe('TabPanel', () => {
   test('throws when rendered outside a Tabs component', () => {
-    expect(() =>
-      render(TabPanel, { props: { value: 'lonely', children: emptySnippet } }),
-    ).toThrow();
+    expect(() => render(TabPanel, { props: { value: 'lonely', children: emptySnippet } })).toThrow(
+      /missing_context/,
+    );
   });
 
   test('only the active panel renders and carries role="tabpanel"', () => {

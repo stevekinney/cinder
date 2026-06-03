@@ -23,7 +23,7 @@ describe('TabList', () => {
           children: createRawSnippet(() => ({ render: () => '<span></span>', setup: () => {} })),
         },
       }),
-    ).toThrow();
+    ).toThrow(/missing_context/);
   });
 
   test('root carries role="tablist"', () => {

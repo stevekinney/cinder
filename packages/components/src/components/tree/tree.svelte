@@ -18,7 +18,7 @@
 <script lang="ts">
   import type { TreeProps } from './tree.types.ts';
 
-  import type { TreeContext, TreeItemParentContext } from '../../_internal/tree-context.ts';
+  import type { TreeContext } from '../../_internal/tree-context.ts';
   import { setTreeContext, setTreeItemParentContext } from '../../_internal/tree-context.ts';
   import { TreeRegistry } from '../../_internal/tree-registry.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -391,7 +391,7 @@
   };
 
   setTreeContext(context);
-  setTreeItemParentContext({ parentId: null, level: 1 } as TreeItemParentContext);
+  setTreeItemParentContext({ parentId: null, level: 1 });
 
   // ---------------------------------------------------------------------------
   // Keyboard handler (Ctrl/Cmd+A handled at tree level)

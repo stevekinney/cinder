@@ -12,6 +12,7 @@
  * impossible with this model.
  */
 
+import type { ToastApi } from '../_internal/toast-context.ts';
 import { getToastContext } from '../_internal/toast-context.ts';
 
 /**
@@ -21,7 +22,7 @@ import { getToastContext } from '../_internal/toast-context.ts';
  * intentionally loud — calling `useToast()` outside a region is always a
  * setup bug, not something to silently no-op.
  */
-export function useToast() {
+export function useToast(): ToastApi {
   return getToastContext();
 }
 
