@@ -1321,6 +1321,31 @@
     "./file-upload/styles": {
       "default": "./dist/components/file-upload/file-upload.css"
     },
+    "./floating-action-button": {
+      "types": "./dist/components/floating-action-button/index.d.ts",
+      "svelte": "./src/components/floating-action-button/index.ts",
+      "node": "./dist/server/components/floating-action-button/index.js",
+      "default": "./dist/components/floating-action-button/index.js"
+    },
+    "./floating-action-button/schema": {
+      "types": "./dist/components/floating-action-button/floating-action-button.schema.d.ts",
+      "svelte": "./src/components/floating-action-button/floating-action-button.schema.ts",
+      "node": "./dist/server/components/floating-action-button/floating-action-button.schema.js",
+      "default": "./dist/components/floating-action-button/floating-action-button.schema.js"
+    },
+    "./floating-action-button/variables": {
+      "types": "./dist/components/floating-action-button/floating-action-button.variables.d.ts",
+      "svelte": "./src/components/floating-action-button/floating-action-button.variables.ts",
+      "node": "./dist/server/components/floating-action-button/floating-action-button.variables.js",
+      "default": "./dist/components/floating-action-button/floating-action-button.variables.js"
+    },
+    "./floating-action-button/styles": {
+      "default": "./dist/components/floating-action-button/floating-action-button.css"
+    },
+    "./floating-action-button/examples": {
+      "import": "./src/components/floating-action-button/floating-action-button.examples.json",
+      "default": "./src/components/floating-action-button/floating-action-button.examples.json"
+    },
     "./focus-trap": {
       "types": "./dist/components/focus-trap/index.d.ts",
       "svelte": "./src/components/focus-trap/index.ts",
