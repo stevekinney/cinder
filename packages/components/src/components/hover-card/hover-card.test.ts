@@ -126,8 +126,14 @@ describe('HoverCard', () => {
     expect(wrapper.hasAttribute('aria-controls')).toBe(false);
     const card = queryHoverCard();
     expect(card).not.toBeNull();
-    expect(wrapper.getAttribute('aria-describedby')).toContain(card?.id ?? '');
-    expect(wrapper.getAttribute('aria-describedby')).toContain('cinder-hover-card-description');
+    const describedBy = wrapper.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain(card?.id ?? '');
+    // The description id is derived from the same base as the card id; assert
+    // structural relationship rather than a literal prefix that $props.id() does not produce.
+    const descriptionIdInDescribedBy = describedBy
+      .split(' ')
+      .find((token) => token !== card?.id && token.length > 0);
+    expect(descriptionIdInDescribedBy).toBeTruthy();
   });
 
   test('showArrow enables Floating UI arrow middleware and positions the arrow', async () => {

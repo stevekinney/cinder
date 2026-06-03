@@ -23,7 +23,8 @@
 <script lang="ts">
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
   import { cn } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
+
+  const regionId = $props.id();
 
   let {
     class: className,
@@ -39,8 +40,6 @@
     onkeydown: consumerOnKeyDown,
     ...rest
   }: NavigationBarProps = $props();
-
-  const regionId = useId('cinder-navigation-bar');
   const navigationItemSelector = '[data-cinder-navigation-item]';
 
   const variant: NavigationVariant = $derived(

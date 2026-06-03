@@ -20,7 +20,8 @@
   import Button from '../button/button.svelte';
   import Modal from '../modal/modal.svelte';
   import { cn } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
+
+  const descriptionId = $props.id();
 
   let {
     open = $bindable(false),
@@ -34,8 +35,6 @@
     triggerRef = null,
     class: className,
   }: ConfirmDialogProps = $props();
-
-  const descriptionId = useId('cinder-confirm-dialog-description');
   const describedById = $derived(description ? descriptionId : undefined);
 
   function handleCancel() {

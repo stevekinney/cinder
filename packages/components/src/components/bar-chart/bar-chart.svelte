@@ -27,7 +27,6 @@
   } from '../../_internal/chart/chart-utilities.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import type { BarChartProps } from './bar-chart.types.ts';
 
   let {
@@ -54,7 +53,7 @@
     ...rest
   }: BarChartProps = $props();
 
-  const generatedId = useId('cinder-bar-chart');
+  const generatedId = $props.id();
   const rootId = $derived(id ?? generatedId);
   const descriptionId = $derived(description ? `${rootId}-description` : undefined);
 

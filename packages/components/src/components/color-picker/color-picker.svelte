@@ -24,8 +24,9 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import ColorSwatchPicker from '../color-swatch-picker/color-swatch-picker.svelte';
+
+  const pickerId = $props.id();
 
   let {
     value = $bindable(),
@@ -40,7 +41,6 @@
     oninput,
   }: ColorPickerProps = $props();
 
-  const pickerId = useId('cinder-color-picker');
   const gradientId = `${pickerId}-gradient`;
   const hueId = `${pickerId}-hue`;
   const alphaId = `${pickerId}-alpha`;

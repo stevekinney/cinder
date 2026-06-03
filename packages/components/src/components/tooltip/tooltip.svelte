@@ -21,7 +21,6 @@
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { cn } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
   let {
@@ -32,7 +31,7 @@
     children,
   }: TooltipProps = $props();
 
-  const tooltipId = useId('cinder-tooltip');
+  const tooltipId = $props.id();
   const FOCUSABLE_SELECTOR = [
     'button:not([disabled])',
     'a[href]',

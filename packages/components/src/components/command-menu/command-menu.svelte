@@ -30,13 +30,14 @@
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { inDocumentOrder } from '../../utilities/document-order.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import {
     setCommandListContext,
     type CommandItemRegistrationInput,
     type CommandListContext,
   } from '../_internal/command-list-context.ts';
   import { createPortalAttachment } from '../portal/index.ts';
+
+  const listboxId = $props.id();
 
   let {
     open = $bindable(false),
@@ -55,8 +56,6 @@
   }: CommandMenuProps = $props();
 
   type RegistrationRecord = CommandItemRegistrationInput & { id: string; node: HTMLElement };
-
-  const listboxId = useId('cinder-command-menu-listbox');
   const portalAttachment = createPortalAttachment({
     target: () => document.body,
     inheritAttributes: true,

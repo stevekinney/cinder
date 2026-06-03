@@ -22,7 +22,6 @@
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
   let {
@@ -40,8 +39,9 @@
     class: className,
   }: HoverCardProps = $props();
 
-  const cardId = useId('cinder-hover-card');
-  const descriptionId = useId('cinder-hover-card-description');
+  const baseId = $props.id();
+  const cardId = `${baseId}-card`;
+  const descriptionId = `${baseId}-description`;
   const focusableSelector =
     'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 

@@ -260,7 +260,7 @@ describe('Stat', () => {
     const { container: c2 } = render(Stat, { label: 'Revenue', value: '$2,000' });
     const id1 = c1.querySelector('.cinder-stat')?.getAttribute('aria-labelledby');
     const id2 = c2.querySelector('.cinder-stat')?.getAttribute('aria-labelledby');
-    // useId() counter ensures each instance gets unique IDs even with the same label.
+    // $props.id() ensures each instance gets unique IDs even with the same label.
     expect(id1).not.toBe(id2);
   });
 });

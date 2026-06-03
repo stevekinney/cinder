@@ -20,7 +20,8 @@
   import Button from '../button/button.svelte';
   import Modal from '../modal/modal.svelte';
   import { classNames } from '../../utilities/class-names.ts';
-  import { useId } from '../../utilities/use-id.ts';
+
+  const descriptionId = $props.id();
 
   let {
     open = $bindable(false),
@@ -34,8 +35,6 @@
     triggerRef = null,
     class: className,
   }: AlertDialogProps = $props();
-
-  const descriptionId = useId('cinder-alert-dialog-description');
 
   function handleAcknowledge() {
     open = false;

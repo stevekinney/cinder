@@ -23,7 +23,6 @@
   import { captureFocus } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import {
     DROPDOWN_CONTEXT,
     DROPDOWN_REGISTER,
@@ -43,7 +42,7 @@
     class: className,
   }: ContextMenuProps = $props();
 
-  const menuId = useId('cinder-context-menu');
+  const menuId = $props.id();
   let menuElement = $state<HTMLElement | null>(null);
   let triggerElement = $state<HTMLElement | null>(null);
   let capturedFocus: HTMLElement | null = null;

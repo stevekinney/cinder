@@ -30,7 +30,6 @@
   import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
   let {
@@ -68,7 +67,7 @@
   let panelElement: HTMLDivElement | undefined = $state();
   let arrowElement: HTMLSpanElement | undefined = $state();
 
-  const generatedPanelId = useId('cinder-popover');
+  const generatedPanelId = $props.id();
   const panelId = $derived(panelIdProp ?? generatedPanelId);
 
   const anchorElement = $derived<HTMLElement | null>(

@@ -19,7 +19,11 @@
   import type { StatProps } from './stat.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { formatNumber } from '../../utilities/format-number.ts';
-  import { useId } from '../../utilities/use-id.ts';
+
+  // $props.id() returns a framework-managed, SSR-stable id unique to this component
+  // instance. Pass an explicit `id` prop to control the base when a specific value
+  // is required (e.g. for testing or when a stable server-rendered id is needed).
+  const generatedId = $props.id();
 
   let {
     label,
@@ -33,12 +37,7 @@
     ...rest
   }: StatProps = $props();
 
-  // useId() generates a stable counter-based suffix so two <Stat> components with
-  // the same label on one page get distinct IDs. Pass an explicit `id` prop to
-  // control the base when a specific value is required (e.g. for testing or server
-  // rendering where instance order must be deterministic).
-  const instanceId = useId('cinder-stat');
-  const stableId = $derived(id ?? instanceId);
+  const stableId = $derived(id ?? generatedId);
   const labelId = $derived(`${stableId}-label`);
   const valueId = $derived(`${stableId}-value`);
 

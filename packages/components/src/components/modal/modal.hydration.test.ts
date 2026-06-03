@@ -3,7 +3,7 @@
  * Hydration contract for Modal.
  *
  * Modal renders a native `<dialog role="dialog">` whose `aria-labelledby` points
- * at a `useId`-generated title id and whose optional `aria-describedby` is
+ * at a `$props.id()`-generated title id and whose optional `aria-describedby` is
  * consumer-supplied. Two things matter for hydration:
  *
  * 1. A closed modal emits no dialog on the server, then mounts cleanly on the
@@ -19,7 +19,7 @@
  * raw-snippet children server-side. So that test proves the client wires
  * `aria-labelledby`/`aria-describedby` correctly, but does NOT prove the SSR HTML
  * and the hydrated client agree on those ids for an initially-open dialog. The
- * deterministic-id derivation makes drift unlikely, but it is not asserted here.
+ * SSR-stable $props.id() derivation makes drift unlikely, but it is not asserted here.
  */
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
@@ -72,7 +72,7 @@ describe('Modal hydration', () => {
     expect(dialog).not.toBeNull();
     expect(dialog?.getAttribute('aria-modal')).toBe('true');
 
-    // aria-labelledby resolves to the title <h2>, whose id comes from useId.
+    // aria-labelledby resolves to the title <h2>, whose id comes from $props.id().
     const labelledBy = dialog?.getAttribute('aria-labelledby');
     expect(labelledBy).toBeTruthy();
     const titleElement = container.querySelector(`#${labelledBy}`);

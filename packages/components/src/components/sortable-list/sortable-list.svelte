@@ -24,7 +24,6 @@
     reorder,
   } from '../../utilities/sortable-controller.svelte.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
-  import { useId } from '../../utilities/use-id.ts';
   import SortableItem from '../_sortable-item.svelte';
   import type { SortableListProps } from './sortable-list.types.ts';
 
@@ -49,7 +48,7 @@
     })),
   );
 
-  const instructionsId = useId('cinder-sortable-instructions');
+  const instructionsId = $props.id();
 
   // Derived visual order — pure read of controller state, no side effects.
   const visualItems = $derived.by(() => {

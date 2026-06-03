@@ -32,10 +32,11 @@
     DROPDOWN_SET_OPEN,
   } from './dropdown.context.ts';
   import type { DropdownContext, DropdownProps } from './dropdown.types.ts';
-  import { useId } from '../../utilities/use-id.ts';
+
+  const generatedId = $props.id();
 
   let {
-    id = useId('cinder-dropdown'),
+    id = generatedId,
     open = $bindable(false),
     placement = 'bottom-start',
     class: customClassName,
@@ -54,10 +55,10 @@
   // support, top-layer menus cannot stay positioned relative to the trigger.
   let supportsPopover = $state(false);
 
-  // useId() returns identifiers like `cinder-dropdown-menu-1` — always a
+  // $props.id() returns a framework-managed SSR-stable identifier — always a
   // valid CSS ident, so it can be safely interpolated into the inline
   // `anchor-name`/`position-anchor` styles below without sanitization.
-  const menuId = useId('cinder-dropdown-menu');
+  const menuId = `${generatedId}-legacy-menu`;
 
   let rootElement: HTMLDivElement | undefined = $state();
   let menuElement: HTMLDivElement | undefined = $state();
