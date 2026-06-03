@@ -10,6 +10,8 @@
     disabled = false,
     required = false,
     checkboxLabel,
+    /** When true, omit `id` on the Checkbox so it inherits controlId from FormField context. */
+    inheritId = false,
   }: {
     fieldId: string;
     fieldLabel: string;
@@ -18,6 +20,7 @@
     disabled?: boolean;
     required?: boolean;
     checkboxLabel?: string;
+    inheritId?: boolean;
   } = $props();
 
   const fieldOptional = $derived({
@@ -29,5 +32,8 @@
 </script>
 
 <FormField id={fieldId} label={fieldLabel} {...fieldOptional}>
-  <Checkbox id={fieldId} {...checkboxLabel !== undefined ? { label: checkboxLabel } : {}} />
+  <Checkbox
+    {...inheritId ? {} : { id: fieldId }}
+    {...checkboxLabel !== undefined ? { label: checkboxLabel } : {}}
+  />
 </FormField>

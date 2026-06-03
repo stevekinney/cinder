@@ -20,6 +20,7 @@
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     id,
@@ -60,6 +61,17 @@
       required: required ?? undefined,
     }),
   );
+
+  // Dev-mode guard (matches Input/Autocomplete): inside a FormField, a consumer `id`
+  // that disagrees with the FormField's controlId means the FormField's <label for>
+  // points at a different id than this input renders, breaking the label association.
+  $effect(() => {
+    if (context && id && context.controlId !== id) {
+      devWarn(
+        `[cinder/Checkbox] id mismatch: Checkbox id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both, or omit id on the Checkbox to inherit it.`,
+      );
+    }
+  });
 
   // `indeterminate` is a DOM property, not an attribute. Sync it whenever
   // either the prop or the bound element changes. Toggling `checked` clears

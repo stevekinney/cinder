@@ -218,4 +218,20 @@ describe('Checkbox — FormField context wiring', () => {
     expect(label).not.toBeNull();
     expect(input.getAttribute('aria-describedby')).toBe('agree-description');
   });
+
+  test('omitting Checkbox id inherits the FormField controlId (context-inheritance path)', () => {
+    // When the Checkbox omits `id`, resolveFieldControl uses the FormField's controlId,
+    // so the input id and the FormField's label[for] still agree.
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        checkboxLabel: 'I agree',
+        inheritId: true,
+      },
+    });
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(input.id).toBe('agree');
+    expect(container.querySelector('label[for="agree"]')).not.toBeNull();
+  });
 });
