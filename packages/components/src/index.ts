@@ -594,9 +594,6 @@ export { useToast } from './utilities/use-toast.ts';
 
 export type { Highlighter } from './utilities/highlighter.ts';
 
-export { default as TimePicker } from './components/time-picker/index.ts';
-export type { TimePickerProps } from './components/time-picker/index.ts';
-
 export { default as Timeline } from './components/timeline/index.ts';
 export type { TimelineProps } from './components/timeline/index.ts';
 

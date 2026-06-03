@@ -110,11 +110,6 @@
     "allowedCount": 1
   },
   {
-    "filePath": "src/components/time-picker/time-picker.css",
-    "name": "--cinder-font-weight-medium",
-    "allowedCount": 2
-  },
-  {
     "filePath": "src/components/toast-region/toast-region.css",
     "name": "--cinder-spinner-size-sm",
     "allowedCount": 2
