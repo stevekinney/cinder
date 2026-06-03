@@ -461,24 +461,19 @@ describe('createClickOutside', () => {
   });
 
   test('non-Node target (null) is treated as outside and triggers the handler', () => {
-    // Defensive branch: event.target can be null on synthetic events or in shadow-DOM
-    // scenarios. A null target must NOT prevent the handler from firing.
+    // Defensive branch: event.target can be null on synthetic events or in certain
+    // shadow-DOM scenarios. A null target must NOT prevent the handler from firing.
     let calls = 0;
     attach({ handler: () => (calls += 1) });
 
-    // Dispatch a click event with a null target by intercepting it via a custom event
-    // that sets target to null — or simply dispatch from document directly where
-    // event.target will be document rather than a Node in the tree.
-    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
-    // Override target to null via Object.defineProperty to simulate the defensive branch.
-    // happy-dom allows this for synthetic events dispatched off-tree.
+    // Override `target` with null via Object.defineProperty; `value: null` is
+    // simpler and clearer than a getter and avoids the unused-variable pattern.
     const nullTargetEvent = Object.defineProperty(
       new MouseEvent('click', { bubbles: true, cancelable: true }),
       'target',
-      { get: () => null, configurable: true },
+      { value: null, configurable: true },
     );
     document.dispatchEvent(nullTargetEvent);
     expect(calls).toBe(1); // null target => treated as outside => handler fires
-    void event; // suppress unused warning
   });
 });

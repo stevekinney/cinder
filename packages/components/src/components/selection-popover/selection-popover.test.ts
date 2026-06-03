@@ -300,9 +300,9 @@ describe('SelectionPopover', () => {
     });
 
     // Fire a pointerdown from inside the popover panel.
-    const panel = container.querySelector('.cinder-selection-popover') as HTMLElement;
+    const panel = container.querySelector('.cinder-selection-popover');
     expect(panel).not.toBeNull();
-    panel.dispatchEvent(new (globalThis.PointerEvent ?? Event)('pointerdown', { bubbles: true }));
+    panel!.dispatchEvent(new (globalThis.PointerEvent ?? Event)('pointerdown', { bubbles: true }));
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
