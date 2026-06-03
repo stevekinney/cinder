@@ -147,16 +147,17 @@ describe('Announcer', () => {
 });
 
 describe('announceNavigation', () => {
-  test('sets document.title to "cinder playground — <component>"', async () => {
+  test('sets document.title to "<Humanized> — cinder playground"', async () => {
     const announcer = new Announcer();
     const { component } = render(NavFixture, { announcer });
     await tick();
 
     await component['navigate']('button');
-    expect(document.title).toBe('cinder playground — button');
+    // Humanized + component-first, matching the SSR title from renderShell.
+    expect(document.title).toBe('Button — cinder playground');
   });
 
-  test('queues a "Viewing <component>" announcement in the live region', async () => {
+  test('queues a "Viewing <Humanized>" announcement in the live region', async () => {
     const announcer = new Announcer();
     const { container, component } = render(NavFixture, { announcer });
     await tick();
@@ -166,7 +167,7 @@ describe('announceNavigation', () => {
     await advance(70);
 
     const region = container.querySelector('[aria-live="polite"]');
-    expect(region?.textContent).toBe('Viewing card');
+    expect(region?.textContent).toBe('Viewing Card');
   });
 
   test('moves focus to the main region', async () => {
@@ -190,12 +191,12 @@ describe('popstate navigation (browser back/forward)', () => {
     await component['popState']();
 
     expect(store.currentComponent).toBe('button');
-    expect(document.title).toBe('cinder playground — button');
+    expect(document.title).toBe('Button — cinder playground');
     expect(document.activeElement).toBe(component['getMain']());
 
     await advance(70);
     const region = container.querySelector('[aria-live="polite"]');
-    expect(region?.textContent).toBe('Viewing button');
+    expect(region?.textContent).toBe('Viewing Button');
   });
 
   test('syncs the toolbar from the URL before announcing', async () => {

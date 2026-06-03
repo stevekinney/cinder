@@ -1,3 +1,4 @@
+import './accordion-item.css';
 import AccordionItem from './accordion-item.svelte';
 
 export default AccordionItem;

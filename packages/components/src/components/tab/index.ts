@@ -1,3 +1,4 @@
+import './tab.css';
 import Tab from './tab.svelte';
 
 export default Tab;

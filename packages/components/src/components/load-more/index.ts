@@ -1,3 +1,4 @@
+import './load-more.css';
 import LoadMore from './load-more.svelte';
 
 export default LoadMore;

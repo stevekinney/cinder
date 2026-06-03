@@ -1,3 +1,4 @@
+import './callout.css';
 import Callout from './callout.svelte';
 
 export default Callout;

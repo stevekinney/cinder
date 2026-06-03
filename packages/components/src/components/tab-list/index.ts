@@ -1,3 +1,4 @@
+import './tab-list.css';
 import TabList from './tab-list.svelte';
 
 export default TabList;

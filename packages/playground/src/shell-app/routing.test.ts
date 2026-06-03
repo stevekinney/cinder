@@ -16,7 +16,6 @@ import {
   buildToolbarSearch,
   createPreviewMessage,
   parseComponentFromPath,
-  readBackgroundFromSearch,
   readFocusModeFromSearch,
   readPreviewWidthFromSearch,
   readThemeFromSearch,
@@ -26,7 +25,6 @@ import {
 const DEFAULT_TOOLBAR_STATE = {
   isFocusMode: false,
   theme: null,
-  background: 'surface' as const,
   previewWidth: null,
 };
 
@@ -111,31 +109,11 @@ describe('createPreviewMessage', () => {
       type: 'cinder:set-theme',
       value: 'dark',
     });
-    expect(createPreviewMessage('cinder:set-theme', 'system')).toEqual({
-      type: 'cinder:set-theme',
-      value: 'system',
-    });
-  });
-
-  it('builds a background message for each allowed value', () => {
-    expect(createPreviewMessage('cinder:set-background', 'surface')).toEqual({
-      type: 'cinder:set-background',
-      value: 'surface',
-    });
-    expect(createPreviewMessage('cinder:set-background', 'checker')).toEqual({
-      type: 'cinder:set-background',
-      value: 'checker',
-    });
   });
 
   it('returns null for an unknown theme value', () => {
     // @ts-expect-error — exercising runtime validation
     expect(createPreviewMessage('cinder:set-theme', 'midnight')).toBeNull();
-  });
-
-  it('returns null for an unknown background value', () => {
-    // @ts-expect-error — exercising runtime validation
-    expect(createPreviewMessage('cinder:set-background', 'rainbow')).toBeNull();
   });
 });
 
@@ -167,28 +145,19 @@ describe('readThemeFromSearch', () => {
     expect(readThemeFromSearch(new URLSearchParams(''))).toBeNull();
   });
 
-  it('returns the explicit theme for known values', () => {
+  it('returns the explicit override for known values', () => {
     expect(readThemeFromSearch(new URLSearchParams('theme=light'))).toBe('light');
     expect(readThemeFromSearch(new URLSearchParams('theme=dark'))).toBe('dark');
-    expect(readThemeFromSearch(new URLSearchParams('theme=system'))).toBe('system');
+  });
+
+  it('returns null for the retired "system" value', () => {
+    // 'system' is no longer a theme choice — absence of an override is what
+    // makes the playground follow the browser, so it resolves to null.
+    expect(readThemeFromSearch(new URLSearchParams('theme=system'))).toBeNull();
   });
 
   it('returns null for an unknown value', () => {
     expect(readThemeFromSearch(new URLSearchParams('theme=midnight'))).toBeNull();
-  });
-});
-
-describe('readBackgroundFromSearch', () => {
-  it('defaults to "surface" when the param is absent', () => {
-    expect(readBackgroundFromSearch(new URLSearchParams(''))).toBe('surface');
-  });
-
-  it('returns "checker" when explicitly set', () => {
-    expect(readBackgroundFromSearch(new URLSearchParams('bg=checker'))).toBe('checker');
-  });
-
-  it('falls back to "surface" for unknown values', () => {
-    expect(readBackgroundFromSearch(new URLSearchParams('bg=rainbow'))).toBe('surface');
   });
 });
 
@@ -218,12 +187,9 @@ describe('readToolbarStateFromSearch', () => {
   });
 
   it('parses a fully-populated query string', () => {
-    expect(
-      readToolbarStateFromSearch(new URLSearchParams('focus=1&theme=dark&bg=checker&w=768')),
-    ).toEqual({
+    expect(readToolbarStateFromSearch(new URLSearchParams('focus=1&theme=dark&w=768'))).toEqual({
       isFocusMode: true,
       theme: 'dark',
-      background: 'checker',
       previewWidth: 768,
     });
   });
@@ -234,11 +200,11 @@ describe('buildToolbarSearch', () => {
     expect(buildToolbarSearch(new URLSearchParams(''), DEFAULT_TOOLBAR_STATE)).toBe('');
   });
 
-  it('omits theme when it is "system"', () => {
+  it('omits theme when there is no override (null)', () => {
     expect(
       buildToolbarSearch(new URLSearchParams(''), {
         ...DEFAULT_TOOLBAR_STATE,
-        theme: 'system',
+        theme: null,
       }),
     ).toBe('');
   });
@@ -248,10 +214,9 @@ describe('buildToolbarSearch', () => {
       buildToolbarSearch(new URLSearchParams(''), {
         isFocusMode: true,
         theme: 'dark',
-        background: 'checker',
         previewWidth: 768,
       }),
-    ).toBe('?focus=1&theme=dark&bg=checker&w=768');
+    ).toBe('?focus=1&theme=dark&w=768');
   });
 
   it('preserves unrelated params', () => {
@@ -265,7 +230,7 @@ describe('buildToolbarSearch', () => {
 
   it('removes a param when its value resets to the default', () => {
     expect(
-      buildToolbarSearch(new URLSearchParams('focus=1&theme=dark&bg=checker&w=768'), {
+      buildToolbarSearch(new URLSearchParams('focus=1&theme=dark&w=768'), {
         ...DEFAULT_TOOLBAR_STATE,
       }),
     ).toBe('');

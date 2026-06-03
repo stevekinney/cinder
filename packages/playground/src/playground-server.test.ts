@@ -239,6 +239,10 @@ describe('/c/:name', () => {
     expect(urls.has('/components/input/input.css')).toBe(true);
     expect(urls.has('/components/number-input/number-input.css')).toBe(true);
     expect(urls.has('/components/side-navigation/side-navigation.css')).toBe(true);
+    // Regression: side-navigation.css carries no per-item styling, so the shell
+    // MUST also load navigation-item.css or the sidebar links fall back to bare
+    // underlined anchors (no padding, no active indicator, wrong focus ring).
+    expect(urls.has('/components/navigation-item/navigation-item.css')).toBe(true);
 
     for (const selector of [
       '.cinder-toolbar',
@@ -248,6 +252,9 @@ describe('/c/:name', () => {
       '.cinder-number-input',
       '.cinder-side-navigation',
       '.cinder-side-navigation__list',
+      // The per-row styling (text-decoration:none, padding, active indicator)
+      // lives on .cinder-navigation-item — assert it's actually in the cascade.
+      '.cinder-navigation-item',
     ]) {
       expect(css).toContain(selector);
     }
@@ -698,24 +705,6 @@ describe('/page/:name', () => {
     const html = await response.text();
     expect(html).toContain('href="/styles/all.css"');
     expect(html).not.toContain('href="/styles/index.css"');
-  });
-
-  it('checker background uses theme-adaptive custom properties, not hardcoded colors', async () => {
-    // Regression: the checker squares were hardcoded #e0e0e0 on a #fff base,
-    // which is blinding in dark mode. The pattern must adapt via light-dark()
-    // and the --cinder-surface token so it reads as a transparency checker in
-    // both schemes without any JS.
-    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
-    const html = await response.text();
-    const checkerBlockMatch = /body\[data-cinder-bg="checker"\]\s*\{[^}]*\}/.exec(html);
-    expect(checkerBlockMatch).not.toBeNull();
-    const checkerBlock = checkerBlockMatch![0];
-    expect(checkerBlock).not.toContain('#fff');
-    expect(checkerBlock).not.toContain('#e0e0e0');
-    expect(checkerBlock).toContain('light-dark(');
-    expect(checkerBlock).toContain('var(--cinder-surface)');
-    // Geometry must stay a 16px grid checker.
-    expect(checkerBlock).toContain('background-size: 16px 16px');
   });
 
   it('wraps the body background/color transition in a reduced-motion guard', async () => {

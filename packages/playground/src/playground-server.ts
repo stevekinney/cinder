@@ -49,7 +49,14 @@ import {
   invalidateDiscoveryCache,
 } from './discover.ts';
 import { readExampleMetadata } from './example-metadata.ts';
-import { PRE_PAINT_THEME_SCRIPT, jsonForScriptTag, renderShell } from './render-shell.ts';
+import {
+  FAVICON_HREF,
+  PRE_PAINT_THEME_SCRIPT,
+  escapeHtml,
+  jsonForScriptTag,
+  renderShell,
+} from './render-shell.ts';
+import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import {
   isSnapshotMode,
@@ -1080,13 +1087,17 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
   const examplesJson = jsonForScriptTag(examples);
   const htmlAttribute = snapshotModeHtmlAttribute(snapshotMode);
   const styleTag = snapshotModeStyleTag(snapshotMode);
+  const humanName = escapeHtml(humanizeComponentName(componentName));
+  const pageDescription = `Live ${humanName} examples from the cinder Svelte 5 component library.`;
 
   return `<!DOCTYPE html>
 <html lang="en"${htmlAttribute}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${componentName} — cinder playground</title>
+    <title>${humanName} — cinder playground</title>
+    <meta name="description" content="${pageDescription}" />
+    <link rel="icon" href="${FAVICON_HREF}" />
     <link rel="stylesheet" href="/styles/all.css" />
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
@@ -1102,7 +1113,10 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
         font-family: var(--cinder-font-sans);
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);
-        padding: var(--cinder-space-6);
+        /* Scale the preview gutter with the viewport: a comfortable space-6
+           (24px) on wide screens collapses to a thin space-1 (4px) on phones so
+           example components get almost the full width and look realistic. */
+        padding: clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6));
       }
       /* Guard the background/color crossfade behind a reduced-motion opt-out so
          users who prefer no motion get an instant theme swap, not a transition. */
@@ -1112,46 +1126,22 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
         }
       }
       #app { display: contents; }
-      body[data-cinder-bg="checker"] {
-        /* The checker squares adapt with the active color-scheme via
-           light-dark(): the light value is the original subtle gray check
-           (expressed in oklch); the dark value is a faint light-gray square
-           that still reads as a transparency checker against the dark surface.
-           The base color rides on --cinder-surface, which is itself a
-           light-dark() token, so the whole pattern follows the iframe's
-           color-scheme without any JS. */
-        --cinder-checker-square: light-dark(oklch(89% 0 0), oklch(30% 0.01 245));
-        background-image:
-          linear-gradient(45deg, var(--cinder-checker-square) 25%, transparent 25%),
-          linear-gradient(-45deg, var(--cinder-checker-square) 25%, transparent 25%),
-          linear-gradient(45deg, transparent 75%, var(--cinder-checker-square) 75%),
-          linear-gradient(-45deg, transparent 75%, var(--cinder-checker-square) 75%);
-        background-size: 16px 16px;
-        background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-        background-color: var(--cinder-surface);
-      }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
     <script>
-      // Validated postMessage listener for shell→iframe theme + background
-      // commands. The shell SPA is same-origin, but we still validate origin
-      // and shape so unknown messages can't push the iframe into a bad state.
+      // Validated postMessage listener for shell→iframe theme commands. The
+      // shell SPA is same-origin, but we still validate origin and shape so
+      // unknown messages can't push the iframe into a bad state.
       window.addEventListener('message', function (event) {
         if (event.origin !== window.location.origin) return;
         var data = event.data;
         if (!data || typeof data !== 'object') return;
-        if (typeof data.type !== 'string' || data.type.indexOf('cinder:') !== 0) return;
-        if (data.type === 'cinder:set-theme') {
-          if (data.value === 'light' || data.value === 'dark') {
-            document.documentElement.style.colorScheme = data.value;
-            document.documentElement.dataset.cinderTheme = data.value;
-          } else if (data.value === 'system') {
-            document.documentElement.style.colorScheme = '';
-            document.documentElement.dataset.cinderTheme = 'system';
-          }
-        } else if (data.type === 'cinder:set-background') {
-          if (data.value === 'surface' || data.value === 'checker') {
-            document.body.dataset.cinderBg = data.value;
-          }
+        if (data.type !== 'cinder:set-theme') return;
+        // Only light/dark are valid theme overrides; ignore anything else (a
+        // stale/foreign message must never push the iframe into an unsupported
+        // 'system' state — that value was removed from ThemeChoice).
+        if (data.value === 'light' || data.value === 'dark') {
+          document.documentElement.style.colorScheme = data.value;
+          document.documentElement.dataset.cinderTheme = data.value;
         }
       });
     </script>
@@ -1172,13 +1162,15 @@ function renderFixturePageHtml(
 ): string {
   const htmlAttribute = snapshotModeHtmlAttribute(snapshotMode);
   const styleTag = snapshotModeStyleTag(snapshotMode);
+  const humanName = escapeHtml(humanizeComponentName(componentName));
 
   return `<!DOCTYPE html>
 <html lang="en"${htmlAttribute}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${componentName} / ${fixtureName} — cinder playground</title>
+    <title>${humanName} / ${escapeHtml(fixtureName)} — cinder playground</title>
+    <link rel="icon" href="${FAVICON_HREF}" />
     <link rel="stylesheet" href="/styles/all.css" />
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
@@ -1190,7 +1182,10 @@ function renderFixturePageHtml(
         font-family: var(--cinder-font-sans);
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);
-        padding: var(--cinder-space-6);
+        /* Scale the preview gutter with the viewport: a comfortable space-6
+           (24px) on wide screens collapses to a thin space-1 (4px) on phones so
+           example components get almost the full width and look realistic. */
+        padding: clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6));
       }
       @media (prefers-reduced-motion: no-preference) {
         body {
@@ -1198,36 +1193,19 @@ function renderFixturePageHtml(
         }
       }
       #app { display: contents; }
-      body[data-cinder-bg="checker"] {
-        --cinder-checker-square: light-dark(oklch(89% 0 0), oklch(30% 0.01 245));
-        background-image:
-          linear-gradient(45deg, var(--cinder-checker-square) 25%, transparent 25%),
-          linear-gradient(-45deg, var(--cinder-checker-square) 25%, transparent 25%),
-          linear-gradient(45deg, transparent 75%, var(--cinder-checker-square) 75%),
-          linear-gradient(-45deg, transparent 75%, var(--cinder-checker-square) 75%);
-        background-size: 16px 16px;
-        background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-        background-color: var(--cinder-surface);
-      }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
     <script>
       window.addEventListener('message', function (event) {
         if (event.origin !== window.location.origin) return;
         var data = event.data;
         if (!data || typeof data !== 'object') return;
-        if (typeof data.type !== 'string' || data.type.indexOf('cinder:') !== 0) return;
-        if (data.type === 'cinder:set-theme') {
-          if (data.value === 'light' || data.value === 'dark') {
-            document.documentElement.style.colorScheme = data.value;
-            document.documentElement.dataset.cinderTheme = data.value;
-          } else if (data.value === 'system') {
-            document.documentElement.style.colorScheme = '';
-            document.documentElement.dataset.cinderTheme = 'system';
-          }
-        } else if (data.type === 'cinder:set-background') {
-          if (data.value === 'surface' || data.value === 'checker') {
-            document.body.dataset.cinderBg = data.value;
-          }
+        if (data.type !== 'cinder:set-theme') return;
+        // Only light/dark are valid theme overrides; ignore anything else (a
+        // stale/foreign message must never push the iframe into an unsupported
+        // 'system' state — that value was removed from ThemeChoice).
+        if (data.value === 'light' || data.value === 'dark') {
+          document.documentElement.style.colorScheme = data.value;
+          document.documentElement.dataset.cinderTheme = data.value;
         }
       });
     </script>

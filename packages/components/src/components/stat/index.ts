@@ -1,3 +1,4 @@
+import './stat.css';
 import Stat from './stat.svelte';
 
 export default Stat;

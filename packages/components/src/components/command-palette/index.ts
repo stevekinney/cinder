@@ -1,3 +1,4 @@
+import './command-palette.css';
 import CommandPalette from './command-palette.svelte';
 
 export default CommandPalette;

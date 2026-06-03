@@ -1,3 +1,4 @@
+import './alert-dialog.css';
 import AlertDialog from './alert-dialog.svelte';
 
 export default AlertDialog;

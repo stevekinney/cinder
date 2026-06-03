@@ -4,6 +4,7 @@ import DropdownItem from '../dropdown-item/dropdown-item.svelte';
 import DropdownLabel from '../dropdown-label/dropdown-label.svelte';
 import DropdownMenu from '../dropdown-menu/dropdown-menu.svelte';
 import DropdownSeparator from '../dropdown-separator/dropdown-separator.svelte';
+import './context-menu.css';
 import ContextMenuRoot from './context-menu.svelte';
 
 const ContextMenu = Object.assign(ContextMenuRoot, {

@@ -1,3 +1,4 @@
+import './checkbox-group.css';
 import CheckboxGroup from './checkbox-group.svelte';
 
 export default CheckboxGroup;

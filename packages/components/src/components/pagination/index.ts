@@ -1,3 +1,4 @@
+import './pagination.css';
 import Pagination from './pagination.svelte';
 
 export default Pagination;

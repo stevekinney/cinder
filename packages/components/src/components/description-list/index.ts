@@ -1,3 +1,4 @@
+import './description-list.css';
 import DescriptionList from './description-list.svelte';
 
 export default DescriptionList;

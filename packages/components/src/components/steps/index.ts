@@ -1,3 +1,4 @@
+import './steps.css';
 import Steps from './steps.svelte';
 
 export default Steps;

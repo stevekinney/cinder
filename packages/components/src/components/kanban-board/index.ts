@@ -1,3 +1,4 @@
+import './kanban-board.css';
 import KanbanBoard from './kanban-board.svelte';
 
 export default KanbanBoard;

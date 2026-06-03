@@ -1,3 +1,4 @@
+import './data-list.css';
 import DataList from './data-list.svelte';
 
 export default DataList;

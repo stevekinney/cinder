@@ -1,4 +1,5 @@
 import GridListItem from '../grid-list-item/grid-list-item.svelte';
+import './grid-list.css';
 import GridListRoot from './grid-list.svelte';
 
 /**

@@ -1,3 +1,4 @@
+import './modal.css';
 import Modal from './modal.svelte';
 
 export default Modal;

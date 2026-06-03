@@ -1,3 +1,4 @@
+import './line-chart.css';
 import LineChart from './line-chart.svelte';
 
 export default LineChart;

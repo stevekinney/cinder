@@ -11,37 +11,40 @@
  */
 
 import { getContext, setContext } from 'svelte';
+import { MediaQuery } from 'svelte/reactivity';
 
-import type { BackgroundChoice, ThemeChoice, ToolbarSearchState } from './routing.ts';
+import type { ThemeChoice, ToolbarSearchState } from './routing.ts';
 import {
   buildToolbarSearch,
-  readBackgroundFromSearch,
   readFocusModeFromSearch,
   readPreviewWidthFromSearch,
   readThemeFromSearch,
 } from './routing.ts';
 
-export type { BackgroundChoice, ThemeChoice };
+export type { ThemeChoice };
 
 const PREVIEW_STORE_KEY = Symbol('cinder-preview-store');
 
 /** Persisted theme key — must match `PRE_PAINT_THEME_SCRIPT` in render-shell.ts. */
 export const THEME_STORAGE_KEY = 'cinder-playground-theme';
 
-const THEME_VALUES: ReadonlySet<ThemeChoice> = new Set(['light', 'dark', 'system']);
+const THEME_VALUES: ReadonlySet<ThemeChoice> = new Set(['light', 'dark']);
 
 /**
- * Safe localStorage read. localStorage can throw in private-browsing,
- * restricted content-script contexts, or when storage quota is exhausted.
- * Failures degrade silently to "system" so the playground keeps booting.
+ * Safe localStorage read of the explicit theme override.
+ *
+ * localStorage can throw in private-browsing, restricted content-script
+ * contexts, or when storage quota is exhausted. Returns `null` when there is no
+ * stored override (or on any failure), which the store reads as "follow the
+ * browser's `prefers-color-scheme`".
  */
-export function readPersistedTheme(): ThemeChoice {
+export function readPersistedTheme(): ThemeChoice | null {
   try {
     const value = localStorage.getItem(THEME_STORAGE_KEY);
-    if (value === 'light' || value === 'dark' || value === 'system') return value;
-    return 'system';
+    if (value === 'light' || value === 'dark') return value;
+    return null;
   } catch {
-    return 'system';
+    return null;
   }
 }
 
@@ -55,18 +58,23 @@ export function writePersistedTheme(value: ThemeChoice): void {
 }
 
 /**
- * Apply a theme choice to a document's root element.
+ * Apply the playground's theme to a document's root element.
  *
- * - `color-scheme`: 'system' clears the inline value so the base CSS
- *   declaration of `color-scheme: light dark` takes effect.
- * - `data-cinder-theme`: always set to the explicit choice, including
- *   'system'. This is the authoritative signal CSS reads when deciding
- *   things like the inverse-background flip — sniffing inline style breaks
- *   the moment a user selects 'system'.
+ * - With an explicit `override` (light/dark), pin both `color-scheme` and
+ *   `data-cinder-theme` to that value so the choice wins over the OS setting.
+ * - With no override (`null`), clear the inline `color-scheme` so the base CSS
+ *   declaration (`color-scheme: light dark`) and the OS `prefers-color-scheme`
+ *   drive the rendering. `data-cinder-theme` is set to `resolved` — the live
+ *   browser preference — so the authoritative CSS signal still reflects the
+ *   theme actually in effect rather than being left stale.
  */
-export function applyThemeToDocument(doc: Document, theme: ThemeChoice): void {
-  doc.documentElement.style.colorScheme = theme === 'system' ? '' : theme;
-  doc.documentElement.dataset['cinderTheme'] = theme;
+export function applyThemeToDocument(
+  doc: Document,
+  override: ThemeChoice | null,
+  resolved: ThemeChoice,
+): void {
+  doc.documentElement.style.colorScheme = override ?? '';
+  doc.documentElement.dataset['cinderTheme'] = override ?? resolved;
 }
 
 export class PreviewStore {
@@ -83,15 +91,31 @@ export class PreviewStore {
    * `syncFromUrl()` re-reads when back/forward navigation fires `popstate`.
    */
   #isFocusMode = $state<boolean>(false);
-  #theme = $state<ThemeChoice>('system');
-  #background = $state<BackgroundChoice>('surface');
+  /**
+   * The explicit theme override, or `null` when the user has made no choice and
+   * the playground should follow the browser. `#browserPrefersDark` tracks the
+   * live `prefers-color-scheme` so the resolved {@link theme} updates the moment
+   * the OS setting flips while no override is active.
+   */
+  #override = $state<ThemeChoice | null>(null);
+  // Fallback `false` keeps the resolved theme deterministic on the server (where
+  // there's no `matchMedia`): with no override the playground resolves to light
+  // until the client hydrates and the real preference takes over.
+  #browserPrefersDark = new MediaQuery('(prefers-color-scheme: dark)', false);
   #previewWidth = $state<number | null>(null);
+
+  /**
+   * Narrow-viewport sidebar drawer state. Pure shell-local UI: it is never
+   * serialized to the URL (a drawer that reopens on reload is annoying, not
+   * shareable) and never crosses the iframe boundary, so its setter does NOT
+   * write the URL. On wide viewports the CSS ignores it entirely.
+   */
+  isSidebarOpen = $state<boolean>(false);
 
   constructor(initialComponent: string, initialState: Partial<ToolbarSearchState> = {}) {
     this.currentComponent = initialComponent;
     this.#isFocusMode = initialState.isFocusMode ?? false;
-    this.#theme = initialState.theme ?? 'system';
-    this.#background = initialState.background ?? 'surface';
+    this.#override = initialState.theme ?? null;
     this.#previewWidth = initialState.previewWidth ?? null;
   }
 
@@ -103,16 +127,27 @@ export class PreviewStore {
     this.#writeUrl();
   }
 
+  /**
+   * The resolved theme actually in effect — always a concrete `light` or
+   * `dark`. Equals the override when one is set; otherwise it tracks the live
+   * browser `prefers-color-scheme`. This is the value the toolbar's segmented
+   * control highlights and the iframe sync sends across the postMessage bridge.
+   */
   get theme(): ThemeChoice {
-    return this.#theme;
+    return this.#override ?? this.#resolvedBrowserTheme();
   }
 
-  get background(): BackgroundChoice {
-    return this.#background;
+  /**
+   * The explicit override, or `null` when following the browser. Distinct from
+   * {@link theme}, which always resolves to a concrete light/dark value.
+   */
+  get themeOverride(): ThemeChoice | null {
+    return this.#override;
   }
-  set background(value: BackgroundChoice) {
-    this.#background = value;
-    this.#writeUrl();
+
+  /** Map the live `prefers-color-scheme` media query to a concrete theme. */
+  #resolvedBrowserTheme(): ThemeChoice {
+    return this.#browserPrefersDark.current ? 'dark' : 'light';
   }
 
   /** null = full / unconstrained width. Number = pixel width applied to the iframe. */
@@ -125,48 +160,55 @@ export class PreviewStore {
   }
 
   /**
-   * Update the theme. Writes to the URL (so it's shareable) and to
-   * localStorage (so the next visit without a `theme=` param picks up the
-   * user's preference) and applies the new color-scheme to the shell
-   * document. Use this — never assign `store.theme` directly.
+   * Set an explicit theme override. Writes to the URL (so it's shareable) and
+   * to localStorage (so the next visit without a `theme=` param picks up the
+   * user's choice) and applies the new color-scheme to the shell document. Use
+   * this — never assign `store.theme` directly. Once an override is set it wins
+   * over the browser's `prefers-color-scheme`.
    */
   setTheme(value: ThemeChoice): void {
     if (!THEME_VALUES.has(value)) return;
-    this.#theme = value;
+    this.#override = value;
     writePersistedTheme(value);
-    if (typeof document !== 'undefined') applyThemeToDocument(document, value);
+    if (typeof document !== 'undefined') {
+      applyThemeToDocument(document, this.#override, this.#resolvedBrowserTheme());
+    }
     this.#writeUrl();
   }
 
   /**
    * Re-seed every toolbar cell from the current URL. Called by the SPA on
-   * `popstate` so back/forward navigation updates the UI. Theme falls back
-   * to localStorage when the URL has no `theme=` param.
+   * `popstate` so back/forward navigation updates the UI. The theme override
+   * falls back to localStorage when the URL has no `theme=` param; when neither
+   * carries an override the playground follows the browser preference.
    */
   syncFromUrl(): void {
     if (typeof window === 'undefined') return;
     const search = new URL(window.location.href).searchParams;
     this.#isFocusMode = readFocusModeFromSearch(search);
-    this.#background = readBackgroundFromSearch(search);
     this.#previewWidth = readPreviewWidthFromSearch(search);
-    const explicitTheme = readThemeFromSearch(search);
-    const nextTheme = explicitTheme ?? readPersistedTheme();
-    if (nextTheme !== this.#theme) {
-      this.#theme = nextTheme;
-      if (typeof document !== 'undefined') applyThemeToDocument(document, nextTheme);
+    // Dismiss the narrow-viewport drawer on every URL sync (browser back/forward).
+    // If the user had the drawer open and navigated away (or landed on ?focus=1
+    // via history), the scrim + inert state must not persist into the new URL.
+    this.isSidebarOpen = false;
+    const nextOverride = readThemeFromSearch(search) ?? readPersistedTheme();
+    if (nextOverride !== this.#override) {
+      this.#override = nextOverride;
+      if (typeof document !== 'undefined') {
+        applyThemeToDocument(document, this.#override, this.#resolvedBrowserTheme());
+      }
     }
   }
 
   /**
-   * Snapshot of the toolbar state that gets serialized to the URL. Theme
-   * is only emitted when it has been set explicitly (i.e. non-`system`) so
-   * a default URL stays clean.
+   * Snapshot of the toolbar state that gets serialized to the URL. The theme
+   * is only emitted when an explicit override has been set; with no override a
+   * default URL stays clean and the playground follows the browser.
    */
   #snapshot(): ToolbarSearchState {
     return {
       isFocusMode: this.#isFocusMode,
-      theme: this.#theme,
-      background: this.#background,
+      theme: this.#override,
       previewWidth: this.#previewWidth,
     };
   }

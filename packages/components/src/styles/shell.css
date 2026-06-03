@@ -12,4 +12,9 @@
 @import '../components/number-input/number-input.css';
 @import '../components/segmented-control/segmented-control.css';
 @import '../components/side-navigation/side-navigation.css';
+/* side-navigation.css intentionally carries no per-item styling — the row
+   appearance (text-decoration:none, padding, colors, active indicator) lives in
+   navigation-item.css. Without this import the sidebar links fall back to bare
+   underlined anchors. */
+@import '../components/navigation-item/navigation-item.css';
 @import '../components/toolbar/toolbar.css';

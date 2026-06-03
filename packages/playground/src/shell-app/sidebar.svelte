@@ -16,16 +16,28 @@
     VisuallyHidden,
   } from '../../../components/src/index.ts';
   import { humanizeComponentName } from './humanize.ts';
-  import { buildShellHref } from './routing.ts';
+  import { buildShellHref, parseComponentFromPath } from './routing.ts';
   import { persistScrollPosition } from './sidebar-scroll.ts';
 
   type Props = {
     components: string[];
     currentComponent: string;
     onSelect: (componentName: string) => void;
+    /**
+     * Narrow-viewport drawer state. On wide viewports the sidebar is always in
+     * view and this is ignored; below the breakpoint the column slides off
+     * canvas unless `isOpen` is true.
+     */
+    isOpen?: boolean;
+    /**
+     * Dismiss the narrow-viewport drawer. Wired to the in-drawer close button so
+     * pointer users have an explicit close affordance (the hamburger is covered
+     * by the open drawer).
+     */
+    onClose?: () => void;
   };
 
-  let { components, currentComponent, onSelect }: Props = $props();
+  let { components, currentComponent, onSelect, isOpen = false, onClose }: Props = $props();
 
   let filter = $state('');
 
@@ -59,15 +71,56 @@
     `${visibleComponents.length} component${visibleComponents.length === 1 ? '' : 's'} shown`,
   );
 
+  // A "plain" left-click is the only gesture we hijack for SPA navigation.
+  // Modified clicks (cmd/ctrl/shift/alt) and middle-clicks fall through to
+  // native browser behavior so open-in-new-tab, "Copy Link Address", and
+  // status-bar URL preview all keep working like regular anchor semantics.
+  function isPlainLeftClick(event: MouseEvent): boolean {
+    if (event.button !== 0) return false;
+    return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey);
+  }
+
   function handleClick(event: MouseEvent, componentName: string): void {
-    // Only intercept plain left-clicks. Modified clicks (cmd/ctrl/shift/alt)
-    // and middle-clicks fall through to native browser navigation so
-    // open-in-new-tab, "Copy Link Address", and status-bar URL preview all
-    // continue to work like regular anchor semantics.
-    if (event.button !== 0) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!isPlainLeftClick(event)) return;
+    // Belt-and-suspenders: the capture-phase handler below normally fires first
+    // and has already preventDefaulted + routed this exact click. Bailing on an
+    // already-handled event keeps onSelect from firing twice (which would push a
+    // duplicate history entry). If the capture handler somehow didn't run, this
+    // bubble-phase path still selects — so the SPA navigation never silently
+    // falls through to a native page load.
+    if (event.defaultPrevented) return;
     event.preventDefault();
     onSelect(componentName);
+  }
+
+  // Capture-phase delegation on the nav container. This is the GUARANTEE that a
+  // plain left-click never triggers the default anchor navigation (which would
+  // be a full page load to `/c/<name>` — a route the SPA owns but the static
+  // server does not, landing the user on a "page that doesn't exist").
+  //
+  // The per-item `onclick` below forwards through cinder's NavigationItem and
+  // already calls preventDefault, but it runs in the BUBBLE phase and depends on
+  // that component's internal handler ordering. By intercepting in the CAPTURE
+  // phase on the wrapping <nav>, we preventDefault and route through onSelect
+  // before the anchor's own handler ever runs — independent of any inner
+  // component behavior. The component name is parsed from the anchor's
+  // `/c/<name>` href so this covers every item without per-row wiring.
+  function interceptNavClicks(nav: HTMLElement) {
+    function onCapturedClick(event: MouseEvent): void {
+      if (!isPlainLeftClick(event)) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest('a[href]');
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      const componentName = parseComponentFromPath(anchor.getAttribute('href') ?? '');
+      if (componentName === null) return;
+      event.preventDefault();
+      onSelect(componentName);
+    }
+    nav.addEventListener('click', onCapturedClick, { capture: true });
+    return () => {
+      nav.removeEventListener('click', onCapturedClick, { capture: true });
+    };
   }
 
   function handleFilterKeydown(event: KeyboardEvent): void {
@@ -89,7 +142,12 @@
   toolbar controls. The height and top values reference the shared
   --cinder-top-bar-height token, declared once on :root by render-shell.ts.
 -->
-<div class="sidebar-chrome" {@attach persistScrollPosition}>
+<div
+  id="sidebar-drawer"
+  class="sidebar-chrome"
+  class:is-open={isOpen}
+  {@attach persistScrollPosition}
+>
   <div class="sidebar-filter">
     <Input
       id={FILTER_INPUT_ID}
@@ -102,8 +160,14 @@
       spellcheck={false}
       onkeydown={handleFilterKeydown}
     />
+    <!-- Close affordance for the narrow-viewport drawer. Hidden on wide
+         viewports (CSS) where the sidebar is always in view. The open drawer
+         covers the top bar's hamburger, so this is the in-drawer dismiss. -->
+    <button type="button" class="sidebar-close" aria-label="Close component list" onclick={onClose}>
+      <span aria-hidden="true">✕</span>
+    </button>
   </div>
-  <SideNavigation ariaLabel="Components">
+  <SideNavigation ariaLabel="Components" {@attach interceptNavClicks}>
     {#each visibleComponents as name (name)}
       <SideNavigationItem
         href={buildShellHref(name)}
@@ -144,15 +208,66 @@
     /* stylelint-disable-next-line csstools/use-logical */
     border-right: 1px solid var(--cinder-border);
     overflow-y: auto;
+    /* Above the preview/main content so the off-canvas drawer (narrow
+       viewports) overlays it rather than being clipped behind. */
+    z-index: 9;
   }
 
   .sidebar-filter {
     position: sticky;
     top: 0;
     z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2, 0.5rem);
     padding: var(--cinder-space-2, 0.5rem);
     background: var(--cinder-surface);
     border-bottom: 1px solid var(--cinder-border);
+  }
+
+  .sidebar-filter :global(.cinder-input-field) {
+    flex: 1;
+    /* stylelint-disable-next-line csstools/use-logical */
+    min-width: 0;
+  }
+
+  /* Close button is drawer-only; hidden until the narrow breakpoint reveals it. */
+  .sidebar-close {
+    display: none;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    /* 44px square — meets the WCAG 2.5.5 pointer target size for this
+       phone-only control. */
+    /* stylelint-disable-next-line csstools/use-logical */
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: none;
+    border-radius: var(--cinder-radius-sm, 0.25rem);
+    background: transparent;
+    color: var(--cinder-text);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  @media (hover: hover) {
+    .sidebar-close:hover {
+      background: var(--cinder-surface-hover, var(--cinder-surface-inset));
+    }
+  }
+
+  /*
+   * The cinder navigation-item styling (padding, muted color, no underline,
+   * inline-start active indicator, focus ring) comes from navigation-item.css,
+   * which the shell stylesheet now imports. We only add a small list inset so
+   * the rows don't sit flush against the column edge.
+   */
+  .sidebar-chrome :global(.cinder-side-navigation__list) {
+    padding-block: var(--cinder-space-1, 0.25rem);
+    padding-inline: var(--cinder-space-1, 0.25rem);
+    gap: 0;
   }
 
   .sidebar-empty {
@@ -160,5 +275,72 @@
     padding: var(--cinder-space-3, 0.75rem) var(--cinder-space-2, 0.5rem);
     color: var(--cinder-text-muted, var(--cinder-text));
     font-size: var(--cinder-text-sm, 0.875rem);
+  }
+
+  /*
+   * Off-canvas drawer for narrow viewports. The shell adds `is-open` when the
+   * top bar's menu button toggles it; otherwise the column slides out of view
+   * to the inline-start edge. Above the wide breakpoint the transform/visibility
+   * rules are inert (the column is statically in-flow via the fixed anchor).
+   */
+  @media (max-width: 720px) {
+    .sidebar-chrome {
+      /* Full top-to-bottom so the drawer covers the viewport height. dvh (not
+         vh) so the bottom of the scrollable list isn't hidden behind mobile
+         browser chrome — matches cinder's drawer/sheet/modal convention. A hair
+         wider for comfortable reading on a phone. */
+      height: 100dvh;
+      top: 0;
+      /* stylelint-disable-next-line csstools/use-logical */
+      width: min(85vw, 280px);
+      /* stylelint-disable-next-line csstools/use-logical */
+      min-width: min(85vw, 280px);
+      z-index: 20;
+      transform: translateX(-100%);
+      transition:
+        transform 0.2s ease,
+        visibility 0.2s;
+      box-shadow: var(--cinder-shadow-lg, 0 10px 25px rgb(0 0 0 / 25%));
+      /* Closed drawer is removed from the a11y tree and Tab order — a purely
+         off-canvas transform leaves its filter input and nav links focusable
+         (a keyboard user would land on invisible controls), contradicting the
+         toggle's aria-expanded="false". visibility:hidden is animatable so the
+         slide-out still plays before the panel goes inert. */
+      visibility: hidden;
+    }
+
+    .sidebar-chrome.is-open {
+      transform: translateX(0);
+      visibility: visible;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sidebar-chrome {
+        transition: none;
+      }
+    }
+
+    /* On a phone the drawer floats over the top bar too, so re-create the
+       filter's offset from the very top of the viewport. */
+    .sidebar-filter {
+      padding-block-start: var(--cinder-space-3, 0.75rem);
+    }
+
+    .sidebar-close {
+      display: inline-flex;
+    }
+
+    /* Restore comfortable touch targets in the drawer. The compact desktop
+       density (min-height:0, 4px padding) makes ~32px rows that are too small
+       and too tightly packed for a finger; give phone users a 44px row
+       (WCAG 2.5.5) with real vertical breathing room. */
+    .sidebar-chrome :global(.cinder-side-navigation__list) {
+      gap: var(--cinder-space-1, 0.25rem);
+    }
+
+    .sidebar-chrome :global(.cinder-navigation-item) {
+      min-height: 2.75rem;
+      padding-block: var(--cinder-space-2, 0.5rem);
+    }
   }
 </style>

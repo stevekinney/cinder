@@ -11,7 +11,7 @@ const schema = {
       type: 'boolean',
     },
     type: {
-      enum: ['date', 'email', 'password', 'search', 'tel', 'text', 'url'],
+      enum: ['number', 'date', 'email', 'password', 'search', 'tel', 'text', 'url'],
     },
     id: {
       type: 'string',

@@ -1,3 +1,4 @@
+import './toast-region.css';
 import ToastRegion from './toast-region.svelte';
 
 export default ToastRegion;

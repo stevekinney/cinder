@@ -1,3 +1,4 @@
+import './rating.css';
 import Rating from './rating.svelte';
 
 export default Rating;

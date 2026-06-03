@@ -59,29 +59,20 @@
     if (message !== null) postToFrame(message);
   }
 
-  function syncBackground(): void {
-    const message = createPreviewMessage('cinder:set-background', store.background);
-    if (message !== null) postToFrame(message);
-  }
-
-  // Reactive: theme/background changes push to the iframe immediately.
+  // Reactive: theme changes push to the iframe immediately.
   $effect(() => {
     syncTheme();
-  });
-  $effect(() => {
-    syncBackground();
   });
 
   function handleLoad(): void {
     // The new document has painted — mark this src loaded so `loading` derives
     // to false and the overlay lifts.
     loadedSrc = src;
-    // Replay the current theme + background after a fresh iframe load. The
-    // iframe's inline pre-paint script already reads localStorage for theme,
-    // but background is session-only and lives in the shell — we need to
-    // sync it after each navigation/reload.
+    // Replay the current theme after a fresh iframe load. The iframe's inline
+    // pre-paint script reads localStorage for theme, but a shell-driven choice
+    // (e.g. light/dark toggled this session) must be re-pushed after each
+    // navigation/reload.
     syncTheme();
-    syncBackground();
   }
 
   /**

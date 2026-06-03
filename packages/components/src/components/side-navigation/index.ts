@@ -1,5 +1,6 @@
 import SideNavigationGroup from '../side-navigation-group/side-navigation-group.svelte';
 import SideNavigationItem from '../side-navigation-item/side-navigation-item.svelte';
+import './side-navigation.css';
 import SideNavigationRoot from './side-navigation.svelte';
 
 /**

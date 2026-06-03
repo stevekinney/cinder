@@ -10,7 +10,6 @@
   import { CodeBlock } from 'cinder/code-block';
   import { Skeleton } from 'cinder/skeleton';
   import { Table } from 'cinder/table';
-  import { shikiHighlighter } from 'cinder/highlighters/shiki';
   import {
     formatErrorForClipboard,
     toMountErrorDetail,
@@ -19,6 +18,7 @@
   } from './example-error.ts';
   import {
     fetchComponentManifest,
+    splitUnionType,
     toPropReferenceRows,
     type PropReferenceRow,
   } from './manifest-reference.ts';
@@ -36,15 +36,6 @@
   }
 
   const examples: CinderExampleDescriptor[] = readExamples();
-
-  // A page-scoped `shikiHighlighter` instance passed to the "View source"
-  // CodeBlock below so its Svelte source renders highlighted with the
-  // playground's `github-light` theme (rather than CodeBlock's bundled
-  // default dual-theme). Use the bundled adapter so this file matches the
-  // documented consumer pattern (lazy `import('shiki')` on first highlight,
-  // shared fallback contract, warn-once behavior) instead of pulling Shiki
-  // into the playground entry chunk via a top-level `codeToHtml` import.
-  const highlighter = shikiHighlighter({ theme: 'github-light' });
 
   // Extract the component name from the current URL path: /page/<name>
   const componentName: string =
@@ -195,8 +186,6 @@
   let propRows: PropReferenceRow[] = $state([]);
   let propsLoading = $state(true);
   let propsError: string | null = $state(null);
-  // Collapsed by default; the panel sits below the examples and opens on demand.
-  let propsExpandedIds: string[] = $state([]);
 
   // The skeleton placeholder rows give the table a stable shape while the
   // request is in flight.
@@ -294,7 +283,11 @@
                 </Callout>
               </div>
             {:else if source !== undefined}
-              <CodeBlock code={source} language="svelte" {highlighter} copyable />
+              <!-- No explicit highlighter: CodeBlock's bundled default is
+                   dual-theme (github-light / github-dark) and swaps on the
+                   iframe's [data-cinder-theme] signal, so source stays readable
+                   in dark mode. -->
+              <CodeBlock code={source} language="svelte" copyable />
             {/if}
           </AccordionItem>
         </Accordion>
@@ -303,87 +296,107 @@
   {/each}
 </div>
 
-<!-- Props / API reference. Mirrors the source-accordion visual language:
-       a Card wrapping an Accordion whose single item holds the props table.
-       The wrapper div is owned by this file so its margin selector stays
-       scoped (a class forwarded onto <Card> reads as unused here). -->
-<div class="props-section">
-  <Card title="Props">
-    <Accordion bind:expandedIds={propsExpandedIds}>
-      <AccordionItem id="props" title="API reference">
-        {#if propsLoading}
-          <div class="props-skeleton" aria-hidden="true">
-            {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
-              <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
-            {/each}
-          </div>
-        {:else if propsError !== null}
-          <p class="props-error">Could not load props: {propsError}</p>
-        {:else if propRows.length === 0}
-          <p class="props-empty">This component has no documented props.</p>
-        {:else}
-          <div class="props-table-scroll">
-            <Table caption={`Props for ${componentName}`} density="condensed">
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell scope="col">Name</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Type</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Default</Table.HeaderCell>
-                  <Table.HeaderCell scope="col" align="center">Required</Table.HeaderCell>
-                  <Table.HeaderCell scope="col" align="center">Bindable</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Description</Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {#each propRows as prop (prop.name)}
-                  <Table.Row>
-                    <Table.Cell>
-                      <code class="props-name">{prop.name}</code>
-                      {#if prop.required}
-                        <span class="props-required-marker" aria-hidden="true">*</span>
-                      {/if}
-                    </Table.Cell>
-                    <Table.Cell>
-                      <code class="props-type">{prop.type}</code>
-                    </Table.Cell>
-                    <Table.Cell>
-                      {#if prop.defaultValue !== undefined}
-                        <code class="props-default">{prop.defaultValue}</code>
-                      {:else}
-                        <span class="props-dash" aria-hidden="true">—</span>
-                      {/if}
-                    </Table.Cell>
-                    <Table.Cell align="center">
-                      {#if prop.required}
-                        <Badge variant="danger" size="xs">Required</Badge>
-                      {:else}
-                        <span class="props-dash" aria-hidden="true">—</span>
-                      {/if}
-                    </Table.Cell>
-                    <Table.Cell align="center">
-                      {#if prop.bindable}
-                        <Badge variant="info" size="xs">bind:</Badge>
-                      {:else}
-                        <span class="props-dash" aria-hidden="true">—</span>
-                      {/if}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {#if prop.description !== undefined}
-                        <span class="props-description">{prop.description}</span>
-                      {:else}
-                        <span class="props-dash" aria-hidden="true">—</span>
-                      {/if}
-                    </Table.Cell>
-                  </Table.Row>
-                {/each}
-              </Table.Body>
-            </Table>
-          </div>
-        {/if}
-      </AccordionItem>
-    </Accordion>
-  </Card>
-</div>
+<!-- Props / API reference. Rendered inline and always-expanded: the props
+       table is the reference users come here for, so it sits open as a plain
+       titled section rather than buried inside a collapsed Card→Accordion. The
+       wrapper <section> is owned by this file so its scoped selectors apply. -->
+<!-- Heading level is h3 to match the example Card titles (cinder Card renders
+     its title as <h3>), keeping the iframe document's heading outline ordered
+     rather than inverting to a higher level after the example cards. -->
+<section class="props-section" aria-labelledby="props-heading">
+  <h3 id="props-heading" class="props-heading">API reference</h3>
+  {#if propsLoading}
+    <div class="props-skeleton" aria-hidden="true">
+      {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
+        <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
+      {/each}
+    </div>
+  {:else if propsError !== null}
+    <p class="props-error">Could not load props: {propsError}</p>
+  {:else if propRows.length === 0}
+    <p class="props-empty">This component has no documented props.</p>
+  {:else}
+    <!-- tabindex="0" makes the scrollable region keyboard-accessible (axe
+         scrollable-region-focusable / WCAG 2.1.1) — at narrow widths the wide
+         props table can overflow horizontally and must be reachable by keyboard. -->
+    <div class="props-table-scroll" tabindex="0">
+      <Table caption={`Props for ${componentName}`} density="condensed">
+        <Table.Header>
+          <Table.Row>
+            <Table.HeaderCell scope="col">Name</Table.HeaderCell>
+            <Table.HeaderCell scope="col">Type</Table.HeaderCell>
+            <Table.HeaderCell scope="col">Default</Table.HeaderCell>
+            <Table.HeaderCell scope="col" align="center">Required</Table.HeaderCell>
+            <Table.HeaderCell scope="col" align="center">Bindable</Table.HeaderCell>
+            <Table.HeaderCell scope="col">Description</Table.HeaderCell>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {#each propRows as prop (prop.name)}
+            <Table.Row>
+              <Table.Cell>
+                <code class="props-name">{prop.name}</code>
+                {#if prop.required}
+                  <span class="props-required-gem" aria-hidden="true"></span>
+                {/if}
+              </Table.Cell>
+              <Table.Cell>
+                <!-- Render a union type as one member per line (split at the
+                     top-level ` | ` only) so long unions read as a clean list
+                     instead of wrapping mid-token. Members after the first carry
+                     a leading `|` so the union reading stays clear; a non-union
+                     type is a single line with no separator. -->
+                {@const typeMembers = splitUnionType(prop.type)}
+                <code class="props-type" class:props-type--union={typeMembers.length > 1}>
+                  {#each typeMembers as member, index (index)}
+                    <span class="props-type__member">
+                      {#if index > 0}<span class="props-type__sep" aria-hidden="true"
+                          >|
+                        </span>{/if}<span class="props-type__value">{member}</span>
+                    </span>
+                  {/each}
+                </code>
+              </Table.Cell>
+              <Table.Cell>
+                {#if prop.defaultValue !== undefined}
+                  <code class="props-default">{prop.defaultValue}</code>
+                {:else}
+                  <span class="props-dash" aria-hidden="true">—</span>
+                {/if}
+              </Table.Cell>
+              <Table.Cell align="center">
+                {#if prop.required}
+                  <!-- The little red gem matches the required-field indicator on
+                       cinder form fields (.cinder-form-field__required). It's
+                       purely decorative; the visually-hidden text carries the
+                       "Required" meaning to screen readers. -->
+                  <span class="props-required-gem" aria-hidden="true"></span>
+                  <span class="props-visually-hidden">Required</span>
+                {:else}
+                  <span class="props-dash" aria-hidden="true">—</span>
+                {/if}
+              </Table.Cell>
+              <Table.Cell align="center">
+                {#if prop.bindable}
+                  <Badge variant="info" size="xs">bind:</Badge>
+                {:else}
+                  <span class="props-dash" aria-hidden="true">—</span>
+                {/if}
+              </Table.Cell>
+              <Table.Cell>
+                {#if prop.description !== undefined}
+                  <span class="props-description">{prop.description}</span>
+                {:else}
+                  <span class="props-dash" aria-hidden="true">—</span>
+                {/if}
+              </Table.Cell>
+            </Table.Row>
+          {/each}
+        </Table.Body>
+      </Table>
+    </div>
+  {/if}
+</section>
 
 <style>
   .example-list {
@@ -399,7 +412,11 @@
   }
 
   .example-preview {
-    padding: var(--cinder-space-6);
+    /* Scale the inner preview gutter with the viewport so components aren't
+       boxed into a sliver on narrow screens — matches the iframe body's
+       responsive gutter. Floors at space-2 (8px) on phones; the body gutter is
+       already near-zero there, so the component gets almost the full width. */
+    padding: clamp(var(--cinder-space-2), 2vw, var(--cinder-space-6));
     min-height: 4rem;
     display: block;
     overflow: visible;
@@ -424,8 +441,7 @@
     gap: var(--cinder-space-4);
   }
 
-  .source-loading,
-  .source-error {
+  .source-loading {
     margin: 0;
     font-size: var(--cinder-text-sm);
     color: var(--cinder-text-subtle);
@@ -482,6 +498,32 @@
   /* --- Props / API reference panel ------------------------------------- */
   .props-section {
     margin-top: var(--cinder-space-8);
+    /* Establish a query container so the table responds to ITS OWN width (the
+       preview pane), not the viewport — the iframe is resized by the toolbar
+       independently of the device. */
+    container: props-section / inline-size;
+  }
+
+  .props-heading {
+    margin: 0 0 var(--cinder-space-4);
+    font-size: var(--cinder-text-lg);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+  }
+
+  /* The <h3> is the only visible heading. The <Table caption> stays in the DOM
+     so the table keeps an accessible name, but is visually hidden to avoid a
+     second, redundant "Props for <component>" heading. */
+  .props-section :global(.cinder-table__caption) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .props-skeleton {
@@ -491,9 +533,7 @@
     padding: var(--cinder-space-2) 0;
   }
 
-  /* The props table has six columns; the Type and Description columns can hold
-     long union strings. <Card> sets overflow: hidden, so give the table its own
-     horizontal scroll container to avoid clipping at narrow preview widths. */
+  /* Wide container: a normal horizontally-scrollable table. */
   .props-table-scroll {
     overflow-x: auto;
   }
@@ -517,10 +557,64 @@
     font-weight: var(--cinder-font-medium);
   }
 
-  .props-required-marker {
+  /* Union type: one member per line, no mid-token wrapping. Each member stays
+     intact; the separator pipe is decorative (real `|` punctuation is read by
+     screen readers from the cell text, so the visual one is aria-hidden). */
+  .props-type {
+    display: inline-flex;
+    flex-direction: column;
+    gap: var(--cinder-space-0-5, 0.125rem);
+    align-items: flex-start;
+  }
+
+  .props-type__member {
+    white-space: nowrap;
+  }
+
+  /* Hang the leading `|` of continuation lines in a small gutter so the member
+     values line up vertically under each other. */
+  .props-type--union .props-type__member {
+    padding-inline-start: 1ch;
+  }
+
+  .props-type__sep {
+    margin-inline-start: -1ch;
+    color: var(--cinder-text-subtle);
+  }
+
+  /* Required indicator — the same 6px red gem cinder renders for required form
+     fields (.cinder-form-field__required). Used both as the Name-column marker
+     (where the leading margin separates it from the prop name) and in the
+     centered Required column. It's decorative (aria-hidden); the "Required"
+     meaning is carried by adjacent visually-hidden text / the column header. */
+  .props-required-gem {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--cinder-danger);
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+
+  /* Only the Name-column gem trails the prop name and needs separating space;
+     the centered Required column shows the gem alone, so no leading margin. */
+  .props-name + .props-required-gem {
     margin-inline-start: var(--cinder-space-1);
-    color: var(--cinder-color-danger-fg);
-    font-weight: var(--cinder-font-semibold);
+  }
+
+  /* Standard visually-hidden helper: keeps the "Required" label in the
+     accessibility tree while only the gem is shown visually. */
+  .props-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .props-description {
@@ -530,5 +624,78 @@
 
   .props-dash {
     color: var(--cinder-text-subtle);
+  }
+
+  /*
+   * Narrow container (a constrained preview pane): a 6-column table can't fit,
+   * so stack each row into a labelled card. The column order is fixed (Name,
+   * Type, Default, Required, Bindable, Description), so each cell's header label
+   * is injected by nth-child via ::before — no per-cell attribute or change to
+   * the cinder Table component is needed. Table semantics (and the SR-only
+   * caption) stay intact; only `display` changes.
+   */
+  @container props-section (max-width: 34rem) {
+    .props-table-scroll {
+      overflow-x: visible;
+    }
+
+    .props-section :global(.cinder-table) {
+      display: block;
+      inline-size: 100%;
+    }
+
+    .props-section :global(.cinder-table thead) {
+      /* Column headers are reproduced as per-cell ::before labels below, so the
+         visual header row is hidden (kept in the a11y tree). */
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .props-section :global(.cinder-table tbody),
+    .props-section :global(.cinder-table tr) {
+      display: block;
+    }
+
+    .props-section :global(.cinder-table tr) {
+      padding-block: var(--cinder-space-3);
+      border-block-end: 1px solid var(--cinder-border);
+    }
+
+    .props-section :global(.cinder-table td) {
+      display: grid;
+      grid-template-columns: minmax(4.5rem, max-content) 1fr;
+      gap: var(--cinder-space-3);
+      padding-block: var(--cinder-space-1);
+      border: none;
+      /* Reset the centered alignment from the Required/Bindable columns. */
+      text-align: start;
+    }
+
+    .props-section :global(.cinder-table td)::before {
+      font-weight: var(--cinder-font-medium);
+      color: var(--cinder-text-subtle);
+    }
+
+    .props-section :global(.cinder-table td:nth-child(1))::before {
+      content: 'Name';
+    }
+    .props-section :global(.cinder-table td:nth-child(2))::before {
+      content: 'Type';
+    }
+    .props-section :global(.cinder-table td:nth-child(3))::before {
+      content: 'Default';
+    }
+    .props-section :global(.cinder-table td:nth-child(4))::before {
+      content: 'Required';
+    }
+    .props-section :global(.cinder-table td:nth-child(5))::before {
+      content: 'Bindable';
+    }
+    .props-section :global(.cinder-table td:nth-child(6))::before {
+      content: 'Description';
+    }
   }
 </style>

@@ -53,6 +53,63 @@ export function describeControlType(control: ControlKind): string {
 }
 
 /**
+ * Split a type string into its top-level union members so each can render on
+ * its own line instead of wrapping mid-token. Splits ONLY on ` | ` that sits
+ * outside any brackets AND outside a string literal, so a `|` inside a generic
+ * (`Map<string, A | B>`), object (`{ a: 1 | 2 }`), tuple, function-parameter
+ * list, or quoted member (`'yes | no'`) stays intact.
+ *
+ * Robust against malformed input (the `unknown` control kind carries an
+ * effectively-untrusted analyzer string): bracket depth is clamped at 0 so an
+ * unbalanced closing bracket can never drive it negative and suppress later
+ * top-level separators.
+ *
+ * A non-union type (or one whose only `|`s are nested) returns a single-member
+ * array, so the caller can treat every type uniformly.
+ *
+ * @param type - The display type string from {@link describeControlType}.
+ * @returns The union members, trimmed, in source order. Never empty.
+ */
+export function splitUnionType(type: string): string[] {
+  const members: string[] = [];
+  let depth = 0;
+  // The active string-literal delimiter (`'`, `"`, or `` ` ``), or null when
+  // outside a string. A `|` inside a string is never a separator.
+  let quote: string | null = null;
+  let current = '';
+  for (let index = 0; index < type.length; index += 1) {
+    const char = type[index];
+
+    if (quote !== null) {
+      // Inside a string: only the matching closing quote ends it. (Type display
+      // strings don't carry escaped quotes, so no escape handling is needed.)
+      if (char === quote) quote = null;
+      current += char;
+      continue;
+    }
+
+    if (char === "'" || char === '"' || char === '`') {
+      quote = char;
+    } else if (char === '<' || char === '(' || char === '[' || char === '{') {
+      depth += 1;
+    } else if (char === '>' || char === ')' || char === ']' || char === '}') {
+      // Clamp at 0 so an unbalanced close can't make depth negative and stop
+      // top-level separators from being recognized afterward.
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0 && char === '|' && type[index - 1] === ' ' && type[index + 1] === ' ') {
+      // A top-level union separator is " | " (pipe padded by spaces) at depth 0.
+      members.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  const last = current.trim();
+  if (last !== '') members.push(last);
+  return members.length > 0 ? members : [type.trim()];
+}
+
+/**
  * Render a prop's default value as compact source-ish text for the table.
  *
  * Strings are single-quoted, primitives are stringified, and structured values

@@ -14,22 +14,23 @@
  * terminate a script body in some parsers.
  */
 
+import { humanizeComponentName } from './shell-app/humanize.ts';
+
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
 
 /**
- * Self-contained favicon as a data URI: a rounded square in the cinder ember
- * orange with a lowercase "c". Inlined so every page has an icon without a
- * /favicon.svg route (which neither handleRequest nor vercel.json serves) and
- * therefore without a guaranteed 404 in devtools and server logs.
+ * Favicon: the brick (🧱) emoji rendered inline as an SVG data URI. Inlining
+ * (rather than pointing at fav.farm or any external/static-asset URL) keeps the
+ * playground fully self-contained — no third-party request on every page and
+ * iframe load, works offline and behind a strict CSP, and leaks no usage
+ * metadata. The emoji is the glyph the icon shows; the SVG is just the carrier.
  */
-const FAVICON_DATA_URI =
+export const FAVICON_HREF =
   'data:image/svg+xml,' +
   encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
-      '<rect width="32" height="32" rx="7" fill="#e8590c"/>' +
-      '<text x="16" y="23" font-family="system-ui,sans-serif" font-size="22" ' +
-      'font-weight="700" fill="#fff" text-anchor="middle">c</text>' +
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+      '<text x="50" y="52" font-size="80" text-anchor="middle" dominant-baseline="central">🧱</text>' +
       '</svg>',
   );
 
@@ -54,39 +55,52 @@ export function jsonForScriptTag(value: unknown): string {
 }
 
 /**
- * Inline script body that applies a persisted theme to `:root` before any
- * stylesheet or bundle runs. Same source of truth for both the shell scaffold
- * and the iframe page (`renderComponentPage`) so the localStorage key, the
- * try/catch policy, and the validation rules stay in sync. If you change the
+ * Inline script body that applies the persisted theme override to `:root`
+ * before any stylesheet or bundle runs. Same source of truth for both the shell
+ * scaffold and the iframe page (`renderComponentPage`) so the localStorage key,
+ * the try/catch policy, and the validation rules stay in sync. If you change the
  * theme storage key, change `THEME_STORAGE_KEY` in `preview-store.svelte.ts`
  * to match.
+ *
+ * The only persisted/shareable values are explicit overrides — `light` or
+ * `dark`. With no override the playground follows the browser's
+ * `prefers-color-scheme`: the inline `color-scheme` is left unset so the base
+ * `color-scheme: light dark` declaration governs, and `data-cinder-theme` is
+ * seeded with the resolved preference so the authoritative CSS signal still
+ * reflects the theme actually in effect.
  */
 export const PRE_PAINT_THEME_SCRIPT = `
       (function () {
-        var theme = 'system';
+        var override = null;
         // URL wins over localStorage — a shareable ?theme=dark link must
-        // paint dark even if this browser's stored preference is light.
+        // paint dark even if this browser's stored preference differs.
         try {
           var urlTheme = new URLSearchParams(window.location.search).get('theme');
-          if (urlTheme === 'light' || urlTheme === 'dark' || urlTheme === 'system') {
-            theme = urlTheme;
+          if (urlTheme === 'light' || urlTheme === 'dark') {
+            override = urlTheme;
           } else {
             var stored = localStorage.getItem('cinder-playground-theme');
-            if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
+            if (stored === 'light' || stored === 'dark') override = stored;
           }
         } catch (e) { /* ignore — localStorage unavailable in private mode etc. */ }
-        if (theme === 'light' || theme === 'dark') {
-          document.documentElement.style.colorScheme = theme;
+        if (override) {
+          // Explicit override wins over the OS setting.
+          document.documentElement.style.colorScheme = override;
+          document.documentElement.dataset.cinderTheme = override;
+        } else {
+          // No override: follow the browser. Leave color-scheme to the base
+          // 'color-scheme: light dark' declaration and seed data-cinder-theme
+          // with the resolved prefers-color-scheme so CSS reads the live theme.
+          var prefersDark =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.dataset.cinderTheme = prefersDark ? 'dark' : 'light';
         }
-        // data-cinder-theme is the authoritative theme-choice signal — read it
-        // from CSS instead of sniffing the inline color-scheme style. Reflects
-        // 'system' explicitly so CSS can branch on prefers-color-scheme.
-        document.documentElement.dataset.cinderTheme = theme;
       })();
     `;
 
 /** Escape a string for safe use in HTML text content and attribute values. */
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -129,13 +143,17 @@ export function renderShell(
 ): string {
   const baseUrl = (options.baseUrl ?? Bun.env['PLAYGROUND_BASE_URL'] ?? '').replace(/\/+$/, '');
 
+  // Human-friendly label for titles/descriptions (e.g. "Json Schema Editor"
+  // → "JSON Schema Editor"); the raw kebab name still drives routing/URLs.
+  const humanName = activeComponent ? humanizeComponentName(activeComponent) : '';
+
   const title = activeComponent
-    ? `cinder playground — ${escapeHtml(activeComponent)}`
-    : 'cinder playground';
+    ? `${escapeHtml(humanName)} — cinder playground`
+    : 'cinder playground — Svelte 5 component library';
 
   const description = activeComponent
-    ? `Explore the ${escapeHtml(activeComponent)} component in the cinder playground — live examples, props, and CSS variables.`
-    : 'Interactive component playground for cinder — a Svelte 5 accessible component library.';
+    ? `${escapeHtml(humanName)} component for cinder: live, interactive examples plus a full props/API reference. Toggle light and dark themes and preview responsive breakpoints.`
+    : 'Interactive component playground for cinder — an accessible, SSR-safe Svelte 5 component library. Browse live examples, props, and themes.';
 
   // Shell routes: `/c/<component>` for a specific component, `/` for the root.
   const path = activeComponent ? `/c/${encodeURIComponent(activeComponent)}` : '/';
@@ -157,11 +175,9 @@ export function renderShell(
     `<meta name="twitter:description" content="${description}" />`,
     imageUrl ? `<meta name="twitter:image" content="${imageUrl}" />` : '',
     canonicalUrl ? `<link rel="canonical" href="${canonicalUrl}" />` : '',
-    // Inline data-URI favicon: a self-contained SVG ember mark. Embedding it
-    // avoids a guaranteed 404 on every page (there is no /favicon.svg route in
-    // handleRequest or rewrite in vercel.json) without adding a static asset
-    // pipeline. Swap for a shipped /favicon.svg if a richer icon is ever wanted.
-    `<link rel="icon" href="${FAVICON_DATA_URI}" />`,
+    // Self-contained data-URI brick (🧱) favicon — see FAVICON_HREF. No
+    // external request and no /favicon.svg route (which would 404).
+    `<link rel="icon" href="${FAVICON_HREF}" />`,
   ]
     .filter(Boolean)
     .join('\n    ');

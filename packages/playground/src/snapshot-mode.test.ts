@@ -59,11 +59,11 @@ describe('isSnapshotMode', () => {
   });
 
   it('ignores other params and still returns true when snapshot=1 is present', () => {
-    expect(isSnapshotMode(new URLSearchParams('theme=dark&snapshot=1&bg=checker'))).toBe(true);
+    expect(isSnapshotMode(new URLSearchParams('theme=dark&snapshot=1&w=375'))).toBe(true);
   });
 
   it('ignores other params and still returns false when snapshot is absent', () => {
-    expect(isSnapshotMode(new URLSearchParams('theme=dark&bg=checker'))).toBe(false);
+    expect(isSnapshotMode(new URLSearchParams('theme=dark&w=375'))).toBe(false);
   });
 });
 

@@ -1,3 +1,4 @@
+import './avatar.css';
 import Avatar from './avatar.svelte';
 
 export default Avatar;

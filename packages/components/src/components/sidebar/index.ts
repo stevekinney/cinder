@@ -1,3 +1,4 @@
+import './sidebar.css';
 import Sidebar from './sidebar.svelte';
 
 export default Sidebar;

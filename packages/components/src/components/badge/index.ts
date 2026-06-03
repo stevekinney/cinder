@@ -1,3 +1,4 @@
+import './badge.css';
 import Badge from './badge.svelte';
 
 export default Badge;

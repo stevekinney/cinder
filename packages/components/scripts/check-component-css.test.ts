@@ -6,16 +6,27 @@ import {
   COMPONENT_LAYER_NAME,
   formatViolation,
   isSingleComponentLayer,
+  LAYER_ORDER_PRELUDE,
 } from './check-component-css.ts';
 
 const fakePath = '/virtual/test/component.css';
 
 /**
- * Wrap a fragment of component CSS in the required
- * `@layer cinder.components { … }` sidecar wrapper. The layer assignment is now
- * intrinsic to the file, so every valid sidecar must carry it.
+ * Wrap a fragment of component CSS in a complete, valid sidecar: the
+ * `@layer` order-declaration prelude as line 1, then the required
+ * `@layer cinder.components { … }` wrapper. Both are now intrinsic to every
+ * sidecar, so a valid fixture must carry both.
  */
 function layered(inner: string): string {
+  return `${LAYER_ORDER_PRELUDE}\n@layer cinder.components {\n${inner}\n}`;
+}
+
+/**
+ * Wrap a fragment in the component-layer block only, WITHOUT the order prelude.
+ * Used by the prelude-requirement tests, where the missing prelude is the
+ * point.
+ */
+function layeredWithoutPrelude(inner: string): string {
   return `@layer cinder.components {\n${inner}\n}`;
 }
 
@@ -36,7 +47,7 @@ describe('checkComponentCssSource', () => {
     expect(checkComponentCssSource(source, fakePath)).toEqual([]);
   });
 
-  it('allows leading comments before the layer wrapper', () => {
+  it('allows leading comments before the order prelude', () => {
     const source = `/* license header */\n${layered(`.cinder-button { color: red; }`)}`;
     expect(checkComponentCssSource(source, fakePath)).toEqual([]);
   });
@@ -115,24 +126,41 @@ describe('checkComponentCssSource', () => {
   });
 
   it('requires the @layer cinder.components wrapper — bare rules fail', () => {
-    const source = `.cinder-button { color: red; }`;
+    const source = `${LAYER_ORDER_PRELUDE}\n.cinder-button { color: red; }`;
     const violations = checkComponentCssSource(source, fakePath);
     expect(violations).toHaveLength(1);
     expect(violations[0]?.message).toContain('@layer cinder.components');
   });
 
   it('rejects a wrapper with the wrong layer name', () => {
-    const source = `@layer components { .cinder-button { color: red; } }`;
+    const source = `${LAYER_ORDER_PRELUDE}\n@layer components { .cinder-button { color: red; } }`;
     const violations = checkComponentCssSource(source, fakePath);
     expect(violations.length).toBeGreaterThanOrEqual(1);
-    expect(violations[0]?.message).toContain('@layer cinder.components');
+    expect(violations.some((v) => v.message.includes('@layer cinder.components'))).toBe(true);
   });
 
   it('rejects rules sitting outside the layer wrapper', () => {
     const source = `${layered(`.cinder-button { color: red; }`)}\n.cinder-leaked { color: blue; }`;
     const violations = checkComponentCssSource(source, fakePath);
     expect(violations.length).toBeGreaterThanOrEqual(1);
-    expect(violations[0]?.message).toContain('@layer cinder.components');
+    expect(violations.some((v) => v.message.includes('@layer cinder.components'))).toBe(true);
+  });
+
+  it('requires the cascade-layer order prelude as line 1', () => {
+    const source = layeredWithoutPrelude(`.cinder-button { color: red; }`);
+    const violations = checkComponentCssSource(source, fakePath);
+    expect(violations.some((v) => v.message.includes('order prelude'))).toBe(true);
+  });
+
+  it('rejects a sidecar where the prelude is not the first node', () => {
+    const source = `@import '../tab/tab.css';\n${LAYER_ORDER_PRELUDE}\n@layer cinder.components { .cinder-tabs {} }`;
+    const violations = checkComponentCssSource(source, fakePath);
+    expect(violations.some((v) => v.message.includes('must be the FIRST line'))).toBe(true);
+  });
+
+  it('accepts the prelude before sibling-leaf imports and the wrapper', () => {
+    const source = `${LAYER_ORDER_PRELUDE}\n@import '../tab/tab.css';\n@layer cinder.components { .cinder-tabs { display: flex; } }`;
+    expect(checkComponentCssSource(source, fakePath)).toEqual([]);
   });
 
   it('rejects @import at-rules', () => {
@@ -142,18 +170,18 @@ describe('checkComponentCssSource', () => {
   });
 
   it('allows leading sibling-leaf @import for compound-parent family aggregation', () => {
-    const source = `@import '../tab/tab.css';\n@import '../tab-list/tab-list.css';\n${layered(`.cinder-tabs { display: flex; }`)}`;
+    const source = `${LAYER_ORDER_PRELUDE}\n@import '../tab/tab.css';\n@import '../tab-list/tab-list.css';\n@layer cinder.components { .cinder-tabs { display: flex; } }`;
     expect(checkComponentCssSource(source, fakePath)).toEqual([]);
   });
 
   it('rejects a non-sibling-leaf @import (mismatched dir/basename)', () => {
-    const source = `@import '../tab/other.css';\n${layered(`.cinder-tabs { display: flex; }`)}`;
+    const source = `${LAYER_ORDER_PRELUDE}\n@import '../tab/other.css';\n@layer cinder.components { .cinder-tabs { display: flex; } }`;
     const violations = checkComponentCssSource(source, fakePath);
     expect(violations.some((v) => v.message.includes('@import'))).toBe(true);
   });
 
   it('rejects a bare-specifier @import even when shaped like a leaf', () => {
-    const source = `@import 'tab/tab.css';\n${layered(`.cinder-tabs {}`)}`;
+    const source = `${LAYER_ORDER_PRELUDE}\n@import 'tab/tab.css';\n@layer cinder.components { .cinder-tabs {} }`;
     const violations = checkComponentCssSource(source, fakePath);
     expect(violations.some((v) => v.message.includes('@import'))).toBe(true);
   });
@@ -215,21 +243,21 @@ describe('checkComponentCssSource', () => {
 });
 
 describe('isSingleComponentLayer', () => {
-  it('accepts a single cinder.components block wrapper', () => {
+  it('accepts the order prelude plus a single cinder.components block wrapper', () => {
     expect(isSingleComponentLayer(parse(layered(`.cinder-x { color: red; }`)))).toBe(true);
   });
 
-  it('accepts leading comments before the wrapper', () => {
+  it('accepts leading comments before the prelude', () => {
     expect(
       isSingleComponentLayer(parse(`/* header */\n${layered(`.cinder-x { color: red; }`)}`)),
     ).toBe(true);
   });
 
-  it('accepts leading sibling-leaf @import statements before the wrapper', () => {
+  it('accepts the prelude before sibling-leaf @import statements and the wrapper', () => {
     expect(
       isSingleComponentLayer(
         parse(
-          `@import '../tab/tab.css';\n@import '../tab-list/tab-list.css';\n${layered(`.cinder-tabs {}`)}`,
+          `${LAYER_ORDER_PRELUDE}\n@import '../tab/tab.css';\n@import '../tab-list/tab-list.css';\n@layer cinder.components { .cinder-tabs {} }`,
         ),
       ),
     ).toBe(true);
@@ -237,7 +265,11 @@ describe('isSingleComponentLayer', () => {
 
   it('rejects a non-sibling-leaf @import outside the wrapper', () => {
     expect(
-      isSingleComponentLayer(parse(`@import './tokens.css';\n${layered(`.cinder-x {}`)}`)),
+      isSingleComponentLayer(
+        parse(
+          `${LAYER_ORDER_PRELUDE}\n@import './tokens.css';\n@layer cinder.components { .cinder-x {} }`,
+        ),
+      ),
     ).toBe(false);
   });
 
@@ -268,7 +300,14 @@ describe('formatViolation', () => {
   });
 
   it('renders location + message for a wrapper violation (no selector)', () => {
-    const [violation] = checkComponentCssSource(`.cinder-x { color: red; }`, fakePath);
+    // A prelude-bearing fragment with no `@layer cinder.components` wrapper
+    // yields exactly the wrapper violation (no selector), isolating it from the
+    // missing-prelude violation.
+    const violations = checkComponentCssSource(
+      `${LAYER_ORDER_PRELUDE}\n.cinder-x { color: red; }`,
+      fakePath,
+    );
+    const violation = violations.find((v) => v.message.includes(`@layer ${COMPONENT_LAYER_NAME}`));
     expect(violation).toBeDefined();
     expect(violation!.selector).toBeUndefined();
     const formatted = formatViolation(violation!);

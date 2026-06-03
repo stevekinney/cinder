@@ -1,4 +1,5 @@
 import Radio from '../_radio/radio.svelte';
+import './radio-group.css';
 import RadioGroupRoot from './radio-group.svelte';
 
 /**

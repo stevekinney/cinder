@@ -744,48 +744,46 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       );
     }
 
-    // No-styles import contract: the /no-styles route imports `cinder/button`
-    // only — no `/styles` subpath, no aggregator. Its route-scoped CSS must
-    // not contain button selectors. Proves component JS does not pull CSS as
-    // a side effect.
+    // Auto-CSS import contract: the /no-styles route imports `cinder/button`
+    // ONLY — no `/styles` subpath, no aggregator — and its route-scoped CSS
+    // MUST contain the button selectors anyway, because importing a component
+    // now pulls its CSS as a side effect. This is the whole point of the
+    // auto-CSS change: a consumer can no longer forget the style import and end
+    // up with a silently-unstyled component. (The route name is historical —
+    // it once tested the opposite, pre-auto-CSS contract.)
     //
     // Triangulation against false-positives (route walk silently broken):
     //   1. The /a-la-carte assertion above proved the route-scoped walk DOES
     //      surface .cinder-button when the route opts into the CSS.
     //   2. The build-wide combinedStylesheet check above proved .cinder-button
     //      exists somewhere in the client CSS output.
-    //   3. The walk below resolves the SvelteKit wrapper or fails loudly
-    //      (readRouteCssArtifacts calls fail() if the wrapper isn't found).
-    // Together these mean: a passing absence assertion below cannot be
-    // explained by a silently-empty walk — it can only mean the no-styles
-    // route legitimately has no transitive .cinder-button CSS.
+    //   3. readRouteCssArtifacts resolves the SvelteKit wrapper or fails loudly.
+    // Together these mean the presence assertion below is meaningful: the walk
+    // works, so finding .cinder-button proves the bare `cinder/button` import
+    // pulled its CSS.
     const noStylesCss = await readRouteCssArtifacts(
       fixtureDirectory,
       'src/routes/no-styles/+page.svelte',
     );
-    if (hasSelectorContaining(noStylesCss, '.cinder-button')) {
+    if (!hasSelectorContaining(noStylesCss, '.cinder-button')) {
       fail(
-        `/no-styles route CSS contains .cinder-button — component JS pulled CSS as a side effect`,
+        `/no-styles route CSS is missing .cinder-button — a bare \`cinder/button\` import did NOT auto-pull its CSS (the auto-CSS side-effect contract is broken)`,
       );
     }
-    // Also assert that any --cinder-button-* custom property is absent,
-    // catching the case where CSS leaks via custom-property declarations on
-    // a shared chunk even if no selector tokens match.
-    if (hasCustomPropertyStartingWith(noStylesCss, '--cinder-button-')) {
-      fail(
-        `/no-styles route CSS contains --cinder-button-* — component JS pulled CSS as a side effect`,
-      );
-    }
+    // NOTE: we assert the `.cinder-button` SELECTOR only, not `--cinder-button-*`
+    // custom properties. The component sidecar (button.css) only *consumes* those
+    // properties via `var(...)`; their *declarations* live in `cinder/styles`
+    // (the tokens/foundation base), which the /no-styles route does not import.
+    // So the auto-CSS contract here is exactly "the component's own selectors
+    // arrive", which is what proves the import pulled the sidecar.
 
-    // Runtime-truth check (defends against hoisted shared CSS): the route
-    // walk above reads from the Vite client manifest, which can drift from
-    // what the runtime SvelteKit loader actually serves if Vite hoists CSS
-    // into a shared chunk. Below, after the fixture server is up, we ALSO
-    // fetch the rendered /no-styles HTML and assert no CSS file referenced
-    // via <link rel="stylesheet"> contains .cinder-button. That closes the
-    // loop: if any path — manifest, shared chunk, or otherwise — caused
-    // .cinder-button CSS to load on /no-styles, the runtime HTML would
-    // reference a stylesheet that contains it, and the check below fails.
+    // Runtime-truth check (defends against manifest/shared-chunk drift): the
+    // route walk above reads the Vite client manifest, which can diverge from
+    // what the runtime SvelteKit loader actually serves. Below, after the
+    // fixture server is up, we ALSO fetch the rendered /no-styles HTML and
+    // assert a referenced <link rel="stylesheet"> DOES contain .cinder-button —
+    // confirming the auto-CSS side effect reaches the live route, not just the
+    // manifest.
 
     // Always-rendered components (not lazy-mount): their root class MUST appear in SSR HTML.
     // Modal, Dropdown, Tooltip are lazy-mount — they render only the trigger surface at open=false.
@@ -855,13 +853,12 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         }
       }
 
-      // Runtime-truth check for the no-styles side-effect contract.
+      // Runtime-truth check for the auto-CSS side-effect contract.
       // Fetch the rendered /no-styles HTML, extract every stylesheet href,
-      // resolve it under the client build, and assert none of those CSS
-      // files contain `.cinder-button`. This is the strongest possible
-      // in-fixture assertion: if any path (manifest, shared chunk, server
-      // injection) caused button CSS to load on /no-styles, the runtime
-      // would reference a stylesheet that contains it.
+      // fetch each through the running server, and assert that AT LEAST ONE
+      // contains `.cinder-button`. This is the strongest in-fixture assertion
+      // that a bare `cinder/button` import auto-loads its CSS at runtime — not
+      // just in the manifest, but in what the live route actually serves.
       const noStylesResponse = await fetch(`http://127.0.0.1:${httpPort}/no-styles`);
       if (noStylesResponse.status !== 200) {
         fail(`fixture /no-styles returned ${noStylesResponse.status}, want 200`);
@@ -889,23 +886,28 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       // avoids fragile on-disk path resolution (relative hrefs like
       // `../_app/immutable/...` would otherwise resolve outside the client
       // output directory and silently be skipped).
-      const offendingStylesheets: string[] = [];
+      let buttonCssServed = false;
       for (const href of stylesheetHrefs) {
         const stylesheetUrl = new URL(href, noStylesUrl).toString();
         const stylesheetResponse = await fetch(stylesheetUrl);
         if (stylesheetResponse.status !== 200) {
           fail(
-            `/no-styles references stylesheet ${href} (resolved to ${stylesheetUrl}) which returned ${stylesheetResponse.status} — cannot verify the side-effect contract`,
+            `/no-styles references stylesheet ${href} (resolved to ${stylesheetUrl}) which returned ${stylesheetResponse.status} — cannot verify the auto-CSS contract`,
           );
         }
         const source = await stylesheetResponse.text();
-        if (source.includes('.cinder-button') || /--cinder-button-/.test(source)) {
-          offendingStylesheets.push(`${href} contains .cinder-button or --cinder-button-*`);
+        // Require the `.cinder-button` SELECTOR (the component sidecar), not a
+        // `--cinder-button-*` token: those custom properties are declared by
+        // `cinder/styles` (the tokens/foundation base) and can appear without
+        // the component sidecar, so a token-only match would pass even when the
+        // auto-CSS import is broken.
+        if (source.includes('.cinder-button')) {
+          buttonCssServed = true;
         }
       }
-      if (offendingStylesheets.length > 0) {
+      if (!buttonCssServed) {
         fail(
-          `/no-styles rendered HTML references stylesheets that contain button CSS — component JS pulled CSS as a side effect:\n  ${offendingStylesheets.join('\n  ')}`,
+          `/no-styles rendered HTML references no stylesheet containing button CSS — a bare \`cinder/button\` import did NOT auto-load its CSS at runtime (auto-CSS side-effect contract broken)`,
         );
       }
     } finally {

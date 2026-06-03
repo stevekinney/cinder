@@ -1,3 +1,4 @@
+import './table-row.css';
 import TableRow from './table-row.svelte';
 
 export default TableRow;

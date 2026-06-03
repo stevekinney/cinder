@@ -69,7 +69,7 @@ function wait(ms: number): Promise<void> {
 
 /**
  * Find a `<button>` by its trimmed visible text. The theme segments render as
- * buttons whose text is the option label ("Light theme", etc.) and the toolbar
+ * buttons whose text is the option label ("Light", etc.) and the toolbar
  * action buttons carry a stable `aria-label` — both are accessible, stable
  * selectors rather than incidental markup.
  */
@@ -84,6 +84,14 @@ function buttonByLabel(container: HTMLElement, label: string): HTMLButtonElement
   const button = container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
   if (button === null) throw new Error(`No button with aria-label "${label}"`);
   return button;
+}
+
+/** Find a button whose aria-label matches a pattern (for long/verbose labels). */
+function buttonByLabelMatch(container: HTMLElement, pattern: RegExp): HTMLButtonElement {
+  const buttons = [...container.querySelectorAll<HTMLButtonElement>('button[aria-label]')];
+  const match = buttons.find((button) => pattern.test(button.getAttribute('aria-label') ?? ''));
+  if (!match) throw new Error(`No button with aria-label matching ${pattern}`);
+  return match;
 }
 
 /** The single polite aria-live announcement region rendered by the shell. */
@@ -106,7 +114,10 @@ describe('top-bar open-in-new-tab button', () => {
     expect(container.querySelectorAll('.cinder-segmented-control').length).toBeGreaterThanOrEqual(
       2,
     );
-    expect(container.querySelectorAll('.cinder-button').length).toBeGreaterThanOrEqual(3);
+    // Open-in-new-tab (↗) and focus-mode (⛶) are the two cinder Buttons in the
+    // toolbar; the narrow-viewport sidebar toggle is a plain <button>, not a
+    // .cinder-button.
+    expect(container.querySelectorAll('.cinder-button').length).toBeGreaterThanOrEqual(2);
     expect(container.querySelector('input.cinder-input')).not.toBeNull();
 
     unmount();
@@ -161,14 +172,18 @@ describe('top-bar theme selection', () => {
     const { container } = render(TopBarFixture, { store });
     await tick();
 
-    buttonByText(container, 'Dark theme').click();
+    buttonByText(container, 'Dark').click();
     await tick();
 
     expect(themeCalls).toEqual(['dark']);
   });
 
   test('selecting the light theme segment passes "light" to setTheme', async () => {
-    const store = new PreviewStore('button');
+    // Seed a 'dark' override so 'Dark' is the active segment; otherwise the
+    // resolved browser theme in the test environment ('light') already selects
+    // 'Light', and clicking the active segment is a no-op that never fires
+    // onchange. Starting from dark makes the Light click a genuine change.
+    const store = new PreviewStore('button', { theme: 'dark' });
     const themeCalls: ThemeChoice[] = [];
     store.setTheme = (value: ThemeChoice) => {
       themeCalls.push(value);
@@ -177,10 +192,38 @@ describe('top-bar theme selection', () => {
     const { container } = render(TopBarFixture, { store });
     await tick();
 
-    buttonByText(container, 'Light theme').click();
+    buttonByText(container, 'Light').click();
     await tick();
 
     expect(themeCalls).toEqual(['light']);
+  });
+
+  test('entering focus mode closes an open sidebar drawer', async () => {
+    // Focus mode hides the sidebar entirely; an open narrow-viewport drawer must
+    // be closed too, or its scrim is orphaned over the fullscreen preview.
+    const store = new PreviewStore('button');
+    store.isSidebarOpen = true;
+    const { container } = render(TopBarFixture, { store });
+    await tick();
+
+    buttonByLabelMatch(container, /Focus mode/).click();
+    await tick();
+
+    expect(store.isFocusMode).toBe(true);
+    expect(store.isSidebarOpen).toBe(false);
+  });
+
+  test('toggling focus mode off does not reopen the drawer', async () => {
+    const store = new PreviewStore('button');
+    store.isFocusMode = true;
+    const { container } = render(TopBarFixture, { store });
+    await tick();
+
+    buttonByLabelMatch(container, /Focus mode/).click();
+    await tick();
+
+    expect(store.isFocusMode).toBe(false);
+    expect(store.isSidebarOpen).toBe(false);
   });
 });
 
@@ -193,16 +236,16 @@ describe('top-bar announcements', () => {
     const region = liveRegion(container);
     expect(region.textContent?.trim()).toBe('');
 
-    // Toggling the checkerboard button triggers announce(). The 50 ms
-    // empty-then-set gap means the message is NOT yet present right after.
-    buttonByLabel(container, 'Show transparency grid').click();
+    // Toggling the sidebar button triggers announce(). The 50 ms empty-then-set
+    // gap means the message is NOT yet present right after the click.
+    buttonByLabel(container, 'Toggle component list').click();
     await tick();
     expect(region.textContent?.trim()).toBe('');
 
     // After the gap, the announcement text appears.
     await wait(80);
     await tick();
-    expect(region.textContent?.trim()).toBe('Checkerboard background on');
+    expect(region.textContent?.trim()).toBe('Component list shown');
   });
 
   test('a second announcement replaces the first after its own 50 ms gap', async () => {
@@ -212,19 +255,19 @@ describe('top-bar announcements', () => {
 
     const region = liveRegion(container);
 
-    buttonByLabel(container, 'Show transparency grid').click();
+    buttonByLabel(container, 'Toggle component list').click();
     await wait(80);
     await tick();
-    expect(region.textContent?.trim()).toBe('Checkerboard background on');
+    expect(region.textContent?.trim()).toBe('Component list shown');
 
-    // Toggle again — off this time. The region clears immediately, then fills
+    // Toggle again — hidden this time. The region clears immediately, then fills
     // with the new message after the gap.
-    buttonByLabel(container, 'Show transparency grid').click();
+    buttonByLabel(container, 'Toggle component list').click();
     await tick();
     expect(region.textContent?.trim()).toBe('');
 
     await wait(80);
     await tick();
-    expect(region.textContent?.trim()).toBe('Checkerboard background off');
+    expect(region.textContent?.trim()).toBe('Component list hidden');
   });
 });

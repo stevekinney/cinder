@@ -1,4 +1,5 @@
 import FeedEvent from '../feed-event/feed-event.svelte';
+import './feed.css';
 import FeedRoot from './feed.svelte';
 
 /**

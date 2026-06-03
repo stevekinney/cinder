@@ -1,4 +1,5 @@
 import AccordionItem from '../accordion-item/accordion-item.svelte';
+import './accordion.css';
 import AccordionRoot from './accordion.svelte';
 
 /**

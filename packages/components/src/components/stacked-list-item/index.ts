@@ -1,3 +1,4 @@
+import './stacked-list-item.css';
 import StackedListItem from './stacked-list-item.svelte';
 
 export default StackedListItem;

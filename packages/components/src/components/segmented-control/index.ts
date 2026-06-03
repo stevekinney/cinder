@@ -1,3 +1,4 @@
+import './segmented-control.css';
 import SegmentedControl from './segmented-control.svelte';
 
 export default SegmentedControl;

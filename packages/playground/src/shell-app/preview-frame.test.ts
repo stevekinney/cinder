@@ -19,8 +19,8 @@
  *
  * Assertions target STABLE contracts (the loading overlay/live-region behaviour,
  * the `buildIframeSrc` URL contract, the empty-state placeholder, and the
- * theme/background `postMessage` replay) and avoid incidental structure so
- * sibling refactors don't break them.
+ * theme `postMessage` replay) and avoid incidental structure so sibling
+ * refactors don't break them.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
@@ -281,8 +281,8 @@ describe('preview-frame src construction', () => {
 });
 
 describe('preview-frame handleLoad', () => {
-  test('replays the current theme and background to the iframe on load', async () => {
-    const store = new PreviewStore('button', { theme: 'dark', background: 'checker' });
+  test('replays the current theme to the iframe on load', async () => {
+    const store = new PreviewStore('button', { theme: 'dark' });
     const { container } = render(PreviewFrameFixture, { store, componentName: 'button' });
     await tick();
 
@@ -297,12 +297,14 @@ describe('preview-frame handleLoad', () => {
     await tick();
 
     const themeMessage = messages.find((message) => message.type === 'cinder:set-theme');
-    const backgroundMessage = messages.find((message) => message.type === 'cinder:set-background');
     expect(themeMessage?.value).toBe('dark');
-    expect(backgroundMessage?.value).toBe('checker');
   });
 
-  test('replays the default surface background and system theme on load', async () => {
+  test('replays the resolved browser theme on load when there is no override', async () => {
+    // With no explicit override the store resolves `theme` from the browser's
+    // prefers-color-scheme. The test environment reports no dark preference, so
+    // the resolved theme — and thus the replayed message — is 'light', never the
+    // retired 'system' value.
     const store = new PreviewStore('button');
     const { container } = render(PreviewFrameFixture, { store, componentName: 'button' });
     await tick();
@@ -315,8 +317,6 @@ describe('preview-frame handleLoad', () => {
     await tick();
 
     const themeMessage = messages.find((message) => message.type === 'cinder:set-theme');
-    const backgroundMessage = messages.find((message) => message.type === 'cinder:set-background');
-    expect(themeMessage?.value).toBe('system');
-    expect(backgroundMessage?.value).toBe('surface');
+    expect(themeMessage?.value).toBe('light');
   });
 });

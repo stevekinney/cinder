@@ -1,3 +1,4 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-confirm-dialog__description {
     margin: 0;

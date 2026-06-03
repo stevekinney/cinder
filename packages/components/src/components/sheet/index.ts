@@ -1,3 +1,4 @@
+import './sheet.css';
 import Sheet from './sheet.svelte';
 
 export default Sheet;

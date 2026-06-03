@@ -1,3 +1,4 @@
+import './toggle.css';
 import Toggle from './toggle.svelte';
 
 export default Toggle;

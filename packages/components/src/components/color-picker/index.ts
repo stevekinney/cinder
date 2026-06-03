@@ -1,3 +1,4 @@
+import './color-picker.css';
 import ColorPicker from './color-picker.svelte';
 
 export default ColorPicker;

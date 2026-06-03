@@ -1,3 +1,4 @@
+import './json-schema-editor.css';
 import JsonSchemaEditor from './json-schema-editor.svelte';
 
 export default JsonSchemaEditor;

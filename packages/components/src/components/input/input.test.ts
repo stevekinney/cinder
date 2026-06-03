@@ -156,6 +156,16 @@ describe('Input rendering', () => {
     expect(input?.getAttribute('type')).toBe('password');
   });
 
+  test('number type renders a native number input without group affordances', () => {
+    const { container } = render(Input, {
+      props: { id: 'quantity', value: '', type: 'number', label: 'Quantity' },
+    });
+    const input = container.querySelector('#quantity');
+    expect(input?.getAttribute('type')).toBe('number');
+    expect(input?.hasAttribute('data-cinder-native-date')).toBe(false);
+    expect(container.querySelector('.cinder-input-group')).toBeNull();
+  });
+
   test('date type uses the native date input and renders the calendar affordance', () => {
     const { container } = render(Input, {
       props: { id: 'departure', value: '', type: 'date', label: 'Departure date' },

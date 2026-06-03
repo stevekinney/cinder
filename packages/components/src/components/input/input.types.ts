@@ -1,7 +1,15 @@
 import type { Snippet } from 'svelte';
 import type { HTMLInputAttributes } from 'svelte/elements';
 
-export type InputType = 'text' | 'email' | 'password' | 'search' | 'tel' | 'url' | 'date';
+export type InputType =
+  | 'text'
+  | 'email'
+  | 'password'
+  | 'search'
+  | 'tel'
+  | 'url'
+  | 'date'
+  | 'number';
 
 type InputAddonProps =
   | { leading?: never; leadingInteractive?: never; trailing?: never; trailingInteractive?: never }

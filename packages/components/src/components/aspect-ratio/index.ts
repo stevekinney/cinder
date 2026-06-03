@@ -1,3 +1,4 @@
+import './aspect-ratio.css';
 import AspectRatio from './aspect-ratio.svelte';
 
 export default AspectRatio;

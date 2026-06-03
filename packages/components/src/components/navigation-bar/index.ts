@@ -1,3 +1,4 @@
+import './navigation-bar.css';
 import NavigationBar from './navigation-bar.svelte';
 
 export default NavigationBar;

@@ -1,3 +1,4 @@
+import './phone-input.css';
 import PhoneInput from './phone-input.svelte';
 
 export default PhoneInput;

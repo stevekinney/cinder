@@ -1,6 +1,7 @@
 import TabList from '../tab-list/tab-list.svelte';
 import TabPanel from '../tab-panel/tab-panel.svelte';
 import Tab from '../tab/tab.svelte';
+import './tabs.css';
 import TabsRoot from './tabs.svelte';
 
 /**

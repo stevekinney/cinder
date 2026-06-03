@@ -1,5 +1,6 @@
 import ToolbarGroup from './toolbar-group.svelte';
 import ToolbarSpacer from './toolbar-spacer.svelte';
+import './toolbar.css';
 import ToolbarRoot from './toolbar.svelte';
 
 const Toolbar = Object.assign(ToolbarRoot, {

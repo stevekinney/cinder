@@ -1,3 +1,4 @@
+import './json-viewer.css';
 import JsonViewer from './json-viewer.svelte';
 
 export default JsonViewer;

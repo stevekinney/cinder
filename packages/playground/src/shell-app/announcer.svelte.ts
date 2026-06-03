@@ -17,6 +17,8 @@
 
 import { getContext, setContext, tick } from 'svelte';
 
+import { humanizeComponentName } from './humanize.ts';
+
 const ANNOUNCER_KEY = Symbol('cinder-announcer');
 
 /** Delay (ms) between clearing the live region and writing the new message. */
@@ -83,10 +85,14 @@ export async function announceNavigation(
   componentName: string,
   getMain: () => HTMLElement | null,
 ): Promise<void> {
+  // Humanize to match the SSR-rendered title (renderShell), so client-side
+  // navigation keeps the same `<Component> — cinder playground` format instead
+  // of regressing to the raw kebab name after the first in-app route change.
+  const humanName = humanizeComponentName(componentName);
   if (typeof document !== 'undefined') {
-    document.title = `cinder playground — ${componentName}`;
+    document.title = `${humanName} — cinder playground`;
   }
-  announcer.announce(`Viewing ${componentName}`);
+  announcer.announce(`Viewing ${humanName}`);
   await tick();
   getMain()?.focus();
 }

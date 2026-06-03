@@ -1,3 +1,4 @@
+import './number-input.css';
 import NumberInput from './number-input.svelte';
 
 export default NumberInput;

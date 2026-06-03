@@ -1,3 +1,4 @@
+import './popover.css';
 import Popover from './popover.svelte';
 
 export default Popover;

@@ -1,3 +1,4 @@
+import './resizable-panels.css';
 import ResizablePanels from './resizable-panels.svelte';
 
 export default ResizablePanels;

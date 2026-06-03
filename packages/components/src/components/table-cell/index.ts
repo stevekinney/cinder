@@ -1,3 +1,4 @@
+import './table-cell.css';
 import TableCell from './table-cell.svelte';
 
 export default TableCell;

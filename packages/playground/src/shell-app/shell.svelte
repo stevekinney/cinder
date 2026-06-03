@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { MediaQuery } from 'svelte/reactivity';
 
   import Announcer from './announcer.svelte';
   import {
@@ -67,13 +68,78 @@
   // can move to the freshly-rendered content after client-side navigation.
   let mainEl = $state<HTMLElement | null>(null);
 
-  // Apply the persisted theme to the shell's root document on first paint.
-  // The inline pre-paint script in render-shell.ts already did this before
-  // the bundle loaded, but reapplying here keeps the state machine simple
-  // (the inline script is a perf optimization, not a correctness gate).
-  if (typeof document !== 'undefined') applyThemeToDocument(document, store.theme);
+  // True below the responsive breakpoint, where the sidebar is a modal-style
+  // off-canvas drawer rather than a static column. Used to gate the drawer's
+  // focus-trap / inert behavior so the wide-viewport sidebar (always visible)
+  // never makes the rest of the shell inert. Mirrors the 720px CSS breakpoint.
+  const isNarrow = new MediaQuery('(max-width: 720px)');
+
+  // When the viewport grows past the breakpoint, the drawer is no longer a
+  // drawer — it's the static sidebar. Drop the open state so it doesn't linger
+  // as a hidden-but-"open" drawer that would (a) re-appear if the viewport
+  // narrows again, (b) make Escape close a phantom drawer before exiting focus
+  // mode, and (c) leave an orphaned scrim. Closing here also means the
+  // focus/inert effect below tears down while the hamburger is still visible,
+  // so focus restoration targets a focusable element.
+  $effect(() => {
+    if (!isNarrow.current && store.isSidebarOpen) store.isSidebarOpen = false;
+  });
+
+  // Modal semantics for the narrow-viewport drawer. When it opens we move focus
+  // into the drawer's filter and mark the content behind the scrim `inert` so a
+  // keyboard / screen-reader user can't tab "behind" the dimmed backdrop. When
+  // it closes, the cleanup CLEARS inert *before* restoring focus — order
+  // matters: the opener (the hamburger) lives inside `header.top-bar`, so
+  // focusing it while the header is still inert would be silently dropped. On
+  // wide viewports none of this runs.
+  function setShellInert(value: boolean): void {
+    const header = document.querySelector<HTMLElement>('header.top-bar');
+    if (mainEl) mainEl.inert = value;
+    if (header) header.inert = value;
+  }
+
+  $effect(() => {
+    const drawerIsModal = store.isSidebarOpen && isNarrow.current;
+
+    if (!drawerIsModal) {
+      // Not modal (closed, or wide viewport): the content behind it must be
+      // reachable. Idempotent — safe to run on every non-modal pass.
+      setShellInert(false);
+      return;
+    }
+
+    setShellInert(true);
+    // Capture the opener (the hamburger) before moving focus into the drawer.
+    const opener = document.activeElement;
+    sidebar?.focusFilter();
+    return () => {
+      // Clear inert FIRST so the opener is no longer in an inert subtree, then
+      // restore focus — but only if the opener is still connected AND focusable
+      // (`.focus()` on a display:none element, e.g. the hamburger after a resize
+      // to wide, silently strands focus, so skip it then).
+      setShellInert(false);
+      if (opener instanceof HTMLElement && opener.isConnected && opener.offsetParent !== null) {
+        opener.focus();
+      }
+    };
+  });
+
+  // Apply the theme to the shell's root document on first paint. The inline
+  // pre-paint script in render-shell.ts already did this before the bundle
+  // loaded, but reapplying here keeps the state machine simple (the inline
+  // script is a perf optimization, not a correctness gate). Pass the override
+  // (null = follow the browser) and the resolved theme so the helper pins
+  // color-scheme only for an explicit choice.
+  if (typeof document !== 'undefined') {
+    applyThemeToDocument(document, store.themeOverride, store.theme);
+  }
 
   async function selectComponent(name: string): Promise<void> {
+    // Selecting from the off-canvas drawer (narrow viewports) should always
+    // dismiss it so the preview is visible — including when the user taps the
+    // already-active component, which short-circuits below. Harmless on wide
+    // viewports where the drawer is the static sidebar.
+    store.isSidebarOpen = false;
     if (name === store.currentComponent) return;
     store.currentComponent = name;
     // Preserve the current query string (e.g. ?focus=1) and hash when
@@ -114,9 +180,17 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && store.isFocusMode) {
-      store.isFocusMode = false;
-      return;
+    // Escape precedence: close the drawer first (if open), otherwise exit focus
+    // mode. A single key never does both.
+    if (event.key === 'Escape') {
+      if (store.isSidebarOpen) {
+        store.isSidebarOpen = false;
+        return;
+      }
+      if (store.isFocusMode) {
+        store.isFocusMode = false;
+        return;
+      }
     }
     // `/` focuses the sidebar filter, but only when the user isn't already
     // typing somewhere (so a literal slash in a field is untouched) and isn't
@@ -126,9 +200,16 @@
       !event.metaKey &&
       !event.ctrlKey &&
       !event.altKey &&
+      // Focus mode hides the sidebar entirely; opening the narrow-viewport drawer
+      // here would render an orphaned scrim over a display:none drawer, so the
+      // filter shortcut is inert while focus mode is active.
+      !store.isFocusMode &&
       !isTypingTarget(event.target)
     ) {
       event.preventDefault();
+      // On narrow viewports the sidebar is an off-canvas drawer — open it first
+      // so the filter is visible before moving focus into it.
+      if (isNarrow.current) store.isSidebarOpen = true;
       sidebar?.focusFilter();
     }
   }
@@ -176,7 +257,22 @@
     {components}
     currentComponent={store.currentComponent}
     onSelect={selectComponent}
+    isOpen={store.isSidebarOpen}
+    onClose={() => (store.isSidebarOpen = false)}
   />
+  <!--
+    Scrim behind the off-canvas drawer (narrow viewports only — kept
+    display:none on wide ones via CSS). Clicking it dismisses the drawer. It is
+    aria-hidden and not a Tab stop; Escape (handled at the window level) is the
+    keyboard path to close.
+  -->
+  {#if store.isSidebarOpen}
+    <div
+      class="sidebar-backdrop"
+      aria-hidden="true"
+      onclick={() => (store.isSidebarOpen = false)}
+    ></div>
+  {/if}
   <!--
     tabindex="-1" makes <main> programmatically focusable so client-side
     navigation can move keyboard focus to the new content without adding it to
@@ -249,5 +345,37 @@
     margin-left: 0;
     margin-top: 0;
     height: 100vh;
+  }
+
+  /*
+   * Scrim behind the off-canvas sidebar drawer. Only meaningful at narrow
+   * widths — the {#if store.isSidebarOpen} guard means it's never in the DOM on
+   * wide viewports anyway, but the breakpoint keeps it from ever dimming the
+   * full desktop layout if the drawer state is somehow set there.
+   */
+  .sidebar-backdrop {
+    display: none;
+  }
+
+  /*
+   * Narrow viewports: the sidebar is an off-canvas drawer, so the main content
+   * column reclaims the full width (no 220px gutter). The drawer floats above
+   * via its own fixed positioning + transform.
+   */
+  @media (max-width: 720px) {
+    main {
+      /* stylelint-disable-next-line csstools/use-logical */
+      margin-left: 0;
+    }
+
+    .sidebar-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 15;
+      background: rgb(0 0 0 / 45%);
+      /* Suppress the mobile-browser tap delay on the dismiss-by-tap scrim. */
+      touch-action: manipulation;
+    }
   }
 </style>
