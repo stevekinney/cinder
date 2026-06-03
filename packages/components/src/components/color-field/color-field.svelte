@@ -358,19 +358,25 @@
     parseError = null;
     if (defaultValue === undefined || defaultValue === '') {
       clearAll();
+      // Sync after all state changes: the catch-all $effect was removed so every
+      // exit path must explicitly clear the native custom-validity message.
+      syncCustomValidity();
       return;
     }
     const trimmedDefault = defaultValue.trim();
     if (trimmedDefault === '' || !passesFormatGate(trimmedDefault)) {
       clearAll();
+      syncCustomValidity();
       return;
     }
     const parsed = parseColor(trimmedDefault);
     if (parsed === null) {
       clearAll();
+      syncCustomValidity();
       return;
     }
     seedFromParts(parsed);
+    syncCustomValidity();
   }
 
   $effect(() => {

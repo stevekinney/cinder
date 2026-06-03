@@ -296,6 +296,19 @@ describe('LoadMore', () => {
     });
   });
 
+  test('announces the end-of-list message immediately when hasMore is false on initial mount', () => {
+    // statusText is now a $derived (hasMore ? '' : endOfListMessage), so an initially-exhausted
+    // list announces its state on first paint — more correct than staying silent for an empty list.
+    const { getByRole } = render(LoadMore, {
+      props: {
+        onLoadMore: () => {},
+        hasMore: false,
+        endOfListMessage: 'All caught up',
+      },
+    });
+    expect(getByRole('status').textContent?.trim()).toBe('All caught up');
+  });
+
   test('announces the end-of-list message only after hasMore transitions to false', async () => {
     const rendered = render(LoadMore, {
       props: {
