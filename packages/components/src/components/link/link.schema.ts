@@ -13,7 +13,7 @@ const schema = {
     href: {
       type: 'string',
       description:
-        'The URL the link points to. Optional because a `disabled` link renders a\n`<span>` with no href — provide it for any enabled (non-disabled) link.',
+        'The URL the link points to. Optional ONLY because a `disabled` link renders a\n`<span>` with no href. For any enabled (non-disabled) link you must provide it —\nan `<a>` without `href` is not keyboard-focusable and is not exposed as a link to\nassistive technology, so an enabled Link without `href` is a bug, not a feature.',
     },
     underline: {
       enum: ['always', 'hover', 'none'],

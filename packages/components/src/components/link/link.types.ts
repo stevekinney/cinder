@@ -20,8 +20,10 @@ export type LinkColor = 'primary' | 'inherit';
  */
 export type LinkProps = Omit<HTMLAnchorAttributes, 'class' | 'href' | 'target' | 'rel'> & {
   /**
-   * The URL the link points to. Optional because a `disabled` link renders a
-   * `<span>` with no href — provide it for any enabled (non-disabled) link.
+   * The URL the link points to. Optional ONLY because a `disabled` link renders a
+   * `<span>` with no href. For any enabled (non-disabled) link you must provide it —
+   * an `<a>` without `href` is not keyboard-focusable and is not exposed as a link to
+   * assistive technology, so an enabled Link without `href` is a bug, not a feature.
    */
   href?: string;
   /**
