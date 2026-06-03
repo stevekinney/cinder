@@ -7,6 +7,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Checkbox } = await import('./checkbox.svelte');
+const { default: FormFieldCheckboxFixture } =
+  await import('../../test/fixtures/form-field-checkbox-fixture.svelte');
 
 describe('Checkbox', () => {
   test('renders a native input[type=checkbox] with the given id', () => {
@@ -14,6 +16,17 @@ describe('Checkbox', () => {
     const input = container.querySelector('#agree');
     expect(input).not.toBeNull();
     expect(input?.getAttribute('type')).toBe('checkbox');
+  });
+
+  test('resolves a stable id from $props.id() when no id prop is given', () => {
+    // resolveFieldControl falls back to the $props.id() generated id; without it a
+    // standalone checkbox with no id prop would render id={undefined} and break for=/id=.
+    const { container } = render(Checkbox, { label: 'Agree' });
+    const input = container.querySelector('input[type="checkbox"]');
+    const id = input?.getAttribute('id');
+    expect(id).toBeTruthy();
+    // The <label> for must point at the same generated id.
+    expect(container.querySelector('label')?.getAttribute('for')).toBe(id);
   });
 
   test('label prop creates a <label> with for attribute', () => {
@@ -135,5 +148,90 @@ describe('Checkbox indicator', () => {
     expect(wrapper).not.toBeNull();
     expect(wrapper!.querySelector('input#ind2')).not.toBeNull();
     expect(wrapper!.querySelector('.cinder-checkbox-field__indicator')).not.toBeNull();
+  });
+});
+
+describe('Checkbox — FormField context wiring', () => {
+  test('inherits aria-describedby from FormField description', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        fieldDescription: 'Read the terms before proceeding',
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    expect(input.getAttribute('aria-describedby')).toBe('agree-description');
+  });
+
+  test('inherits aria-invalid and aria-describedby from FormField error', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        fieldError: 'You must agree to continue',
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('agree-error');
+  });
+
+  test('inherits disabled state from FormField context', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        disabled: true,
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+  });
+
+  test('inherits required state from FormField context (sets the native required attr)', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        required: true,
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    // A required FormField must make the control actually required for validation + AT,
+    // not just show the visual marker.
+    expect(input.required).toBe(true);
+  });
+
+  test('id wiring: id, label[for], and aria-describedby all use the resolved id', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        fieldDescription: 'Terms',
+        checkboxLabel: 'I agree',
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    const label = container.querySelector('label[for="agree"]');
+    expect(input).not.toBeNull();
+    expect(label).not.toBeNull();
+    expect(input.getAttribute('aria-describedby')).toBe('agree-description');
+  });
+
+  test('omitting Checkbox id inherits the FormField controlId (context-inheritance path)', () => {
+    // When the Checkbox omits `id`, resolveFieldControl uses the FormField's controlId,
+    // so the input id and the FormField's label[for] still agree.
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        checkboxLabel: 'I agree',
+        inheritId: true,
+      },
+    });
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(input.id).toBe('agree');
+    expect(container.querySelector('label[for="agree"]')).not.toBeNull();
   });
 });

@@ -20,7 +20,11 @@
 
   import { devWarn } from '../../utilities/dev-warn.ts';
 
-  import { ariaInvalid, composeDescribedBy } from '../../_internal/field-control.ts';
+  import {
+    ariaInvalid,
+    composeDescribedBy,
+    resolveFieldControl,
+  } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown, isRovingKey } from '../../utilities/roving-tabindex.ts';
@@ -47,6 +51,7 @@
     'aria-describedby': consumerDescribedBy,
     'aria-label': consumerAriaLabel,
     'aria-labelledby': consumerAriaLabelledBy,
+    'aria-invalid': consumerInvalid,
     required: _ignoredRequired,
     onchange,
     ...rest
@@ -57,9 +62,6 @@
   const initialDefaultTags = untrack(() => [...(defaultValue ?? [])]);
 
   const context = getFormFieldContext();
-  const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
-  const tagListId = $derived(`${resolvedId}-tags`);
-  const inlineErrorId = $derived(`${resolvedId}-inline-error`);
 
   let rootElement = $state<HTMLDivElement | null>(null);
   let inputElement = $state<HTMLInputElement | null>(null);
@@ -70,8 +72,25 @@
 
   const isControlled = $derived(value !== undefined);
   const currentTags = $derived(isControlled ? (value ?? []) : uncontrolledTags);
-  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
   const resolvedReadonly = $derived(readonly === true);
+
+  // Base field-control wiring: id, disabled, required, and context-provided
+  // describedBy resolved from props + FormField context.
+  const field = $derived(
+    resolveFieldControl({
+      ...(id !== undefined ? { id } : {}),
+      generatedId,
+      context,
+      hasDescription: false,
+      hasError: false,
+      consumerDescribedBy,
+      consumerInvalid,
+      disabled,
+    }),
+  );
+  const resolvedId = $derived(field.id);
+  const tagListId = $derived(`${resolvedId}-tags`);
+  const inlineErrorId = $derived(`${resolvedId}-inline-error`);
 
   // Roving tabindex: exactly one remove button is in the tab order at a time.
   // When a chip is focused it owns the tab stop; otherwise the FIRST chip's
@@ -87,7 +106,6 @@
       ? -1
       : Math.min(focusedChipIndex === -1 ? 0 : focusedChipIndex, currentTags.length - 1),
   );
-  const resolvedRequired = $derived(context?.required ?? false);
   const resolvedMax = $derived(
     Number.isFinite(max) ? Math.max(0, Math.floor(max as number)) : undefined,
   );
@@ -95,21 +113,14 @@
   const ariaLabel = $derived(
     labelledBy ? undefined : consumerAriaLabel?.trim() ? consumerAriaLabel : undefined,
   );
+  // Compose aria-describedby: field wiring (context description + error) plus the
+  // inline validation error id when one is active.
   const describedBy = $derived(
-    composeDescribedBy(
-      context?.descriptionId,
-      context?.errorId,
-      inlineError ? inlineErrorId : undefined,
-      consumerDescribedBy,
-    ),
+    composeDescribedBy(field.describedBy, inlineError ? inlineErrorId : undefined),
   );
-  const consumerAriaInvalid = $derived(rest['aria-invalid']);
-  const resolvedAriaInvalid = $derived(
-    inlineError
-      ? ariaInvalid(true)
-      : (context?.invalid ?? consumerAriaInvalid ?? ariaInvalid(false)),
-  );
-  const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
+  // aria-invalid: prefer the inline validation error over the context/consumer value.
+  const resolvedAriaInvalid = $derived(inlineError ? ariaInvalid(true) : field.ariaInvalid);
+  const isInvalid = $derived(resolvedAriaInvalid === 'true');
 
   $effect(() => {
     if (context && id && context.controlId !== id) {
@@ -194,7 +205,7 @@
   }
 
   function commitDraft(): boolean {
-    if (resolvedDisabled || resolvedReadonly) return false;
+    if (field.disabled || resolvedReadonly) return false;
     const candidate = draftValue.trim();
     if (!candidate) return false;
 
@@ -212,7 +223,7 @@
   }
 
   function removeTag(index: number): void {
-    if (resolvedDisabled || resolvedReadonly) return;
+    if (field.disabled || resolvedReadonly) return;
     inlineError = null;
     const nextTags = currentTags.filter((_, candidateIndex) => candidateIndex !== index);
     setTags(nextTags);
@@ -249,7 +260,7 @@
   }
 
   function handleInputKeydown(event: KeyboardEvent): void {
-    if (!resolvedDisabled && !resolvedReadonly) {
+    if (!field.disabled && !resolvedReadonly) {
       const input = event.currentTarget as HTMLInputElement;
       const candidate = draftValue.trim();
       const delimiterMatch = matchesDelimiter(event.key);
@@ -288,7 +299,7 @@
   }
 
   function handleChipKeydown(index: number, event: KeyboardEvent): void {
-    if (resolvedDisabled || resolvedReadonly) return;
+    if (field.disabled || resolvedReadonly) return;
 
     if (event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault();
@@ -316,10 +327,10 @@
 <div
   bind:this={rootElement}
   class={classNames('cinder-tag-input', className)}
-  data-disabled={resolvedDisabled ? '' : undefined}
+  data-disabled={field.disabled ? '' : undefined}
   data-invalid={isInvalid ? '' : undefined}
 >
-  <div class="cinder-tag-input__control" data-disabled={resolvedDisabled ? '' : undefined}>
+  <div class="cinder-tag-input__control" data-disabled={field.disabled ? '' : undefined}>
     <!-- Committed tags are confirmed VALUES with a per-item "remove" command,
          not selectable options — so this is a plain list (implicit role="list"
          / "listitem"), NOT a role="listbox". A listbox would force every child
@@ -338,7 +349,7 @@
       {#each currentTags as tag, index (`${index}:${tag}`)}
         <li class="cinder-tag-input__chip">
           <span class="cinder-tag-input__chip-label">{tag}</span>
-          {#if !resolvedDisabled && !resolvedReadonly}
+          {#if !field.disabled && !resolvedReadonly}
             <button
               type="button"
               class="cinder-tag-input__remove"
@@ -371,12 +382,12 @@
       class="cinder-tag-input__input"
       value={draftValue}
       readonly={resolvedReadonly}
-      disabled={resolvedDisabled}
+      disabled={field.disabled}
       aria-label={ariaLabel}
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
       aria-invalid={resolvedAriaInvalid}
-      aria-required={resolvedRequired ? 'true' : undefined}
+      aria-required={field.required ? 'true' : undefined}
       oninput={handleInput}
       onfocus={handleInputFocus}
       onblur={handleInputBlur}
@@ -390,7 +401,7 @@
 
   {#if name}
     {#each currentTags as tag, index (`hidden:${index}:${tag}`)}
-      <input type="hidden" {name} value={tag} disabled={resolvedDisabled} />
+      <input type="hidden" {name} value={tag} disabled={field.disabled} />
     {/each}
   {/if}
 </div>

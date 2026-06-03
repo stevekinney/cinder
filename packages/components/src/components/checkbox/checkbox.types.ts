@@ -12,8 +12,12 @@ import type { HTMLInputAttributes } from 'svelte/elements';
  * the user toggles `checked`.
  */
 export type CheckboxProps = HTMLInputAttributes & {
-  /** Unique identifier — required for label association and ARIA wiring. */
-  id: string;
+  /**
+   * Unique identifier for label association and ARIA wiring. Optional: when omitted,
+   * a stable id is generated via `$props.id()` (or inherited from a FormField context),
+   * matching Input/Autocomplete. Provide it when you need a known id to reference.
+   */
+  id?: string;
   /** Bound checked state. */
   checked?: boolean;
   /** Bound indeterminate state. Mutually exclusive with `checked` visually. */

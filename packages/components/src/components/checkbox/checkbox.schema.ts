@@ -18,7 +18,8 @@ const schema = {
     },
     id: {
       type: 'string',
-      description: 'Unique identifier — required for label association and ARIA wiring.',
+      description:
+        'Unique identifier for label association and ARIA wiring. Optional: when omitted,\na stable id is generated via `$props.id()` (or inherited from a FormField context),\nmatching Input/Autocomplete. Provide it when you need a known id to reference.',
     },
     label: {
       type: 'string',
@@ -34,7 +35,6 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['id'],
   metadata: {
     unsupportedProps: [
       {

@@ -22,12 +22,7 @@
 <script lang="ts">
   import type { AutocompleteProps, AutocompleteSuggestion } from './autocomplete.types.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../../_internal/field-control.ts';
+  import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Popover from '../popover/popover.svelte';
@@ -50,13 +45,29 @@
     class: className,
     oninput,
     oncomplete,
+    'aria-describedby': consumerDescribedBy,
+    'aria-invalid': consumerInvalid,
     ...rest
   }: AutocompleteProps = $props();
 
   const context = getFormFieldContext();
   const generatedId = $props.id();
 
-  const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
+  const field = $derived(
+    resolveFieldControl({
+      ...(id !== undefined ? { id } : {}),
+      generatedId,
+      context,
+      hasDescription: !!description,
+      hasError: !!error,
+      localIdNamespace: 'control',
+      consumerDescribedBy,
+      consumerInvalid,
+      required,
+      disabled,
+    }),
+  );
+  const resolvedId = $derived(field.id);
   const listboxId = $derived(`${resolvedId}-listbox`);
   const resolvedMinQueryLength = $derived(toNonNegativeInteger(minQueryLength, 1));
   const resolvedMaxVisibleSuggestions = $derived(toNonNegativeInteger(maxVisibleSuggestions, 50));
@@ -68,28 +79,6 @@
       );
     }
   });
-
-  const defaultDescriptionId = $derived(describeId(resolvedId, !!description));
-  const defaultErrorId = $derived(buildErrorId(resolvedId, !!error));
-  const ownDescriptionId = $derived(
-    description && defaultDescriptionId === context?.descriptionId
-      ? `${resolvedId}-control-description`
-      : defaultDescriptionId,
-  );
-  const ownErrorId = $derived(
-    error && defaultErrorId === context?.errorId ? `${resolvedId}-control-error` : defaultErrorId,
-  );
-  const consumerDescribedBy = $derived(rest['aria-describedby']);
-  const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
-  const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-  const describedBy = $derived(
-    composeDescribedBy(resolvedDescriptionId, resolvedErrorId, consumerDescribedBy),
-  );
-  const resolvedAriaInvalid = $derived(
-    error ? ariaInvalid(true) : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
-  );
-  const resolvedRequired = $derived(required ?? context?.required ?? false);
-  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
   let inputElement = $state<HTMLInputElement | null>(null);
   let open = $state(false);
@@ -115,7 +104,7 @@
 
   function isEligibleQuery(query: string): boolean {
     return (
-      !resolvedDisabled && !readonly && !!suggestionSource && query.length >= resolvedMinQueryLength
+      !field.disabled && !readonly && !!suggestionSource && query.length >= resolvedMinQueryLength
     );
   }
 
@@ -395,14 +384,14 @@
 
 <div
   class={classNames('cinder-autocomplete', className)}
-  data-disabled={resolvedDisabled ? '' : undefined}
-  data-invalid={resolvedAriaInvalid === 'true' ? '' : undefined}
+  data-disabled={field.disabled ? '' : undefined}
+  data-invalid={field.ariaInvalid === 'true' ? '' : undefined}
 >
   {#if label}
     <label
       for={resolvedId}
       class="cinder-autocomplete__label"
-      data-disabled={resolvedDisabled || undefined}
+      data-disabled={field.disabled || undefined}
     >
       {label}
     </label>
@@ -416,8 +405,8 @@
     class="cinder-autocomplete__input"
     {value}
     {placeholder}
-    disabled={resolvedDisabled}
-    required={resolvedRequired}
+    disabled={field.disabled}
+    required={field.required}
     {readonly}
     autocomplete={rest.autocomplete ?? 'off'}
     role="combobox"
@@ -426,8 +415,8 @@
     aria-haspopup="listbox"
     aria-controls={open ? listboxId : undefined}
     aria-activedescendant={activeDescendant}
-    aria-invalid={resolvedAriaInvalid}
-    aria-describedby={describedBy}
+    aria-invalid={field.ariaInvalid}
+    aria-describedby={field.describedBy}
     oninput={handleInput}
     onfocus={handleFocus}
     onblur={handleBlur}
@@ -441,11 +430,11 @@
   />
 
   {#if description}
-    <p id={ownDescriptionId} class="cinder-autocomplete__description">{description}</p>
+    <p id={field.ownDescriptionId} class="cinder-autocomplete__description">{description}</p>
   {/if}
 
   {#if error}
-    <p id={ownErrorId} class="cinder-autocomplete__error" aria-live="polite">{error}</p>
+    <p id={field.ownErrorId} class="cinder-autocomplete__error" aria-live="polite">{error}</p>
   {/if}
 </div>
 
