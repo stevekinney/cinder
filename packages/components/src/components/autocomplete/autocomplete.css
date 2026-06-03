@@ -77,9 +77,22 @@
   }
 
   .cinder-autocomplete__match {
-    padding: 0;
-    background: oklch(from var(--cinder-warning) 96.5% 0.015 h);
-    color: inherit;
+    /*
+     * Emphasize the matched substring with the theme-aware warning surface
+     * pair. The previous value hard-coded `oklch(from var(--cinder-warning)
+     * 96.5% …)` — a near-white background in BOTH themes — and kept `color:
+     * inherit`, so in dark mode the (light) inherited text sat on a near-white
+     * background and the matched glyph disappeared into a solid white box.
+     * `--cinder-color-warning-bg` / `--cinder-color-warning-fg` are a designed
+     * `light-dark()` pair (dark-on-light in light mode, light-on-dark in dark
+     * mode), so the highlight stays legible against either theme and against
+     * the active row's raised surface.
+     */
+    padding: 0 0.0625rem;
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-color-warning-bg);
+    color: var(--cinder-color-warning-fg);
+    font-weight: 600;
   }
 
   .cinder-autocomplete__status {
