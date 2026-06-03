@@ -7,13 +7,13 @@
       "id": "basic",
       "title": "Basic hover card",
       "description": "A rich non-interactive preview that opens on hover or focus.",
-      "code": "<script lang=\"ts\">\n  import { HoverCard } from 'cinder';\n</script>\n\n<HoverCard>\n  {#snippet trigger()}\n    <button type=\"button\">Ada Lovelace</button>\n  {/snippet}\n\n  <strong>Ada Lovelace</strong>\n  <p>Mathematician, writer, and early computing collaborator.</p>\n</HoverCard>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { HoverCard } from 'cinder';\n</script>\n\n<HoverCard>\n  {#snippet trigger()}\n    <Button variant=\"ghost\">Ada Lovelace</Button>\n  {/snippet}\n\n  <strong>Ada Lovelace</strong>\n  <p>Mathematician, writer, and early computing collaborator.</p>\n</HoverCard>\n"
     },
     {
       "id": "delays",
       "title": "Custom hover delays",
       "description": "Hover cards can tune open and close delay for denser interfaces.",
-      "code": "<script lang=\"ts\">\n  import { HoverCard } from 'cinder';\n</script>\n\n<HoverCard openDelay={100} closeDelay={300}>\n  {#snippet trigger()}\n    <button type=\"button\">CIN-42</button>\n  {/snippet}\n\n  <strong>CIN-42</strong>\n  <p>Investigate overlay stacking behavior in nested surfaces.</p>\n</HoverCard>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { HoverCard } from 'cinder';\n</script>\n\n<HoverCard openDelay={100} closeDelay={300}>\n  {#snippet trigger()}\n    <Button variant=\"ghost\">CIN-42</Button>\n  {/snippet}\n\n  <strong>CIN-42</strong>\n  <p>Investigate overlay stacking behavior in nested surfaces.</p>\n</HoverCard>\n"
     }
   ]
 }

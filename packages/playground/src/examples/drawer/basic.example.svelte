@@ -6,49 +6,33 @@
 
 <script lang="ts">
   import { Button } from 'cinder/button';
+  import { Checkbox } from 'cinder/checkbox';
   import { Drawer } from 'cinder/drawer';
   import type { DrawerSide, DrawerSize } from 'cinder/drawer';
+  import { Select } from 'cinder/select';
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
   let side = $state<DrawerSide>('right');
   let size = $state<DrawerSize>('md');
   let useTriggerRef = $state(true);
+
+  const sideOptions: { value: DrawerSide; label: string }[] = [
+    { value: 'right', label: 'right' },
+    { value: 'left', label: 'left' },
+  ];
+  const sizeOptions: { value: DrawerSize; label: string }[] = [
+    { value: 'sm', label: 'sm' },
+    { value: 'md', label: 'md' },
+    { value: 'lg', label: 'lg' },
+    { value: 'xl', label: 'xl' },
+  ];
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 32rem;">
   <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
-    <label style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem;">
-      Side
-      <select
-        value={side}
-        onchange={(e) => (side = (e.currentTarget as HTMLSelectElement).value as DrawerSide)}
-        style="padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid var(--cinder-border); background-color: var(--cinder-surface-inset); color: var(--cinder-text);"
-      >
-        <option value="right">right</option>
-        <option value="left">left</option>
-      </select>
-    </label>
-
-    <label style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem;">
-      Size
-      <select
-        value={size}
-        onchange={(e) => (size = (e.currentTarget as HTMLSelectElement).value as DrawerSize)}
-        style="padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid var(--cinder-border); background-color: var(--cinder-surface-inset); color: var(--cinder-text);"
-      >
-        <option value="sm">sm</option>
-        <option value="md">md</option>
-        <option value="lg">lg</option>
-        <option value="xl">xl</option>
-      </select>
-    </label>
-
-    <label
-      style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; cursor: pointer;"
-    >
-      <input type="checkbox" bind:checked={useTriggerRef} />
-      Use triggerRef
-    </label>
+    <Select id="drawer-side" bind:value={side} options={sideOptions} label="Side" />
+    <Select id="drawer-size" bind:value={size} options={sizeOptions} label="Size" />
+    <Checkbox id="drawer-use-trigger-ref" bind:checked={useTriggerRef} label="Use triggerRef" />
   </div>
 
   <Button

@@ -4,12 +4,13 @@
 </script>
 
 <script lang="ts">
+  import { Button } from 'cinder/button';
   import { HoverCard } from 'cinder';
 </script>
 
 <HoverCard>
   {#snippet trigger()}
-    <button type="button">Ada Lovelace</button>
+    <Button variant="ghost">Ada Lovelace</Button>
   {/snippet}
 
   <strong>Ada Lovelace</strong>

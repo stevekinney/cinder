@@ -4,14 +4,15 @@
 </script>
 
 <script lang="ts">
+  import { Button } from 'cinder/button';
   import { Collapsible } from 'cinder/collapsible';
 
   let open = $state(false);
 </script>
 
-<button type="button" onclick={() => (open = !open)}>
+<Button variant="secondary" onclick={() => (open = !open)}>
   {open ? 'Hide' : 'Show'} from outside
-</button>
+</Button>
 
 <Collapsible bind:open trigger="Controlled panel">
   <p>This panel's open state is shared with the external button above.</p>

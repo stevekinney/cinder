@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { beforeAll, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -485,6 +485,38 @@ describe('ALLOWLIST — canonical checked-in entries', () => {
     for (const entry of ALLOWLIST) {
       expect(entry.occurrenceIndex).toBeGreaterThanOrEqual(0);
     }
+  });
+});
+
+// ── Enforcement gate (live scan of the real examples) ───────────────────────────
+//
+// This is the invariant that `bun run validate` enforces (the playground's validate
+// script runs `scripts/check-raw-native-controls.ts --strict` before the server
+// crawl). Keeping it as a fast unit test (the validate gate also runs it, but that path
+// is slow) means a newly-added raw control in an example fails the normal test
+// suite immediately, with a clear pointer to the offending file.
+
+describe('enforcement — real examples have no un-allowlisted raw controls', () => {
+  // Scan the examples directory once and assert against the cached result in
+  // both tests — the scan reads and parses every example file, so running it
+  // per-test would duplicate that work.
+  let result: ScanResult;
+  beforeAll(async () => {
+    result = await scan(examplesDirectory);
+  });
+
+  test('scan of src/examples reports zero flagged controls', () => {
+    expect(
+      result.flagged.map((occurrence) => `${occurrence.relativePath}:${occurrence.lineNumber}`),
+    ).toEqual([]);
+  });
+
+  test('the checked-in ALLOWLIST has no stale entries', () => {
+    expect(
+      result.staleAllowlistEntries.map(
+        (entry) => `${entry.relativePath}#${entry.tagName}[${entry.occurrenceIndex}]`,
+      ),
+    ).toEqual([]);
   });
 });
 

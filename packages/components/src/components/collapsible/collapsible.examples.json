@@ -13,7 +13,7 @@
       "id": "controlled",
       "title": "Controlled with bind:open",
       "description": "An external control drives open state via two-way binding.",
-      "code": "<script lang=\"ts\">\n  import { Collapsible } from 'cinder/collapsible';\n\n  let open = $state(false);\n</script>\n\n<button type=\"button\" onclick={() => (open = !open)}>\n  {open ? 'Hide' : 'Show'} from outside\n</button>\n\n<Collapsible bind:open trigger=\"Controlled panel\">\n  <p>This panel's open state is shared with the external button above.</p>\n</Collapsible>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Collapsible } from 'cinder/collapsible';\n\n  let open = $state(false);\n</script>\n\n<Button variant=\"secondary\" onclick={() => (open = !open)}>\n  {open ? 'Hide' : 'Show'} from outside\n</Button>\n\n<Collapsible bind:open trigger=\"Controlled panel\">\n  <p>This panel's open state is shared with the external button above.</p>\n</Collapsible>\n"
     },
     {
       "id": "disabled",
