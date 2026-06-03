@@ -174,6 +174,36 @@ describe('FocusTrap', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  test('does not steal focus when deactivated before the deferred focus microtask drains', async () => {
+    // Regression for a focus-restore race: `activate()` defers `focusTrapTarget` via
+    // `queueMicrotask`. If the trap deactivates before that microtask drains, `deactivate()`
+    // restores focus to the previously-focused element — but the stale, still-queued
+    // `focusTrapTarget` would then fire and steal focus back into the now-deactivated trap.
+    // The deferred body is guarded by the `activated` flag and an activation generation, so a
+    // deactivation that lands before the microtask drains makes the queued focus a no-op.
+    //
+    // Activate then deactivate within the same microtask turn: `render` mounts and runs the
+    // activation `$effect` synchronously (queuing the focus microtask), and `rerender` flips
+    // `active` to false synchronously (running `deactivate()` and restoring focus) — all before
+    // the first `await` lets the microtask queue drain. The node stays mounted, so a missing
+    // guard would let the queued `focusTrapTarget` find the (still-present) tabbable buttons and
+    // steal focus back in.
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { rerender } = render(FocusTrap, {
+      props: { active: true, children: focusTrapChildren },
+    });
+    // No `await` between mount and deactivation: the deferred `focusTrapTarget` is still queued.
+    await rerender({ active: false, children: focusTrapChildren });
+
+    // Drain microtasks: the stale `focusTrapTarget` must be a no-op now that the trap is inactive.
+    await tick();
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
   test('restores focus on reactive deactivation, before unmount', async () => {
     // Regression for Codex round 2 finding: the `activated` flag alone did not handle the case
     // where `active` flipped false while the component remained mounted. The nested `$effect` now

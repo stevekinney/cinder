@@ -121,4 +121,138 @@ describe('SelectionPopover', () => {
     expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
     expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
   });
+
+  test('restores focus to the prior element when closed externally via the open prop', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+      },
+    });
+
+    // The consumer flips `open` to false directly (not via cancel/submit/close).
+    await rerender({ open: false, position: { x: 120, y: 80 } });
+
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.remove();
+  });
+
+  test('does nothing on external close when no focus was captured', async () => {
+    // Use a real focusable element so `document.activeElement` is deterministic.
+    // `document.body.focus()` is unreliable in HappyDOM (body is not focusable
+    // without tabindex), so focus may not move to body at all.
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Trigger';
+    document.body.append(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        // Never opened — wasOpen latch is never set, so restoreFocus is never called.
+        open: false,
+        position: { x: 120, y: 80 },
+      },
+    });
+
+    // Toggling the already-closed popover must not throw and must not steal focus.
+    await rerender({ open: false, position: { x: 120, y: 80 } });
+
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
+
+  test('internal cancel restores focus exactly once and the external effect is a no-op', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let focusCalls = 0;
+    const originalFocus = trigger.focus.bind(trigger);
+    trigger.focus = () => {
+      focusCalls += 1;
+      originalFocus();
+    };
+
+    let canceled = false;
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        oncancel: () => {
+          canceled = true;
+        },
+      },
+    });
+
+    // Expand so a focus owner is captured, then cancel internally.
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(canceled).toBe(true);
+    expect(focusCalls).toBe(1);
+    expect(document.activeElement).toBe(trigger);
+
+    // The consumer's onclose handler subsequently flips `open` to false; because
+    // the internal cancel already restored (and nulled the ref), the open->false
+    // effect's restore is a no-op — focus is not driven a second time.
+    await rerender({ open: false, position: { x: 120, y: 80 } });
+
+    expect(focusCalls).toBe(1);
+
+    trigger.remove();
+  });
+
+  test('internal submit restores focus exactly once', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let focusCalls = 0;
+    const originalFocus = trigger.focus.bind(trigger);
+    trigger.focus = () => {
+      focusCalls += 1;
+      originalFocus();
+    };
+
+    const submitted: string[] = [];
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        oncommentsubmit: (body: string) => submitted.push(body),
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    await fireEvent.input(screen.getByPlaceholderText('Add a comment...'), {
+      target: { value: 'Ship it.' },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Submit comment' }));
+
+    expect(submitted).toEqual(['Ship it.']);
+    expect(focusCalls).toBe(1);
+    expect(document.activeElement).toBe(trigger);
+
+    // External close after submit is idempotent — no second focus call.
+    await rerender({ open: false, position: { x: 120, y: 80 } });
+    expect(focusCalls).toBe(1);
+
+    trigger.remove();
+  });
 });
