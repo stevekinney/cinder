@@ -599,6 +599,28 @@
       "import": "./src/components/chip/chip.examples.json",
       "default": "./src/components/chip/chip.examples.json"
     },
+    "./click-away-listener": {
+      "types": "./dist/components/click-away-listener/index.d.ts",
+      "svelte": "./src/components/click-away-listener/index.ts",
+      "node": "./dist/server/components/click-away-listener/index.js",
+      "default": "./dist/components/click-away-listener/index.js"
+    },
+    "./click-away-listener/schema": {
+      "types": "./dist/components/click-away-listener/click-away-listener.schema.d.ts",
+      "svelte": "./src/components/click-away-listener/click-away-listener.schema.ts",
+      "node": "./dist/server/components/click-away-listener/click-away-listener.schema.js",
+      "default": "./dist/components/click-away-listener/click-away-listener.schema.js"
+    },
+    "./click-away-listener/variables": {
+      "types": "./dist/components/click-away-listener/click-away-listener.variables.d.ts",
+      "svelte": "./src/components/click-away-listener/click-away-listener.variables.ts",
+      "node": "./dist/server/components/click-away-listener/click-away-listener.variables.js",
+      "default": "./dist/components/click-away-listener/click-away-listener.variables.js"
+    },
+    "./click-away-listener/examples": {
+      "import": "./src/components/click-away-listener/click-away-listener.examples.json",
+      "default": "./src/components/click-away-listener/click-away-listener.examples.json"
+    },
     "./code-block": {
       "types": "./dist/components/code-block/index.d.ts",
       "svelte": "./src/components/code-block/index.ts",

@@ -112,6 +112,9 @@ export type { CheckboxProps } from './components/checkbox/index.ts';
 export { default as CheckboxGroup } from './components/checkbox-group/index.ts';
 export type { CheckboxGroupProps } from './components/checkbox-group/index.ts';
 
+export { default as ClickAwayListener } from './components/click-away-listener/index.ts';
+export type { ClickAwayListenerProps } from './components/click-away-listener/index.ts';
+
 export { default as CodeBlock } from './components/code-block/index.ts';
 export type { CodeBlockProps } from './components/code-block/index.ts';
 
