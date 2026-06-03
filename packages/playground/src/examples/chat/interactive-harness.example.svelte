@@ -469,9 +469,12 @@
 
     <section style="display: grid; gap: 0.25rem;">
       <strong>Event log</strong>
+      <!-- tabindex=0 gives the scrollable region keyboard access (axe
+           scrollable-region-focusable). A group label names it without a `log`
+           role, which would collide with the chat timeline's own role="log". -->
       <div
         data-testid="event-log"
-        role="log"
+        role="group"
         aria-label="Event log"
         tabindex="0"
         style="display: grid; gap: 0.15rem; max-height: 10rem; overflow: auto; font-size: var(--cinder-text-xs); font-family: var(--cinder-font-mono);"
