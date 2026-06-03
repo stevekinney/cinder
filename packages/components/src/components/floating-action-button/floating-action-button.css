@@ -21,9 +21,12 @@
 
     cursor: pointer;
 
-    /* Elevation shadow — FABs float above the page surface. Uses the shared shadow
-     * token so the raw-color audit stays clean and elevation themes consistently. */
-    box-shadow: var(--cinder-shadow-md);
+    /* Elevation shadow — FABs float above the page surface. Held in a custom property
+     * (shared shadow token, so the raw-color audit stays clean) so the focus-visible
+     * rule can COMPOSE the ring with the current elevation instead of replacing it —
+     * otherwise a hovered+focused FAB would lose its focus ring. */
+    --_cinder-fab-elevation: var(--cinder-shadow-md);
+    box-shadow: var(--_cinder-fab-elevation);
 
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -31,12 +34,15 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  /* Focus ring — transparent outline + two-stop box-shadow per cinder convention */
+  /* Focus ring — transparent outline + two-stop box-shadow per cinder convention.
+   * The elevation shadow is appended so the ring and the float-shadow coexist (and the
+   * ring survives :hover, which only changes --_cinder-fab-elevation, not this rule). */
   .cinder-fab:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color),
+      var(--_cinder-fab-elevation);
   }
 
   /* Forced Colors Mode — box-shadow is invisible; use a real outline */
@@ -154,8 +160,10 @@
 
   @media (hover: hover) {
     .cinder-fab:hover:not(:disabled):not([aria-disabled='true']) {
-      /* Raise the elevation on hover (md → lg) using shared shadow tokens. */
-      box-shadow: var(--cinder-shadow-lg);
+      /* Raise the elevation on hover (md → lg) by updating the custom property, not
+       * `box-shadow` directly — so a focused FAB keeps its ring (the focus-visible rule
+       * reads --_cinder-fab-elevation) while still elevating. */
+      --_cinder-fab-elevation: var(--cinder-shadow-lg);
     }
 
     .cinder-fab[data-cinder-color='primary']:hover:not(:disabled):not([aria-disabled='true']) {
