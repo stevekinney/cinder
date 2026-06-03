@@ -353,10 +353,9 @@
       aria-label={ariaLabel}
       aria-labelledby={labelledBy}
     >
-      <!-- When duplicates are disallowed (the default) the tag value is unique,
-           so key by value to reuse chip DOM on removal instead of recreating
-           every chip after the removed index. Duplicates make a pure value key
-           ambiguous, so fall back to a position-qualified composite. -->
+      <!-- Always key by a position-qualified composite (index:tag). A controlled
+           `value` prop can contain duplicate strings even when allowDuplicates is
+           false, so a pure value key would throw each_key_duplicate. -->
       {#each currentTags as tag, index (`${index}:${tag}`)}
         <li class="cinder-tag-input__chip">
           <span class="cinder-tag-input__chip-label">{tag}</span>

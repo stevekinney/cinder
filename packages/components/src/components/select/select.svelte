@@ -57,8 +57,9 @@
     context?.errorId === `${field.id}-error` ? `${field.id}-select-error` : `${field.id}-error`,
   );
 
-  // `devWarn` is already dead-code-eliminated from production builds and never
-  // emits on the server, so the previous `typeof window` guard was redundant.
+  // `devWarn` is dead-code-eliminated from production builds (gated on DEV from
+  // esm-env), so the previous `typeof window` guard was redundant for the prod path.
+  // It runs inside this $effect, which is client-only, so SSR is not a concern here.
   // The effect remains because `options` can change reactively (e.g. async load),
   // and we only want to surface the diagnostic once the list is genuinely empty.
   $effect(() => {
