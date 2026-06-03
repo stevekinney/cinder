@@ -371,9 +371,18 @@
   }
 
   function isPaneHiddenFromInteraction(context: ResizablePanelRenderContext): boolean {
+    // Read the reactive `layoutState` ONCE into a local before branching, then
+    // guard the local with an explicit early-return. During the unmeasured SSR
+    // pass `layoutState` is null (the measuring effect has not run server-side),
+    // and this function is called from the template — so a single, narrowed read
+    // is the SSR-safe shape: there is no second read of a possibly-changed value,
+    // and `currentLayoutState.availablePanePixels` is only reached once the local
+    // is proven non-null. Preserves the original semantics exactly (null ⇒ not
+    // hidden ⇒ `false`).
+    const currentLayoutState = layoutState;
+    if (currentLayoutState === null) return false;
     return (
-      layoutState !== null &&
-      (context.collapsed || (layoutState.availablePanePixels > 0 && context.pixelSize <= 0))
+      context.collapsed || (currentLayoutState.availablePanePixels > 0 && context.pixelSize <= 0)
     );
   }
 
