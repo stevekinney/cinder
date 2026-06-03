@@ -627,6 +627,28 @@
       }
     },
     {
+      "name": "ClickAwayListener",
+      "id": "click-away-listener",
+      "import": "cinder/click-away-listener",
+      "exportName": "ClickAwayListener",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Headless utility that calls a function when the user clicks or taps outside a subtree.",
+      "tags": ["overlay", "utility"],
+      "useWhen": [
+        "Building a custom inline-edit field, custom dropdown, or any overlay that should close on outside interaction."
+      ],
+      "avoidWhen": ["Using Popover, Dropdown, or Modal — those handle click-away internally."],
+      "related": ["focus-trap", "popover", "portal"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "cinder/click-away-listener/schema",
+        "variables": "cinder/click-away-listener/variables",
+        "examples": "cinder/click-away-listener/examples"
+      }
+    },
+    {
       "name": "CodeBlock",
       "id": "code-block",
       "import": "cinder/code-block",
