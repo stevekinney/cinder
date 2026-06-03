@@ -68,6 +68,11 @@ export type TypographyProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'child
    * **Accessibility:** rendering a heading variant (`h1`–`h6`) on a non-heading
    * element removes the heading role from the document outline. If the text still
    * functions as a heading, add `role="heading"` and `aria-level` yourself.
+   *
+   * **Typing:** forwarded attributes are typed as the generic `HTMLAttributes`, so
+   * element-specific attributes are not narrowed by `component` — e.g. `component="a"`
+   * will not accept `href` through Typography's props. For an interactive element with
+   * its own attributes (a real link or button), render that element directly instead.
    */
   component?: TypographyElement;
   /**
