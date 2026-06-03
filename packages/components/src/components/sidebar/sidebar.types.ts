@@ -25,7 +25,11 @@ export type SidebarProps = Omit<
   class?: string;
   /** Optional branding region rendered above the navigation. */
   brand?: Snippet;
-  /** Navigation region. Typically a `<SideNavigation>` subtree. Required. */
+  /**
+   * Navigation region. Typically a `<SideNavigation>` subtree. Optional — when
+   * omitted, no `<nav>` landmark is rendered (so the sidebar can serve as app chrome
+   * without a navigation list, and an empty `<nav>` isn't announced to screen readers).
+   */
   navigation?: Snippet;
   /** Optional footer region (e.g. user account, sign-out). */
   footer?: Snippet;
