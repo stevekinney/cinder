@@ -8,14 +8,21 @@
  *   - Duplicate the SSR-guard logic that `useReducedMotion` already handles.
  *   - Scatter the policy across components, making future changes error-prone.
  *
- * This script walks `packages/components/src/components/**` and
- * `packages/components/src/utilities/**` and fails on any `.svelte` or `.ts` file
- * that calls `matchMedia` with the reduced-motion media string directly. The shared
- * utility itself is the single allowed call site.
+ * This script walks `packages/components/src/{components,utilities,_internal}/**`
+ * and fails on any `.svelte` or `.ts` file that calls `matchMedia` with the
+ * reduced-motion media string directly. The shared utility itself is the single
+ * allowed call site.
  *
- * Like `check-no-bare-console-warn.ts`, this uses a grep-based scan because
- * oxlint cannot express this rule for Svelte files (they are in its ignorePatterns).
- * Wired into `bun run lint` (and therefore CI) via `package.json`.
+ * Unlike the line-based scan in `check-no-bare-console-warn.ts`, this script scans
+ * the full file text so it also catches Prettier-formatted multiline call expressions
+ * where `matchMedia(` and `'(prefers-reduced-motion…'` appear on separate lines.
+ * The per-file-text approach does not report a line number for multiline matches —
+ * it reports the first line of the match. A file-level flag is sufficient to direct
+ * the author to the correct fix.
+ *
+ * Like `check-no-bare-console-warn.ts`, oxlint cannot express this rule for Svelte
+ * files (they are in its ignorePatterns). Wired into `bun run lint` (and therefore
+ * CI) via `package.json`.
  */
 
 import { Glob } from 'bun';
@@ -32,18 +39,22 @@ const srcRoot = resolve(scriptDirectory, '..', 'src');
 const ALLOWED_RELATIVE_PATHS = new Set<string>(['utilities/use-reduced-motion.svelte.ts']);
 
 /**
- * Matches `matchMedia(` followed (within a few chars) by `prefers-reduced-motion`.
- * Catches `window.matchMedia(…)`, `globalThis.matchMedia?.('…')`, and similar.
+ * Matches `matchMedia` (optionally with optional-chaining `?.`) followed by
+ * any whitespace or chars up to `prefers-reduced-motion`. The `s` flag (dotAll)
+ * makes `.` match newlines, so Prettier-formatted multiline calls are caught.
+ *
+ * Catches: `window.matchMedia('…')`, `globalThis.matchMedia?.('…')`,
+ * formatted across multiple lines, etc.
  */
-const INLINE_MATCH_MEDIA_PATTERN = /matchMedia\s*\(?\s*['"(].*prefers-reduced-motion/;
+const INLINE_MATCH_MEDIA_PATTERN = /matchMedia\s*\??\.?\s*\([^)]*prefers-reduced-motion/s;
 
-type Violation = { filePath: string; lineNumber: number; line: string };
+type Violation = { filePath: string };
 
 async function scan(): Promise<Violation[]> {
   const violations: Violation[] = [];
   const glob = new Glob('**/*.{svelte,ts}');
 
-  for (const subdir of ['components', 'utilities']) {
+  for (const subdir of ['components', 'utilities', '_internal']) {
     const root = resolve(srcRoot, subdir);
     for await (const relativePath of glob.scan({ cwd: root })) {
       const srcRelative = `${subdir}/${relativePath}`;
@@ -51,17 +62,11 @@ async function scan(): Promise<Violation[]> {
 
       const absolutePath = resolve(root, relativePath);
       const source = await Bun.file(absolutePath).text();
-      const lines = source.split('\n');
 
-      for (let index = 0; index < lines.length; index++) {
-        const line = lines[index]!;
-        if (INLINE_MATCH_MEDIA_PATTERN.test(line)) {
-          violations.push({
-            filePath: relative(resolve(srcRoot, '..', '..', '..'), absolutePath),
-            lineNumber: index + 1,
-            line: line.trim(),
-          });
-        }
+      if (INLINE_MATCH_MEDIA_PATTERN.test(source)) {
+        violations.push({
+          filePath: relative(resolve(srcRoot, '..', '..', '..'), absolutePath),
+        });
       }
     }
   }
@@ -85,9 +90,7 @@ async function main(): Promise<void> {
       'source for this preference per OVERLAY-POLICY.md § Reduced motion.\n\n',
   );
   for (const violation of violations) {
-    process.stderr.write(
-      `  ${violation.filePath}:${violation.lineNumber}\n    ${violation.line}\n`,
-    );
+    process.stderr.write(`  ${violation.filePath}\n`);
   }
   process.exit(1);
 }
