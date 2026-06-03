@@ -346,8 +346,10 @@
   }
 
   .chat-message:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Search match highlight — subtle accent-tinted ring */
@@ -568,8 +570,10 @@
   }
 
   .chat-message-expand:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Failed message styling */
@@ -617,8 +621,10 @@
   }
 
   .chat-message-retry:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Footer — absolutely positioned outside the bubble's flow so revealing it on
@@ -750,8 +756,10 @@
   }
 
   :global(.chat-message-action-button:focus-visible) {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Touch devices: without hover discoverability, bare icons read as
@@ -839,8 +847,10 @@
   }
 
   .chat-message-edit-save:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   .chat-message-edit-cancel {
@@ -866,8 +876,10 @@
   }
 
   .chat-message-edit-cancel:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   /* Responsive sizing for narrow viewports */
@@ -879,6 +891,22 @@
 
     .chat-message {
       padding: var(--cinder-space-2) var(--cinder-space-3);
+    }
+  }
+
+  /* Forced-colors: box-shadow rings are suppressed in Windows High Contrast Mode,
+     so repaint the reserved transparent outline channel with a system color.
+     Every selector here is button-shaped or a clickable region → ButtonText.
+     Placed after the base rules per the focus-ring policy's cascade note. */
+  @media (forced-colors: active) {
+    .chat-message:focus-visible,
+    .chat-message-expand:focus-visible,
+    .chat-message-retry:focus-visible,
+    :global(.chat-message-action-button:focus-visible),
+    .chat-message-edit-save:focus-visible,
+    .chat-message-edit-cancel:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
     }
   }
 </style>
