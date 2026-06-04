@@ -60,6 +60,31 @@ describe('Collapsible (uncontrolled)', () => {
     expect(region?.getAttribute('aria-labelledby')).toBe(button.getAttribute('id'));
   });
 
+  test('omits aria-controls while closed so the reference never dangles', async () => {
+    // The panel is removed from the DOM when closed (the {#if} has no Transition
+    // layer keeping it mounted). aria-controls={open ? panelId : undefined} must
+    // therefore drop the attribute entirely when closed — pointing aria-controls
+    // at a non-existent id is an invalid ARIA reference. This component is the
+    // sole owner of that behavior since the Transition removal (bbb08520, #253).
+    const { container } = render(Collapsible, { trigger: 'Toggle', children: bodySnippet() });
+
+    // Closed by default: no panel in the DOM, no aria-controls on the trigger.
+    expect(panel(container)).toBeNull();
+    expect(trigger(container).hasAttribute('aria-controls')).toBe(false);
+
+    // Open → aria-controls appears and resolves to the live panel id.
+    await fireEvent.click(trigger(container));
+    const openPanelId = panel(container)?.getAttribute('id') ?? null;
+    expect(openPanelId).not.toBeNull();
+    expect(trigger(container).getAttribute('aria-controls')).toBe(openPanelId);
+
+    // Close again → the panel unmounts and aria-controls is dropped, not left
+    // pointing at the now-absent panel.
+    await fireEvent.click(trigger(container));
+    expect(panel(container)).toBeNull();
+    expect(trigger(container).hasAttribute('aria-controls')).toBe(false);
+  });
+
   test('renders initially open when open=true and toggles closed on click', async () => {
     const { container } = render(Collapsible, {
       trigger: 'Toggle',
