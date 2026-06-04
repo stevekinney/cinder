@@ -8,6 +8,10 @@ setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: Steps } = await import('./steps.svelte');
 
+// Read once at module load — `describe` callbacks are synchronous, so the
+// CSS-contract tests below reference this constant instead of awaiting inside them.
+const stepsCss = await Bun.file(new URL('./steps.css', import.meta.url)).text();
+
 const defaultSteps = [
   { id: 'a', label: 'Set up profile', description: 'Tell us about yourself' },
   { id: 'b', label: 'Connect account', description: 'Link your services' },
@@ -305,11 +309,124 @@ describe('Steps — interactive step items', () => {
     expect(container.querySelector('li[aria-current="step"]')).not.toBeNull();
   });
 
-  test('vertical interactive step bodies preserve static bottom spacing', async () => {
-    const css = await Bun.file(new URL('./steps.css', import.meta.url)).text();
-
-    expect(css).toMatch(
+  test('vertical interactive step bodies preserve static bottom spacing', () => {
+    expect(stepsCss).toMatch(
       /\.cinder-steps\[data-cinder-orientation='vertical'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{[^}]*padding-bottom:\s*var\(--cinder-space-4\);/m,
     );
+  });
+});
+
+// Layout geometry is not observable in happy-dom (no layout engine), so these
+// pin the CSS contract by reading steps.css as text — the same approach the
+// vertical-spacing test above uses. They guard the wide-horizontal "each step
+// reads as one centered unit" design and the narrow stacked fallback.
+describe('Steps — horizontal layout geometry (CSS contract)', () => {
+  /** Extract the body of the first rule whose selector matches `selectorRegex`. */
+  const ruleBody = (selectorRegex: RegExp): string => {
+    const pos = stepsCss.search(selectorRegex);
+    expect(pos, `selector not found: ${selectorRegex}`).toBeGreaterThan(-1);
+    const source = stepsCss.slice(pos);
+    const open = source.indexOf('{');
+    const close = source.indexOf('}', open);
+    expect(open).toBeGreaterThan(-1);
+    expect(close).toBeGreaterThan(open);
+    return source.slice(open + 1, close);
+  };
+
+  test('horizontal item is a centered flex column so marker + label read as a unit', () => {
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__item\s*\{/,
+    );
+    expect(body).toMatch(/display:\s*flex;/);
+    expect(body).toMatch(/flex-direction:\s*column;/);
+    expect(body).toMatch(/align-items:\s*center;/);
+    // Must be positioned so the absolutely-positioned connector anchors to it.
+    expect(body).toMatch(/position:\s*relative;/);
+    // Equal-width columns keep every marker at the center of its track share.
+    expect(body).toMatch(/flex:\s*1 1 0;/);
+  });
+
+  test('horizontal connector spans from this marker center to the next marker center', () => {
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__connector\s*\{/,
+    );
+    expect(body).toMatch(/position:\s*absolute;/);
+    // Starts at this marker's center (50%) and runs one full item-width to the
+    // next center (100%). Logical inset keeps it correct under RTL.
+    expect(body).toMatch(/inset-inline-start:\s*50%;/);
+    expect(body).toMatch(/width:\s*100%;/);
+    // Painted as a thin line behind the markers.
+    expect(body).toMatch(/z-index:\s*0;/);
+  });
+
+  test('horizontal marker stacks above the connector line passing behind it', () => {
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__marker\s*\{/,
+    );
+    expect(body).toMatch(/position:\s*relative;/);
+    expect(body).toMatch(/z-index:\s*1;/);
+  });
+
+  test('horizontal body centers its label and description under the marker', () => {
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__body\s*\{/,
+    );
+    expect(body).toMatch(/text-align:\s*center;/);
+    expect(body).toMatch(/align-items:\s*center;/);
+  });
+});
+
+describe('Steps — narrow horizontal fallback (CSS contract)', () => {
+  // The narrow container query must fully undo the wide flex column and return
+  // to the grid-based vertical-style layout. This guards the exact regression
+  // where the flex base left the narrow connector collapsed to a stub.
+  const narrowBlock = (() => {
+    const start = stepsCss.search(/@container cinder-steps \(max-width: 32rem\)/);
+    expect(start, '@container cinder-steps (max-width: 32rem) not found in CSS').toBeGreaterThan(
+      -1,
+    );
+    // The container query is the last block in the file; take everything after it.
+    return stepsCss.slice(start);
+  })();
+
+  const ruleBody = (selectorRegex: RegExp): string => {
+    const pos = narrowBlock.search(selectorRegex);
+    expect(pos, `selector not found in narrow block: ${selectorRegex}`).toBeGreaterThan(-1);
+    const source = narrowBlock.slice(pos);
+    const open = source.indexOf('{');
+    const close = source.indexOf('}', open);
+    expect(open).toBeGreaterThan(-1);
+    expect(close).toBeGreaterThan(open);
+    return source.slice(open + 1, close);
+  };
+
+  test('narrow item re-establishes the grid the wide flex column replaced', () => {
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__item\s*\{/,
+    );
+    expect(body).toMatch(/display:\s*grid;/);
+    // Must reset align-items so the wide flex-column value (center) does not
+    // vertically center grid items, which would float labels mid-track.
+    expect(body).toMatch(/align-items:\s*stretch;/);
+  });
+
+  test('narrow connector returns to an in-flow vertical line under the marker', () => {
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__connector\s*\{/,
+    );
+    // Undo the wide layout's absolute positioning…
+    expect(body).toMatch(/position:\s*static;/);
+    expect(body).toMatch(/inset-inline-start:\s*auto;/);
+    // …and place it as a vertical line in grid row 2 below the marker.
+    expect(body).toMatch(/grid-row:\s*2;/);
+    expect(body).toMatch(/width:\s*1px;/);
+    expect(body).toMatch(/align-self:\s*stretch;/);
+  });
+
+  test('narrow body left-aligns beside the marker, undoing the centered wide layout', () => {
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__body\s*\{/,
+    );
+    expect(body).toMatch(/text-align:\s*start;/);
   });
 });

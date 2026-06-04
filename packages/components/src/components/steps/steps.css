@@ -11,6 +11,9 @@
     display: block;
     container-type: inline-size;
     container-name: cinder-steps;
+    /* Marker diameter — referenced by the horizontal connector's `top` offset so
+     both values stay in sync if the size ever changes. */
+    --_marker-size: 1.5rem;
   }
 
   /* ----------------------------------------
@@ -36,38 +39,50 @@
 
   /* ----------------------------------------
  * Item — horizontal layout
- * Marker (top-left) | Connector (top-right, centered vertically)
- * Body spans full width in second row
+ * Each step is a centered column: marker on top, label/description centered
+ * directly beneath it so the three read as one unit. The connector is painted
+ * as a line running between this marker's center and the next marker's center
+ * (absolutely positioned, behind the markers).
  * ---------------------------------------- */
 
   .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__item {
     flex: 1 1 0;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-rows: auto auto;
-    gap: 0 var(--cinder-space-2);
+    /* Equal-width columns even when labels differ in length, so every marker
+     sits at the horizontal center of its share of the track. */
+    min-width: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__marker {
-    grid-column: 1;
-    grid-row: 1;
+    /* Lift the marker above the connector line that passes behind it. */
+    position: relative;
+    z-index: 1;
   }
 
   .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__connector {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
+    position: absolute;
+    /* Vertically centered on the marker. Uses --_marker-size so this offset
+     stays in sync if the marker diameter is ever changed. */
+    top: calc(var(--_marker-size) / 2);
     height: 1px;
-    /* Shorten the painted line by the leading gap and push it clear of the
-     marker, so the total inline footprint of the cell is unchanged (no
-     overshoot into the next marker). */
-    width: calc(100% - var(--cinder-space-2));
-    margin-inline-start: var(--cinder-space-2);
+    /* Start at this marker's center (50%) and run to the next marker's center.
+     This geometry is correct only when every flex item shares the same computed
+     width (flex: 1 1 0 with no gap or min-width overrides). If variable-width
+     steps are ever needed, revisit this calculation.
+     Logical props keep the direction correct under RTL. */
+    inset-inline-start: 50%;
+    width: 100%;
+    z-index: 0;
   }
 
   .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__body {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    text-align: center;
+    align-items: center;
+    /* Keep long labels from colliding with adjacent steps; they wrap instead. */
+    max-width: 100%;
   }
 
   /* ----------------------------------------
@@ -111,8 +126,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: var(--_marker-size);
+    height: var(--_marker-size);
     border-radius: var(--cinder-radius-full);
     background: var(--cinder-surface-inset);
     flex-shrink: 0;
@@ -278,22 +293,47 @@
 
     .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__item {
       flex: none;
+      /* Re-establish the grid the wide layout replaced with a centered flex
+       column. Narrow steps read like the vertical orientation: marker in
+       column 1, body in column 2, connector running down column 1. */
+      display: grid;
+      /* Reset align-items from the wide flex-column rule (where it centers
+       the flex children horizontally). On a grid container align-items
+       would vertically center grid items; stretch is the correct default. */
+      align-items: stretch;
       grid-template-columns: auto 1fr;
       grid-template-rows: auto 1fr;
       gap: 0 var(--cinder-space-3);
     }
 
+    .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__marker {
+      /* Drop the wide layout's stacking context; the marker is back in flow. */
+      position: static;
+      z-index: auto;
+    }
+
     .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__connector {
+      /* Undo the wide layout's absolute, behind-the-marker connector and return
+       to an in-flow vertical line beneath the marker. */
+      position: static;
+      inset-inline-start: auto;
+      top: auto;
+      z-index: auto;
       grid-column: 1;
       grid-row: 2;
       justify-self: center;
       width: 1px;
+      height: auto;
       min-height: var(--cinder-space-6);
       margin-inline-start: 0;
       align-self: stretch;
     }
 
     .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__body {
+      /* Left-aligned beside the marker, undoing the wide layout's centering. */
+      text-align: start;
+      align-items: stretch;
+      max-width: none;
       grid-column: 2;
       grid-row: 1 / span 2;
       padding-bottom: var(--cinder-space-4);
