@@ -134,14 +134,14 @@ Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinde
 
 Background and surface tokens for the three core elevations — page background, default surface, and raised surface — plus an inset variant for sunken regions and `hover`/`pressed` derivatives that lift or darken via `color-mix`.
 
-| Token                      | Default                                                                                      |
-| -------------------------- | -------------------------------------------------------------------------------------------- |
-| `--cinder-bg`              | `light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245))`                                      |
-| `--cinder-surface`         | `light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245))`                                    |
-| `--cinder-surface-raised`  | `light-dark(oklch(100% 0.006 245), oklch(24% 0.045 245))`                                    |
-| `--cinder-surface-inset`   | `light-dark(oklch(95.5% 0.01 245), oklch(12% 0.03 245))`                                     |
-| `--cinder-surface-hover`   | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)`  |
-| `--cinder-surface-pressed` | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 12%)` |
+| Token                      | Default                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| `--cinder-bg`              | `light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245))`                                     |
+| `--cinder-surface`         | `light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245))`                                   |
+| `--cinder-surface-raised`  | `light-dark(oklch(100% 0.006 245), oklch(24% 0.045 245))`                                   |
+| `--cinder-surface-inset`   | `light-dark(oklch(95.5% 0.01 245), oklch(12% 0.03 245))`                                    |
+| `--cinder-surface-hover`   | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
+| `--cinder-surface-pressed` | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
 
 ## Text colors
 
@@ -204,16 +204,16 @@ Foreground / background / border triples for soft tinted surfaces. Use these in 
 | ------------------------------- | ------------------------------------------------------- |
 | `--cinder-color-info-bg`        | `light-dark(oklch(96% 0.025 245), oklch(28% 0.06 245))` |
 | `--cinder-color-info-fg`        | `light-dark(oklch(40% 0.13 245), oklch(88% 0.1 245))`   |
-| `--cinder-color-info-border`    | `light-dark(oklch(83% 0.02 245), oklch(45% 0.08 245))`  |
+| `--cinder-color-info-border`    | `light-dark(oklch(80% 0.05 245), oklch(45% 0.08 245))`  |
 | `--cinder-color-success-bg`     | `light-dark(oklch(96% 0.04 145), oklch(28% 0.07 145))`  |
-| `--cinder-color-success-fg`     | `light-dark(oklch(28% 0.13 145), oklch(88% 0.11 145))`  |
-| `--cinder-color-success-border` | `light-dark(oklch(80% 0.08 145), oklch(45% 0.09 145))`  |
+| `--cinder-color-success-fg`     | `light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145))`  |
+| `--cinder-color-success-border` | `light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))`  |
 | `--cinder-color-warning-bg`     | `light-dark(oklch(96% 0.04 75), oklch(28% 0.08 75))`    |
-| `--cinder-color-warning-fg`     | `light-dark(oklch(32% 0.14 75), oklch(90% 0.12 75))`    |
-| `--cinder-color-warning-border` | `light-dark(oklch(82% 0.1 75), oklch(50% 0.1 75))`      |
+| `--cinder-color-warning-fg`     | `light-dark(oklch(40% 0.13 75), oklch(90% 0.12 75))`    |
+| `--cinder-color-warning-border` | `light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))`     |
 | `--cinder-color-danger-bg`      | `light-dark(oklch(96% 0.04 25), oklch(28% 0.09 25))`    |
-| `--cinder-color-danger-fg`      | `light-dark(oklch(32% 0.16 25), oklch(90% 0.12 25))`    |
-| `--cinder-color-danger-border`  | `light-dark(oklch(82% 0.1 25), oklch(50% 0.11 25))`     |
+| `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25))`    |
+| `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`    |
 
 ## Scrollbar
 
@@ -247,12 +247,12 @@ Each `--cinder-chart-series-*` is a theme-aware design token: it wraps a distinc
 
 The ring tokens drive the focus-visible outline used across interactive primitives. See [`focus-ring-policy.md`](./focus-ring-policy.md) for when components are expected to render the ring vs. when they delegate to the user agent.
 
-| Token                        | Default                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------- |
-| `--cinder-ring-width`        | `3px`                                                                            |
-| `--cinder-ring-offset`       | `1px`                                                                            |
-| `--cinder-ring-offset-color` | `var(--cinder-bg)`                                                               |
-| `--cinder-ring-color`        | `light-dark(oklch(58% 0.16 195), oklch(from var(--cinder-accent) 70% 0.14 195))` |
+| Token                        | Default                                                                                                   |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--cinder-ring-width`        | `3px`                                                                                                     |
+| `--cinder-ring-offset`       | `1px`                                                                                                     |
+| `--cinder-ring-offset-color` | `var(--cinder-bg)`                                                                                        |
+| `--cinder-ring-color`        | `light-dark(oklch(from var(--cinder-accent) 0.58 0.16 h), oklch(from var(--cinder-accent) 70% 0.14 195))` |
 
 ## Z-index layers
 

@@ -194,7 +194,10 @@
  * ---------------------------------------- */
 
   .cinder-button[data-cinder-variant='primary'] {
-    --_cinder-button-ring: var(--cinder-accent);
+    /* Ring uses the dedicated --cinder-ring-color (not the bright fill-accent):
+       the L=0.72 accent is the button face, so an accent ring would be invisible
+       against it and fail WCAG 1.4.11 (3:1) against the page. */
+    --_cinder-button-ring: var(--cinder-ring-color);
     background: var(--cinder-accent);
     color: var(--cinder-accent-contrast);
     border-color: transparent;
@@ -308,7 +311,9 @@
  * in both light and dark themes. Contrast ratios must be verified mechanically (WebAIM
  * contrast checker) before shipping; see button.a11y.md for the verification procedure. */
   .cinder-button[data-cinder-variant='soft'] {
-    --_cinder-button-ring: var(--cinder-accent);
+    /* Ring uses --cinder-ring-color for consistency with primary and to keep a
+       single focus semantic; the bright fill-accent is reserved for fills/text. */
+    --_cinder-button-ring: var(--cinder-ring-color);
     background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
     color: var(--cinder-accent-text);
     border-color: transparent;
