@@ -258,7 +258,7 @@
      to clear 3:1 as a ring against near-white surfaces); `h` tracks the accent hue. */
   --cinder-ring-color: light-dark(
     oklch(from var(--cinder-accent) 0.58 0.16 h),
-    oklch(from var(--cinder-accent) 70% 0.14 195)
+    oklch(from var(--cinder-accent) 0.7 0.14 h)
   );
 
   /* ========================================

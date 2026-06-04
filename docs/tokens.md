@@ -247,12 +247,12 @@ Each `--cinder-chart-series-*` is a theme-aware design token: it wraps a distinc
 
 The ring tokens drive the focus-visible outline used across interactive primitives. See [`focus-ring-policy.md`](./focus-ring-policy.md) for when components are expected to render the ring vs. when they delegate to the user agent.
 
-| Token                        | Default                                                                                                   |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `--cinder-ring-width`        | `3px`                                                                                                     |
-| `--cinder-ring-offset`       | `1px`                                                                                                     |
-| `--cinder-ring-offset-color` | `var(--cinder-bg)`                                                                                        |
-| `--cinder-ring-color`        | `light-dark(oklch(from var(--cinder-accent) 0.58 0.16 h), oklch(from var(--cinder-accent) 70% 0.14 195))` |
+| Token                        | Default                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `--cinder-ring-width`        | `3px`                                                                                                   |
+| `--cinder-ring-offset`       | `1px`                                                                                                   |
+| `--cinder-ring-offset-color` | `var(--cinder-bg)`                                                                                      |
+| `--cinder-ring-color`        | `light-dark(oklch(from var(--cinder-accent) 0.58 0.16 h), oklch(from var(--cinder-accent) 0.7 0.14 h))` |
 
 ## Z-index layers
 
