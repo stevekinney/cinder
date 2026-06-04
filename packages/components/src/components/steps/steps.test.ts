@@ -323,7 +323,9 @@ describe('Steps — interactive step items', () => {
 describe('Steps — horizontal layout geometry (CSS contract)', () => {
   /** Extract the body of the first rule whose selector matches `selectorRegex`. */
   const ruleBody = (selectorRegex: RegExp): string => {
-    const source = stepsCss.slice(stepsCss.search(selectorRegex));
+    const pos = stepsCss.search(selectorRegex);
+    expect(pos, `selector not found: ${selectorRegex}`).toBeGreaterThan(-1);
+    const source = stepsCss.slice(pos);
     const open = source.indexOf('{');
     const close = source.indexOf('}', open);
     expect(open).toBeGreaterThan(-1);
@@ -380,13 +382,17 @@ describe('Steps — narrow horizontal fallback (CSS contract)', () => {
   // where the flex base left the narrow connector collapsed to a stub.
   const narrowBlock = (() => {
     const start = stepsCss.search(/@container cinder-steps \(max-width: 32rem\)/);
-    expect(start).toBeGreaterThan(-1);
+    expect(start, '@container cinder-steps (max-width: 32rem) not found in CSS').toBeGreaterThan(
+      -1,
+    );
     // The container query is the last block in the file; take everything after it.
     return stepsCss.slice(start);
   })();
 
   const ruleBody = (selectorRegex: RegExp): string => {
-    const source = narrowBlock.slice(narrowBlock.search(selectorRegex));
+    const pos = narrowBlock.search(selectorRegex);
+    expect(pos, `selector not found in narrow block: ${selectorRegex}`).toBeGreaterThan(-1);
+    const source = narrowBlock.slice(pos);
     const open = source.indexOf('{');
     const close = source.indexOf('}', open);
     expect(open).toBeGreaterThan(-1);

@@ -11,6 +11,9 @@
     display: block;
     container-type: inline-size;
     container-name: cinder-steps;
+    /* Marker diameter — referenced by the horizontal connector's `top` offset so
+     both values stay in sync if the size ever changes. */
+    --_marker-size: 1.5rem;
   }
 
   /* ----------------------------------------
@@ -61,13 +64,15 @@
 
   .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__connector {
     position: absolute;
-    /* Vertically centered on the marker (markers are 1.5rem tall). */
-    top: calc(1.5rem / 2);
+    /* Vertically centered on the marker. Uses --_marker-size so this offset
+     stays in sync if the marker diameter is ever changed. */
+    top: calc(var(--_marker-size) / 2);
     height: 1px;
-    /* Start at this marker's center and run to the next marker's center. Items
-     are equal-width (flex: 1 1 0), so the next center is exactly one item-width
-     to the inline-end — hence left:50% + width:100%. Logical props keep this
-     correct under RTL. */
+    /* Start at this marker's center (50%) and run to the next marker's center.
+     This geometry is correct only when every flex item shares the same computed
+     width (flex: 1 1 0 with no gap or min-width overrides). If variable-width
+     steps are ever needed, revisit this calculation.
+     Logical props keep the direction correct under RTL. */
     inset-inline-start: 50%;
     width: 100%;
     z-index: 0;
@@ -121,8 +126,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: var(--_marker-size);
+    height: var(--_marker-size);
     border-radius: var(--cinder-radius-full);
     background: var(--cinder-surface-inset);
     flex-shrink: 0;
