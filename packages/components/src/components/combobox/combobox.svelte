@@ -25,7 +25,7 @@
     describeId,
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import Popover from '../popover/popover.svelte';
 
   let {
@@ -167,7 +167,7 @@
   }
 </script>
 
-<div class={cn('cinder-combobox', className)}>
+<div class={classNames('cinder-combobox', className)}>
   {#if label}
     <label for={id} class="cinder-combobox__label" data-disabled={disabled || undefined}>
       {label}

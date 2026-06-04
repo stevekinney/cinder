@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import type { SpinnerProps } from './spinner.types.ts';
 
   const { size = 'md', label = 'Loading', class: className, ...rest }: SpinnerProps = $props();
@@ -24,7 +24,7 @@
 
 <span
   {...rest}
-  class={cn('cinder-spinner', className)}
+  class={classNames('cinder-spinner', className)}
   role="status"
   aria-label={label}
   data-cinder-size={size}

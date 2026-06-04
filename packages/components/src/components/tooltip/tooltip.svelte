@@ -20,7 +20,7 @@
   import type { Attachment } from 'svelte/attachments';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
   let {
@@ -178,7 +178,7 @@
   wrapper out of the accessibility tree.
 -->
 <span
-  class={cn('cinder-tooltip-wrapper', className)}
+  class={classNames('cinder-tooltip-wrapper', className)}
   role="presentation"
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}

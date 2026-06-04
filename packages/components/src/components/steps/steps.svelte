@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { StepsProps } from './steps.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import Check from 'lucide-svelte/icons/check';
 
   let {
@@ -45,7 +45,11 @@
   );
 </script>
 
-<nav class={cn('cinder-steps', className)} aria-label={label} data-cinder-orientation={orientation}>
+<nav
+  class={classNames('cinder-steps', className)}
+  aria-label={label}
+  data-cinder-orientation={orientation}
+>
   <ol class="cinder-steps__list">
     {#each steps as step, index (step.id)}
       {@const state = stepStates[index]}

@@ -22,7 +22,7 @@
     setTableSectionContext,
     tryGetTableContext,
   } from '../table/table.context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     class: className,
@@ -76,6 +76,6 @@
   });
 </script>
 
-<thead class={cn('cinder-table__header', className)}>
+<thead class={classNames('cinder-table__header', className)}>
   {@render children()}
 </thead>

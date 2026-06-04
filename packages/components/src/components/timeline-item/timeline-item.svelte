@@ -15,7 +15,7 @@
 </script>
 
 <script lang="ts">
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import type { TimelineHeadingLevel } from '../timeline/timeline.types.ts';
   import type { TimelineItemProps } from './timeline-item.types.ts';
 
@@ -48,7 +48,7 @@
 
 <li
   {...rest}
-  class={cn('cinder-timeline-item', className)}
+  class={classNames('cinder-timeline-item', className)}
   data-cinder-tone={tone}
   data-cinder-connector-after={connectorAfter}
 >

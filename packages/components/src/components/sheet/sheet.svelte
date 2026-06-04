@@ -22,7 +22,7 @@
   import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
@@ -211,7 +211,7 @@
   <dialog
     {...rest}
     bind:this={dialogElement}
-    class={cn('cinder-sheet', className)}
+    class={classNames('cinder-sheet', className)}
     aria-modal="true"
     aria-labelledby={ariaLabelledBy ?? titleId}
     data-cinder-closing={isClosing ? '' : undefined}

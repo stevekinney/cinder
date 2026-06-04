@@ -18,7 +18,7 @@
   import type { TableHeaderCellProps } from './table-header-cell.types.ts';
 
   import { getTableContext } from '../table/table.context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     column,
@@ -58,7 +58,7 @@
 <th
   {...rest}
   {scope}
-  class={cn('cinder-table__header-cell', className)}
+  class={classNames('cinder-table__header-cell', className)}
   data-cinder-align={align}
   data-cinder-sortable={isSortable || undefined}
   aria-sort={ariaSort}

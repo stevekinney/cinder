@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import type { BreadcrumbsProps } from './breadcrumbs.types.ts';
 
   let {
@@ -27,7 +27,7 @@
   }: BreadcrumbsProps = $props();
 </script>
 
-<nav class={cn('cinder-breadcrumbs', className)} aria-label={label}>
+<nav class={classNames('cinder-breadcrumbs', className)} aria-label={label}>
   <ol class="cinder-breadcrumbs__list">
     {#each items as item, index (index)}
       {@const isLast = index === items.length - 1}

@@ -27,7 +27,7 @@
   import { setTableContext } from './table.context.ts';
   import type { TableProps } from './table.types.ts';
 
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     sort = $bindable(),
@@ -63,7 +63,7 @@
 </script>
 
 <table
-  class={cn('cinder-table', className)}
+  class={classNames('cinder-table', className)}
   data-cinder-sticky-header={stickyHeader || undefined}
   data-cinder-density={density}
   data-cinder-selectable={selectable || undefined}

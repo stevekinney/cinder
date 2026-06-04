@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { CardProps } from './card.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     class: className,
@@ -46,7 +46,7 @@
 </script>
 
 <div
-  class={cn('cinder-card', className)}
+  class={classNames('cinder-card', className)}
   data-cinder-variant={variant}
   data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
   {...rest}

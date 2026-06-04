@@ -19,7 +19,7 @@
   import type { TabPanelProps } from './tab-panel.types.ts';
 
   import { getTabsContext } from '../tabs/tabs-context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let { value, ariaLabelledby, class: className, children }: TabPanelProps = $props();
 
@@ -41,7 +41,7 @@
   <div
     id={panelId}
     role="tabpanel"
-    class={cn('cinder-tab-panel', className)}
+    class={classNames('cinder-tab-panel', className)}
     data-cinder-value={value}
     aria-labelledby={labelledBy}
     tabindex="0"

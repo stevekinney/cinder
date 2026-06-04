@@ -20,7 +20,7 @@
 
   import { ariaInvalid, composeDescribedBy, describeId } from '../../_internal/field-control.ts';
   import { getRadioGroupContext } from '../radio-group/radio-group-context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     id,
@@ -72,7 +72,7 @@
       required={group.required || undefined}
       aria-invalid={ariaInvalid(group.invalid)}
       onchange={handleChange}
-      class={cn('cinder-radio', className)}
+      class={classNames('cinder-radio', className)}
       {...rest}
       aria-describedby={describedBy}
     />

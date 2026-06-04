@@ -22,7 +22,7 @@
     describeId,
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   const groupId = $props.id();
 
@@ -54,7 +54,7 @@
 -->
 <!-- svelte-ignore a11y_role_supports_aria_props_implicit -->
 <fieldset
-  class={cn('cinder-checkbox-group', className)}
+  class={classNames('cinder-checkbox-group', className)}
   {disabled}
   aria-invalid={ariaInvalid(!!error)}
   aria-describedby={describedBy}

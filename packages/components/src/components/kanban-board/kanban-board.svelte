@@ -24,7 +24,7 @@
 </script>
 
 <script lang="ts" generics="Card">
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     SortableController,
@@ -456,7 +456,7 @@
 <svelte:window onkeydown={handleWindowKeydown} />
 
 <section
-  class={cn('cinder-kanban-board', className)}
+  class={classNames('cinder-kanban-board', className)}
   aria-label={label}
   data-cinder-invalid-keys={invalidKeys ? '' : undefined}
 >

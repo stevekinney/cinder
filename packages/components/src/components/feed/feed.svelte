@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { FeedProps } from './feed.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let { live = false, class: className, children, ...rest }: FeedProps = $props();
 
@@ -25,6 +25,6 @@
   );
 </script>
 
-<ol {...rest} {...liveRegionAttributes} class={cn('cinder-feed', className)}>
+<ol {...rest} {...liveRegionAttributes} class={classNames('cinder-feed', className)}>
   {@render children()}
 </ol>

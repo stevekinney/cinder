@@ -25,7 +25,7 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
@@ -111,7 +111,7 @@
     disabled={resolvedDisabled}
     required={resolvedRequired}
     bind:value
-    class={cn('cinder-input', className)}
+    class={classNames('cinder-input', className)}
     data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}

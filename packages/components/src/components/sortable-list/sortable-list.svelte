@@ -17,7 +17,7 @@
 
 <script lang="ts" generics="Item">
   import { untrack } from 'svelte';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import {
     SortableController,
     setSortableContext,
@@ -112,7 +112,7 @@
 
 <svelte:window onkeydown={handleWindowKeydown} />
 
-<ul class={cn('cinder-sortable-list', className)} role="list" aria-label={label}>
+<ul class={classNames('cinder-sortable-list', className)} role="list" aria-label={label}>
   <!--
     Instructions live inside the <ul> as a visually hidden <li> so the element is
     present in the DOM before any handle buttons that reference it via aria-describedby.
