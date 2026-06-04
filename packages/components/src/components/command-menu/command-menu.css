@@ -1,4 +1,8 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* CommandMenu renders CommandItem as its list entries. Pull in CommandItem
+ * styles so that importing `cinder/command-menu` is self-sufficient. */
+@import '../command-item/command-item.css';
+
 @layer cinder.components {
   /* ========================================
  * COMMAND MENU

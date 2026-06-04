@@ -1,0 +1,96 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+ * COMMAND ITEM
+ * Styles for the CommandItem leaf component used by CommandMenu and
+ * CommandPalette. Extracted here so both parent namespaces can import it
+ * without duplicating rules.
+ * ======================================== */
+
+  .cinder-command-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+    overflow: hidden;
+    min-block-size: 2.75rem;
+    padding: var(--cinder-space-2-5) var(--cinder-space-5);
+    cursor: pointer;
+    border-radius: 0;
+    margin: 0;
+    font-size: var(--cinder-text-base);
+    color: var(--cinder-text);
+    user-select: none;
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-command-item[data-cinder-active] {
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-command-item[data-cinder-active] {
+      background: Highlight;
+      color: HighlightText;
+      box-shadow: none;
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+  }
+
+  .cinder-command-item[data-cinder-disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .cinder-command-item__leading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: var(--cinder-radius-md);
+    background: color-mix(in oklch, currentColor 10%, transparent);
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-command-item[data-cinder-active] .cinder-command-item__leading {
+    color: currentColor;
+  }
+
+  .cinder-command-item__content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-0-5);
+  }
+
+  .cinder-command-item__description {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+  }
+
+  .cinder-command-item[data-cinder-active] .cinder-command-item__description {
+    color: currentColor;
+  }
+
+  .cinder-command-item__trailing {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-inline-start: auto;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-command-item[data-cinder-active] .cinder-command-item__trailing {
+    color: currentColor;
+  }
+}
