@@ -19,12 +19,14 @@
 </script>
 
 <script lang="ts">
+  import type { Placement, VirtualElement } from '@floating-ui/dom';
   import type { SelectionPopoverProps } from './selection-popover.types.ts';
   import { tick } from 'svelte';
-  import { innerHeight, innerWidth } from 'svelte/reactivity/window';
 
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { createPortalAttachment } from '../portal/index.ts';
 
   let {
     id,
@@ -40,43 +42,42 @@
 
   let expanded = $state(false);
   let commentBody = $state('');
-  // Plain refs: only ever read imperatively (focus calls in handlers / tick
-  // callbacks), never inside a $derived, $effect dependency, or the template, so
-  // $state's reactive proxy would be unused overhead.
-  let textareaElement: HTMLTextAreaElement | null = null;
+  let textareaElement = $state<HTMLTextAreaElement | null>(null);
   let popoverElement = $state<HTMLDivElement | null>(null);
   let restoreFocusElement: HTMLElement | null = null;
-  let measuredWidth = $state(0);
-  let measuredHeight = $state(0);
   let wasOpen = false;
 
-  const VIEWPORT_MARGIN = 16;
+  const virtualAnchor = $derived.by<VirtualElement | null>(() => {
+    if (!position) return null;
 
-  const positionStyle = $derived.by(() => {
-    if (!position) return '';
+    return {
+      getBoundingClientRect: () =>
+        ({
+          x: position.x,
+          y: position.y,
+          top: position.y,
+          left: position.x,
+          right: position.x,
+          bottom: position.y,
+          width: 0,
+          height: 0,
+        }) as DOMRect,
+    };
+  });
 
-    const viewportWidth = innerWidth.current;
-    const viewportHeight = innerHeight.current;
-
-    if (viewportWidth == null || viewportHeight == null) {
-      const halfWidth = Math.max(measuredWidth / 2, 0);
-      const x = Math.max(VIEWPORT_MARGIN + halfWidth, position.x);
-      const y = Math.max(VIEWPORT_MARGIN, position.y);
-      return `left: ${x}px; top: ${y}px;`;
-    }
-
-    const halfWidth = Math.max(measuredWidth / 2, 0);
-    const height = Math.max(measuredHeight, 0);
-    const x = Math.max(
-      VIEWPORT_MARGIN + halfWidth,
-      Math.min(position.x, viewportWidth - halfWidth - VIEWPORT_MARGIN),
-    );
-    const y = Math.max(
-      VIEWPORT_MARGIN,
-      Math.min(position.y, viewportHeight - height - VIEWPORT_MARGIN),
-    );
-
-    return `left: ${x}px; top: ${y}px;`;
+  const anchoredOverlay = createAnchoredOverlay({
+    open: () => open && position !== null,
+    anchor: () => virtualAnchor,
+    panel: () => popoverElement,
+    placement: () => 'top' as Placement,
+    offset: () => 8,
+    shiftPadding: () => 16,
+    shiftCrossAxis: () => true,
+    widthMode: () => 'none',
+  });
+  const portalAttachment = createPortalAttachment({
+    target: () => document.body,
+    inheritAttributes: true,
   });
 
   const canSubmit = $derived(commentBody.trim().length > 0);
@@ -164,20 +165,6 @@
   );
 
   $effect(() => {
-    if (!popoverElement) return;
-
-    try {
-      if (open && position) {
-        popoverElement.showPopover();
-      } else {
-        popoverElement.hidePopover();
-      }
-    } catch {
-      // Browsers without the Popover API still render the positioned fallback.
-    }
-  });
-
-  $effect(() => {
     if (!open) {
       // Only act on the true -> false transition. This keeps the close logic
       // (state reset + focus restore) from re-running on unrelated effect
@@ -208,16 +195,16 @@
 
 <div
   bind:this={popoverElement}
-  bind:clientWidth={measuredWidth}
-  bind:clientHeight={measuredHeight}
   {id}
   class={classNames('cinder-selection-popover', customClassName)}
   data-cinder-expanded={expanded ? '' : undefined}
-  style={positionStyle}
-  popover="manual"
+  data-cinder-position-ready={anchoredOverlay.positionReady}
+  data-cinder-placement={anchoredOverlay.resolvedPlacement}
+  style={anchoredOverlay.positionStyle}
   role="toolbar"
   aria-label="Selection actions"
   onkeydown={handleKeydown}
+  {@attach portalAttachment}
   {@attach dismissOnOutsidePointerdown}
   {...rest}
 >
@@ -227,6 +214,7 @@
         bind:this={textareaElement}
         bind:value={commentBody}
         class="cinder-selection-popover__textarea"
+        aria-label="Comment text"
         placeholder="Add a comment..."
         rows={2}
         onkeydown={handleTextareaKeydown}

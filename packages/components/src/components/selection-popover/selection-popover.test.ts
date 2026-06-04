@@ -36,7 +36,7 @@ describe('SelectionPopover', () => {
     });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
-    await fireEvent.input(screen.getByPlaceholderText('Add a comment...'), {
+    await fireEvent.input(screen.getByRole('textbox', { name: 'Comment text' }), {
       target: { value: '  Please clarify this.  ' },
     });
     await fireEvent.click(screen.getByRole('button', { name: 'Submit comment' }));
@@ -88,13 +88,13 @@ describe('SelectionPopover', () => {
     });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
-    const textarea = screen.getByPlaceholderText('Add a comment...');
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
     await fireEvent.input(textarea, { target: { value: '  Looks good.  ' } });
     await fireEvent.keyDown(textarea, { key: 'Enter', ...modifier });
 
     expect(submitted).toEqual(['Looks good.']);
     // The composer must be unmounted, not merely "trigger present alongside form".
-    expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Comment text' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
   });
 
@@ -113,12 +113,12 @@ describe('SelectionPopover', () => {
     });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
-    const textarea = screen.getByPlaceholderText('Add a comment...');
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
     textarea.focus();
     await fireEvent.keyDown(textarea, { key: 'Escape' });
 
     expect(canceled).toBe(true);
-    expect(screen.queryByPlaceholderText('Add a comment...')).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Comment text' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
   });
 
@@ -240,7 +240,7 @@ describe('SelectionPopover', () => {
     });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
-    await fireEvent.input(screen.getByPlaceholderText('Add a comment...'), {
+    await fireEvent.input(screen.getByRole('textbox', { name: 'Comment text' }), {
       target: { value: 'Ship it.' },
     });
     await fireEvent.click(screen.getByRole('button', { name: 'Submit comment' }));
@@ -254,6 +254,21 @@ describe('SelectionPopover', () => {
     expect(focusCalls).toBe(1);
 
     trigger.remove();
+  });
+
+  test('portals the toolbar to document.body', () => {
+    const { container } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+      },
+    });
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Selection actions' });
+
+    expect(toolbar.parentElement).toBe(document.body);
+    expect(container.querySelector('.cinder-selection-popover')).toBeNull();
   });
 
   test('outside pointerdown on an element outside the popover closes it (attachment wiring)', async () => {
@@ -288,7 +303,7 @@ describe('SelectionPopover', () => {
   test('pointerdown inside the popover does NOT close it', async () => {
     let closed = false;
 
-    const { container } = render(SelectionPopover, {
+    render(SelectionPopover, {
       props: {
         id: 'selection-comment',
         open: true,
@@ -300,7 +315,7 @@ describe('SelectionPopover', () => {
     });
 
     // Fire a pointerdown from inside the popover panel.
-    const panel = container.querySelector('.cinder-selection-popover');
+    const panel = document.body.querySelector('.cinder-selection-popover');
     expect(panel).not.toBeNull();
     panel!.dispatchEvent(new (globalThis.PointerEvent ?? Event)('pointerdown', { bubbles: true }));
 

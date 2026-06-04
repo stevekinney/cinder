@@ -18,6 +18,7 @@ export type AnchoredOverlayOptions = {
   placement?: () => Placement;
   offset?: () => number;
   shiftPadding?: () => number;
+  shiftCrossAxis?: () => boolean;
   arrowPadding?: () => number;
   showArrow?: () => boolean;
   widthMode?: () => AnchoredOverlayWidthMode;
@@ -106,6 +107,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const placement = options.placement?.() ?? DEFAULT_PLACEMENT;
     const offset = options.offset?.() ?? DEFAULT_OFFSET;
     const shiftPadding = options.shiftPadding?.() ?? DEFAULT_SHIFT_PADDING;
+    const shiftCrossAxis = options.shiftCrossAxis?.() ?? false;
     const arrowPadding = options.arrowPadding?.() ?? DEFAULT_ARROW_PADDING;
     const arrow = options.arrow?.();
     const showArrow = options.showArrow?.() ?? Boolean(arrow);
@@ -116,7 +118,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const middleware: Middleware[] = [
       offsetMiddleware(offset),
       flip(),
-      shift({ padding: shiftPadding }),
+      shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }),
     ];
     if (showArrow && arrow) {
       middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));

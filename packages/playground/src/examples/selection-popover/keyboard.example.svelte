@@ -28,7 +28,13 @@
     const range = selection.getRangeAt(0);
     if (!surface.contains(range.commonAncestorContainer)) return null;
 
-    const rect = range.getBoundingClientRect();
+    const rect =
+      Array.from(range.getClientRects()).find((clientRect) => {
+        return clientRect.width > 0 && clientRect.height > 0;
+      }) ?? range.getBoundingClientRect();
+
+    if (rect.width === 0 && rect.height === 0) return null;
+
     return {
       x: rect.left + rect.width / 2,
       y: rect.top,

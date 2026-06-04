@@ -6,7 +6,7 @@ export type SelectionPopoverPosition = {
 export type SelectionPopoverProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   /** Unique identifier for the popover. */
   id: string;
-  /** Viewport-relative position for the popover. */
+  /** Viewport-relative anchor point for the popover. */
   position: SelectionPopoverPosition | null;
   /** Whether the popover is visible. */
   open?: boolean;

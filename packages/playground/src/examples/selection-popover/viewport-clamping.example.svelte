@@ -1,7 +1,7 @@
 <script lang="ts" module>
-  export const title = 'Viewport clamping';
+  export const title = 'Viewport edge handling';
   export const description =
-    'Shows that positions outside the viewport are clamped to a 16px margin. Expand the section to render three out-of-bounds popovers and visually confirm all land inside the viewport edges.';
+    'Shows that out-of-bounds selection anchors are shifted or flipped back inside the viewport.';
 </script>
 
 <script lang="ts">
@@ -13,9 +13,9 @@
 
 <div style="max-width: 36rem;">
   <p style="margin: 0 0 0.75rem; line-height: 1.5;">
-    The component clamps any requested <code>position</code> to a 16px viewport margin, so a consumer
-    can pass raw selection geometry without guards against off-screen placements. The test cases below
-    use deliberately out-of-bounds coordinates.
+    The component shifts or flips around any requested <code>position</code> anchor near the viewport
+    edge, so a consumer can pass raw selection geometry without guards against off-screen placements.
+    The test cases below use deliberately out-of-bounds anchor coordinates.
   </p>
 
   <Button
@@ -30,7 +30,7 @@
     <p
       style="margin: 0.75rem 0 0; font-size: var(--cinder-text-sm); color: var(--cinder-text-muted);"
     >
-      All three popovers below were requested at out-of-bounds positions. Visually confirm each one
+      All three popovers below were requested from out-of-bounds anchors. Visually confirm each one
       is inside the viewport edges — this is a human-eyeball check, not a CI assertion.
     </p>
   {/if}
