@@ -1112,6 +1112,18 @@ describe('Tree — selection', () => {
   // the value back to the closure but does NOT trigger reactive re-render of
   // the tree — the same reason the async-loading suite below uses the harness.
   //
+  // NOTE on discriminability: happy-dom does NOT reproduce the Chromium timing
+  // quirk (post-dispatch preventDefault revert) that triggers the original bug.
+  // In this environment, tests 1 and 3 below are INVARIANT-COVERAGE tests —
+  // they prove that `.checked`/`.indeterminate` always agree with `aria-checked`
+  // after any state change, but they cannot distinguish pre-fix from post-fix
+  // code because the race condition does not exist in happy-dom. Tests 2 and 4
+  // do fail pre-fix (they toggle `selectionState.checked` directly and verify
+  // the DOM update) and are the true regression discriminators in this
+  // environment. The Playwright spec (tree-checkbox-selection.playwright.ts)
+  // drives real Chromium checkbox clicks and IS the authoritative regression
+  // proof for the original bug.
+  //
   // Fixture mirrors the playground `indeterminate-parents` example: branch
   // `archive` (scope ['archive','january','february']) with leaf children
   // january/february, plus sibling leaf summary.

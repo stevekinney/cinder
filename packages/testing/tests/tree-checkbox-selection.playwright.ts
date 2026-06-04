@@ -96,7 +96,7 @@ test.describe('Tree — checkbox selection and indeterminate parent state', () =
     page,
   }) => {
     await page.goto(TREE_ROUTE, { waitUntil: 'load' });
-    await page.waitForLoadState('networkidle');
+    // networkidle not used: the waitForSelector below is the correct readiness gate.
 
     // Wait for the example to mount and lay out (presence alone is not enough —
     // subsequent reads must see resolved DOM).
@@ -242,7 +242,7 @@ test.describe('Tree — checkbox selection and indeterminate parent state', () =
     page,
   }) => {
     await page.goto(TREE_ROUTE, { waitUntil: 'load' });
-    await page.waitForLoadState('networkidle');
+    // networkidle not used: the waitForSelector below is the correct readiness gate.
     await page.waitForSelector(`${EXAMPLE} [role="tree"]`, { state: 'visible' });
     await page.waitForFunction((selector) => {
       const tree = document.querySelector(`${selector} [role="tree"]`);
