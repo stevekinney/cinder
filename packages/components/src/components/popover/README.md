@@ -6,11 +6,39 @@ Non-blocking floating panel anchored to a trigger element for contextual content
 
 ```svelte
 <script lang="ts">
-  import Popover from 'cinder/popover';
+  import { Button } from 'cinder/button';
+  import { Popover } from 'cinder/popover';
+
+  let open = $state(false);
+  const headingId = 'my-popover-title';
 </script>
 
-<Popover />
+<Popover bind:open ariaLabelledby={headingId} showArrow focusManagement="preserve">
+  {#snippet trigger()}
+    <Button label="Open" onclick={() => (open = !open)} />
+  {/snippet}
+
+  <h2 id={headingId}>Panel heading</h2>
+  <p>Panel content goes here.</p>
+</Popover>
 ```
+
+## When to use
+
+Use Popover for rich, interactive contextual content anchored to a trigger — help panels, color pickers, settings cards, and similar surfaces that do not need to interrupt the user.
+
+| Situation                                           | Reach for                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| Short descriptive hint shown on hover or focus      | `Tooltip`                                                          |
+| A list of navigable actions triggered from a button | `Dropdown` (sets `role="menu"`, manages arrow-key navigation)      |
+| A combo-box, tag picker, or filterable option list  | `Combobox` (manages `listbox` role, keyboard selection, filtering) |
+| Rich content, settings, or any non-menu panel       | **Popover**                                                        |
+| Focused task that should block the rest of the page | `Modal`, `Drawer`, or `Sheet`                                      |
+
+### `focusManagement` — `"panel"` vs `"preserve"`
+
+- **`"panel"` (default):** Focus moves to the first focusable element inside the panel when it opens. Use this when the panel contains a form field or search input that needs immediate keyboard access (date pickers, filter panels, inline editors).
+- **`"preserve"`:** Focus stays on the trigger after the panel opens. Use this for content-first panels (account settings, help text, status details) where the user is reading, not immediately interacting.
 
 ## Props
 
