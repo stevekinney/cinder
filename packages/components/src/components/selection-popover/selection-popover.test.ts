@@ -23,6 +23,33 @@ describe('SelectionPopover', () => {
     expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
   });
 
+  test('does not activate open behavior when position is omitted at runtime', async () => {
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        onclose: () => {
+          closed = true;
+        },
+      } as never,
+    });
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Selection actions' });
+    expect(toolbar.getAttribute('data-cinder-position-ready')).toBe('false');
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.dispatchEvent(new (globalThis.PointerEvent ?? Event)('pointerdown', { bubbles: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(closed).toBe(false);
+    outside.remove();
+  });
+
   test('expands, submits trimmed comment text, and resets', async () => {
     const submitted: string[] = [];
 

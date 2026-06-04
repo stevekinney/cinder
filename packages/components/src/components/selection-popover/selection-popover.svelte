@@ -65,8 +65,10 @@
     };
   });
 
+  const isPositionedOpen = $derived(open && position != null);
+
   const anchoredOverlay = createAnchoredOverlay({
-    open: () => open && position !== null,
+    open: () => isPositionedOpen,
     anchor: () => virtualAnchor,
     panel: () => popoverElement,
     placement: () => 'top' as Placement,
@@ -158,14 +160,14 @@
     // (the previous document.addEventListener call had no capture arg).
     createClickOutside({
       handler: closePopover,
-      enabled: () => open,
+      enabled: () => isPositionedOpen,
       eventType: 'pointerdown',
       capture: false,
     }),
   );
 
   $effect(() => {
-    if (!open) {
+    if (!isPositionedOpen) {
       // Only act on the true -> false transition. This keeps the close logic
       // (state reset + focus restore) from re-running on unrelated effect
       // re-evaluations while already closed.
