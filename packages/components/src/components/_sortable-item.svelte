@@ -135,6 +135,7 @@
     // is entirely inert. The clone is aria-hidden / inert at the portal level.
     clone.removeAttribute('data-sortable-row');
     clone.removeAttribute('data-key');
+    clone.removeAttribute('data-key-type');
     clone.removeAttribute('data-row-id');
     // Strip all id attributes from the clone and its descendants to prevent
     // duplicate id values in the document, which would break getElementById,
@@ -199,9 +200,18 @@
   }
 
   function endPointerSession(reason: 'drop' | 'cancel'): void {
-    if (moveRafHandle !== null) {
-      cancelAnimationFrame(moveRafHandle);
-      moveRafHandle = null;
+    if (reason === 'drop') {
+      if (moveRafHandle !== null) {
+        cancelAnimationFrame(moveRafHandle);
+        moveRafHandle = null;
+      }
+      recomputeTarget();
+      updatePreviewPosition(latestPointerX, latestPointerY);
+    } else {
+      if (moveRafHandle !== null) {
+        cancelAnimationFrame(moveRafHandle);
+        moveRafHandle = null;
+      }
     }
     if (scrollRafHandle !== null) {
       cancelAnimationFrame(scrollRafHandle);
@@ -356,6 +366,16 @@
     endPointerSession('cancel');
   }
 
+  function handleWindowPointerUp(event: PointerEvent): void {
+    if (!pointerActive || (pointerId !== null && event.pointerId !== pointerId)) return;
+    endPointerSession('drop');
+  }
+
+  function handleWindowPointerCancel(event: PointerEvent): void {
+    if (!pointerActive || (pointerId !== null && event.pointerId !== pointerId)) return;
+    endPointerSession('cancel');
+  }
+
   function handleKeyDown(event: KeyboardEvent): void {
     const { key } = event;
 
@@ -496,10 +516,13 @@
   });
 </script>
 
+<svelte:window onpointerup={handleWindowPointerUp} onpointercancel={handleWindowPointerCancel} />
+
 <li
   bind:this={rowEl}
   data-sortable-row
   data-key={itemKey}
+  data-key-type={typeof itemKey}
   data-row-id={rowId}
   data-preview-x={isDraggingWithPointer ? previewX : undefined}
   data-preview-y={isDraggingWithPointer ? previewY : undefined}

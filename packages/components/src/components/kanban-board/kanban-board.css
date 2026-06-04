@@ -126,6 +126,7 @@
    * skewing the midpoint geometry used by drop-target calculations.
    */
   .cinder-kanban-board__card.cinder-sortable-item--placeholder {
+    block-size: var(--cinder-kanban-board-drop-placeholder-block-size, auto);
     min-block-size: var(--cinder-space-12, 3rem);
     opacity: 0.4;
     border-color: transparent;
@@ -138,6 +139,10 @@
   .cinder-kanban-board__card.cinder-sortable-item--placeholder > * {
     /* Hide card content from sight; placeholder conveys drop position only. */
     visibility: hidden;
+  }
+
+  .cinder-kanban-board__drop-placeholder {
+    pointer-events: none;
   }
 
   .cinder-kanban-board__card-content {
