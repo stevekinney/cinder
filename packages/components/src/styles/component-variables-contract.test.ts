@@ -68,12 +68,21 @@ async function loadAllComponentVariables(): Promise<ComponentVariables[]> {
 
   const results: ComponentVariables[] = [];
 
-  for (const componentName of componentDirs) {
-    const jsonPath = join(COMPONENTS_DIR, componentName, `${componentName}.variables.json`);
-    const file = Bun.file(jsonPath);
-    if (!(await file.exists())) continue;
+  for (const dirName of componentDirs) {
+    // Discover the actual `*.variables.json` inside the directory rather than
+    // assuming the stem equals the directory name. Some directories are
+    // underscore-prefixed (e.g. `_radio/`) but ship `radio.variables.json`, so a
+    // `${dirName}.variables.json` assumption would silently skip them — leaving
+    // their contract unenforced. The component name is the FILE stem (`radio`),
+    // which is also what the `--cinder-<name>-*` ownership prefix must match.
+    const dirEntries = await readdir(join(COMPONENTS_DIR, dirName));
+    const variablesFile = dirEntries.find((name) => name.endsWith('.variables.json'));
+    if (variablesFile === undefined) continue;
 
-    const variables = (await file.json()) as string[];
+    const componentName = variablesFile.slice(0, -'.variables.json'.length);
+    const variables = (await Bun.file(
+      join(COMPONENTS_DIR, dirName, variablesFile),
+    ).json()) as string[];
     results.push({ componentName, variables });
   }
 
