@@ -103,7 +103,7 @@
   .cinder-phone-input__national:disabled {
     cursor: not-allowed;
     color: var(--cinder-text-disabled);
-    background-color: var(--cinder-surface-muted);
+    background-color: var(--cinder-surface-inset);
   }
 
   @media (forced-colors: active) {

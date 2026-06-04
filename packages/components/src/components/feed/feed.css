@@ -31,7 +31,7 @@
     inline-size: var(--cinder-feed-rail-size);
     block-size: var(--cinder-feed-rail-size);
     border-radius: var(--cinder-radius-full);
-    background: var(--cinder-surface-muted);
+    background: var(--cinder-surface-inset);
     color: var(--cinder-text-muted);
     flex-shrink: 0;
   }

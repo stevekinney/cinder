@@ -8,7 +8,7 @@
   .cinder-autocomplete__label {
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-weight-medium);
+    font-weight: var(--cinder-font-medium);
   }
 
   .cinder-autocomplete__input {
@@ -68,7 +68,7 @@
   }
 
   .cinder-autocomplete__option-label {
-    font-weight: var(--cinder-font-weight-medium);
+    font-weight: var(--cinder-font-medium);
   }
 
   .cinder-autocomplete__option-description {

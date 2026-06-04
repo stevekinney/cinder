@@ -19,8 +19,8 @@
     opacity: 0;
     transform: translateY(2px) scale(0.98);
     transition:
-      opacity var(--cinder-duration-fast) var(--cinder-ease-out),
-      transform var(--cinder-duration-fast) var(--cinder-ease-out);
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
+      transform var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   /* Reset browser-default paragraph margins on first/last flow children so
