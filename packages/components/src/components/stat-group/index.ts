@@ -5,7 +5,7 @@ import StatGroupRoot from './stat-group.svelte';
 /**
  * `StatGroup` is the parent compound component and a namespace exposing the
  * `StatGroup.Stat` leaf. The leaf remains importable individually via
- * `cinder/stat`.
+ * `@lostgradient/cinder/stat`.
  */
 const StatGroup = Object.assign(StatGroupRoot, {
   Stat,

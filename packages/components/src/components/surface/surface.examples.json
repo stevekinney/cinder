@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "surface",
-  "import": "cinder/surface",
+  "import": "@lostgradient/cinder/surface",
   "examples": [
     {
       "id": "basic",
       "title": "Basic surface",
       "description": "Tone variants for framed interface regions.",
-      "code": "<script lang=\"ts\">\n  import { Surface } from 'cinder/surface';\n</script>\n\n<div style=\"display: grid; gap: 0.75rem;\">\n  <Surface style=\"padding: 1rem;\">\n    <strong>Default</strong>\n    <p style=\"margin: 0.35rem 0 0; color: var(--cinder-text-muted);\">Standard content surface.</p>\n  </Surface>\n\n  <Surface tone=\"raised\" style=\"padding: 1rem;\">\n    <strong>Raised</strong>\n    <p style=\"margin: 0.35rem 0 0; color: var(--cinder-text-muted);\">\n      Elevated surface for overlays and panels.\n    </p>\n  </Surface>\n\n  <Surface tone=\"inset\" style=\"padding: 1rem;\">\n    <strong>Inset</strong>\n    <p style=\"margin: 0.35rem 0 0; color: var(--cinder-text-muted);\">\n      Quiet container for nested content.\n    </p>\n  </Surface>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Surface } from '@lostgradient/cinder/surface';\n</script>\n\n<div style=\"display: grid; gap: 0.75rem;\">\n  <Surface style=\"padding: 1rem;\">\n    <strong>Default</strong>\n    <p style=\"margin: 0.35rem 0 0; color: var(--cinder-text-muted);\">Standard content surface.</p>\n  </Surface>\n\n  <Surface tone=\"raised\" style=\"padding: 1rem;\">\n    <strong>Raised</strong>\n    <p style=\"margin: 0.35rem 0 0; color: var(--cinder-text-muted);\">\n      Elevated surface for overlays and panels.\n    </p>\n  </Surface>\n\n  <Surface tone=\"inset\" style=\"padding: 1rem;\">\n    <strong>Inset</strong>\n    <p style=\"margin: 0.35rem 0 0; color: var(--cinder-text-muted);\">\n      Quiet container for nested content.\n    </p>\n  </Surface>\n</div>\n"
     }
   ]
 }

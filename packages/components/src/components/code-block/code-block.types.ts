@@ -7,7 +7,7 @@ import type { Highlighter } from '../../utilities/highlighter.ts';
  * path is Svelte-text-interpolated, so HTML entities are escaped automatically.
  *
  * Syntax highlighting is automatic: when `language` is set, CodeBlock
- * lazy-loads the bundled `cinder/highlighters/shiki` adapter on the client and
+ * lazy-loads the bundled `@lostgradient/cinder/highlighters/shiki` adapter on the client and
  * enhances the block once it resolves. The server (and the first client paint)
  * always emits the plain `<pre><code>` fallback — highlighting is a two-phase,
  * client-only enhancement, so there is a brief flash before the highlighted
@@ -38,7 +38,7 @@ export type CodeBlockProps = {
    * trusted-HTML boundary. The highlighter MUST escape any user- or
    * caller-provided `code` before returning markup, or it opens an
    * HTML-injection / XSS hole. cinder's only safety guarantee is that the
-   * bundled `cinder/highlighters/shiki` adapter WITH DEFAULT OPTIONS escapes
+   * bundled `@lostgradient/cinder/highlighters/shiki` adapter WITH DEFAULT OPTIONS escapes
    * code text; a custom `highlighter` (and Shiki with custom transformers /
    * decorations / raw-HTML options) is caller-owned and not vouched for. Use
    * `highlight={false}` when you want guaranteed-escaped plaintext.

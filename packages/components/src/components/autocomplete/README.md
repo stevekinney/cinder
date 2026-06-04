@@ -6,7 +6,7 @@ Free-form text input with suggestion hints.
 
 ```svelte
 <script lang="ts">
-  import Autocomplete from 'cinder/autocomplete';
+  import Autocomplete from '@lostgradient/cinder/autocomplete';
 </script>
 
 <Autocomplete />

@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { Checkbox } from 'cinder/checkbox';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Checkbox } from '@lostgradient/cinder/checkbox';
   let accepted = $state(false);
   let submitted = $state(false);
   const showError = $derived(submitted && !accepted);

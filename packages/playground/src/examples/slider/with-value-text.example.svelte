@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Slider } from 'cinder/slider';
+  import { Slider } from '@lostgradient/cinder/slider';
   let percent = $state(60);
   let price = $state(250);
 

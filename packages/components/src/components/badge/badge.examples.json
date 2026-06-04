@@ -1,19 +1,19 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "badge",
-  "import": "cinder/badge",
+  "import": "@lostgradient/cinder/badge",
   "examples": [
     {
       "id": "sizes",
       "title": "Badge sizes",
       "description": "Extra small, small, and medium sizes.",
-      "code": "<script lang=\"ts\">\n  import { Badge } from 'cinder/badge';\n</script>\n\n<div class=\"example-preview-row\">\n  <Badge size=\"xs\">Extra small</Badge>\n  <Badge size=\"sm\">Small</Badge>\n  <Badge size=\"md\">Medium</Badge>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Badge } from '@lostgradient/cinder/badge';\n</script>\n\n<div class=\"example-preview-row\">\n  <Badge size=\"xs\">Extra small</Badge>\n  <Badge size=\"sm\">Small</Badge>\n  <Badge size=\"md\">Medium</Badge>\n</div>\n"
     },
     {
       "id": "variants",
       "title": "Badge variants",
       "description": "All five semantic variant styles.",
-      "code": "<script lang=\"ts\">\n  import { Badge } from 'cinder/badge';\n</script>\n\n<div class=\"example-preview-row\">\n  <Badge variant=\"neutral\">Neutral</Badge>\n  <Badge variant=\"success\">Success</Badge>\n  <Badge variant=\"warning\">Warning</Badge>\n  <Badge variant=\"danger\">Danger</Badge>\n  <Badge variant=\"info\">Info</Badge>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Badge } from '@lostgradient/cinder/badge';\n</script>\n\n<div class=\"example-preview-row\">\n  <Badge variant=\"neutral\">Neutral</Badge>\n  <Badge variant=\"success\">Success</Badge>\n  <Badge variant=\"warning\">Warning</Badge>\n  <Badge variant=\"danger\">Danger</Badge>\n  <Badge variant=\"info\">Info</Badge>\n</div>\n"
     }
   ]
 }

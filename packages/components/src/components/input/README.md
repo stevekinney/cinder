@@ -6,7 +6,7 @@ Single-line text input with support for labels, addons, validation states, and h
 
 ```svelte
 <script lang="ts">
-  import Input from 'cinder/input';
+  import Input from '@lostgradient/cinder/input';
 </script>
 
 <Input />

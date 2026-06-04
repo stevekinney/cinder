@@ -9,7 +9,7 @@ GridList lays out homogeneous card-like list items in responsive auto-fit column
 
 ```svelte
 <script lang="ts">
-  import { GridList } from 'cinder/grid-list';
+  import { GridList } from '@lostgradient/cinder/grid-list';
 </script>
 
 <GridList minColumnWidth="14rem" aria-label="Projects">
@@ -24,7 +24,7 @@ GridList lays out homogeneous card-like list items in responsive auto-fit column
 ```
 
 The leaf remains importable individually for à-la-carte builds — see
-`cinder/grid-list-item`.
+`@lostgradient/cinder/grid-list-item`.
 
 ## Props
 

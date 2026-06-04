@@ -2,9 +2,9 @@
   // Compound namespace exports — exercises the new Tabs.List / Table.Body /
   // Dropdown.Trigger style API from three resolution paths against the packed
   // cinder tarball (not in-repo source):
-  //   1. Root barrel:           `import { Tabs } from 'cinder'`
-  //   2. Parent subpath default: `import Table from 'cinder/table'`
-  //   3. Parent subpath named:   `import { Dropdown } from 'cinder/dropdown'`
+  //   1. Root barrel:           `import { Tabs } from '@lostgradient/cinder'`
+  //   2. Parent subpath default: `import Table from '@lostgradient/cinder/table'`
+  //   3. Parent subpath named:   `import { Dropdown } from '@lostgradient/cinder/dropdown'`
   //
   // Every parent family added in this PR is rendered below so the SSR compile
   // path resolves each namespace property against the packed `.d.ts`. If the
@@ -13,10 +13,18 @@
   //
   // A flat leaf subpath is also imported to prove the additive contract: flat
   // exports still resolve alongside the namespace API.
-  import { Accordion, Feed, GridList, SideNavigation, StatGroup, Tabs, Tree } from 'cinder';
-  import Tab from 'cinder/tab';
-  import { Dropdown } from 'cinder/dropdown';
-  import Table from 'cinder/table';
+  import {
+    Accordion,
+    Feed,
+    GridList,
+    SideNavigation,
+    StatGroup,
+    Tabs,
+    Tree,
+  } from '@lostgradient/cinder';
+  import Tab from '@lostgradient/cinder/tab';
+  import { Dropdown } from '@lostgradient/cinder/dropdown';
+  import Table from '@lostgradient/cinder/table';
 
   let active = $state('overview');
   let expandedIds = $state<string[]>([]);
@@ -115,5 +123,5 @@
     </SideNavigation>
   </section>
 
-  <p>Flat `cinder/tab` default importable: {typeof Tab === 'function'}</p>
+  <p>Flat `@lostgradient/cinder/tab` default importable: {typeof Tab === 'function'}</p>
 </main>

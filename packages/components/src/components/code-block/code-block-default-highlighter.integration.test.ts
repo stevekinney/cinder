@@ -3,7 +3,7 @@ import { resolve as resolvePath } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-// Integration test: exercises the REAL `cinder/highlighters/shiki` adapter
+// Integration test: exercises the REAL `@lostgradient/cinder/highlighters/shiki` adapter
 // through CodeBlock's default-highlighter seam (no module mock). The fast unit
 // suite in `code-block.test.ts` mocks this seam for determinism — and because
 // Bun's `mock.module` is process-global, that mock would leak into this file

@@ -224,7 +224,7 @@ export function extractFromSource(
 
   for (const { name, value } of tags) {
     switch (name) {
-      case 'cinder':
+      case '@lostgradient/cinder':
         break; // marker only
       case 'category':
         categoryValues.push(value);

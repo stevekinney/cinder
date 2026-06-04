@@ -6,7 +6,7 @@ Filterable dropdown that combines a text input with a selectable option list.
 
 ```svelte
 <script lang="ts">
-  import Combobox from 'cinder/combobox';
+  import Combobox from '@lostgradient/cinder/combobox';
 </script>
 
 <Combobox />

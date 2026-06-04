@@ -141,7 +141,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run component unit tests (scoped)
-        # Scopes the `cinder` (components) package to the changed components and
+        # Scopes the `@lostgradient/cinder` (components) package to the changed components and
         # their dependents. Sibling @cinder/* package suites are intentionally
         # NOT run here — they keep their authoritative coverage in `main-green`
         # (and the ~11-min playground suite would otherwise tax every PR).
@@ -158,4 +158,4 @@ jobs:
           else
             echo "Full unit suite (mode=${{ needs.scope.outputs.mode }})."
           fi
-          bun run --filter=cinder test:changed
+          bun run --filter=@lostgradient/cinder test:changed

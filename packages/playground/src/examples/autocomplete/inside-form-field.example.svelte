@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Autocomplete, FormField } from 'cinder';
+  import { Autocomplete, FormField } from '@lostgradient/cinder';
 
   const languages = [
     { value: 'TypeScript', description: 'Typed JavaScript' },

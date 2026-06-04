@@ -4,9 +4,9 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { CommandItem } from 'cinder/command-item';
-  import { CommandPalette } from 'cinder/command-palette';
+  import { Button } from '@lostgradient/cinder/button';
+  import { CommandItem } from '@lostgradient/cinder/command-item';
+  import { CommandPalette } from '@lostgradient/cinder/command-palette';
 
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);

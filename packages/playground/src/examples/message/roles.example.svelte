@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Message } from 'cinder/message';
+  import { Message } from '@lostgradient/cinder/message';
 </script>
 
 <div class="example-preview-column">

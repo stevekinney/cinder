@@ -2,7 +2,7 @@
  * The `Highlighter` contract for `<CodeBlock>`.
  *
  * `<CodeBlock>` highlights automatically when a `language` is set by
- * lazy-loading the bundled `cinder/highlighters/shiki` adapter on the
+ * lazy-loading the bundled `@lostgradient/cinder/highlighters/shiki` adapter on the
  * client. Consumers who want a different highlighter (a non-default theme, a
  * non-Shiki engine, a pre-configured `shikiHighlighter()` instance) implement
  * this type and pass the function to `<CodeBlock highlighter={...} />`.
@@ -25,7 +25,7 @@
  * `<CodeBlock>`. It is a trusted-HTML boundary: the highlighter MUST escape
  * every byte of caller- or user-provided `code` before returning markup, or
  * it opens an HTML-injection / XSS hole. The narrow safety claim cinder makes
- * is only this: the bundled `cinder/highlighters/shiki` adapter WITH DEFAULT
+ * is only this: the bundled `@lostgradient/cinder/highlighters/shiki` adapter WITH DEFAULT
  * OPTIONS escapes its input (Shiki's `codeToHtml` escapes, and the adapter's
  * plaintext fallback HTML-escapes). Any custom `highlighter`, and any Shiki
  * usage with custom transformers / decorations / raw-HTML options, is a

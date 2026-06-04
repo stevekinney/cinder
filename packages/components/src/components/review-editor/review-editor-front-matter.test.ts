@@ -1,5 +1,5 @@
+import type { CommentAnchor, PersistedAnchor } from '@lostgradient/cinder/commentary/comments';
 import { describe, expect, test } from 'bun:test';
-import type { CommentAnchor, PersistedAnchor } from 'cinder/commentary/comments';
 
 import {
   bodyAnchorToDocumentAnchor,

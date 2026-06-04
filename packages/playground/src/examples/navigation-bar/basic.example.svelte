@@ -5,9 +5,9 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { NavigationBar } from 'cinder/navigation-bar';
-  import { NavigationItem } from 'cinder/navigation-item';
+  import { Button } from '@lostgradient/cinder/button';
+  import { NavigationBar } from '@lostgradient/cinder/navigation-bar';
+  import { NavigationItem } from '@lostgradient/cinder/navigation-item';
   let active = $state('home');
   let mobileMenuOpen = $state(false);
 </script>

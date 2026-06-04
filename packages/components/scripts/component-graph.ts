@@ -694,7 +694,7 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
 
   // Per-seed reachability guard. A shared/sibling-package seed whose OWN
   // dependents closure reaches no EMITTABLE component slug (e.g.
-  // `packages/markdown/src/x` consumed only via bare `cinder/markdown/...`
+  // `packages/markdown/src/x` consumed only via bare `@lostgradient/cinder/markdown/...`
   // specifiers, which resolve as external → no graph edge) would otherwise be
   // silently dropped when a CO-CHANGED component supplies a slug and flips the
   // decision to `filtered`. The reached slug must be a REAL (non-compose-only)

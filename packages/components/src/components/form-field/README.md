@@ -6,7 +6,7 @@ Wraps an input, label, and helper or error text into a cohesive accessible field
 
 ```svelte
 <script lang="ts">
-  import FormField from 'cinder/form-field';
+  import FormField from '@lostgradient/cinder/form-field';
 </script>
 
 <FormField />

@@ -13,7 +13,7 @@
  * Usage:
  *   bun run scripts/run-consumer-fixture.ts -- button,accordion,accordion-item
  *
- * The fixture resolves through `cinder` from the workspace — the same `exports`
+ * The fixture resolves through `@lostgradient/cinder` from the workspace — the same `exports`
  * map is used regardless of whether the package was installed from a tarball
  * or linked from the workspace, so subpath resolution is identical.
  */
@@ -83,10 +83,10 @@ function renderFixture(options: FixtureOptions): string {
   // Imports first (typecheck surface).
   for (const name of options.components) {
     const pascal = toPascal(name);
-    lines.push(`import ${pascal} from 'cinder/${name}';`);
-    lines.push(`import type { ${pascal}Props } from 'cinder/${name}';`);
-    lines.push(`import ${pascal}Schema from 'cinder/${name}/schema';`);
-    lines.push(`import ${pascal}Variables from 'cinder/${name}/variables';`);
+    lines.push(`import ${pascal} from '@lostgradient/cinder/${name}';`);
+    lines.push(`import type { ${pascal}Props } from '@lostgradient/cinder/${name}';`);
+    lines.push(`import ${pascal}Schema from '@lostgradient/cinder/${name}/schema';`);
+    lines.push(`import ${pascal}Variables from '@lostgradient/cinder/${name}/variables';`);
   }
 
   lines.push('', 'const failures: string[] = [];', '');
@@ -143,13 +143,13 @@ function renderFixture(options: FixtureOptions): string {
 async function main(): Promise<void> {
   const options = parseArgs();
   // Place the fixture inside the package's node_modules/.cache so workspace
-  // module resolution finds the `cinder` package via the parent monorepo's
+  // module resolution finds the `@lostgradient/cinder` package via the parent monorepo's
   // node_modules. A temp directory outside the repo cannot resolve workspace
   // packages.
   const packageRoot = join(import.meta.dir, '..');
   // Place the fixture in the monorepo root's node_modules/.cache, where the
   // workspace symlink `node_modules/cinder -> packages/components` lives.
-  // Bun's module resolution then finds `cinder` via the standard lookup.
+  // Bun's module resolution then finds `@lostgradient/cinder` via the standard lookup.
   const monorepoRoot = join(packageRoot, '..', '..');
   const fixtureDirectory = join(monorepoRoot, 'node_modules', '.cache', 'cinder-consumer-fixture');
   await mkdir(fixtureDirectory, { recursive: true });

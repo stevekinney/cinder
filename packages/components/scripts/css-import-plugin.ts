@@ -5,13 +5,13 @@ import type { BunPlugin } from 'bun';
  */
 export type CssImportPluginOptions = {
   /**
-   * Map of per-component `index.ts` absolute path → the `cinder/<name>/styles`
-   * (or `cinder/experimental/<name>/styles`) specifier its directory's sidecar
+   * Map of per-component `index.ts` absolute path → the `@lostgradient/cinder/<name>/styles`
+   * (or `@lostgradient/cinder/experimental/<name>/styles`) specifier its directory's sidecar
    * resolves to. Each entry gets that import prepended so the SUBPATH bundle
    * (`dist/components/<name>/index.js`, resolved by `import Button from
-   * 'cinder/button'`) auto-pulls its own styles. Passing the resolved specifier
+   * '@lostgradient/cinder/button'`) auto-pulls its own styles. Passing the resolved specifier
    * explicitly — rather than deriving it from the directory basename — keeps
-   * experimental components (whose export is `cinder/experimental/<name>/styles`)
+   * experimental components (whose export is `@lostgradient/cinder/experimental/<name>/styles`)
    * correct.
    */
   perComponentStyleSpecifiers: ReadonlyMap<string, string>;
@@ -27,7 +27,7 @@ export type CssImportPluginOptions = {
    * but side-effect imports in the ENTRY file itself are always preserved (the
    * entry is the bundle root, so nothing tree-shakes against it). The root
    * barrel is the documented non-tree-shaken "everything" convenience path
-   * (`import { Button } from 'cinder'`), so loading every used component's CSS
+   * (`import { Button } from '@lostgradient/cinder'`), so loading every used component's CSS
    * there matches its semantics.
    */
   rootBarrelStyleSpecifiers: readonly string[];
@@ -36,19 +36,19 @@ export type CssImportPluginOptions = {
 /**
  * Build-time CSS auto-import plugin for the BROWSER per-component build.
  *
- * Historically a consumer had to hand-write `import 'cinder/<name>/styles'` for
+ * Historically a consumer had to hand-write `import '@lostgradient/cinder/<name>/styles'` for
  * EVERY component they used, or the component rendered silently unstyled. This
- * plugin removes that footgun: `import Button from 'cinder/button'` and
- * `import { Button } from 'cinder'` both auto-pull the component's styles.
+ * plugin removes that footgun: `import Button from '@lostgradient/cinder/button'` and
+ * `import { Button } from '@lostgradient/cinder'` both auto-pull the component's styles.
  *
- * Why `cinder/<name>/styles` and not a relative `./<name>.css`?
+ * Why `@lostgradient/cinder/<name>/styles` and not a relative `./<name>.css`?
  * `splitting: false` bundles each component module into BOTH its own subpath
  * output (`dist/components/<name>/index.js`) AND the root barrel
  * (`dist/index.js`), which live at different directory depths. A relative
  * `./<name>.css` literal cannot resolve correctly from both locations. A bare
- * self-referential `cinder/<name>/styles` specifier resolves through the
+ * self-referential `@lostgradient/cinder/<name>/styles` specifier resolves through the
  * package's own `exports` map identically regardless of which output file
- * carries it — and `cinder`/`cinder/*` is already external in the browser
+ * carries it — and `@lostgradient/cinder`/`@lostgradient/cinder/*` is already external in the browser
  * build, so the specifier survives bundling verbatim and is never inlined.
  *
  * This plugin is wired into the BROWSER build ONLY. The SERVER (`node`)
@@ -110,7 +110,7 @@ export function cssImportPlugin(options: CssImportPluginOptions): BunPlugin {
         // The SOURCE index.ts already leads with a relative `import './<name>.css'`
         // (for the `svelte` condition, which resolves source). That relative
         // import is NOT external, so Bun would INLINE the sidecar into the dist
-        // JS — while we also inject the EXTERNAL `cinder/<name>/styles` below,
+        // JS — while we also inject the EXTERNAL `@lostgradient/cinder/<name>/styles` below,
         // producing a double load. Strip the one leading relative sidecar import
         // from the loaded source so dist references the public styles entry
         // exactly once. The on-disk source file is untouched (the svelte path
@@ -148,5 +148,7 @@ export function cssImportPlugin(options: CssImportPluginOptions): BunPlugin {
  * the exact string that lands in (browser) and is absent from (server) output.
  */
 export function componentStylesSpecifier(name: string, isExperimental: boolean): string {
-  return isExperimental ? `cinder/experimental/${name}/styles` : `cinder/${name}/styles`;
+  return isExperimental
+    ? `@lostgradient/cinder/experimental/${name}/styles`
+    : `@lostgradient/cinder/${name}/styles`;
 }

@@ -1,31 +1,31 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "toolbar",
-  "import": "cinder/toolbar",
+  "import": "@lostgradient/cinder/toolbar",
   "examples": [
     {
       "id": "basic",
       "title": "Basic toolbar",
       "description": "A named action bar that turns several controls into one Tab stop.",
-      "code": "<script lang=\"ts\">\n  import Toolbar from 'cinder/toolbar';\n  import { Button } from 'cinder/button';\n</script>\n\n<Toolbar aria-label=\"Document actions\">\n  <Toolbar.Group>\n    <Button variant=\"secondary\">Save</Button>\n    <Button variant=\"secondary\">Share</Button>\n    <Button variant=\"secondary\">Export</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
+      "code": "<script lang=\"ts\">\n  import Toolbar from '@lostgradient/cinder/toolbar';\n  import { Button } from '@lostgradient/cinder/button';\n</script>\n\n<Toolbar aria-label=\"Document actions\">\n  <Toolbar.Group>\n    <Button variant=\"secondary\">Save</Button>\n    <Button variant=\"secondary\">Share</Button>\n    <Button variant=\"secondary\">Export</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
     },
     {
       "id": "vertical",
       "title": "Vertical toolbar",
       "description": "Vertical orientation swaps the roving axis to Up and Down.",
-      "code": "<script lang=\"ts\">\n  import Toolbar from 'cinder/toolbar';\n  import { Button } from 'cinder/button';\n</script>\n\n<Toolbar aria-label=\"Canvas tools\" orientation=\"vertical\">\n  <Toolbar.Group>\n    <Button variant=\"secondary\">Select</Button>\n    <Button variant=\"secondary\">Pen</Button>\n    <Button variant=\"secondary\">Comment</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
+      "code": "<script lang=\"ts\">\n  import Toolbar from '@lostgradient/cinder/toolbar';\n  import { Button } from '@lostgradient/cinder/button';\n</script>\n\n<Toolbar aria-label=\"Canvas tools\" orientation=\"vertical\">\n  <Toolbar.Group>\n    <Button variant=\"secondary\">Select</Button>\n    <Button variant=\"secondary\">Pen</Button>\n    <Button variant=\"secondary\">Comment</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
     },
     {
       "id": "with-groups",
       "title": "Toolbar with groups",
       "description": "Adjacent groups draw their own separators without manual dividers.",
-      "code": "<script lang=\"ts\">\n  import Toolbar from 'cinder/toolbar';\n  import { Button } from 'cinder/button';\n  import Segment from 'cinder/segment';\n  import SegmentedControl from 'cinder/segmented-control';\n</script>\n\n<Toolbar aria-label=\"Preview controls\">\n  <Toolbar.Group>\n    <SegmentedControl id=\"scale\" label=\"Scale\" hideLabel value=\"100\" onchange={() => {}}>\n      <Segment value=\"75\">75%</Segment>\n      <Segment value=\"100\">100%</Segment>\n      <Segment value=\"125\">125%</Segment>\n    </SegmentedControl>\n  </Toolbar.Group>\n\n  <Toolbar.Group>\n    <Button variant=\"ghost\" size=\"sm\">Fit</Button>\n    <Button variant=\"ghost\" size=\"sm\">Grid</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
+      "code": "<script lang=\"ts\">\n  import Toolbar from '@lostgradient/cinder/toolbar';\n  import { Button } from '@lostgradient/cinder/button';\n  import Segment from '@lostgradient/cinder/segment';\n  import SegmentedControl from '@lostgradient/cinder/segmented-control';\n</script>\n\n<Toolbar aria-label=\"Preview controls\">\n  <Toolbar.Group>\n    <SegmentedControl id=\"scale\" label=\"Scale\" hideLabel value=\"100\" onchange={() => {}}>\n      <Segment value=\"75\">75%</Segment>\n      <Segment value=\"100\">100%</Segment>\n      <Segment value=\"125\">125%</Segment>\n    </SegmentedControl>\n  </Toolbar.Group>\n\n  <Toolbar.Group>\n    <Button variant=\"ghost\" size=\"sm\">Fit</Button>\n    <Button variant=\"ghost\" size=\"sm\">Grid</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
     },
     {
       "id": "with-spacer",
       "title": "Toolbar with spacer",
       "description": "Toolbar.Spacer pushes utility actions to the far edge.",
-      "code": "<script lang=\"ts\">\n  import Toolbar from 'cinder/toolbar';\n  import { Button } from 'cinder/button';\n</script>\n\n<Toolbar aria-label=\"Editor actions\">\n  <Toolbar.Group>\n    <Button variant=\"secondary\">Bold</Button>\n    <Button variant=\"secondary\">Italic</Button>\n    <Button variant=\"secondary\">Link</Button>\n  </Toolbar.Group>\n\n  <Toolbar.Spacer />\n\n  <Toolbar.Group>\n    <Button variant=\"ghost\" size=\"sm\">Preview</Button>\n    <Button size=\"sm\">Publish</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
+      "code": "<script lang=\"ts\">\n  import Toolbar from '@lostgradient/cinder/toolbar';\n  import { Button } from '@lostgradient/cinder/button';\n</script>\n\n<Toolbar aria-label=\"Editor actions\">\n  <Toolbar.Group>\n    <Button variant=\"secondary\">Bold</Button>\n    <Button variant=\"secondary\">Italic</Button>\n    <Button variant=\"secondary\">Link</Button>\n  </Toolbar.Group>\n\n  <Toolbar.Spacer />\n\n  <Toolbar.Group>\n    <Button variant=\"ghost\" size=\"sm\">Preview</Button>\n    <Button size=\"sm\">Publish</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
     }
   ]
 }

@@ -7,7 +7,7 @@ Individual timestamped entry within a chronological activity feed.
 `FeedEvent` is a compose-only leaf of [`Feed`](../feed/README.md).
 The idiomatic API is `Feed.Event`, reached through the parent
 namespace — see the [feed README](../feed/README.md#usage) for the composed
-snippet. The flat `cinder/feed-event` subpath remains exported for
+snippet. The flat `@lostgradient/cinder/feed-event` subpath remains exported for
 à-la-carte builds that import the leaf directly.
 
 ## Props

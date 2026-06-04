@@ -207,7 +207,7 @@ for `data-grid` will likely be cinder's largest. That cost is part of the
 cinder is opinionated about its design system: every component has a CSS
 sidecar consuming `--cinder-*` tokens, a generated schema, a generated
 variables file, a generated README, generated examples, and a playground
-example set that imports only from `cinder` and `cinder/<subpath>`. The
+example set that imports only from `@lostgradient/cinder` and `@lostgradient/cinder/<subpath>`. The
 grid must fit that pattern without an asterisk.
 
 | Candidate                                                                                                                                                                  | Styling model                                                                        | Fit                                                                                                                                                         |

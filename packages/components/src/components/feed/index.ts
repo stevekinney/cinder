@@ -5,7 +5,7 @@ import FeedRoot from './feed.svelte';
 /**
  * `Feed` is the parent compound component and a namespace exposing the
  * compose-only `Feed.Event` leaf. The leaf remains importable individually via
- * `cinder/feed-event`.
+ * `@lostgradient/cinder/feed-event`.
  */
 const Feed = Object.assign(FeedRoot, {
   Event: FeedEvent,

@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Combobox } from 'cinder/combobox';
+  import { Combobox } from '@lostgradient/cinder/combobox';
 
   // `as const` narrows value types to the literal union 'apple' | 'banana' | …
   // T is inferred from `options`; passing value="invalid" would be a compile error.

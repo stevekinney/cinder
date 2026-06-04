@@ -1,5 +1,5 @@
 ---
-'cinder': major
+'@lostgradient/cinder': major
 ---
 
 **Breaking: `<CinderProvider>` is removed; `<CodeBlock>` highlights automatically.**

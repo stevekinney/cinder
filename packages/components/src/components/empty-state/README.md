@@ -6,7 +6,7 @@ Placeholder layout for zero-data views, with optional illustration, heading, and
 
 ```svelte
 <script lang="ts">
-  import EmptyState from 'cinder/empty-state';
+  import EmptyState from '@lostgradient/cinder/empty-state';
 </script>
 
 <EmptyState />

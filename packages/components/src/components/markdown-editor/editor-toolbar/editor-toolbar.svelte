@@ -2,7 +2,7 @@
   import type { HTMLAttributes } from 'svelte/elements';
   import type { Snippet } from 'svelte';
   import type { Ctx } from '@milkdown/kit/ctx';
-  import type { ActiveMarks, ActiveBlockType } from 'cinder/editor/component-runtime';
+  import type { ActiveMarks, ActiveBlockType } from '@lostgradient/cinder/editor/component-runtime';
 
   export type EditorToolbarProps = Omit<HTMLAttributes<HTMLDivElement>, 'id' | 'class'> & {
     /** Required unique ID for accessibility */
@@ -62,7 +62,7 @@
     setHeading,
     setParagraph,
     getShortcutDisplay,
-  } from 'cinder/editor/component-runtime';
+  } from '@lostgradient/cinder/editor/component-runtime';
 
   import Toolbar from '../../toolbar/toolbar.svelte';
   import ToolbarButton from './toolbar-button.svelte';

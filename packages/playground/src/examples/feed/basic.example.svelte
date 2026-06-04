@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Feed } from 'cinder/feed';
+  import { Feed } from '@lostgradient/cinder/feed';
 </script>
 
 <Feed aria-label="Project activity">

@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { VisuallyHidden } from 'cinder/visually-hidden';
+  import { Button } from '@lostgradient/cinder/button';
+  import { VisuallyHidden } from '@lostgradient/cinder/visually-hidden';
 </script>
 
 <Button>

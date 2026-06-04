@@ -18,6 +18,6 @@ export type DeliveryStatus = 'draft' | 'sending' | 'sent' | 'failed';
  * Options for exporting a chat transcript. Equivalent to the vendored
  * {@link ToMarkdownOptions} (which already carries `includeHidden`,
  * `redactHiddenContent`, and the redaction controls); exposed under a
- * chat-specific name for the public `cinder/chat` surface.
+ * chat-specific name for the public `@lostgradient/cinder/chat` surface.
  */
 export type ChatExportOptions = ToMarkdownOptions;

@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { FormField } from 'cinder/form-field';
-  import { Slider } from 'cinder/slider';
+  import { FormField } from '@lostgradient/cinder/form-field';
+  import { Slider } from '@lostgradient/cinder/slider';
   let value = $state(50);
 </script>
 

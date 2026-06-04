@@ -35,7 +35,7 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
   {
     name: 'Button',
     id: 'button',
-    import: 'cinder/button',
+    import: '@lostgradient/cinder/button',
     exportName: 'Button',
     category: 'action',
     status: 'stable',
@@ -47,14 +47,14 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     hasConstraints: false,
     hasExamples: false,
     artifacts: {
-      schema: 'cinder/button/schema',
-      variables: 'cinder/button/variables',
+      schema: '@lostgradient/cinder/button/schema',
+      variables: '@lostgradient/cinder/button/variables',
     },
   },
   {
     name: 'Modal',
     id: 'modal',
-    import: 'cinder/modal',
+    import: '@lostgradient/cinder/modal',
     exportName: 'Modal',
     category: 'overlay',
     status: 'stable',
@@ -66,16 +66,16 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     hasConstraints: true,
     hasExamples: true,
     artifacts: {
-      schema: 'cinder/modal/schema',
-      variables: 'cinder/modal/variables',
-      examples: 'cinder/modal/examples',
-      constraints: 'cinder/modal/constraints',
+      schema: '@lostgradient/cinder/modal/schema',
+      variables: '@lostgradient/cinder/modal/variables',
+      examples: '@lostgradient/cinder/modal/examples',
+      constraints: '@lostgradient/cinder/modal/constraints',
     },
   },
   {
     name: 'ConnectionIndicator',
     id: 'connection-indicator',
-    import: 'cinder/experimental/connection-indicator',
+    import: '@lostgradient/cinder/experimental/connection-indicator',
     exportName: 'ConnectionIndicator',
     category: 'feedback',
     status: 'alpha',
@@ -87,8 +87,8 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     hasConstraints: false,
     hasExamples: false,
     artifacts: {
-      schema: 'cinder/experimental/connection-indicator/schema',
-      variables: 'cinder/experimental/connection-indicator/variables',
+      schema: '@lostgradient/cinder/experimental/connection-indicator/schema',
+      variables: '@lostgradient/cinder/experimental/connection-indicator/variables',
     },
   },
 ];
@@ -98,14 +98,14 @@ function buildSyntheticManifest(): Manifest {
     $schema: './src/schemas/manifest.schema.json',
     manifestVersion: 1,
     package: {
-      name: 'cinder',
+      name: '@lostgradient/cinder',
       version: '0.0.1',
       framework: 'svelte',
       frameworkVersionRange: '>=5.55.0 <5.56.0',
       classPrefix: 'cinder-',
       cssVarPrefix: '--cinder-',
       tokenNamespaces: ['color', 'space', 'radius', 'ring', 'type', 'motion', 'shadow'],
-      stylesEntry: 'cinder/styles',
+      stylesEntry: '@lostgradient/cinder/styles',
       schemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     },
     categories: {
@@ -249,7 +249,7 @@ describe('manifest schema', () => {
     // modal in the synthetic set has hasExamples=true and an examples artifact
     const modal = manifest.components.find((c) => c.id === 'modal');
     expect(modal?.hasExamples).toBe(true);
-    expect(modal?.artifacts.examples).toBe('cinder/modal/examples');
+    expect(modal?.artifacts.examples).toBe('@lostgradient/cinder/modal/examples');
     const valid = validateManifest(manifest);
     expect(valid).toBe(true);
   });
@@ -258,7 +258,7 @@ describe('manifest schema', () => {
     const manifest = buildSyntheticManifest();
     const modal = manifest.components.find((c) => c.id === 'modal');
     expect(modal?.hasConstraints).toBe(true);
-    expect(modal?.artifacts.constraints).toBe('cinder/modal/constraints');
+    expect(modal?.artifacts.constraints).toBe('@lostgradient/cinder/modal/constraints');
     const valid = validateManifest(manifest);
     expect(valid).toBe(true);
   });

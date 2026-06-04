@@ -7,7 +7,7 @@ Activates the associated dropdown menu on click or keyboard interaction.
 `DropdownTrigger` is a compose-only leaf of [`Dropdown`](../dropdown/README.md).
 The idiomatic API is `Dropdown.Trigger`, reached through the parent
 namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed
-snippet. The flat `cinder/dropdown-trigger` subpath remains exported for
+snippet. The flat `@lostgradient/cinder/dropdown-trigger` subpath remains exported for
 à-la-carte builds that import the leaf directly.
 
 ## Props

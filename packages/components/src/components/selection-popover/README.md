@@ -23,8 +23,8 @@ The component clamps the rendered position to a 16px viewport margin automatical
 ```svelte
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { SelectionPopoverPosition } from 'cinder/selection-popover';
-  import { SelectionPopover } from 'cinder/selection-popover';
+  import type { SelectionPopoverPosition } from '@lostgradient/cinder/selection-popover';
+  import { SelectionPopover } from '@lostgradient/cinder/selection-popover';
 
   type Comment = { id: string; body: string };
 

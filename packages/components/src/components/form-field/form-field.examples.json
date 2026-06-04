@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "form-field",
-  "import": "cinder/form-field",
+  "import": "@lostgradient/cinder/form-field",
   "examples": [
     {
       "id": "basic",
       "title": "Basic form field",
       "description": "A form field wrapping an input with label association.",
-      "code": "<script lang=\"ts\">\n  import { FormField } from 'cinder/form-field';\n  import { Input } from 'cinder/input';\n  let name = $state('');\n</script>\n\n<FormField id=\"full-name\" label=\"Full name\">\n  <Input id=\"full-name\" bind:value={name} placeholder=\"Jane Smith\" />\n</FormField>\n"
+      "code": "<script lang=\"ts\">\n  import { FormField } from '@lostgradient/cinder/form-field';\n  import { Input } from '@lostgradient/cinder/input';\n  let name = $state('');\n</script>\n\n<FormField id=\"full-name\" label=\"Full name\">\n  <Input id=\"full-name\" bind:value={name} placeholder=\"Jane Smith\" />\n</FormField>\n"
     },
     {
       "id": "composed-input",
       "title": "Composed input — context inheritance",
       "description": "Input inside FormField inherits aria-describedby and aria-invalid from context. ",
-      "code": "<script lang=\"ts\" module>\n  export const title = 'Composed input — context inheritance';\n  export const description =\n    'Input inside FormField inherits aria-describedby and aria-invalid from context. ' +\n    'Partial override: Input has its own description; FormField provides the error. ' +\n    'Final aria-describedby joins both ids.';\n</script>\n\n<script lang=\"ts\">\n  import { FormField } from 'cinder/form-field';\n  import { Input } from 'cinder/input';\n  let username = $state('');\n</script>\n\n<!--\n  FormField owns the error; Input has its own description.\n  The Input's aria-describedby will be:\n    \"username-description username-error\"\n  where \"username-description\" comes from the Input's own description prop\n  and \"username-error\" comes from the FormField's context.errorId.\n-->\n<FormField id=\"username\" label=\"Username\" error=\"Username is already taken.\" required>\n  <Input\n    id=\"username\"\n    bind:value={username}\n    description=\"Letters, numbers, and underscores only.\"\n    placeholder=\"cool_username\"\n  />\n</FormField>\n"
+      "code": "<script lang=\"ts\" module>\n  export const title = 'Composed input — context inheritance';\n  export const description =\n    'Input inside FormField inherits aria-describedby and aria-invalid from context. ' +\n    'Partial override: Input has its own description; FormField provides the error. ' +\n    'Final aria-describedby joins both ids.';\n</script>\n\n<script lang=\"ts\">\n  import { FormField } from '@lostgradient/cinder/form-field';\n  import { Input } from '@lostgradient/cinder/input';\n  let username = $state('');\n</script>\n\n<!--\n  FormField owns the error; Input has its own description.\n  The Input's aria-describedby will be:\n    \"username-description username-error\"\n  where \"username-description\" comes from the Input's own description prop\n  and \"username-error\" comes from the FormField's context.errorId.\n-->\n<FormField id=\"username\" label=\"Username\" error=\"Username is already taken.\" required>\n  <Input\n    id=\"username\"\n    bind:value={username}\n    description=\"Letters, numbers, and underscores only.\"\n    placeholder=\"cool_username\"\n  />\n</FormField>\n"
     },
     {
       "id": "with-error",
       "title": "Form field with error",
       "description": "Error state wires aria-invalid and aria-describedby on the wrapped control.",
-      "code": "<script lang=\"ts\">\n  import { FormField } from 'cinder/form-field';\n  import { Input } from 'cinder/input';\n  let email = $state('not-an-email');\n</script>\n\n<FormField\n  id=\"email\"\n  label=\"Email address\"\n  description=\"We'll never share your email.\"\n  error=\"Enter a valid email address.\"\n  required\n>\n  <Input id=\"email\" bind:value={email} type=\"email\" placeholder=\"you@example.com\" />\n</FormField>\n"
+      "code": "<script lang=\"ts\">\n  import { FormField } from '@lostgradient/cinder/form-field';\n  import { Input } from '@lostgradient/cinder/input';\n  let email = $state('not-an-email');\n</script>\n\n<FormField\n  id=\"email\"\n  label=\"Email address\"\n  description=\"We'll never share your email.\"\n  error=\"Enter a valid email address.\"\n  required\n>\n  <Input id=\"email\" bind:value={email} type=\"email\" placeholder=\"you@example.com\" />\n</FormField>\n"
     }
   ]
 }

@@ -1,5 +1,5 @@
 /**
- * Generates the typescript-consumer probe from the INSTALLED `cinder/manifest`
+ * Generates the typescript-consumer probe from the INSTALLED `@lostgradient/cinder/manifest`
  * (the packed tarball's manifest), so the probe covers EVERY published component
  * and its schema/variables artifacts — not a curated subset. Per-component export
  * breakage is the common failure mode, so the probe must be exhaustive and
@@ -25,7 +25,7 @@ const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
 const generatedDirectory = join(here, 'src', 'generated');
 
-const manifest = require('cinder/manifest');
+const manifest = require('@lostgradient/cinder/manifest');
 if (!Array.isArray(manifest.components) || manifest.components.length === 0) {
   process.stderr.write('generate-probe: cinder/manifest has no components\n');
   process.exit(1);

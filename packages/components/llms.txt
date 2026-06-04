@@ -1,24 +1,24 @@
 # cinder
 A Svelte 5 component library with ~100 accessible primitives and domain suites.
 
-Install: bun add cinder svelte
-Import root: cinder
-Styles: import 'cinder/styles';
+Install: bun add @lostgradient/cinder svelte
+Import root: @lostgradient/cinder
+Styles: import '@lostgradient/cinder/styles';
 
 ## Manifest
 - /components.json — Every component with category, status, purpose, useWhen/avoidWhen, and subpath pointers.
 
 ## Per-component subpaths
-- cinder/{name}             — Svelte component export
-- cinder/{name}/schema      — TS module; default export is a JSON Schema document
-- cinder/{name}/variables   — TS module; default export is the array of CSS custom property names
-- cinder/{name}/examples    — JSON file (import with `with { type: 'json' }`), present when hasExamples is true
-- cinder/{name}/constraints — JSON file (import with `with { type: 'json' }`), present when hasConstraints is true
-- cinder/manifest           — JSON file (import with `with { type: 'json' }`), the top-level components.json
+- @lostgradient/cinder/{name}             — Svelte component export
+- @lostgradient/cinder/{name}/schema      — TS module; default export is a JSON Schema document
+- @lostgradient/cinder/{name}/variables   — TS module; default export is the array of CSS custom property names
+- @lostgradient/cinder/{name}/examples    — JSON file (import with `with { type: 'json' }`), present when hasExamples is true
+- @lostgradient/cinder/{name}/constraints — JSON file (import with `with { type: 'json' }`), present when hasConstraints is true
+- @lostgradient/cinder/manifest           — JSON file (import with `with { type: 'json' }`), the top-level components.json
 
 ## Experimental components
-Experimental components use cinder/experimental/{name} instead of cinder/{name}.
-Their artifact subpaths follow the same pattern: cinder/experimental/{name}/schema, etc.
+Experimental components use @lostgradient/cinder/experimental/{name} instead of @lostgradient/cinder/{name}.
+Their artifact subpaths follow the same pattern: @lostgradient/cinder/experimental/{name}/schema, etc.
 
 ## Conventions
 - Class prefix: cinder-

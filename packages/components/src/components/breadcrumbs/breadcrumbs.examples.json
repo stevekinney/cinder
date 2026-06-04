@@ -1,19 +1,19 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "breadcrumbs",
-  "import": "cinder/breadcrumbs",
+  "import": "@lostgradient/cinder/breadcrumbs",
   "examples": [
     {
       "id": "basic",
       "title": "Basic breadcrumbs",
       "description": "Navigation trail with the final entry as the current page.",
-      "code": "<script lang=\"ts\">\n  import { Breadcrumbs } from 'cinder/breadcrumbs';\n</script>\n\n<Breadcrumbs\n  items={[\n    { label: 'Home', href: '/' },\n    { label: 'Projects', href: '/projects' },\n    { label: 'Cinder', href: '/projects/cinder' },\n    { label: 'Settings' },\n  ]}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Breadcrumbs } from '@lostgradient/cinder/breadcrumbs';\n</script>\n\n<Breadcrumbs\n  items={[\n    { label: 'Home', href: '/' },\n    { label: 'Projects', href: '/projects' },\n    { label: 'Cinder', href: '/projects/cinder' },\n    { label: 'Settings' },\n  ]}\n/>\n"
     },
     {
       "id": "custom-separator",
       "title": "Custom separator",
       "description": "Override the default \"/\" separator with any string or snippet.",
-      "code": "<script lang=\"ts\">\n  import { Breadcrumbs } from 'cinder/breadcrumbs';\n</script>\n\n<Breadcrumbs\n  separator=\"›\"\n  items={[\n    { label: 'Home', href: '/' },\n    { label: 'Library', href: '/library' },\n    { label: 'Music', href: '/library/music' },\n    { label: 'Albums' },\n  ]}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Breadcrumbs } from '@lostgradient/cinder/breadcrumbs';\n</script>\n\n<Breadcrumbs\n  separator=\"›\"\n  items={[\n    { label: 'Home', href: '/' },\n    { label: 'Library', href: '/library' },\n    { label: 'Music', href: '/library/music' },\n    { label: 'Albums' },\n  ]}\n/>\n"
     }
   ]
 }

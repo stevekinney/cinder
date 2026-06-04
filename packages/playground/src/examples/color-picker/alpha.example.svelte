@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { ColorPicker } from 'cinder/color-picker';
+  import { ColorPicker } from '@lostgradient/cinder/color-picker';
 
   const swatches = ['#ef444480', '#22c55e80', '#3b82f680'];
 </script>

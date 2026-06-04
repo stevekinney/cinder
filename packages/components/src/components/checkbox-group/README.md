@@ -6,7 +6,7 @@ Wraps multiple checkboxes under a shared label and validation context.
 
 ```svelte
 <script lang="ts">
-  import CheckboxGroup from 'cinder/checkbox-group';
+  import CheckboxGroup from '@lostgradient/cinder/checkbox-group';
 </script>
 
 <CheckboxGroup />

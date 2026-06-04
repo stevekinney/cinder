@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { VisuallyHidden } from 'cinder/visually-hidden';
+  import { VisuallyHidden } from '@lostgradient/cinder/visually-hidden';
 </script>
 
 <dl style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem;">

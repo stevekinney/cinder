@@ -6,7 +6,7 @@ Chat-style bubble that renders a role label, optional timestamp, and arbitrary b
 
 ```svelte
 <script lang="ts">
-  import Message from 'cinder/message';
+  import Message from '@lostgradient/cinder/message';
 </script>
 
 <Message role="assistant" timestamp="10:00">How can I help?</Message>

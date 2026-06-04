@@ -695,9 +695,9 @@ describe('/page/:name', () => {
   });
 
   it('loads the full CSS aggregator (styles/all.css) so component styles are present', async () => {
-    // The component preview iframe must load `cinder/styles/all` (tokens +
+    // The component preview iframe must load `@lostgradient/cinder/styles/all` (tokens +
     // foundation + ALL per-component CSS) rather than the slim base
-    // (`cinder/styles` / index.css). After the per-component subpath split,
+    // (`@lostgradient/cinder/styles` / index.css). After the per-component subpath split,
     // index.css only contains tokens/foundation/utilities — omitting it here
     // would leave every component unstyled in the Playwright preview, breaking
     // visual snapshots, positioning assertions, and accessibility checks.

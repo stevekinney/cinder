@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Checkbox } from 'cinder/checkbox';
+  import { Checkbox } from '@lostgradient/cinder/checkbox';
   let acceptTerms = $state(false);
   let subscribed = $state(true);
 </script>

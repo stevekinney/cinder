@@ -6,7 +6,7 @@ Styled heading element that visually separates and titles a content section.
 
 ```svelte
 <script lang="ts">
-  import SectionHeading from 'cinder/section-heading';
+  import SectionHeading from '@lostgradient/cinder/section-heading';
 </script>
 
 <SectionHeading />

@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "avatar",
-  "import": "cinder/avatar",
+  "import": "@lostgradient/cinder/avatar",
   "examples": [
     {
       "id": "basic",
       "title": "Basic avatar",
       "description": "Image variant alongside an initials fallback.",
-      "code": "<script lang=\"ts\">\n  import { Avatar } from 'cinder/avatar';\n</script>\n\n<div class=\"example-preview-row\">\n  <Avatar src=\"https://i.pravatar.cc/96?img=12\" name=\"Ada Lovelace\" />\n  <Avatar name=\"Ada Lovelace\" />\n  <Avatar name=\"Grace Hopper\" />\n  <Avatar />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Avatar } from '@lostgradient/cinder/avatar';\n</script>\n\n<div class=\"example-preview-row\">\n  <Avatar src=\"https://i.pravatar.cc/96?img=12\" name=\"Ada Lovelace\" />\n  <Avatar name=\"Ada Lovelace\" />\n  <Avatar name=\"Grace Hopper\" />\n  <Avatar />\n</div>\n"
     },
     {
       "id": "shapes",
       "title": "Avatar shapes",
       "description": "Circle and square shape variants.",
-      "code": "<script lang=\"ts\">\n  import { Avatar } from 'cinder/avatar';\n</script>\n\n<div class=\"example-preview-row\">\n  <Avatar shape=\"circle\" name=\"Ada Lovelace\" size=\"lg\" />\n  <Avatar shape=\"square\" name=\"Grace Hopper\" size=\"lg\" />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Avatar } from '@lostgradient/cinder/avatar';\n</script>\n\n<div class=\"example-preview-row\">\n  <Avatar shape=\"circle\" name=\"Ada Lovelace\" size=\"lg\" />\n  <Avatar shape=\"square\" name=\"Grace Hopper\" size=\"lg\" />\n</div>\n"
     },
     {
       "id": "sizes",
       "title": "Avatar sizes",
       "description": "xs, sm, md, lg, and xl size tokens.",
-      "code": "<script lang=\"ts\">\n  import { Avatar } from 'cinder/avatar';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center;\">\n  <Avatar size=\"xs\" name=\"Ada Lovelace\" />\n  <Avatar size=\"sm\" name=\"Ada Lovelace\" />\n  <Avatar size=\"md\" name=\"Ada Lovelace\" />\n  <Avatar size=\"lg\" name=\"Ada Lovelace\" />\n  <Avatar size=\"xl\" name=\"Ada Lovelace\" />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Avatar } from '@lostgradient/cinder/avatar';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center;\">\n  <Avatar size=\"xs\" name=\"Ada Lovelace\" />\n  <Avatar size=\"sm\" name=\"Ada Lovelace\" />\n  <Avatar size=\"md\" name=\"Ada Lovelace\" />\n  <Avatar size=\"lg\" name=\"Ada Lovelace\" />\n  <Avatar size=\"xl\" name=\"Ada Lovelace\" />\n</div>\n"
     }
   ]
 }

@@ -7,8 +7,8 @@
  *
  * ```svelte
  * <script lang="ts">
- *   import { CodeBlock } from 'cinder';
- *   import { shikiHighlighter } from 'cinder/highlighters/shiki';
+ *   import { CodeBlock } from '@lostgradient/cinder';
+ *   import { shikiHighlighter } from '@lostgradient/cinder/highlighters/shiki';
  *
  *   const highlighter = shikiHighlighter({ theme: 'github-light' });
  * </script>
@@ -23,7 +23,7 @@
  * import.
  *
  * Behavior contract (matches the {@link Highlighter} type in
- * `cinder/utilities/highlighter`):
+ * `@lostgradient/cinder/utilities/highlighter`):
  *
  *   - Returns a complete `<pre><code>...</code></pre>` block as a trusted
  *     HTML string. `<CodeBlock>` injects this via `{@html}` and replaces its
@@ -50,7 +50,7 @@ import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache
 
 /**
  * Re-exported for backwards compatibility on the public
- * `cinder/highlighters/shiki` surface. The canonical implementation lives in
+ * `@lostgradient/cinder/highlighters/shiki` surface. The canonical implementation lives in
  * `utilities/retrying-loader-cache.ts` so `<CodeBlock>`'s default-highlighter
  * seam can reuse it without a static import edge to this adapter module.
  */

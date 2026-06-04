@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Thread } from 'cinder/commentary/comments';
+  import type { Thread } from '@lostgradient/cinder/commentary/comments';
 
   export type CommentSidebarProps = {
     /** Unique ID for accessibility */
@@ -30,7 +30,7 @@
   import Plus from 'lucide-svelte/icons/plus';
   import Trash2 from 'lucide-svelte/icons/trash-2';
   import X from 'lucide-svelte/icons/x';
-  import { getVisibleComments, isDocumentAnchor } from 'cinder/commentary/comments';
+  import { getVisibleComments, isDocumentAnchor } from '@lostgradient/cinder/commentary/comments';
   import Button from '../button/button.svelte';
   import Dropdown from '../dropdown/dropdown.svelte';
   import DropdownTrigger from '../dropdown-trigger/dropdown-trigger.svelte';

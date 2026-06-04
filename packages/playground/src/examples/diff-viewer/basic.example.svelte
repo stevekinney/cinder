@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { DiffViewer } from 'cinder/diff-viewer';
+  import { DiffViewer } from '@lostgradient/cinder/diff-viewer';
   const original = `# Project Plan
 
 The first version includes authentication, a dashboard, and export tools.

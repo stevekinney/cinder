@@ -22,17 +22,18 @@ const schema = {
     },
     label: {
       type: 'string',
-      description: 'Human-readable status, exposed as `aria-valuetext`.',
+      description:
+        'Human-readable status, exposed as `aria-valuetext`. NOT the accessible\nname — supply `ariaLabel` or `ariaLabelledby` for that.',
     },
     ariaLabel: {
       type: 'string',
       description:
-        'Accessible name applied directly to the progressbar element when no\nvisible label element is present in the page.',
+        'Accessible name applied directly to the progressbar element when no\nvisible label element is present in the page. Required unless\n`ariaLabelledby` is supplied.',
     },
     ariaLabelledby: {
       type: 'string',
       description:
-        'Id of a visible element that serves as the accessible name for the\nprogressbar. Prefer this over `ariaLabel` when a visible label exists.',
+        'Id of a visible element that serves as the accessible name for the\nprogressbar. Prefer this over `ariaLabel` when a visible label exists.\nRequired unless `ariaLabel` is supplied.',
     },
     class: {
       type: 'string',

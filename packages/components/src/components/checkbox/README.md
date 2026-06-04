@@ -6,7 +6,7 @@ Single boolean toggle for opt-in selections within forms or settings.
 
 ```svelte
 <script lang="ts">
-  import Checkbox from 'cinder/checkbox';
+  import Checkbox from '@lostgradient/cinder/checkbox';
 </script>
 
 <Checkbox />

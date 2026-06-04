@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { CodeBlock } from 'cinder/code-block';
+  import { CodeBlock } from '@lostgradient/cinder/code-block';
   const code = `function greet(name: string): string {
   return \`Hello, \${name}!\`;
 }

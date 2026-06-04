@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { ConfirmDialog } from 'cinder/confirm-dialog';
+  import { Button } from '@lostgradient/cinder/button';
+  import { ConfirmDialog } from '@lostgradient/cinder/confirm-dialog';
 
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);

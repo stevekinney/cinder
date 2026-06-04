@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { MenuBar, type MenuBarMenu } from 'cinder/menu-bar';
+  import { MenuBar, type MenuBarMenu } from '@lostgradient/cinder/menu-bar';
 
   const menus: MenuBarMenu[] = [
     {

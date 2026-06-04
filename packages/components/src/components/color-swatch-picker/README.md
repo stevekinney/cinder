@@ -6,7 +6,7 @@ Presents a fixed palette of color swatches for constrained color selection.
 
 ```svelte
 <script lang="ts">
-  import ColorSwatchPicker from 'cinder/color-swatch-picker';
+  import ColorSwatchPicker from '@lostgradient/cinder/color-swatch-picker';
 </script>
 
 <ColorSwatchPicker />

@@ -9,7 +9,7 @@ Vertical navigation panel for secondary or hierarchical app destinations.
 
 ```svelte
 <script lang="ts">
-  import { SideNavigation } from 'cinder/side-navigation';
+  import { SideNavigation } from '@lostgradient/cinder/side-navigation';
 </script>
 
 <SideNavigation ariaLabel="Workspace">
@@ -22,7 +22,7 @@ Vertical navigation panel for secondary or hierarchical app destinations.
 ```
 
 The leaves remain importable individually for à-la-carte builds — see
-`cinder/side-navigation-group` and `cinder/side-navigation-item`.
+`@lostgradient/cinder/side-navigation-group` and `@lostgradient/cinder/side-navigation-item`.
 
 ## Props
 

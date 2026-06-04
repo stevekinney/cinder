@@ -45,12 +45,12 @@ const pkg = (
 const fakePackages: readonly WorkspacePackage[] = [
   pkg('@cinder/diff', 'packages/diff/'),
   pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
-  pkg('cinder', 'packages/components/', [], { hasTest: false }),
+  pkg('@lostgradient/cinder', 'packages/components/', [], { hasTest: false }),
 ];
 
 // A fixture mirroring the real internal dependency graph for closure tests.
 const graphPackages: readonly WorkspacePackage[] = [
-  pkg('cinder', 'packages/components/', [
+  pkg('@lostgradient/cinder', 'packages/components/', [
     '@cinder/commentary',
     '@cinder/diff',
     '@cinder/editor',
@@ -60,7 +60,7 @@ const graphPackages: readonly WorkspacePackage[] = [
   pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
   pkg('@cinder/editor', 'packages/editor/', ['@cinder/markdown']),
   pkg('@cinder/commentary', 'packages/commentary/', ['@cinder/editor', '@cinder/markdown']),
-  pkg('@cinder/playground', 'packages/playground/', ['cinder']),
+  pkg('@cinder/playground', 'packages/playground/', ['@lostgradient/cinder']),
   pkg('@cinder/diff', 'packages/diff/'),
   pkg('@cinder/testing', 'packages/testing/', [], { hasLint: false }),
 ];
@@ -462,7 +462,7 @@ describe('loadWorkspacePackages', () => {
     expect(names).toContain('@cinder/commentary');
     expect(names).toContain('@cinder/playground');
     expect(names).toContain('@cinder/testing');
-    expect(names).toContain('cinder');
+    expect(names).toContain('@lostgradient/cinder');
     for (const entry of packages) {
       expect(entry.dir.startsWith('packages/')).toBe(true);
       expect(entry.dir.endsWith('/')).toBe(true);
@@ -478,11 +478,11 @@ describe('loadWorkspacePackages', () => {
     const byName = new Map(packages.map((entry) => [entry.name, entry] as const));
 
     // @cinder/playground depends on cinder.
-    expect([...byName.get('@cinder/playground')!.dependencies]).toContain('cinder');
+    expect([...byName.get('@cinder/playground')!.dependencies]).toContain('@lostgradient/cinder');
     // @cinder/markdown depends on @cinder/diff.
     expect([...byName.get('@cinder/markdown')!.dependencies]).toContain('@cinder/diff');
     // cinder dev-depends on @cinder/testing.
-    expect([...byName.get('cinder')!.dependencies]).toContain('@cinder/testing');
+    expect([...byName.get('@lostgradient/cinder')!.dependencies]).toContain('@cinder/testing');
     // Every dependency name resolves to another workspace package (external
     // deps such as `chalk` are filtered out).
     const workspaceNames = new Set(packages.map((entry) => entry.name));
@@ -495,9 +495,9 @@ describe('loadWorkspacePackages', () => {
 });
 
 describe('expandToDependents', () => {
-  // NOTE: the real graph has `cinder` dev-depending on every sub-package (its
-  // own tests import them) AND `@cinder/playground` depending on `cinder`. So
-  // any sub-package change pulls in `cinder` + `@cinder/playground` as
+  // NOTE: the real graph has `@lostgradient/cinder` dev-depending on every sub-package (its
+  // own tests import them) AND `@cinder/playground` depending on `@lostgradient/cinder`. So
+  // any sub-package change pulls in `@lostgradient/cinder` + `@cinder/playground` as
   // dependents. Only `@cinder/commentary` (a true leaf in the consumer
   // direction) and `@cinder/playground` stay small. These expectations are the
   // sound closures, computed from the graph — not the smaller sets an earlier
@@ -512,7 +512,7 @@ describe('expandToDependents', () => {
     expect(expand('@cinder/commentary')).toEqual([
       '@cinder/commentary',
       '@cinder/playground',
-      'cinder',
+      '@lostgradient/cinder',
     ]);
   });
 
@@ -521,7 +521,7 @@ describe('expandToDependents', () => {
       '@cinder/commentary',
       '@cinder/editor',
       '@cinder/playground',
-      'cinder',
+      '@lostgradient/cinder',
     ]);
   });
 
@@ -531,7 +531,7 @@ describe('expandToDependents', () => {
       '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
-      'cinder',
+      '@lostgradient/cinder',
     ]);
   });
 
@@ -542,16 +542,20 @@ describe('expandToDependents', () => {
       '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
-      'cinder',
+      '@lostgradient/cinder',
     ]);
   });
 
   it('expands @cinder/testing to testing + cinder + playground', () => {
-    expect(expand('@cinder/testing')).toEqual(['@cinder/playground', '@cinder/testing', 'cinder']);
+    expect(expand('@cinder/testing')).toEqual([
+      '@cinder/playground',
+      '@cinder/testing',
+      '@lostgradient/cinder',
+    ]);
   });
 
   it('expands cinder to cinder + playground', () => {
-    expect(expand('cinder')).toEqual(['@cinder/playground', 'cinder']);
+    expect(expand('@lostgradient/cinder')).toEqual(['@cinder/playground', '@lostgradient/cinder']);
   });
 
   it('is cycle-safe and dedupes across multiple touched packages', () => {
@@ -561,7 +565,7 @@ describe('expandToDependents', () => {
       '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
-      'cinder',
+      '@lostgradient/cinder',
     ]);
   });
 
@@ -929,9 +933,9 @@ describe('scoped job derivation (real workspace)', () => {
     expect(jobs).toEqual([
       '@cinder/playground test',
       '@cinder/playground typecheck',
-      'cinder lint',
-      'cinder test',
-      'cinder typecheck',
+      '@lostgradient/cinder lint',
+      '@lostgradient/cinder test',
+      '@lostgradient/cinder typecheck',
     ]);
     // Negative: no playground *lint* (closure is typecheck/test only), and no
     // markdown/editor/commentary/diff jobs at all.
@@ -946,7 +950,7 @@ describe('scoped job derivation (real workspace)', () => {
     // depends on cinder, so the closure is commentary + cinder + playground.
     expect(jobs.some((j) => /@cinder\/(markdown|editor|diff)/.test(j))).toBe(false);
     expect(jobs).toContain('@cinder/commentary lint');
-    expect(jobs).toContain('cinder typecheck');
+    expect(jobs).toContain('@lostgradient/cinder typecheck');
     expect(jobs).toContain('@cinder/playground test');
   });
 });
@@ -1036,10 +1040,10 @@ describe('summarizeFailures', () => {
 describe('inferFailureScope', () => {
   it('names the package when Bun prefixes failure output', () => {
     const scope = inferFailureScope(`
-      cinder test: (fail) Button > renders disabled state [4.00ms]
+      @lostgradient/cinder test: (fail) Button > renders disabled state [4.00ms]
     `);
 
-    expect(scope).toBe('cinder');
+    expect(scope).toBe('@lostgradient/cinder');
   });
 
   it('falls back to workspace when no package prefix is present', () => {

@@ -22,7 +22,7 @@
     Toggle,
     Tooltip,
     useHistory,
-  } from 'cinder';
+  } from '@lostgradient/cinder';
   import '../app.css';
 
   let currentPage = $state(1);

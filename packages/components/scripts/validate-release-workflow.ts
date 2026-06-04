@@ -9,7 +9,7 @@
  *   - The file .github/workflows/release.yaml is present.
  *   - The file has `id-token: write` (the OIDC permission required for Trusted
  *     Publishing) somewhere in its permissions declarations.
- *   - The primary publish step (the `run: bun run --filter=cinder publish:release`
+ *   - The primary publish step (the `run: bun run --filter=@lostgradient/cinder publish:release`
  *     step) does NOT have NODE_AUTH_TOKEN or NPM_TOKEN in its `env:` block
  *     (precise, well-messaged check).
  *   - NODE_AUTH_TOKEN / NPM_TOKEN do NOT appear anywhere else in release.yaml
@@ -90,7 +90,7 @@ pass('id-token: write is present');
 // Match the publish step's actual `run:` command, not a comment that mentions it.
 // `^\s*run:` anchors to a real YAML key so a `# ... bun run ... publish:release`
 // note can't be mistaken for the step.
-const publishRunPattern = /^\s*run\s*:.*bun run --filter=cinder publish:release/;
+const publishRunPattern = /^\s*run\s*:.*bun run --filter=@lostgradient\/cinder publish:release/;
 const publishRunLineIndex = lines.findIndex(
   (line) => !isComment(line) && publishRunPattern.test(line),
 );
@@ -98,7 +98,7 @@ const publishRunLineIndex = lines.findIndex(
 if (publishRunLineIndex === -1) {
   fail(
     'Could not locate the primary publish step in release.yaml. ' +
-      'Expected a step with `run: bun run --filter=cinder publish:release`.',
+      'Expected a step with `run: bun run --filter=@lostgradient/cinder publish:release`.',
   );
 }
 

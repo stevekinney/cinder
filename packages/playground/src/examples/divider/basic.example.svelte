@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Divider } from 'cinder/divider';
+  import { Divider } from '@lostgradient/cinder/divider';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px;">

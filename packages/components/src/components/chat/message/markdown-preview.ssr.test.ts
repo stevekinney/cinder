@@ -13,7 +13,7 @@
  *
  * markdown-preview.svelte satisfies this by:
  *   - importing the rendering pipeline DYNAMICALLY inside a `$effect`
- *     (`import('cinder/markdown/rendering')`), never statically — `$effect`
+ *     (`import('@lostgradient/cinder/markdown/rendering')`), never statically — `$effect`
  *     bodies never run during SSR, so the import is never evaluated on the
  *     server, and the heavy rendering graph stays out of the SSR path; and
  *   - rendering a raw-text fallback (`<p>{content}</p>`) in the `{:else}`
@@ -21,7 +21,7 @@
  *     client swaps in formatted HTML after hydration.
  *
  * Unlike `markdown-editor.svelte` — whose live-editor branch pulls in
- * `cinder/editor/component-runtime` (ProseMirror) and so cannot be exercised
+ * `@lostgradient/cinder/editor/component-runtime` (ProseMirror) and so cannot be exercised
  * by `renderThenHydrate` (the recompiled SSR module resolves that import
  * against a missing "node"-conditional dist, producing `effect_orphan`) —
  * markdown-preview has no child components and no static cinder/editor import.

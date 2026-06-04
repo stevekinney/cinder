@@ -26,14 +26,14 @@ const conversationalistMessage = {
   createdAt: '2026-06-02T00:00:00.000Z',
   metadata: {},
   hidden: false,
-  toolCall: { id: 'call-1', name: 'exports_check', arguments: { package: 'cinder' } },
+  toolCall: { id: 'call-1', name: 'exports_check', arguments: { package: '@lostgradient/cinder' } },
 } satisfies Message;
 
 // A tool call exactly as `armorer.createToolCall(...)` returns it.
 const armorerToolCall = {
   id: 'call-1',
   name: 'exports_check',
-  arguments: { package: 'cinder' },
+  arguments: { package: '@lostgradient/cinder' },
 } satisfies ToolCall;
 
 // A tool result exactly as `armorer`/`interoperability` materializes it,

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { ReviewState, Thread } from 'cinder/commentary/comments';
+import type { ReviewState, Thread } from '@lostgradient/cinder/commentary/comments';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 

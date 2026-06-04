@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "diff-statistics",
-  "import": "cinder/diff-statistics",
+  "import": "@lostgradient/cinder/diff-statistics",
   "examples": [
     {
       "id": "basic",
       "title": "Basic diff statistics",
       "description": "Line-change counts with semantic colors.",
-      "code": "<script lang=\"ts\">\n  import { DiffStatistics } from 'cinder/diff-statistics';\n</script>\n\n<div style=\"display: grid; gap: 0.75rem;\">\n  <DiffStatistics added={12} removed={4} modified={3} />\n  <DiffStatistics added={12} removed={0} modified={0} variant=\"compact\" hideZero />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { DiffStatistics } from '@lostgradient/cinder/diff-statistics';\n</script>\n\n<div style=\"display: grid; gap: 0.75rem;\">\n  <DiffStatistics added={12} removed={4} modified={3} />\n  <DiffStatistics added={12} removed={0} modified={0} variant=\"compact\" hideZero />\n</div>\n"
     }
   ]
 }

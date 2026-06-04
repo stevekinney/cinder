@@ -1,6 +1,6 @@
 name: release-manual
 
-# Break-glass fallback for releasing `cinder` if Changesets-driven
+# Break-glass fallback for releasing `@lostgradient/cinder` if Changesets-driven
 # `release.yaml` fails. Triggered manually from the Actions UI. The
 # package.json version in `packages/components/` must already be bumped
 # before dispatching this workflow — `verify-release-version.ts` enforces
@@ -87,10 +87,10 @@ jobs:
         run: bun run scripts/verify-release-version.ts
 
       - name: Validate package artifact
-        run: bun run --filter=cinder validate:consumer
+        run: bun run --filter=@lostgradient/cinder validate:consumer
 
       - name: Check package artifact budget
-        run: bun run --filter=cinder package:weight:check -- --existing-tarball
+        run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 
       # Break-glass publish. The primary release path (release.yaml) uses npm
       # Trusted Publishing (OIDC) and requires no long-lived token. This manual
@@ -107,4 +107,4 @@ jobs:
           NPM_CONFIG_PROVENANCE: 'true'
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun run --filter=cinder publish:release -- --skip-validation
+        run: bun run --filter=@lostgradient/cinder publish:release -- --skip-validation

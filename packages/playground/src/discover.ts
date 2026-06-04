@@ -14,7 +14,7 @@ const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/c
 
 /**
  * Compose-only leaf components. These public components exist as real
- * directories and are exported flat from `cinder`, but they have no meaningful
+ * directories and are exported flat from `@lostgradient/cinder`, but they have no meaningful
  * standalone usage — they are always rendered inside a parent compound
  * (`Tabs`, `Table`, `Dropdown`, `Accordion`, `Tree`, `Feed`, `GridList`,
  * `StatGroup`, `SideNavigation`). They are excluded from the playground

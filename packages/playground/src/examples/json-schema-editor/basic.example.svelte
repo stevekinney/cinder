@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { JsonSchemaEditor } from 'cinder/json-schema-editor';
-  import type { JsonSchemaValue } from 'cinder/json-schema-editor';
+  import { JsonSchemaEditor } from '@lostgradient/cinder/json-schema-editor';
+  import type { JsonSchemaValue } from '@lostgradient/cinder/json-schema-editor';
   const personSchema: JsonSchemaValue = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     title: 'Person',

@@ -6,7 +6,7 @@ Single row within a stacked list, typically pairing a label with metadata or an 
 
 ```svelte
 <script lang="ts">
-  import StackedListItem from 'cinder/stacked-list-item';
+  import StackedListItem from '@lostgradient/cinder/stacked-list-item';
 </script>
 
 <StackedListItem />

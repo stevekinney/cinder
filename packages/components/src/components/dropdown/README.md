@@ -10,7 +10,7 @@ via the namespace API: `Dropdown.Trigger`, `Dropdown.Menu`, `Dropdown.Item`,
 
 ```svelte
 <script lang="ts">
-  import { Dropdown } from 'cinder/dropdown';
+  import { Dropdown } from '@lostgradient/cinder/dropdown';
 </script>
 
 <Dropdown id="dropdown-actions">
@@ -26,8 +26,8 @@ via the namespace API: `Dropdown.Trigger`, `Dropdown.Menu`, `Dropdown.Item`,
 ```
 
 The leaves remain importable individually for à-la-carte builds — see
-`cinder/dropdown-trigger`, `cinder/dropdown-menu`, `cinder/dropdown-item`,
-`cinder/dropdown-label`, `cinder/dropdown-separator`, and `cinder/dropdown-group`.
+`@lostgradient/cinder/dropdown-trigger`, `@lostgradient/cinder/dropdown-menu`, `@lostgradient/cinder/dropdown-item`,
+`@lostgradient/cinder/dropdown-label`, `@lostgradient/cinder/dropdown-separator`, and `@lostgradient/cinder/dropdown-group`.
 
 ## Props
 

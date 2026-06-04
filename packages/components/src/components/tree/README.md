@@ -9,7 +9,7 @@ the namespace API.
 
 ```svelte
 <script lang="ts">
-  import { Tree } from 'cinder/tree';
+  import { Tree } from '@lostgradient/cinder/tree';
 
   let expandedIds = $state<string[]>(['fruit']);
 </script>
@@ -26,7 +26,7 @@ the namespace API.
 ```
 
 The leaf remains importable individually for à-la-carte builds — see
-`cinder/tree-item`.
+`@lostgradient/cinder/tree-item`.
 
 ## Props
 
@@ -63,7 +63,7 @@ This component does not declare any local CSS variables.
 - `Tree.Item` — a tree node, branch or leaf; see [`tree-item`](../tree-item/README.md).
 - `Tree.SelectAll` — the root-level select-all/none control. It reads Tree's
   selection context and is namespace-only: there is no standalone
-  `cinder/tree-select-all` import, because rendering it outside a Tree always
+  `@lostgradient/cinder/tree-select-all` import, because rendering it outside a Tree always
   throws.
 
 <!-- generated:subcomponents:end -->

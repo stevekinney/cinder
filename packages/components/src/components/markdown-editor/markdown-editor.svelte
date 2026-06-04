@@ -30,7 +30,7 @@
     ActiveBlockType,
     ActiveMarks,
     EditorSelection,
-  } from 'cinder/editor/component-runtime';
+  } from '@lostgradient/cinder/editor/component-runtime';
 
   import './prosemirror.css';
   import { classNames } from '../../utilities/class-names.ts';
@@ -52,7 +52,7 @@
     undo as undoCommand,
     redo as redoCommand,
     DEFAULT_DEBOUNCE_MS,
-  } from 'cinder/editor/component-runtime';
+  } from '@lostgradient/cinder/editor/component-runtime';
   import Segment from '../segment/segment.svelte';
   import SegmentedControl from '../segmented-control/segmented-control.svelte';
   import EditorSkeleton from './editor-skeleton.svelte';
@@ -66,7 +66,7 @@
   >;
 
   type MarkdownPipelineUtilities = Pick<
-    typeof import('cinder/markdown/pipeline'),
+    typeof import('@lostgradient/cinder/markdown/pipeline'),
     'normalize' | 'parseOrThrow'
   >;
 
@@ -181,7 +181,7 @@
     let cancelled = false;
     // cinder/markdown/pipeline is SSR-safe (pure remark/unified), but kept dynamic for code-splitting:
     // the parser/serializer should not load before the user actually interacts with the editor.
-    void import('cinder/markdown/pipeline').then((module) => {
+    void import('@lostgradient/cinder/markdown/pipeline').then((module) => {
       if (!cancelled) {
         pipelineUtilities = {
           normalize: module.normalize,

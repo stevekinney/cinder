@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Chip } from 'cinder/chip';
+  import { Chip } from '@lostgradient/cinder/chip';
 </script>
 
 <div class="example-preview-row">

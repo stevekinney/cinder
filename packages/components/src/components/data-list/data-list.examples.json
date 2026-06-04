@@ -1,19 +1,19 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "data-list",
-  "import": "cinder/data-list",
+  "import": "@lostgradient/cinder/data-list",
   "examples": [
     {
       "id": "basic",
       "title": "Basic data list",
       "description": "A list of homogeneous records. DataList is the semantic `<ul role=\"list\">` container; each row is a StackedListItem with a title and trailing meta. Row chrome (padding, dividers, density) is owned by the row, so content stays compactly aligned instead of stretching to the viewport edges.",
-      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n  import { StackedListItem } from 'cinder/stacked-list-item';\n\n  const members = [\n    { id: 'alice', name: 'Alice Chen', role: 'Engineer', status: 'Active' },\n    { id: 'bob', name: 'Bob Osei', role: 'Designer', status: 'Active' },\n    { id: 'carol', name: 'Carol Mwangi', role: 'Product', status: 'Invited' },\n  ];\n</script>\n\n<DataList items={members} key={(m) => m.id}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n      {#snippet meta()}{member.role} · {member.status}{/snippet}\n    </StackedListItem>\n  {/snippet}\n</DataList>\n"
+      "code": "<script lang=\"ts\">\n  import { DataList } from '@lostgradient/cinder/data-list';\n  import { StackedListItem } from '@lostgradient/cinder/stacked-list-item';\n\n  const members = [\n    { id: 'alice', name: 'Alice Chen', role: 'Engineer', status: 'Active' },\n    { id: 'bob', name: 'Bob Osei', role: 'Designer', status: 'Active' },\n    { id: 'carol', name: 'Carol Mwangi', role: 'Product', status: 'Invited' },\n  ];\n</script>\n\n<DataList items={members} key={(m) => m.id}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n      {#snippet meta()}{member.role} · {member.status}{/snippet}\n    </StackedListItem>\n  {/snippet}\n</DataList>\n"
     },
     {
       "id": "empty",
       "title": "Empty state fallback",
       "description": "When items is empty, the empty snippet renders inside a component-owned `<li class=\"cinder-data-list-empty\">` — centered, muted padding, no inline styles required.",
-      "code": "<script lang=\"ts\">\n  import { DataList } from 'cinder/data-list';\n  import { StackedListItem } from 'cinder/stacked-list-item';\n\n  const members: { id: string; name: string }[] = [];\n</script>\n\n<DataList items={members}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n    </StackedListItem>\n  {/snippet}\n  {#snippet empty()}\n    No team members yet.\n  {/snippet}\n</DataList>\n"
+      "code": "<script lang=\"ts\">\n  import { DataList } from '@lostgradient/cinder/data-list';\n  import { StackedListItem } from '@lostgradient/cinder/stacked-list-item';\n\n  const members: { id: string; name: string }[] = [];\n</script>\n\n<DataList items={members}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n    </StackedListItem>\n  {/snippet}\n  {#snippet empty()}\n    No team members yet.\n  {/snippet}\n</DataList>\n"
     }
   ]
 }

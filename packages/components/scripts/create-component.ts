@@ -80,7 +80,7 @@ export interface CreationContext {
   relativeDirectory: string;
   /** Absolute path to the playground examples directory for this component. */
   examplesDirectory: string;
-  /** Import subpath consumers use: `cinder/<name>` or `cinder/experimental/<name>`. */
+  /** Import subpath consumers use: `@lostgradient/cinder/<name>` or `@lostgradient/cinder/experimental/<name>`. */
   importPath: string;
 }
 
@@ -110,7 +110,9 @@ export function buildContext(inputName: string): CreationContext {
     ? join(COMPONENTS_DIR, 'experimental', name)
     : join(COMPONENTS_DIR, name);
   const examplesDirectory = join(PLAYGROUND_EXAMPLES_DIR, name);
-  const importPath = isExperimental ? `cinder/experimental/${name}` : `cinder/${name}`;
+  const importPath = isExperimental
+    ? `@lostgradient/cinder/experimental/${name}`
+    : `@lostgradient/cinder/${name}`;
 
   return {
     inputName,
@@ -236,7 +238,7 @@ None.
 /**
  * Render the playground `basic.example.svelte`. The module block exports the
  * `title`/`description` string literals the examples generator requires; the
- * instance imports the component via its public `cinder/<name>` subpath.
+ * instance imports the component via its public `@lostgradient/cinder/<name>` subpath.
  */
 export function renderExample(context: CreationContext): string {
   const { name, pascalName, importPath } = context;

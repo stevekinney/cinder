@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { FormField, TagInput } from 'cinder';
+  import { FormField, TagInput } from '@lostgradient/cinder';
 
   let tags = $state<string[]>([]);
 

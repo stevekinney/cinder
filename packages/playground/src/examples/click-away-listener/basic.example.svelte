@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Button, ClickAwayListener } from 'cinder';
+  import { Button, ClickAwayListener } from '@lostgradient/cinder';
 
   let open = $state(false);
 </script>

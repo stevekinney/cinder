@@ -1,8 +1,8 @@
 /**
  * CSS tree-shake invariants for the per-component `/styles` subpath model.
  *
- * The whole point of splitting `cinder/styles` into a slim base plus
- * per-component `cinder/<name>/styles` sidecars is that a consumer who imports
+ * The whole point of splitting `@lostgradient/cinder/styles` into a slim base plus
+ * per-component `@lostgradient/cinder/<name>/styles` sidecars is that a consumer who imports
  * only one component's CSS does NOT ship every other component's rules. We
  * prove that by bundling a single component's source sidecar through Bun's CSS
  * bundler (the same machinery a downstream Vite/Bun consumer uses) and
@@ -90,8 +90,8 @@ describe('compound-parent family aggregation', () => {
 });
 
 /**
- * Bundleability gate for the base stylesheets (`cinder/styles` and
- * `cinder/styles/all`). These are the files every consumer is instructed to
+ * Bundleability gate for the base stylesheets (`@lostgradient/cinder/styles` and
+ * `@lostgradient/cinder/styles/all`). These are the files every consumer is instructed to
  * import first; if either has a CSS-spec violation (e.g. `@import` rules
  * preceded by a block-form `@layer`) the downstream Vite/Bun consumer build
  * will error. These tests run the same Lightning-CSS machinery that consumers
@@ -136,10 +136,10 @@ describe('base stylesheet bundleability', () => {
 /**
  * Marker presence invariants for the `--cinder-base-loaded` guard property.
  *
- * The guard in `cinder/styles/guard` reads this property to decide whether to
- * warn. It must be set by BOTH the slim base (`cinder/styles`) AND the all-in
- * aggregator (`cinder/styles/all`) so that all-in consumers do not get false-
- * positive warnings. It must NOT be set by `cinder/styles/tokens` alone, which
+ * The guard in `@lostgradient/cinder/styles/guard` reads this property to decide whether to
+ * warn. It must be set by BOTH the slim base (`@lostgradient/cinder/styles`) AND the all-in
+ * aggregator (`@lostgradient/cinder/styles/all`) so that all-in consumers do not get false-
+ * positive warnings. It must NOT be set by `@lostgradient/cinder/styles/tokens` alone, which
  * is independently exported and must not satisfy the guard unintentionally.
  */
 describe('base-loaded marker coverage', () => {
@@ -162,17 +162,17 @@ describe('base-loaded marker coverage', () => {
     return cssOutput!.text();
   }
 
-  test('cinder/styles (index.css) sets --cinder-base-loaded on :root', async () => {
+  test('@lostgradient/cinder/styles (index.css) sets --cinder-base-loaded on :root', async () => {
     const css = await bundleStylesheet(join(import.meta.dir, 'index.css'), 'index');
     expect(css).toContain('--cinder-base-loaded');
   });
 
-  test('cinder/styles/all (all.css) also sets --cinder-base-loaded on :root — no false-positive for all-in consumers', async () => {
+  test('@lostgradient/cinder/styles/all (all.css) also sets --cinder-base-loaded on :root — no false-positive for all-in consumers', async () => {
     const css = await bundleStylesheet(join(import.meta.dir, 'all.css'), 'all');
     expect(css).toContain('--cinder-base-loaded');
   });
 
-  test('cinder/styles/tokens (tokens.css alone) does NOT set --cinder-base-loaded — no false-negative guard bypass', async () => {
+  test('@lostgradient/cinder/styles/tokens (tokens.css alone) does NOT set --cinder-base-loaded — no false-negative guard bypass', async () => {
     const css = await bundleStylesheet(join(import.meta.dir, 'tokens.css'), 'tokens');
     expect(css).not.toContain('--cinder-base-loaded');
   });

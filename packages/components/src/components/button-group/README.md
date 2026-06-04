@@ -6,7 +6,7 @@ Clusters related action buttons into a unified visual group with shared borders.
 
 ```svelte
 <script lang="ts">
-  import ButtonGroup from 'cinder/button-group';
+  import ButtonGroup from '@lostgradient/cinder/button-group';
 </script>
 
 <ButtonGroup />

@@ -4,7 +4,10 @@
 </script>
 
 <script lang="ts">
-  import { ResizablePanels, type ResizablePanelDefinition } from 'cinder/resizable-panels';
+  import {
+    ResizablePanels,
+    type ResizablePanelDefinition,
+  } from '@lostgradient/cinder/resizable-panels';
 
   const panes = [
     {

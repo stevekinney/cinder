@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "click-away-listener",
-  "import": "cinder/click-away-listener",
+  "import": "@lostgradient/cinder/click-away-listener",
   "examples": [
     {
       "id": "basic",
       "title": "Basic click-away listener",
       "description": "Calls a function when the user presses a pointer outside the wrapped subtree.",
-      "code": "<script lang=\"ts\">\n  import { Button, ClickAwayListener } from 'cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = true)}>Open inline editor</Button>\n\n{#if open}\n  <ClickAwayListener\n    onClickAway={() => (open = false)}\n    style=\"\n      display: inline-flex;\n      flex-direction: column;\n      gap: var(--cinder-space-3);\n      margin-block-start: var(--cinder-space-4);\n      padding: var(--cinder-space-4);\n      border: 1px solid var(--cinder-border);\n      border-radius: var(--cinder-radius-lg);\n      background: var(--cinder-surface-raised);\n    \"\n  >\n    <p style=\"margin: 0;\">Click outside this box to dismiss it.</p>\n    <Button variant=\"secondary\" onclick={() => (open = false)}>Close</Button>\n  </ClickAwayListener>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Button, ClickAwayListener } from '@lostgradient/cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = true)}>Open inline editor</Button>\n\n{#if open}\n  <ClickAwayListener\n    onClickAway={() => (open = false)}\n    style=\"\n      display: inline-flex;\n      flex-direction: column;\n      gap: var(--cinder-space-3);\n      margin-block-start: var(--cinder-space-4);\n      padding: var(--cinder-space-4);\n      border: 1px solid var(--cinder-border);\n      border-radius: var(--cinder-radius-lg);\n      background: var(--cinder-surface-raised);\n    \"\n  >\n    <p style=\"margin: 0;\">Click outside this box to dismiss it.</p>\n    <Button variant=\"secondary\" onclick={() => (open = false)}>Close</Button>\n  </ClickAwayListener>\n{/if}\n"
     }
   ]
 }

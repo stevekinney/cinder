@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { AreaChart } from 'cinder/area-chart';
+  import { AreaChart } from '@lostgradient/cinder/area-chart';
 
   const series = [
     {

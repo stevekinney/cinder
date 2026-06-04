@@ -6,7 +6,7 @@ Groups related form fields under a heading with optional description and layout 
 
 ```svelte
 <script lang="ts">
-  import FormSection from 'cinder/form-section';
+  import FormSection from '@lostgradient/cinder/form-section';
 </script>
 
 <FormSection />

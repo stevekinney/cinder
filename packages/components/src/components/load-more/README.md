@@ -8,7 +8,7 @@ Sentinel-based infinite-scroll trigger with an always-visible button fallback an
 
 ```svelte
 <script lang="ts">
-  import LoadMore from 'cinder/load-more';
+  import LoadMore from '@lostgradient/cinder/load-more';
 
   let loading = $state(false);
   let hasMore = $state(true);

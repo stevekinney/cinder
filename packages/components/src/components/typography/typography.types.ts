@@ -20,7 +20,7 @@ export type TypographyVariant =
   | 'overline'
   /**
    * A medium-weight, label-sized text style. This is a VISUAL variant only —
-   * for an actual form-control label, use the `Label` component (`cinder/label`),
+   * for an actual form-control label, use the `Label` component (`@lostgradient/cinder/label`),
    * which manages `for`/`id` association, the required indicator, and disabled state.
    */
   | 'label';

@@ -6,7 +6,7 @@ Renders syntax-highlighted source code with optional copy and line display contr
 
 ```svelte
 <script lang="ts">
-  import CodeBlock from 'cinder/code-block';
+  import CodeBlock from '@lostgradient/cinder/code-block';
 </script>
 
 <CodeBlock />

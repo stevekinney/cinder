@@ -9,7 +9,7 @@ leaves via the namespace API: `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
 
 ```svelte
 <script lang="ts">
-  import { Tabs } from 'cinder/tabs';
+  import { Tabs } from '@lostgradient/cinder/tabs';
 
   let active = $state('overview');
 </script>
@@ -28,7 +28,7 @@ leaves via the namespace API: `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
 ```
 
 The leaves remain importable individually for à-la-carte builds — see
-`cinder/tab`, `cinder/tab-list`, and `cinder/tab-panel`.
+`@lostgradient/cinder/tab`, `@lostgradient/cinder/tab-list`, and `@lostgradient/cinder/tab-panel`.
 
 ## Trailing badges and counts
 
@@ -38,7 +38,7 @@ separate badge class to learn:
 
 ```svelte
 <script lang="ts">
-  import { Badge } from 'cinder/badge';
+  import { Badge } from '@lostgradient/cinder/badge';
 </script>
 
 <Tabs.Trigger value="inbox">

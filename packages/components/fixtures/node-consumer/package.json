@@ -7,7 +7,7 @@
     "render": "node dist/render.js"
   },
   "dependencies": {
-    "cinder": "file:../../cinder-0.0.1.tgz"
+    "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz"
   },
   "devDependencies": {
     "svelte": "~5.55.0",

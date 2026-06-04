@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "line-chart",
-  "import": "cinder/line-chart",
+  "import": "@lostgradient/cinder/line-chart",
   "examples": [
     {
       "id": "loading",
       "title": "Loading state",
       "description": "A line chart with reserved layout while data loads.",
-      "code": "<script lang=\"ts\">\n  import { LineChart } from 'cinder/line-chart';\n</script>\n\n<LineChart label=\"Loading revenue\" loading series={[]} />\n"
+      "code": "<script lang=\"ts\">\n  import { LineChart } from '@lostgradient/cinder/line-chart';\n</script>\n\n<LineChart label=\"Loading revenue\" loading series={[]} />\n"
     },
     {
       "id": "multi-series",
       "title": "Activation funnel",
       "description": "A multi-series line chart comparing signups and activations.",
-      "code": "<script lang=\"ts\">\n  import { LineChart } from 'cinder/line-chart';\n\n  const series = [\n    {\n      id: 'signups',\n      label: 'Signups',\n      data: [\n        { x: 'Week 1', y: 84 },\n        { x: 'Week 2', y: 96 },\n        { x: 'Week 3', y: 112 },\n      ],\n    },\n    {\n      id: 'activated',\n      label: 'Activated',\n      data: [\n        { x: 'Week 1', y: 42 },\n        { x: 'Week 2', y: 58 },\n        { x: 'Week 3', y: 71 },\n      ],\n    },\n  ];\n</script>\n\n<LineChart label=\"Activation funnel\" {series} />\n"
+      "code": "<script lang=\"ts\">\n  import { LineChart } from '@lostgradient/cinder/line-chart';\n\n  const series = [\n    {\n      id: 'signups',\n      label: 'Signups',\n      data: [\n        { x: 'Week 1', y: 84 },\n        { x: 'Week 2', y: 96 },\n        { x: 'Week 3', y: 112 },\n      ],\n    },\n    {\n      id: 'activated',\n      label: 'Activated',\n      data: [\n        { x: 'Week 1', y: 42 },\n        { x: 'Week 2', y: 58 },\n        { x: 'Week 3', y: 71 },\n      ],\n    },\n  ];\n</script>\n\n<LineChart label=\"Activation funnel\" {series} />\n"
     },
     {
       "id": "single-series",
       "title": "Revenue trend",
       "description": "A single-series line chart for monthly recurring revenue.",
-      "code": "<script lang=\"ts\">\n  import { LineChart } from 'cinder/line-chart';\n\n  const series = [\n    {\n      id: 'revenue',\n      label: 'Revenue',\n      data: [\n        { x: 'Jan', y: 120 },\n        { x: 'Feb', y: 148 },\n        { x: 'Mar', y: 172 },\n        { x: 'Apr', y: 196 },\n      ],\n    },\n  ];\n</script>\n\n<LineChart label=\"Monthly recurring revenue\" {series} dataTableVisibility=\"visible\" />\n"
+      "code": "<script lang=\"ts\">\n  import { LineChart } from '@lostgradient/cinder/line-chart';\n\n  const series = [\n    {\n      id: 'revenue',\n      label: 'Revenue',\n      data: [\n        { x: 'Jan', y: 120 },\n        { x: 'Feb', y: 148 },\n        { x: 'Mar', y: 172 },\n        { x: 'Apr', y: 196 },\n      ],\n    },\n  ];\n</script>\n\n<LineChart label=\"Monthly recurring revenue\" {series} dataTableVisibility=\"visible\" />\n"
     }
   ]
 }

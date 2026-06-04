@@ -4,9 +4,9 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { Checkbox } from 'cinder/checkbox';
-  import { Drawer } from 'cinder/drawer';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Checkbox } from '@lostgradient/cinder/checkbox';
+  import { Drawer } from '@lostgradient/cinder/drawer';
 
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);

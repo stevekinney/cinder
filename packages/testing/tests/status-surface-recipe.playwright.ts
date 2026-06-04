@@ -11,7 +11,7 @@
  *
  * Markup is injected directly (rather than relying on whichever playground
  * examples happen to render which variant) so the recipe is exercised
- * deterministically. The page is loaded first so `cinder/styles` and the
+ * deterministically. The page is loaded first so `@lostgradient/cinder/styles` and the
  * component CSS sidecars are present and `color-scheme` is established.
  */
 

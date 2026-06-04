@@ -6,7 +6,7 @@ Live-status pill pairing a semantic dot with a label to communicate real-time We
 
 ```svelte
 <script lang="ts">
-  import ConnectionIndicator from 'cinder/connection-indicator';
+  import ConnectionIndicator from '@lostgradient/cinder/connection-indicator';
 </script>
 
 <ConnectionIndicator state="connected" />

@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { Dropdown } from 'cinder/dropdown';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Dropdown } from '@lostgradient/cinder/dropdown';
   let openStart = $state(false);
   let openEnd = $state(false);
 </script>

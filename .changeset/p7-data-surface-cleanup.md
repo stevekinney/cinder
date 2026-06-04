@@ -1,5 +1,5 @@
 ---
-'cinder': minor
+'@lostgradient/cinder': minor
 ---
 
 Polish Data Display and Surfaces visual contracts across table, feed, description-list, grid-list, diff-statistics, card, avatar, diff-viewer, and supporting examples.

@@ -7,8 +7,8 @@ announces results, and can render consumer-driven upload progress rows.
 
 ```svelte
 <script lang="ts">
-  import FileUpload from 'cinder/file-upload';
-  import FormField from 'cinder/form-field';
+  import FileUpload from '@lostgradient/cinder/file-upload';
+  import FormField from '@lostgradient/cinder/form-field';
 
   let files = $state([]);
 </script>

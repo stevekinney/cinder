@@ -1,5 +1,5 @@
 {
-  "name": "cinder",
+  "name": "@lostgradient/cinder",
   "version": "0.0.1",
   "description": "A Svelte 5 component library and design system focused on accessibility, theming, and per-component tree-shaking.",
   "keywords": [
@@ -3513,7 +3513,7 @@
     "check:no-cycle-imports": "bun run scripts/check-no-cycle-imports.ts",
     "check:no-inline-match-media": "bun run scripts/check-no-inline-match-media.ts",
     "check:placeholder-docs": "bun run scripts/check-placeholder-docs.ts",
-    "clean": "rm -rf dist coverage tsconfig.tsbuildinfo cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build fixtures/manifest-consumer/node_modules fixtures/typescript-consumer/node_modules fixtures/typescript-consumer/src/generated fixtures/examples-consumer/node_modules fixtures/examples-consumer/.svelte-kit fixtures/examples-consumer/build fixtures/examples-consumer/src/generated fixtures/examples-consumer/src/routes/+page.svelte",
+    "clean": "rm -rf dist coverage tsconfig.tsbuildinfo lostgradient-cinder-*.tgz cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build fixtures/manifest-consumer/node_modules fixtures/typescript-consumer/node_modules fixtures/typescript-consumer/src/generated fixtures/examples-consumer/node_modules fixtures/examples-consumer/.svelte-kit fixtures/examples-consumer/build fixtures/examples-consumer/src/generated fixtures/examples-consumer/src/routes/+page.svelte",
     "colors:audit": "bun run scripts/check-component-css-raw-colors.ts",
     "components:check": "bun run scripts/generate-component-artifacts.ts --check",
     "components:create": "bun run scripts/create-component.ts",

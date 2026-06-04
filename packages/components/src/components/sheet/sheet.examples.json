@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "sheet",
-  "import": "cinder/sheet",
+  "import": "@lostgradient/cinder/sheet",
   "examples": [
     {
       "id": "overflowing",
       "title": "Overflowing sheet",
       "description": "A bottom sheet with enough content to scroll.",
-      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Sheet } from 'cinder/sheet';\n\n  let open = $state(false);\n  let triggerRef: HTMLElement | null = $state(null);\n\n  const actions = Array.from({ length: 14 }, (_, index) => ({\n    id: `action-${index + 1}`,\n    label: `Workspace action ${index + 1}`,\n    description: 'Secondary action detail and short explanatory copy.',\n  }));\n</script>\n\n<Button\n  label=\"Open sheet\"\n  onclick={(event) => {\n    triggerRef = event.currentTarget as HTMLElement;\n    open = true;\n  }}\n/>\n\n<Sheet bind:open title=\"Workspace actions\" {triggerRef} showDragHandle>\n  <div style=\"display: grid; gap: 0.875rem;\">\n    {#each actions as action (action.id)}\n      <section>\n        <h3 style=\"margin: 0 0 0.25rem; font-size: var(--cinder-text-base);\">\n          {action.label}\n        </h3>\n        <p style=\"margin: 0; color: var(--cinder-text-muted);\">{action.description}</p>\n      </section>\n    {/each}\n  </div>\n\n  {#snippet footer()}\n    <Button label=\"Done\" onclick={() => (open = false)} />\n  {/snippet}\n</Sheet>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { Sheet } from '@lostgradient/cinder/sheet';\n\n  let open = $state(false);\n  let triggerRef: HTMLElement | null = $state(null);\n\n  const actions = Array.from({ length: 14 }, (_, index) => ({\n    id: `action-${index + 1}`,\n    label: `Workspace action ${index + 1}`,\n    description: 'Secondary action detail and short explanatory copy.',\n  }));\n</script>\n\n<Button\n  label=\"Open sheet\"\n  onclick={(event) => {\n    triggerRef = event.currentTarget as HTMLElement;\n    open = true;\n  }}\n/>\n\n<Sheet bind:open title=\"Workspace actions\" {triggerRef} showDragHandle>\n  <div style=\"display: grid; gap: 0.875rem;\">\n    {#each actions as action (action.id)}\n      <section>\n        <h3 style=\"margin: 0 0 0.25rem; font-size: var(--cinder-text-base);\">\n          {action.label}\n        </h3>\n        <p style=\"margin: 0; color: var(--cinder-text-muted);\">{action.description}</p>\n      </section>\n    {/each}\n  </div>\n\n  {#snippet footer()}\n    <Button label=\"Done\" onclick={() => (open = false)} />\n  {/snippet}\n</Sheet>\n"
     }
   ]
 }

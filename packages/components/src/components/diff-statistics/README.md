@@ -22,7 +22,7 @@ Compact inline display of added, modified, and removed line counts for a file di
 
 ```svelte
 <script lang="ts">
-  import DiffStatistics from 'cinder/diff-statistics';
+  import DiffStatistics from '@lostgradient/cinder/diff-statistics';
 </script>
 
 <DiffStatistics />

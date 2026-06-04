@@ -26,7 +26,7 @@
   const mergedClassName = $derived(classNames(className));
 
   // The inner implementation owns the imperative streaming + scroll API. The
-  // public wrapper forwards it so consumers using `cinder/chat` can drive
+  // public wrapper forwards it so consumers using `@lostgradient/cinder/chat` can drive
   // streaming through a `bind:this` to <Chat> (the inner component is not
   // exported).
   // Plain `let` (not `$state`): the instance ref is only read inside the

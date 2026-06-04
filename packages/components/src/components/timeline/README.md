@@ -6,7 +6,7 @@ Timestamp-first event rail for workflow events, audit logs, run histories, and g
 
 ```svelte
 <script lang="ts">
-  import Timeline from 'cinder/timeline';
+  import Timeline from '@lostgradient/cinder/timeline';
 
   const entries = [
     {

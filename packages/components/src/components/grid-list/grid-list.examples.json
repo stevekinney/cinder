@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "grid-list",
-  "import": "cinder/grid-list",
+  "import": "@lostgradient/cinder/grid-list",
   "examples": [
     {
       "id": "basic",
       "title": "Basic grid list",
       "description": "A responsive grid of items. Uses the GridList namespace API: GridList.Item composes inside the parent GridList.",
-      "code": "<script lang=\"ts\">\n  import { GridList } from 'cinder/grid-list';\n\n  const projects = [\n    { name: 'Phoenix', summary: 'Reactive runtime experiments.' },\n    { name: 'Atlas', summary: 'Documentation site generator.' },\n    { name: 'Beacon', summary: 'Observability dashboards.' },\n    { name: 'Cinder', summary: 'Svelte component library.' },\n  ];\n</script>\n\n<GridList minColumnWidth=\"14rem\" aria-label=\"Projects\">\n  {#each projects as project (project.name)}\n    <GridList.Item>\n      {#snippet title()}\n        <strong>{project.name}</strong>\n      {/snippet}\n      {#snippet subtitle()}\n        <span>{project.summary}</span>\n      {/snippet}\n    </GridList.Item>\n  {/each}\n</GridList>\n"
+      "code": "<script lang=\"ts\">\n  import { GridList } from '@lostgradient/cinder/grid-list';\n\n  const projects = [\n    { name: 'Phoenix', summary: 'Reactive runtime experiments.' },\n    { name: 'Atlas', summary: 'Documentation site generator.' },\n    { name: 'Beacon', summary: 'Observability dashboards.' },\n    { name: 'Cinder', summary: 'Svelte component library.' },\n  ];\n</script>\n\n<GridList minColumnWidth=\"14rem\" aria-label=\"Projects\">\n  {#each projects as project (project.name)}\n    <GridList.Item>\n      {#snippet title()}\n        <strong>{project.name}</strong>\n      {/snippet}\n      {#snippet subtitle()}\n        <span>{project.summary}</span>\n      {/snippet}\n    </GridList.Item>\n  {/each}\n</GridList>\n"
     }
   ]
 }

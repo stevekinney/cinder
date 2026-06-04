@@ -105,7 +105,7 @@ describe('HoverCard', () => {
         description: 'Shows repository metadata',
         openDelay: 0,
         trigger: triggerSnippet,
-        children: textSnippet('cinder/cinder'),
+        children: textSnippet('@lostgradient/cinder/cinder'),
       },
     });
     const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;

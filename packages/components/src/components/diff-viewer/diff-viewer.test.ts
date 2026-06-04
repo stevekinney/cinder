@@ -33,7 +33,7 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { computeLineDiff, computeWordChanges, getDiffStats, groupIntoHunks } =
-  await import('cinder/markdown/diff/line-diff');
+  await import('@lostgradient/cinder/markdown/diff/line-diff');
 const { default: DiffLine } = await import('./diff-line.svelte');
 const { default: DiffToolbar } = await import('./diff-toolbar.svelte');
 const { default: DiffFrontMatter } = await import('./diff-front-matter.svelte');

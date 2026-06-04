@@ -6,7 +6,7 @@ Semantic dl/dt/dd list for term–description pairs such as metadata or attribut
 
 ```svelte
 <script lang="ts">
-  import DescriptionList from 'cinder/description-list';
+  import DescriptionList from '@lostgradient/cinder/description-list';
 </script>
 
 <DescriptionList />

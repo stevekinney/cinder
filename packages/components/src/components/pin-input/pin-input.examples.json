@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "pin-input",
-  "import": "cinder/pin-input",
+  "import": "@lostgradient/cinder/pin-input",
   "examples": [
     {
       "id": "alphanumeric",
       "title": "Alphanumeric code",
       "description": "Eight-character alphanumeric invite code with description text.",
-      "code": "<script lang=\"ts\">\n  import { PinInput } from 'cinder/pin-input';\n  let invite = $state('');\n</script>\n\n<PinInput\n  id=\"invite-code\"\n  bind:value={invite}\n  length={8}\n  mode=\"alphanumeric\"\n  label=\"Invite code\"\n  description=\"Type or paste the code from your invitation email.\"\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { PinInput } from '@lostgradient/cinder/pin-input';\n  let invite = $state('');\n</script>\n\n<PinInput\n  id=\"invite-code\"\n  bind:value={invite}\n  length={8}\n  mode=\"alphanumeric\"\n  label=\"Invite code\"\n  description=\"Type or paste the code from your invitation email.\"\n/>\n"
     },
     {
       "id": "basic",
       "title": "Basic PIN input",
       "description": "Six-digit numeric code with auto-advance and SMS autofill.",
-      "code": "<script lang=\"ts\">\n  import { PinInput } from 'cinder/pin-input';\n  let code = $state('');\n</script>\n\n<PinInput id=\"basic-pin\" bind:value={code} label=\"Verification code\" />\n\n{#if code.length === 6}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">Submitted: {code}</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { PinInput } from '@lostgradient/cinder/pin-input';\n  let code = $state('');\n</script>\n\n<PinInput id=\"basic-pin\" bind:value={code} label=\"Verification code\" />\n\n{#if code.length === 6}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">Submitted: {code}</p>\n{/if}\n"
     },
     {
       "id": "masked",
       "title": "Masked PIN",
       "description": "Four-digit security PIN rendered as masked segments.",
-      "code": "<script lang=\"ts\">\n  import { PinInput } from 'cinder/pin-input';\n  let pin = $state('');\n</script>\n\n<PinInput id=\"masked-pin\" bind:value={pin} length={4} masked label=\"Security PIN\" />\n"
+      "code": "<script lang=\"ts\">\n  import { PinInput } from '@lostgradient/cinder/pin-input';\n  let pin = $state('');\n</script>\n\n<PinInput id=\"masked-pin\" bind:value={pin} length={4} masked label=\"Security PIN\" />\n"
     }
   ]
 }

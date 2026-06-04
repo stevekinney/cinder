@@ -6,7 +6,7 @@ Horizontal or vertical step indicator for multi-step wizards and onboarding flow
 
 ```svelte
 <script lang="ts">
-  import Steps from 'cinder/steps';
+  import Steps from '@lostgradient/cinder/steps';
 </script>
 
 <Steps />

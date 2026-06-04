@@ -20,7 +20,7 @@ function buildSource({
   title = 'My Example',
   description = 'A description.',
   component,
-  imports = [`import { Button } from 'cinder/button';`],
+  imports = [`import { Button } from '@lostgradient/cinder/button';`],
   markup = '<Button label="Click" />',
   hasStyle = false,
   extraModuleContent = '',
@@ -71,7 +71,7 @@ describe('extractExampleFile — happy path', () => {
     const source = buildSource({
       title: 'Primary button',
       description: 'The default button variant.',
-      imports: [`import { Button } from 'cinder/button';`],
+      imports: [`import { Button } from '@lostgradient/cinder/button';`],
       markup: '<Button label="Click me" />',
     });
 
@@ -85,13 +85,13 @@ describe('extractExampleFile — happy path', () => {
     expect(result.example.description).toBe('The default button variant.');
     // Module block with only metadata should be stripped from code.
     expect(result.example.code).not.toContain('export const title');
-    expect(result.example.code).toContain("import { Button } from 'cinder/button'");
+    expect(result.example.code).toContain("import { Button } from '@lostgradient/cinder/button'");
     expect(result.example.code).toContain('<Button label="Click me" />');
   });
 
   it('preserves the module block when it has content beyond metadata', () => {
     const source = buildSource({
-      imports: [`import { Button } from 'cinder/button';`],
+      imports: [`import { Button } from '@lostgradient/cinder/button';`],
       extraModuleContent: `  export type ButtonKind = 'primary' | 'secondary';\n`,
     });
 
@@ -105,15 +105,15 @@ describe('extractExampleFile — happy path', () => {
     expect(result.example.code).toContain('export type ButtonKind');
   });
 
-  it('accepts `cinder` exact import', () => {
-    const source = buildSource({ imports: [`import { Button } from 'cinder';`] });
+  it('accepts `@lostgradient/cinder` exact import', () => {
+    const source = buildSource({ imports: [`import { Button } from '@lostgradient/cinder';`] });
     const result = extractExampleFile(buildInput(source));
     expect(result.kind).toBe('example');
   });
 
   it('accepts cinder/schema subpath', () => {
     const source = buildSource({
-      imports: [`import schema from 'cinder/button/schema';`],
+      imports: [`import schema from '@lostgradient/cinder/button/schema';`],
     });
     const result = extractExampleFile(buildInput(source));
     expect(result.kind).toBe('example');
@@ -130,7 +130,7 @@ describe('extractExampleFile — happy path', () => {
   it('accepts multiple allowed imports', () => {
     const source = buildSource({
       imports: [
-        `import { Button } from 'cinder/button';`,
+        `import { Button } from '@lostgradient/cinder/button';`,
         `import { SvelteSet } from 'svelte/reactivity';`,
       ],
     });
@@ -236,7 +236,9 @@ describe('extractExampleFile — package not in allowed list', () => {
   });
 
   it('rejects a cinder subpath that does not exist', () => {
-    const source = buildSource({ imports: [`import { X } from 'cinder/nonexistent-widget';`] });
+    const source = buildSource({
+      imports: [`import { X } from '@lostgradient/cinder/nonexistent-widget';`],
+    });
     const result = extractExampleFile(buildInput(source));
     expect(result.kind).toBe('error');
     if (result.kind !== 'error') return;
@@ -252,7 +254,7 @@ describe('extractExampleFile — missing title', () => {
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
+  import { Button } from '@lostgradient/cinder/button';
 </script>
 
 <Button label="Click" />`;
@@ -271,7 +273,7 @@ describe('extractExampleFile — missing description', () => {
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
+  import { Button } from '@lostgradient/cinder/button';
 </script>
 
 <Button label="Click" />`;

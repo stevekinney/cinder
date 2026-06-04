@@ -5,10 +5,10 @@
 </script>
 
 <script lang="ts">
-  import { Alert } from 'cinder/alert';
-  import { Button } from 'cinder/button';
-  import { FormField } from 'cinder/form-field';
-  import { Input } from 'cinder/input';
+  import { Alert } from '@lostgradient/cinder/alert';
+  import { Button } from '@lostgradient/cinder/button';
+  import { FormField } from '@lostgradient/cinder/form-field';
+  import { Input } from '@lostgradient/cinder/input';
   let email = $state('');
   let password = $state('');
   let authError = $state<string | undefined>(undefined);

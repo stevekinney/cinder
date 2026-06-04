@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Button, FocusTrap } from 'cinder';
+  import { Button, FocusTrap } from '@lostgradient/cinder';
 
   let open = $state(false);
 </script>

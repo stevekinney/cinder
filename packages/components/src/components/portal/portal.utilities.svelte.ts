@@ -107,7 +107,10 @@ export function createPortalAttachment(
     // the target can no longer be resolved, the wrapper is reinserted at this anchor so children
     // stay rendered in the original document position. Without this, `$effect` cleanup detaches
     // the wrapper and nothing reattaches it — content silently disappears.
-    const anchor = typeof document !== 'undefined' ? document.createComment('cinder/portal') : null;
+    const anchor =
+      typeof document !== 'undefined'
+        ? document.createComment('@lostgradient/cinder/portal')
+        : null;
     if (anchor && initialParent && element.parentNode === initialParent) {
       initialParent.insertBefore(anchor, element);
     }

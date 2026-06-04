@@ -6,7 +6,7 @@ Bounded scrolling container that constrains overflowing content within a max hei
 
 ```svelte
 <script lang="ts">
-  import ScrollArea from 'cinder/scroll-area';
+  import ScrollArea from '@lostgradient/cinder/scroll-area';
 </script>
 
 <ScrollArea />

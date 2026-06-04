@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Textarea } from 'cinder/textarea';
+  import { Textarea } from '@lostgradient/cinder/textarea';
   let bio = $state('');
 </script>
 

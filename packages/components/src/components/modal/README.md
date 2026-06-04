@@ -50,7 +50,7 @@ If the content fits the plain-text `description` constraint, prefer `AlertDialog
 
 ```svelte
 <script lang="ts">
-  import Modal from 'cinder/modal';
+  import Modal from '@lostgradient/cinder/modal';
 </script>
 
 <Modal />

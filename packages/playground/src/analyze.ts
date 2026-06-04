@@ -562,7 +562,7 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
     name: componentName,
     kebabName: fileBaseName,
     file: filePath,
-    importPath: `cinder/${fileBaseName}`,
+    importPath: `@lostgradient/cinder/${fileBaseName}`,
     props,
   };
 }

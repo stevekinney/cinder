@@ -5,7 +5,7 @@
  * Each example must satisfy the authoring contract:
  *   - A `<script lang="ts" module>` block with `export const title` and
  *     `export const description` as string literals.
- *   - Imports only from `cinder`, `cinder/<subpath>`, or packages listed in
+ *   - Imports only from `@lostgradient/cinder`, `@lostgradient/cinder/<subpath>`, or packages listed in
  *     `example-allowed-packages.ts`. Relative paths, `$lib`, and any other
  *     specifier are hard errors.
  *   - No `<style>` block.
@@ -67,8 +67,8 @@ export type ExampleSet = {
   /** Kebab-case component id. */
   component: string;
   /**
-   * Import path for the component. `cinder/<id>` for stable, or
-   * `cinder/experimental/<id>` for experimental.
+   * Import path for the component. `@lostgradient/cinder/<id>` for stable, or
+   * `@lostgradient/cinder/experimental/<id>` for experimental.
    */
   import: string;
   examples: Example[];
@@ -160,7 +160,7 @@ export type ExampleFileInput = {
   filePath: string;
   /** Raw source content of the `.example.svelte` file. */
   source: string;
-  /** Set of valid `cinder/<subpath>` names (the component names, without `cinder/` prefix). */
+  /** Set of valid `@lostgradient/cinder/<subpath>` names (the component names, without `@lostgradient/cinder/` prefix). */
   validCinderSubpaths: ReadonlySet<string>;
 };
 
@@ -340,10 +340,10 @@ function validateImports(
             ? 'side-effect import'
             : 'dynamic import';
       if (verdict === 'relative') {
-        return `relative ${prefix} "${specifier}" not allowed in ${filePath}; use "cinder/<subpath>"`;
+        return `relative ${prefix} "${specifier}" not allowed in ${filePath}; use "@lostgradient/cinder/<subpath>"`;
       }
       if (verdict === 'unknown-cinder-subpath') {
-        return `${prefix} "cinder/${specifier.slice('cinder/'.length)}" does not match a known cinder subpath in ${filePath}`;
+        return `${prefix} "@lostgradient/cinder/${specifier.slice('@lostgradient/cinder/'.length)}" does not match a known cinder subpath in ${filePath}`;
       }
       return `${prefix} "${specifier}" not allowed in ${filePath}; only cinder/* and allowed packages permitted`;
     }
@@ -361,9 +361,9 @@ function classifySpecifier(
     return 'relative';
   }
   if (specifier.startsWith('$')) return 'banned';
-  if (specifier === 'cinder') return 'allowed';
-  if (specifier.startsWith('cinder/')) {
-    const subpath = specifier.slice('cinder/'.length);
+  if (specifier === '@lostgradient/cinder') return 'allowed';
+  if (specifier.startsWith('@lostgradient/cinder/')) {
+    const subpath = specifier.slice('@lostgradient/cinder/'.length);
     if (
       validCinderSubpaths.has(subpath) ||
       isValidCinderSubpathWithSuffix(subpath, validCinderSubpaths)
@@ -453,9 +453,9 @@ function buildCodeField(
  */
 export async function generateAllExamples(): Promise<GenerateExamplesResult> {
   const components = await discoverDirectoryComponents();
-  // Valid `cinder/<...>` subpaths include both flat component names and the
+  // Valid `@lostgradient/cinder/<...>` subpaths include both flat component names and the
   // `experimental/<name>` namespace so examples for experimental components
-  // can import their siblings via the same `cinder/<subpath>` contract.
+  // can import their siblings via the same `@lostgradient/cinder/<subpath>` contract.
   // Static non-component sub-paths (the first-party Shiki adapter, etc.)
   // are listed alongside.
   const validCinderSubpaths = new Set<string>(['highlighters/shiki']);
@@ -552,8 +552,8 @@ export async function generateAllExamples(): Promise<GenerateExamplesResult> {
         ? components.some((c) => c.name === componentImportOverride && c.isExperimental)
         : isExperimental;
     const importPath = targetIsExperimental
-      ? `cinder/experimental/${effectiveComponentId}`
-      : `cinder/${effectiveComponentId}`;
+      ? `@lostgradient/cinder/experimental/${effectiveComponentId}`
+      : `@lostgradient/cinder/${effectiveComponentId}`;
     // Experimental example artifacts live one directory deeper so the
     // `src/components/experimental/<id>/` layout matches the source tree.
     const $schema = targetIsExperimental
@@ -595,7 +595,7 @@ export async function generateAllExamples(): Promise<GenerateExamplesResult> {
  * components live one directory deeper, mirroring the source tree.
  */
 function exampleSetOutputPath(exampleSet: ExampleSet): string {
-  const isExperimental = exampleSet.import.startsWith('cinder/experimental/');
+  const isExperimental = exampleSet.import.startsWith('@lostgradient/cinder/experimental/');
   const componentDir = isExperimental
     ? join(COMPONENTS_SRC_ROOT, 'experimental', exampleSet.component)
     : join(COMPONENTS_SRC_ROOT, exampleSet.component);

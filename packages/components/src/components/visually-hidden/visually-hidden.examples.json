@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "visually-hidden",
-  "import": "cinder/visually-hidden",
+  "import": "@lostgradient/cinder/visually-hidden",
   "examples": [
     {
       "id": "as-prop",
       "title": "as prop — description list",
       "description": "Visually hidden <dt> inside a narrow description-list layout, where the term is implied by context.",
-      "code": "<script lang=\"ts\">\n  import { VisuallyHidden } from 'cinder/visually-hidden';\n</script>\n\n<dl style=\"display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem;\">\n  <dt>\n    <VisuallyHidden as=\"span\">Created</VisuallyHidden>\n  </dt>\n  <dd>January 1, 2025</dd>\n\n  <dt>\n    <VisuallyHidden as=\"span\">Updated</VisuallyHidden>\n  </dt>\n  <dd>March 15, 2025</dd>\n\n  <dt>\n    <VisuallyHidden as=\"span\">Author</VisuallyHidden>\n  </dt>\n  <dd>Alice Smith</dd>\n</dl>\n"
+      "code": "<script lang=\"ts\">\n  import { VisuallyHidden } from '@lostgradient/cinder/visually-hidden';\n</script>\n\n<dl style=\"display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem;\">\n  <dt>\n    <VisuallyHidden as=\"span\">Created</VisuallyHidden>\n  </dt>\n  <dd>January 1, 2025</dd>\n\n  <dt>\n    <VisuallyHidden as=\"span\">Updated</VisuallyHidden>\n  </dt>\n  <dd>March 15, 2025</dd>\n\n  <dt>\n    <VisuallyHidden as=\"span\">Author</VisuallyHidden>\n  </dt>\n  <dd>Alice Smith</dd>\n</dl>\n"
     },
     {
       "id": "basic",
       "title": "Icon-only button label",
       "description": "Supplemental label for an icon-only button — visible to screen readers, hidden from sighted users.",
-      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { VisuallyHidden } from 'cinder/visually-hidden';\n</script>\n\n<Button>\n  <svg\n    xmlns=\"http://www.w3.org/2000/svg\"\n    width=\"16\"\n    height=\"16\"\n    viewBox=\"0 0 24 24\"\n    fill=\"none\"\n    stroke=\"currentColor\"\n    stroke-width=\"2\"\n    stroke-linecap=\"round\"\n    stroke-linejoin=\"round\"\n    aria-hidden=\"true\"\n  >\n    <rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" />\n    <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />\n  </svg>\n  <VisuallyHidden>Copy code to clipboard</VisuallyHidden>\n</Button>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { VisuallyHidden } from '@lostgradient/cinder/visually-hidden';\n</script>\n\n<Button>\n  <svg\n    xmlns=\"http://www.w3.org/2000/svg\"\n    width=\"16\"\n    height=\"16\"\n    viewBox=\"0 0 24 24\"\n    fill=\"none\"\n    stroke=\"currentColor\"\n    stroke-width=\"2\"\n    stroke-linecap=\"round\"\n    stroke-linejoin=\"round\"\n    aria-hidden=\"true\"\n  >\n    <rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" />\n    <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />\n  </svg>\n  <VisuallyHidden>Copy code to clipboard</VisuallyHidden>\n</Button>\n"
     },
     {
       "id": "skip-link",
       "title": "Skip link",
       "description": "Focusable skip link revealed on keyboard focus. Tab into this example to see it appear.",
-      "code": "<script lang=\"ts\">\n  import { VisuallyHidden } from 'cinder/visually-hidden';\n</script>\n\n<div\n  style=\"position: relative; min-height: 80px; border: 1px dashed var(--cinder-border); border-radius: 4px; padding: 1rem;\"\n>\n  <VisuallyHidden as=\"a\" href=\"#example-main\" focusable>Skip to main content</VisuallyHidden>\n\n  <nav aria-label=\"Example navigation\">\n    <a href=\"#example-main\" style=\"margin-right: 1rem;\">Home</a>\n    <a href=\"#example-main\" style=\"margin-right: 1rem;\">About</a>\n    <a href=\"#example-main\">Contact</a>\n  </nav>\n\n  <!-- tabindex=\"-1\" lets the browser move focus to this landmark on activation -->\n  <main id=\"example-main\" tabindex=\"-1\" style=\"margin-top: 1rem;\">\n    <p>Main content area.</p>\n  </main>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { VisuallyHidden } from '@lostgradient/cinder/visually-hidden';\n</script>\n\n<div\n  style=\"position: relative; min-height: 80px; border: 1px dashed var(--cinder-border); border-radius: 4px; padding: 1rem;\"\n>\n  <VisuallyHidden as=\"a\" href=\"#example-main\" focusable>Skip to main content</VisuallyHidden>\n\n  <nav aria-label=\"Example navigation\">\n    <a href=\"#example-main\" style=\"margin-right: 1rem;\">Home</a>\n    <a href=\"#example-main\" style=\"margin-right: 1rem;\">About</a>\n    <a href=\"#example-main\">Contact</a>\n  </nav>\n\n  <!-- tabindex=\"-1\" lets the browser move focus to this landmark on activation -->\n  <main id=\"example-main\" tabindex=\"-1\" style=\"margin-top: 1rem;\">\n    <p>Main content area.</p>\n  </main>\n</div>\n"
     }
   ]
 }

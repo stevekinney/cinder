@@ -21,6 +21,10 @@
       "type": "boolean",
       "description": "Remove side borders/radius and bleed to the viewport edge on narrow screens."
     },
+    "headingLevel": {
+      "enum": [2, 3, 4, 5, 6],
+      "description": "Heading level for the generated title. Defaults to `3`. Set this so the\ncard title nests correctly within the surrounding document outline."
+    },
     "description": {
       "type": "string"
     }

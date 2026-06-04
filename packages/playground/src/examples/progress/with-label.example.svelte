@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Progress } from 'cinder/progress';
+  import { Progress } from '@lostgradient/cinder/progress';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.4rem;">

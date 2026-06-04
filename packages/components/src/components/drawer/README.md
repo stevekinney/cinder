@@ -24,7 +24,7 @@ Side-anchored overlay panel for supplementary content without leaving the curren
 
 ```svelte
 <script lang="ts">
-  import Drawer from 'cinder/drawer';
+  import Drawer from '@lostgradient/cinder/drawer';
 </script>
 
 <Drawer />

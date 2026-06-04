@@ -4,7 +4,12 @@
 </script>
 
 <script lang="ts">
-  import { Chat, appendAssistantMessage, appendUserMessage, createConversation } from 'cinder/chat';
+  import {
+    Chat,
+    appendAssistantMessage,
+    appendUserMessage,
+    createConversation,
+  } from '@lostgradient/cinder/chat';
 
   let conversation = $state(
     appendAssistantMessage(

@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { DiffStatistics } from 'cinder/diff-statistics';
+  import { DiffStatistics } from '@lostgradient/cinder/diff-statistics';
 </script>
 
 <div style="display: grid; gap: 0.75rem;">

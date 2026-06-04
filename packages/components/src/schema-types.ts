@@ -3,7 +3,7 @@
  *
  * This file is not exposed as a public package subpath. It ships in the tarball
  * so emitted declarations can resolve the `ComponentSchema` reference, but
- * consumers import schema modules via `cinder/<name>/schema`, not this type
+ * consumers import schema modules via `@lostgradient/cinder/<name>/schema`, not this type
  * directly.
  *
  * Schema dialect: JSON Schema draft 2020-12. The `$schema` URI is included on

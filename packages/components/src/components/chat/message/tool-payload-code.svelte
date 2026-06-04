@@ -1,11 +1,11 @@
 <script lang="ts" module>
-  // Resolve the markdown rendering module through `cinder/markdown/rendering`
-  // — the published `cinder` package re-exports it as a sub-path, while
+  // Resolve the markdown rendering module through `@lostgradient/cinder/markdown/rendering`
+  // — the published `@lostgradient/cinder` package re-exports it as a sub-path, while
   // `@cinder/markdown` itself is not in the published runtime deps. Using
   // the cinder sub-path keeps this component shippable through the
   // `svelte` export condition without requiring consumers to install
   // private workspace packages.
-  type RenderingModule = typeof import('cinder/markdown/rendering');
+  type RenderingModule = typeof import('@lostgradient/cinder/markdown/rendering');
   type Highlighter = Awaited<ReturnType<RenderingModule['getHighlighter']>>;
 
   export type ToolPayloadCodeProps = {
@@ -19,7 +19,7 @@
   let highlighterPromise: Promise<Highlighter> | undefined;
 
   async function getRenderingModule(): Promise<RenderingModule> {
-    renderingModulePromise ??= import('cinder/markdown/rendering');
+    renderingModulePromise ??= import('@lostgradient/cinder/markdown/rendering');
     return renderingModulePromise;
   }
 

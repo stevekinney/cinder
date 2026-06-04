@@ -2,15 +2,15 @@
  * Contract: server (`node`-condition) entries are CSS-free and import cleanly
  * under bare Node.
  *
- * The browser per-component build auto-injects `import 'cinder/<name>/styles'`
- * so `import Button from 'cinder/button'` and `import { Button } from 'cinder'`
+ * The browser per-component build auto-injects `import '@lostgradient/cinder/<name>/styles'`
+ * so `import Button from '@lostgradient/cinder/button'` and `import { Button } from '@lostgradient/cinder'`
  * are styled with no manual CSS import. That injection MUST land only in the
  * browser graph: a CSS import reached under the `node` export condition
  * resolves to a `.css` file, which plain Node SSR rejects with
  * `ERR_UNKNOWN_FILE_EXTENSION`. This suite guards that boundary two ways:
  *
  *   1. Static scan — every `node`-condition `.js` target in `package.json`
- *      contains no CSS import (`*.css` or `cinder/<name>/styles`).
+ *      contains no CSS import (`*.css` or `@lostgradient/cinder/<name>/styles`).
  *   2. Runtime import — a single bare-Node process dynamically imports EVERY
  *      `node`-condition `.js` target and asserts none throw a CSS-extension
  *      error (`ERR_UNKNOWN_FILE_EXTENSION` / "Unknown file extension .css").
@@ -58,7 +58,7 @@ async function nodeConditionJsTargets(): Promise<string[]> {
 /**
  * A REAL CSS import statement, anchored to its own line so a CSS-shaped string
  * literal embedded in another statement (e.g. the base-guard warning text that
- * mentions `import 'cinder/<component>/styles'`) is not a false positive. esbuild
+ * mentions `import '@lostgradient/cinder/<component>/styles'`) is not a false positive. esbuild
  * emits side-effect imports as standalone `import"x";` / `import 'x';` lines and
  * `from`/dynamic forms with the specifier at the line's import position.
  */

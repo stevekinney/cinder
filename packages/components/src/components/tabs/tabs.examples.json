@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "tabs",
-  "import": "cinder/tabs",
+  "import": "@lostgradient/cinder/tabs",
   "examples": [
     {
       "id": "basic",
       "title": "Basic tabs",
       "description": "Three tabs with associated panels; clicking a tab switches the panel. Uses the Tabs namespace API.",
-      "code": "<script lang=\"ts\">\n  import { Tabs } from 'cinder/tabs';\n  let active = $state('overview');\n</script>\n\n<Tabs bind:value={active}>\n  <Tabs.List label=\"Project sections\">\n    <Tabs.Trigger value=\"overview\">Overview</Tabs.Trigger>\n    <Tabs.Trigger value=\"activity\">Activity</Tabs.Trigger>\n    <Tabs.Trigger value=\"settings\">Settings</Tabs.Trigger>\n  </Tabs.List>\n\n  <Tabs.Panel value=\"overview\">\n    <p>Cinder is a small but opinionated component library for Svelte 5.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"activity\">\n    <p>You have 3 unread comments and 1 pending review.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"settings\">\n    <p>Adjust your project preferences here.</p>\n  </Tabs.Panel>\n</Tabs>\n"
+      "code": "<script lang=\"ts\">\n  import { Tabs } from '@lostgradient/cinder/tabs';\n  let active = $state('overview');\n</script>\n\n<Tabs bind:value={active}>\n  <Tabs.List label=\"Project sections\">\n    <Tabs.Trigger value=\"overview\">Overview</Tabs.Trigger>\n    <Tabs.Trigger value=\"activity\">Activity</Tabs.Trigger>\n    <Tabs.Trigger value=\"settings\">Settings</Tabs.Trigger>\n  </Tabs.List>\n\n  <Tabs.Panel value=\"overview\">\n    <p>Cinder is a small but opinionated component library for Svelte 5.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"activity\">\n    <p>You have 3 unread comments and 1 pending review.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"settings\">\n    <p>Adjust your project preferences here.</p>\n  </Tabs.Panel>\n</Tabs>\n"
     },
     {
       "id": "with-badge",
       "title": "Tabs with trailing badges",
       "description": "Tabs use a decorative `trailing` snippet (wrapped in aria-hidden) for badges and counters. The accessible name only includes the visible label.",
-      "code": "<script lang=\"ts\">\n  import { Tabs } from 'cinder/tabs';\n  import { Badge } from 'cinder/badge';\n\n  let active = $state('inbox');\n</script>\n\n<Tabs bind:value={active}>\n  <Tabs.List label=\"Mailboxes\">\n    <Tabs.Trigger value=\"inbox\">\n      Inbox\n      {#snippet trailing()}\n        <Badge>3</Badge>\n      {/snippet}\n    </Tabs.Trigger>\n    <Tabs.Trigger value=\"drafts\">\n      Drafts\n      {#snippet trailing()}\n        <Badge>12</Badge>\n      {/snippet}\n    </Tabs.Trigger>\n    <Tabs.Trigger value=\"archive\">Archive</Tabs.Trigger>\n  </Tabs.List>\n\n  <Tabs.Panel value=\"inbox\">\n    <p>You have three unread messages.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"drafts\">\n    <p>Twelve drafts waiting for your attention.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"archive\">\n    <p>Nothing archived recently.</p>\n  </Tabs.Panel>\n</Tabs>\n"
+      "code": "<script lang=\"ts\">\n  import { Tabs } from '@lostgradient/cinder/tabs';\n  import { Badge } from '@lostgradient/cinder/badge';\n\n  let active = $state('inbox');\n</script>\n\n<Tabs bind:value={active}>\n  <Tabs.List label=\"Mailboxes\">\n    <Tabs.Trigger value=\"inbox\">\n      Inbox\n      {#snippet trailing()}\n        <Badge>3</Badge>\n      {/snippet}\n    </Tabs.Trigger>\n    <Tabs.Trigger value=\"drafts\">\n      Drafts\n      {#snippet trailing()}\n        <Badge>12</Badge>\n      {/snippet}\n    </Tabs.Trigger>\n    <Tabs.Trigger value=\"archive\">Archive</Tabs.Trigger>\n  </Tabs.List>\n\n  <Tabs.Panel value=\"inbox\">\n    <p>You have three unread messages.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"drafts\">\n    <p>Twelve drafts waiting for your attention.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"archive\">\n    <p>Nothing archived recently.</p>\n  </Tabs.Panel>\n</Tabs>\n"
     },
     {
       "id": "with-keyboard",
       "title": "Tabs with keyboard navigation",
       "description": "Focus a tab and use ←/→ to move; horizontal tablists activate on focus per the WAI-ARIA pattern.",
-      "code": "<script lang=\"ts\">\n  import { Tabs } from 'cinder/tabs';\n  let active = $state('design');\n</script>\n\n<Tabs bind:value={active}>\n  <Tabs.List label=\"Workflow stages\">\n    <Tabs.Trigger value=\"design\">Design</Tabs.Trigger>\n    <Tabs.Trigger value=\"develop\">Develop</Tabs.Trigger>\n    <Tabs.Trigger value=\"ship\" disabled>Ship</Tabs.Trigger>\n    <Tabs.Trigger value=\"review\">Review</Tabs.Trigger>\n  </Tabs.List>\n\n  <Tabs.Panel value=\"design\">\n    <p>Sketch the user experience before writing code.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"develop\">\n    <p>Build the components and wire up the state.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"ship\">\n    <p>Disabled tab — its panel is unreachable.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"review\">\n    <p>Review and iterate based on feedback.</p>\n  </Tabs.Panel>\n</Tabs>\n"
+      "code": "<script lang=\"ts\">\n  import { Tabs } from '@lostgradient/cinder/tabs';\n  let active = $state('design');\n</script>\n\n<Tabs bind:value={active}>\n  <Tabs.List label=\"Workflow stages\">\n    <Tabs.Trigger value=\"design\">Design</Tabs.Trigger>\n    <Tabs.Trigger value=\"develop\">Develop</Tabs.Trigger>\n    <Tabs.Trigger value=\"ship\" disabled>Ship</Tabs.Trigger>\n    <Tabs.Trigger value=\"review\">Review</Tabs.Trigger>\n  </Tabs.List>\n\n  <Tabs.Panel value=\"design\">\n    <p>Sketch the user experience before writing code.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"develop\">\n    <p>Build the components and wire up the state.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"ship\">\n    <p>Disabled tab — its panel is unreachable.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"review\">\n    <p>Review and iterate based on feedback.</p>\n  </Tabs.Panel>\n</Tabs>\n"
     }
   ]
 }

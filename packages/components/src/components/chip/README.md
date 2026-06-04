@@ -8,7 +8,7 @@ Use `Chip mode="display"` for issue labels and tags; use Badge for attached coun
 
 ```svelte
 <script lang="ts">
-  import Chip from 'cinder/chip';
+  import Chip from '@lostgradient/cinder/chip';
 </script>
 
 <Chip label="frontend" mode="display" variant="info" />

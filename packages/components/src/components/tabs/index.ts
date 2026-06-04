@@ -8,7 +8,7 @@ import TabsRoot from './tabs.svelte';
  * `Tabs` is the parent compound component. It is also a namespace whose
  * properties expose the compose-only leaves under their idiomatic names:
  * `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`. The leaves remain importable
- * individually from `cinder/tab-list`, `cinder/tab`, and `cinder/tab-panel`.
+ * individually from `@lostgradient/cinder/tab-list`, `@lostgradient/cinder/tab`, and `@lostgradient/cinder/tab-panel`.
  */
 const Tabs = Object.assign(TabsRoot, {
   List: TabList,

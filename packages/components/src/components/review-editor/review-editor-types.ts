@@ -11,7 +11,7 @@ import type {
   Thread,
   ThreadCreateEvent,
   ThreadDeleteEvent,
-} from 'cinder/commentary/comments';
+} from '@lostgradient/cinder/commentary/comments';
 
 /** Review editor mode: edit allows full editing, readonly is view-only. */
 export type ReviewMode = 'edit' | 'readonly';

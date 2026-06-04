@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Typography } from 'cinder/typography';
+  import { Typography } from '@lostgradient/cinder/typography';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem;">

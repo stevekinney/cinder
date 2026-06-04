@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "phone-input",
-  "import": "cinder/phone-input",
+  "import": "@lostgradient/cinder/phone-input",
   "examples": [
     {
       "id": "basic",
       "title": "Basic phone input",
       "description": "Country selector plus national number with E.164 emission.",
-      "code": "<script lang=\"ts\">\n  import { PhoneInput } from 'cinder/phone-input';\n  let phone = $state('');\n</script>\n\n<PhoneInput id=\"basic-phone\" bind:value={phone} label=\"Phone number\" />\n\n{#if phone}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">E.164: {phone}</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { PhoneInput } from '@lostgradient/cinder/phone-input';\n  let phone = $state('');\n</script>\n\n<PhoneInput id=\"basic-phone\" bind:value={phone} label=\"Phone number\" />\n\n{#if phone}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">E.164: {phone}</p>\n{/if}\n"
     },
     {
       "id": "country-switching",
       "title": "Country switching",
       "description": "Narrowed country allow-list — typed digits reformat when the user switches countries.",
-      "code": "<script lang=\"ts\">\n  import { PhoneInput, type PhoneInputCountryCode } from 'cinder/phone-input';\n\n  const countries: readonly PhoneInputCountryCode[] = ['US', 'CA', 'GB', 'DE', 'FR'];\n  let phone = $state('');\n  let country = $state<PhoneInputCountryCode>('GB');\n</script>\n\n<PhoneInput\n  id=\"country-switching-phone\"\n  bind:value={phone}\n  bind:country\n  {countries}\n  label=\"Phone number\"\n  description=\"Numbers reformat as you switch country.\"\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { PhoneInput, type PhoneInputCountryCode } from '@lostgradient/cinder/phone-input';\n\n  const countries: readonly PhoneInputCountryCode[] = ['US', 'CA', 'GB', 'DE', 'FR'];\n  let phone = $state('');\n  let country = $state<PhoneInputCountryCode>('GB');\n</script>\n\n<PhoneInput\n  id=\"country-switching-phone\"\n  bind:value={phone}\n  bind:country\n  {countries}\n  label=\"Phone number\"\n  description=\"Numbers reformat as you switch country.\"\n/>\n"
     },
     {
       "id": "with-error",
       "title": "With error message",
       "description": "Error state surfaces a message and marks both controls invalid.",
-      "code": "<script lang=\"ts\">\n  import { PhoneInput } from 'cinder/phone-input';\n  let phone = $state('555');\n</script>\n\n<PhoneInput\n  id=\"error-phone\"\n  bind:value={phone}\n  label=\"Phone number\"\n  error=\"Enter a complete phone number.\"\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { PhoneInput } from '@lostgradient/cinder/phone-input';\n  let phone = $state('555');\n</script>\n\n<PhoneInput\n  id=\"error-phone\"\n  bind:value={phone}\n  label=\"Phone number\"\n  error=\"Enter a complete phone number.\"\n/>\n"
     }
   ]
 }

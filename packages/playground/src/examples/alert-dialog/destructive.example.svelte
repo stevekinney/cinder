@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { AlertDialog, Button } from 'cinder';
+  import { AlertDialog, Button } from '@lostgradient/cinder';
 
   let open = $state(false);
 </script>

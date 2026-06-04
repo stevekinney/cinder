@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { EmptyState } from 'cinder/empty-state';
+  import { EmptyState } from '@lostgradient/cinder/empty-state';
 </script>
 
 <EmptyState title="No documents" description="Upload your first document to get started.">

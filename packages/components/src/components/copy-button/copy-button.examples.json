@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "copy-button",
-  "import": "cinder/copy-button",
+  "import": "@lostgradient/cinder/copy-button",
   "examples": [
     {
       "id": "basic",
       "title": "Basic copy button",
       "description": "Click to copy. The button enters a confirmation state for a brief moment.",
-      "code": "<script lang=\"ts\">\n  import { CopyButton } from 'cinder/copy-button';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center;\">\n  <code\n    style=\"padding: 0.25rem 0.5rem; background-color: var(--cinder-surface-inset); color: var(--cinder-text); border-radius: 4px;\"\n    >npx cinder install</code\n  >\n  <CopyButton value=\"npx cinder install\" label=\"Copy install command\" />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { CopyButton } from '@lostgradient/cinder/copy-button';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center;\">\n  <code\n    style=\"padding: 0.25rem 0.5rem; background-color: var(--cinder-surface-inset); color: var(--cinder-text); border-radius: 4px;\"\n    >npx cinder install</code\n  >\n  <CopyButton value=\"npx cinder install\" label=\"Copy install command\" />\n</div>\n"
     }
   ]
 }

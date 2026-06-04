@@ -4,10 +4,10 @@
 </script>
 
 <script lang="ts">
-  import Toolbar from 'cinder/toolbar';
-  import { Button } from 'cinder/button';
-  import Segment from 'cinder/segment';
-  import SegmentedControl from 'cinder/segmented-control';
+  import Toolbar from '@lostgradient/cinder/toolbar';
+  import { Button } from '@lostgradient/cinder/button';
+  import Segment from '@lostgradient/cinder/segment';
+  import SegmentedControl from '@lostgradient/cinder/segmented-control';
 </script>
 
 <Toolbar aria-label="Preview controls">

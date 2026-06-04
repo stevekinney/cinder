@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { HoverCard } from 'cinder';
+  import { Button } from '@lostgradient/cinder/button';
+  import { HoverCard } from '@lostgradient/cinder';
 </script>
 
 <HoverCard>

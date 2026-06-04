@@ -3,7 +3,7 @@
  *
  * Each leaf in `COMPOSE_ONLY_LEAVES` must NOT import its parent component
  * barrel, the root barrel, or another compose-only sibling in the same
- * family. This keeps the tree-shake story clean: importing `cinder/tab`
+ * family. This keeps the tree-shake story clean: importing `@lostgradient/cinder/tab`
  * must not transitively pull in `Tabs`, `TabList`, `TabPanel`, or anything
  * else in the parent compound family.
  *
@@ -11,7 +11,7 @@
  * source file is allowed to read sibling context keys (e.g., `tab.svelte`
  * importing from `../tabs/tabs.svelte`) because that's how the compound
  * context flows. The guarantee here is that the *public barrel* — what a
- * consumer reaches via `cinder/tab` — pulls in nothing it shouldn't.
+ * consumer reaches via `@lostgradient/cinder/tab` — pulls in nothing it shouldn't.
  *
  * The test parses each leaf `index.ts` with the TypeScript compiler API and
  * inspects every `ImportDeclaration` and `ExportDeclaration` module specifier
@@ -95,7 +95,7 @@ describe('compose-only leaf import boundary', () => {
       const parentBarrelCandidates = new Set([resolvePath(COMPONENTS_ROOT, parent, 'index.ts')]);
       // Sibling leaves are every other compose-only leaf in the same parent family.
       // Importing one defeats the leaf-subpath tree-shake guarantee: pulling in
-      // `cinder/tab` would also drag `tab-list` and `tab-panel` along.
+      // `@lostgradient/cinder/tab` would also drag `tab-list` and `tab-panel` along.
       const siblingBarrelCandidates = new Set(
         COMPOSE_ONLY_LEAVES.filter((entry) => entry.parent === parent && entry.leaf !== leaf).map(
           (entry) => resolvePath(COMPONENTS_ROOT, entry.leaf, 'index.ts'),

@@ -8,7 +8,7 @@ Uncontrolled — the component owns its state:
 
 ```svelte
 <script lang="ts">
-  import Collapsible from 'cinder/collapsible';
+  import Collapsible from '@lostgradient/cinder/collapsible';
 </script>
 
 <Collapsible trigger="Shipping details">
@@ -20,7 +20,7 @@ Controlled — the parent owns the state with `bind:open`:
 
 ```svelte
 <script lang="ts">
-  import Collapsible from 'cinder/collapsible';
+  import Collapsible from '@lostgradient/cinder/collapsible';
 
   let open = $state(false);
 </script>

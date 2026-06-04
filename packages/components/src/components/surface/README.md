@@ -6,7 +6,7 @@ A themed container that publishes its tone to descendant components through Svel
 
 ```svelte
 <script lang="ts">
-  import Surface from 'cinder/surface';
+  import Surface from '@lostgradient/cinder/surface';
 </script>
 
 <Surface tone="raised">Content</Surface>

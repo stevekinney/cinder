@@ -42,7 +42,7 @@ describe('buildContext', () => {
     expect(context.name).toBe('my-widget');
     expect(context.pascalName).toBe('MyWidget');
     expect(context.isExperimental).toBe(false);
-    expect(context.importPath).toBe('cinder/my-widget');
+    expect(context.importPath).toBe('@lostgradient/cinder/my-widget');
     // The printed scaffold location and root-barrel path use relativeDirectory;
     // for a stable component it is just the bare name.
     expect(context.relativeDirectory).toBe('my-widget');
@@ -53,7 +53,7 @@ describe('buildContext', () => {
     expect(context.name).toBe('json-viewer');
     expect(context.pascalName).toBe('JsonViewer');
     expect(context.isExperimental).toBe(true);
-    expect(context.importPath).toBe('cinder/experimental/json-viewer');
+    expect(context.importPath).toBe('@lostgradient/cinder/experimental/json-viewer');
     // relativeDirectory MUST keep the experimental/ segment so the printed
     // scaffold location (src/components/experimental/<name>/) and the
     // root-barrel next-step path (./components/experimental/<name>/index.ts)
@@ -158,7 +158,9 @@ describe('renderExample', () => {
     expect(result.example.id).toBe('basic');
     expect(result.example.title).toBe('MyWidget');
     expect(result.example.description.length).toBeGreaterThan(0);
-    expect(result.example.code).toContain("import { MyWidget } from 'cinder/my-widget';");
+    expect(result.example.code).toContain(
+      "import { MyWidget } from '@lostgradient/cinder/my-widget';",
+    );
   });
 
   it('imports experimental components via the experimental subpath', () => {
@@ -174,7 +176,7 @@ describe('renderExample', () => {
     expect(result.kind).toBe('example');
     if (result.kind !== 'example') throw new Error(`expected example, got ${result.kind}`);
     expect(result.example.code).toContain(
-      "import { JsonViewer } from 'cinder/experimental/json-viewer';",
+      "import { JsonViewer } from '@lostgradient/cinder/experimental/json-viewer';",
     );
   });
 });

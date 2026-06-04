@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Combobox } from 'cinder/combobox';
+  import { Combobox } from '@lostgradient/cinder/combobox';
   const fruits = [
     { value: 'apple', label: 'Apple' },
     { value: 'apricot', label: 'Apricot' },

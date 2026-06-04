@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { ColorPicker } from 'cinder/color-picker';
+  import { ColorPicker } from '@lostgradient/cinder/color-picker';
 </script>
 
 <ColorPicker defaultValue="#6366f1" label="Custom color" />

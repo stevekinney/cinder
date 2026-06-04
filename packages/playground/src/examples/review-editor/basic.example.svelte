@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { ReviewEditor } from 'cinder/review-editor';
+  import { ReviewEditor } from '@lostgradient/cinder/review-editor';
   const original = `# Release Plan
 
 The first release includes a dashboard, export actions, and inline review.

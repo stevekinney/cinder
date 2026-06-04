@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Table } from 'cinder/table';
+  import { Table } from '@lostgradient/cinder/table';
 </script>
 
 <Table caption="Recent contributors (none yet)">

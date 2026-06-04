@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Input } from 'cinder/input';
+  import { Input } from '@lostgradient/cinder/input';
   let name = $state('');
 </script>
 

@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Rating } from 'cinder/rating';
+  import { Rating } from '@lostgradient/cinder/rating';
 </script>
 
 <div style="display: flex; align-items: center; gap: 0.75rem;">

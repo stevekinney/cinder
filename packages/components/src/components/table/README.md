@@ -10,7 +10,7 @@ the namespace API: `Table.Header`, `Table.HeaderCell`, `Table.Body`,
 
 ```svelte
 <script lang="ts">
-  import { Table } from 'cinder/table';
+  import { Table } from '@lostgradient/cinder/table';
 
   const people = [
     { name: 'Ada Lovelace', role: 'Mathematician', commits: 142 },
@@ -45,8 +45,8 @@ stays a native `<table>`; the wrapper owns horizontal overflow when the
 available component width is too narrow.
 
 The leaves remain importable individually for à-la-carte builds — see
-`cinder/table-body`, `cinder/table-cell`, `cinder/table-header`,
-`cinder/table-header-cell`, and `cinder/table-row`.
+`@lostgradient/cinder/table-body`, `@lostgradient/cinder/table-cell`, `@lostgradient/cinder/table-header`,
+`@lostgradient/cinder/table-header-cell`, and `@lostgradient/cinder/table-row`.
 
 ## Props
 

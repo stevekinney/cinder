@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { DescriptionList } from 'cinder/description-list';
-  import type { DescriptionListItem } from 'cinder/description-list';
+  import { DescriptionList } from '@lostgradient/cinder/description-list';
+  import type { DescriptionListItem } from '@lostgradient/cinder/description-list';
 
   const items: DescriptionListItem[] = [
     { term: 'Component', definition: 'DescriptionList' },

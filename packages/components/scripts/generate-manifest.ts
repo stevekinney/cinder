@@ -40,8 +40,8 @@ export type ManifestComponent = {
   /** Kebab-case canonical identifier, matching the component directory name. */
   id: string;
   /**
-   * Import specifier consumers use. E.g. `"cinder/button"`.
-   * Experimental components use `"cinder/experimental/{id}"`.
+   * Import specifier consumers use. E.g. `"@lostgradient/cinder/button"`.
+   * Experimental components use `"@lostgradient/cinder/experimental/{id}"`.
    */
   import: string;
   /** PascalCase named export the component ships under. */
@@ -62,12 +62,12 @@ export type ManifestComponent = {
   related: string[];
   /**
    * True when the component directory contains a `{id}.constraints.ts` file.
-   * The constraints sidecar is published at `cinder/{id}/constraints`.
+   * The constraints sidecar is published at `@lostgradient/cinder/{id}/constraints`.
    */
   hasConstraints: boolean;
   /**
    * True when the playground has at least one `.example.svelte` file for this
-   * component. The examples sidecar is published at `cinder/{id}/examples`.
+   * component. The examples sidecar is published at `@lostgradient/cinder/{id}/examples`.
    */
   hasExamples: boolean;
   /** Subpath import specifiers for the machine-readable artifacts. */
@@ -126,11 +126,11 @@ function kebabToPascal(id: string): string {
 
 /**
  * Determine the `import` specifier for a component.
- * Experimental components use the `cinder/experimental/{id}` subpath,
+ * Experimental components use the `@lostgradient/cinder/experimental/{id}` subpath,
  * matching what `generate-exports.ts` emits for `./experimental/{name}`.
  */
 function importSpecifier(id: string, isExperimental: boolean): string {
-  return isExperimental ? `cinder/experimental/${id}` : `cinder/${id}`;
+  return isExperimental ? `@lostgradient/cinder/experimental/${id}` : `@lostgradient/cinder/${id}`;
 }
 
 /**
@@ -160,16 +160,18 @@ function hasConstraintsArtifact(id: string, isExperimental: boolean): boolean {
 
 /**
  * Derive the artifact subpath prefix. Per the plan, artifact subpaths do NOT
- * include the `experimental/` prefix — they use the same flat `cinder/{id}/…`
+ * include the `experimental/` prefix — they use the same flat `@lostgradient/cinder/{id}/…`
  * pattern regardless of whether the component is experimental.
  *
  * This matches how `generate-exports.ts` computes the `schema` and `variables`
  * subpaths for experimental components: it uses `./experimental/{name}/schema`
  * in `package.json#exports` but the consumer-facing import remains
- * `cinder/experimental/{name}/schema`. We follow that same pattern here.
+ * `@lostgradient/cinder/experimental/{name}/schema`. We follow that same pattern here.
  */
 function artifactSubpath(id: string, isExperimental: boolean, suffix: string): string {
-  const prefix = isExperimental ? `cinder/experimental/${id}` : `cinder/${id}`;
+  const prefix = isExperimental
+    ? `@lostgradient/cinder/experimental/${id}`
+    : `@lostgradient/cinder/${id}`;
   return `${prefix}/${suffix}`;
 }
 
@@ -274,14 +276,14 @@ export async function buildManifest(): Promise<Manifest> {
     $schema: './src/schemas/manifest.schema.json',
     manifestVersion: 1,
     package: {
-      name: 'cinder',
+      name: '@lostgradient/cinder',
       version,
       framework: 'svelte',
       frameworkVersionRange,
       classPrefix: 'cinder-',
       cssVarPrefix: '--cinder-',
       tokenNamespaces: ['color', 'space', 'radius', 'ring', 'type', 'motion', 'shadow'],
-      stylesEntry: 'cinder/styles',
+      stylesEntry: '@lostgradient/cinder/styles',
       schemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     },
     categories,

@@ -1,5 +1,5 @@
 ---
-'cinder': major
+'@lostgradient/cinder': major
 ---
 
 Breaking: `Message` replaces the single `time` prop with `datetime` and `timestamp`.

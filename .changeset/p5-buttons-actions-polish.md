@@ -1,5 +1,5 @@
 ---
-'cinder': patch
+'@lostgradient/cinder': patch
 ---
 
 Buttons & Actions visual polish.

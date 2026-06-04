@@ -583,7 +583,7 @@ function injectTarballIntoFixture(
   const overrides: Record<string, unknown> = rawOverrides ?? {};
   parsed['overrides'] = overrides;
 
-  dependencies['cinder'] = `file:${tarballFilePath}`;
+  dependencies['@lostgradient/cinder'] = `file:${tarballFilePath}`;
   if (options.svelteVersion !== undefined) {
     const rawDevDependencies = parsed['devDependencies'];
     if (!isObjectRecord(rawDevDependencies)) {
@@ -719,7 +719,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
 
     // À la carte CSS contract — AST assertions (no text grep).
     //
-    // The /a-la-carte route imports only `cinder/button` + `cinder/button/styles`
+    // The /a-la-carte route imports only `@lostgradient/cinder/button` + `@lostgradient/cinder/button/styles`
     // + tokens + foundation. Its route-scoped CSS must contain a button selector
     // and a `--cinder-button-*` custom property, and must NOT leak any selector
     // or custom property unique to the accordion component.
@@ -744,7 +744,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       );
     }
 
-    // Auto-CSS import contract: the /no-styles route imports `cinder/button`
+    // Auto-CSS import contract: the /no-styles route imports `@lostgradient/cinder/button`
     // ONLY — no `/styles` subpath, no aggregator — and its route-scoped CSS
     // MUST contain the button selectors anyway, because importing a component
     // now pulls its CSS as a side effect. This is the whole point of the
@@ -759,7 +759,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     //      exists somewhere in the client CSS output.
     //   3. readRouteCssArtifacts resolves the SvelteKit wrapper or fails loudly.
     // Together these mean the presence assertion below is meaningful: the walk
-    // works, so finding .cinder-button proves the bare `cinder/button` import
+    // works, so finding .cinder-button proves the bare `@lostgradient/cinder/button` import
     // pulled its CSS.
     const noStylesCss = await readRouteCssArtifacts(
       fixtureDirectory,
@@ -767,12 +767,12 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     );
     if (!hasSelectorContaining(noStylesCss, '.cinder-button')) {
       fail(
-        `/no-styles route CSS is missing .cinder-button — a bare \`cinder/button\` import did NOT auto-pull its CSS (the auto-CSS side-effect contract is broken)`,
+        `/no-styles route CSS is missing .cinder-button — a bare \`@lostgradient/cinder/button\` import did NOT auto-pull its CSS (the auto-CSS side-effect contract is broken)`,
       );
     }
     // NOTE: we assert the `.cinder-button` SELECTOR only, not `--cinder-button-*`
     // custom properties. The component sidecar (button.css) only *consumes* those
-    // properties via `var(...)`; their *declarations* live in `cinder/styles`
+    // properties via `var(...)`; their *declarations* live in `@lostgradient/cinder/styles`
     // (the tokens/foundation base), which the /no-styles route does not import.
     // So the auto-CSS contract here is exactly "the component's own selectors
     // arrive", which is what proves the import pulled the sidecar.
@@ -856,7 +856,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       // Fetch the rendered /no-styles HTML, extract every stylesheet href,
       // fetch each through the running server, and assert that AT LEAST ONE
       // contains `.cinder-button`. This is the strongest in-fixture assertion
-      // that a bare `cinder/button` import auto-loads its CSS at runtime — not
+      // that a bare `@lostgradient/cinder/button` import auto-loads its CSS at runtime — not
       // just in the manifest, but in what the live route actually serves.
       const noStylesResponse = await fetch(`http://127.0.0.1:${httpPort}/no-styles`);
       if (noStylesResponse.status !== 200) {
@@ -897,7 +897,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         const source = await stylesheetResponse.text();
         // Require the `.cinder-button` SELECTOR (the component sidecar), not a
         // `--cinder-button-*` token: those custom properties are declared by
-        // `cinder/styles` (the tokens/foundation base) and can appear without
+        // `@lostgradient/cinder/styles` (the tokens/foundation base) and can appear without
         // the component sidecar, so a token-only match would pass even when the
         // auto-CSS import is broken.
         if (source.includes('.cinder-button')) {
@@ -906,7 +906,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       }
       if (!buttonCssServed) {
         fail(
-          `/no-styles rendered HTML references no stylesheet containing button CSS — a bare \`cinder/button\` import did NOT auto-load its CSS at runtime (auto-CSS side-effect contract broken)`,
+          `/no-styles rendered HTML references no stylesheet containing button CSS — a bare \`@lostgradient/cinder/button\` import did NOT auto-load its CSS at runtime (auto-CSS side-effect contract broken)`,
         );
       }
     } finally {
@@ -1104,11 +1104,11 @@ async function runNodeFixture(): Promise<void> {
     }
     // PR 1 upstream re-export sub-paths must resolve in the published tarball.
     const upstreamProbeMarkers = [
-      'cinder/markdown/diff/line-diff#computeLineDiff imported OK',
-      'cinder/markdown/rendering#renderMarkdown imported OK',
-      'cinder/markdown/utilities/safe-url#isSafeUrl imported OK',
-      'cinder/markdown/utilities/sort-keys#sortKeys imported OK',
-      'cinder/diff/line-diff#computeLineDiff imported OK',
+      '@lostgradient/cinder/markdown/diff/line-diff#computeLineDiff imported OK',
+      '@lostgradient/cinder/markdown/rendering#renderMarkdown imported OK',
+      '@lostgradient/cinder/markdown/utilities/safe-url#isSafeUrl imported OK',
+      '@lostgradient/cinder/markdown/utilities/sort-keys#sortKeys imported OK',
+      '@lostgradient/cinder/diff/line-diff#computeLineDiff imported OK',
     ];
     for (const marker of upstreamProbeMarkers) {
       if (!renderedOutput.includes(marker)) {
@@ -1156,7 +1156,7 @@ async function runManifestConsumerFixture(): Promise<void> {
 
 /**
  * typescript-consumer — install the packed tarball, GENERATE a probe from the
- * installed `cinder/manifest` covering every component + its schema/variables
+ * installed `@lostgradient/cinder/manifest` covering every component + its schema/variables
  * artifacts, then run the TypeScript-facing gates:
  *   Gate 1 — tsc NodeNext type resolution (no `svelte` condition): proves every
  *            component main + schema + variables `types` condition resolves

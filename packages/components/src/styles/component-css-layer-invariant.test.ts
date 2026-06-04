@@ -8,7 +8,7 @@ import { COMPONENT_LAYER_NAME, isSingleComponentLayer } from '../../scripts/chec
 /**
  * Every component CSS file that reaches the cascade must carry its own
  * `@layer cinder.components { … }` wrapper so the layer assignment is intrinsic
- * to the file and survives a direct subpath import (`cinder/<name>/styles`),
+ * to the file and survives a direct subpath import (`@lostgradient/cinder/<name>/styles`),
  * rather than depending on the aggregator's `@import … layer(cinder.components)`.
  *
  * Without an intrinsic wrapper, a consumer importing a component's CSS directly
@@ -55,7 +55,7 @@ async function scanGlob(pattern: string): Promise<string[]> {
 
 /**
  * CSS files imported DIRECTLY by component source (`import './foo.css'` in a
- * `.svelte` or `.ts`) rather than through the `cinder/styles` aggregator. These
+ * `.svelte` or `.ts`) rather than through the `@lostgradient/cinder/styles` aggregator. These
  * still reach a consumer's cascade, so they are subject to the same invariant.
  * `markdown-editor.svelte` imports `prosemirror.css` this way — it lives under
  * `src/components/` so the glob already covers it, but enumerating the import
@@ -157,8 +157,8 @@ describe('component CSS @layer invariant', () => {
  * Layer-membership regression for direct subpath imports.
  *
  * This is the structural precondition for the documented override behavior: a
- * consumer that imports a component's CSS file DIRECTLY (e.g. `cinder/badge/styles`,
- * NOT `cinder/styles`) and declares its own `@layer app` override after
+ * consumer that imports a component's CSS file DIRECTLY (e.g. `@lostgradient/cinder/badge/styles`,
+ * NOT `@lostgradient/cinder/styles`) and declares its own `@layer app` override after
  * `@layer cinder.components, app;` expects `@layer app` to win. That only holds
  * if the directly-imported file's rules are INSIDE `@layer cinder.components`.
  * Before this fix, `badge.css` held bare rules: a direct import dropped them

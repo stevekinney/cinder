@@ -10,6 +10,11 @@ const schema = {
     disabled: {
       type: 'boolean',
     },
+    current: {
+      enum: ['true', 'page', 'step', 'location', 'date', 'time'],
+      description:
+        "The `aria-current` token emitted while `active` is true. Defaults to `'page'`,\nwhich is correct for navigation bars and breadcrumb-adjacent links. Use\n`'true'` (or another standard token such as `'step'` / `'location'`) for\nsection/view switchers, where `'page'` would mislabel the current section as\nthe current page in the browsing context.",
+    },
     class: {
       type: 'string',
     },

@@ -34,8 +34,8 @@
  *
  * The per-component `/styles` exports ship layer-WRAPPED CSS (every sidecar
  * self-declares `@layer cinder.components { … }`), so a direct
- * `cinder/<name>/styles` import lands inside the cascade layer. Consumers must
- * still import `cinder/styles` FIRST so the `@layer` order is declared before
+ * `@lostgradient/cinder/<name>/styles` import lands inside the cascade layer. Consumers must
+ * still import `@lostgradient/cinder/styles` FIRST so the `@layer` order is declared before
  * any per-component CSS arrives; otherwise layer priority is set by insertion
  * order.
  *
@@ -113,7 +113,7 @@ const RESERVED_KEYS = new Set([
 ]);
 
 /**
- * The five hand-authored `cinder/styles*` subpaths and their canonical CSS
+ * The five hand-authored `@lostgradient/cinder/styles*` subpaths and their canonical CSS
  * targets. These are reserved (never computed from component discovery) and
  * emitted/checked verbatim. Ordered base-first so the generated exports map
  * lists the base entry point before its variants.
@@ -132,7 +132,7 @@ function stylesExport(cssPath: string): ExportEntry {
 }
 
 /**
- * Canonical four-condition entry for `cinder/highlighters/shiki`. Hand-shaped
+ * Canonical four-condition entry for `@lostgradient/cinder/highlighters/shiki`. Hand-shaped
  * because the adapter is a single static sub-path (not a discovered component
  * and not an upstream re-export); the generator stitches this in alongside
  * the styles entries.
@@ -147,10 +147,10 @@ function highlightersShikiExport(): ExportEntry {
 }
 
 /**
- * Canonical four-condition entry for `cinder/styles/guard`. This is the
+ * Canonical four-condition entry for `@lostgradient/cinder/styles/guard`. This is the
  * dev-only base-loaded guard module: it warns once in browser + dev environments
  * when a per-component CSS subpath is imported without first importing
- * `cinder/styles`. The guard is stripped by any bundler that performs constant
+ * `@lostgradient/cinder/styles`. The guard is stripped by any bundler that performs constant
  * folding on `esm-env`'s `DEV` and `BROWSER` constants.
  */
 export function stylesGuardExport(): ExportEntry {
@@ -229,7 +229,7 @@ function jsonSidecarExport(filePath: string): JsonExportEntry {
 
 /**
  * Components promoted out of `src/components/experimental/<name>/` into the
- * main tree that must keep their old `cinder/experimental/<name>` import paths
+ * main tree that must keep their old `@lostgradient/cinder/experimental/<name>` import paths
  * working as deprecated aliases for one major version.
  *
  * Each entry keeps a thin shim at `src/components/experimental/<name>/index.ts`
@@ -377,7 +377,7 @@ export function computeExports(
     // The build (scripts/build.ts) compiles each `<name>.schema.ts` /
     // `<name>.variables.ts` as its own browser + server entrypoint, so the
     // `node`/`default` targets resolve to real files. A plain Node or Vite
-    // consumer can therefore `import schema from 'cinder/<name>/schema'` and get
+    // consumer can therefore `import schema from '@lostgradient/cinder/<name>/schema'` and get
     // the default-exported JSON Schema value at runtime — no
     // `ERR_PACKAGE_PATH_NOT_EXPORTED`.
     //
@@ -399,7 +399,7 @@ export function computeExports(
     });
 
     // Per-component CSS sidecar — layer-WRAPPED (the sidecar self-declares
-    // `@layer cinder.components { … }`). Consumers must import `cinder/styles`
+    // `@layer cinder.components { … }`). Consumers must import `@lostgradient/cinder/styles`
     // FIRST so the `@layer` order is established before per-component CSS
     // arrives; the sidecar then slots into the correct layer regardless of
     // import order.

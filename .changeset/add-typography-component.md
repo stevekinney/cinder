@@ -1,5 +1,5 @@
 ---
-'cinder': minor
+'@lostgradient/cinder': minor
 ---
 
 Add `Typography` — a text component that renders a named typographic variant

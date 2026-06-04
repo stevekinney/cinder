@@ -19,10 +19,10 @@
  * @experimental
  */
 
+import { buildAnchorFromSelection } from '@lostgradient/cinder/commentary/anchoring';
+import type { ThreadCreateEvent } from '@lostgradient/cinder/commentary/comments';
+import { extractMentions, generateId } from '@lostgradient/cinder/commentary/comments';
 import type { EditorView } from '@milkdown/kit/prose/view';
-import { buildAnchorFromSelection } from 'cinder/commentary/anchoring';
-import type { ThreadCreateEvent } from 'cinder/commentary/comments';
-import { extractMentions, generateId } from 'cinder/commentary/comments';
 import { devWarn } from '../../utilities/dev-warn.ts';
 import type {
   PopoverPosition,

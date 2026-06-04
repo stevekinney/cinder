@@ -6,7 +6,7 @@ Drag handle input for selecting a numeric value within a bounded range.
 
 ```svelte
 <script lang="ts">
-  import Slider from 'cinder/slider';
+  import Slider from '@lostgradient/cinder/slider';
 </script>
 
 <Slider />

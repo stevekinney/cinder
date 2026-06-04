@@ -9,7 +9,7 @@ the namespace API.
 
 ```svelte
 <script lang="ts">
-  import { Feed } from 'cinder/feed';
+  import { Feed } from '@lostgradient/cinder/feed';
 </script>
 
 <Feed aria-label="Project activity">
@@ -27,7 +27,7 @@ The event body is the default child content. The visible time label is the
 markup); if omitted, it falls back to the raw `datetime` value.
 
 The leaf remains importable individually for à-la-carte builds — see
-`cinder/feed-event`.
+`@lostgradient/cinder/feed-event`.
 
 ## Props
 

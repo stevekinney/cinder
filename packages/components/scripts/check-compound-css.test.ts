@@ -2,7 +2,7 @@
  * Regression tests for compound-component CSS dependency contracts.
  *
  * A compound component is self-sufficient when importing its CSS style subpath
- * (`cinder/<name>/styles`) styles all public leaf components it renders.
+ * (`@lostgradient/cinder/<name>/styles`) styles all public leaf components it renders.
  * Previously some parent namespaces were missing @import statements for their
  * leaf component styles, so consumers had to import both parent and leaf
  * separately — breaking the contract.

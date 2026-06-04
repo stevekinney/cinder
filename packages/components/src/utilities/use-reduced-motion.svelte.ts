@@ -20,7 +20,7 @@ export type UseReducedMotion = {
  * @example
  * ```svelte
  * <script lang="ts">
- *   import { useReducedMotion } from 'cinder';
+ *   import { useReducedMotion } from '@lostgradient/cinder';
  *
  *   const motion = useReducedMotion();
  *   let viewport: HTMLDivElement;

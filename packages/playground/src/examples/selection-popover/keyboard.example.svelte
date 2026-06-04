@@ -6,8 +6,8 @@
 
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { SelectionPopoverPosition } from 'cinder/selection-popover';
-  import { SelectionPopover } from 'cinder/selection-popover';
+  import type { SelectionPopoverPosition } from '@lostgradient/cinder/selection-popover';
+  import { SelectionPopover } from '@lostgradient/cinder/selection-popover';
 
   const popoverId = 'keyboard-selection-popover';
   let isOpen = $state(false);

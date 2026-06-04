@@ -6,7 +6,7 @@ Modal search overlay for keyboard-first commands, destinations, and record jumpe
 
 ```svelte
 <script lang="ts">
-  import CommandPalette from 'cinder/command-palette';
+  import CommandPalette from '@lostgradient/cinder/command-palette';
 </script>
 
 <CommandPalette />

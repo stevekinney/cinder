@@ -4,7 +4,12 @@
 </script>
 
 <script lang="ts">
-  import { Chat, appendMessages, appendUserMessage, createConversation } from 'cinder/chat';
+  import {
+    Chat,
+    appendMessages,
+    appendUserMessage,
+    createConversation,
+  } from '@lostgradient/cinder/chat';
 
   let conversation = $state(
     appendMessages(
@@ -18,7 +23,7 @@
         toolCall: {
           id: 'call-exports-check',
           name: 'exports_check',
-          arguments: { package: 'cinder' },
+          arguments: { package: '@lostgradient/cinder' },
         },
       },
       {
