@@ -1,0 +1,171 @@
+/**
+ * validate-release-workflow.ts
+ *
+ * Guards the primary release workflow against reintroducing long-lived npm tokens
+ * on the Trusted Publishing publish path. Fails loudly if NODE_AUTH_TOKEN or
+ * NPM_TOKEN appear anywhere in .github/workflows/release.yaml (outside comments).
+ *
+ * What this checks:
+ *   - The file .github/workflows/release.yaml is present.
+ *   - The file has `id-token: write` (the OIDC permission required for Trusted
+ *     Publishing) somewhere in its permissions declarations.
+ *   - The primary publish step (the `run: bun run --filter=cinder publish:release`
+ *     step) does NOT have NODE_AUTH_TOKEN or NPM_TOKEN in its `env:` block
+ *     (precise, well-messaged check).
+ *   - NODE_AUTH_TOKEN / NPM_TOKEN do NOT appear anywhere else in release.yaml
+ *     either — a token in a JOB-level or WORKFLOW-level `env:` block would be
+ *     inherited by the publish step without appearing in the step's own lines,
+ *     so the whole-file check closes that evasion path. Comment lines are
+ *     allowed (they document the OIDC rationale).
+ *   - release-manual.yaml is NOT checked — that file intentionally uses a token
+ *     as a documented break-glass fallback.
+ *
+ * What this does NOT check:
+ *   - Whether the npm registry has a Trusted Publisher configured (that is a
+ *     manual registry-side action; see CONTRIBUTING.md § Publishing to npm).
+ *   - Whether npm >= 11.5.1 is installed at runtime (validated by the workflow
+ *     itself via the "Upgrade npm" step; this script only inspects YAML structure).
+ */
+
+import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const packageRoot = resolve(scriptDirectory, '..');
+const workspaceRoot = resolve(packageRoot, '../..');
+const releaseWorkflowPath = join(workspaceRoot, '.github/workflows/release.yaml');
+
+function fail(message: string): never {
+  process.stderr.write(`[validate-release-workflow] FAIL: ${message}\n`);
+  process.exit(1);
+}
+
+function pass(message: string): void {
+  process.stdout.write(`[validate-release-workflow] PASS: ${message}\n`);
+}
+
+const workflowContent = (() => {
+  try {
+    return readFileSync(releaseWorkflowPath, 'utf8');
+  } catch {
+    fail(`release workflow not found at ${releaseWorkflowPath}`);
+  }
+})();
+
+const lines = workflowContent.split('\n');
+
+/**
+ * Whether a YAML line is a comment. We treat any line whose first non-whitespace
+ * character is `#` as a comment so that documentation (e.g. the explanatory note
+ * about setup-node's _authToken, or a `# id-token: write` example) can never
+ * satisfy OR defeat a guard. This intentionally does not handle inline trailing
+ * `#` comments after real YAML — none of the patterns we scan for legitimately
+ * appear mid-line after a value, and a real `id-token: write` or `- name:` is
+ * never written as a trailing comment.
+ */
+function isComment(line: string): boolean {
+  return line.trimStart().startsWith('#');
+}
+
+// ── Guard 1: id-token: write must be present ────────────────────────────────
+// Skip comments: a commented-out `# id-token: write` must NOT satisfy the check.
+const hasIdTokenWrite = lines.some((line) => !isComment(line) && /id-token\s*:\s*write/.test(line));
+if (!hasIdTokenWrite) {
+  fail(
+    'release.yaml is missing `id-token: write`. The primary publish path requires this ' +
+      'OIDC permission for npm Trusted Publishing.',
+  );
+}
+pass('id-token: write is present');
+
+// ── Guard 2: locate the primary publish step ────────────────────────────────
+// The primary publish step is identified by the run: command that calls publish:release.
+// We scan for the step boundary and extract its env: block, then check for tokens.
+//
+// Strategy: find the line index of the publish:release `run:` command, then walk
+// upward to the `- name:` that opens this step and downward to the next `- name:`
+// or end of file. Within that range, assert no env key matches the token names.
+
+// Match the publish step's actual `run:` command, not a comment that mentions it.
+// `^\s*run:` anchors to a real YAML key so a `# ... bun run ... publish:release`
+// note can't be mistaken for the step.
+const publishRunPattern = /^\s*run\s*:.*bun run --filter=cinder publish:release/;
+const publishRunLineIndex = lines.findIndex(
+  (line) => !isComment(line) && publishRunPattern.test(line),
+);
+
+if (publishRunLineIndex === -1) {
+  fail(
+    'Could not locate the primary publish step in release.yaml. ' +
+      'Expected a step with `run: bun run --filter=cinder publish:release`.',
+  );
+}
+
+// Walk backward to find the `- name:` opening of this step (skipping comments).
+let stepStartIndex = publishRunLineIndex;
+for (let index = publishRunLineIndex - 1; index >= 0; index--) {
+  if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
+    stepStartIndex = index;
+    break;
+  }
+}
+
+// Walk forward to find the next `- name:` opening (start of the next step) or EOF.
+let stepEndIndex = lines.length;
+for (let index = publishRunLineIndex + 1; index < lines.length; index++) {
+  if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
+    stepEndIndex = index;
+    break;
+  }
+}
+
+const publishStepLines = lines.slice(stepStartIndex, stepEndIndex);
+
+// ── Guard 3: no token env vars in the publish step ──────────────────────────
+const forbiddenPatterns: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /NODE_AUTH_TOKEN\s*:/, label: 'NODE_AUTH_TOKEN' },
+  { pattern: /NPM_TOKEN\s*:/, label: 'NPM_TOKEN' },
+];
+
+for (const { pattern, label } of forbiddenPatterns) {
+  const offendingLine = publishStepLines.find((line) => !isComment(line) && pattern.test(line));
+  if (offendingLine !== undefined) {
+    fail(
+      `release.yaml's primary publish step contains ${label}:\n` +
+        `  ${offendingLine.trim()}\n\n` +
+        'The primary publish path must use npm Trusted Publishing (OIDC), not a long-lived token.\n' +
+        'Remove the token env var from this step.\n' +
+        'For break-glass token publishing, use release-manual.yaml instead.',
+    );
+  }
+}
+
+pass('No NODE_AUTH_TOKEN or NPM_TOKEN in the primary publish step');
+
+// ── Guard 4: no token env vars ANYWHERE in release.yaml ─────────────────────
+// The step-scoped check above is precise, but a token placed in a `env:` block
+// at the JOB level or the WORKFLOW level would be inherited by the publish step
+// without appearing inside the step's own lines — a real evasion path. Because
+// the entire OIDC release path is tokenless (the only legitimate token use lives
+// in release-manual.yaml's break-glass flow), the correct, evasion-proof
+// invariant is simply: these token names appear NOWHERE in release.yaml — not in
+// a step env, not in a job env, not in a workflow env. We allow them inside
+// comment lines (e.g. the explanatory note about setup-node's _authToken) but
+// reject any real `KEY:` assignment.
+for (const { pattern, label } of forbiddenPatterns) {
+  const offendingLine = lines.find((line) => !isComment(line) && pattern.test(line));
+  if (offendingLine !== undefined) {
+    fail(
+      `release.yaml references ${label} outside a comment:\n` +
+        `  ${offendingLine.trim()}\n\n` +
+        'The OIDC release path must be fully tokenless. A token in a job-level or\n' +
+        'workflow-level `env:` block would be inherited by the publish step and\n' +
+        'silently re-enable token publishing. Remove it.\n' +
+        'For break-glass token publishing, use release-manual.yaml instead.',
+    );
+  }
+}
+
+pass('No NODE_AUTH_TOKEN or NPM_TOKEN anywhere in release.yaml (job/workflow env safe)');
+pass('release.yaml is correctly configured for npm Trusted Publishing');

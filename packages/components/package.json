@@ -3542,8 +3542,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
     "validate": "bun run lint && bun run typecheck && bun run check:placeholder-docs && bun run test:coverage && bun run platform:audit -- --strict && bun run colors:audit -- --strict && bun run tokens:audit -- --strict && bun run validate:workflow && bun run validate:svelte-peer && bun run validate:consumer && bun run package:weight:check -- --existing-tarball",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
+    "validate:release-workflow": "bun run scripts/validate-release-workflow.ts",
     "validate:svelte-peer": "bun run scripts/validate-svelte-peer-contract.ts",
-    "validate:workflow": "bun run scripts/validate-commit-workflow.ts",
+    "validate:workflow": "bun run scripts/validate-commit-workflow.ts && bun run scripts/validate-release-workflow.ts",
     "verify:release-version": "bun run scripts/verify-release-version.ts"
   },
   "dependencies": {
