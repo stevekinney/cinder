@@ -32,7 +32,7 @@
   }
 
   .cinder-json-viewer__key {
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     margin-inline-end: var(--cinder-space-1);
   }
 

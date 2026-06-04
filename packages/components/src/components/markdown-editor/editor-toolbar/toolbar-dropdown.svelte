@@ -125,7 +125,7 @@
   }
 
   :global(.dropdown-item-check) {
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     flex-shrink: 0;
     margin-inline-start: auto;
   }

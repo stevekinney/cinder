@@ -14,7 +14,7 @@
  * ======================================== */
 
   .cinder-json-token-key {
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   .cinder-json-token-string {

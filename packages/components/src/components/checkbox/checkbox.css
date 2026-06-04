@@ -143,8 +143,8 @@
 
   .cinder-checkbox:disabled:checked,
   .cinder-checkbox:disabled:indeterminate {
-    background-color: var(--cinder-text-disabled);
-    border-color: var(--cinder-text-disabled);
+    background-color: var(--cinder-fill-disabled);
+    border-color: var(--cinder-fill-disabled);
   }
 
   /* Error / invalid state */

@@ -559,7 +559,7 @@
     min-height: var(--cinder-touch-target-min);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     background: transparent;
     border: none;
     cursor: pointer;

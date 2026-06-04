@@ -197,7 +197,7 @@
     padding: 0;
     font: inherit;
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     cursor: pointer;
     border-radius: var(--cinder-radius-sm);
   }

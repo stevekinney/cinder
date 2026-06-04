@@ -70,7 +70,7 @@
   .cinder-file-upload__eyebrow-icon {
     inline-size: 1rem;
     block-size: 1rem;
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   .cinder-file-upload__button {

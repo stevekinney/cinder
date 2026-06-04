@@ -80,7 +80,7 @@
 
   .cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {
     background-color: color-mix(in srgb, var(--cinder-accent) 15%, transparent);
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   @media (forced-colors: active) {

@@ -83,13 +83,13 @@
 
   .toolbar-button[data-active] {
     background: var(--cinder-surface-pressed);
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   @media (hover: hover) {
     .toolbar-button[data-active]:hover:not(:disabled) {
       background: var(--cinder-surface-pressed);
-      color: var(--cinder-accent);
+      color: var(--cinder-accent-text);
     }
   }
 
