@@ -1,18 +1,8 @@
 [
   {
-    "filePath": "src/components/autocomplete/autocomplete.css",
-    "name": "--cinder-font-weight-medium",
-    "allowedCount": 2
-  },
-  {
     "filePath": "src/components/avatar-group/avatar-group.css",
     "name": "--cinder-ring-offset-width",
     "allowedCount": 2
-  },
-  {
-    "filePath": "src/components/callout/callout.css",
-    "name": "--cinder-font-weight-semibold",
-    "allowedCount": 1
   },
   {
     "filePath": "src/components/chat/container/chat-jump-controls.svelte",
@@ -27,31 +17,6 @@
   {
     "filePath": "src/components/color-picker/color-picker.css",
     "name": "--cinder-text-secondary",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/feed/feed.css",
-    "name": "--cinder-surface-muted",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/file-upload/file-upload.css",
-    "name": "--cinder-font-weight-medium",
-    "allowedCount": 2
-  },
-  {
-    "filePath": "src/components/file-upload/file-upload.css",
-    "name": "--cinder-font-weight-semibold",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/hover-card/hover-card.css",
-    "name": "--cinder-ease-out",
-    "allowedCount": 2
-  },
-  {
-    "filePath": "src/components/kanban-board/kanban-board.css",
-    "name": "--cinder-shadow-elevated",
     "allowedCount": 1
   },
   {
@@ -70,43 +35,13 @@
     "allowedCount": 2
   },
   {
-    "filePath": "src/components/modal/modal.css",
-    "name": "--cinder-radius-xl",
-    "allowedCount": 2
-  },
-  {
-    "filePath": "src/components/phone-input/phone-input.css",
-    "name": "--cinder-surface-muted",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/pin-input/pin-input.css",
-    "name": "--cinder-surface-muted",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/radio-group/radio-group.css",
-    "name": "--cinder-surface-selected",
-    "allowedCount": 1
-  },
-  {
     "filePath": "src/components/select/select.css",
     "name": "--cinder-control-height",
     "allowedCount": 1
   },
   {
     "filePath": "src/components/sortable-list/sortable-list.css",
-    "name": "--cinder-shadow-elevated",
-    "allowedCount": 3
-  },
-  {
-    "filePath": "src/components/sortable-list/sortable-list.css",
     "name": "--cinder-z-drag-preview",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/textarea/textarea.css",
-    "name": "--cinder-text-placeholder",
     "allowedCount": 1
   },
   {
