@@ -299,8 +299,8 @@ describe('LoadMore', () => {
   test('announces the end-of-list message when hasMore is false on initial mount', async () => {
     // statusText is `$derived(hasMore ? '' : endOfListMessage)`, so an initially-exhausted
     // list announces its state — more correct than staying silent for an empty list. The
-    // shared VisuallyHiddenLiveRegion blanks-then-sets on the next microtask (so a repeated
-    // message still re-announces), so wait one tick for the text to land.
+    // shared VisuallyHiddenLiveRegion blanks-then-sets on the next task (setTimeout(0), so a
+    // repeated message still re-announces), so waitFor until the text lands.
     const { getByRole } = render(LoadMore, {
       props: {
         onLoadMore: () => {},
