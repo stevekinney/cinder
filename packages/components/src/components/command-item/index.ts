@@ -1,3 +1,4 @@
+import './command-item.css';
 import CommandItem from './command-item.svelte';
 
 export default CommandItem;

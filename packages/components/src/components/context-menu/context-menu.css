@@ -1,4 +1,10 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* ContextMenu renders DropdownItem, DropdownMenu, DropdownGroup, DropdownLabel,
+ * and DropdownSeparator as its leaf components. Pull in their styles so that
+ * importing `cinder/context-menu` is self-sufficient without a separate
+ * `cinder/dropdown` import. */
+@import '../dropdown/dropdown.css';
+
 @layer cinder.components {
   .cinder-context-menu {
     display: contents;

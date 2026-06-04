@@ -1,4 +1,9 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* MenuBar renders DropdownItem, DropdownMenu, DropdownGroup, DropdownLabel,
+ * and DropdownSeparator inside its overflow menus. Pull in their styles so
+ * that importing `cinder/menu-bar` is self-sufficient. */
+@import '../dropdown/dropdown.css';
+
 @layer cinder.components {
   .cinder-menu-bar {
     display: flex;

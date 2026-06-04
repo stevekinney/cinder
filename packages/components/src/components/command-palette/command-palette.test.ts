@@ -737,15 +737,23 @@ describe('CommandPalette — visual contract', () => {
   });
 
   test('listbox has correct padding and command items span full width', async () => {
-    const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
+    const paletteCss = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
+    // CommandItem rules were extracted to command-item/command-item.css so both
+    // CommandPalette and CommandMenu can import them without duplication.
+    const commandItemCss = await Bun.file(
+      new URL('../command-item/command-item.css', import.meta.url),
+    ).text();
 
-    expect(css).toMatch(
+    expect(paletteCss).toMatch(
       /\.cinder-command-palette__listbox\s*\{[\s\S]*?padding:\s*var\(--cinder-space-2\)\s*0;/,
     );
-    expect(css).toMatch(/\.cinder-command-item\s*\{[\s\S]*?margin:\s*0;/);
-    expect(css).toMatch(
+    // CommandItem rules now live in command-item.css (imported by command-palette.css).
+    expect(commandItemCss).toMatch(/\.cinder-command-item\s*\{[\s\S]*?margin:\s*0;/);
+    expect(commandItemCss).toMatch(
       /\.cinder-command-item\[data-cinder-active\]\s*\{[\s\S]*?background:\s*var\(--cinder-accent\);[\s\S]*?color:\s*var\(--cinder-accent-contrast\);/,
     );
+    // Confirm command-palette.css now @imports command-item.css (import chain).
+    expect(paletteCss).toMatch(/@import\s+['"]\.\.\/command-item\/command-item\.css['"]/);
   });
 });
 

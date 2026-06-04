@@ -785,6 +785,9 @@
       "node": "./dist/server/components/command-item/command-item.variables.js",
       "default": "./dist/components/command-item/command-item.variables.js"
     },
+    "./command-item/styles": {
+      "default": "./dist/components/command-item/command-item.css"
+    },
     "./command-menu": {
       "types": "./dist/components/command-menu/index.d.ts",
       "svelte": "./src/components/command-menu/index.ts",
