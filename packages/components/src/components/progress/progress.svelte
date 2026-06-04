@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { ProgressProps } from './progress.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
@@ -67,7 +67,7 @@
 
 {#if variant === 'ring'}
   <div
-    class={cn('cinder-progress', 'cinder-progress--ring', className)}
+    class={classNames('cinder-progress', 'cinder-progress--ring', className)}
     role="progressbar"
     aria-label={ariaLabel}
     aria-labelledby={ariaLabelledby}
@@ -100,7 +100,7 @@
   </div>
 {:else}
   <div
-    class={cn('cinder-progress', 'cinder-progress--bar', className)}
+    class={classNames('cinder-progress', 'cinder-progress--bar', className)}
     role="progressbar"
     aria-label={ariaLabel}
     aria-labelledby={ariaLabelledby}

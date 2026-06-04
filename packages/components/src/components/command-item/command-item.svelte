@@ -20,7 +20,7 @@
   import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import {
     getCommandListContext,
     hasCommandListContext,
@@ -101,7 +101,7 @@
   {@attach registerWithPalette}
   id={itemId ?? undefined}
   role="option"
-  class={cn('cinder-command-item', className)}
+  class={classNames('cinder-command-item', className)}
   aria-selected={isActive}
   aria-disabled={disabled || undefined}
   data-cinder-active={isActive ? '' : undefined}

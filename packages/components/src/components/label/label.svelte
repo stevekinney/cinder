@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { LabelProps } from './label.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     for: forId,
@@ -30,7 +30,7 @@
 
 <label
   for={forId}
-  class={cn('cinder-label', className)}
+  class={classNames('cinder-label', className)}
   data-disabled={disabled || undefined}
   {...rest}
 >

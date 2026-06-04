@@ -28,7 +28,7 @@
 
 <script lang="ts">
   import type { MessageProps } from './message.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     role,
@@ -43,7 +43,7 @@
   const visibleName = $derived(name ?? defaultNames[role]);
 </script>
 
-<article {...rest} data-cinder-role={role} class={cn('cinder-message', className)}>
+<article {...rest} data-cinder-role={role} class={classNames('cinder-message', className)}>
   <header class="cinder-message__header">
     <span class="cinder-message__name">{visibleName}</span>
     {#if datetime}

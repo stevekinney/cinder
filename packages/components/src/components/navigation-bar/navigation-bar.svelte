@@ -22,7 +22,7 @@
 
 <script lang="ts">
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   const regionId = $props.id();
 
@@ -127,7 +127,7 @@
 <nav
   {...rest}
   aria-label={navAriaLabel}
-  class={cn('cinder-navigation-bar', className)}
+  class={classNames('cinder-navigation-bar', className)}
   data-collapsible={menuToggle !== undefined ? 'true' : 'false'}
   onkeydown={handleKeyDown}
 >

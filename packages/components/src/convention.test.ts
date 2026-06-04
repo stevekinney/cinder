@@ -65,7 +65,7 @@ const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
 
 /**
  * Components that intentionally render no class-bearing root element and
- * therefore do not need `cn()` / `classNames()`. This is empty today: every
+ * therefore do not need `classNames()`. This is empty today: every
  * public component renders a class-bearing root.
  *
  * **When to add a component here:** the component's entire template is
@@ -329,16 +329,12 @@ describe('component conventions', () => {
         );
       }
 
-      // 5. Source contains cn( or classNames( for class merging.
+      // 5. Source contains classNames( for class merging.
       //    Pure pass-through components that render no class-bearing root
       //    element (see NO_CLASS_MERGING_ALLOW_LIST) are exempt — they have
       //    no element to merge classes onto.
-      if (
-        !NO_CLASS_MERGING_ALLOW_LIST.has(name) &&
-        !source.includes('cn(') &&
-        !source.includes('classNames(')
-      ) {
-        errors.push(`${file}: must use cn() or classNames() for class merging`);
+      if (!NO_CLASS_MERGING_ALLOW_LIST.has(name) && !source.includes('classNames(')) {
+        errors.push(`${file}: must use classNames() for class merging`);
       }
 
       // 6. No Snippet | undefined — optional snippets must use Snippet? syntax.

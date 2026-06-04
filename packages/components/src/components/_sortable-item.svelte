@@ -23,7 +23,7 @@
 
 <script lang="ts" generics="Item">
   import { getSortableContext } from '../utilities/sortable-controller.svelte.ts';
-  import { cn } from '../utilities/class-names.ts';
+  import { classNames } from '../utilities/class-names.ts';
 
   let {
     item: _item,
@@ -504,7 +504,7 @@
   data-preview-x={isDraggingWithPointer ? previewX : undefined}
   data-preview-y={isDraggingWithPointer ? previewY : undefined}
   aria-roledescription="sortable item"
-  class={cn(
+  class={classNames(
     'cinder-sortable-item',
     isLifted && isDraggingWithPointer && 'cinder-sortable-item--placeholder',
     isLifted && !isDraggingWithPointer && 'cinder-sortable-item--lifted',

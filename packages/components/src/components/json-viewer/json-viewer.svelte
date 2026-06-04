@@ -19,7 +19,7 @@
 <script lang="ts">
   import type { JsonViewerProps } from './json-viewer.types.ts';
   import JsonViewerNode from './_json-viewer-node.svelte';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     value,
@@ -50,7 +50,7 @@
   const tooLarge = $derived(serialized.ok && serialized.size > maxBytes);
 </script>
 
-<div class={cn('cinder-json-viewer', className)}>
+<div class={classNames('cinder-json-viewer', className)}>
   {#if unserializable}
     <div class="cinder-json-viewer__fallback" role="status">
       <p>

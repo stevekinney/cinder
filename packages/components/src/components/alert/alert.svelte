@@ -19,7 +19,7 @@
   import type { HTMLAttributes } from 'svelte/elements';
   import { tick } from 'svelte';
 
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import type { AlertProps } from './alert.types.ts';
 
   const FOCUSABLE_SELECTOR =
@@ -113,7 +113,7 @@
   <div
     bind:this={rootElement}
     {...restWithoutForbidden}
-    class={cn('cinder-alert', 'cinder-_status-surface', className)}
+    class={classNames('cinder-alert', 'cinder-_status-surface', className)}
     data-cinder-variant={variant}
     role="alert"
   >

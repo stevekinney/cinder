@@ -28,7 +28,7 @@
   import { setToastContext } from '../../_internal/toast-context.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import type {
     ToastItem,
@@ -637,7 +637,7 @@
 {#if hydrated}
   <div
     bind:this={regionElement}
-    class={cn('cinder-toast-region', className)}
+    class={classNames('cinder-toast-region', className)}
     role="presentation"
     data-cinder-position={position}
     onpointerenter={() => setRegionPointerInside(true)}

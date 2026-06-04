@@ -19,7 +19,7 @@
   import type { TabListProps } from './tab-list.types.ts';
 
   import { getTabsContext } from '../tabs/tabs-context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let { label, labelledBy, class: className, children }: TabListProps = $props();
 
@@ -28,7 +28,7 @@
 
 <div
   role="tablist"
-  class={cn('cinder-tab-list', className)}
+  class={classNames('cinder-tab-list', className)}
   data-cinder-orientation={tabs.orientation}
   aria-label={label}
   aria-labelledby={labelledBy}

@@ -26,7 +26,7 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { formatNumber } from '../../utilities/format-number.ts';
   import { parseLocaleNumber } from '../../utilities/parse-locale-number.ts';
 
@@ -506,7 +506,7 @@
   );
 </script>
 
-<div class={cn('cinder-input-field', className)}>
+<div class={classNames('cinder-input-field', className)}>
   {#if label}
     <label for={id} class="cinder-input-field__label" data-disabled={resolvedDisabled || undefined}>
       {label}

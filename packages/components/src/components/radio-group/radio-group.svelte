@@ -24,7 +24,7 @@
     describeId,
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     value = $bindable(''),
@@ -77,7 +77,7 @@
 -->
 <!-- svelte-ignore a11y_role_supports_aria_props_implicit -->
 <fieldset
-  class={cn('cinder-radio-group', className)}
+  class={classNames('cinder-radio-group', className)}
   aria-invalid={ariaInvalid(!!error)}
   aria-required={required || undefined}
   aria-describedby={describedBy}

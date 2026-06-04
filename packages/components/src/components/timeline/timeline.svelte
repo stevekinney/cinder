@@ -25,7 +25,7 @@
 </script>
 
 <script lang="ts">
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import TimelineItem from '../timeline-item/timeline-item.svelte';
   import { buildTimelineRenderPlan } from './timeline-groups.ts';
   import type { TimelineProps } from './timeline.types.ts';
@@ -65,7 +65,7 @@
 
 <ol
   {...rest}
-  class={cn('cinder-timeline', className)}
+  class={classNames('cinder-timeline', className)}
   data-cinder-orientation={orientation}
   aria-label={resolvedAriaLabel}
   aria-labelledby={ariaLabelledby}

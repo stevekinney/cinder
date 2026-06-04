@@ -22,7 +22,7 @@
   import Check from 'lucide-svelte/icons/check';
   import Copy from 'lucide-svelte/icons/copy';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
   let {
@@ -78,7 +78,7 @@
   data-cinder-copied={copied || undefined}
   aria-label={label ?? 'Copy to clipboard'}
   onclick={handleClick}
-  class={cn('cinder-copy-button', className)}
+  class={classNames('cinder-copy-button', className)}
 >
   <!-- Accessible name comes from `aria-label`. In iconOnly mode the icon is
        decorative (`aria-hidden`). Visible "Copied" text is presentational only;

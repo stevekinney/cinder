@@ -18,7 +18,7 @@
   import type { ColorSwatchPickerProps } from './color-swatch-picker.types.ts';
   import { tick, untrack } from 'svelte';
 
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { hasAlpha, pickContrastColor } from '../../utilities/color-luminance.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
@@ -151,7 +151,7 @@
   aria-label={label}
   aria-disabled={disabled ? 'true' : undefined}
   aria-orientation={layout === 'stack' ? 'vertical' : undefined}
-  class={cn('cinder-color-swatch-picker', className)}
+  class={classNames('cinder-color-swatch-picker', className)}
   data-cinder-size={size}
   data-cinder-shape={shape}
   data-cinder-layout={layout}

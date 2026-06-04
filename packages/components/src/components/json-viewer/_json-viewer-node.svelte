@@ -15,7 +15,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import Self from './_json-viewer-node.svelte';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let { value, keyName, depth, initialDepth, maxDepth }: JsonViewerNodeProps = $props();
 
@@ -56,7 +56,7 @@
 </script>
 
 {#if isObject && !tooDeep}
-  <span class={cn('cinder-json-viewer__node')}>
+  <span class={classNames('cinder-json-viewer__node')}>
     {#if keyName !== undefined}
       <span class="cinder-json-viewer__key">{keyName}:</span>
     {/if}

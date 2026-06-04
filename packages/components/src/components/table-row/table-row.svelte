@@ -23,7 +23,7 @@
     tryGetTableHeaderSelectionContext,
     tryGetTableSectionContext,
   } from '../table/table.context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
@@ -88,7 +88,7 @@
   }
 </script>
 
-<tr class={cn('cinder-table__row', className)}>
+<tr class={classNames('cinder-table__row', className)}>
   {#if shouldRenderHeaderSelectionCell && headerSelection}
     <th scope="col" class="cinder-table__header-cell cinder-table__header-cell--selection">
       <input

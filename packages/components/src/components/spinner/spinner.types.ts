@@ -7,7 +7,7 @@ export type SpinnerSize = 'sm' | 'md' | 'lg';
 // `{...rest}` spread sits before the explicit attrs), and Omit-ing them here makes
 // that protection part of the type: `<Spinner role="img" />` is a compile error.
 // `class` is omitted because the component re-declares it as an owned prop (merged
-// via `cn`), matching StatusDotProps / AlertProps.
+// via `classNames`), matching StatusDotProps / AlertProps.
 export type SpinnerProps = Omit<
   HTMLAttributes<HTMLSpanElement>,
   'role' | 'aria-label' | 'class'

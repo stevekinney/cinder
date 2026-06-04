@@ -16,11 +16,11 @@
 
 <script lang="ts">
   import type { TableCellProps } from './table-cell.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let { align = 'left', class: className, children, ...rest }: TableCellProps = $props();
 </script>
 
-<td {...rest} class={cn('cinder-table__cell', className)} data-cinder-align={align}>
+<td {...rest} class={classNames('cinder-table__cell', className)} data-cinder-align={align}>
   {@render children?.()}
 </td>

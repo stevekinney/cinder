@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { ImageProps } from './image.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let {
     src,
@@ -86,7 +86,7 @@
 </script>
 
 <div
-  class={cn('cinder-image', className)}
+  class={classNames('cinder-image', className)}
   data-cinder-loaded={loaded ? '' : undefined}
   data-cinder-errored={errored ? '' : undefined}
   data-cinder-fallback={showFallback ? '' : undefined}

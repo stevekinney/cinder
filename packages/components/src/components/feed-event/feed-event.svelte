@@ -17,7 +17,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import type { FeedEventProps } from './feed-event.types.ts';
 
   let {
@@ -32,7 +32,7 @@
   }: FeedEventProps = $props();
 </script>
 
-<li {...rest} class={cn('cinder-feed-event', className)} data-cinder-variant={variant}>
+<li {...rest} class={classNames('cinder-feed-event', className)} data-cinder-variant={variant}>
   <span class="cinder-feed-event-rail" aria-hidden="true">
     {#if variant === 'icon'}
       <span class="cinder-feed-event-icon">{@render (icon as Snippet)()}</span>

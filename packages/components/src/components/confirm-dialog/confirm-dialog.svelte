@@ -19,7 +19,7 @@
   import type { ConfirmDialogProps } from './confirm-dialog.types.ts';
   import Button from '../button/button.svelte';
   import Modal from '../modal/modal.svelte';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   const descriptionId = $props.id();
 
@@ -55,7 +55,7 @@
   bind:open
   {title}
   {triggerRef}
-  class={cn('cinder-confirm-dialog', className)}
+  class={classNames('cinder-confirm-dialog', className)}
   {...describedById ? { describedById } : {}}
   {...oncancel ? { ondismiss: oncancel } : {}}
 >

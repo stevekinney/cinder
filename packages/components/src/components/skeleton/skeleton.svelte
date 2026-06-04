@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { SkeletonProps } from './skeleton.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let { width, height, radius, class: className }: SkeletonProps = $props();
 
@@ -32,4 +32,4 @@
   );
 </script>
 
-<div class={cn('cinder-skeleton', className)} aria-hidden="true" {style}></div>
+<div class={classNames('cinder-skeleton', className)} aria-hidden="true" {style}></div>

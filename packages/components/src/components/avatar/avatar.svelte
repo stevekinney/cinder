@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { AvatarProps } from './avatar.types.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import VisuallyHidden from '../visually-hidden/visually-hidden.svelte';
 
   let {
@@ -46,7 +46,7 @@
 </script>
 
 <span
-  class={cn('cinder-avatar', className)}
+  class={classNames('cinder-avatar', className)}
   data-cinder-size={size}
   data-cinder-shape={shape}
   {...rest}

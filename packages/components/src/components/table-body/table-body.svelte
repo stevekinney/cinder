@@ -17,13 +17,13 @@
   import type { TableBodyProps } from './table-body.types.ts';
 
   import { setTableSectionContext } from '../table/table.context.ts';
-  import { cn } from '../../utilities/class-names.ts';
+  import { classNames } from '../../utilities/class-names.ts';
 
   let { class: className, children }: TableBodyProps = $props();
 
   setTableSectionContext('body');
 </script>
 
-<tbody class={cn('cinder-table__body', className)}>
+<tbody class={classNames('cinder-table__body', className)}>
   {@render children()}
 </tbody>
