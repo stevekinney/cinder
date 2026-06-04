@@ -1,3 +1,9 @@
+---
+name: tasks
+description: "Tasks CLI — inspect or update the local task graph for this project. Use when working with the `tasks` CLI, choosing new work, decomposing documents into tasks, or managing the local task database under tmp/tasks.db."
+allowed-tools: Read, Grep, Glob, Bash, Write, Edit
+---
+
 # Tasks CLI
 
 Use the `tasks` CLI when you need to inspect or update the local task graph for this project.
