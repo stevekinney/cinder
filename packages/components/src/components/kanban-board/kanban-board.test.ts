@@ -81,16 +81,30 @@ function installPointerGeometry(container: HTMLElement): void {
   const columns = Array.from(
     container.querySelectorAll<HTMLElement>('.cinder-kanban-board__column'),
   );
+  const columnsElement = container.querySelector<HTMLElement>('.cinder-kanban-board__columns');
+  if (columnsElement) columnsElement.getBoundingClientRect = () => makeRect(0, 0, 660, 400);
+
   columns.forEach((column, index) => {
     column.getBoundingClientRect = () => makeRect(index * 220, 0, 200, 400);
   });
 
+  const nextRowIndexByColumn = new Map<HTMLElement, number>();
   const cards = Array.from(container.querySelectorAll<HTMLElement>('[data-sortable-row]'));
-  cards.forEach((card, index) => {
+  cards.forEach((card) => {
     const column = card.closest('.cinder-kanban-board__column') as HTMLElement;
     const columnIndex = columns.indexOf(column);
-    const rowIndex = columnIndex === 0 ? index : 0;
+    const rowIndex = nextRowIndexByColumn.get(column) ?? 0;
+    nextRowIndexByColumn.set(column, rowIndex + 1);
     card.getBoundingClientRect = () => makeRect(columnIndex * 220, rowIndex * 56, 180, 48);
+  });
+
+  columns.forEach((column, columnIndex) => {
+    const rowCount = nextRowIndexByColumn.get(column) ?? 0;
+    const cardList = column.querySelector<HTMLElement>('.cinder-kanban-board__cards');
+    if (cardList) {
+      cardList.getBoundingClientRect = () =>
+        makeRect(columnIndex * 220, 0, 200, Math.max(48, rowCount * 56));
+    }
   });
 }
 
@@ -915,7 +929,7 @@ describe('KanbanBoard pointer drag preview', () => {
     expect(document.querySelectorAll('[data-cinder-drag-preview]').length).toBe(0);
   });
 
-  test('cross-column pointer drag creates a preview and a placeholder in the source column', async () => {
+  test('cross-column pointer drag reserves space in the target column', async () => {
     const { container } = renderBoard();
     installPointerGeometry(container);
     const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
@@ -943,8 +957,231 @@ describe('KanbanBoard pointer drag preview', () => {
     expect(preview).not.toBeNull();
     expect(document.body.contains(preview)).toBe(true);
 
+    const columns = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-kanban-board__column'),
+    );
+    const targetColumn = columns[1] as HTMLElement;
+    const placeholder = targetColumn.querySelector<HTMLElement>(
+      '.cinder-kanban-board__drop-placeholder',
+    );
+    const targetList = targetColumn.querySelector<HTMLElement>('.cinder-kanban-board__cards');
+
+    expect(container.querySelectorAll('.cinder-kanban-board__drop-placeholder').length).toBe(1);
+    expect(placeholder).not.toBeNull();
+    expect(placeholder?.hasAttribute('data-sortable-row')).toBe(false);
+    expect(
+      placeholder?.style.getPropertyValue('--cinder-kanban-board-drop-placeholder-block-size'),
+    ).toBe('48px');
+    expect(Array.from(targetList?.children ?? []).indexOf(placeholder as Element)).toBe(0);
+
     await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
     expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+    expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
+  });
+
+  test('cross-column pointer drag can reserve append space below existing target cards', async () => {
+    const { container, onchange } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 240,
+      clientY: 80,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+
+    const columns = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-kanban-board__column'),
+    );
+    const targetColumn = columns[1] as HTMLElement;
+    const placeholder = targetColumn.querySelector<HTMLElement>(
+      '.cinder-kanban-board__drop-placeholder',
+    );
+    const targetList = targetColumn.querySelector<HTMLElement>('.cinder-kanban-board__cards');
+
+    expect(placeholder).not.toBeNull();
+    expect(Array.from(targetList?.children ?? []).indexOf(placeholder as Element)).toBe(1);
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
+    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(nextColumns[1].cards.map(getCardKey)).toEqual(['c', 'a']);
+    expect(change).toMatchObject({ toColumnKey: 'doing', toIndex: 1 });
+  });
+
+  test('cross-column pointer drag ignores a horizontal lane below the target drop zone', async () => {
+    const { container, onchange } = renderBoard();
+    installPointerGeometry(container);
+    const columns = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-kanban-board__column'),
+    );
+    const targetColumn = columns[1] as HTMLElement;
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 240,
+      clientY: 220,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+
+    expect(targetColumn.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
+
+    await fireEvent.pointerUp(window, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+    expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
+    expect(handle.getAttribute('aria-pressed')).toBe('false');
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  test('cross-column pointer drag commits when pointerup lands outside the handle', async () => {
+    const { container, onchange } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 240,
+      clientY: 80,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+
+    expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).not.toBeNull();
+
+    await fireEvent.pointerUp(window, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+    expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
+    expect(handle.getAttribute('aria-pressed')).toBe('false');
+    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(nextColumns[1].cards.map(getCardKey)).toEqual(['c', 'a']);
+    expect(change).toMatchObject({ toColumnKey: 'doing', toIndex: 1 });
+  });
+
+  test('cross-column pointer drag commits the latest target when released before the move frame', async () => {
+    const { container, onchange } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 240,
+      clientY: 80,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await fireEvent.pointerUp(window, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
+    expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
+    expect(handle.getAttribute('aria-pressed')).toBe('false');
+    const [nextColumns, change] = onchange.mock.calls[0];
+    expect(nextColumns[1].cards.map(getCardKey)).toEqual(['c', 'a']);
+    expect(change).toMatchObject({ toColumnKey: 'doing', toIndex: 1 });
+  });
+
+  test('cross-column pointer drag reserves space in an empty target column', async () => {
+    const { container } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 460,
+      clientY: 4,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+
+    const columns = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-kanban-board__column'),
+    );
+    const targetColumn = columns[2] as HTMLElement;
+
+    expect(targetColumn.querySelector('.cinder-kanban-board__drop-placeholder')).not.toBeNull();
+    expect(targetColumn.querySelector('.cinder-kanban-board__empty')).toBeNull();
+
+    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('pointercancel clears cross-column target placeholder without committing', async () => {
+    const { container, onchange } = renderBoard();
+    installPointerGeometry(container);
+    const handle = container.querySelector('[aria-label="Move Alpha"]') as HTMLElement;
+    installPointerCapture(handle);
+
+    await fireEvent.pointerDown(handle, {
+      button: 0,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    await fireEvent.pointerMove(handle, {
+      clientX: 240,
+      clientY: 80,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+    await waitForAnimationFrame();
+
+    expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).not.toBeNull();
+
+    await fireEvent.pointerCancel(handle, { pointerId: 1, pointerType: 'mouse' });
+
+    expect(container.querySelector('.cinder-kanban-board__drop-placeholder')).toBeNull();
+    expect(onchange).not.toHaveBeenCalled();
   });
 
   // ---------------------------------------------------------------------------
@@ -957,12 +1194,9 @@ describe('KanbanBoard pointer drag preview', () => {
   // the dragged card was NOT excluded — skewing midpoint calculations. The fix
   // filters by data-key, which is present and stable in both drag states.
   //
-  // Note: happy-dom does not support ':scope >' in Element.querySelector, so
-  // locatePointerTarget's card-list lookup returns null in this environment and
-  // all pointer-drag cardIndex values always resolve to 0 (empty row set →
-  // insertionIndex 0). The full midpoint-computation path is correct in real
-  // browsers; the tests below verify the class-state invariant that the old
-  // filter would have broken.
+  // The tests below verify the class-state invariant that the old filter would
+  // have broken: data-key is the stable exclusion marker across pointer and
+  // keyboard drag states.
   // ---------------------------------------------------------------------------
 
   test('pointer drag: dragged row gets --placeholder (not --lifted) — old class filter would miss it', async () => {

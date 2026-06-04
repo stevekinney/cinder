@@ -86,6 +86,7 @@
   let pointerColumnIndex = $state<number | null>(null);
   let columnLiftedKey = $state<string | number | null>(null);
   let columnTargetIndex = $state<number | null>(null);
+  let crossColumnPlaceholderBlockSize = $state<string | null>(null);
   let lastInvalidKeyWarning = '';
 
   const keyValidation = $derived(validateKanbanBoardKeys(columns, getCardKey));
@@ -109,6 +110,25 @@
     );
   });
 
+  const crossColumnCardTarget = $derived.by((): CardMoveTarget | null => {
+    if (cardController.phase !== 'lifted' || cardController.liftedKey === null || !cardTarget) {
+      return null;
+    }
+    const located = findCard(columns, getCardKey, cardController.liftedKey);
+    const targetColumn = columns[cardTarget.columnIndex];
+    if (!located || !targetColumn || targetColumn.collapsed) return null;
+    if (located.columnIndex === cardTarget.columnIndex) return null;
+    return {
+      columnIndex: cardTarget.columnIndex,
+      cardIndex: Math.max(0, Math.min(cardTarget.cardIndex, targetColumn.cards.length)),
+    };
+  });
+  const crossColumnPlaceholderStyle = $derived(
+    crossColumnPlaceholderBlockSize
+      ? `--cinder-kanban-board-drop-placeholder-block-size: ${crossColumnPlaceholderBlockSize};`
+      : undefined,
+  );
+
   $effect(() => {
     if (!invalidKeys) {
       lastInvalidKeyWarning = '';
@@ -128,6 +148,18 @@
     if (!invalidKeys) return;
     if (cardController.phase === 'lifted') cancelCardLift();
     if (columnLiftedKey !== null) cancelColumnLift();
+  });
+
+  $effect(() => {
+    if (!columnsElement || !crossColumnCardTarget || cardController.liftedKey === null) {
+      crossColumnPlaceholderBlockSize = null;
+      return;
+    }
+
+    const liftedRow = getLiftedRowElement();
+    const liftedHeight = liftedRow?.getBoundingClientRect().height ?? 0;
+
+    crossColumnPlaceholderBlockSize = liftedHeight > 0 ? `${liftedHeight}px` : null;
   });
 
   $effect(() => {
@@ -186,27 +218,61 @@
     };
   }
 
+  function getColumnCardListElement(columnElement: HTMLElement): HTMLElement | null {
+    return (
+      Array.from(columnElement.children).find(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement && child.classList.contains('cinder-kanban-board__cards'),
+      ) ?? null
+    );
+  }
+
+  function sortableRowMatchesKey(row: HTMLElement, key: string | number): boolean {
+    return (
+      row.getAttribute('data-key') === String(key) &&
+      row.getAttribute('data-key-type') === typeof key
+    );
+  }
+
+  function getLiftedRowElement(): HTMLElement | null {
+    if (!columnsElement || cardController.liftedKey === null) return null;
+    return (
+      Array.from(columnsElement.querySelectorAll<HTMLElement>('[data-sortable-row]')).find((row) =>
+        sortableRowMatchesKey(row, cardController.liftedKey as string | number),
+      ) ?? null
+    );
+  }
+
+  function getLiftedRowBlockSize(): number {
+    return getLiftedRowElement()?.getBoundingClientRect().height ?? 0;
+  }
+
+  function getColumnDropZoneBottom(cardList: HTMLElement, liftedRowBlockSize: number): number {
+    return cardList.getBoundingClientRect().bottom + liftedRowBlockSize;
+  }
+
   function locatePointerTarget(pointerX: number, pointerY: number): CardMoveTarget | null {
     if (!columnsElement) return null;
+    const liftedRowBlockSize = getLiftedRowBlockSize();
     const columnElements = Array.from(columnsElement.children).filter(
       (element): element is HTMLElement =>
         element instanceof HTMLElement && element.classList.contains('cinder-kanban-board__column'),
     );
     const columnIndex = columnElements.findIndex((element) => {
       const rect = element.getBoundingClientRect();
+      const cardList = getColumnCardListElement(element);
+      if (!cardList) return false;
       return (
         pointerX >= rect.left &&
         pointerX <= rect.right &&
         pointerY >= rect.top &&
-        pointerY <= rect.bottom
+        pointerY <= getColumnDropZoneBottom(cardList, liftedRowBlockSize)
       );
     });
     if (columnIndex < 0 || columns[columnIndex]?.collapsed) return null;
     const columnElement = columnElements[columnIndex];
     if (!columnElement) return null;
-    const cardList = columnElement.querySelector<HTMLElement>(
-      ':scope > .cinder-kanban-board__cards',
-    );
+    const cardList = getColumnCardListElement(columnElement);
     // Exclude the dragged card by its stable data-key attribute so the filter
     // works regardless of whether the card is in the keyboard-drag state
     // (cinder-sortable-item--lifted) or the pointer-drag state
@@ -216,13 +282,34 @@
       (row): row is HTMLElement =>
         row instanceof HTMLElement &&
         row.hasAttribute('data-sortable-row') &&
-        row.getAttribute('data-key') !== String(draggedKey),
+        (draggedKey === null || !sortableRowMatchesKey(row, draggedKey)),
     );
     const insertionIndex = rows.filter((row) => {
       const rect = row.getBoundingClientRect();
       return rect.top + rect.height / 2 < pointerY;
     }).length;
     return { columnIndex, cardIndex: insertionIndex };
+  }
+
+  function hasCrossColumnPlaceholder(columnIndex: number): boolean {
+    return crossColumnCardTarget?.columnIndex === columnIndex;
+  }
+
+  function shouldRenderCrossColumnPlaceholder(columnIndex: number, cardIndex: number): boolean {
+    return (
+      crossColumnCardTarget?.columnIndex === columnIndex &&
+      crossColumnCardTarget.cardIndex === cardIndex
+    );
+  }
+
+  function shouldRenderCrossColumnAppendPlaceholder(
+    column: KanbanBoardColumn<Card>,
+    columnIndex: number,
+  ): boolean {
+    return (
+      crossColumnCardTarget?.columnIndex === columnIndex &&
+      crossColumnCardTarget.cardIndex >= column.cards.length
+    );
   }
 
   function getDestinationTotal(target: CardMoveTarget, itemKey: string | number | null): number {
@@ -526,6 +613,14 @@
             aria-label={`${column.title} cards`}
           >
             {#each column.cards as currentCard, cardIndex (invalidKeys ? `${getCardKey(currentCard)}-${cardIndex}` : getCardKey(currentCard))}
+              {#if shouldRenderCrossColumnPlaceholder(columnIndex, cardIndex)}
+                <li
+                  class="cinder-kanban-board__card cinder-kanban-board__drop-placeholder cinder-sortable-item--placeholder"
+                  role="presentation"
+                  aria-hidden="true"
+                  style={crossColumnPlaceholderStyle}
+                ></li>
+              {/if}
               {@const cardKey = getCardKey(currentCard)}
               {@const original = cardLocations.get(cardKey) ?? null}
               {@const itemLabel = getCardLabel(
@@ -560,7 +655,15 @@
                 {/snippet}
               </SortableItem>
             {/each}
-            {#if column.cards.length === 0}
+            {#if shouldRenderCrossColumnAppendPlaceholder(column, columnIndex)}
+              <li
+                class="cinder-kanban-board__card cinder-kanban-board__drop-placeholder cinder-sortable-item--placeholder"
+                role="presentation"
+                aria-hidden="true"
+                style={crossColumnPlaceholderStyle}
+              ></li>
+            {/if}
+            {#if column.cards.length === 0 && !hasCrossColumnPlaceholder(columnIndex)}
               <li class="cinder-kanban-board__empty">
                 {#if emptyColumn}
                   {@render emptyColumn(column)}

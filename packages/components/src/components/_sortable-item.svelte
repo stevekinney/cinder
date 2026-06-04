@@ -56,6 +56,7 @@
   let latestPointerY = 0;
   let latestPointerX = 0;
   let listEl: HTMLElement | null = null;
+  let windowPointerListenersActive = false;
 
   // Reactive state for the pointer-drag preview portal.
   // previewX / previewY drive data-preview-x / data-preview-y on the row element
@@ -135,6 +136,7 @@
     // is entirely inert. The clone is aria-hidden / inert at the portal level.
     clone.removeAttribute('data-sortable-row');
     clone.removeAttribute('data-key');
+    clone.removeAttribute('data-key-type');
     clone.removeAttribute('data-row-id');
     // Strip all id attributes from the clone and its descendants to prevent
     // duplicate id values in the document, which would break getElementById,
@@ -198,10 +200,33 @@
     isDraggingWithPointer = false;
   }
 
+  function addWindowPointerListeners(): void {
+    if (windowPointerListenersActive || typeof window === 'undefined') return;
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    window.addEventListener('pointercancel', handleWindowPointerCancel);
+    windowPointerListenersActive = true;
+  }
+
+  function removeWindowPointerListeners(): void {
+    if (!windowPointerListenersActive || typeof window === 'undefined') return;
+    window.removeEventListener('pointerup', handleWindowPointerUp);
+    window.removeEventListener('pointercancel', handleWindowPointerCancel);
+    windowPointerListenersActive = false;
+  }
+
   function endPointerSession(reason: 'drop' | 'cancel'): void {
-    if (moveRafHandle !== null) {
-      cancelAnimationFrame(moveRafHandle);
-      moveRafHandle = null;
+    if (reason === 'drop') {
+      if (moveRafHandle !== null) {
+        cancelAnimationFrame(moveRafHandle);
+        moveRafHandle = null;
+      }
+      recomputeTarget();
+      updatePreviewPosition(latestPointerX, latestPointerY);
+    } else {
+      if (moveRafHandle !== null) {
+        cancelAnimationFrame(moveRafHandle);
+        moveRafHandle = null;
+      }
     }
     if (scrollRafHandle !== null) {
       cancelAnimationFrame(scrollRafHandle);
@@ -217,6 +242,7 @@
     }
 
     destroyPreviewPortal();
+    removeWindowPointerListeners();
 
     pointerActive = false;
     pointerId = null;
@@ -323,6 +349,7 @@
     // when we clone it, then position relative to the pointer.
     createPreviewPortal(event.clientX, event.clientY);
     updatePreviewPosition(event.clientX, event.clientY);
+    addWindowPointerListeners();
     scheduleAutoScroll();
   }
 
@@ -353,6 +380,16 @@
 
   function handlePointerCancel(_event: PointerEvent): void {
     if (!pointerActive) return;
+    endPointerSession('cancel');
+  }
+
+  function handleWindowPointerUp(event: PointerEvent): void {
+    if (!pointerActive || (pointerId !== null && event.pointerId !== pointerId)) return;
+    endPointerSession('drop');
+  }
+
+  function handleWindowPointerCancel(event: PointerEvent): void {
+    if (!pointerActive || (pointerId !== null && event.pointerId !== pointerId)) return;
     endPointerSession('cancel');
   }
 
@@ -457,6 +494,7 @@
       } catch {}
     }
     destroyPreviewPortal();
+    removeWindowPointerListeners();
     pointerActive = false;
     pointerId = null;
     listEl = null;
@@ -488,6 +526,7 @@
           }
         }
         destroyPreviewPortal();
+        removeWindowPointerListeners();
         pointerActive = false;
         pointerId = null;
         listEl = null;
@@ -500,6 +539,7 @@
   bind:this={rowEl}
   data-sortable-row
   data-key={itemKey}
+  data-key-type={typeof itemKey}
   data-row-id={rowId}
   data-preview-x={isDraggingWithPointer ? previewX : undefined}
   data-preview-y={isDraggingWithPointer ? previewY : undefined}
