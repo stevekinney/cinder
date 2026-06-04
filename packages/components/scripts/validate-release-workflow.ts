@@ -55,8 +55,22 @@ const workflowContent = (() => {
 
 const lines = workflowContent.split('\n');
 
+/**
+ * Whether a YAML line is a comment. We treat any line whose first non-whitespace
+ * character is `#` as a comment so that documentation (e.g. the explanatory note
+ * about setup-node's _authToken, or a `# id-token: write` example) can never
+ * satisfy OR defeat a guard. This intentionally does not handle inline trailing
+ * `#` comments after real YAML — none of the patterns we scan for legitimately
+ * appear mid-line after a value, and a real `id-token: write` or `- name:` is
+ * never written as a trailing comment.
+ */
+function isComment(line: string): boolean {
+  return line.trimStart().startsWith('#');
+}
+
 // ── Guard 1: id-token: write must be present ────────────────────────────────
-const hasIdTokenWrite = lines.some((line) => /id-token\s*:\s*write/.test(line));
+// Skip comments: a commented-out `# id-token: write` must NOT satisfy the check.
+const hasIdTokenWrite = lines.some((line) => !isComment(line) && /id-token\s*:\s*write/.test(line));
 if (!hasIdTokenWrite) {
   fail(
     'release.yaml is missing `id-token: write`. The primary publish path requires this ' +
@@ -73,8 +87,13 @@ pass('id-token: write is present');
 // upward to the `- name:` that opens this step and downward to the next `- name:`
 // or end of file. Within that range, assert no env key matches the token names.
 
-const publishRunPattern = /bun run --filter=cinder publish:release/;
-const publishRunLineIndex = lines.findIndex((line) => publishRunPattern.test(line));
+// Match the publish step's actual `run:` command, not a comment that mentions it.
+// `^\s*run:` anchors to a real YAML key so a `# ... bun run ... publish:release`
+// note can't be mistaken for the step.
+const publishRunPattern = /^\s*run\s*:.*bun run --filter=cinder publish:release/;
+const publishRunLineIndex = lines.findIndex(
+  (line) => !isComment(line) && publishRunPattern.test(line),
+);
 
 if (publishRunLineIndex === -1) {
   fail(
@@ -83,10 +102,10 @@ if (publishRunLineIndex === -1) {
   );
 }
 
-// Walk backward to find the `- name:` opening of this step.
+// Walk backward to find the `- name:` opening of this step (skipping comments).
 let stepStartIndex = publishRunLineIndex;
 for (let index = publishRunLineIndex - 1; index >= 0; index--) {
-  if (/^\s+-\s+name\s*:/.test(lines[index]!)) {
+  if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
     stepStartIndex = index;
     break;
   }
@@ -95,7 +114,7 @@ for (let index = publishRunLineIndex - 1; index >= 0; index--) {
 // Walk forward to find the next `- name:` opening (start of the next step) or EOF.
 let stepEndIndex = lines.length;
 for (let index = publishRunLineIndex + 1; index < lines.length; index++) {
-  if (/^\s+-\s+name\s*:/.test(lines[index]!)) {
+  if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
     stepEndIndex = index;
     break;
   }
@@ -110,7 +129,7 @@ const forbiddenPatterns: Array<{ pattern: RegExp; label: string }> = [
 ];
 
 for (const { pattern, label } of forbiddenPatterns) {
-  const offendingLine = publishStepLines.find((line) => pattern.test(line));
+  const offendingLine = publishStepLines.find((line) => !isComment(line) && pattern.test(line));
   if (offendingLine !== undefined) {
     fail(
       `release.yaml's primary publish step contains ${label}:\n` +
@@ -135,11 +154,7 @@ pass('No NODE_AUTH_TOKEN or NPM_TOKEN in the primary publish step');
 // comment lines (e.g. the explanatory note about setup-node's _authToken) but
 // reject any real `KEY:` assignment.
 for (const { pattern, label } of forbiddenPatterns) {
-  const offendingLine = lines.find((line) => {
-    const trimmed = line.trimStart();
-    if (trimmed.startsWith('#')) return false; // comments are documentation, not config
-    return pattern.test(line);
-  });
+  const offendingLine = lines.find((line) => !isComment(line) && pattern.test(line));
   if (offendingLine !== undefined) {
     fail(
       `release.yaml references ${label} outside a comment:\n` +
