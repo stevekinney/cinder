@@ -27,13 +27,13 @@ Non-blocking floating panel anchored to a trigger element for contextual content
 
 Use Popover for rich, interactive contextual content anchored to a trigger — help panels, color pickers, settings cards, and similar surfaces that do not need to interrupt the user.
 
-| Situation                                            | Reach for                                                             |
-| ---------------------------------------------------- | --------------------------------------------------------------------- |
-| Short descriptive hint shown on hover or focus       | `Tooltip`                                                             |
-| A list of navigable actions triggered from a button  | `Dropdown` (sets `role="menu"`, manages arrow-key navigation)         |
-| A list of selectable options (combo-box, tag picker) | `SelectionPopover` (adds checkbox/radio semantics and `listbox` role) |
-| Rich content, settings, or any non-menu panel        | **Popover**                                                           |
-| Focused task that should block the rest of the page  | `Modal`, `Drawer`, or `Sheet`                                         |
+| Situation                                           | Reach for                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| Short descriptive hint shown on hover or focus      | `Tooltip`                                                          |
+| A list of navigable actions triggered from a button | `Dropdown` (sets `role="menu"`, manages arrow-key navigation)      |
+| A combo-box, tag picker, or filterable option list  | `Combobox` (manages `listbox` role, keyboard selection, filtering) |
+| Rich content, settings, or any non-menu panel       | **Popover**                                                        |
+| Focused task that should block the rest of the page | `Modal`, `Drawer`, or `Sheet`                                      |
 
 ### `focusManagement` — `"panel"` vs `"preserve"`
 
