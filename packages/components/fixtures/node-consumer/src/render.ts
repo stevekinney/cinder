@@ -25,7 +25,7 @@ import {
   Toggle,
   Tooltip,
   useHistory,
-} from 'cinder';
+} from '@lostgradient/cinder';
 
 // Minimal no-op snippet for components that require children.
 // In SSR the compiled output calls snippets as functions — an empty function works.
@@ -96,24 +96,24 @@ if (typeof useHistory !== 'function') {
 
 process.stdout.write('<!-- useHistory imported OK -->\n');
 
-// PR 1: smoke-test the upstream re-export sub-paths. Each `cinder/<pkg>/...`
+// PR 1: smoke-test the upstream re-export sub-paths. Each `@lostgradient/cinder/<pkg>/...`
 // import must resolve in the published tarball and expose at least one
 // recognizable named export. We only assert that a representative function
 // or non-undefined value comes back — full behavior is covered by the
 // upstream packages' own test suites. Imports are restricted to SSR-safe
 // modules so this fixture stays runnable under Node 22 without a DOM.
-import { computeLineDiff as computeLineDiffViaDiff } from 'cinder/diff/line-diff';
-import { computeLineDiff } from 'cinder/markdown/diff/line-diff';
-import { renderMarkdown } from 'cinder/markdown/rendering';
-import { isSafeUrl } from 'cinder/markdown/utilities/safe-url';
-import { sortKeys } from 'cinder/markdown/utilities/sort-keys';
+import { computeLineDiff as computeLineDiffViaDiff } from '@lostgradient/cinder/diff/line-diff';
+import { computeLineDiff } from '@lostgradient/cinder/markdown/diff/line-diff';
+import { renderMarkdown } from '@lostgradient/cinder/markdown/rendering';
+import { isSafeUrl } from '@lostgradient/cinder/markdown/utilities/safe-url';
+import { sortKeys } from '@lostgradient/cinder/markdown/utilities/sort-keys';
 
 const upstreamProbes: Array<{ name: string; value: unknown }> = [
-  { name: 'cinder/markdown/diff/line-diff#computeLineDiff', value: computeLineDiff },
-  { name: 'cinder/markdown/rendering#renderMarkdown', value: renderMarkdown },
-  { name: 'cinder/markdown/utilities/safe-url#isSafeUrl', value: isSafeUrl },
-  { name: 'cinder/markdown/utilities/sort-keys#sortKeys', value: sortKeys },
-  { name: 'cinder/diff/line-diff#computeLineDiff', value: computeLineDiffViaDiff },
+  { name: '@lostgradient/cinder/markdown/diff/line-diff#computeLineDiff', value: computeLineDiff },
+  { name: '@lostgradient/cinder/markdown/rendering#renderMarkdown', value: renderMarkdown },
+  { name: '@lostgradient/cinder/markdown/utilities/safe-url#isSafeUrl', value: isSafeUrl },
+  { name: '@lostgradient/cinder/markdown/utilities/sort-keys#sortKeys', value: sortKeys },
+  { name: '@lostgradient/cinder/diff/line-diff#computeLineDiff', value: computeLineDiffViaDiff },
 ];
 for (const { name, value } of upstreamProbes) {
   if (typeof value !== 'function') {

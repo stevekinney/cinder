@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { GridList } from 'cinder/grid-list';
+  import { GridList } from '@lostgradient/cinder/grid-list';
 
   const projects = [
     { name: 'Phoenix', summary: 'Reactive runtime experiments.' },

@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import Autocomplete from 'cinder/autocomplete';
+  import Autocomplete from '@lostgradient/cinder/autocomplete';
 
   const fruits = [
     { value: 'apple', label: 'Apple', description: 'Classic pie filling' },

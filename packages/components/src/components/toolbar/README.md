@@ -6,8 +6,8 @@ A named grouping of related controls that implements the WAI-ARIA toolbar patter
 
 ```svelte
 <script lang="ts">
-  import Toolbar from 'cinder/toolbar';
-  import { Button } from 'cinder/button';
+  import Toolbar from '@lostgradient/cinder/toolbar';
+  import { Button } from '@lostgradient/cinder/button';
 </script>
 
 <Toolbar aria-label="Document actions">

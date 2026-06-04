@@ -31,8 +31,10 @@ const generatedExamplesDirectory = join(here, 'src', 'generated', 'examples');
 const routePageFile = join(here, 'src', 'routes', '+page.svelte');
 const manifestFile = join(here, 'src', 'generated', 'expected-example-ids.json');
 
-const manifest = require('cinder/manifest');
-const componentsWithExamples = manifest.components.filter((component) => component.artifacts.examples);
+const manifest = require('@lostgradient/cinder/manifest');
+const componentsWithExamples = manifest.components.filter(
+  (component) => component.artifacts.examples,
+);
 if (componentsWithExamples.length === 0) {
   process.stderr.write('generate-examples: manifest has no components with examples\n');
   process.exit(1);
@@ -123,8 +125,7 @@ for (const component of componentsWithExamples) {
     imports.push(`  import ${identifier} from '../generated/examples/${fileName}';`);
     // The marker uses the UNSANITIZED composite id. Render the example inside it.
     renders.push(
-      `  <div data-example-id=${JSON.stringify(compositeId)}>` +
-        `<${identifier} /></div>`,
+      `  <div data-example-id=${JSON.stringify(compositeId)}>` + `<${identifier} /></div>`,
     );
   }
 }

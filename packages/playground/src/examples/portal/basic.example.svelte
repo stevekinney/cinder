@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Button, Portal } from 'cinder';
+  import { Button, Portal } from '@lostgradient/cinder';
 
   let open = $state(false);
 </script>

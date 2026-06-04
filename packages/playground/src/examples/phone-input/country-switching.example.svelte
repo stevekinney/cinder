@@ -6,7 +6,7 @@
 </script>
 
 <script lang="ts">
-  import { PhoneInput, type PhoneInputCountryCode } from 'cinder/phone-input';
+  import { PhoneInput, type PhoneInputCountryCode } from '@lostgradient/cinder/phone-input';
 
   const countries: readonly PhoneInputCountryCode[] = ['US', 'CA', 'GB', 'DE', 'FR'];
   let phone = $state('');

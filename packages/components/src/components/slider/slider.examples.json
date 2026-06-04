@@ -1,43 +1,43 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "slider",
-  "import": "cinder/slider",
+  "import": "@lostgradient/cinder/slider",
   "examples": [
     {
       "id": "basic",
       "title": "Single-value slider",
       "description": "A simple slider for one numeric value. Keyboard, mouse, and touch all work.",
-      "code": "<script lang=\"ts\">\n  import { Slider } from 'cinder/slider';\n  let value = $state(40);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <Slider\n    label=\"Volume\"\n    {value}\n    onchange={(next) => {\n      value = next;\n    }}\n  />\n  <p>Value: {value}</p>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Slider } from '@lostgradient/cinder/slider';\n  let value = $state(40);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <Slider\n    label=\"Volume\"\n    {value}\n    onchange={(next) => {\n      value = next;\n    }}\n  />\n  <p>Value: {value}</p>\n</div>\n"
     },
     {
       "id": "disabled",
       "title": "Disabled slider",
       "description": "A disabled slider does not respond to keyboard or pointer input and is excluded from tab order.",
-      "code": "<script lang=\"ts\">\n  import { Slider } from 'cinder/slider';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <Slider label=\"Volume\" defaultValue={40} disabled />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Slider } from '@lostgradient/cinder/slider';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <Slider label=\"Volume\" defaultValue={40} disabled />\n</div>\n"
     },
     {
       "id": "inside-form-field",
       "title": "Slider inside FormField",
       "description": "Compose `Slider` with `FormField` for label, helper text, and error wiring.",
-      "code": "<script lang=\"ts\">\n  import { FormField } from 'cinder/form-field';\n  import { Slider } from 'cinder/slider';\n  let value = $state(50);\n</script>\n\n<form style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <FormField id=\"quality\" label=\"Quality\" description=\"Higher values produce larger files.\">\n    <Slider\n      label=\"Quality\"\n      {value}\n      min={0}\n      max={100}\n      step={10}\n      name=\"quality\"\n      onchange={(next) => {\n        value = next;\n      }}\n    />\n  </FormField>\n</form>\n"
+      "code": "<script lang=\"ts\">\n  import { FormField } from '@lostgradient/cinder/form-field';\n  import { Slider } from '@lostgradient/cinder/slider';\n  let value = $state(50);\n</script>\n\n<form style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <FormField id=\"quality\" label=\"Quality\" description=\"Higher values produce larger files.\">\n    <Slider\n      label=\"Quality\"\n      {value}\n      min={0}\n      max={100}\n      step={10}\n      name=\"quality\"\n      onchange={(next) => {\n        value = next;\n      }}\n    />\n  </FormField>\n</form>\n"
     },
     {
       "id": "range",
       "title": "Range slider",
       "description": "Two thumbs constrained so the low value never exceeds the high value.",
-      "code": "<script lang=\"ts\">\n  import { Slider } from 'cinder/slider';\n  let value = $state<[number, number]>([20, 80]);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <Slider\n    label=\"Price\"\n    mode=\"range\"\n    {value}\n    onchange={(next) => {\n      value = next;\n    }}\n  />\n  <p>Range: {value[0]} – {value[1]}</p>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Slider } from '@lostgradient/cinder/slider';\n  let value = $state<[number, number]>([20, 80]);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <Slider\n    label=\"Price\"\n    mode=\"range\"\n    {value}\n    onchange={(next) => {\n      value = next;\n    }}\n  />\n  <p>Range: {value[0]} – {value[1]}</p>\n</div>\n"
     },
     {
       "id": "with-ticks",
       "title": "Slider with tick marks",
       "description": "Discrete tick marks. When `ticks` is an array, arrow keys step between adjacent ticks.",
-      "code": "<script lang=\"ts\">\n  import { Slider } from 'cinder/slider';\n  let value = $state(50);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <Slider\n    label=\"Density\"\n    {value}\n    ticks={[0, 25, 50, 75, 100]}\n    onchange={(next) => {\n      value = next;\n    }}\n  />\n  <p>Value: {value}</p>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Slider } from '@lostgradient/cinder/slider';\n  let value = $state(50);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;\">\n  <Slider\n    label=\"Density\"\n    {value}\n    ticks={[0, 25, 50, 75, 100]}\n    onchange={(next) => {\n      value = next;\n    }}\n  />\n  <p>Value: {value}</p>\n</div>\n"
     },
     {
       "id": "with-value-text",
       "title": "Slider with formatted value text",
       "description": "Use `valueText` to format the value for screen readers — percentages, currency, dates.",
-      "code": "<script lang=\"ts\">\n  import { Slider } from 'cinder/slider';\n  let percent = $state(60);\n  let price = $state(250);\n\n  const usd = new Intl.NumberFormat('en-US', {\n    style: 'currency',\n    currency: 'USD',\n    maximumFractionDigits: 0,\n  });\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1.5rem; max-width: 24rem;\">\n  <div>\n    <Slider\n      label=\"Opacity\"\n      value={percent}\n      valueText={(value) => `${value} percent`}\n      onchange={(next) => {\n        percent = next;\n      }}\n    />\n    <p>Opacity: {percent}%</p>\n  </div>\n\n  <div>\n    <Slider\n      label=\"Budget\"\n      value={price}\n      min={0}\n      max={1000}\n      step={25}\n      valueText={(value) => usd.format(value)}\n      onchange={(next) => {\n        price = next;\n      }}\n    />\n    <p>Budget: {usd.format(price)}</p>\n  </div>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Slider } from '@lostgradient/cinder/slider';\n  let percent = $state(60);\n  let price = $state(250);\n\n  const usd = new Intl.NumberFormat('en-US', {\n    style: 'currency',\n    currency: 'USD',\n    maximumFractionDigits: 0,\n  });\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1.5rem; max-width: 24rem;\">\n  <div>\n    <Slider\n      label=\"Opacity\"\n      value={percent}\n      valueText={(value) => `${value} percent`}\n      onchange={(next) => {\n        percent = next;\n      }}\n    />\n    <p>Opacity: {percent}%</p>\n  </div>\n\n  <div>\n    <Slider\n      label=\"Budget\"\n      value={price}\n      min={0}\n      max={1000}\n      step={25}\n      valueText={(value) => usd.format(value)}\n      onchange={(next) => {\n        price = next;\n      }}\n    />\n    <p>Budget: {usd.format(price)}</p>\n  </div>\n</div>\n"
     }
   ]
 }

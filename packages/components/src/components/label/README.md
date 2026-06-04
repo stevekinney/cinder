@@ -6,7 +6,7 @@ Accessible form label that associates descriptive text with its input element.
 
 ```svelte
 <script lang="ts">
-  import Label from 'cinder/label';
+  import Label from '@lostgradient/cinder/label';
 </script>
 
 <Label />

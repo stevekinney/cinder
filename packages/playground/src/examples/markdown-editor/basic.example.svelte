@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { MarkdownEditor } from 'cinder/markdown-editor';
+  import { MarkdownEditor } from '@lostgradient/cinder/markdown-editor';
   let value = $state(`# Release notes
 
 This editor supports **rich markdown editing**, toolbar actions, and a source mode.

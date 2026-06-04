@@ -85,7 +85,7 @@ When active, default `TreeItem` rows render a native checkbox indicator. That in
 
 `selectionBehavior="independent"` keeps the existing flat toggle behavior: activating a branch toggles only that branch id. `selectionBehavior="cascade"` toggles the branch's selectable scope. By default, that scope is the registered descendant ids plus the current item id. Collapsed and async children are not registered while unmounted, so consumers that need full data-model cascade behavior should pass `selectionScopeIds` on the branch. Disabled registered ids are filtered out of cascade and select-all updates.
 
-`Tree.SelectAll` provides explicit select-all and select-none actions for a tree level. It is rendered through `Tree`'s `selectionControls` snippet so the buttons sit outside the `role="tree"` element. `parentId={null}` targets root-level items; a string `parentId` targets direct registered children of that item. `includeDescendants` expands the target set through each child's selectable scope. Import it from `cinder/tree` via the namespace (`<Tree.SelectAll>`) — there is no standalone `cinder/tree-select-all` subpath.
+`Tree.SelectAll` provides explicit select-all and select-none actions for a tree level. It is rendered through `Tree`'s `selectionControls` snippet so the buttons sit outside the `role="tree"` element. `parentId={null}` targets root-level items; a string `parentId` targets direct registered children of that item. `includeDescendants` expands the target set through each child's selectable scope. Import it from `@lostgradient/cinder/tree` via the namespace (`<Tree.SelectAll>`) — there is no standalone `@lostgradient/cinder/tree-select-all` subpath.
 
 ## Async Loading
 

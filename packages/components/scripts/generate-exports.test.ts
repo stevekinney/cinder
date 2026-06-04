@@ -90,7 +90,7 @@ describe('computeExports', () => {
 
   // Task 4176c51c: schema/variables are runtime entry points. The build compiles
   // each `<name>.schema.ts` / `<name>.variables.ts` to its own JS, so a plain
-  // Node/Vite consumer resolving `cinder/<name>/schema` under the `default`
+  // Node/Vite consumer resolving `@lostgradient/cinder/<name>/schema` under the `default`
   // condition gets a real module — no ERR_PACKAGE_PATH_NOT_EXPORTED. This test
   // pins the `default` (and `node`) condition at the generator so a regression
   // that drops the runtime condition is caught before it ships. The

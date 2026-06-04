@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { ColorField } from 'cinder/color-field';
+  import { ColorField } from '@lostgradient/cinder/color-field';
 
   let committed = $state('');
 </script>

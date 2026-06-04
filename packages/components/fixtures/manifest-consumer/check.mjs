@@ -1,5 +1,5 @@
 /**
- * manifest-consumer — contract-driven validation of the published `cinder`
+ * manifest-consumer — contract-driven validation of the published `@lostgradient/cinder`
  * package against its own machine-readable manifest, run under real Node from
  * the PACKED tarball (never the workspace source tree).
  *
@@ -9,7 +9,7 @@
  * on a specific minor-version's attribute syntax.
  *
  * What this proves:
- *   1. `cinder/manifest` resolves and its target exists + is non-empty in the
+ *   1. `@lostgradient/cinder/manifest` resolves and its target exists + is non-empty in the
  *      tarball.
  *   2. Every manifest entry's `import` and runtime artifact subpaths
  *      (`examples`, `constraints`) resolve via BOTH ESM `import.meta.resolve`
@@ -22,13 +22,13 @@
  *      files. We assert their declaration (`types`) target exists in the tarball
  *      AND that Node default runtime resolution of them succeeds via BOTH the
  *      ESM and CJS resolvers — a plain Node/Vite consumer can therefore import
- *      `cinder/<name>/schema` for its default-exported JSON Schema value.
+ *      `@lostgradient/cinder/<name>/schema` for its default-exported JSON Schema value.
  *   4. Two-way export <-> manifest consistency: every runtime artifact the
  *      manifest advertises has a matching package export, and every per-component
  *      export the package ships is accounted for by the manifest (or the
  *      documented non-manifest allowlist).
  *   5. Style policy is all-or-nothing: either no per-component styles subpath
- *      export exists (validate only root `cinder/styles`), or every component
+ *      export exists (validate only root `@lostgradient/cinder/styles`), or every component
  *      that ships CSS has one.
  */
 
@@ -40,8 +40,8 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
-/** Absolute path to the installed `cinder` package root inside this fixture. */
-const cinderPackageRoot = dirname(require.resolve('cinder/package.json'));
+/** Absolute path to the installed `@lostgradient/cinder` package root inside this fixture. */
+const cinderPackageRoot = dirname(require.resolve('@lostgradient/cinder/package.json'));
 
 /** Resolve a package-relative export target (e.g. `./dist/...`) to an absolute path. */
 function packageRelativeToAbsolute(target) {
@@ -99,14 +99,14 @@ function assertRuntimeResolvable(specifier) {
 // 0. The manifest itself must resolve and be usable.
 // ---------------------------------------------------------------------------
 
-assertRuntimeResolvable('cinder/manifest');
+assertRuntimeResolvable('@lostgradient/cinder/manifest');
 
 // Load the manifest via CJS JSON resolution (no import attributes — see header).
 let manifest;
 try {
-  manifest = require('cinder/manifest');
+  manifest = require('@lostgradient/cinder/manifest');
 } catch (error) {
-  record(`cinder/manifest: failed to load — ${error.code ?? error.message}`);
+  record(`@lostgradient/cinder/manifest: failed to load — ${error.code ?? error.message}`);
 }
 
 if (manifest === undefined) {
@@ -123,13 +123,13 @@ assert.ok(manifest.components.length > 0, 'manifest.components must be non-empty
 // 1. Read the published package.json exports — the OTHER side of the contract.
 // ---------------------------------------------------------------------------
 
-const packageJson = require('cinder/package.json');
+const packageJson = require('@lostgradient/cinder/package.json');
 const exportsMap = packageJson.exports ?? {};
 const exportKeys = new Set(Object.keys(exportsMap));
 
 // ---------------------------------------------------------------------------
 // 2. Per-component contract. Treat manifest `import` + `artifacts.*` as THE
-//    contract — resolve those exact specifiers, do not recompute `cinder/${id}`.
+//    contract — resolve those exact specifiers, do not recompute `@lostgradient/cinder/${id}`.
 // ---------------------------------------------------------------------------
 
 // The expected export set we will build up from the manifest, to compare
@@ -158,10 +158,10 @@ const allowedNonComponentExportKeys = new Set([
   './diff',
 ]);
 
-/** Convert a `cinder/...` or `cinder` specifier to its `./...` export key. */
+/** Convert a `@lostgradient/cinder/...` or `@lostgradient/cinder` specifier to its `./...` export key. */
 function specifierToExportKey(specifier) {
-  if (specifier === 'cinder') return '.';
-  return './' + specifier.replace(/^cinder\//, '');
+  if (specifier === '@lostgradient/cinder') return '.';
+  return './' + specifier.replace(/^@lostgradient\/cinder\//, '');
 }
 
 let anyPerComponentStylesExport = false;
@@ -258,8 +258,8 @@ for (const component of manifest.components) {
   }
 }
 
-// Root `cinder/styles` must always resolve.
-assertRuntimeResolvable('cinder/styles');
+// Root `@lostgradient/cinder/styles` must always resolve.
+assertRuntimeResolvable('@lostgradient/cinder/styles');
 
 // ---------------------------------------------------------------------------
 // 3. Two-way consistency: no orphaned per-component exports.

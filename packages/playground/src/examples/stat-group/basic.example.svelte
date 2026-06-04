@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { StatGroup } from 'cinder/stat-group';
+  import { StatGroup } from '@lostgradient/cinder/stat-group';
 </script>
 
 <StatGroup label="This quarter" columns={3}>

@@ -5,12 +5,12 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { NavigationItem } from 'cinder/navigation-item';
-  import { SideNavigation } from 'cinder/side-navigation';
-  import { SideNavigationGroup } from 'cinder/side-navigation-group';
-  import { SideNavigationItem } from 'cinder/side-navigation-item';
-  import { Sidebar } from 'cinder/sidebar';
+  import { Button } from '@lostgradient/cinder/button';
+  import { NavigationItem } from '@lostgradient/cinder/navigation-item';
+  import { SideNavigation } from '@lostgradient/cinder/side-navigation';
+  import { SideNavigationGroup } from '@lostgradient/cinder/side-navigation-group';
+  import { SideNavigationItem } from '@lostgradient/cinder/side-navigation-item';
+  import { Sidebar } from '@lostgradient/cinder/sidebar';
   let collapsed = $state(false);
 </script>
 

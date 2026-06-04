@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { AvatarGroup } from 'cinder/avatar-group';
+  import { AvatarGroup } from '@lostgradient/cinder/avatar-group';
 
   const avatars = [
     { id: 'ada', name: 'Ada Lovelace' },

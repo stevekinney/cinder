@@ -6,7 +6,7 @@ Centered, max-width-capped wrapper for the narrow-column reading pattern. Distin
 
 ```svelte
 <script lang="ts">
-  import Container from 'cinder/container';
+  import Container from '@lostgradient/cinder/container';
 </script>
 
 <Container maxWidth="prose">

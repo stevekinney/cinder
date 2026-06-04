@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Table } from 'cinder/table';
-  import type { TableSort } from 'cinder/table';
+  import { Table } from '@lostgradient/cinder/table';
+  import type { TableSort } from '@lostgradient/cinder/table';
   let sort: TableSort | undefined = $state(undefined);
 
   const people = [

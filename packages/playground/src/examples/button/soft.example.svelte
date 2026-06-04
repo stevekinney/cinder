@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
+  import { Button } from '@lostgradient/cinder/button';
 </script>
 
 <div class="example-preview-row">

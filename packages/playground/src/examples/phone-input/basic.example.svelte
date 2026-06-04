@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { PhoneInput } from 'cinder/phone-input';
+  import { PhoneInput } from '@lostgradient/cinder/phone-input';
   let phone = $state('');
 </script>
 

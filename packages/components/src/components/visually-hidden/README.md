@@ -6,7 +6,7 @@ Hides content visually while keeping it accessible to screen readers; supports s
 
 ```svelte
 <script lang="ts">
-  import VisuallyHidden from 'cinder/visually-hidden';
+  import VisuallyHidden from '@lostgradient/cinder/visually-hidden';
 </script>
 
 <VisuallyHidden>Screen reader only text</VisuallyHidden>

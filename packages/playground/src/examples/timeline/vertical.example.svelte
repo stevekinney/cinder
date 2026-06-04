@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import Timeline from 'cinder/timeline';
+  import Timeline from '@lostgradient/cinder/timeline';
 
   const entries = [
     {

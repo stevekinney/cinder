@@ -1,19 +1,19 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "alert-dialog",
-  "import": "cinder/alert-dialog",
+  "import": "@lostgradient/cinder/alert-dialog",
   "examples": [
     {
       "id": "basic",
       "title": "Basic alert dialog",
       "description": "A sticky acknowledgement dialog that cannot be dismissed by Escape.",
-      "code": "<script lang=\"ts\">\n  import { AlertDialog, Button } from 'cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = true)}>Open alert dialog</Button>\n\n<AlertDialog\n  bind:open\n  title=\"Session requires attention\"\n  description=\"Review this message before continuing. Escape and backdrop clicks intentionally keep the dialog open.\"\n  acknowledgeLabel=\"I understand\"\n  onacknowledge={() => {}}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { AlertDialog, Button } from '@lostgradient/cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = true)}>Open alert dialog</Button>\n\n<AlertDialog\n  bind:open\n  title=\"Session requires attention\"\n  description=\"Review this message before continuing. Escape and backdrop clicks intentionally keep the dialog open.\"\n  acknowledgeLabel=\"I understand\"\n  onacknowledge={() => {}}\n/>\n"
     },
     {
       "id": "destructive",
       "title": "Destructive alert dialog",
       "description": "A high-risk alert dialog with an optional cancel action.",
-      "code": "<script lang=\"ts\">\n  import { AlertDialog, Button } from 'cinder';\n\n  let open = $state(false);\n</script>\n\n<Button variant=\"danger\" onclick={() => (open = true)}>Delete workspace</Button>\n\n<AlertDialog\n  bind:open\n  title=\"Delete workspace\"\n  description=\"This action removes shared project data for every collaborator.\"\n  acknowledgeLabel=\"Delete workspace\"\n  cancelLabel=\"Cancel\"\n  destructive\n  onacknowledge={() => {}}\n  oncancel={() => {}}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { AlertDialog, Button } from '@lostgradient/cinder';\n\n  let open = $state(false);\n</script>\n\n<Button variant=\"danger\" onclick={() => (open = true)}>Delete workspace</Button>\n\n<AlertDialog\n  bind:open\n  title=\"Delete workspace\"\n  description=\"This action removes shared project data for every collaborator.\"\n  acknowledgeLabel=\"Delete workspace\"\n  cancelLabel=\"Cancel\"\n  destructive\n  onacknowledge={() => {}}\n  oncancel={() => {}}\n/>\n"
     }
   ]
 }

@@ -1,13 +1,13 @@
 /**
- * Derives `cinder/<pkg>/<subpath>` re-exports from the public `exports` map of
+ * Derives `@lostgradient/cinder/<pkg>/<subpath>` re-exports from the public `exports` map of
  * each `@cinder/*` workspace package (`markdown`, `editor`, `commentary`,
  * `diff`).
  *
  * The four workspace packages stay on disk as source-only inputs. Their
- * public sub-paths are mechanically mirrored into `cinder`'s exports map as
+ * public sub-paths are mechanically mirrored into `@lostgradient/cinder`'s exports map as
  * `./<pkg>/<subpath>` entries, and a thin re-export file is generated under
  * `packages/components/src/<pkg>/<subpath>.ts`. The cinder build bundles
- * those re-export entrypoints into `dist/` so the published `cinder` package
+ * those re-export entrypoints into `dist/` so the published `@lostgradient/cinder` package
  * has zero runtime dependency on `@cinder/*`.
  *
  * Acceptance criterion: every public sub-path in each upstream
@@ -24,12 +24,12 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 /** Root of the cinder repository (workspace root). */
 const WORKSPACE_ROOT = join(scriptDirectory, '..', '..', '..', '..');
 
-/** Root of the `cinder` (`packages/components`) package. */
+/** Root of the `@lostgradient/cinder` (`packages/components`) package. */
 const COMPONENTS_PACKAGE_ROOT = join(scriptDirectory, '..', '..');
 
 /**
  * The four `@cinder/*` workspace packages whose public exports flow through
- * `cinder/<pkg>/*`. Order is significant only for deterministic output.
+ * `@lostgradient/cinder/<pkg>/*`. Order is significant only for deterministic output.
  */
 export const UPSTREAM_PACKAGES = ['markdown', 'editor', 'commentary', 'diff'] as const;
 

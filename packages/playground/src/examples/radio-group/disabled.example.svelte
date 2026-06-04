@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { RadioGroup } from 'cinder/radio-group';
+  import { RadioGroup } from '@lostgradient/cinder/radio-group';
 </script>
 
 <RadioGroup name="disabled-region" legend="Region (locked for trial accounts)" value="us" disabled>

@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "combobox",
-  "import": "cinder/combobox",
+  "import": "@lostgradient/cinder/combobox",
   "examples": [
     {
       "id": "basic",
       "title": "Basic combobox",
       "description": "Type to filter; the list is filtered with a case-insensitive substring match.",
-      "code": "<script lang=\"ts\">\n  import { Combobox } from 'cinder/combobox';\n  const fruits = [\n    { value: 'apple', label: 'Apple' },\n    { value: 'apricot', label: 'Apricot' },\n    { value: 'banana', label: 'Banana' },\n    { value: 'blackberry', label: 'Blackberry' },\n    { value: 'cherry', label: 'Cherry' },\n    { value: 'grape', label: 'Grape' },\n    { value: 'mango', label: 'Mango' },\n    { value: 'peach', label: 'Peach' },\n    { value: 'pineapple', label: 'Pineapple' },\n    { value: 'raspberry', label: 'Raspberry' },\n  ];\n\n  let selected = $state('');\n</script>\n\n<Combobox\n  id=\"combobox-fruit\"\n  label=\"Favorite fruit\"\n  placeholder=\"Start typing…\"\n  options={fruits}\n  bind:value={selected}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Combobox } from '@lostgradient/cinder/combobox';\n  const fruits = [\n    { value: 'apple', label: 'Apple' },\n    { value: 'apricot', label: 'Apricot' },\n    { value: 'banana', label: 'Banana' },\n    { value: 'blackberry', label: 'Blackberry' },\n    { value: 'cherry', label: 'Cherry' },\n    { value: 'grape', label: 'Grape' },\n    { value: 'mango', label: 'Mango' },\n    { value: 'peach', label: 'Peach' },\n    { value: 'pineapple', label: 'Pineapple' },\n    { value: 'raspberry', label: 'Raspberry' },\n  ];\n\n  let selected = $state('');\n</script>\n\n<Combobox\n  id=\"combobox-fruit\"\n  label=\"Favorite fruit\"\n  placeholder=\"Start typing…\"\n  options={fruits}\n  bind:value={selected}\n/>\n"
     },
     {
       "id": "disabled",
       "title": "Disabled combobox",
       "description": "Disabled combobox cannot be focused or edited.",
-      "code": "<script lang=\"ts\">\n  import { Combobox } from 'cinder/combobox';\n  const options = [\n    { value: 'free', label: 'Free' },\n    { value: 'pro', label: 'Pro' },\n    { value: 'enterprise', label: 'Enterprise', disabled: true },\n  ];\n</script>\n\n<Combobox\n  id=\"combobox-disabled\"\n  label=\"Plan\"\n  placeholder=\"Locked plan selection\"\n  {options}\n  value=\"pro\"\n  disabled\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Combobox } from '@lostgradient/cinder/combobox';\n  const options = [\n    { value: 'free', label: 'Free' },\n    { value: 'pro', label: 'Pro' },\n    { value: 'enterprise', label: 'Enterprise', disabled: true },\n  ];\n</script>\n\n<Combobox\n  id=\"combobox-disabled\"\n  label=\"Plan\"\n  placeholder=\"Locked plan selection\"\n  {options}\n  value=\"pro\"\n  disabled\n/>\n"
     },
     {
       "id": "typed-options",
       "title": "Typed options with as const",
       "description": "Use `as const` on the options array to infer a precise literal-union type for `T`. TypeScript then rejects any `value` that is not a member of the union (or the empty-string sentinel) at compile time.",
-      "code": "<script lang=\"ts\">\n  import { Combobox } from 'cinder/combobox';\n\n  // `as const` narrows value types to the literal union 'apple' | 'banana' | …\n  // T is inferred from `options`; passing value=\"invalid\" would be a compile error.\n  const fruits = [\n    { value: 'apple', label: 'Apple' },\n    { value: 'banana', label: 'Banana' },\n    { value: 'cherry', label: 'Cherry' },\n    { value: 'grape', label: 'Grape' },\n    { value: 'mango', label: 'Mango' },\n  ] as const;\n\n  type FruitValue = (typeof fruits)[number]['value'];\n  let selected = $state<FruitValue | ''>('');\n</script>\n\n<Combobox\n  id=\"combobox-typed\"\n  label=\"Favorite fruit\"\n  placeholder=\"Start typing…\"\n  options={fruits}\n  bind:value={selected}\n/>\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Selected: {selected || '(none)'}</p>\n"
+      "code": "<script lang=\"ts\">\n  import { Combobox } from '@lostgradient/cinder/combobox';\n\n  // `as const` narrows value types to the literal union 'apple' | 'banana' | …\n  // T is inferred from `options`; passing value=\"invalid\" would be a compile error.\n  const fruits = [\n    { value: 'apple', label: 'Apple' },\n    { value: 'banana', label: 'Banana' },\n    { value: 'cherry', label: 'Cherry' },\n    { value: 'grape', label: 'Grape' },\n    { value: 'mango', label: 'Mango' },\n  ] as const;\n\n  type FruitValue = (typeof fruits)[number]['value'];\n  let selected = $state<FruitValue | ''>('');\n</script>\n\n<Combobox\n  id=\"combobox-typed\"\n  label=\"Favorite fruit\"\n  placeholder=\"Start typing…\"\n  options={fruits}\n  bind:value={selected}\n/>\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Selected: {selected || '(none)'}</p>\n"
     }
   ]
 }

@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "alert",
-  "import": "cinder/alert",
+  "import": "@lostgradient/cinder/alert",
   "examples": [
     {
       "id": "dismissible",
       "title": "Dismissible alert",
       "description": "An alert with a close button that fires onDismiss.",
-      "code": "<script lang=\"ts\">\n  import { Alert } from 'cinder/alert';\n  let dismissed = $state(false);\n</script>\n\n{#if !dismissed}\n  <Alert variant=\"info\" dismissible onDismiss={() => (dismissed = true)}>\n    You have 3 unread notifications.\n  </Alert>\n{:else}\n  <p style=\"color: var(--cinder-text-muted); font-style: italic;\">Alert dismissed.</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Alert } from '@lostgradient/cinder/alert';\n  let dismissed = $state(false);\n</script>\n\n{#if !dismissed}\n  <Alert variant=\"info\" dismissible onDismiss={() => (dismissed = true)}>\n    You have 3 unread notifications.\n  </Alert>\n{:else}\n  <p style=\"color: var(--cinder-text-muted); font-style: italic;\">Alert dismissed.</p>\n{/if}\n"
     },
     {
       "id": "variants",
       "title": "Alert variants",
       "description": "Info, success, warning, and error alerts.",
-      "code": "<script lang=\"ts\">\n  import { Alert } from 'cinder/alert';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem;\">\n  <Alert variant=\"info\">Your account sync is in progress.</Alert>\n  <Alert variant=\"success\">Changes saved successfully.</Alert>\n  <Alert variant=\"warning\">Your trial expires in 3 days.</Alert>\n  <Alert variant=\"error\">Failed to connect to the server.</Alert>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Alert } from '@lostgradient/cinder/alert';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem;\">\n  <Alert variant=\"info\">Your account sync is in progress.</Alert>\n  <Alert variant=\"success\">Changes saved successfully.</Alert>\n  <Alert variant=\"warning\">Your trial expires in 3 days.</Alert>\n  <Alert variant=\"error\">Failed to connect to the server.</Alert>\n</div>\n"
     },
     {
       "id": "with-icon",
       "title": "Alert with icon",
       "description": "Custom icon slot alongside the alert message.",
-      "code": "<script lang=\"ts\">\n  import { Alert } from 'cinder/alert';\n</script>\n\n<Alert variant=\"success\">\n  {#snippet icon()}\n    <svg\n      xmlns=\"http://www.w3.org/2000/svg\"\n      width=\"16\"\n      height=\"16\"\n      viewBox=\"0 0 24 24\"\n      fill=\"none\"\n      stroke=\"currentColor\"\n      stroke-width=\"2\"\n      aria-hidden=\"true\"\n    >\n      <polyline points=\"20 6 9 17 4 12\"></polyline>\n    </svg>\n  {/snippet}\n  Deployment complete — all systems nominal.\n</Alert>\n"
+      "code": "<script lang=\"ts\">\n  import { Alert } from '@lostgradient/cinder/alert';\n</script>\n\n<Alert variant=\"success\">\n  {#snippet icon()}\n    <svg\n      xmlns=\"http://www.w3.org/2000/svg\"\n      width=\"16\"\n      height=\"16\"\n      viewBox=\"0 0 24 24\"\n      fill=\"none\"\n      stroke=\"currentColor\"\n      stroke-width=\"2\"\n      aria-hidden=\"true\"\n    >\n      <polyline points=\"20 6 9 17 4 12\"></polyline>\n    </svg>\n  {/snippet}\n  Deployment complete — all systems nominal.\n</Alert>\n"
     }
   ]
 }

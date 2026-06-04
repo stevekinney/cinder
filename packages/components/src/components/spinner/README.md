@@ -6,7 +6,7 @@ A loading indicator with size variants and an accessible status label.
 
 ```svelte
 <script lang="ts">
-  import Spinner from 'cinder/spinner';
+  import Spinner from '@lostgradient/cinder/spinner';
 </script>
 
 <Spinner size="md" label="Loading" />

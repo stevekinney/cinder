@@ -5,11 +5,11 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { Checkbox } from 'cinder/checkbox';
-  import { Drawer } from 'cinder/drawer';
-  import type { DrawerSide, DrawerSize } from 'cinder/drawer';
-  import { Select } from 'cinder/select';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Checkbox } from '@lostgradient/cinder/checkbox';
+  import { Drawer } from '@lostgradient/cinder/drawer';
+  import type { DrawerSide, DrawerSize } from '@lostgradient/cinder/drawer';
+  import { Select } from '@lostgradient/cinder/select';
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
   let side = $state<DrawerSide>('right');

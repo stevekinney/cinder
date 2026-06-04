@@ -30,7 +30,7 @@ const pipeline = await import('./index.js');
 if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument);
 if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
 
-describe('cinder/markdown/pipeline barrel is SSR-safe (Bun no-DOM smoke)', () => {
+describe('@lostgradient/cinder/markdown/pipeline barrel is SSR-safe (Bun no-DOM smoke)', () => {
   it('exports parse as a function', () => {
     expect(typeof pipeline.parse).toBe('function');
   });

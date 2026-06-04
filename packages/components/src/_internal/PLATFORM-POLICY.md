@@ -77,7 +77,7 @@ how those resolve per theme.
 
 ## Enforcement
 
-`bun run --filter=cinder platform:audit` reports current usage of every
+`bun run --filter=@lostgradient/cinder platform:audit` reports current usage of every
 classified feature and flags hard-coded viewport breakpoints in component CSS so
 a reviewer can confirm each is viewport-owned (allowed) rather than a
 container-constraint in disguise (a Tier-1 violation). The audit is a **report**,

@@ -6,7 +6,7 @@ ToastRegion provides live toast notifications and a `useToast()` controller for 
 
 ```svelte
 <script lang="ts">
-  import ToastRegion from 'cinder/toast-region';
+  import ToastRegion from '@lostgradient/cinder/toast-region';
 </script>
 
 <ToastRegion />

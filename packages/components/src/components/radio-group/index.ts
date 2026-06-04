@@ -6,7 +6,7 @@ import RadioGroupRoot from './radio-group.svelte';
  * `RadioGroup` is the parent compound component and a namespace exposing
  * `RadioGroup.Option` — a single radio choice. Option reads RadioGroup's
  * context and throws if rendered outside a group, so it is namespace-only:
- * there is no standalone `cinder/radio` import, because a lone radio is
+ * there is no standalone `@lostgradient/cinder/radio` import, because a lone radio is
  * semantically meaningless and would throw at runtime. (Checkbox, by contrast,
  * is a legitimate standalone control and keeps its own export.)
  */

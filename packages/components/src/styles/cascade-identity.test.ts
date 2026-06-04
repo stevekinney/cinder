@@ -6,7 +6,7 @@ import { parse, type ChildNode } from 'postcss';
 import { COMPONENT_LAYER_NAME } from '../../scripts/check-component-css.ts';
 
 /**
- * Cascade-identity guard for the aggregated `cinder/styles` entry point.
+ * Cascade-identity guard for the aggregated `@lostgradient/cinder/styles` entry point.
  *
  * Wrapping every component CSS file in `@layer cinder.components { … }` and
  * dropping the `layer(cinder.components)` qualifier from `index.css`'s

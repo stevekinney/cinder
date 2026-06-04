@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "portal",
-  "import": "cinder/portal",
+  "import": "@lostgradient/cinder/portal",
   "examples": [
     {
       "id": "basic",
       "title": "Basic portal",
       "description": "Renders a floating surface through document.body while leaving the trigger inline.",
-      "code": "<script lang=\"ts\">\n  import { Button, Portal } from 'cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = !open)}>\n  {open ? 'Hide portal' : 'Show portal'}\n</Button>\n\n{#if open}\n  <Portal>\n    <div\n      style=\"\n        position: fixed;\n        inset-block-end: var(--cinder-space-4);\n        inset-inline-end: var(--cinder-space-4);\n        max-width: 18rem;\n        padding: var(--cinder-space-4);\n        border: 1px solid var(--cinder-border);\n        border-radius: var(--cinder-radius-lg);\n        background: var(--cinder-surface-raised);\n        box-shadow: var(--cinder-shadow-lg);\n      \"\n    >\n      <strong>Portaled content</strong>\n      <p>This surface is rendered through <code>document.body</code>.</p>\n    </div>\n  </Portal>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Button, Portal } from '@lostgradient/cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = !open)}>\n  {open ? 'Hide portal' : 'Show portal'}\n</Button>\n\n{#if open}\n  <Portal>\n    <div\n      style=\"\n        position: fixed;\n        inset-block-end: var(--cinder-space-4);\n        inset-inline-end: var(--cinder-space-4);\n        max-width: 18rem;\n        padding: var(--cinder-space-4);\n        border: 1px solid var(--cinder-border);\n        border-radius: var(--cinder-radius-lg);\n        background: var(--cinder-surface-raised);\n        box-shadow: var(--cinder-shadow-lg);\n      \"\n    >\n      <strong>Portaled content</strong>\n      <p>This surface is rendered through <code>document.body</code>.</p>\n    </div>\n  </Portal>\n{/if}\n"
     }
   ]
 }

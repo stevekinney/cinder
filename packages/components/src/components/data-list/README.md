@@ -15,8 +15,8 @@ for tabular rows and columns use [`Table`](../table/README.md).
 
 ```svelte
 <script lang="ts">
-  import { DataList } from 'cinder/data-list';
-  import { StackedListItem } from 'cinder/stacked-list-item';
+  import { DataList } from '@lostgradient/cinder/data-list';
+  import { StackedListItem } from '@lostgradient/cinder/stacked-list-item';
 
   const members = [
     { id: 'a', name: 'Alice Chen', role: 'Engineer' },

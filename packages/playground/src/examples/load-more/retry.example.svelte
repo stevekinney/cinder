@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { LoadMore } from 'cinder/load-more';
+  import { LoadMore } from '@lostgradient/cinder/load-more';
 
   let items = $state(['Alpha', 'Bravo', 'Charlie']);
   let loading = $state(false);

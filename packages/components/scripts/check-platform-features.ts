@@ -22,7 +22,7 @@
  *     same known sites" from "a new one"). Pass `--update-baseline` to rewrite
  *     the baseline after an intentional change.
  *
- * Run via `bun run --filter=cinder platform:audit` (report) or
+ * Run via `bun run --filter=@lostgradient/cinder platform:audit` (report) or
  * `platform:audit --strict` (gate; wired into `validate`).
  *
  * oxlint/stylelint cannot express this (cross-file inventory, the `@media` vs

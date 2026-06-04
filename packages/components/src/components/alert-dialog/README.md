@@ -33,7 +33,7 @@ The key distinction between AlertDialog and ConfirmDialog is _who initiates_ the
 
 ```svelte
 <script lang="ts">
-  import AlertDialog from 'cinder/alert-dialog';
+  import AlertDialog from '@lostgradient/cinder/alert-dialog';
 </script>
 
 <AlertDialog />

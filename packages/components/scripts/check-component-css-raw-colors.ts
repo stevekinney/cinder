@@ -29,7 +29,7 @@
  *     appears beyond the grandfathered count. Pass `--update-baseline` to rewrite
  *     the baseline after an intentional change (e.g. a family migration lands).
  *
- * Run via `bun run --filter=cinder colors:audit` (report) or `colors:audit
+ * Run via `bun run --filter=@lostgradient/cinder colors:audit` (report) or `colors:audit
  * --strict` (gate; wired into `validate` once report output is clean).
  *
  * Scope mirrors `check-platform-features.ts`: component `.css` sidecars AND the

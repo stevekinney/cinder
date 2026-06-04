@@ -5,9 +5,9 @@
 </script>
 
 <script lang="ts">
-  import { Backdrop } from 'cinder/backdrop';
-  import { Button } from 'cinder/button';
-  import { Spinner } from 'cinder/spinner';
+  import { Backdrop } from '@lostgradient/cinder/backdrop';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Spinner } from '@lostgradient/cinder/spinner';
 
   let open = $state(false);
   let invisible = $state(false);

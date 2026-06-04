@@ -6,7 +6,7 @@ Measured splitter layout for editor-style panes. The component keeps sizing stat
 
 ```svelte
 <script lang="ts">
-  import { ResizablePanels } from 'cinder/resizable-panels';
+  import { ResizablePanels } from '@lostgradient/cinder/resizable-panels';
 
   const panes = [
     {

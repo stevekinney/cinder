@@ -495,7 +495,7 @@ describe('computeScope', () => {
 
   it('force-fulls a shared seed that reaches no component, even with a co-changed component', () => {
     // packages/markdown/src/foo.ts is a traceable shared module, but no component
-    // in the graph imports it (markdown is consumed via bare `cinder/markdown/...`
+    // in the graph imports it (markdown is consumed via bare `@lostgradient/cinder/markdown/...`
     // specifiers → external → no edge). Co-changed with badge, the naive result
     // would be filtered: [badge], silently dropping the markdown change. The
     // per-seed reachability guard must force full instead. (copilot finding, PR #222)

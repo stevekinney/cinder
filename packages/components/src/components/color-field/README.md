@@ -6,8 +6,8 @@ A text input that validates and normalizes hex, `rgb()`, and `hsl()` color strin
 
 ```svelte
 <script lang="ts">
-  import ColorField from 'cinder/color-field';
-  import FormField from 'cinder/form-field';
+  import ColorField from '@lostgradient/cinder/color-field';
+  import FormField from '@lostgradient/cinder/form-field';
 
   let color = $state('#3366ff');
 </script>

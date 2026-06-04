@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Breadcrumbs } from 'cinder/breadcrumbs';
+  import { Breadcrumbs } from '@lostgradient/cinder/breadcrumbs';
 </script>
 
 <Breadcrumbs

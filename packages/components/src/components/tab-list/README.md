@@ -7,7 +7,7 @@ Keyboard-navigable row of tab triggers that control which tab panel is visible.
 `TabList` is a compose-only leaf of [`Tabs`](../tabs/README.md).
 The idiomatic API is `Tabs.List`, reached through the parent
 namespace — see the [tabs README](../tabs/README.md#usage) for the composed
-snippet. The flat `cinder/tab-list` subpath remains exported for
+snippet. The flat `@lostgradient/cinder/tab-list` subpath remains exported for
 à-la-carte builds that import the leaf directly.
 
 ## Props

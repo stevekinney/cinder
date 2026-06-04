@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { ContextMenu } from 'cinder';
+  import { Button } from '@lostgradient/cinder/button';
+  import { ContextMenu } from '@lostgradient/cinder';
 </script>
 
 <ContextMenu>

@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { AspectRatio } from 'cinder/aspect-ratio';
+  import { AspectRatio } from '@lostgradient/cinder/aspect-ratio';
 </script>
 
 <AspectRatio>

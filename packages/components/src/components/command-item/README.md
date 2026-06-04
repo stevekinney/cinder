@@ -6,7 +6,7 @@ Individual selectable row within a command palette or dropdown command list.
 
 ```svelte
 <script lang="ts">
-  import CommandItem from 'cinder/command-item';
+  import CommandItem from '@lostgradient/cinder/command-item';
 </script>
 
 <CommandItem />

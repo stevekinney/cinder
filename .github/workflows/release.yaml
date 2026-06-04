@@ -86,7 +86,7 @@ jobs:
 
       - name: Check validated package artifact budget
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
-        run: bun run --filter=cinder package:weight:check -- --existing-tarball
+        run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 
       # Primary publish path: npm Trusted Publishing (OIDC). No long-lived token.
       # npm >= 11.5.1 (installed above) + id-token: write (on this job) + the npm
@@ -98,7 +98,7 @@ jobs:
       # .github/workflows/release-manual.yaml instead (see CONTRIBUTING.md).
       - name: Publish validated package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
-        run: bun run --filter=cinder publish:release -- --skip-validation
+        run: bun run --filter=@lostgradient/cinder publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'true'
 

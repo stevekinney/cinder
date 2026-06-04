@@ -11,8 +11,8 @@
  *      fallback for free.
  *
  *   2. ReviewEditor's own logic statically imports the commentary and markdown
- *      surfaces (`cinder/commentary/anchor-decorations`, `cinder/markdown/
- *      pipeline`, `cinder/markdown/diff/line-diff`, `cinder/editor`). Those are
+ *      surfaces (`@lostgradient/cinder/commentary/anchor-decorations`, `@lostgradient/cinder/markdown/
+ *      pipeline`, `@lostgradient/cinder/markdown/diff/line-diff`, `@lostgradient/cinder/editor`). Those are
  *      all SSR-safe at module-evaluation time — proven by
  *      `packages/commentary/src/ssr-import.test.ts` and
  *      `packages/markdown/src/ssr-import.test.ts` — so the static imports do

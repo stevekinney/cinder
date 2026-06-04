@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "focus-trap",
-  "import": "cinder/focus-trap",
+  "import": "@lostgradient/cinder/focus-trap",
   "examples": [
     {
       "id": "basic",
       "title": "Basic focus trap",
       "description": "Keeps Tab navigation inside the rendered surface until the trap is removed.",
-      "code": "<script lang=\"ts\">\n  import { Button, FocusTrap } from 'cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = !open)}>\n  {open ? 'Close focus trap' : 'Open focus trap'}\n</Button>\n\n{#if open}\n  <FocusTrap\n    style=\"\n      display: inline-flex;\n      gap: var(--cinder-space-3);\n      margin-block-start: var(--cinder-space-4);\n      padding: var(--cinder-space-4);\n      border: 1px solid var(--cinder-border);\n      border-radius: var(--cinder-radius-lg);\n      background: var(--cinder-surface-raised);\n    \"\n  >\n    <Button variant=\"secondary\">Cancel</Button>\n    <Button>Save changes</Button>\n  </FocusTrap>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Button, FocusTrap } from '@lostgradient/cinder';\n\n  let open = $state(false);\n</script>\n\n<Button onclick={() => (open = !open)}>\n  {open ? 'Close focus trap' : 'Open focus trap'}\n</Button>\n\n{#if open}\n  <FocusTrap\n    style=\"\n      display: inline-flex;\n      gap: var(--cinder-space-3);\n      margin-block-start: var(--cinder-space-4);\n      padding: var(--cinder-space-4);\n      border: 1px solid var(--cinder-border);\n      border-radius: var(--cinder-radius-lg);\n      background: var(--cinder-surface-raised);\n    \"\n  >\n    <Button variant=\"secondary\">Cancel</Button>\n    <Button>Save changes</Button>\n  </FocusTrap>\n{/if}\n"
     }
   ]
 }

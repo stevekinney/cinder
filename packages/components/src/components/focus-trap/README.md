@@ -6,7 +6,7 @@ Traps keyboard focus within a container and restores focus to the previously foc
 
 ```svelte
 <script lang="ts">
-  import FocusTrap from 'cinder/focus-trap';
+  import FocusTrap from '@lostgradient/cinder/focus-trap';
 </script>
 
 <FocusTrap>

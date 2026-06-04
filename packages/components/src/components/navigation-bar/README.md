@@ -6,7 +6,7 @@ Top-level horizontal navigation bar for primary site or app destinations.
 
 ```svelte
 <script lang="ts">
-  import NavigationBar from 'cinder/navigation-bar';
+  import NavigationBar from '@lostgradient/cinder/navigation-bar';
 </script>
 
 <NavigationBar />

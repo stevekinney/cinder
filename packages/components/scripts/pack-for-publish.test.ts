@@ -5,7 +5,7 @@ import { buildPublishedManifest, type SourceManifest } from './pack-for-publish.
 describe('buildPublishedManifest', () => {
   it('keeps Svelte test-harness exclusions after broad Svelte includes', () => {
     const manifest: SourceManifest = {
-      name: 'cinder',
+      name: '@lostgradient/cinder',
       version: '0.0.0',
       exports: {},
     };

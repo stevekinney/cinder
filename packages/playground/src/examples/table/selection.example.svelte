@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Table } from 'cinder/table';
+  import { Table } from '@lostgradient/cinder/table';
   const people = [
     {
       id: '1',

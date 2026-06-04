@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Collapsible } from 'cinder/collapsible';
+  import { Collapsible } from '@lostgradient/cinder/collapsible';
 </script>
 
 <Collapsible trigger="Locked section" disabled>

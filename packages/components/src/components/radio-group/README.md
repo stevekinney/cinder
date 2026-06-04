@@ -6,7 +6,7 @@ Coordinates a set of radio buttons under a single name with shared validation st
 
 ```svelte
 <script lang="ts">
-  import RadioGroup from 'cinder/radio-group';
+  import RadioGroup from '@lostgradient/cinder/radio-group';
 </script>
 
 <RadioGroup />

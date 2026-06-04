@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { RadioGroup } from 'cinder/radio-group';
+  import { Button } from '@lostgradient/cinder/button';
+  import { RadioGroup } from '@lostgradient/cinder/radio-group';
   let role = $state('');
   let submitted = $state(false);
   const showError = $derived(submitted && !role);

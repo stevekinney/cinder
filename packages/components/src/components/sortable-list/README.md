@@ -6,7 +6,7 @@ Drag-and-drop reorderable list that emits the new order on each change.
 
 ```svelte
 <script lang="ts">
-  import SortableList from 'cinder/sortable-list';
+  import SortableList from '@lostgradient/cinder/sortable-list';
 </script>
 
 <SortableList />

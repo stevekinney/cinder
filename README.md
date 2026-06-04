@@ -7,16 +7,16 @@ A Svelte 5 design system.
 ## Consuming cinder
 
 ```bash
-bun add cinder
+bun add @lostgradient/cinder
 # or
-npm install cinder
+npm install @lostgradient/cinder
 ```
 
 ```svelte
 <!-- routes/+page.svelte -->
 <script lang="ts">
-  import { Button, Alert } from 'cinder';
-  import 'cinder/styles';
+  import { Button, Alert } from '@lostgradient/cinder';
+  import '@lostgradient/cinder/styles';
 </script>
 
 <Alert variant="info">
@@ -57,14 +57,14 @@ Every component is individually importable in Vite/SvelteKit consumers (the `sve
 
 ```svelte
 <script lang="ts">
-  import Button from 'cinder/button';
-  import Alert from 'cinder/alert';
+  import Button from '@lostgradient/cinder/button';
+  import Alert from '@lostgradient/cinder/alert';
   // ...one subpath per component
 </script>
 ```
 
 > [!NOTE]
-> Subpath exports only define `svelte` and `types` conditions — they are designed for Vite/SvelteKit bundler consumers. Plain Node SSR consumers should use the root barrel via the `node` condition: `import { Button } from 'cinder'`. Per-component Node SSR subpaths are a Phase 5 addition.
+> Subpath exports only define `svelte` and `types` conditions — they are designed for Vite/SvelteKit bundler consumers. Plain Node SSR consumers should use the root barrel via the `node` condition: `import { Button } from '@lostgradient/cinder'`. Per-component Node SSR subpaths are a Phase 5 addition.
 
 ### Compound components
 
@@ -75,8 +75,8 @@ idiomatic API:
 
 ```svelte
 <script lang="ts">
-  import { Tabs } from 'cinder';
-  // or: import { Tabs } from 'cinder/tabs';
+  import { Tabs } from '@lostgradient/cinder';
+  // or: import { Tabs } from '@lostgradient/cinder/tabs';
 
   let active = $state('overview');
 </script>
@@ -93,8 +93,8 @@ idiomatic API:
 
 The flat leaf exports (`Tab`, `TabList`, `TabPanel`, `TableBody`,
 `DropdownTrigger`, `AccordionItem`, and the rest) remain supported for the
-foreseeable future. Both the root barrel (`import { Tab } from 'cinder'`)
-and the per-leaf subpaths (`import Tab from 'cinder/tab'`) continue to work
+foreseeable future. Both the root barrel (`import { Tab } from '@lostgradient/cinder'`)
+and the per-leaf subpaths (`import Tab from '@lostgradient/cinder/tab'`) continue to work
 unchanged — deprecation of those forms is out of scope for this change.
 
 ### Export conditions
@@ -113,7 +113,7 @@ Cinder supports Svelte 5 from `5.55.0` through the latest stable Svelte 5 releas
 
 ### Styles
 
-`import 'cinder/styles'` once, anywhere. It loads a cascade-layer stack:
+`import '@lostgradient/cinder/styles'` once, anywhere. It loads a cascade-layer stack:
 
 ```
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
@@ -238,7 +238,7 @@ The target structure when executed:
 ```
 cinder/
 ├── packages/
-│   ├── components/   (published — name: "cinder", all current exports)
+│   ├── components/   (published — name: "@lostgradient/cinder", all current exports)
 │   └── playground/   (private — name: "@cinder/playground", ts-morph isolated here)
 ```
 
@@ -250,13 +250,13 @@ The two existing consumer fixtures (`fixtures/sveltekit-consumer/` and `fixtures
 
 ## Library boundary
 
-Cinder has **three admission tiers** within two import namespaces. The import namespaces are `cinder/<name>` (stable and domain-suite both use this shape) and `cinder/experimental/<name>` (experimental). The _tier_ determines the admission rule and stability guarantee; the _import shape_ is what consumers use. A consumer importing `cinder/chat` and a consumer importing `cinder/button` use the same import pattern—but `chat` is a domain-suite component admitted under a weaker rule with different churn expectations than a stable primitive.
+Cinder has **three admission tiers** within two import namespaces. The import namespaces are `@lostgradient/cinder/<name>` (stable and domain-suite both use this shape) and `@lostgradient/cinder/experimental/<name>` (experimental). The _tier_ determines the admission rule and stability guarantee; the _import shape_ is what consumers use. A consumer importing `@lostgradient/cinder/chat` and a consumer importing `@lostgradient/cinder/button` use the same import pattern—but `chat` is a domain-suite component admitted under a weaker rule with different churn expectations than a stable primitive.
 
 ### Stability guarantees by tier
 
 - **Stable**: public API is considered production-ready; changes follow the deprecation cycle (minor bump with notice, removal in a later major).
-- **Experimental** (`cinder/experimental/<name>`): API may change in any minor bump; documented as unstable.
-- **Domain-suite** (`cinder/<name>`): ships under the stable subpath shape for import convenience, but follows the experimental stability contract—API may change in any minor bump until the component earns promotion to the stable tier. Consumers importing domain-suite components must opt in with the awareness that heavy dep upgrades (ProseMirror, Milkdown, remark) may force API changes.
+- **Experimental** (`@lostgradient/cinder/experimental/<name>`): API may change in any minor bump; documented as unstable.
+- **Domain-suite** (`@lostgradient/cinder/<name>`): ships under the stable subpath shape for import convenience, but follows the experimental stability contract—API may change in any minor bump until the component earns promotion to the stable tier. Consumers importing domain-suite components must opt in with the awareness that heavy dep upgrades (ProseMirror, Milkdown, remark) may force API changes.
 
 ### Stable admission rules
 
@@ -282,7 +282,7 @@ The replacement gate is a quality signal—it requires a real Cinder component r
 
 ### Domain-suite tier
 
-The domain-suite tier exists for heavyweight components whose dependency graphs reach beyond visual primitives—chat surfaces, diff viewers, markdown editors, review editors. They ship under `cinder/<name>` subpaths exactly like stable components, so a downstream consumer's import shape is identical (`import { Chat } from 'cinder/chat'`). They are tree-shaken: a consumer that imports only `cinder/button` does not bundle ProseMirror, remark, or shiki. All runtime dependencies still install with the main package today; moving heavy suites to optional peer dependencies or secondary packages requires a separate package-boundary task.
+The domain-suite tier exists for heavyweight components whose dependency graphs reach beyond visual primitives—chat surfaces, diff viewers, markdown editors, review editors. They ship under `@lostgradient/cinder/<name>` subpaths exactly like stable components, so a downstream consumer's import shape is identical (`import { Chat } from '@lostgradient/cinder/chat'`). They are tree-shaken: a consumer that imports only `@lostgradient/cinder/button` does not bundle ProseMirror, remark, or shiki. All runtime dependencies still install with the main package today; moving heavy suites to optional peer dependencies or secondary packages requires a separate package-boundary task.
 
 **Domain-suite admission rule**: requested by **at least one reference consumer** with the heavy peer-dep chain accepted by both Cinder maintainers and that consumer. The single-consumer threshold (vs the multi-consumer threshold for stable) is intentional—these components are too specialized to expect uniform demand, but too valuable to leave in consuming apps to re-implement.
 
@@ -291,16 +291,16 @@ The domain-suite tier exists for heavyweight components whose dependency graphs 
 - The "no `<style>` blocks" rule does not apply. Components in this tier may carry per-component `<style>` blocks and co-located `.css` files. The exemption is enforced by a hard-coded allowlist in `convention.test.ts`: `chat`, `diff-viewer`, `review-editor`, `markdown-editor`. Adding a new domain-suite component requires explicit allowlist update; new names attempting `<style>` blocks fail the test.
 - **Removal criteria**: a component leaves the allowlist when its CSS migrates to a partial under `src/styles/components/`. The allowlist is a transitional accommodation, not a permanent license.
 
-**Consumer-facing components** (current `cinder/<name>` allowlist):
+**Consumer-facing components** (current `@lostgradient/cinder/<name>` allowlist):
 
 - `chat`—`conversationalist` runtime dep.
 - `diff-viewer`—`@cinder/diff` + `@cinder/markdown/diff` runtime deps.
 - `markdown-editor`—`@cinder/editor` + `@cinder/markdown` + `@milkdown/kit` + `prosemirror-*` runtime deps.
 - `review-editor`—everything above plus `@cinder/commentary`.
 
-**Supporting workspace packages** (not consumer-facing `cinder/<name>` components):
+**Supporting workspace packages** (not consumer-facing `@lostgradient/cinder/<name>` components):
 
-These are `@cinder/*` scoped packages that live in the cinder monorepo but are not imported as `cinder/<name>`. They are implementation dependencies of the consumer-facing components above.
+These are `@cinder/*` scoped packages that live in the cinder monorepo but are not imported as `@lostgradient/cinder/<name>`. They are implementation dependencies of the consumer-facing components above.
 
 - `@cinder/diff`—standalone diff algorithm; `diff-match-patch` only dep.
 - `@cinder/markdown`—markdown pipeline, rendering, and utilities; 18 npm deps (unified, remark-_, rehype-_, shiki, etc.).
@@ -310,7 +310,7 @@ These are `@cinder/*` scoped packages that live in the cinder monorepo but are n
 ### Out of scope
 
 - **Mermaid, charts**—domain widgets with heavy peer deps that don't have multi-consumer demand; stay in consuming apps.
-- **Syntax highlighting bundled into cinder/code-block**—Shiki is heavy and consumers like depict already own it; `cinder/code-block` ships with opt-in highlighting via a `highlighter` async callback prop, so consumers wire in Shiki (or any highlighter) at their boundary without pulling the dependency into the library itself.
+- **Syntax highlighting bundled into cinder/code-block**—Shiki is heavy and consumers like depict already own it; `@lostgradient/cinder/code-block` ships with opt-in highlighting via a `highlighter` async callback prop, so consumers wire in Shiki (or any highlighter) at their boundary without pulling the dependency into the library itself.
 - **Form wrapper with validation orchestration**—deferred until two consumers ask.
 - **VerificationCodeInput**—single-consumer-specific, specialized.
 - **Multi-select / async combobox, virtualized table**—explicit non-goals for v1.

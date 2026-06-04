@@ -11,7 +11,7 @@
  *
  * This is also the single mock seam for CodeBlock's unit tests: tests
  * `mock.module()` THIS exact module specifier, never the public
- * `cinder/highlighters/shiki` subpath (which CodeBlock does not import
+ * `@lostgradient/cinder/highlighters/shiki` subpath (which CodeBlock does not import
  * directly). Mocking here is what makes the "default import is NOT invoked
  * when an explicit `highlighter` is provided" assertion real instead of
  * false-confidence.

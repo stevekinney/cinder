@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Card } from 'cinder/card';
+  import { Card } from '@lostgradient/cinder/card';
 </script>
 
 <Card variant="well">

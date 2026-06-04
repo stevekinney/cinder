@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import Autocomplete from 'cinder/autocomplete';
+  import Autocomplete from '@lostgradient/cinder/autocomplete';
 
   const cities = [
     { value: 'Austin, Texas', description: 'United States' },

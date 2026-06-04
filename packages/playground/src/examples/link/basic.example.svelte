@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Link } from 'cinder/link';
+  import { Link } from '@lostgradient/cinder/link';
 </script>
 
 <!-- Links inside a text block must stay distinguishable without relying on color

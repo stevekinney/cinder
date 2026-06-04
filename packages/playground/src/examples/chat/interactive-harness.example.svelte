@@ -16,12 +16,12 @@
     type JSONValue,
     type Message,
     type ToolErrorCategory,
-  } from 'cinder/chat';
-  import { Button } from 'cinder/button';
-  import { Segment } from 'cinder/segment';
-  import { SegmentedControl } from 'cinder/segmented-control';
-  import { Select } from 'cinder/select';
-  import { Toggle } from 'cinder/toggle';
+  } from '@lostgradient/cinder/chat';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Segment } from '@lostgradient/cinder/segment';
+  import { SegmentedControl } from '@lostgradient/cinder/segmented-control';
+  import { Select } from '@lostgradient/cinder/select';
+  import { Toggle } from '@lostgradient/cinder/toggle';
   import { onDestroy } from 'svelte';
 
   // Out of scope for this harness (documented, not silently dropped):
@@ -56,7 +56,7 @@
 
   // --- Tool-call controls ---
   let toolName = $state('exports_check');
-  let toolArguments = $state('{ "package": "cinder" }');
+  let toolArguments = $state('{ "package": "@lostgradient/cinder" }');
   let toolOutcome = $state<'success' | 'error' | 'action_required'>('success');
   const parsedToolArguments = $derived.by<{ ok: boolean; value: JSONValue }>(() => {
     try {

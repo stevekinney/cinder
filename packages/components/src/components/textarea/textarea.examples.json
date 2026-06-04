@@ -1,19 +1,19 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "textarea",
-  "import": "cinder/textarea",
+  "import": "@lostgradient/cinder/textarea",
   "examples": [
     {
       "id": "basic",
       "title": "Basic textarea",
       "description": "Multi-line text input with label and bound value.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from 'cinder/textarea';\n  let bio = $state('');\n</script>\n\n<Textarea\n  id=\"bio\"\n  bind:value={bio}\n  label=\"Bio\"\n  description=\"Tell us a little about yourself.\"\n  placeholder=\"I'm a designer who…\"\n/>\n{#if bio.length > 0}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">{bio.length} characters</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n  let bio = $state('');\n</script>\n\n<Textarea\n  id=\"bio\"\n  bind:value={bio}\n  label=\"Bio\"\n  description=\"Tell us a little about yourself.\"\n  placeholder=\"I'm a designer who…\"\n/>\n{#if bio.length > 0}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">{bio.length} characters</p>\n{/if}\n"
     },
     {
       "id": "with-error",
       "title": "Textarea with error",
       "description": "Validation error wired via aria-invalid and aria-describedby.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from 'cinder/textarea';\n  let message = $state('');\n  const hasError = $derived(message.length > 0 && message.length < 20);\n</script>\n\n<Textarea\n  id=\"message\"\n  bind:value={message}\n  label=\"Message\"\n  rows={5}\n  placeholder=\"Write at least 20 characters…\"\n  {...hasError ? { error: 'Minimum 20 characters.' } : {}}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n  let message = $state('');\n  const hasError = $derived(message.length > 0 && message.length < 20);\n</script>\n\n<Textarea\n  id=\"message\"\n  bind:value={message}\n  label=\"Message\"\n  rows={5}\n  placeholder=\"Write at least 20 characters…\"\n  {...hasError ? { error: 'Minimum 20 characters.' } : {}}\n/>\n"
     }
   ]
 }

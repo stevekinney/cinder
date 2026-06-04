@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { StatusDot } from 'cinder/status-dot';
+  import { StatusDot } from '@lostgradient/cinder/status-dot';
 </script>
 
 <div class="example-preview-row">

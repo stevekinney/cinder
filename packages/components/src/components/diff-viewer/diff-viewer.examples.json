@@ -1,25 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "diff-viewer",
-  "import": "cinder/diff-viewer",
+  "import": "@lostgradient/cinder/diff-viewer",
   "examples": [
     {
       "id": "basic",
       "title": "Basic diff viewer",
       "description": "Line and word-level markdown differences.",
-      "code": "<script lang=\"ts\">\n  import { DiffViewer } from 'cinder/diff-viewer';\n  const original = `# Project Plan\n\nThe first version includes authentication, a dashboard, and export tools.\n\n## Tasks\n\n- Build login\n- Add dashboard\n- Ship PDF export`;\n\n  const current = `# Project Plan\n\nThe first version includes authentication, a dashboard, and CSV export tools.\n\n## Tasks\n\n- Build login\n- Add dashboard metrics\n- Ship CSV export\n- Add audit logging`;\n</script>\n\n<DiffViewer {original} {current} readonly />\n"
+      "code": "<script lang=\"ts\">\n  import { DiffViewer } from '@lostgradient/cinder/diff-viewer';\n  const original = `# Project Plan\n\nThe first version includes authentication, a dashboard, and export tools.\n\n## Tasks\n\n- Build login\n- Add dashboard\n- Ship PDF export`;\n\n  const current = `# Project Plan\n\nThe first version includes authentication, a dashboard, and CSV export tools.\n\n## Tasks\n\n- Build login\n- Add dashboard metrics\n- Ship CSV export\n- Add audit logging`;\n</script>\n\n<DiffViewer {original} {current} readonly />\n"
     },
     {
       "id": "large-diff",
       "title": "Large diff",
       "description": "A larger document exercises hunk navigation and size gating.",
-      "code": "<script lang=\"ts\">\n  import { DiffViewer } from 'cinder/diff-viewer';\n  const original = Array.from(\n    { length: 140 },\n    (_, index) => `- Item ${index + 1}: keep existing behavior stable.`,\n  ).join('\\n');\n\n  const current = Array.from({ length: 140 }, (_, index) => {\n    if (index % 17 === 0) return `- Item ${index + 1}: add focused regression coverage.`;\n    if (index % 29 === 0) return `- Item ${index + 1}: document the public contract.`;\n    return `- Item ${index + 1}: keep existing behavior stable.`;\n  }).join('\\n');\n</script>\n\n<DiffViewer {original} {current} readonly />\n"
+      "code": "<script lang=\"ts\">\n  import { DiffViewer } from '@lostgradient/cinder/diff-viewer';\n  const original = Array.from(\n    { length: 140 },\n    (_, index) => `- Item ${index + 1}: keep existing behavior stable.`,\n  ).join('\\n');\n\n  const current = Array.from({ length: 140 }, (_, index) => {\n    if (index % 17 === 0) return `- Item ${index + 1}: add focused regression coverage.`;\n    if (index % 29 === 0) return `- Item ${index + 1}: document the public contract.`;\n    return `- Item ${index + 1}: keep existing behavior stable.`;\n  }).join('\\n');\n</script>\n\n<DiffViewer {original} {current} readonly />\n"
     },
     {
       "id": "with-front-matter",
       "title": "With front matter",
       "description": "Front matter changes render in their own collapsible section.",
-      "code": "<script lang=\"ts\">\n  import { DiffViewer } from 'cinder/diff-viewer';\n  const original = `---\ntitle: Getting Started\nstatus: draft\ntags:\n  - docs\n---\n\n# Getting Started\n\nInstall the package and run the development server.`;\n\n  const current = `---\ntitle: Getting Started\nstatus: published\ntags:\n  - docs\n  - onboarding\n---\n\n# Getting Started\n\nInstall the package, run the development server, and open the playground.`;\n</script>\n\n<DiffViewer {original} {current} readonly />\n"
+      "code": "<script lang=\"ts\">\n  import { DiffViewer } from '@lostgradient/cinder/diff-viewer';\n  const original = `---\ntitle: Getting Started\nstatus: draft\ntags:\n  - docs\n---\n\n# Getting Started\n\nInstall the package and run the development server.`;\n\n  const current = `---\ntitle: Getting Started\nstatus: published\ntags:\n  - docs\n  - onboarding\n---\n\n# Getting Started\n\nInstall the package, run the development server, and open the playground.`;\n</script>\n\n<DiffViewer {original} {current} readonly />\n"
     }
   ]
 }

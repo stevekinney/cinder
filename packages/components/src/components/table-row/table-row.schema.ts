@@ -13,6 +13,8 @@ const schema = {
     },
     selectionLabel: {
       type: 'string',
+      description:
+        'Accessible name for the disabled selection checkbox. Provide a localised\nstring to override the English default ("Selection not allowed for this\nrow"). The library cannot localise on the consumer\'s behalf, so this is\nthe seam for non-English applications or custom phrasing.',
     },
     selectionDisabled: {
       type: 'boolean',

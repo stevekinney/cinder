@@ -5,9 +5,9 @@
 </script>
 
 <script lang="ts">
-  import type { SelectionPopoverPosition } from 'cinder/selection-popover';
-  import { Button } from 'cinder/button';
-  import { SelectionPopover } from 'cinder/selection-popover';
+  import type { SelectionPopoverPosition } from '@lostgradient/cinder/selection-popover';
+  import { Button } from '@lostgradient/cinder/button';
+  import { SelectionPopover } from '@lostgradient/cinder/selection-popover';
 
   const popoverId = 'null-position-selection-popover';
 

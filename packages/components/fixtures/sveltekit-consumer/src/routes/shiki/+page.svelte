@@ -1,12 +1,12 @@
 <script lang="ts">
-  // Publish-path probe (Fixture B): the first-party `cinder/highlighters/shiki`
+  // Publish-path probe (Fixture B): the first-party `@lostgradient/cinder/highlighters/shiki`
   // adapter must resolve through the published tarball under Vite + the
   // Svelte plugin (the realistic consumer toolchain). One factory call +
   // one CodeBlock with an explicit `highlighter` prop is enough to prove the
   // public subpath export still resolves. (The auto-load default — no import —
   // is covered by the `auto-highlight` fixture route.)
-  import { CodeBlock } from 'cinder';
-  import { shikiHighlighter } from 'cinder/highlighters/shiki';
+  import { CodeBlock } from '@lostgradient/cinder';
+  import { shikiHighlighter } from '@lostgradient/cinder/highlighters/shiki';
 
   const highlighter = shikiHighlighter();
   const code = `const greeting: string = 'hello from the publish-path probe';`;

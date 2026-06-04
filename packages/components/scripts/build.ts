@@ -45,7 +45,7 @@ function componentEntrypoint(component: ComponentDiscovery): string {
  * Build the absolute path to a component's `<name>.schema.ts` /
  * `<name>.variables.ts` metadata source. These compile to standalone JS
  * entrypoints (`<name>.schema.js` / `<name>.variables.js`) so the
- * `cinder/<name>/schema` and `cinder/<name>/variables` subpaths are runtime
+ * `@lostgradient/cinder/<name>/schema` and `@lostgradient/cinder/<name>/variables` subpaths are runtime
  * entry points (their `node`/`default` export conditions resolve to real files).
  * Every discovered component ships both, so callers list these unconditionally.
  */
@@ -73,7 +73,7 @@ function componentCssSource(component: ComponentDiscovery): string {
 
 /**
  * Per-component CSS sidecar destination under `dist/`. Mirrors the source
- * layout so consumers can resolve `cinder/<name>/styles` and the eventual
+ * layout so consumers can resolve `@lostgradient/cinder/<name>/styles` and the eventual
  * Track 5 subpath export points at exactly one file.
  */
 function componentCssDestination(component: ComponentDiscovery): string {
@@ -115,7 +115,7 @@ const upstreamReexports = await deriveUpstreamReexports();
 
 /**
  * Entrypoints for the bundled `@cinder/*` workspace re-exports. PR 1 bundles
- * the upstream sources into `cinder`'s `dist/` so the published package has
+ * the upstream sources into `@lostgradient/cinder`'s `dist/` so the published package has
  * zero runtime dependency on the four private workspace packages.
  */
 const upstreamReexportEntrypoints = upstreamReexports.map(
@@ -125,9 +125,9 @@ const upstreamReexportEntrypoints = upstreamReexports.map(
 /**
  * Transitive third-party runtime dependencies inherited from the four
  * `@cinder/*` workspace packages. Bundling the upstream Svelte/TS source
- * into `cinder/dist` pulls these into esbuild's resolution graph; they must
+ * into `@lostgradient/cinder/dist` pulls these into esbuild's resolution graph; they must
  * stay external so they are installed from the npm registry at the consumer
- * site (declared in `cinder`'s own `dependencies`) rather than vendored into
+ * site (declared in `@lostgradient/cinder`'s own `dependencies`) rather than vendored into
  * the published bundle. Sourced from each upstream `package.json#dependencies`
  * minus `@cinder/*` workspace entries.
  */
@@ -163,7 +163,7 @@ const upstreamTransitiveExternals = [
 // Pre-emit sidecar lint: every component CSS that exists must conform to the
 // "scoped + custom properties only" contract before any output lands in
 // `dist/`. Layer assignment and global rules belong on the import side via
-// `cinder/styles`, not in the per-component sidecar.
+// `@lostgradient/cinder/styles`, not in the per-component sidecar.
 const cssLintViolations = [];
 for (const component of components) {
   const cssPath = componentCssSource(component);
@@ -225,7 +225,12 @@ const serverBuildResult = await Bun.build({
   },
   sourcemap: 'external',
   minify: false,
-  external: ['svelte', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
+  external: [
+    'svelte',
+    '@lostgradient/cinder',
+    '@lostgradient/cinder/*',
+    ...upstreamTransitiveExternals,
+  ],
   plugins: [sveltePlugin({ generate: 'server' })],
 });
 
@@ -247,7 +252,7 @@ if (!serverBuildResult.success) {
 const perComponentEntrypoints = components.map((component) => componentEntrypoint(component));
 
 // Per-component schema/variables metadata sources compile to their own JS so
-// `cinder/<name>/schema` and `cinder/<name>/variables` are runtime entry points.
+// `@lostgradient/cinder/<name>/schema` and `@lostgradient/cinder/<name>/variables` are runtime entry points.
 // Listed for both the browser and server builds so the `default` and `node`
 // export conditions each resolve to a real file.
 const perComponentMetadataEntrypoints = components.flatMap((component) =>
@@ -256,13 +261,13 @@ const perComponentMetadataEntrypoints = components.flatMap((component) =>
 
 /**
  * Static sub-paths cinder exposes outside the `components/` tree. Today this
- * is the first-party Shiki adapter at `cinder/highlighters/shiki` and the
- * dev-only base-loaded guard at `cinder/styles/guard`; new non-component
+ * is the first-party Shiki adapter at `@lostgradient/cinder/highlighters/shiki` and the
+ * dev-only base-loaded guard at `@lostgradient/cinder/styles/guard`; new non-component
  * static sub-paths get listed here so the build emits a predictable
  * `dist/<rel>.js` for each one. `shiki` itself stays external (declared in
  * cinder's `dependencies` + the `upstreamTransitiveExternals` list) — the
  * adapter dynamic-imports it lazily so consumers who never use
- * `cinder/highlighters/shiki` ship zero Shiki bytes in their entry chunk.
+ * `@lostgradient/cinder/highlighters/shiki` ship zero Shiki bytes in their entry chunk.
  */
 const staticSubpathEntrypoints = [
   `${sourceRoot}/highlighters/shiki/index.ts`,
@@ -270,7 +275,7 @@ const staticSubpathEntrypoints = [
 ];
 
 /**
- * Deprecated `cinder/experimental/<name>` alias shims. Each promoted-out
+ * Deprecated `@lostgradient/cinder/experimental/<name>` alias shims. Each promoted-out
  * component keeps a thin re-export shim at
  * `src/components/experimental/<name>/index.ts` so the old import path keeps
  * resolving (with a dev warning) during the deprecation window. They are not
@@ -290,9 +295,9 @@ const browserEntrypoints = [
 ];
 
 // Components whose directory ships a CSS sidecar. The BROWSER build's
-// `cssImportPlugin` prepends `import 'cinder/<name>/styles'` so
-// `import Button from 'cinder/button'` (subpath) and `import { Button }
-// from 'cinder'` (root barrel) auto-pull the component's CSS instead of
+// `cssImportPlugin` prepends `import '@lostgradient/cinder/<name>/styles'` so
+// `import Button from '@lostgradient/cinder/button'` (subpath) and `import { Button }
+// from '@lostgradient/cinder'` (root barrel) auto-pull the component's CSS instead of
 // rendering silently unstyled. The set is gated on sidecar presence so it
 // lines up 1:1 with the `./<name>/styles` export subpaths (both derive from
 // `existsSync(<name>.css)`); sidecar-less components and the deprecated alias
@@ -305,7 +310,7 @@ const componentsWithSidecar = components.filter((component) =>
   existsSync(componentCssSource(component)),
 );
 // SUBPATH injection target: map each component's own `index.ts` to the exact
-// `cinder/<name>/styles` (or experimental) specifier its sidecar resolves to.
+// `@lostgradient/cinder/<name>/styles` (or experimental) specifier its sidecar resolves to.
 const perComponentStyleSpecifiers = new Map(
   componentsWithSidecar.map((component) => [
     componentEntrypoint(component),
@@ -339,7 +344,7 @@ void upstreamReexportEntrypoints;
 // helpers) get duplicated across component bundles. Module-identity-sensitive
 // patterns (cross-component Svelte context keys, shared stores, exported
 // singletons) MUST live in the root barrel and be imported from there by
-// consumers — never re-imported from two different `cinder/<name>` subpaths.
+// consumers — never re-imported from two different `@lostgradient/cinder/<name>` subpaths.
 // Track 5's à la carte fixture will assert this contract once it lands.
 const browserBuildResult = await Bun.build({
   entrypoints: browserEntrypoints,
@@ -348,7 +353,13 @@ const browserBuildResult = await Bun.build({
   target: 'browser',
   format: 'esm',
   splitting: false,
-  external: ['svelte', 'svelte/*', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
+  external: [
+    'svelte',
+    'svelte/*',
+    '@lostgradient/cinder',
+    '@lostgradient/cinder/*',
+    ...upstreamTransitiveExternals,
+  ],
   naming: {
     entry: '[dir]/[name].[ext]',
     chunk: '[name]-[hash].[ext]',
@@ -392,7 +403,13 @@ const perComponentServerBuildResult = await Bun.build({
   target: 'node',
   format: 'esm',
   splitting: false,
-  external: ['svelte', 'svelte/*', 'cinder', 'cinder/*', ...upstreamTransitiveExternals],
+  external: [
+    'svelte',
+    'svelte/*',
+    '@lostgradient/cinder',
+    '@lostgradient/cinder/*',
+    ...upstreamTransitiveExternals,
+  ],
   naming: {
     entry: '[dir]/[name].[ext]',
     chunk: '[name]-[hash].[ext]',
@@ -414,7 +431,7 @@ if (!perComponentServerBuildResult.success) {
 
 // -----------------------------------------------------------------------------
 // 4. Copy per-component CSS sidecars verbatim. The browser entry's injected
-//    `import 'cinder/<name>/styles'` resolves through the package `exports`
+//    `import '@lostgradient/cinder/<name>/styles'` resolves through the package `exports`
 //    map to these copied files, so they must land in `dist/` for the
 //    auto-import to have a target. Driven by `discoverComponents()`.
 // -----------------------------------------------------------------------------
@@ -426,7 +443,7 @@ for (const component of components) {
   const destination = componentCssDestination(component);
   await mkdir(dirname(destination), { recursive: true });
   // The sidecar is copied verbatim. Its `@layer cinder.components { … }` wrapper
-  // — required so a direct `cinder/<name>/styles` import keeps its rules inside
+  // — required so a direct `@lostgradient/cinder/<name>/styles` import keeps its rules inside
   // the cascade layer rather than outside every layer — was already enforced on
   // the source by the AST gate above (`cssLintViolations`), so the copy carries
   // it intact. No dist-side re-check is needed.
@@ -721,7 +738,7 @@ for (const component of components) {
       : `${distributionDirectory}/server/components/${component.name}/index.js`,
   );
   // Schema/variables metadata JS — both builds. These back the `node`/`default`
-  // export conditions for `cinder/<name>/schema` and `cinder/<name>/variables`.
+  // export conditions for `@lostgradient/cinder/<name>/schema` and `@lostgradient/cinder/<name>/variables`.
   const serverDirectory = component.isExperimental
     ? `${distributionDirectory}/server/components/experimental/${component.name}`
     : `${distributionDirectory}/server/components/${component.name}`;
@@ -747,7 +764,7 @@ for (const reexport of upstreamReexports) {
   expectedPaths.push(`${distributionDirectory}/server/${reexport.distRelativePath}`);
 }
 
-// Deprecated `cinder/experimental/<name>` alias shims must emit a browser
+// Deprecated `@lostgradient/cinder/experimental/<name>` alias shims must emit a browser
 // bundle, a server bundle, and a declaration file — the `./experimental/<name>`
 // export conditions resolve to all three.
 for (const { name } of DEPRECATED_EXPERIMENTAL_ALIASES) {
@@ -767,10 +784,10 @@ if (missingPaths.length > 0) {
 // in component JS" rule into an asymmetric pair:
 //
 //   - The BROWSER entry (`dist/components/<name>/index.js`) MUST carry the
-//     injected `import 'cinder/<name>/styles'` so `import Button from
-//     'cinder/button'` and `import { Button } from 'cinder'` auto-pull styles.
+//     injected `import '@lostgradient/cinder/<name>/styles'` so `import Button from
+//     '@lostgradient/cinder/button'` and `import { Button } from '@lostgradient/cinder'` auto-pull styles.
 //   - The SERVER entry (`dist/server/components/<name>/index.js`) MUST stay
-//     completely CSS-free. A bare CSS import (`*.css`) OR a `cinder/<name>/styles`
+//     completely CSS-free. A bare CSS import (`*.css`) OR a `@lostgradient/cinder/<name>/styles`
 //     specifier resolves under the `node` export condition to a `.css` file,
 //     which plain Node SSR rejects with `ERR_UNKNOWN_FILE_EXTENSION`. Keeping
 //     the server tree CSS-free is the entire reason the injection is

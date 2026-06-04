@@ -1,31 +1,31 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "aspect-ratio",
-  "import": "cinder/aspect-ratio",
+  "import": "@lostgradient/cinder/aspect-ratio",
   "examples": [
     {
       "id": "basic",
       "title": "Basic 16:9 media box",
       "description": "The default ratio reserves a responsive widescreen box.",
-      "code": "<script lang=\"ts\">\n  import { AspectRatio } from 'cinder/aspect-ratio';\n</script>\n\n<AspectRatio>\n  <div\n    style=\"display: grid; place-items: center; inline-size: 100%; block-size: 100%; border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: linear-gradient(135deg, color-mix(in oklch, var(--cinder-accent), transparent 84%), color-mix(in oklch, var(--cinder-color-info-bg), transparent 20%)); color: var(--cinder-text); font: var(--cinder-font-label-md);\"\n  >\n    16:9\n  </div>\n</AspectRatio>\n"
+      "code": "<script lang=\"ts\">\n  import { AspectRatio } from '@lostgradient/cinder/aspect-ratio';\n</script>\n\n<AspectRatio>\n  <div\n    style=\"display: grid; place-items: center; inline-size: 100%; block-size: 100%; border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: linear-gradient(135deg, color-mix(in oklch, var(--cinder-accent), transparent 84%), color-mix(in oklch, var(--cinder-color-info-bg), transparent 20%)); color: var(--cinder-text); font: var(--cinder-font-label-md);\"\n  >\n    16:9\n  </div>\n</AspectRatio>\n"
     },
     {
       "id": "embedded-media",
       "title": "Embedded media composition",
       "description": "Children can fill the box by absolutely positioning themselves inside the relative wrapper.",
-      "code": "<script lang=\"ts\">\n  import { AspectRatio } from 'cinder/aspect-ratio';\n</script>\n\n<AspectRatio ratio=\"4 / 3\">\n  <div\n    style=\"position: absolute; inset: 0; display: grid; place-items: center; inline-size: 100%; block-size: 100%; border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: repeating-linear-gradient(-45deg, color-mix(in oklch, var(--cinder-border-muted), transparent 82%), color-mix(in oklch, var(--cinder-border-muted), transparent 82%) 0.75rem, color-mix(in oklch, var(--cinder-border-muted), transparent 64%) 0.75rem, color-mix(in oklch, var(--cinder-border-muted), transparent 64%) 1.5rem); color: var(--cinder-text-muted); font: var(--cinder-font-label-md);\"\n  >\n    position: absolute; inset: 0;\n  </div>\n</AspectRatio>\n"
+      "code": "<script lang=\"ts\">\n  import { AspectRatio } from '@lostgradient/cinder/aspect-ratio';\n</script>\n\n<AspectRatio ratio=\"4 / 3\">\n  <div\n    style=\"position: absolute; inset: 0; display: grid; place-items: center; inline-size: 100%; block-size: 100%; border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: repeating-linear-gradient(-45deg, color-mix(in oklch, var(--cinder-border-muted), transparent 82%), color-mix(in oklch, var(--cinder-border-muted), transparent 82%) 0.75rem, color-mix(in oklch, var(--cinder-border-muted), transparent 64%) 0.75rem, color-mix(in oklch, var(--cinder-border-muted), transparent 64%) 1.5rem); color: var(--cinder-text-muted); font: var(--cinder-font-label-md);\"\n  >\n    position: absolute; inset: 0;\n  </div>\n</AspectRatio>\n"
     },
     {
       "id": "numeric-ratio",
       "title": "Numeric 4:3 ratio",
       "description": "Finite numeric values serialize directly onto the native CSS property.",
-      "code": "<script lang=\"ts\">\n  import { AspectRatio } from 'cinder/aspect-ratio';\n</script>\n\n<AspectRatio ratio={4 / 3}>\n  <div\n    style=\"display: grid; place-items: center; inline-size: 100%; block-size: 100%; border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: linear-gradient(180deg, color-mix(in oklch, var(--cinder-color-success-bg), transparent 5%), color-mix(in oklch, var(--cinder-surface-raised), transparent 0%)); color: var(--cinder-color-success-fg); font: var(--cinder-font-label-md);\"\n  >\n    4 / 3\n  </div>\n</AspectRatio>\n"
+      "code": "<script lang=\"ts\">\n  import { AspectRatio } from '@lostgradient/cinder/aspect-ratio';\n</script>\n\n<AspectRatio ratio={4 / 3}>\n  <div\n    style=\"display: grid; place-items: center; inline-size: 100%; block-size: 100%; border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: linear-gradient(180deg, color-mix(in oklch, var(--cinder-color-success-bg), transparent 5%), color-mix(in oklch, var(--cinder-surface-raised), transparent 0%)); color: var(--cinder-color-success-fg); font: var(--cinder-font-label-md);\"\n  >\n    4 / 3\n  </div>\n</AspectRatio>\n"
     },
     {
       "id": "square",
       "title": "Square ratio",
       "description": "String ratios pass through unchanged, including human-readable forms like 1 / 1.",
-      "code": "<script lang=\"ts\">\n  import { AspectRatio } from 'cinder/aspect-ratio';\n</script>\n\n<AspectRatio ratio=\"1 / 1\">\n  <div\n    style=\"display: grid; place-items: center; inline-size: 100%; block-size: 100%; border: 1px dashed var(--cinder-border-muted); border-radius: 999px; background: radial-gradient(circle at 30% 30%, color-mix(in oklch, var(--cinder-accent), white 72%), color-mix(in oklch, var(--cinder-accent), transparent 18%)); color: var(--cinder-text); font: var(--cinder-font-label-md);\"\n  >\n    1 / 1\n  </div>\n</AspectRatio>\n"
+      "code": "<script lang=\"ts\">\n  import { AspectRatio } from '@lostgradient/cinder/aspect-ratio';\n</script>\n\n<AspectRatio ratio=\"1 / 1\">\n  <div\n    style=\"display: grid; place-items: center; inline-size: 100%; block-size: 100%; border: 1px dashed var(--cinder-border-muted); border-radius: 999px; background: radial-gradient(circle at 30% 30%, color-mix(in oklch, var(--cinder-accent), white 72%), color-mix(in oklch, var(--cinder-accent), transparent 18%)); color: var(--cinder-text); font: var(--cinder-font-label-md);\"\n  >\n    1 / 1\n  </div>\n</AspectRatio>\n"
     }
   ]
 }

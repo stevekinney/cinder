@@ -39,7 +39,7 @@ The canonical Cinder way uses the `<VisuallyHidden>` primitive with `as="a"` and
 
 ```svelte
 <script lang="ts">
-  import { VisuallyHidden } from 'cinder';
+  import { VisuallyHidden } from '@lostgradient/cinder';
   let { children } = $props();
 </script>
 

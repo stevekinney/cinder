@@ -14,11 +14,11 @@
  * The `renderThenHydrate` helper works by compiling the .svelte source in
  * `generate: 'server'` mode, writing the compiled output to a temp .mjs file,
  * and dynamically importing it. When Bun resolves that .mjs file's imports,
- * `cinder/editor/component-runtime` matches the "node" conditional export
+ * `@lostgradient/cinder/editor/component-runtime` matches the "node" conditional export
  * (no "bun" condition exists), which points to `./dist/server/…` — a file
  * that does not exist in the development tree.
  *
- * Root cause: `cinder/editor/component-runtime` bundles ProseMirror symbols.
+ * Root cause: `@lostgradient/cinder/editor/component-runtime` bundles ProseMirror symbols.
  * ProseMirror touches the DOM at module-evaluation time, so the package.json
  * uses a server-specific "node" export to provide a stub — but the stub's
  * dist is not built in development. The Svelte preload plugin (which maps
@@ -26,7 +26,7 @@
  * dynamically imported .mjs files the helper writes to disk.
  *
  * To unblock full live-editor hydration, one of:
- * (a) Add a "bun" condition to `cinder/editor/component-runtime` → src file.
+ * (a) Add a "bun" condition to `@lostgradient/cinder/editor/component-runtime` → src file.
  * (b) Implement a Playwright browser test that exercises real hydration.
  * (c) Build the dist before running these tests.
  *
@@ -98,7 +98,7 @@ describe('MarkdownEditor hydration status', () => {
   // Acceptance criterion from the plan: "Default-mode (wysiwyg) hydrate test passes,
   // OR live-editor hydration is explicitly marked blocked/unmet with a tracking note."
   //
-  // Full renderThenHydrate is blocked by `cinder/editor/component-runtime` having no
+  // Full renderThenHydrate is blocked by `@lostgradient/cinder/editor/component-runtime` having no
   // "bun" conditional export — the "node" export points to a missing dist file.
   // See file header for the three unblocking options. When unblocked, replace this
   // todo with a real renderThenHydrate assertion.

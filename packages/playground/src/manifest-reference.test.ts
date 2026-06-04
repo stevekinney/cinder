@@ -254,7 +254,7 @@ describe('isComponentManifest', () => {
         name: 'X',
         kebabName: 'x',
         file: 'x.svelte',
-        importPath: 'cinder/x',
+        importPath: '@lostgradient/cinder/x',
         props: [{ name: 'p', control: { kind: 'select' /* missing options */ } }],
       }),
     ).toBe(false);
@@ -266,7 +266,7 @@ describe('isComponentManifest', () => {
         name: 'X',
         kebabName: 'x',
         file: 'x.svelte',
-        importPath: 'cinder/x',
+        importPath: '@lostgradient/cinder/x',
         props: [{ name: 'open', control: { kind: 'boolean' }, bindable: true, optional: true }],
       }),
     ).toBe(true);
@@ -278,7 +278,7 @@ describe('fetchComponentManifest', () => {
     name: 'Accordion',
     kebabName: 'accordion',
     file: 'accordion.svelte',
-    importPath: 'cinder/accordion',
+    importPath: '@lostgradient/cinder/accordion',
     props: [
       {
         name: 'expandedIds',

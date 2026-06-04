@@ -1,8 +1,8 @@
 /**
- * Unit tests for the `cinder/styles` base-loaded guard.
+ * Unit tests for the `@lostgradient/cinder/styles` base-loaded guard.
  *
  * The guard detects when a consumer imports a per-component CSS subpath without
- * first importing `cinder/styles`. The detection mechanism is a CSS custom
+ * first importing `@lostgradient/cinder/styles`. The detection mechanism is a CSS custom
  * property (`--cinder-base-loaded`) set by the base stylesheet on `:root`. The
  * `isBaseLoaded` function reads that property via `getComputedStyle`; the module
  * side-effect warns once in `DEV + BROWSER` when the property is absent.
@@ -69,11 +69,11 @@ describe('BASE_LOADED_PROPERTY', () => {
 
 describe('MISSING_BASE_WARNING', () => {
   test('mentions cinder/styles as the fix', () => {
-    expect(MISSING_BASE_WARNING).toContain("import 'cinder/styles'");
+    expect(MISSING_BASE_WARNING).toContain("import '@lostgradient/cinder/styles'");
   });
 
   test('mentions per-component styles as the trigger condition', () => {
-    expect(MISSING_BASE_WARNING).toContain('cinder/<component>/styles');
+    expect(MISSING_BASE_WARNING).toContain('@lostgradient/cinder/<component>/styles');
   });
 
   test('mentions @layer cascade order as the consequence', () => {
@@ -216,44 +216,44 @@ describe('warn side-effect: base absent triggers console.warn exactly once', () 
 // A real consumer's app entry is one of:
 //
 //   BAD  — component style imported WITHOUT the base:
-//     import 'cinder/styles/guard';
-//     import 'cinder/button/styles';   // a stylesheet is attached, but
+//     import '@lostgradient/cinder/styles/guard';
+//     import '@lostgradient/cinder/button/styles';   // a stylesheet is attached, but
 //                                       // `--cinder-base-loaded` is never set
 //
 //   GOOD — base imported first:
-//     import 'cinder/styles';          // sets `--cinder-base-loaded: 1`
-//     import 'cinder/styles/guard';
-//     import 'cinder/button/styles';
+//     import '@lostgradient/cinder/styles';          // sets `--cinder-base-loaded: 1`
+//     import '@lostgradient/cinder/styles/guard';
+//     import '@lostgradient/cinder/button/styles';
 //
 // The guard must warn for the BAD sequence and stay silent for the GOOD one.
 // `styleSheetsLength: 1` represents the component stylesheet the consumer
-// imported; `baseLoadedValue` is whether `cinder/styles` ran (`'1'`) or not
+// imported; `baseLoadedValue` is whether `@lostgradient/cinder/styles` ran (`'1'`) or not
 // (`''`).
 // ---------------------------------------------------------------------------
 
 describe('consumer fixture: component style imported without the base', () => {
-  test('BAD sequence — component style without `cinder/styles` → guard warns once', () => {
+  test('BAD sequence — component style without `@lostgradient/cinder/styles` → guard warns once', () => {
     const warnSpy = mock(() => {});
     simulateGuardSideEffect({ styleSheetsLength: 1, baseLoadedValue: '', warnSpy });
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith(MISSING_BASE_WARNING);
   });
 
-  test('GOOD sequence — `cinder/styles` imported first → guard stays silent', () => {
+  test('GOOD sequence — `@lostgradient/cinder/styles` imported first → guard stays silent', () => {
     const warnSpy = mock(() => {});
     simulateGuardSideEffect({ styleSheetsLength: 1, baseLoadedValue: '1', warnSpy });
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  test("the warning points the consumer at the fix (`import 'cinder/styles'` first)", () => {
-    expect(MISSING_BASE_WARNING).toContain("import 'cinder/styles'");
-    expect(MISSING_BASE_WARNING).toContain('cinder/<component>/styles');
+  test("the warning points the consumer at the fix (`import '@lostgradient/cinder/styles'` first)", () => {
+    expect(MISSING_BASE_WARNING).toContain("import '@lostgradient/cinder/styles'");
+    expect(MISSING_BASE_WARNING).toContain('@lostgradient/cinder/<component>/styles');
   });
 
   // Package-boundary tripwire: the simulation above would keep passing even if
   // the guard stopped being wired into the package. Assert the real export
   // surface the BAD/GOOD sequences depend on actually exists, so deleting
-  // `cinder/styles/guard`, the base `cinder/styles`, or a component `/styles`
+  // `@lostgradient/cinder/styles/guard`, the base `@lostgradient/cinder/styles`, or a component `/styles`
   // subpath fails here. The base stylesheet's `--cinder-base-loaded` marker
   // itself is covered in css-tree-shake.test.ts.
   test('the package exports the entry points the guard sequence relies on', async () => {

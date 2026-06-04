@@ -6,7 +6,7 @@ Toggle button row for switching between a small set of mutually exclusive option
 
 ```svelte
 <script lang="ts">
-  import SegmentedControl from 'cinder/segmented-control';
+  import SegmentedControl from '@lostgradient/cinder/segmented-control';
 </script>
 
 <SegmentedControl />

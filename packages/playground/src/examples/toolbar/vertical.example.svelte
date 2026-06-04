@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import Toolbar from 'cinder/toolbar';
-  import { Button } from 'cinder/button';
+  import Toolbar from '@lostgradient/cinder/toolbar';
+  import { Button } from '@lostgradient/cinder/button';
 </script>
 
 <Toolbar aria-label="Canvas tools" orientation="vertical">

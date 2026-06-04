@@ -9,7 +9,7 @@ A vertically stacked set of disclosure regions. The `Accordion` parent owns expa
 
 ```svelte
 <script lang="ts">
-  import { Accordion } from 'cinder/accordion';
+  import { Accordion } from '@lostgradient/cinder/accordion';
 
   let expandedIds = $state<string[]>([]);
 </script>
@@ -21,7 +21,7 @@ A vertically stacked set of disclosure regions. The `Accordion` parent owns expa
 ```
 
 The leaf remains importable individually for à-la-carte builds — see
-`cinder/accordion-item`.
+`@lostgradient/cinder/accordion-item`.
 
 ## Props
 

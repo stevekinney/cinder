@@ -21,7 +21,7 @@ Bottom-anchored overlay panel optimised for mobile-style drawer interactions.
 
 ```svelte
 <script lang="ts">
-  import Sheet from 'cinder/sheet';
+  import Sheet from '@lostgradient/cinder/sheet';
 </script>
 
 <Sheet />

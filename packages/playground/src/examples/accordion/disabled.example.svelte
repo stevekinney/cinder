@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { Accordion } from 'cinder/accordion';
+  import { Accordion } from '@lostgradient/cinder/accordion';
   let expandedIds = $state<string[]>([]);
 </script>
 

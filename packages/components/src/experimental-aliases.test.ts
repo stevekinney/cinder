@@ -1,11 +1,11 @@
 /// <reference lib="dom" />
 /**
- * Acceptance tests for the deprecated `cinder/experimental/<name>` import
+ * Acceptance tests for the deprecated `@lostgradient/cinder/experimental/<name>` import
  * aliases left behind when these components were promoted out of the
  * experimental tree.
  *
  * Each alias must:
- *   1. Resolve to the SAME component module as the new `cinder/<name>` path.
+ *   1. Resolve to the SAME component module as the new `@lostgradient/cinder/<name>` path.
  *   2. Appear in package.json#exports under both the old and new keys.
  *   3. Emit a one-time dev deprecation warning when imported.
  */
@@ -22,7 +22,7 @@ type AliasModule = { default: unknown };
 
 describe('deprecated experimental aliases', () => {
   for (const { name } of DEPRECATED_EXPERIMENTAL_ALIASES) {
-    test(`cinder/experimental/${name} resolves to the same module as cinder/${name}`, async () => {
+    test(`@lostgradient/cinder/experimental/${name} resolves to the same module as cinder/${name}`, async () => {
       const aliasModule = (await import(
         `./components/experimental/${name}/index.ts`
       )) as AliasModule;
@@ -60,9 +60,10 @@ describe('deprecated experimental aliases', () => {
 
     const deprecationWarnings = messages.filter(
       (message) =>
-        message.includes('cinder/experimental/message') && message.includes('deprecated'),
+        message.includes('@lostgradient/cinder/experimental/message') &&
+        message.includes('deprecated'),
     );
     expect(deprecationWarnings.length).toBe(1);
-    expect(deprecationWarnings[0]).toContain('cinder/message');
+    expect(deprecationWarnings[0]).toContain('@lostgradient/cinder/message');
   });
 });

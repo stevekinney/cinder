@@ -3,14 +3,14 @@
  *
  * `ChatProps.conversation` is the vendored `ConversationHistory` (a breaking
  * change from the previous conversationalist `Conversation`). This asserts, at
- * the type level and through the PUBLIC `cinder/chat`-equivalent barrel, that:
+ * the type level and through the PUBLIC `@lostgradient/cinder/chat`-equivalent barrel, that:
  *   1. `ConversationHistory` is publicly importable alongside `ChatProps`.
  *   2. The actual `<Chat>` component accepts a `ConversationHistory`-shaped
  *      `conversation` prop (via `ComponentProps<typeof Chat>`), not just
  *      `ChatProps` in isolation.
  *
  * Imports come from `./index.ts` — the chat public barrel that maps to
- * `cinder/chat` — so this tracks the real consumer surface.
+ * `@lostgradient/cinder/chat` — so this tracks the real consumer surface.
  */
 
 import { expect, test } from 'bun:test';

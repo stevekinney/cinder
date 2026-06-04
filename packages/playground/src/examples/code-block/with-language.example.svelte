@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { CodeBlock } from 'cinder';
+  import { CodeBlock } from '@lostgradient/cinder';
 
   const code = `SELECT id, name, created_at
 FROM users

@@ -1,19 +1,19 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "container",
-  "import": "cinder/container",
+  "import": "@lostgradient/cinder/container",
   "examples": [
     {
       "id": "basic",
       "title": "Prose reading column",
       "description": "The prose width caps line length at a readable measure and centers the column.",
-      "code": "<script lang=\"ts\">\n  import { Container } from 'cinder/container';\n</script>\n\n<Container maxWidth=\"prose\">\n  <h1 style=\"font: var(--cinder-font-heading-lg); color: var(--cinder-text);\">Reading column</h1>\n  <p style=\"font: var(--cinder-font-body-md); color: var(--cinder-text-muted);\">\n    Container keeps long-form content at a comfortable measure and adds an inline gutter so text\n    never touches the viewport edge.\n  </p>\n</Container>\n"
+      "code": "<script lang=\"ts\">\n  import { Container } from '@lostgradient/cinder/container';\n</script>\n\n<Container maxWidth=\"prose\">\n  <h1 style=\"font: var(--cinder-font-heading-lg); color: var(--cinder-text);\">Reading column</h1>\n  <p style=\"font: var(--cinder-font-body-md); color: var(--cinder-text-muted);\">\n    Container keeps long-form content at a comfortable measure and adds an inline gutter so text\n    never touches the viewport edge.\n  </p>\n</Container>\n"
     },
     {
       "id": "widths",
       "title": "Named width scale",
       "description": "narrow, wide, and full bracket the default content width for different layouts.",
-      "code": "<script lang=\"ts\">\n  import { Container } from 'cinder/container';\n\n  const widths = ['narrow', 'wide', 'full'] as const;\n</script>\n\n<div style=\"display: grid; gap: var(--cinder-space-4);\">\n  {#each widths as width (width)}\n    <Container maxWidth={width}>\n      <div\n        style=\"padding: var(--cinder-space-4); border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); color: var(--cinder-text); font: var(--cinder-font-label-md);\"\n      >\n        maxWidth=\"{width}\"\n      </div>\n    </Container>\n  {/each}\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Container } from '@lostgradient/cinder/container';\n\n  const widths = ['narrow', 'wide', 'full'] as const;\n</script>\n\n<div style=\"display: grid; gap: var(--cinder-space-4);\">\n  {#each widths as width (width)}\n    <Container maxWidth={width}>\n      <div\n        style=\"padding: var(--cinder-space-4); border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); color: var(--cinder-text); font: var(--cinder-font-label-md);\"\n      >\n        maxWidth=\"{width}\"\n      </div>\n    </Container>\n  {/each}\n</div>\n"
     }
   ]
 }

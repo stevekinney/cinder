@@ -19,8 +19,7 @@
  * @experimental
  */
 
-import type { EditorView } from '@milkdown/kit/prose/view';
-import { buildAnchorFromSelection } from 'cinder/commentary/anchoring';
+import { buildAnchorFromSelection } from '@lostgradient/cinder/commentary/anchoring';
 import type {
   CommentCreateEvent,
   CommentDeleteEvent,
@@ -28,8 +27,13 @@ import type {
   Thread,
   ThreadCreateEvent,
   ThreadDeleteEvent,
-} from 'cinder/commentary/comments';
-import { createDocumentAnchor, extractMentions, generateId } from 'cinder/commentary/comments';
+} from '@lostgradient/cinder/commentary/comments';
+import {
+  createDocumentAnchor,
+  extractMentions,
+  generateId,
+} from '@lostgradient/cinder/commentary/comments';
+import type { EditorView } from '@milkdown/kit/prose/view';
 import { devWarn } from '../../utilities/dev-warn.ts';
 import type { PopoverPosition, ReviewMode } from './review-editor-types';
 

@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { Modal } from 'cinder/modal';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Modal } from '@lostgradient/cinder/modal';
 
   let open = $state(false);
   let longContent = $state(true);

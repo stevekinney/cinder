@@ -6,7 +6,7 @@ Page-navigation control for stepping through multi-page result sets.
 
 ```svelte
 <script lang="ts">
-  import Pagination from 'cinder/pagination';
+  import Pagination from '@lostgradient/cinder/pagination';
 </script>
 
 <Pagination />

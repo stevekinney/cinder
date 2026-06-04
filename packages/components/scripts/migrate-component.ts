@@ -497,7 +497,7 @@ ${isExperimental ? `> **EXPERIMENTAL** — this component's API may change betwe
 
 \`\`\`svelte
 <script lang="ts">
-  import ${pascalName} from 'cinder/${context.inputName}';
+  import ${pascalName} from '@lostgradient/cinder/${context.inputName}';
 </script>
 
 <${pascalName} />

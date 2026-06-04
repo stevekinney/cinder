@@ -5,10 +5,10 @@
 </script>
 
 <script lang="ts">
-  import { useToast } from 'cinder';
-  import { Button } from 'cinder/button';
-  import { Modal } from 'cinder/modal';
-  import { ToastRegion } from 'cinder/toast-region';
+  import { useToast } from '@lostgradient/cinder';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Modal } from '@lostgradient/cinder/modal';
+  import { ToastRegion } from '@lostgradient/cinder/toast-region';
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
 </script>

@@ -1,25 +1,25 @@
 <script lang="ts">
   // Subpath imports — exercises individual component exports
-  import AccordionItem from 'cinder/accordion-item';
-  import Accordion from 'cinder/accordion';
-  import Alert from 'cinder/alert';
-  import Badge from 'cinder/badge';
-  import Button from 'cinder/button';
-  import Card from 'cinder/card';
-  import DataList from 'cinder/data-list';
-  import Dropdown from 'cinder/dropdown';
-  import EmptyState from 'cinder/empty-state';
-  import Input from 'cinder/input';
-  import Modal from 'cinder/modal';
-  import NavigationBar from 'cinder/navigation-bar';
-  import NavigationItem from 'cinder/navigation-item';
-  import Pagination from 'cinder/pagination';
-  import Select from 'cinder/select';
-  import Skeleton from 'cinder/skeleton';
-  import Spinner from 'cinder/spinner';
-  import Textarea from 'cinder/textarea';
-  import Toggle from 'cinder/toggle';
-  import Tooltip from 'cinder/tooltip';
+  import AccordionItem from '@lostgradient/cinder/accordion-item';
+  import Accordion from '@lostgradient/cinder/accordion';
+  import Alert from '@lostgradient/cinder/alert';
+  import Badge from '@lostgradient/cinder/badge';
+  import Button from '@lostgradient/cinder/button';
+  import Card from '@lostgradient/cinder/card';
+  import DataList from '@lostgradient/cinder/data-list';
+  import Dropdown from '@lostgradient/cinder/dropdown';
+  import EmptyState from '@lostgradient/cinder/empty-state';
+  import Input from '@lostgradient/cinder/input';
+  import Modal from '@lostgradient/cinder/modal';
+  import NavigationBar from '@lostgradient/cinder/navigation-bar';
+  import NavigationItem from '@lostgradient/cinder/navigation-item';
+  import Pagination from '@lostgradient/cinder/pagination';
+  import Select from '@lostgradient/cinder/select';
+  import Skeleton from '@lostgradient/cinder/skeleton';
+  import Spinner from '@lostgradient/cinder/spinner';
+  import Textarea from '@lostgradient/cinder/textarea';
+  import Toggle from '@lostgradient/cinder/toggle';
+  import Tooltip from '@lostgradient/cinder/tooltip';
 
   let currentPage = $state(1);
   let inputValue = $state('');

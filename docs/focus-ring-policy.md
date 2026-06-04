@@ -3,7 +3,7 @@
 This document defines the approved strategies for `:focus-visible` rings in Cinder component CSS. Pick from this list. Do not invent a third approach.
 
 > [!NOTE] Default recipe
-> Component `:focus-visible` rules should use **Strategy B** — the transparent-outline placeholder paired with `box-shadow: var(--_cinder-focus-ring-shadow)`. The `cinder/no-focus-visible-colored-outline` Stylelint rule enforces this: colored `outline` channels are rejected outside `@media (forced-colors: active)`. Strategy A (a colored outline) is retained for the bare `:focus-visible` global default in `foundation.css` only.
+> Component `:focus-visible` rules should use **Strategy B** — the transparent-outline placeholder paired with `box-shadow: var(--_cinder-focus-ring-shadow)`. The `@lostgradient/cinder/no-focus-visible-colored-outline` Stylelint rule enforces this: colored `outline` channels are rejected outside `@media (forced-colors: active)`. Strategy A (a colored outline) is retained for the bare `:focus-visible` global default in `foundation.css` only.
 
 ## Token Reference
 
@@ -118,7 +118,7 @@ Variants that change foreground or background (danger inputs, accent buttons) **
 
 ## Enforcement (Stylelint)
 
-The root `bun run lint` pipeline runs Stylelint over `packages/**/src/**/*.{css,svelte}` with the local `cinder/no-focus-visible-colored-outline` plugin (`packages/components/scripts/stylelint/no-focus-visible-colored-outline.mjs`). The rule is currently configured at **`severity: warning`** because surveying the codebase at introduction time revealed ~40 pre-existing colored-outline call sites that pre-date this policy. Surfacing them as warnings keeps the rule visible without gating every unrelated PR on a sweep-up. Promote to `error` once the colored-outline sites are migrated.
+The root `bun run lint` pipeline runs Stylelint over `packages/**/src/**/*.{css,svelte}` with the local `@lostgradient/cinder/no-focus-visible-colored-outline` plugin (`packages/components/scripts/stylelint/no-focus-visible-colored-outline.mjs`). The rule is currently configured at **`severity: warning`** because surveying the codebase at introduction time revealed ~40 pre-existing colored-outline call sites that pre-date this policy. Surfacing them as warnings keeps the rule visible without gating every unrelated PR on a sweep-up. Promote to `error` once the colored-outline sites are migrated.
 
 The rule:
 

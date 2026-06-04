@@ -7,15 +7,15 @@ Plan reference: `~/.claude/plans/i-want-to-reorganize-velvet-candy.md`.
 ## OQ#1 — Workspace filter syntax and playground name
 
 - Workspace tool: Bun workspaces (root `package.json` lists `workspaces`; lockfile is `bun.lock`).
-- Components package name: `cinder` → filter `--filter=cinder`.
+- Components package name: `@lostgradient/cinder` → filter `--filter=@lostgradient/cinder`.
 - Playground package name: `@cinder/playground` → filter `--filter='@cinder/playground'` (quoted to escape the `@`).
 - Other workspaces use the `@cinder/*` scope; only `packages/components` itself is unscoped.
 
 Commands used in this PR:
 
-- `bun run --filter=cinder build`
-- `bun run --filter=cinder test`
-- `bun run --filter=cinder typecheck`
+- `bun run --filter=@lostgradient/cinder build`
+- `bun run --filter=@lostgradient/cinder test`
+- `bun run --filter=@lostgradient/cinder typecheck`
 - `bun run --filter='@cinder/playground' dev`
 
 ## OQ#2 — Existing publication contract
@@ -34,7 +34,7 @@ Implication for this migration: the new layout matches the same hybrid contract.
 
 ## OQ#3 — CSS import sites
 
-CSS for each component lives at `packages/components/src/styles/components/<name>.css` and is aggregated by `packages/components/src/styles/components.css`, which is imported once by `src/styles/index.css` (the public `cinder/styles` entry).
+CSS for each component lives at `packages/components/src/styles/components/<name>.css` and is aggregated by `packages/components/src/styles/components.css`, which is imported once by `src/styles/index.css` (the public `@lostgradient/cinder/styles` entry).
 
 Test files load specific component CSS at runtime via `new URL('../styles/components/<name>.css', import.meta.url)` for token measurement — there are 22 such imports in `*.test.ts` files.
 

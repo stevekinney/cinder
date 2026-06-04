@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { RadioGroup } from 'cinder/radio-group';
+  import { RadioGroup } from '@lostgradient/cinder/radio-group';
   let plan = $state('pro');
 </script>
 

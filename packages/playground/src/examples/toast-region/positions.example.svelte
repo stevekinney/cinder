@@ -4,10 +4,10 @@
 </script>
 
 <script lang="ts">
-  import { useToast } from 'cinder';
-  import { Button } from 'cinder/button';
-  import { ToastRegion } from 'cinder/toast-region';
-  import type { ToastPosition } from 'cinder/toast-region';
+  import { useToast } from '@lostgradient/cinder';
+  import { Button } from '@lostgradient/cinder/button';
+  import { ToastRegion } from '@lostgradient/cinder/toast-region';
+  import type { ToastPosition } from '@lostgradient/cinder/toast-region';
 
   const positions: ToastPosition[] = [
     'top-left',

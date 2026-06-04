@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { SideNavigation } from 'cinder/side-navigation';
+  import { SideNavigation } from '@lostgradient/cinder/side-navigation';
 </script>
 
 <SideNavigation ariaLabel="Workspace">

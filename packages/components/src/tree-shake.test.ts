@@ -23,7 +23,7 @@ describe('tree-shake contract', () => {
     await Bun.write(
       entrypoint,
       [
-        "import Button from 'cinder/button';",
+        "import Button from '@lostgradient/cinder/button';",
         'const componentReference = Button;',
         'console.log(typeof componentReference);',
         '',

@@ -13,10 +13,10 @@
  * @module
  */
 
-import type { Thread } from 'cinder/commentary/comments';
-import { generateMarkdownSummary } from 'cinder/commentary/export';
-import { computeLineDiff, getDiffStats } from 'cinder/markdown/diff/line-diff';
-import { normalize } from 'cinder/markdown/pipeline';
+import type { Thread } from '@lostgradient/cinder/commentary/comments';
+import { generateMarkdownSummary } from '@lostgradient/cinder/commentary/export';
+import { computeLineDiff, getDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
+import { normalize } from '@lostgradient/cinder/markdown/pipeline';
 import type {
   ReviewEditorDiffViewMode as DiffViewMode,
   ReviewEditorViewType as ViewType,

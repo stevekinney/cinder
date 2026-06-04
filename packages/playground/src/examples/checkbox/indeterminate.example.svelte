@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Checkbox } from 'cinder/checkbox';
+  import { Checkbox } from '@lostgradient/cinder/checkbox';
   let red = $state(true);
   let green = $state(false);
   let blue = $state(true);

@@ -1,7 +1,7 @@
 # cinder
 A Svelte 5 component library with ~100 accessible primitives and domain suites.
 
-Install: bun add cinder svelte
+Install: bun add @lostgradient/cinder svelte
 Import root: cinder
 Styles: import 'cinder/styles';
 

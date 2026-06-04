@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { BarChart } from 'cinder/bar-chart';
+  import { BarChart } from '@lostgradient/cinder/bar-chart';
 
   const data = [
     { week: 'Week 1', open: 34, resolved: 70 },

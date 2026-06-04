@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { Dropdown } from 'cinder/dropdown';
+  import { Dropdown } from '@lostgradient/cinder/dropdown';
 </script>
 
 <Dropdown id="dropdown-with-separator">

@@ -158,4 +158,4 @@ jobs:
           else
             echo "Full unit suite (mode=${{ needs.scope.outputs.mode }})."
           fi
-          bun run --filter=cinder test:changed
+          bun run --filter=@lostgradient/cinder test:changed

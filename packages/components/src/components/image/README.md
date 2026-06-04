@@ -6,7 +6,7 @@ Responsive image wrapper with aspect-ratio preservation, lazy loading, and fallb
 
 ```svelte
 <script lang="ts">
-  import Image from 'cinder/image';
+  import Image from '@lostgradient/cinder/image';
 </script>
 
 <Image />

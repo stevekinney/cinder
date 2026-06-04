@@ -1,5 +1,5 @@
 /**
- * Non-mutating staged pack for the `cinder` npm tarball.
+ * Non-mutating staged pack for the `@lostgradient/cinder` npm tarball.
  *
  * `bun pm pack` runs against the source `packages/components/package.json`,
  * which carries:
@@ -184,12 +184,12 @@ function buildPublishedManifest(
   delete published['lint-staged'];
   // The published tarball ships:
   //   - `dist/` — every component / upstream / server build target.
-  //   - `src/styles/**/*.css` — `cinder/styles*` exports target these CSS
+  //   - `src/styles/**/*.css` — `@lostgradient/cinder/styles*` exports target these CSS
   //     files directly (the build does not transform them).
   //   - `src/components/**/*.examples.json` and
   //     `src/components/**/*.constraints.json` — per-component sidecars
   //     consumed by the `<id>/examples` and `<id>/constraints` exports.
-  //   - `components.json` — `cinder/manifest`.
+  //   - `components.json` — `@lostgradient/cinder/manifest`.
   //
   // Everything else under `src/**` (TS source, Svelte source, tests) stays
   // out so `@cinder/*` import-statement noise never reaches the tarball.
@@ -202,14 +202,14 @@ function buildPublishedManifest(
   //     pass-through that doesn't emit import statements; until that's
   //     fixed, Svelte-aware bundlers must resolve via source).
   //   - `src/index.ts` and `src/schema-types.ts` — root barrel source for
-  //     the `svelte` condition on `cinder` itself.
+  //     the `svelte` condition on `@lostgradient/cinder` itself.
   //   - `src/utilities/**/*.ts` and `src/_internal/**/*.ts` — runtime
   //     helpers and the constraints DSL the components import.
   //   - `src/styles/**/*.css` and `src/components/**/*.css` — hand-authored
-  //     CSS targets for `cinder/styles*` and `cinder/<id>/styles`.
+  //     CSS targets for `@lostgradient/cinder/styles*` and `@lostgradient/cinder/<id>/styles`.
   //   - `src/components/**/*.{examples,constraints}.json` — JSON sidecars
-  //     surfaced via `cinder/<id>/{examples,constraints}`.
-  //   - `components.json` — `cinder/manifest`.
+  //     surfaced via `@lostgradient/cinder/<id>/{examples,constraints}`.
+  //   - `components.json` — `@lostgradient/cinder/manifest`.
   //
   // Test files are excluded via `!**/*.{test,spec}.ts` so the tarball never
   // ships test infra.
@@ -244,7 +244,7 @@ function buildPublishedManifest(
     // condition pointing at `./src/highlighters/<name>/index.ts` (the
     // first-party Shiki adapter today; future siblings live here too).
     // Without this glob, a Svelte-aware consumer resolving the source
-    // condition for `cinder/highlighters/shiki` would hit a dangling path
+    // condition for `@lostgradient/cinder/highlighters/shiki` would hit a dangling path
     // because the build only emits `dist/highlighters/**` — the source
     // remains in `src/`.
     'src/highlighters/**/*.ts',

@@ -1,19 +1,19 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "pagination",
-  "import": "cinder/pagination",
+  "import": "@lostgradient/cinder/pagination",
   "examples": [
     {
       "id": "basic",
       "title": "Basic pagination",
       "description": "Navigate through pages with previous/next and numbered buttons.",
-      "code": "<script lang=\"ts\">\n  import { Pagination } from 'cinder/pagination';\n  let currentPage = $state(1);\n</script>\n\n<Pagination bind:currentPage totalPages={10} />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Page {currentPage} of 10</p>\n"
+      "code": "<script lang=\"ts\">\n  import { Pagination } from '@lostgradient/cinder/pagination';\n  let currentPage = $state(1);\n</script>\n\n<Pagination bind:currentPage totalPages={10} />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Page {currentPage} of 10</p>\n"
     },
     {
       "id": "with-total",
       "title": "Pagination with total count",
       "description": "totalCount prop shows formatted record count.",
-      "code": "<script lang=\"ts\">\n  import { Pagination } from 'cinder/pagination';\n  let currentPage = $state(3);\n</script>\n\n<Pagination bind:currentPage totalPages={20} totalCount={384} />\n"
+      "code": "<script lang=\"ts\">\n  import { Pagination } from '@lostgradient/cinder/pagination';\n  let currentPage = $state(3);\n</script>\n\n<Pagination bind:currentPage totalPages={20} totalCount={384} />\n"
     }
   ]
 }

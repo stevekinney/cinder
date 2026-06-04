@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { ColorField } from 'cinder/color-field';
+  import { ColorField } from '@lostgradient/cinder/color-field';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 20rem;">

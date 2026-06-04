@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Guidance for AI coding agents working with `cinder`. Two audiences, two
+Guidance for AI coding agents working with `@lostgradient/cinder`. Two audiences, two
 sections:
 
 - **Using cinder in your app** — start here if you are building a product on
-  top of `cinder` (you ran `bun add cinder` and want to ship the right
+  top of `@lostgradient/cinder` (you ran `bun add @lostgradient/cinder` and want to ship the right
   component for the job).
 - **Contributing to cinder** — start here if you are editing this package.
 
@@ -12,7 +12,7 @@ sections:
 
 ## Using cinder in your app
 
-`cinder` is a Svelte 5 component library — roughly 100 accessible primitives
+`@lostgradient/cinder` is a Svelte 5 component library — roughly 100 accessible primitives
 plus a few opinionated domain suites. It targets Svelte `>=5.55.0 <6` and is
 SSR-safe out of the box. Everything ships with a JSON Schema, CSS variable
 list, and (where it matters) a constraints sidecar and runnable examples.
@@ -20,82 +20,82 @@ list, and (where it matters) a constraints sidecar and runnable examples.
 ### Quickstart
 
 ```bash
-bun add cinder svelte
+bun add @lostgradient/cinder svelte
 ```
 
 Two import shapes, pick one per file:
 
 ```ts
 // Root barrel — convenient, larger import graph, fine for Node SSR.
-import { Button, Modal } from 'cinder';
+import { Button, Modal } from '@lostgradient/cinder';
 ```
 
 ```ts
 // Subpath — tree-shake friendly, ideal under Vite / SvelteKit.
-import Button from 'cinder/button';
-import Modal from 'cinder/modal';
+import Button from '@lostgradient/cinder/button';
+import Modal from '@lostgradient/cinder/modal';
 ```
 
 Then load the **base** stylesheet **once**, **first**, at your app entry:
 
 ```ts
-import 'cinder/styles';
-import 'cinder/styles/guard'; // dev-only: warns if the above line is missing
+import '@lostgradient/cinder/styles';
+import '@lostgradient/cinder/styles/guard'; // dev-only: warns if the above line is missing
 ```
 
-`cinder/styles` is the slim base: it declares the `@layer` order
+`@lostgradient/cinder/styles` is the slim base: it declares the `@layer` order
 (`cinder.tokens, cinder.foundation, cinder.components, cinder.utilities`),
 ships the design tokens, base resets, utilities, and shared internal chrome.
 It does **not** ship per-component CSS. Import each component's styles
 alongside the component:
 
 ```ts
-import Button from 'cinder/button';
-import 'cinder/button/styles';
+import Button from '@lostgradient/cinder/button';
+import '@lostgradient/cinder/button/styles';
 
-import Modal from 'cinder/modal';
-import 'cinder/modal/styles';
+import Modal from '@lostgradient/cinder/modal';
+import '@lostgradient/cinder/modal/styles';
 ```
 
 Bundlers (Vite, SvelteKit, esbuild, Bun) then include only the component CSS
 you actually reference — a button-only app ships zero badge or tabs rules.
 
-> [!WARNING] `cinder/styles` MUST be imported first
-> `cinder/styles` MUST be imported before any `cinder/<component>/styles`. The
+> [!WARNING] `@lostgradient/cinder/styles` MUST be imported first
+> `@lostgradient/cinder/styles` MUST be imported before any `@lostgradient/cinder/<component>/styles`. The
 > base declares the `@layer` order. If a component's CSS lands first, the
 > cascade layers are created in insertion order — utilities can no longer
 > override component defaults, and tokens may lose to component rules. This is
 > a silent cascade inversion that produces no browser error.
 >
-> To catch this in development, import `cinder/styles/guard` at your app entry
-> alongside `cinder/styles`. The guard is a no-op in production (the `DEV`
+> To catch this in development, import `@lostgradient/cinder/styles/guard` at your app entry
+> alongside `@lostgradient/cinder/styles`. The guard is a no-op in production (the `DEV`
 > constant from `esm-env` eliminates it at build time). In development it
 > checks once, after module evaluation, whether the base custom property
 > (`--cinder-base-loaded`) is present on `:root`; if not, it logs a warning
 > pointing at the fix.
 
 **Compound components** (Tabs, Table, Accordion, SideNavigation) ship their
-whole family from the parent subpath — `import 'cinder/tabs/styles'` pulls in
+whole family from the parent subpath — `import '@lostgradient/cinder/tabs/styles'` pulls in
 Tab, TabList, and TabPanel CSS too, so you do not import each leaf separately.
 
 **All-in escape hatch.** If you do not want to manage per-component imports,
-`import 'cinder/styles/all'` ships the base plus every component's CSS in one
-shot (no tree-shaking). The `cinder/styles/all` bundle also carries the
+`import '@lostgradient/cinder/styles/all'` ships the base plus every component's CSS in one
+shot (no tree-shaking). The `@lostgradient/cinder/styles/all` bundle also carries the
 experimental-component styles and the JSON-highlight token set used by
 `highlightJson()`; the slim base does not. There are also layer-only
-sub-entries — `cinder/styles/tokens`, `cinder/styles/foundation`, and
-`cinder/styles/utilities` — for advanced à-la-carte setups.
+sub-entries — `@lostgradient/cinder/styles/tokens`, `@lostgradient/cinder/styles/foundation`, and
+`@lostgradient/cinder/styles/utilities` — for advanced à-la-carte setups.
 
 ### Syntax highlighting (automatic)
 
 `<CodeBlock>` highlights itself. Set a `language` and that is all you need —
-CodeBlock lazy-loads the bundled `cinder/highlighters/shiki` adapter on the
+CodeBlock lazy-loads the bundled `@lostgradient/cinder/highlighters/shiki` adapter on the
 client and highlights automatically. There is no provider to mount and no
 highlighter to wire:
 
 ```svelte
 <script lang="ts">
-  import { CodeBlock } from 'cinder';
+  import { CodeBlock } from '@lostgradient/cinder';
 </script>
 
 <CodeBlock {code} language="ts" />
@@ -119,9 +119,9 @@ grammars:
 
 ```svelte
 <script lang="ts">
-  import { CodeBlock } from 'cinder';
-  import { shikiHighlighter } from 'cinder/highlighters/shiki';
-  import type { Highlighter } from 'cinder';
+  import { CodeBlock } from '@lostgradient/cinder';
+  import { shikiHighlighter } from '@lostgradient/cinder/highlighters/shiki';
+  import type { Highlighter } from '@lostgradient/cinder';
 
   // A single theme string, or { light, dark } for dual-theme mode; `langs`
   // preloads specific grammars. Shiki is lazy-imported on first highlight.
@@ -161,7 +161,7 @@ metadata. You do not need to read 100 READMEs.
 **1. Read the manifest.**
 
 ```ts
-import manifest from 'cinder/manifest' with { type: 'json' };
+import manifest from '@lostgradient/cinder/manifest' with { type: 'json' };
 ```
 
 `manifest.components[]` enumerates every public component. Narrow by:
@@ -180,18 +180,18 @@ subpaths you fetch next.
 **2. Fetch the prop signature.**
 
 ```ts
-type ButtonSchema = typeof import('cinder/button/schema').default;
+type ButtonSchema = typeof import('@lostgradient/cinder/button/schema').default;
 ```
 
-`cinder/<name>/schema` and `cinder/<name>/variables` are full runtime entry
+`@lostgradient/cinder/<name>/schema` and `@lostgradient/cinder/<name>/variables` are full runtime entry
 points. They ship the four-condition shape (`types` + `svelte` + `node` +
 `default`): the build compiles each `<name>.schema.ts` / `<name>.variables.ts`
 to its own JS, so a plain Node or Vite (non-Svelte) consumer can import the
 default-exported value directly:
 
 ```ts
-import buttonSchema from 'cinder/button/schema';
-import buttonVariables from 'cinder/button/variables';
+import buttonSchema from '@lostgradient/cinder/button/schema';
+import buttonVariables from '@lostgradient/cinder/button/variables';
 ```
 
 `buttonSchema` is a JSON Schema draft 2020-12 document (required props, prop
@@ -201,9 +201,9 @@ on the default export through `import(...)` or an `import type * as` namespace
 binding:
 
 ```ts
-type ButtonSchema = typeof import('cinder/button/schema').default;
+type ButtonSchema = typeof import('@lostgradient/cinder/button/schema').default;
 
-import type * as ButtonSchemaModule from 'cinder/button/schema';
+import type * as ButtonSchemaModule from '@lostgradient/cinder/button/schema';
 type ButtonSchemaToo = typeof ButtonSchemaModule.default;
 ```
 
@@ -214,7 +214,7 @@ type ButtonSchemaToo = typeof ButtonSchemaModule.default;
 > `TS2339: Property 'default' does not exist on type 'ComponentSchema'`.
 > Under `nodenext`'s CJS interop path it silently widens the default type to
 > `any`. For the runtime _value_ a plain
-> `import buttonSchema from 'cinder/button/schema'` is correct; the namespace
+> `import buttonSchema from '@lostgradient/cinder/button/schema'` is correct; the namespace
 > form is only needed when you want the `typeof` type.
 
 A JSON sidecar (`<name>.schema.json` / `<name>.variables.json`) still ships
@@ -222,22 +222,22 @@ alongside each module for tooling that prefers reading raw JSON off disk, but
 importing the subpath is the simpler path now that it carries a runtime
 `default` condition.
 
-The authoritative, machine-readable index for every component is `cinder/manifest`
+The authoritative, machine-readable index for every component is `@lostgradient/cinder/manifest`
 (step 1) — prefer it whenever you can.
 
 **3. Fetch the cross-prop constraints — when `hasConstraints` is true.**
 
 ```ts
-import buttonConstraints from 'cinder/button/constraints' with { type: 'json' };
+import buttonConstraints from '@lostgradient/cinder/button/constraints' with { type: 'json' };
 ```
 
-`cinder/<name>/constraints` is a JSON file. Use the `with { type: 'json' }`
+`@lostgradient/cinder/<name>/constraints` is a JSON file. Use the `with { type: 'json' }`
 import attribute on a modern runtime. For Node consumers without import-
 attribute support, read the file off disk:
 
 ```ts
 import { readFile } from 'node:fs/promises';
-const url = new URL(import.meta.resolve('cinder/button/constraints'));
+const url = new URL(import.meta.resolve('@lostgradient/cinder/button/constraints'));
 const buttonConstraints = JSON.parse(await readFile(url, 'utf-8'));
 ```
 
@@ -248,7 +248,7 @@ source"_ — those rules live in the constraints sidecar as a small DSL.
 **4. Fetch canonical examples — when `hasExamples` is true.**
 
 ```ts
-import buttonExamples from 'cinder/button/examples' with { type: 'json' };
+import buttonExamples from '@lostgradient/cinder/button/examples' with { type: 'json' };
 ```
 
 Like `/constraints`, the `/examples` subpath ships as JSON.
@@ -258,7 +258,7 @@ the user or copy into their codebase verbatim.
 
 **5. Compose.** Use the kebab-case `id` from the manifest (`button-group`,
 `copy-button`) when you cross-reference components in your own code — that
-matches the convention `cinder` uses internally and in `related[]`.
+matches the convention `@lostgradient/cinder` uses internally and in `related[]`.
 
 ### Conventions
 
@@ -278,7 +278,7 @@ matches the convention `cinder` uses internally and in `related[]`.
   `data-cinder-state="open"`). Stable, scriptable, and survive class-name
   collisions.
 - **SSR-safe.** Every component renders cleanly on the server. The Node
-  build (`cinder` root, no subpath) is the SSR entry point.
+  build (`@lostgradient/cinder` root, no subpath) is the SSR entry point.
 - **Svelte 5 runes.** Components use `$state`, `$derived`, `$props`. Pass
   bindings with `bind:value` where the schema marks a prop bindable.
 - **Theming via `light-dark()`.** There is no `<ThemeProvider>`. Tokens are
@@ -289,9 +289,9 @@ matches the convention `cinder` uses internally and in `related[]`.
 ### Decision aid
 
 The tables below are auto-generated from the manifest. Each row lists the
-`id` you import (`cinder/<id>`), the component's `purpose`, and its first
+`id` you import (`@lostgradient/cinder/<id>`), the component's `purpose`, and its first
 `useWhen` clause as a tiebreaker. When you need a fuller comparison, read
-the matching entry in `cinder/manifest`.
+the matching entry in `@lostgradient/cinder/manifest`.
 
 <!-- generated:overlap-families:start -->
 
@@ -356,7 +356,7 @@ scope and you should wire them up yourself:
   take them as snippets or slots — pass an `<svg>`, a Lucide component,
   whatever you ship.
 - **No data fetching.** Components render the data you hand them.
-- **No global state.** There is no `cinder` store, context provider, or
+- **No global state.** There is no `@lostgradient/cinder` store, context provider, or
   initialization step beyond the styles import. `<CodeBlock>` highlights
   itself by lazy-loading Shiki on the client (see "Syntax highlighting"
   above) — no provider to mount.
@@ -385,7 +385,7 @@ schema, variables, and examples generators. They enforce:
    constraints sidecar `component`, examples sidecar `component`, JSDoc
    `@related` entries. PascalCase only appears in `exportName` and prose.
 5. **No relative imports across components.** Examples and components
-   import siblings via `cinder/<id>` so the same string works in the
+   import siblings via `@lostgradient/cinder/<id>` so the same string works in the
    playground and the published tarball.
 
 The full convention reference lives in
@@ -442,7 +442,7 @@ components:check` to confirm the drift checker is happy.
 If the component ships a `<id>.css` sidecar, its rules must self-declare their
 cascade layer: wrap the whole file in `@layer cinder.components { … }`. The
 layer membership has to be intrinsic to the file so it survives a direct
-subpath import (`cinder/<id>/styles`) rather than relying on the aggregator's
+subpath import (`@lostgradient/cinder/<id>/styles`) rather than relying on the aggregator's
 `@import … layer(cinder.components)`. Applications that layer their own
 overrides should declare their layer order (e.g. `@layer cinder.components,
 app;`) before importing cinder styles — the sidecar carries layer _membership_,
@@ -450,14 +450,14 @@ not ordering, so ordering stays the consumer's responsibility.
 `scripts/check-component-css.ts` enforces the wrapper at build time.
 
 Once the sidecar exists, `bun run exports:generate` automatically emits a
-`cinder/<id>/styles` subpath pointing at the built `dist/components/<id>/<id>.css`
+`@lostgradient/cinder/<id>/styles` subpath pointing at the built `dist/components/<id>/<id>.css`
 — no hand-editing of `package.json` exports. The slim base
-(`src/styles/index.css` → `cinder/styles`) does **not** import per-component
-CSS; the all-in aggregator (`src/styles/all.css` → `cinder/styles/all`) imports
+(`src/styles/index.css` → `@lostgradient/cinder/styles`) does **not** import per-component
+CSS; the all-in aggregator (`src/styles/all.css` → `@lostgradient/cinder/styles/all`) imports
 `components.css`, which lists every component sidecar in alphabetical order. If
 you add a brand-new component with a sidecar, add its `@import` line to
 `src/styles/components.css` (the all-in aggregator is hand-maintained, not
-regenerated) so `cinder/styles/all` picks it up.
+regenerated) so `@lostgradient/cinder/styles/all` picks it up.
 
 > [!WARNING] This reversed the earlier bare-rules contract
 > Component sidecars used to hold bare rules with NO `@layer` wrapper — the
@@ -484,21 +484,21 @@ Dropdown/DropdownTrigger/DropdownMenu/…). For these families:
   the intersection type. See `tabs/index.ts` for the canonical pattern.
 - **Leaf barrels must stay independent.** A leaf `index.ts` must not import
   the parent barrel, the root barrel, or any namespace helper — that would
-  defeat tree-shaking for consumers importing only `cinder/<leaf>`. The
+  defeat tree-shaking for consumers importing only `@lostgradient/cinder/<leaf>`. The
   `compound-leaf-import-boundary.test.ts` enforces this.
 - **Parent CSS aggregates the family.** When leaves ship their own CSS, the
   parent `<parent>.css` sidecar `@import`s each leaf's sidecar with a
   sibling-leaf path (`@import '../<leaf>/<leaf>.css';`) placed **before** the
   `@layer cinder.components { … }` wrapper. That path resolves identically in
   `src/` and the verbatim-copied `dist/` because the layout mirrors, so a
-  consumer importing only `cinder/<parent>/styles` gets the whole family. Each
-  leaf still gets its own `cinder/<leaf>/styles` subpath; bundlers dedupe the
+  consumer importing only `@lostgradient/cinder/<parent>/styles` gets the whole family. Each
+  leaf still gets its own `@lostgradient/cinder/<leaf>/styles` subpath; bundlers dedupe the
   shared file by URL. `scripts/check-component-css.ts` permits exactly this
   sibling-leaf `@import` shape and rejects every other import. (Most table/tab
   leaves are styled entirely by the parent and ship empty registry sidecars —
   the `@import` is still correct and future-proof.)
 - **Add flat exports for new leaves too.** Continue adding the flat
-  `cinder/<leaf>` subpath and the leaf's entry in `src/index.ts`. The
+  `@lostgradient/cinder/<leaf>` subpath and the leaf's entry in `src/index.ts`. The
   namespace API is additive, not a replacement — keep flat leaf exports
   for the compatibility window.
 - **Playground examples belong on the parent page.** Put compound usage
@@ -588,10 +588,10 @@ Examples ship as JSON, generated verbatim from
 - Provide a **default export** — the example component itself (markup in the
   instance `<script>` / template). The playground mounts this default export;
   an example with no default export renders nothing.
-- Import **only** from `cinder`, `cinder/<subpath>`, or a package listed in
+- Import **only** from `@lostgradient/cinder`, `@lostgradient/cinder/<subpath>`, or a package listed in
   `scripts/example-allowed-packages.ts`. Relative imports, `$lib`,
   playground-only modules, and fixtures are hard errors.
-- Contain no `<style>` block — styles come from `cinder/styles`.
+- Contain no `<style>` block — styles come from `@lostgradient/cinder/styles`.
 
 A minimal compliant example:
 
@@ -609,7 +609,7 @@ A minimal compliant example:
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
+  import { Button } from '@lostgradient/cinder/button';
 </script>
 
 <Button>Click me</Button>

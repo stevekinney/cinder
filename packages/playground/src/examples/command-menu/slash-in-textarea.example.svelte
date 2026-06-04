@@ -4,9 +4,9 @@
 </script>
 
 <script lang="ts">
-  import { CommandItem } from 'cinder/command-item';
-  import { CommandMenu, detectTrigger } from 'cinder/command-menu';
-  import { Textarea } from 'cinder/textarea';
+  import { CommandItem } from '@lostgradient/cinder/command-item';
+  import { CommandMenu, detectTrigger } from '@lostgradient/cinder/command-menu';
+  import { Textarea } from '@lostgradient/cinder/textarea';
 
   type Command = {
     value: string;

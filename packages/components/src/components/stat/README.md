@@ -23,7 +23,7 @@ Single metric tile displaying a labelled numeric value with optional trend or un
 `Stat` is a compose-only leaf of [`StatGroup`](../stat-group/README.md).
 The idiomatic API is `StatGroup.Stat`, reached through the parent
 namespace — see the [stat-group README](../stat-group/README.md#usage) for the composed
-snippet. The flat `cinder/stat` subpath remains exported for
+snippet. The flat `@lostgradient/cinder/stat` subpath remains exported for
 à-la-carte builds that import the leaf directly.
 
 ## Props

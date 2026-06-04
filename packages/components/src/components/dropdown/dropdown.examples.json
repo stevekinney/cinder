@@ -1,37 +1,37 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "dropdown",
-  "import": "cinder/dropdown",
+  "import": "@lostgradient/cinder/dropdown",
   "examples": [
     {
       "id": "basic",
       "title": "Basic dropdown",
       "description": "A button trigger with a list of menu items.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n</script>\n\n<Dropdown id=\"dropdown-basic\">\n  <Dropdown.Trigger>Options</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Item>Edit</Dropdown.Item>\n    <Dropdown.Item>Duplicate</Dropdown.Item>\n    <Dropdown.Item variant=\"danger\">Delete</Dropdown.Item>\n  </Dropdown.Menu>\n</Dropdown>\n"
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n</script>\n\n<Dropdown id=\"dropdown-basic\">\n  <Dropdown.Trigger>Options</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Item>Edit</Dropdown.Item>\n    <Dropdown.Item>Duplicate</Dropdown.Item>\n    <Dropdown.Item variant=\"danger\">Delete</Dropdown.Item>\n  </Dropdown.Menu>\n</Dropdown>\n"
     },
     {
       "id": "placement",
       "title": "Placement",
       "description": "bottom-start and bottom-end placement options.",
-      "code": "<script lang=\"ts\">\n  import { Button } from 'cinder/button';\n  import { Dropdown } from 'cinder/dropdown';\n  let openStart = $state(false);\n  let openEnd = $state(false);\n</script>\n\n<div class=\"example-preview-row\">\n  <Dropdown bind:open={openStart} placement=\"bottom-start\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-start</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to left edge</div>\n  </Dropdown>\n\n  <Dropdown bind:open={openEnd} placement=\"bottom-end\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-end</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to right edge</div>\n  </Dropdown>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n  let openStart = $state(false);\n  let openEnd = $state(false);\n</script>\n\n<div class=\"example-preview-row\">\n  <Dropdown bind:open={openStart} placement=\"bottom-start\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-start</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to left edge</div>\n  </Dropdown>\n\n  <Dropdown bind:open={openEnd} placement=\"bottom-end\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-end</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to right edge</div>\n  </Dropdown>\n</div>\n"
     },
     {
       "id": "with-items",
       "title": "With clickable items",
       "description": "Dropdown.Item accepts onclick handlers and a danger variant for destructive actions.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n  let selected = $state('None');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem;\">\n  <Dropdown id=\"dropdown-with-items\">\n    <Dropdown.Trigger>Document actions</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item onclick={() => (selected = 'Copy link')}>Copy link</Dropdown.Item>\n      <Dropdown.Item onclick={() => (selected = 'Duplicate')}>Duplicate</Dropdown.Item>\n      <Dropdown.Item variant=\"danger\" onclick={() => (selected = 'Delete')}>Delete</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n  <p style=\"margin: 0; color: var(--cinder-text-muted);\">Selected: {selected}</p>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n  let selected = $state('None');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem;\">\n  <Dropdown id=\"dropdown-with-items\">\n    <Dropdown.Trigger>Document actions</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item onclick={() => (selected = 'Copy link')}>Copy link</Dropdown.Item>\n      <Dropdown.Item onclick={() => (selected = 'Duplicate')}>Duplicate</Dropdown.Item>\n      <Dropdown.Item variant=\"danger\" onclick={() => (selected = 'Delete')}>Delete</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n  <p style=\"margin: 0; color: var(--cinder-text-muted);\">Selected: {selected}</p>\n</div>\n"
     },
     {
       "id": "with-label",
       "title": "With group labels",
       "description": "Dropdown.Group and Dropdown.Label expose accessible group boundaries for related menu actions.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n</script>\n\n<Dropdown id=\"dropdown-with-label\">\n  <Dropdown.Trigger>Grouped menu</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Group labelledBy=\"dropdown-with-label-document\">\n      <Dropdown.Label id=\"dropdown-with-label-document\">Document</Dropdown.Label>\n      <Dropdown.Item>Rename</Dropdown.Item>\n      <Dropdown.Item>Move</Dropdown.Item>\n    </Dropdown.Group>\n    <Dropdown.Group labelledBy=\"dropdown-with-label-sharing\">\n      <Dropdown.Label id=\"dropdown-with-label-sharing\">Sharing</Dropdown.Label>\n      <Dropdown.Item>Copy link</Dropdown.Item>\n      <Dropdown.Item>Invite people</Dropdown.Item>\n    </Dropdown.Group>\n  </Dropdown.Menu>\n</Dropdown>\n"
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n</script>\n\n<Dropdown id=\"dropdown-with-label\">\n  <Dropdown.Trigger>Grouped menu</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Group labelledBy=\"dropdown-with-label-document\">\n      <Dropdown.Label id=\"dropdown-with-label-document\">Document</Dropdown.Label>\n      <Dropdown.Item>Rename</Dropdown.Item>\n      <Dropdown.Item>Move</Dropdown.Item>\n    </Dropdown.Group>\n    <Dropdown.Group labelledBy=\"dropdown-with-label-sharing\">\n      <Dropdown.Label id=\"dropdown-with-label-sharing\">Sharing</Dropdown.Label>\n      <Dropdown.Item>Copy link</Dropdown.Item>\n      <Dropdown.Item>Invite people</Dropdown.Item>\n    </Dropdown.Group>\n  </Dropdown.Menu>\n</Dropdown>\n"
     },
     {
       "id": "with-separator",
       "title": "With separators",
       "description": "Dropdown.Separator divides menu item groups; useful before destructive actions.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from 'cinder/dropdown';\n</script>\n\n<Dropdown id=\"dropdown-with-separator\">\n  <Dropdown.Trigger>More actions</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Item>Copy link</Dropdown.Item>\n    <Dropdown.Item>Duplicate</Dropdown.Item>\n    <Dropdown.Separator />\n    <Dropdown.Item variant=\"danger\">Delete</Dropdown.Item>\n  </Dropdown.Menu>\n</Dropdown>\n"
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n</script>\n\n<Dropdown id=\"dropdown-with-separator\">\n  <Dropdown.Trigger>More actions</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Item>Copy link</Dropdown.Item>\n    <Dropdown.Item>Duplicate</Dropdown.Item>\n    <Dropdown.Separator />\n    <Dropdown.Item variant=\"danger\">Delete</Dropdown.Item>\n  </Dropdown.Menu>\n</Dropdown>\n"
     }
   ]
 }

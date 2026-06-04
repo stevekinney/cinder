@@ -5,20 +5,20 @@
  * of every component's SOURCE entry (`src/components/[experimental/]<name>/index.ts`)
  * that has a co-located `<name>.css` sidecar.
  *
- * Why: the browser BUILD already injects `import 'cinder/<name>/styles'` into the
+ * Why: the browser BUILD already injects `import '@lostgradient/cinder/<name>/styles'` into the
  * compiled per-component + barrel entries (see {@link ./css-import-plugin.ts}),
  * so `default`/`import`/`browser`/`node` consumers auto-pull styles. But the
  * `svelte` export condition — which SvelteKit/Vite resolve FIRST for a Svelte
  * library — points at this raw SOURCE `index.ts`, which the build-time transform
  * never touches. Without a CSS import here, a SvelteKit consumer who does
- * `import Button from 'cinder/button'` still renders SILENTLY UNSTYLED. Importing
+ * `import Button from '@lostgradient/cinder/button'` still renders SILENTLY UNSTYLED. Importing
  * the co-located sidecar closes that gap.
  *
  * Safe for SSR: only bundlers (Vite/SvelteKit with the svelte plugin) resolve
  * the `svelte` condition, and they handle `.css` natively. Bare Node SSR resolves
  * the `node` condition, which points at the SEPARATE generated server bundle
  * (`dist/server/...`, built from `server-entry.ts`) — that bundle is CSS-free and
- * never sees this source file. A relative `./<name>.css` (not `cinder/<name>/styles`)
+ * never sees this source file. A relative `./<name>.css` (not `@lostgradient/cinder/<name>/styles`)
  * is correct here because the source entry is co-located with its sidecar.
  *
  * Idempotent: an entry that already imports its sidecar is left untouched.

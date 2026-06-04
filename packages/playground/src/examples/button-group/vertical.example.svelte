@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { ButtonGroup } from 'cinder/button-group';
+  import { Button } from '@lostgradient/cinder/button';
+  import { ButtonGroup } from '@lostgradient/cinder/button-group';
 </script>
 
 <ButtonGroup label="Document actions" orientation="vertical">

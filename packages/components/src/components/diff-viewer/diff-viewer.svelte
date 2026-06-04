@@ -31,8 +31,12 @@
    * - >100KB: Manual trigger only, shows stale diff with "Outdated" badge
    */
 
-  import { computeLineDiff, getDiffStats, groupIntoHunks } from 'cinder/markdown/diff/line-diff';
-  import type { DiffHunk } from 'cinder/markdown/diff/line-diff';
+  import {
+    computeLineDiff,
+    getDiffStats,
+    groupIntoHunks,
+  } from '@lostgradient/cinder/markdown/diff/line-diff';
+  import type { DiffHunk } from '@lostgradient/cinder/markdown/diff/line-diff';
 
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '../button/button.svelte';

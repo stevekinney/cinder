@@ -33,5 +33,5 @@ export interface AccordionSchemaProps {
 }
 
 // Re-export the AccordionItem public type so consumers importing from
-// `cinder/accordion` (root barrel) can access it.
+// `@lostgradient/cinder/accordion` (root barrel) can access it.
 export type { AccordionItemProps } from '../accordion-item/accordion-item.types.ts';

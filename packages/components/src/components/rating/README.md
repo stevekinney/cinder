@@ -6,7 +6,7 @@ Star rating control with bindable numeric value, optional half-star precision, a
 
 ```svelte
 <script lang="ts">
-  import Rating from 'cinder/rating';
+  import Rating from '@lostgradient/cinder/rating';
   let score = $state(0);
 </script>
 

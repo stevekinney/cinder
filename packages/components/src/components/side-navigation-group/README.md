@@ -7,7 +7,7 @@ Collapsible group header that organises related items within a side navigation.
 `SideNavigationGroup` is a compose-only leaf of [`SideNavigation`](../side-navigation/README.md).
 The idiomatic API is `SideNavigation.Group`, reached through the parent
 namespace — see the [side-navigation README](../side-navigation/README.md#usage) for the composed
-snippet. The flat `cinder/side-navigation-group` subpath remains exported for
+snippet. The flat `@lostgradient/cinder/side-navigation-group` subpath remains exported for
 à-la-carte builds that import the leaf directly.
 
 ## Props

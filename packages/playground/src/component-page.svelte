@@ -1,15 +1,15 @@
 <!-- dev-only playground scaffold; window.__CINDER_EXAMPLES__ is injected server-side -->
 <script lang="ts">
   import { mount, unmount } from 'svelte';
-  import { Accordion } from 'cinder/accordion';
-  import { AccordionItem } from 'cinder/accordion-item';
-  import { Badge } from 'cinder/badge';
-  import { Button } from 'cinder/button';
-  import { Callout } from 'cinder/callout';
-  import { Card } from 'cinder/card';
-  import { CodeBlock } from 'cinder/code-block';
-  import { Skeleton } from 'cinder/skeleton';
-  import { Table } from 'cinder/table';
+  import { Accordion } from '@lostgradient/cinder/accordion';
+  import { AccordionItem } from '@lostgradient/cinder/accordion-item';
+  import { Badge } from '@lostgradient/cinder/badge';
+  import { Button } from '@lostgradient/cinder/button';
+  import { Callout } from '@lostgradient/cinder/callout';
+  import { Card } from '@lostgradient/cinder/card';
+  import { CodeBlock } from '@lostgradient/cinder/code-block';
+  import { Skeleton } from '@lostgradient/cinder/skeleton';
+  import { Table } from '@lostgradient/cinder/table';
   import {
     formatErrorForClipboard,
     toMountErrorDetail,

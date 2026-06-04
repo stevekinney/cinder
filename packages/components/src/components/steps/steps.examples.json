@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "steps",
-  "import": "cinder/steps",
+  "import": "@lostgradient/cinder/steps",
   "examples": [
     {
       "id": "interactive",
       "title": "Interactive steps",
       "description": "A step becomes navigable when its `StepItem` carries an `href` (renders the body as a link) or an `onclick` (renders it as a button). The marker and connector stay decorative — only the body region is the focusable, clickable target.",
-      "code": "<script lang=\"ts\">\n  import { Steps } from 'cinder/steps';\n  import type { StepItem } from 'cinder/steps';\n\n  let current = $state(1);\n\n  const steps: StepItem[] = [\n    { id: 'account', label: 'Account', description: 'Create your login', href: '#account' },\n    {\n      id: 'profile',\n      label: 'Profile',\n      description: 'Jump back to edit',\n      onclick: () => (current = 1),\n    },\n    { id: 'review', label: 'Review', description: 'Confirm and submit' },\n  ];\n</script>\n\n<Steps {steps} currentStep={current} label=\"Onboarding\" />\n"
+      "code": "<script lang=\"ts\">\n  import { Steps } from '@lostgradient/cinder/steps';\n  import type { StepItem } from '@lostgradient/cinder/steps';\n\n  let current = $state(1);\n\n  const steps: StepItem[] = [\n    { id: 'account', label: 'Account', description: 'Create your login', href: '#account' },\n    {\n      id: 'profile',\n      label: 'Profile',\n      description: 'Jump back to edit',\n      onclick: () => (current = 1),\n    },\n    { id: 'review', label: 'Review', description: 'Confirm and submit' },\n  ];\n</script>\n\n<Steps {steps} currentStep={current} label=\"Onboarding\" />\n"
     }
   ]
 }

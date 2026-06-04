@@ -3,11 +3,11 @@
   // tokens and foundation aggregators. The built CSS bundle for this route
   // should contain button selectors and `--cinder-button-*` custom properties
   // but should NOT contain accordion-specific selectors or custom properties.
-  import Button from 'cinder/button';
+  import Button from '@lostgradient/cinder/button';
 
-  import 'cinder/styles/tokens';
-  import 'cinder/styles/foundation';
-  import 'cinder/button/styles';
+  import '@lostgradient/cinder/styles/tokens';
+  import '@lostgradient/cinder/styles/foundation';
+  import '@lostgradient/cinder/button/styles';
 </script>
 
 <main>

@@ -6,7 +6,7 @@ Displays a user's profile photo, initials, or fallback icon at a consistent size
 
 ```svelte
 <script lang="ts">
-  import Avatar from 'cinder/avatar';
+  import Avatar from '@lostgradient/cinder/avatar';
 </script>
 
 <Avatar />

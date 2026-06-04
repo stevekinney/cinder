@@ -1,19 +1,19 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "color-field",
-  "import": "cinder/color-field",
+  "import": "@lostgradient/cinder/color-field",
   "examples": [
     {
       "id": "basic",
       "title": "Basic color field",
       "description": "An uncontrolled color field that accepts hex, rgb(), and hsl() strings and normalizes them to hex on commit.",
-      "code": "<script lang=\"ts\">\n  import { ColorField } from 'cinder/color-field';\n\n  let committed = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; max-width: 20rem;\">\n  <label for=\"color-field-basic\" style=\"font-size: 0.875rem; font-weight: 500;\">\n    Brand color\n  </label>\n  <ColorField\n    id=\"color-field-basic\"\n    defaultValue=\"#3b82f6\"\n    onchange={(value) => {\n      committed = value;\n    }}\n  />\n  {#if committed}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Committed: {committed}</p>\n  {/if}\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { ColorField } from '@lostgradient/cinder/color-field';\n\n  let committed = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; max-width: 20rem;\">\n  <label for=\"color-field-basic\" style=\"font-size: 0.875rem; font-weight: 500;\">\n    Brand color\n  </label>\n  <ColorField\n    id=\"color-field-basic\"\n    defaultValue=\"#3b82f6\"\n    onchange={(value) => {\n      committed = value;\n    }}\n  />\n  {#if committed}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Committed: {committed}</p>\n  {/if}\n</div>\n"
     },
     {
       "id": "states",
       "title": "Disabled and readonly states",
       "description": "A disabled color field rejects all interaction; a readonly field displays the value but blocks editing.",
-      "code": "<script lang=\"ts\">\n  import { ColorField } from 'cinder/color-field';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 20rem;\">\n  <div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n    <label for=\"color-field-disabled\" style=\"font-size: 0.875rem; font-weight: 500;\">\n      Disabled\n    </label>\n    <ColorField id=\"color-field-disabled\" value=\"#ef4444\" disabled />\n  </div>\n\n  <div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n    <label for=\"color-field-readonly\" style=\"font-size: 0.875rem; font-weight: 500;\">\n      Read-only\n    </label>\n    <ColorField id=\"color-field-readonly\" value=\"#22c55e\" readonly />\n  </div>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { ColorField } from '@lostgradient/cinder/color-field';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; max-width: 20rem;\">\n  <div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n    <label for=\"color-field-disabled\" style=\"font-size: 0.875rem; font-weight: 500;\">\n      Disabled\n    </label>\n    <ColorField id=\"color-field-disabled\" value=\"#ef4444\" disabled />\n  </div>\n\n  <div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n    <label for=\"color-field-readonly\" style=\"font-size: 0.875rem; font-weight: 500;\">\n      Read-only\n    </label>\n    <ColorField id=\"color-field-readonly\" value=\"#22c55e\" readonly />\n  </div>\n</div>\n"
     }
   ]
 }

@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { VisuallyHidden } from 'cinder/visually-hidden';
+  import { VisuallyHidden } from '@lostgradient/cinder/visually-hidden';
 </script>
 
 <div

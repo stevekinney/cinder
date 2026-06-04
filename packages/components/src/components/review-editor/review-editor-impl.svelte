@@ -1,12 +1,12 @@
 <script lang="ts" module>
-  import type { EditorSelection } from 'cinder/editor';
+  import type { EditorSelection } from '@lostgradient/cinder/editor';
   import type {
     Thread,
     PersistedThread,
     ThreadCreateEvent,
     ReviewState,
     AnchorUpdate,
-  } from 'cinder/commentary/comments';
+  } from '@lostgradient/cinder/commentary/comments';
   import type { ReviewEditorProps, ReviewFormData } from './review-editor-types.ts';
 
   export type { ReviewMode, ReviewEditorProps, ReviewFormData } from './review-editor-types.ts';
@@ -23,17 +23,20 @@
   import { createChangeTracker } from '../../utilities/change-tracker.svelte.ts';
   import { stringifyOrNull } from '../../utilities/stringify.ts';
   import MarkdownEditor from '../markdown-editor/markdown-editor.svelte';
-  import { contentEquals, normalize } from 'cinder/markdown/pipeline';
-  import { textOffsetToProseMirrorPosition } from 'cinder/editor';
-  import { createAnchorPlugin, anchorPluginKey } from 'cinder/commentary/anchor-decorations';
+  import { contentEquals, normalize } from '@lostgradient/cinder/markdown/pipeline';
+  import { textOffsetToProseMirrorPosition } from '@lostgradient/cinder/editor';
+  import {
+    createAnchorPlugin,
+    anchorPluginKey,
+  } from '@lostgradient/cinder/commentary/anchor-decorations';
   import {
     reanchorQuote,
     ANCHOR_CONTEXT_LENGTH,
     generateId,
     extractMentions,
     createDocumentAnchor,
-  } from 'cinder/commentary/comments';
-  import { buildAnchorFromSelection } from 'cinder/commentary/anchoring';
+  } from '@lostgradient/cinder/commentary/comments';
+  import { buildAnchorFromSelection } from '@lostgradient/cinder/commentary/anchoring';
   import ThreadPopover from './thread-popover.svelte';
   import LiveRegion from './live-region.svelte';
   import ExportActions from './export-actions.svelte';
@@ -58,7 +61,7 @@
   } from './review-editor-types.ts';
   import DiffViewer from '../diff-viewer/diff-viewer.svelte';
   import SelectionPopover from '../selection-popover/selection-popover.svelte';
-  import { computeLineDiff, getDiffStats } from 'cinder/markdown/diff/line-diff';
+  import { computeLineDiff, getDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
   import {
     generateMarkdownSummary,
     generateUnifiedDiff,
@@ -67,7 +70,7 @@
     type MarkdownSummaryResult,
     type UnifiedDiffOptions,
     type UnifiedDiffResult,
-  } from 'cinder/commentary/export';
+  } from '@lostgradient/cinder/commentary/export';
 
   // Shared reduced-motion preference (OVERLAY-POLICY: use the shared hook, not inline matchMedia).
   const reducedMotion = useReducedMotion();

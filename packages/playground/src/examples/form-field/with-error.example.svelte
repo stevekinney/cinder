@@ -5,8 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { FormField } from 'cinder/form-field';
-  import { Input } from 'cinder/input';
+  import { FormField } from '@lostgradient/cinder/form-field';
+  import { Input } from '@lostgradient/cinder/input';
   let email = $state('not-an-email');
 </script>
 

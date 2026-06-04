@@ -1,9 +1,9 @@
 /**
  * Import specifiers allowed inside published `.example.svelte` files.
- * Any import not starting with `cinder` and not listed here is a hard error.
+ * Any import not starting with `@lostgradient/cinder` and not listed here is a hard error.
  *
  * Rules:
- * - `cinder` exact and `cinder/<subpath>` are validated separately against the
+ * - `@lostgradient/cinder` exact and `@lostgradient/cinder/<subpath>` are validated separately against the
  *   set of real subpaths emitted by `generate-exports.ts#discoverDirectoryComponents`.
  * - Packages listed here are allowed because realistic consumer apps would have
  *   them installed alongside cinder.

@@ -6,7 +6,7 @@ Native-style dropdown select for choosing a single option from a predefined list
 
 ```svelte
 <script lang="ts">
-  import Select from 'cinder/select';
+  import Select from '@lostgradient/cinder/select';
 </script>
 
 <Select />

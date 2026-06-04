@@ -6,7 +6,7 @@ Numeric text input with increment and decrement stepper controls.
 
 ```svelte
 <script lang="ts">
-  import NumberInput from 'cinder/number-input';
+  import NumberInput from '@lostgradient/cinder/number-input';
 </script>
 
 <NumberInput />

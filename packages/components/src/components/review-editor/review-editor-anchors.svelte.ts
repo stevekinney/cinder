@@ -16,19 +16,22 @@
  * @experimental
  */
 
-import type { MilkdownPlugin } from '@milkdown/kit/ctx';
-import type { EditorView } from '@milkdown/kit/prose/view';
-import { anchorPluginKey, createAnchorPlugin } from 'cinder/commentary/anchor-decorations';
+import {
+  anchorPluginKey,
+  createAnchorPlugin,
+} from '@lostgradient/cinder/commentary/anchor-decorations';
 import type {
   AnchorUpdate,
   PersistedThread,
   ReviewState,
   Thread,
   ThreadDeleteEvent,
-} from 'cinder/commentary/comments';
-import { ANCHOR_CONTEXT_LENGTH, reanchorQuote } from 'cinder/commentary/comments';
-import { textOffsetToProseMirrorPosition } from 'cinder/editor';
-import { contentEquals } from 'cinder/markdown/pipeline';
+} from '@lostgradient/cinder/commentary/comments';
+import { ANCHOR_CONTEXT_LENGTH, reanchorQuote } from '@lostgradient/cinder/commentary/comments';
+import { textOffsetToProseMirrorPosition } from '@lostgradient/cinder/editor';
+import { contentEquals } from '@lostgradient/cinder/markdown/pipeline';
+import type { MilkdownPlugin } from '@milkdown/kit/ctx';
+import type { EditorView } from '@milkdown/kit/prose/view';
 
 /**
  * Options for creating the anchor manager.

@@ -25,7 +25,7 @@ The canonical pairing is one live-region `<div>` near the root of your component
 
 ```svelte
 <script lang="ts">
-  import { useAnnouncer } from 'cinder';
+  import { useAnnouncer } from '@lostgradient/cinder';
 
   const announcer = useAnnouncer();
 
@@ -48,7 +48,7 @@ A few things to notice in that snippet:
 
 - **`aria-live="polite"`** waits for the current speech queue to drain before announcing. Right for non-urgent updates, which is almost everything.
 - **`aria-atomic="true"`** asks assistive tech to re-read the full live-region content when any part of it changes. Without it, some screen readers read only the diff, which produces weird partial announcements when one message replaces another.
-- **`class="cinder-sr-only"`** is the visually-hidden utility shipped by `cinder/styles` (defined in `packages/components/src/styles/utilities.css`). It uses the canonical clip-rect technique—the live region stays in the accessibility tree and out of the visual layout.
+- **`class="cinder-sr-only"`** is the visually-hidden utility shipped by `@lostgradient/cinder/styles` (defined in `packages/components/src/styles/utilities.css`). It uses the canonical clip-rect technique—the live region stays in the accessibility tree and out of the visual layout.
 
 > [!NOTE]
 > If you're coming from accessibility writing that uses the `.visually-hidden` / `.focusable` class names, the equivalents here are `.cinder-sr-only` and `.cinder-sr-only-focusable`. Same technique, namespaced.
@@ -63,7 +63,7 @@ The conventional pattern is one `polite` region per page (or per layout region),
 
 ```svelte
 <script lang="ts">
-  import { useAnnouncer } from 'cinder';
+  import { useAnnouncer } from '@lostgradient/cinder';
 
   const status = useAnnouncer();
   const alerts = useAnnouncer();

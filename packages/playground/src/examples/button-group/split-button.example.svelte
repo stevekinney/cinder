@@ -5,12 +5,12 @@
 </script>
 
 <script lang="ts">
-  import { Button } from 'cinder/button';
-  import { ButtonGroup } from 'cinder/button-group';
-  import { Dropdown } from 'cinder/dropdown';
-  import { DropdownItem } from 'cinder/dropdown-item';
-  import { DropdownMenu } from 'cinder/dropdown-menu';
-  import { DropdownTrigger } from 'cinder/dropdown-trigger';
+  import { Button } from '@lostgradient/cinder/button';
+  import { ButtonGroup } from '@lostgradient/cinder/button-group';
+  import { Dropdown } from '@lostgradient/cinder/dropdown';
+  import { DropdownItem } from '@lostgradient/cinder/dropdown-item';
+  import { DropdownMenu } from '@lostgradient/cinder/dropdown-menu';
+  import { DropdownTrigger } from '@lostgradient/cinder/dropdown-trigger';
 </script>
 
 <ButtonGroup label="Save options">

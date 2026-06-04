@@ -6,7 +6,7 @@ Persistent side panel that houses navigation, filters, or supplementary page con
 
 ```svelte
 <script lang="ts">
-  import Sidebar from 'cinder/sidebar';
+  import Sidebar from '@lostgradient/cinder/sidebar';
 </script>
 
 <Sidebar />
