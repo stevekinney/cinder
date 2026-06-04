@@ -1,6 +1,6 @@
 name: release-manual
 
-# Break-glass fallback for releasing `cinder` if Changesets-driven
+# Break-glass fallback for releasing `@lostgradient/cinder` if Changesets-driven
 # `release.yaml` fails. Triggered manually from the Actions UI. The
 # package.json version in `packages/components/` must already be bumped
 # before dispatching this workflow — `verify-release-version.ts` enforces

@@ -1,5 +1,5 @@
 ---
-'cinder': patch
+'/cinder': patch
 ---
 
 Buttons & Actions visual polish.

@@ -36,7 +36,8 @@ const RESTRICTED_PACKAGES = ['markdown', 'editor', 'commentary', 'diff'] as cons
  * Deliberately does NOT match `@cinder/*` — those are the upstream packages
  * importing each other, which is allowed.
  */
-const FORBIDDEN_IMPORT_PATTERN = /(?:from\s*|import\s*\(\s*|import\s+)(['"])cinder(?:\/[^'"]*)?\1/g;
+const FORBIDDEN_IMPORT_PATTERN =
+  /(?:from\s*|import\s*\(\s*|import\s+)(['"])@lostgradient\/cinder(?:\/[^'"]*)?\1/g;
 
 type Violation = {
   filePath: string;

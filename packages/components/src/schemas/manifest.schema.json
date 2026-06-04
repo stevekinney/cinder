@@ -43,7 +43,7 @@
         "name": {
           "type": "string",
           "description": "The npm package name.",
-          "examples": ["cinder"]
+          "examples": ["@lostgradient/cinder"]
         },
         "version": {
           "type": "string",

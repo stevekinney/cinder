@@ -1,5 +1,5 @@
 ---
-'cinder': minor
+'/cinder': minor
 ---
 
 Add `FloatingActionButton` (FAB) — a circular button for the single most important

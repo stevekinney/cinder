@@ -1,5 +1,5 @@
 ---
-'cinder': minor
+'/cinder': minor
 ---
 
 Add `ClickAwayListener` — a headless utility that calls `onClickAway` when the user

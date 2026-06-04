@@ -1,5 +1,5 @@
 ---
-'cinder': minor
+'/cinder': minor
 ---
 
 New first-party Shiki adapter at `cinder/highlighters/shiki`. `<CodeBlock>` already auto-loads it with default options when a `language` is set, so you only need it directly to customize the theme or preload grammars — then pass it via the `highlighter` prop. No manual `codeToHtml` wrapper required.

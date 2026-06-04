@@ -1,6 +1,6 @@
 name: release
 
-# Changesets-driven release pipeline for the `cinder` npm package.
+# Changesets-driven release pipeline for the `@lostgradient/cinder` npm package.
 #
 # On every push to `main`:
 #   - If unreleased changesets exist, the action opens (or updates) a
