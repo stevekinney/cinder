@@ -163,3 +163,54 @@ ships the warning string (and internal naming) to end users and is forbidden.
   explicit allow-list, in the `lint` chain and CI) fails on any bare
   `console.warn` in component source. oxlint cannot express this rule because
   Svelte files are in its `ignorePatterns`.
+
+## Live regions
+
+Transient status that a screen reader should hear (a copy confirmation, a
+"loading suggestions" / "no results" hint, an end-of-list announcement) is
+delivered through an **ARIA live region**. Cinder standardizes this so components
+don't each re-derive the role/`aria-live`/`aria-atomic` triple and the
+re-announcement timing.
+
+**Use the shared `VisuallyHiddenLiveRegion`** (`src/components/_visually-hidden-live-region.svelte`)
+for any **transient string** announcement. It renders a visually-hidden
+`role="status"` (`aria-live="polite"`) or `role="alert"` (`aria-live="assertive"`)
+region — both `aria-atomic="true"` so the whole message is read on every change —
+and owns the blank-then-set timing that makes a _repeated identical_ message
+re-announce (an AT only fires on a content change). Feed it a reactive `message`:
+
+```svelte
+<script lang="ts">
+  import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
+  // message is '' when there is nothing to announce.
+  const status = $derived(copied ? 'Copied' : '');
+</script>
+
+<VisuallyHiddenLiveRegion message={status} />
+<!-- polite (default) -->
+<VisuallyHiddenLiveRegion message={alertText} priority="assertive" />
+```
+
+Rules:
+
+- **Never put `aria-live` on an interactive control** (a `<button>`, an option).
+  The AT then announces the control's accessible name both on focus and as a live
+  change — a double-announce — and the live-region semantics fight the control
+  role. Put the region on a separate, non-interactive element. (This was the
+  copy-button bug: `aria-live` on the button itself.)
+- **Always `aria-atomic="true"`** on a status/alert region whose full text should
+  be read on each change. The shared component sets it; inline regions must too.
+- **`polite` vs `assertive`:** `role="status"`/polite for non-urgent updates (the
+  default — copy confirmations, load-more end-of-list, loading hints);
+  `role="alert"`/assertive only for genuinely interrupting messages.
+- **Portaled status must announce from outside the portal.** A `role="status"`
+  freshly mounted inside a popover/portal is not reliably announced by NVDA/JAWS.
+  Keep an always-present `VisuallyHiddenLiveRegion` in the component's own subtree
+  (see Autocomplete's loading/empty status).
+
+**Not every status element is a `VisuallyHiddenLiveRegion`.** When the visible
+content _is_ the live region — a persistent status pill whose own text changes
+(ConnectionIndicator), or a Toast region whose channels contain the visible
+toasts — keep the inline `role="status"`/`role="alert"` + `aria-atomic` on that
+element. The shared component is for _hidden, transient string_ announcements, not
+for making visible content a live region.

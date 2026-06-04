@@ -548,3 +548,69 @@ describe('Autocomplete — FormField context', () => {
     expect(input.getAttribute('aria-invalid')).toBe('grammar');
   });
 });
+
+describe('Autocomplete — out-of-portal status live region', () => {
+  // The statusMessage live region lives OUTSIDE the portaled Popover so screen
+  // readers reliably hear loading/empty status. These tests verify the announcement
+  // region exists and announces the correct content for each state.
+  test('a persistent role=status region is always present (never portaled)', () => {
+    const { container } = render(Autocomplete, {
+      props: { id: 'test', suggestionSource: () => [] },
+    });
+    // Must exist even when the popover is closed — "always-present" per PLATFORM-POLICY.
+    const statusRegion = container.querySelector('[role="status"]');
+    expect(statusRegion).not.toBeNull();
+    expect(statusRegion?.getAttribute('aria-live')).toBe('polite');
+    expect(statusRegion?.getAttribute('aria-atomic')).toBe('true');
+    // Must NOT be inside the portaled listbox (the portal is appended to body, not container).
+    const listbox = container.querySelector('[role="listbox"]');
+    expect(listbox?.contains(statusRegion)).toBeFalsy();
+  });
+
+  test('announces loadingMessage while a fetch is in-flight', async () => {
+    let resolveRequest!: (suggestions: { label: string; value: string }[]) => void;
+    const source = () =>
+      new Promise<{ label: string; value: string }[]>((resolve) => {
+        resolveRequest = resolve;
+      });
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'async-ac',
+        loadingMessage: 'Searching…',
+        minQueryLength: 1,
+        suggestionSource: source,
+      },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: 'a' } });
+
+    const statusRegion = () => container.querySelector('[role="status"]');
+    await waitFor(() => {
+      expect(statusRegion()?.textContent?.trim()).toBe('Searching…');
+    });
+
+    // Resolve with results — status should clear.
+    resolveRequest([{ label: 'Apple', value: 'apple' }]);
+    await waitFor(() => {
+      expect(statusRegion()?.textContent?.trim()).toBe('');
+    });
+  });
+
+  test('announces emptyMessage when the popover is open with zero suggestions', async () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'empty-ac',
+        emptyMessage: 'No matches found',
+        minQueryLength: 1,
+        suggestionSource: () => [],
+      },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: 'z' } });
+
+    const statusRegion = () => container.querySelector('[role="status"]');
+    await waitFor(() => {
+      expect(statusRegion()?.textContent?.trim()).toBe('No matches found');
+    });
+  });
+});

@@ -61,12 +61,12 @@ describe('CopyButton', () => {
     expect(container.querySelector('button')?.getAttribute('aria-label')).toBe('Copy snippet');
   });
 
-  test('aria-label flips to copiedLabel after click even when label is set', async () => {
-    // Regression test for the bug Cursor Bugbot caught: when a consumer passes
-    // a static `label`, the `aria-label` short-circuited and never changed to
-    // "Copied". Combined with iconOnly (icons are aria-hidden), screen readers
-    // received no feedback when copy succeeded. The fix: aria-label flips on
-    // copied state regardless of whether label is set.
+  test('button aria-label stays stable; copiedLabel is announced via the live region', async () => {
+    // Corrected a11y model: the success feedback is announced by a SEPARATE
+    // visually-hidden live region, not by flipping aria-live on the button itself.
+    // A live region on an interactive control double-announces (the AT reads the
+    // button name on focus AND as a live change) and conflicts with the button role.
+    // The button keeps a stable accessible name; the live region carries the status.
     mockClipboard();
     const { container } = render(CopyButton, {
       value: 'x',
@@ -76,20 +76,31 @@ describe('CopyButton', () => {
     });
     const button = container.querySelector('button') as HTMLButtonElement;
     expect(button.getAttribute('aria-label')).toBe('Copy code');
+    // The button has NO aria-live — the live region owns announcements.
+    expect(button.hasAttribute('aria-live')).toBe(false);
+
     await fireEvent.click(button);
     await waitFor(() => {
-      expect(button.getAttribute('aria-label')).toBe('Code copied');
+      // aria-label is unchanged.
+      expect(button.getAttribute('aria-label')).toBe('Copy code');
+      // The copiedLabel is announced in the dedicated polite live region.
+      const liveRegion = container.querySelector('[role="status"][aria-live="polite"]');
+      expect(liveRegion).not.toBeNull();
+      expect(liveRegion?.getAttribute('aria-atomic')).toBe('true');
+      expect(liveRegion?.textContent?.trim()).toBe('Code copied');
     });
   });
 
-  test('aria-label flips to default "Copied" when no copiedLabel provided', async () => {
+  test('default "Copied" is announced in the live region when no copiedLabel provided', async () => {
     mockClipboard();
     const { container } = render(CopyButton, { value: 'x', label: 'Copy code' });
     const button = container.querySelector('button') as HTMLButtonElement;
     expect(button.getAttribute('aria-label')).toBe('Copy code');
     await fireEvent.click(button);
     await waitFor(() => {
-      expect(button.getAttribute('aria-label')).toBe('Copied');
+      expect(button.getAttribute('aria-label')).toBe('Copy code');
+      const liveRegion = container.querySelector('[role="status"][aria-live="polite"]');
+      expect(liveRegion?.textContent?.trim()).toBe('Copied');
     });
   });
 
@@ -128,11 +139,13 @@ describe('CopyButton', () => {
     await fireEvent.click(button);
 
     await waitFor(() => {
-      // aria-label flips to "Copied" (announced via aria-live="polite").
-      expect(button.getAttribute('aria-label')).toBe('Copied');
+      // aria-label stays stable; the success is announced in the live region.
+      expect(button.getAttribute('aria-label')).toBe('Copy to clipboard');
       expect(button.hasAttribute('data-cinder-copied')).toBe(true);
+      const liveRegion = container.querySelector('[role="status"][aria-live="polite"]');
+      expect(liveRegion?.textContent?.trim()).toBe('Copied');
       // The rendered SVG changes from Copy to Check — verify the path data differs
-      // so the icon swap actually happened, not just the aria-label.
+      // so the icon swap actually happened.
       const copiedSvgPath = button.querySelector('svg path')?.getAttribute('d');
       expect(copiedSvgPath).toBeDefined();
       expect(copiedSvgPath).not.toBe(idleSvgPath);
@@ -165,21 +178,20 @@ describe('CopyButton', () => {
     expect(button?.getAttribute('name')).toBe('copy-action');
   });
 
-  test('consumer cannot clobber controlled aria-label or aria-live', () => {
-    // These attrs are computed internally and Omit-ted from the prop type, so a
-    // consumer can only reach them by bypassing types (props object cast). Even then
-    // the component wins by spread ordering: a bypassed value lands in `rest` but the
-    // explicit aria-label/aria-live bindings rendered AFTER {...rest} override it.
+  test('consumer cannot clobber the controlled aria-label', () => {
+    // aria-label is computed internally and Omit-ted from the prop type, so a
+    // consumer can only reach it by bypassing types. Even then the component wins
+    // by spread ordering: a bypassed value lands in `rest` but the explicit
+    // aria-label rendered AFTER {...rest} overrides it.
     const { container } = render(CopyButton, {
       value: 'hello',
       'aria-label': 'CONSUMER_OVERRIDE',
-      'aria-live': 'assertive',
     } as never);
     const button = container.querySelector('button');
-    // Internal computed label wins
+    // Internal computed label wins.
     expect(button?.getAttribute('aria-label')).toBe('Copy to clipboard');
-    // Internal aria-live="polite" wins
-    expect(button?.getAttribute('aria-live')).toBe('polite');
+    // The button carries NO aria-live — announcements live in the separate region.
+    expect(button?.hasAttribute('aria-live')).toBe(false);
   });
 
   test('consumer onclick via rest does not bypass the internal copy handler', async () => {
@@ -210,19 +222,25 @@ describe('CopyButton', () => {
     expect(container.querySelector('button')?.getAttribute('type')).toBe('button');
   });
 
-  test('unmounting after a copy leaves no pending reset timer', async () => {
-    // handleClick schedules a setTimeout(confirmDuration) to flip `copied`
-    // back to false. onDestroy must clear it — otherwise the callback fires
-    // against an unmounted component. Tracks the real timer table directly.
+  test('unmounting after a copy leaves no pending timers', async () => {
+    // handleClick schedules a setTimeout(confirmDuration) to flip `copied` back to
+    // false; the VisuallyHiddenLiveRegion schedules its own auto-clear timeout.
+    // Both must be cleared on unmount (copy-button's onDestroy + the live region's
+    // $effect cleanup) — otherwise a callback fires against an unmounted component.
     mockClipboard();
     const timers = trackTimers();
     try {
       const { container, unmount } = render(CopyButton, { value: 'hi', confirmDuration: 10_000 });
       const button = container.querySelector('button') as HTMLButtonElement;
       await fireEvent.click(button);
-      await waitFor(() => expect(button.getAttribute('aria-label')).toBe('Copied'));
+      // Wait for the copied state (announced in the live region), confirming both
+      // the reset timer and the live-region auto-clear timer are now pending.
+      await waitFor(() => {
+        expect(button.hasAttribute('data-cinder-copied')).toBe(true);
+        const liveRegion = container.querySelector('[role="status"]');
+        expect(liveRegion?.textContent?.trim()).toBe('Copied');
+      });
 
-      // The reset timer is now pending (confirmDuration is far in the future).
       unmount();
       expectNoLeakedTimers(timers.active());
     } finally {
