@@ -247,12 +247,13 @@
     return getLiftedRowElement()?.getBoundingClientRect().height ?? 0;
   }
 
-  function getColumnDropZoneBottom(cardList: HTMLElement): number {
-    return cardList.getBoundingClientRect().bottom + getLiftedRowBlockSize();
+  function getColumnDropZoneBottom(cardList: HTMLElement, liftedRowBlockSize: number): number {
+    return cardList.getBoundingClientRect().bottom + liftedRowBlockSize;
   }
 
   function locatePointerTarget(pointerX: number, pointerY: number): CardMoveTarget | null {
     if (!columnsElement) return null;
+    const liftedRowBlockSize = getLiftedRowBlockSize();
     const columnElements = Array.from(columnsElement.children).filter(
       (element): element is HTMLElement =>
         element instanceof HTMLElement && element.classList.contains('cinder-kanban-board__column'),
@@ -265,7 +266,7 @@
         pointerX >= rect.left &&
         pointerX <= rect.right &&
         pointerY >= rect.top &&
-        pointerY <= getColumnDropZoneBottom(cardList)
+        pointerY <= getColumnDropZoneBottom(cardList, liftedRowBlockSize)
       );
     });
     if (columnIndex < 0 || columns[columnIndex]?.collapsed) return null;

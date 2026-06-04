@@ -56,6 +56,7 @@
   let latestPointerY = 0;
   let latestPointerX = 0;
   let listEl: HTMLElement | null = null;
+  let windowPointerListenersActive = false;
 
   // Reactive state for the pointer-drag preview portal.
   // previewX / previewY drive data-preview-x / data-preview-y on the row element
@@ -199,6 +200,20 @@
     isDraggingWithPointer = false;
   }
 
+  function addWindowPointerListeners(): void {
+    if (windowPointerListenersActive || typeof window === 'undefined') return;
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    window.addEventListener('pointercancel', handleWindowPointerCancel);
+    windowPointerListenersActive = true;
+  }
+
+  function removeWindowPointerListeners(): void {
+    if (!windowPointerListenersActive || typeof window === 'undefined') return;
+    window.removeEventListener('pointerup', handleWindowPointerUp);
+    window.removeEventListener('pointercancel', handleWindowPointerCancel);
+    windowPointerListenersActive = false;
+  }
+
   function endPointerSession(reason: 'drop' | 'cancel'): void {
     if (reason === 'drop') {
       if (moveRafHandle !== null) {
@@ -227,6 +242,7 @@
     }
 
     destroyPreviewPortal();
+    removeWindowPointerListeners();
 
     pointerActive = false;
     pointerId = null;
@@ -333,6 +349,7 @@
     // when we clone it, then position relative to the pointer.
     createPreviewPortal(event.clientX, event.clientY);
     updatePreviewPosition(event.clientX, event.clientY);
+    addWindowPointerListeners();
     scheduleAutoScroll();
   }
 
@@ -477,6 +494,7 @@
       } catch {}
     }
     destroyPreviewPortal();
+    removeWindowPointerListeners();
     pointerActive = false;
     pointerId = null;
     listEl = null;
@@ -508,6 +526,7 @@
           }
         }
         destroyPreviewPortal();
+        removeWindowPointerListeners();
         pointerActive = false;
         pointerId = null;
         listEl = null;
@@ -515,8 +534,6 @@
     };
   });
 </script>
-
-<svelte:window onpointerup={handleWindowPointerUp} onpointercancel={handleWindowPointerCancel} />
 
 <li
   bind:this={rowEl}
