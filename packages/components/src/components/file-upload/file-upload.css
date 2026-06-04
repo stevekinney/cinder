@@ -64,7 +64,7 @@
     gap: var(--cinder-space-2);
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-weight-medium);
+    font-weight: var(--cinder-font-medium);
   }
 
   .cinder-file-upload__eyebrow-icon {
@@ -127,7 +127,7 @@
     overflow-wrap: anywhere;
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-weight-medium);
+    font-weight: var(--cinder-font-medium);
   }
 
   .cinder-file-upload__file-size {
