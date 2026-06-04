@@ -1093,6 +1093,183 @@ describe('Tree — selection', () => {
     expect(selectedIds).toEqual(['unknown']);
   });
 
+  // ---------------------------------------------------------------------------
+  // Regression: controlled checkbox `.checked`/`.indeterminate` re-assertion
+  //
+  // The native checkbox is a CONTROLLED input. Its `.checked` and
+  // `.indeterminate` DOM properties are re-asserted imperatively on every
+  // reactive flush rather than through a one-way `checked={...}` attribute
+  // binding. The bug these tests pin: a declarative attribute only rewrites
+  // `.checked` when its boolean value CHANGES between renders, so a residual
+  // native mutation (from the pre-handler checkbox click) that lands on a
+  // checkbox whose authoritative state evaluates to the same boolean Svelte
+  // last rendered would never be healed — the visible `<input>.checked`
+  // diverges from the authoritative `aria-checked`.
+  //
+  // These tests must assert the RENDERED DOM after multiple clicks, so they
+  // render through `TreeTestHarness` (selectedIds backed by real Svelte
+  // `$state`). A plain `let selectedIds` with `get/set` accessors propagates
+  // the value back to the closure but does NOT trigger reactive re-render of
+  // the tree — the same reason the async-loading suite below uses the harness.
+  //
+  // Fixture mirrors the playground `indeterminate-parents` example: branch
+  // `archive` (scope ['archive','january','february']) with leaf children
+  // january/february, plus sibling leaf summary.
+  // ---------------------------------------------------------------------------
+
+  function indeterminateParentsChildren() {
+    return treeItemsSnippet([
+      {
+        id: 'archive',
+        label: 'archive',
+        branch: true,
+        selectionScopeIds: ['archive', 'january', 'february'],
+        children: [
+          { id: 'january', label: 'january.pdf' },
+          { id: 'february', label: 'february.pdf' },
+        ],
+      },
+      { id: 'summary', label: 'summary.pdf' },
+    ]);
+  }
+
+  function renderIndeterminateParents(initialSelectedIds: string[]) {
+    return render(TreeTestHarness, {
+      props: {
+        'aria-label': 'Archived reports',
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        initialExpandedIds: ['archive'],
+        initialSelectedIds,
+        children: indeterminateParentsChildren(),
+      },
+    });
+  }
+
+  function checkboxFor(container: HTMLElement, label: string): HTMLInputElement {
+    const item = treeItem(container, label) as HTMLElement;
+    return item.querySelector<HTMLInputElement>('input.cinder-tree-item__checkbox')!;
+  }
+
+  test('residual native .checked mutation is re-synced to selection state on next flush', async () => {
+    const { container } = renderIndeterminateParents(['february']);
+
+    const januaryInput = checkboxFor(container, 'january.pdf');
+    const summaryInput = checkboxFor(container, 'summary.pdf');
+    const januaryItem = treeItem(container, 'january.pdf') as HTMLElement;
+
+    // january is NOT selected, so its checkbox renders unchecked.
+    await waitFor(() => expect(januaryInput.checked).toBe(false));
+    expect(januaryItem.getAttribute('aria-checked')).toBe('false');
+
+    // Simulate a residual native mutation: the DOM .checked is flipped true
+    // out-of-band (as a real native checkbox click would do before the
+    // handler's preventDefault reverts it). selectionState for january is
+    // still { checked: false }, so a declarative attribute whose value did not
+    // change would never rewrite this.
+    januaryInput.checked = true;
+    expect(januaryInput.checked).toBe(true);
+
+    // Click an UNRELATED checkbox (summary) to drive a selection change and a
+    // reactive flush. The imperative re-assertion must heal january's stray
+    // .checked back to false to match its authoritative state.
+    await fireEvent.click(summaryInput);
+    await waitFor(() => expect(januaryInput.checked).toBe(false));
+    expect(januaryItem.getAttribute('aria-checked')).toBe('false');
+  });
+
+  test('clicking a leaf checkbox toggles its visible checked state in sync with aria-checked', async () => {
+    const { container } = renderIndeterminateParents(['february']);
+
+    const januaryInput = checkboxFor(container, 'january.pdf');
+    const januaryItem = treeItem(container, 'january.pdf') as HTMLElement;
+
+    await waitFor(() => expect(januaryInput.checked).toBe(false));
+
+    // A real native checkbox click flips `.checked` in the DOM BEFORE the
+    // handler runs (and preventDefault only reverts it on that tick).
+    // happy-dom's fireEvent.click does not auto-flip, so model the native
+    // pre-flip explicitly before each click — the residual mutation the
+    // controlled input must reconcile. Click on → both must agree on truthy.
+    januaryInput.checked = true;
+    await fireEvent.click(januaryInput);
+    await waitFor(() => expect(januaryInput.checked).toBe(true));
+    expect(januaryItem.getAttribute('aria-checked')).toBe('true');
+
+    // Click off → native pre-flip clears `.checked`; both must agree on false.
+    januaryInput.checked = false;
+    await fireEvent.click(januaryInput);
+    await waitFor(() => expect(januaryInput.checked).toBe(false));
+    expect(januaryItem.getAttribute('aria-checked')).toBe('false');
+  });
+
+  test('parent checkbox recomputes mixed/checked/unchecked as descendants toggle', async () => {
+    const { container } = renderIndeterminateParents(['february']);
+
+    const januaryInput = checkboxFor(container, 'january.pdf');
+    const februaryInput = checkboxFor(container, 'february.pdf');
+    const archiveInput = checkboxFor(container, 'archive');
+    const archiveItem = treeItem(container, 'archive') as HTMLElement;
+
+    // february-only → 1/3 of archive scope selected → mixed.
+    await waitFor(() => expect(archiveInput.indeterminate).toBe(true));
+    expect(archiveInput.checked).toBe(false);
+    expect(archiveItem.getAttribute('aria-checked')).toBe('mixed');
+
+    // Stray-mutate the ARCHIVE checkbox's DOM `.checked` to true out-of-band.
+    // archive stays mixed across the next click (1/3 → 2/3 selected), so its
+    // authoritative `selectionState.checked` boolean does NOT change value —
+    // a declarative `checked={...}` binding would skip the DOM write and leave
+    // this stray `true` un-healed. The imperative re-assertion must reconcile
+    // it back to false because the effect re-runs on the fresh selectionState.
+    archiveInput.checked = true;
+
+    // Add january → 2/3 selected → still mixed, still indeterminate, and the
+    // visible checkbox must NOT read as fully checked.
+    await fireEvent.click(januaryInput);
+    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('mixed'));
+    expect(archiveInput.indeterminate).toBe(true);
+    expect(archiveInput.checked).toBe(false);
+
+    // Remove february → 1/3 selected → still mixed.
+    await fireEvent.click(februaryInput);
+    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('mixed'));
+    expect(archiveInput.indeterminate).toBe(true);
+    expect(archiveInput.checked).toBe(false);
+
+    // Remove january → 0/3 selected → fully unchecked, never mixed.
+    await fireEvent.click(januaryInput);
+    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('false'));
+    expect(archiveInput.checked).toBe(false);
+    expect(archiveInput.indeterminate).toBe(false);
+  });
+
+  test('parent checkbox reads fully checked (never mixed) when its whole scope is selected', async () => {
+    const { container } = renderIndeterminateParents([]);
+
+    const archiveInput = checkboxFor(container, 'archive');
+    const archiveItem = treeItem(container, 'archive') as HTMLElement;
+
+    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('false'));
+
+    // Select the full scope via the archive checkbox (cascade). Model the
+    // native pre-flip: the click sets `.checked` true in the DOM first.
+    archiveInput.checked = true;
+    await fireEvent.click(archiveInput);
+    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('true'));
+    expect(archiveInput.checked).toBe(true);
+    expect(archiveInput.indeterminate).toBe(false);
+
+    // Clear the full scope → native pre-flip clears `.checked`; final state is
+    // fully unchecked, never mixed.
+    archiveInput.checked = false;
+    await fireEvent.click(archiveInput);
+    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('false'));
+    expect(archiveInput.checked).toBe(false);
+    expect(archiveInput.indeterminate).toBe(false);
+  });
+
   test('partially selected scope exposes indeterminate checkbox and mixed aria-checked', async () => {
     const { container } = render(Tree, {
       props: {

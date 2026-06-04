@@ -95,11 +95,25 @@
 
   let checkboxElement: HTMLInputElement | undefined = $state();
 
-  $effect(() => {
-    if (checkboxElement) {
-      checkboxElement.indeterminate = selectionState.indeterminate && !selectionState.checked;
-    }
-  });
+  // The native checkbox is a CONTROLLED input: both `.checked` and
+  // `.indeterminate` are written imperatively from the authoritative
+  // `selectionState` rather than through a one-way `checked={...}` attribute
+  // binding. Svelte only writes `.checked` when the bound expression's VALUE
+  // changes between renders; it does not re-assert it on every flush. But the
+  // input's DOM `.checked`/`.indeterminate` are mutated out-of-band by native
+  // checkbox interaction, so a declarative attribute leaves residual native
+  // mutations un-healed. Centralizing the write here keeps the visible checkbox
+  // reconciled. `aria-checked` (below) is the assistive-tech source of truth
+  // and stays correct independently.
+  function syncCheckboxToSelectionState(): void {
+    if (!checkboxElement) return;
+    checkboxElement.checked = selectionState.checked;
+    checkboxElement.indeterminate = selectionState.indeterminate && !selectionState.checked;
+  }
+
+  // Reactive reconciliation: re-runs whenever `selectionState` (a fresh object
+  // from `context.selectionStateFor` each flush) changes.
+  $effect(syncCheckboxToSelectionState);
 
   // ---------------------------------------------------------------------------
   // Registration
@@ -360,6 +374,21 @@
     event.stopPropagation();
     outerElement?.focus();
     if (!disabled) context.toggleSelectionScope(id);
+
+    // A native checkbox click flips `.checked` during dispatch, and Chromium
+    // applies the `preventDefault()` revert at the END of the dispatching task
+    // — AFTER this synchronous handler returns AND after all microtasks drain
+    // (so after Svelte's flush, the reactive $effect, and any tick()/microtask
+    // re-assert). That late revert clobbers a microtask write, leaving the
+    // visible checkbox desynced from the authoritative selectionState. The
+    // re-sync therefore has to land in a LATER task: requestAnimationFrame runs
+    // on the next frame, strictly after the browser's post-dispatch revert, so
+    // it reads the now-current `selectionState` and settles the controlled
+    // input on the authoritative value. `globalThis.requestAnimationFrame` is
+    // guarded for non-DOM (server/test) environments where it is undefined.
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(syncCheckboxToSelectionState);
+    }
   }
 
   function toggleSelectionFromRow(): void {
@@ -404,11 +433,18 @@
         toggleSelection: toggleSelectionFromRow,
       })}
     {:else if checkboxSelectionActive}
+      <!--
+        `.checked` and `.indeterminate` are set imperatively in the $effect
+        above (NOT via a declarative `checked={...}` attribute) so the
+        controlled input is reconciled against native mutation on every
+        reactive flush. A declarative attribute would only rewrite `.checked`
+        when its boolean value changed between renders, which leaves a residual
+        native mutation (from the pre-handler checkbox click) un-healed.
+      -->
       <input
         bind:this={checkboxElement}
         type="checkbox"
         class="cinder-tree-item__checkbox"
-        checked={selectionState.checked}
         {disabled}
         tabindex="-1"
         aria-hidden="true"
