@@ -6,33 +6,55 @@
 
 <script lang="ts">
   import { Button } from '@lostgradient/cinder/button';
+  import type { SelectionPopoverPosition } from '@lostgradient/cinder/selection-popover';
   import { SelectionPopover } from '@lostgradient/cinder/selection-popover';
 
   const popoverId = 'toggled-selection-popover';
   let isOpen = $state(false);
+  let position = $state<SelectionPopoverPosition | null>(null);
   let lastSubmitted = $state<string | null>(null);
+  let anchorElement = $state<HTMLElement | null>(null);
 
   function openPopover(): void {
+    if (!anchorElement) return;
+
+    const rect = anchorElement.getBoundingClientRect();
+    position = {
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    };
     isOpen = true;
   }
 
   function handleClose(): void {
     isOpen = false;
+    position = null;
   }
 
   function handleSubmit(body: string): void {
     lastSubmitted = body;
-    isOpen = false;
+    handleClose();
   }
 </script>
 
 <div style="max-width: 36rem;">
   <p style="margin: 0 0 0.75rem; line-height: 1.5;">
-    Click the button to open the popover at a fixed viewport position. Click anywhere outside the
+    Click the button to open the popover at a visible marked phrase. Click anywhere outside the
     popover and it closes — the component fires <code>onclose</code> and the consumer flips
-    <code>open</code> back to <code>false</code>. The <code>position</code> prop here uses
-    hard-coded viewport-relative coordinates for demonstration; a real consumer would derive them
-    from <code>Range.getBoundingClientRect()</code>.
+    <code>open</code> back to <code>false</code>. The <code>position</code> prop here is derived from
+    the marked phrase's viewport rectangle.
+  </p>
+
+  <p style="margin: 0 0 0.75rem; line-height: 1.5;">
+    The comment action anchors to
+    <mark
+      bind:this={anchorElement}
+      data-testid="external-trigger-anchor"
+      style="border-radius: var(--cinder-radius-sm); background: color-mix(in oklch, var(--cinder-accent), transparent 84%); color: var(--cinder-text); padding: 0 0.125rem;"
+    >
+      this visible phrase
+    </mark>
+    rather than a hard-coded viewport coordinate.
   </p>
 
   <Button
@@ -47,7 +69,7 @@
 <SelectionPopover
   id={popoverId}
   open={isOpen}
-  position={{ x: 260, y: 260 }}
+  {position}
   onclose={handleClose}
   oncommentsubmit={handleSubmit}
 />

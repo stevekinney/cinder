@@ -34,7 +34,13 @@
     const range = selection.getRangeAt(0);
     if (!surface.contains(range.commonAncestorContainer)) return null;
 
-    const rect = range.getBoundingClientRect();
+    const rect =
+      Array.from(range.getClientRects()).find((clientRect) => {
+        return clientRect.width > 0 && clientRect.height > 0;
+      }) ?? range.getBoundingClientRect();
+
+    if (rect.width === 0 && rect.height === 0) return null;
+
     return {
       x: rect.left + rect.width / 2,
       y: rect.top,
@@ -100,13 +106,13 @@
   <p style="margin: 0 0 0.75rem;">
     The <strong>SelectionPopover</strong> appears near highlighted text — its
     <code>position</code> prop takes viewport-relative coordinates derived from
-    <code>Range.getBoundingClientRect()</code>, not local container offsets. Select any portion of
-    this paragraph to see it appear above your selection.
+    <code>Range.getClientRects()</code>, not local container offsets. Select any portion of this
+    paragraph to see it appear near your selection.
   </p>
   <p style="margin: 0;">
     Clicking the comment icon expands the composer. Submit with the send button or
     <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd>. Clicking outside the popover closes it and
-    clears the selection state.
+    resets the popover state.
   </p>
 </article>
 

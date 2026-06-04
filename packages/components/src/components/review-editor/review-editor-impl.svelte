@@ -59,6 +59,7 @@
     ReviewEditorDiffViewMode as DiffViewMode,
     ReviewEditorViewType as ViewType,
   } from './review-editor-types.ts';
+  import { getSelectionAnchorPosition } from './review-editor-selection-geometry.ts';
   import DiffViewer from '../diff-viewer/diff-viewer.svelte';
   import SelectionPopover from '../selection-popover/selection-popover.svelte';
   import { computeLineDiff, getDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
@@ -754,9 +755,9 @@
 
         // Get the selection range and compute position from the browser's DOM
         const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
+        const anchorPosition = getSelectionAnchorPosition(range);
 
-        if (rect.width > 0) {
+        if (anchorPosition) {
           // Capture the ProseMirror selection range for thread creation
           // We need this because clicking the popover will collapse the selection
           // Get selection directly from the view since currentSelection state
@@ -768,10 +769,7 @@
               capturedSelectionForPopover = { from, to };
               // Only show popover when we have a valid captured selection
               // This prevents showing a popover that can't submit due to timing mismatches
-              selectionPopoverPosition = {
-                x: rect.right,
-                y: rect.bottom + 8,
-              };
+              selectionPopoverPosition = anchorPosition;
             }
           }
         }

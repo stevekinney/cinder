@@ -1,22 +1,27 @@
 # SelectionPopover
 
-A floating toolbar that appears above a text selection and offers a comment-on-selection action with an inline composer. The component renders as a native `popover="manual"` element positioned with `position: fixed`, placing it in the browser's top layer above all other content.
+A floating toolbar that appears near a text selection and offers a comment-on-selection action with an inline composer. The component uses fixed-position Floating UI geometry, so the supplied selection anchor can flip or shift when it is near a viewport edge.
 
 ## When to use
 
 Use `SelectionPopover` when you want readers to annotate or comment on a highlighted range of text — for example, in a document editor, review tool, or article surface. It is designed specifically for selection-scoped actions. For generic floating content or popovers unrelated to text selection, use the `Popover` component instead.
 
+`SelectionPopover` does not render persistent comment highlights. Keep saved comment anchors in your own markup, or use `ReviewEditor` and the commentary anchoring utilities when you need editor-backed anchor tracking.
+
 ## How it positions
 
-The `position` prop accepts **viewport-relative** coordinates — the same coordinate space returned by `Range.getBoundingClientRect()`. A typical consumer computes the anchor from the selected range and passes it directly:
+The `position` prop accepts a **viewport-relative anchor point** — the same coordinate space returned by `Range.getClientRects()` and `Range.getBoundingClientRect()`. A typical consumer computes the anchor from the selected range and passes it directly:
 
 ```ts
 const range = selection.getRangeAt(0);
-const rect = range.getBoundingClientRect();
+const rect =
+  Array.from(range.getClientRects()).find((clientRect) => {
+    return clientRect.width > 0 && clientRect.height > 0;
+  }) ?? range.getBoundingClientRect();
 position = { x: rect.left + rect.width / 2, y: rect.top };
 ```
 
-The component clamps the rendered position to a 16px viewport margin automatically, so you do not need to guard against selections near the edges of the screen. Coordinates are **not** relative to a containing element — do not pass offsetLeft/offsetTop or any container-relative value.
+The component treats that point as a Floating UI virtual anchor, not as the panel's top-left corner. It prefers an above-selection placement, but shifts or flips near viewport edges. Coordinates are **not** relative to a containing element — do not pass offsetLeft/offsetTop or any container-relative value.
 
 ## Usage
 
@@ -54,7 +59,15 @@ The component clamps the rendered position to a 16px viewport margin automatical
         position = null;
         return;
       }
-      const rect = range.getBoundingClientRect();
+      const rect =
+        Array.from(range.getClientRects()).find((clientRect) => {
+          return clientRect.width > 0 && clientRect.height > 0;
+        }) ?? range.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        isOpen = false;
+        position = null;
+        return;
+      }
       position = { x: rect.left + rect.width / 2, y: rect.top };
       isOpen = true;
     }

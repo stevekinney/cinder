@@ -115,6 +115,7 @@ function hasElementSelectionChange(source: string): boolean {
 
 const EXAMPLE_FILES = [
   'basic.example.svelte',
+  'existing-comments.example.svelte',
   'keyboard.example.svelte',
   'null-position.example.svelte',
   'toggled.example.svelte',
@@ -126,7 +127,11 @@ const EXAMPLE_FILES = [
  * document level. Examples that use only button-driven triggers do not need
  * a selectionchange listener at all.
  */
-const SELECTION_DRIVEN_EXAMPLES = ['basic.example.svelte', 'keyboard.example.svelte'];
+const SELECTION_DRIVEN_EXAMPLES = [
+  'basic.example.svelte',
+  'existing-comments.example.svelte',
+  'keyboard.example.svelte',
+];
 
 describe('selection-popover examples — no default-open popovers on load', () => {
   for (const filename of EXAMPLE_FILES) {

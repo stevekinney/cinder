@@ -24,6 +24,7 @@ import type { ThreadCreateEvent } from '@lostgradient/cinder/commentary/comments
 import { extractMentions, generateId } from '@lostgradient/cinder/commentary/comments';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { devWarn } from '../../utilities/dev-warn.ts';
+import { getSelectionAnchorPosition } from './review-editor-selection-geometry.ts';
 import type {
   PopoverPosition,
   ReviewMode,
@@ -328,19 +329,16 @@ export function createSelectionPopover(options: SelectionPopoverOptions): Select
 
       // Get the selection range and compute position from the browser's DOM
       const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+      const anchorPosition = getSelectionAnchorPosition(range);
 
-      if (rect.width > 0) {
+      if (anchorPosition) {
         // Capture the ProseMirror selection range for thread creation
         const view = getEditorView();
         if (view) {
           const { from, to } = view.state.selection;
           if (from !== to) {
             capturedSelection = { from, to };
-            position = {
-              x: rect.right,
-              y: rect.bottom + 8,
-            };
+            position = anchorPosition;
           }
         }
       }

@@ -43,9 +43,9 @@
     remains <code>true</code>. Click <em>Show popover</em> to open it, then use
     <em>Clear position</em>
     to set <code>position=null</code> while leaving
-    <code>open=true</code> — the popover disappears because the component calls
-    <code>hidePopover()</code> when position is null. Use <em>Restore position</em> to bring it back
-    without changing <code>open</code>.
+    <code>open=true</code> — the popover disappears because the component has no anchor point to
+    position against. Use <em>Restore position</em> to bring it back without changing
+    <code>open</code>.
   </p>
 
   <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
