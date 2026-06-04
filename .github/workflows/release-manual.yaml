@@ -92,12 +92,16 @@ jobs:
       - name: Check package artifact budget
         run: bun run --filter=cinder package:weight:check -- --existing-tarball
 
-      # Break-glass publish. Authentication uses NPM_TOKEN intentionally
-      # (the same secret release.yaml uses) rather than npm trusted
-      # publishing — trusted publishing requires additional registry-side
-      # configuration that is out of scope for this fallback path.
-      # Provenance is still emitted via NPM_CONFIG_PROVENANCE and the
-      # `id-token: write` permission on this job.
+      # Break-glass publish. The primary release path (release.yaml) uses npm
+      # Trusted Publishing (OIDC) and requires no long-lived token. This manual
+      # fallback uses NPM_TOKEN intentionally as an emergency-only alternative
+      # for when the Changesets/OIDC primary path is unavailable. Do NOT use
+      # this workflow for routine releases. Provenance is still emitted via
+      # NPM_CONFIG_PROVENANCE and the `id-token: write` permission on this job.
+      #
+      # Token rotation: NPM_TOKEN should be rotated at least every 90 days per
+      # security policy. The token is a Granular Access Token scoped to the
+      # `cinder` package only — never use a full-access automation token.
       - name: Publish to npm
         env:
           NPM_CONFIG_PROVENANCE: 'true'

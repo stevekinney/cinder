@@ -169,3 +169,46 @@ The npm artifact has one source of truth: `packages/components/scripts/pack-for-
 Before a release, `bun run --filter=cinder validate:consumer` installs the staged tarball into consumer fixtures, runs the Svelte peer compatibility matrix (`5.55.0`, workspace `~5.55.0`, latest `svelte@^5`), and checks tarball hygiene. `bun run --filter=cinder package:weight:check` reports packed size, unpacked size, file count, largest entry directories, and largest files, then fails on budget drift.
 
 Only `cinder` (the workspace at `packages/components/`) publishes to npm; the other `@cinder/*` workspaces are private. Changes confined to `@cinder/playground` (the only private workspace with no dependents and listed under `ignore` in `.changeset/config.json`) do not need a changeset. The remaining private workspaces (`@cinder/commentary`, `@cinder/diff`, `@cinder/editor`, `@cinder/markdown`, `@cinder/testing`) are `workspace:*` dependencies of `cinder`, so changes to them generally do warrant a `cinder` changeset — they ship inside the published package.
+
+### Publishing to npm
+
+The primary release workflow (`.github/workflows/release.yaml`) uses **npm Trusted Publishing (OIDC)**. No long-lived npm token is stored in GitHub Actions secrets for normal releases. The `id-token: write` job permission grants the workflow an OIDC token, and npm >= 11.5.1 exchanges that token for a publish grant automatically.
+
+#### One-time registry configuration (a maintainer must do this once in the npm web UI)
+
+npm Trusted Publishing must be configured on the `cinder` package page at [npmjs.com](https://www.npmjs.com/package/cinder):
+
+1. Navigate to the `cinder` package → **Settings** → **Publishing** → **Add a publisher**.
+2. Select **GitHub Actions** as the provider.
+3. Set these values exactly:
+
+   | Field             | Value           |
+   | ----------------- | --------------- |
+   | Repository owner  | `stevekinney`   |
+   | Repository name   | `cinder`        |
+   | Workflow filename | `release.yaml`  |
+   | Environment       | _(leave blank)_ |
+
+4. Save. The registry will now accept OIDC tokens from that workflow without a static secret.
+
+Until this is configured on npmjs.com, OIDC publishes will be rejected by the registry even though the workflow is otherwise correct. This is a one-time setup step performed on the npm website; it is not automated by this repository.
+
+#### The workflow validation guard
+
+`bun run --filter=cinder validate:workflow` (part of the full `bun run validate` suite) includes a check that asserts `release.yaml` does not contain `NODE_AUTH_TOKEN` or `NPM_TOKEN` anywhere outside comments — not in the publish step's `env:`, and not in a job-level or workflow-level `env:` block that the publish step would silently inherit. If either token reappears, CI fails with a clear message. The guard lives at `packages/components/scripts/validate-release-workflow.ts`.
+
+#### Break-glass fallback
+
+If the Changesets/OIDC path fails and a release is urgent, `.github/workflows/release-manual.yaml` is the documented fallback. It:
+
+- Requires a manually dispatched `workflow_dispatch` event with a version tag input.
+- Uses `NPM_TOKEN` (a Granular Access Token scoped to the `cinder` package only, stored in repository secrets).
+- Still emits provenance via `NPM_CONFIG_PROVENANCE=true` and `id-token: write`.
+
+**Use this workflow only when the primary path is broken.** Routine releases must go through the Changesets PR flow into `main` and the primary `release.yaml`.
+
+Token hygiene for the break-glass secret:
+
+- Rotate `NPM_TOKEN` at least every 90 days.
+- Use a Granular Access Token scoped to the `cinder` package — never a full-access automation token.
+- After a break-glass publish, investigate and restore the primary OIDC path before the next release.
