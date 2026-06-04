@@ -73,7 +73,7 @@
   .cinder-pin-input__segment:disabled {
     cursor: not-allowed;
     color: var(--cinder-text-disabled);
-    background: var(--cinder-surface-muted);
+    background: var(--cinder-surface-inset);
   }
 
   @media (forced-colors: active) {

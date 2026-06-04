@@ -9,7 +9,7 @@
     margin: auto;
     padding: 0;
     border: none;
-    border-radius: var(--cinder-radius-xl);
+    border-radius: var(--cinder-radius-lg);
     background: transparent;
     color: var(--cinder-text);
     max-width: min(90vw, 32rem);
@@ -36,7 +36,7 @@
     flex-direction: column;
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-xl);
+    border-radius: var(--cinder-radius-lg);
     box-shadow: var(--cinder-shadow-lg);
     max-height: inherit;
     overflow: hidden;
