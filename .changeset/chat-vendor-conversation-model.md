@@ -1,5 +1,5 @@
 ---
-'/cinder': major
+'@lostgradient/cinder': major
 ---
 
 Chat: vendor the conversation data model and drop the `conversationalist` dependency.

@@ -1,5 +1,5 @@
 ---
-'/cinder': minor
+'@lostgradient/cinder': minor
 ---
 
 Promote a batch of beta and experimental components to stable.
