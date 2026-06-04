@@ -297,6 +297,10 @@
        column. Narrow steps read like the vertical orientation: marker in
        column 1, body in column 2, connector running down column 1. */
       display: grid;
+      /* Reset align-items from the wide flex-column rule (where it centers
+       the flex children horizontally). On a grid container align-items
+       would vertically center grid items; stretch is the correct default. */
+      align-items: stretch;
       grid-template-columns: auto 1fr;
       grid-template-rows: auto 1fr;
       gap: 0 var(--cinder-space-3);

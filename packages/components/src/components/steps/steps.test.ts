@@ -405,6 +405,9 @@ describe('Steps — narrow horizontal fallback (CSS contract)', () => {
       /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__item\s*\{/,
     );
     expect(body).toMatch(/display:\s*grid;/);
+    // Must reset align-items so the wide flex-column value (center) does not
+    // vertically center grid items, which would float labels mid-track.
+    expect(body).toMatch(/align-items:\s*stretch;/);
   });
 
   test('narrow connector returns to an in-flow vertical line under the marker', () => {
