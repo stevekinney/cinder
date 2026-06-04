@@ -247,7 +247,7 @@
   /* Selection reinforcement — NOT the sole indicator. */
   .cinder-radio-group[data-variant='card'] .cinder-radio-row[data-checked] {
     border-color: var(--cinder-accent);
-    background: var(--cinder-surface-selected, var(--cinder-surface-raised));
+    background: var(--cinder-surface-raised);
   }
 
   /* Invalid state on the card surface. Driven by `data-invalid` on the row. */

@@ -61,7 +61,7 @@
   }
 
   .cinder-textarea::placeholder {
-    color: var(--cinder-text-placeholder, var(--cinder-text-muted));
+    color: var(--cinder-text-muted);
   }
 
   @media (hover: hover) {

@@ -10,11 +10,6 @@
     "allowedCount": 2
   },
   {
-    "filePath": "src/components/autocomplete/autocomplete.css",
-    "colorClass": "oklch",
-    "allowedCount": 1
-  },
-  {
     "filePath": "src/components/chat/input/chat-input.svelte",
     "colorClass": "oklch",
     "allowedCount": 1
@@ -38,11 +33,6 @@
     "filePath": "src/components/input/input.css",
     "colorClass": "oklch",
     "allowedCount": 2
-  },
-  {
-    "filePath": "src/components/kanban-board/kanban-board.css",
-    "colorClass": "rgb",
-    "allowedCount": 1
   },
   {
     "filePath": "src/components/markdown-editor/markdown-editor.svelte",
@@ -73,11 +63,6 @@
     "filePath": "src/components/skeleton/skeleton.css",
     "colorClass": "oklch",
     "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/sortable-list/sortable-list.css",
-    "colorClass": "rgb",
-    "allowedCount": 3
   },
   {
     "filePath": "src/components/spinner/spinner.css",

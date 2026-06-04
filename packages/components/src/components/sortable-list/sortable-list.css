@@ -18,7 +18,7 @@
 
   .cinder-sortable-item--lifted {
     transform: scale(1.02);
-    box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+    box-shadow: var(--cinder-shadow-lg);
     z-index: 1;
     position: relative;
   }
@@ -60,7 +60,7 @@
 
     .cinder-sortable-item--lifted {
       transform: none;
-      box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+      box-shadow: var(--cinder-shadow-lg);
     }
 
     .cinder-sortable-item--placeholder {
@@ -135,7 +135,7 @@
     height: var(--preview-height, auto);
     z-index: var(--cinder-z-drag-preview, 9999);
     pointer-events: none;
-    box-shadow: var(--cinder-shadow-elevated, 0 4px 16px rgb(0 0 0 / 0.15));
+    box-shadow: var(--cinder-shadow-lg);
     border-radius: var(--cinder-radius-md, 4px);
     /* Subtle rotation and scale to distinguish preview from the placeholder. */
     transform: rotate(2deg) scale(1.02);
