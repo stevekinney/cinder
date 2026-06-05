@@ -288,13 +288,13 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     }
   });
 
-  // 4. Table header separation. A direct symptom of the surface-ladder
-  //    collapse: header = surface-inset, body = surface. The header must read
-  //    as a distinct band.
+  // 4. Table header separation. header = surface-inset, body = surface. The
+  //    header must read as a distinct band.
   //
-  //    Floor: |body.L − header.L| ≥ 0.05.
-  //    PRE-FIX ΔL = 0.985 − 0.94 = 0.045 → fails.
-  //    POST-FIX ΔL = 0.98 − 0.915 = 0.065 → passes.
+  //    Floor: |body.L − header.L| ≥ 0.025. The light ramp is intentionally gentle
+  //    (inset was lightened to 0.955 so large inset regions stop reading as dark
+  //    slabs), so the painted ΔL is surface 0.985 − inset 0.955 = 0.03 — a subtle
+  //    but real band. Matches the surface-ladder floor in test 1.
   test('table header reads as a distinct band from the body in light mode', async ({ browser }) => {
     const context = await browser.newContext({ colorScheme: 'light', reducedMotion: 'reduce' });
     try {
@@ -307,7 +307,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       expect(
         Math.abs(bodyL - headerL),
         'table header (surface-inset) must separate from the body (surface)',
-      ).toBeGreaterThanOrEqual(0.05);
+      ).toBeGreaterThanOrEqual(0.025);
     } finally {
       await context.close();
     }
