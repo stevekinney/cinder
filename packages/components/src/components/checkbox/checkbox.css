@@ -147,6 +147,16 @@
     border-color: var(--cinder-fill-disabled);
   }
 
+  /* The checkmark glyph on a disabled box uses the disabled FOREGROUND, not the
+     bright-fill --cinder-accent-contrast (dark ink in both arms). On the dark-mode
+     --cinder-fill-disabled (L 0.30) a dark glyph (L 0.15) is only ~1.45:1 — the
+     mark vanishes. --cinder-text-disabled clears the 3:1 UI floor in both themes
+     (light ~3.8:1, dark ~3.7:1). */
+  .cinder-checkbox:disabled:checked + .cinder-checkbox-field__indicator,
+  .cinder-checkbox:disabled:indeterminate + .cinder-checkbox-field__indicator {
+    color: var(--cinder-text-disabled);
+  }
+
   /* Error / invalid state */
   .cinder-checkbox[aria-invalid='true'] {
     --_cinder-checkbox-ring: var(--cinder-danger);
