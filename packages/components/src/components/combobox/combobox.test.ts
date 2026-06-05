@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
@@ -10,14 +10,68 @@ expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 
 setupHappyDom();
 
-const { render: renderIntoContainer, fireEvent } = await import('@testing-library/svelte');
+const {
+  render: renderIntoContainer,
+  fireEvent,
+  waitFor,
+  cleanup,
+} = await import('@testing-library/svelte');
 const { default: Combobox } = await import('./combobox.svelte');
+
+// These tests render into the shared `document.body` (see `render` below). The
+// listbox opens on focus through Svelte effects, so options are not guaranteed
+// to be in the DOM synchronously on the next line after `await fireEvent.focus`
+// — under coverage instrumentation and on slower CI runners the effect can land
+// a tick later. Without `cleanup()`, torn-down instances also leave pending
+// effects and animation microtasks (see the happy-dom animate stub) that race
+// the next render. `cleanup()` unmounts between tests; `findOption`/`waitFor`
+// de-race the assertions so a one-tick delay no longer reads as an empty list.
+// `replaceChildren()` before each test additionally wipes any listbox nodes a
+// prior test left appended to `document.body` that `cleanup()` doesn't track,
+// so `findOption` can never match a stale option from another test.
+beforeEach(() => document.body.replaceChildren());
+afterEach(() => cleanup());
 
 const fruits = [
   { value: 'apple', label: 'Apple' },
   { value: 'apricot', label: 'Apricot' },
   { value: 'banana', label: 'Banana' },
 ];
+
+/** Wait for an open listbox option whose text contains `label`, then return it. */
+async function findOption(label: string): Promise<Element> {
+  let match: Element | undefined;
+  await waitFor(() => {
+    match = Array.from(document.body.querySelectorAll('[role="option"]')).find((element) =>
+      element.textContent?.includes(label),
+    );
+    if (!match) throw new Error(`option containing "${label}" not found`);
+  });
+  // `waitFor` resolves only once the callback stops throwing, so `match` is set.
+  return match!;
+}
+
+/**
+ * Wait until the listbox has settled after an open/filter interaction — i.e.
+ * at least one `[role="option"]` is present, or the empty state is *active*.
+ * The listbox opens through a Svelte effect, so a synchronous read on the next
+ * line after `fireEvent.focus`/`keyDown`/`input` can race the effect and see an
+ * empty list; awaiting this first makes the subsequent synchronous queries safe.
+ *
+ * The empty-state `.cinder-combobox__empty` element is ALWAYS in the DOM (it is
+ * a permanent `role="status"` region for screen readers), so it can't be the
+ * settled signal on its own — it only carries `data-cinder-active` while the
+ * combobox is open with zero matches. Gate on that active marker, not mere
+ * presence, or the helper resolves on the first poll and de-races nothing.
+ */
+async function waitForListbox(): Promise<void> {
+  await waitFor(() => {
+    const settled =
+      document.body.querySelector('[role="option"]') !== null ||
+      document.body.querySelector('.cinder-combobox__empty[data-cinder-active]') !== null;
+    if (!settled) throw new Error('listbox has not opened');
+  });
+}
 
 function readComboboxStyles(): string {
   // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
@@ -38,12 +92,8 @@ describe('Combobox', () => {
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;
     await fireEvent.focus(input);
 
-    const option = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apricot'),
-    );
-    expect(option).toBeDefined();
-
-    await fireEvent.mouseDown(option as Element);
+    const option = await findOption('Apricot');
+    await fireEvent.mouseDown(option);
 
     expect(container.querySelector('[role="listbox"]')).toBeNull();
     expect(input.value).toBe('Apricot');
@@ -54,20 +104,19 @@ describe('Combobox', () => {
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;
     await fireEvent.focus(input);
 
-    const appleOption = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apple'),
-    );
-    expect(appleOption).toBeDefined();
-    await fireEvent.mouseDown(appleOption as Element);
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
 
     await fireEvent.input(input, { target: { value: 'ap' } });
 
     expect(container.querySelector('[role="listbox"]')).not.toBeNull();
-    const filteredOptions = Array.from(container.querySelectorAll('[role="option"]'));
-    expect(filteredOptions.map((option) => option.textContent?.trim())).toEqual([
-      'Apple',
-      'Apricot',
-    ]);
+    await waitFor(() => {
+      const filteredOptions = Array.from(container.querySelectorAll('[role="option"]'));
+      expect(filteredOptions.map((option) => option.textContent?.trim())).toEqual([
+        'Apple',
+        'Apricot',
+      ]);
+    });
   });
 
   test('user can select a different option after the first selection', async () => {
@@ -75,26 +124,22 @@ describe('Combobox', () => {
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;
     await fireEvent.focus(input);
 
-    const appleOption = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apple'),
-    );
-    expect(appleOption).toBeDefined();
-    await fireEvent.mouseDown(appleOption as Element);
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
 
     await fireEvent.input(input, { target: { value: 'apri' } });
 
-    const apricotOption = Array.from(container.querySelectorAll('[role="option"]')).find(
-      (element) => element.textContent?.includes('Apricot'),
-    );
-    expect(apricotOption).toBeDefined();
-    await fireEvent.mouseDown(apricotOption as Element);
+    const apricotOption = await findOption('Apricot');
+    await fireEvent.mouseDown(apricotOption);
 
     expect(input.value).toBe('Apricot');
 
     await fireEvent.focus(input);
 
-    const selectedOption = container.querySelector('[role="option"][aria-selected="true"]');
-    expect(selectedOption?.textContent?.trim()).toBe('Apricot');
+    await waitFor(() => {
+      const selectedOption = container.querySelector('[role="option"][aria-selected="true"]');
+      expect(selectedOption?.textContent?.trim()).toBe('Apricot');
+    });
   });
 
   test('typing after selection does not reset the input to the previously-selected label', async () => {
@@ -102,11 +147,8 @@ describe('Combobox', () => {
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;
     await fireEvent.focus(input);
 
-    const appleOption = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apple'),
-    );
-    expect(appleOption).toBeDefined();
-    await fireEvent.mouseDown(appleOption as Element);
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
 
     await fireEvent.input(input, { target: { value: 'Apr' } });
 
@@ -147,6 +189,7 @@ describe('Combobox filtering', () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     await fireEvent.focus(input);
+    await waitForListbox();
     const options = Array.from(container.querySelectorAll('[role="option"]'));
     expect(options.length).toBe(3);
   });
@@ -156,8 +199,10 @@ describe('Combobox filtering', () => {
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'an' } });
-    const options = Array.from(container.querySelectorAll('[role="option"]'));
-    expect(options.map((option) => option.textContent?.trim())).toEqual(['Banana']);
+    await waitFor(() => {
+      const options = Array.from(container.querySelectorAll('[role="option"]'));
+      expect(options.map((option) => option.textContent?.trim())).toEqual(['Banana']);
+    });
   });
 
   test('typing with no matches renders the empty state', async () => {
@@ -165,10 +210,12 @@ describe('Combobox filtering', () => {
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'zzz' } });
-    expect(container.querySelector('[role="option"]')).toBeNull();
-    expect(container.querySelector('.cinder-combobox__empty')?.textContent?.trim()).toBe(
-      'No results',
-    );
+    await waitFor(() => {
+      expect(container.querySelector('[role="option"]')).toBeNull();
+      expect(container.querySelector('.cinder-combobox__empty')?.textContent?.trim()).toBe(
+        'No results',
+      );
+    });
   });
 
   test('custom filter callback is honored', async () => {
@@ -179,8 +226,10 @@ describe('Combobox filtering', () => {
     });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     await fireEvent.focus(input);
-    const options = Array.from(container.querySelectorAll('[role="option"]'));
-    expect(options.map((option) => option.textContent?.trim())).toEqual(['Apple', 'Apricot']);
+    await waitFor(() => {
+      const options = Array.from(container.querySelectorAll('[role="option"]'));
+      expect(options.map((option) => option.textContent?.trim())).toEqual(['Apple', 'Apricot']);
+    });
   });
 
   test('maxVisibleOptions caps the rendered list', async () => {
@@ -192,8 +241,10 @@ describe('Combobox filtering', () => {
     });
     const input = container.querySelector('#big') as HTMLInputElement;
     await fireEvent.focus(input);
-    const options = Array.from(container.querySelectorAll('[role="option"]'));
-    expect(options.length).toBe(50);
+    await waitFor(() => {
+      const options = Array.from(container.querySelectorAll('[role="option"]'));
+      expect(options.length).toBe(50);
+    });
   });
 });
 
@@ -203,9 +254,13 @@ describe('Combobox keyboard', () => {
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     input.focus();
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
-    const active = container.querySelector('[role="option"][data-cinder-active]');
-    expect(active?.textContent?.trim()).toBe('Apple');
-    expect(input.getAttribute('aria-activedescendant')).toBe('fruit-option-0');
+    await waitFor(() => {
+      const active = container.querySelector('[role="option"][data-cinder-active]');
+      expect(active?.textContent?.trim()).toBe('Apple');
+      // Set by the same effect as data-cinder-active — assert together so the
+      // read can't race ahead of the activedescendant update.
+      expect(input.getAttribute('aria-activedescendant')).toBe('fruit-option-0');
+    });
   });
 
   test('ArrowDown wraps from the last option to the first', async () => {
@@ -215,11 +270,15 @@ describe('Combobox keyboard', () => {
     // Open and move to the last index.
     await fireEvent.focus(input);
     await fireEvent.keyDown(input, { key: 'End' });
-    let active = container.querySelector('[role="option"][data-cinder-active]');
-    expect(active?.textContent?.trim()).toBe('Banana');
+    await waitFor(() => {
+      const active = container.querySelector('[role="option"][data-cinder-active]');
+      expect(active?.textContent?.trim()).toBe('Banana');
+    });
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
-    active = container.querySelector('[role="option"][data-cinder-active]');
-    expect(active?.textContent?.trim()).toBe('Apple');
+    await waitFor(() => {
+      const active = container.querySelector('[role="option"][data-cinder-active]');
+      expect(active?.textContent?.trim()).toBe('Apple');
+    });
   });
 
   test('Enter selects the active option', async () => {
@@ -229,9 +288,11 @@ describe('Combobox keyboard', () => {
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await fireEvent.keyDown(input, { key: 'Enter' });
-    expect(input.value).toBe('Apricot');
-    // Listbox closes after selection.
-    expect(container.querySelector('[role="listbox"]')).toBeNull();
+    await waitFor(() => {
+      expect(input.value).toBe('Apricot');
+      // Listbox closes in the same selection effect — assert together.
+      expect(container.querySelector('[role="listbox"]')).toBeNull();
+    });
   });
 
   test('Escape closes the listbox without selecting', async () => {
@@ -239,7 +300,7 @@ describe('Combobox keyboard', () => {
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     input.focus();
     await fireEvent.focus(input);
-    expect(container.querySelector('[role="listbox"]')).not.toBeNull();
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
     await fireEvent.keyDown(input, { key: 'Escape' });
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
@@ -250,11 +311,8 @@ describe('Combobox selection', () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     await fireEvent.focus(input);
-    const apricot = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apricot'),
-    );
-    expect(apricot).toBeDefined();
-    await fireEvent.mouseDown(apricot as Element);
+    const apricot = await findOption('Apricot');
+    await fireEvent.mouseDown(apricot);
     expect(input.value).toBe('Apricot');
   });
 
@@ -266,11 +324,9 @@ describe('Combobox selection', () => {
     const { container } = render(Combobox, { id: 'fruit', options: disabledFruits });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
     await fireEvent.focus(input);
-    const durian = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Durian'),
-    );
-    expect(durian?.getAttribute('aria-disabled')).toBe('true');
-    await fireEvent.mouseDown(durian as Element);
+    const durian = await findOption('Durian');
+    expect(durian.getAttribute('aria-disabled')).toBe('true');
+    await fireEvent.mouseDown(durian);
     expect(input.value).toBe('');
   });
 });
@@ -351,6 +407,7 @@ describe('Combobox rich option rows', () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
+    await waitForListbox();
     const appleOption = container.querySelector('[role="option"]');
     const img = appleOption?.querySelector('img');
     expect(img).not.toBeNull();
@@ -363,6 +420,7 @@ describe('Combobox rich option rows', () => {
     const { container } = render(Combobox, { id: 'rich', options });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
+    await waitForListbox();
     const option = container.querySelector('[role="option"]');
     expect(option?.querySelector('img')).toBeNull();
   });
@@ -372,6 +430,7 @@ describe('Combobox rich option rows', () => {
     const { container } = render(Combobox, { id: 'rich', options });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
+    await waitForListbox();
     const option = container.querySelector('[role="option"]');
     expect(option?.querySelector('img')).toBeNull();
   });
@@ -380,6 +439,7 @@ describe('Combobox rich option rows', () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
+    await waitForListbox();
     const appleOption = container.querySelector('[role="option"]');
     const desc = appleOption?.querySelector('.cinder-combobox__option-description');
     expect(desc).not.toBeNull();
@@ -390,6 +450,7 @@ describe('Combobox rich option rows', () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
+    await waitForListbox();
     const options = container.querySelectorAll('[role="option"]');
     const appleOption = options[0];
     expect(appleOption?.getAttribute('aria-label')).toBe('Apple, A crisp red fruit');
@@ -399,6 +460,7 @@ describe('Combobox rich option rows', () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
+    await waitForListbox();
     const options = container.querySelectorAll('[role="option"]');
     const cherryOption = options[2];
     expect(cherryOption?.hasAttribute('aria-label')).toBe(false);
@@ -408,6 +470,7 @@ describe('Combobox rich option rows', () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
+    await waitForListbox();
     const options = container.querySelectorAll('[role="option"]');
     const cherryOption = options[2];
     expect(cherryOption?.querySelector('img')).toBeNull();
@@ -418,16 +481,18 @@ describe('Combobox rich option rows', () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
-    const appleOption = container.querySelector('[role="option"]') as Element;
+    const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
     // input.value reflects the label (display text)
     expect(input.value).toBe('Apple');
     // Re-open to check aria-selected reflects the internal value binding (option.value)
     await fireEvent.focus(input);
-    const selectedOption = container.querySelector('[role="option"][aria-selected="true"]');
-    expect(selectedOption?.querySelector('.cinder-combobox__option-label')?.textContent).toBe(
-      'Apple',
-    );
+    await waitFor(() => {
+      const selectedOption = container.querySelector('[role="option"][aria-selected="true"]');
+      expect(selectedOption?.querySelector('.cinder-combobox__option-label')?.textContent).toBe(
+        'Apple',
+      );
+    });
   });
 
   test('default filter matches description substring (case-insensitive)', async () => {
@@ -435,8 +500,12 @@ describe('Combobox rich option rows', () => {
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'curved' } });
-    const options = container.querySelectorAll('[role="option"]');
-    expect(options.length).toBe(1);
-    expect(options[0]?.querySelector('.cinder-combobox__option-label')?.textContent).toBe('Banana');
+    await waitFor(() => {
+      const options = container.querySelectorAll('[role="option"]');
+      expect(options.length).toBe(1);
+      expect(options[0]?.querySelector('.cinder-combobox__option-label')?.textContent).toBe(
+        'Banana',
+      );
+    });
   });
 });
