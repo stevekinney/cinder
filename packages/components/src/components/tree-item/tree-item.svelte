@@ -95,16 +95,19 @@
 
   let checkboxElement: HTMLInputElement | undefined = $state();
 
-  // The native checkbox is a CONTROLLED input: both `.checked` and
-  // `.indeterminate` are written imperatively from the authoritative
-  // `selectionState` rather than through a one-way `checked={...}` attribute
-  // binding. Svelte only writes `.checked` when the bound expression's VALUE
-  // changes between renders; it does not re-assert it on every flush. But the
+  // The native checkbox is a CONTROLLED input. `.checked` is also set
+  // declaratively on the element (`checked={selectionState.checked}`) so SSR
+  // renders the correct initial state, but that declarative attribute is not
+  // sufficient on its own: Svelte only writes `.checked` when the bound VALUE
+  // changes between renders; it does not re-assert it on every flush. The
   // input's DOM `.checked`/`.indeterminate` are mutated out-of-band by native
-  // checkbox interaction, so a declarative attribute leaves residual native
-  // mutations un-healed. Centralizing the write here keeps the visible checkbox
-  // reconciled. `aria-checked` (below) is the assistive-tech source of truth
-  // and stays correct independently.
+  // checkbox interaction, so a residual native mutation whose authoritative
+  // value did not change is left un-healed by the declarative attribute alone.
+  // This imperative write re-asserts both properties on every reactive flush to
+  // reconcile the visible checkbox against native mutation; it always writes the
+  // same authoritative `selectionState`, so it never conflicts with the
+  // declarative attribute. `aria-checked` (below) is the assistive-tech source
+  // of truth and stays correct independently.
   function syncCheckboxToSelectionState(): void {
     if (!checkboxElement) return;
     checkboxElement.checked = selectionState.checked;
@@ -434,17 +437,33 @@
       })}
     {:else if checkboxSelectionActive}
       <!--
-        `.checked` and `.indeterminate` are set imperatively in the $effect
-        above (NOT via a declarative `checked={...}` attribute) so the
-        controlled input is reconciled against native mutation on every
-        reactive flush. A declarative attribute would only rewrite `.checked`
-        when its boolean value changed between renders, which leaves a residual
-        native mutation (from the pre-handler checkbox click) un-healed.
+        `checked` is set BOTH declaratively and imperatively, by design — the
+        two cover different render phases and are not redundant:
+
+        • The declarative `checked={selectionState.checked}` is the ONLY write
+          that happens during SSR (the $effect below does not run on the
+          server). Without it, an initially-selected item renders unchecked in
+          the SSR HTML and only corrects after hydration, causing a flash.
+
+        • The $effect above re-asserts `.checked`/`.indeterminate` on every
+          reactive flush. This is what the declarative attribute alone cannot
+          do: Svelte only writes `.checked` when the bound VALUE changes between
+          renders, so a residual native mutation (from the pre-handler checkbox
+          click) whose authoritative value did NOT change would be left un-healed.
+
+        • The rAF re-sync in `handleCheckboxActivation` heals the post-revert
+          state after Chromium reverts `.checked` at the end of the dispatch task.
+
+        The declarative attribute only ever writes the authoritative
+        `selectionState.checked`, the same value the $effect and rAF write, so it
+        never fights them or reintroduces the stale-mutation bug. `indeterminate`
+        has no declarative form and stays owned solely by the $effect/rAF.
       -->
       <input
         bind:this={checkboxElement}
         type="checkbox"
         class="cinder-tree-item__checkbox"
+        checked={selectionState.checked}
         {disabled}
         tabindex="-1"
         aria-hidden="true"

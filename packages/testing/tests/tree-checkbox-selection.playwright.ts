@@ -3,17 +3,20 @@
  * Regression spec for Tree checkbox selection + indeterminate parent state
  * (ticket f76b0e42).
  *
- * The bug: the native checkbox in tree-item.svelte was a CONTROLLED input
- * driven by a one-way declarative `checked={selectionState.checked}` attribute,
- * while `.indeterminate` was set imperatively. Svelte only writes the `.checked`
- * DOM property when the bound expression's VALUE changes between renders — it
- * does not re-assert it on every flush. A real browser flips a checkbox's DOM
- * `.checked` on click BEFORE the handler runs (preventDefault reverts it only on
- * that tick), so any residual native mutation that lands on a checkbox whose
- * authoritative `selectionState.checked` then evaluates to the same boolean
+ * The bug: the native checkbox in tree-item.svelte was driven ONLY by a one-way
+ * declarative `checked={selectionState.checked}` attribute, while `.indeterminate`
+ * was set imperatively. Svelte only writes the `.checked` DOM property when the
+ * bound expression's VALUE changes between renders — it does not re-assert it on
+ * every flush. A real browser flips a checkbox's DOM `.checked` on click BEFORE
+ * the handler runs (preventDefault reverts it only on that tick, AFTER the sync
+ * handler + microtasks), so any residual native mutation that lands on a checkbox
+ * whose authoritative `selectionState.checked` then evaluates to the same boolean
  * Svelte last rendered desyncs: the visible `<input>.checked` diverges from the
- * authoritative `aria-checked`. The fix re-asserts both `.checked` and
- * `.indeterminate` imperatively on every reactive flush.
+ * authoritative `aria-checked`. The fix KEEPS the declarative `checked` attribute
+ * (for SSR-correct initial render + value-change renders) and adds a
+ * requestAnimationFrame re-sync in the click handler that re-asserts `.checked`/
+ * `.indeterminate` AFTER the browser's post-revert tick — that rAF re-sync is what
+ * heals the desync this spec reproduces with real clicks.
  *
  * This spec proves the user-visible behavior against the LIVE playground (not
  * CSS parsing, not programmatic .focus()):

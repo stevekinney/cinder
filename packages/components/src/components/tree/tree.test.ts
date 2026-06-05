@@ -1096,15 +1096,17 @@ describe('Tree — selection', () => {
   // ---------------------------------------------------------------------------
   // Regression: controlled checkbox `.checked`/`.indeterminate` re-assertion
   //
-  // The native checkbox is a CONTROLLED input. Its `.checked` and
-  // `.indeterminate` DOM properties are re-asserted imperatively on every
-  // reactive flush rather than through a one-way `checked={...}` attribute
-  // binding. The bug these tests pin: a declarative attribute only rewrites
-  // `.checked` when its boolean value CHANGES between renders, so a residual
-  // native mutation (from the pre-handler checkbox click) that lands on a
-  // checkbox whose authoritative state evaluates to the same boolean Svelte
-  // last rendered would never be healed — the visible `<input>.checked`
-  // diverges from the authoritative `aria-checked`.
+  // The native checkbox uses a THREE-PART control strategy. (1) The declarative
+  // `checked={selectionState.checked}` attribute renders the SSR-correct initial
+  // value and rewrites on value CHANGE between renders. (2) An `$effect` reconciles
+  // `.checked`/`.indeterminate` on every reactive flush. (3) A requestAnimationFrame
+  // re-sync in the click handler heals the post-revert state. The bug these tests
+  // pin: the declarative attribute ALONE only rewrites `.checked` when its boolean
+  // value changes, so a residual native mutation (from the pre-handler checkbox
+  // click, reverted by Chromium AFTER the sync handler + microtasks) that lands on
+  // a checkbox whose authoritative state evaluates to the same boolean Svelte last
+  // rendered would never be healed — the visible `<input>.checked` diverges from the
+  // authoritative `aria-checked`. The rAF re-sync (part 3) is what actually heals it.
   //
   // These tests must assert the RENDERED DOM after multiple clicks, so they
   // render through `TreeTestHarness` (selectedIds backed by real Svelte
@@ -1238,23 +1240,31 @@ describe('Tree — selection', () => {
     archiveInput.checked = true;
 
     // Add january → 2/3 selected → still mixed, still indeterminate, and the
-    // visible checkbox must NOT read as fully checked.
+    // visible checkbox must NOT read as fully checked. The input properties are
+    // written in a $effect that runs AFTER the aria-checked attribute updates,
+    // so assert them inside the same waitFor to wait for that reconciliation.
     await fireEvent.click(januaryInput);
-    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('mixed'));
-    expect(archiveInput.indeterminate).toBe(true);
-    expect(archiveInput.checked).toBe(false);
+    await waitFor(() => {
+      expect(archiveItem.getAttribute('aria-checked')).toBe('mixed');
+      expect(archiveInput.indeterminate).toBe(true);
+      expect(archiveInput.checked).toBe(false);
+    });
 
     // Remove february → 1/3 selected → still mixed.
     await fireEvent.click(februaryInput);
-    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('mixed'));
-    expect(archiveInput.indeterminate).toBe(true);
-    expect(archiveInput.checked).toBe(false);
+    await waitFor(() => {
+      expect(archiveItem.getAttribute('aria-checked')).toBe('mixed');
+      expect(archiveInput.indeterminate).toBe(true);
+      expect(archiveInput.checked).toBe(false);
+    });
 
     // Remove january → 0/3 selected → fully unchecked, never mixed.
     await fireEvent.click(januaryInput);
-    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('false'));
-    expect(archiveInput.checked).toBe(false);
-    expect(archiveInput.indeterminate).toBe(false);
+    await waitFor(() => {
+      expect(archiveItem.getAttribute('aria-checked')).toBe('false');
+      expect(archiveInput.checked).toBe(false);
+      expect(archiveInput.indeterminate).toBe(false);
+    });
   });
 
   test('parent checkbox reads fully checked (never mixed) when its whole scope is selected', async () => {
@@ -1266,20 +1276,26 @@ describe('Tree — selection', () => {
     await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('false'));
 
     // Select the full scope via the archive checkbox (cascade). Model the
-    // native pre-flip: the click sets `.checked` true in the DOM first.
+    // native pre-flip: the click sets `.checked` true in the DOM first. The
+    // input properties are written in a $effect that runs AFTER the aria-checked
+    // attribute updates, so assert them inside the same waitFor.
     archiveInput.checked = true;
     await fireEvent.click(archiveInput);
-    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('true'));
-    expect(archiveInput.checked).toBe(true);
-    expect(archiveInput.indeterminate).toBe(false);
+    await waitFor(() => {
+      expect(archiveItem.getAttribute('aria-checked')).toBe('true');
+      expect(archiveInput.checked).toBe(true);
+      expect(archiveInput.indeterminate).toBe(false);
+    });
 
     // Clear the full scope → native pre-flip clears `.checked`; final state is
     // fully unchecked, never mixed.
     archiveInput.checked = false;
     await fireEvent.click(archiveInput);
-    await waitFor(() => expect(archiveItem.getAttribute('aria-checked')).toBe('false'));
-    expect(archiveInput.checked).toBe(false);
-    expect(archiveInput.indeterminate).toBe(false);
+    await waitFor(() => {
+      expect(archiveItem.getAttribute('aria-checked')).toBe('false');
+      expect(archiveInput.checked).toBe(false);
+      expect(archiveInput.indeterminate).toBe(false);
+    });
   });
 
   test('partially selected scope exposes indeterminate checkbox and mixed aria-checked', async () => {
