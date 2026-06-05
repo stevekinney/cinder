@@ -77,9 +77,9 @@
     (including an explicit `highlighter`), triggers no Shiki import, and renders
     the escaped plain `<pre><code>` fallback while keeping the `language` label.
 
-  **Rollback:** this ships as a single atomic commit (deletion + CodeBlock change
-  - docs + generated artifacts), so reverting that one commit restores the
-    previous state in full.
+  **Rollback:** this ships as a single atomic commit (deletion, CodeBlock change,
+  docs, and generated artifacts), so reverting that one commit restores the
+  previous state in full.
 
 - [#272](https://github.com/stevekinney/cinder/pull/272) [`ace7c34`](https://github.com/stevekinney/cinder/commit/ace7c34978cfec705bf7206507213f2f58c8365c) Thanks [@stevekinney](https://github.com/stevekinney)! - Breaking: `Message` replaces the single `time` prop with `datetime` and `timestamp`.
 
