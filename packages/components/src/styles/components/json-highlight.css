@@ -31,9 +31,9 @@
     color: var(--cinder-color-warning-fg);
   }
 
+  /* `null` is a semantic value (not decoration); use the same color as boolean. */
   .cinder-json-token-boolean,
-/* `null` is a semantic value (not decoration); use the same color as boolean. */
-.cinder-json-token-null {
+  .cinder-json-token-null {
     color: var(--cinder-color-info-fg);
   }
 
