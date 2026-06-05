@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -8,8 +8,14 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Backdrop } = await import('./backdrop.svelte');
+
+// Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 const { _resetScrollLock } = await import('../../_internal/overlay.ts');
 
 describe('Backdrop', () => {

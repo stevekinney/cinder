@@ -23,7 +23,7 @@
  */
 
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -41,6 +41,7 @@ class TestResizeObserver {
   unobserve(): void {}
   disconnect(): void {}
 }
+const originalResizeObserver = globalThis.ResizeObserver;
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
 
 class TestIntersectionObserver {
@@ -51,10 +52,22 @@ class TestIntersectionObserver {
     return [];
   }
 }
+const originalIntersectionObserver = globalThis.IntersectionObserver;
 globalThis.IntersectionObserver =
   TestIntersectionObserver as unknown as typeof IntersectionObserver;
+afterAll(() => {
+  globalThis.ResizeObserver = originalResizeObserver;
+  globalThis.IntersectionObserver = originalIntersectionObserver;
+});
 
-const { render } = await import('@testing-library/svelte');
+const { render, cleanup } = await import('@testing-library/svelte');
+
+// Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
+
 const { default: Chat } = await import('./chat.svelte');
 
 // Local builders for the vendored ConversationHistory shape — Chat no longer

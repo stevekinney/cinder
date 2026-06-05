@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { _resetEscapeStack, _resetScrollLock, pushEscapeHandler } from '../../_internal/overlay.ts';
@@ -51,7 +51,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   }
 }
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: Sheet } = await import('./sheet.svelte');
 const originalGetComputedStyle = window.getComputedStyle.bind(window);
 
@@ -66,6 +66,9 @@ window.getComputedStyle = ((target: Element) => {
 
   return originalGetComputedStyle(target);
 }) as typeof window.getComputedStyle;
+afterAll(() => {
+  window.getComputedStyle = originalGetComputedStyle;
+});
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -94,6 +97,8 @@ async function finishCloseTransition(container: HTMLElement): Promise<void> {
 }
 
 afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
   _resetScrollLock();
   _resetEscapeStack();
 });

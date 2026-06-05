@@ -1,12 +1,18 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import.
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, cleanup } = await import('@testing-library/svelte');
+
+// Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 const { createRawSnippet } = await import('svelte');
 const { default: SectionHeading } = await import('./section-heading.svelte');
 

@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -39,9 +39,19 @@ class ResizeObserverStub {
   }
 }
 
+const originalResizeObserver = globalThis.ResizeObserver;
 Object.defineProperty(globalThis, 'ResizeObserver', {
   configurable: true,
   value: ResizeObserverStub,
+});
+afterAll(() => {
+  // Restore via defineProperty, mirroring the override. A `value:` descriptor
+  // is non-writable by default, so a plain `globalThis.ResizeObserver = …`
+  // assignment throws in strict-mode ESM and would leave the stub installed.
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: originalResizeObserver,
+  });
 });
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte/pure');

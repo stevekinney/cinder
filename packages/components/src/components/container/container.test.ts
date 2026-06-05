@@ -1,11 +1,17 @@
 /// <reference lib="dom" />
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, cleanup } = await import('@testing-library/svelte');
+
+// Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 
 beforeEach(() => {
   document.body.replaceChildren();

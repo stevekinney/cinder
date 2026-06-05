@@ -10,7 +10,7 @@ import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
-const { render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { fireEvent } = await import('@testing-library/dom');
 const { createRawSnippet, tick } = await import('svelte');
 const { default: Wrapper } = await import('../../test/fixtures/toast-fixture.svelte');
@@ -54,6 +54,7 @@ function createDeferred<T>(): {
 }
 
 afterEach(() => {
+  cleanup();
   if (jest.isFakeTimers()) {
     jest.useRealTimers();
   }

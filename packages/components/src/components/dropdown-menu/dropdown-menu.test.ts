@@ -1,14 +1,20 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Fixture } = await import('../../test/fixtures/dropdown-compound-fixture.svelte');
 const { default: DropdownMenu } = await import('./dropdown-menu.svelte');
+
+// Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 
 function renderFixture() {
   const result = render(Fixture);

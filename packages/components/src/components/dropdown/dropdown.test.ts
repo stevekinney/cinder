@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
@@ -14,7 +14,18 @@ setupHappyDom();
 // All tests below exercise that fallback path. The popover API path is verified
 // through integration tests in a real browser environment.
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
+
+// Tests render into the shared `document.body` (see the `render` wrapper below).
+// Without unmounting between tests, prior renders linger in the DOM and leave
+// `document.activeElement` pointing at a torn-down node, so focus assertions
+// read another test's markup. `cleanup()` unmounts; `replaceChildren()` clears
+// any portal/menu nodes cleanup() doesn't track.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
+
 const { default: Dropdown } = await import('./dropdown.svelte');
 const { default: DropdownCompoundFixture } =
   await import('../../test/fixtures/dropdown-compound-fixture.svelte');

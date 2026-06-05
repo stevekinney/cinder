@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, tick } from 'svelte';
 
 import { _resetEscapeStack, _resetScrollLock } from '../../_internal/overlay.ts';
@@ -29,7 +29,14 @@ if (typeof HTMLDialogElement !== 'undefined') {
   }
 }
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
+
+// Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
+
 const { default: CommandPalette } = await import('./command-palette.svelte');
 const { default: CommandItem } = await import('../command-item/command-item.svelte');
 const { default: CommandPaletteFixture } =

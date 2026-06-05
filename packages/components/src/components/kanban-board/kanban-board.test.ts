@@ -14,8 +14,13 @@ import type { KanbanBoardColumn } from './kanban-board.types.ts';
 
 setupHappyDom();
 
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: KanbanBoard } = await import('./kanban-board.svelte');
+
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 
 type Card = { id: string; title: string };
 

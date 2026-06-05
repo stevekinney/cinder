@@ -36,7 +36,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   }
 }
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: Modal } = await import('./modal.svelte');
 
 function textSnippet(text: string) {
@@ -52,6 +52,8 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
   _resetScrollLock();
 });
 

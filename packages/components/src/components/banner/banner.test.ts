@@ -3,8 +3,8 @@
 // @testing-library/svelte and the .svelte components are safe here. Static
 // imports also dodge a Bun test-runner deadlock that occurs when many test
 // files race to top-level-`await import(...)` the same modules in parallel.
-import { fireEvent, render } from '@testing-library/svelte';
-import { describe, expect, test } from 'bun:test';
+import { cleanup, fireEvent, render } from '@testing-library/svelte';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import Banner from './banner.svelte';
@@ -20,6 +20,12 @@ const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,
   setup: () => {},
 }));
+
+// Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 
 describe('Banner rendering', () => {
   test('renders without errors with required props', () => {
