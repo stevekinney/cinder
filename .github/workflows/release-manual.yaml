@@ -60,13 +60,21 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Configure npm for trusted publishing
+      # Break-glass token auth. The first-ever publish of a scoped package
+      # cannot use OIDC Trusted Publishing (npm has no package to trust yet),
+      # so this writes a token-bearing .npmrc. The `${NODE_AUTH_TOKEN}`
+      # placeholder is written literally (quoted heredoc) and expanded by npm
+      # at runtime from the publish step's env — the secret is never baked
+      # into the file. Once 0.1.0 exists on npm, configure Trusted Publishing
+      # and migrate release.yaml back to the OIDC path.
+      - name: Configure npm authentication
         shell: bash
         run: |
           echo "NPM_CONFIG_USERCONFIG=$HOME/.npmrc" >> "$GITHUB_ENV"
           cat > "$HOME/.npmrc" <<'EOF'
           registry=https://registry.npmjs.org/
-          always-auth=false
+          //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          always-auth=true
           EOF
 
       - name: Upgrade npm
