@@ -208,9 +208,19 @@
     box-sizing: border-box;
   }
 
+  /* Each diff line is a full-bleed row inside the scrollable viewer; an outset
+     ring is clipped at the row edges, so paint an INSET ring (Strategy B-inset). */
   button.diff-line:focus-visible {
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-diff-line-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    button.diff-line:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .diff-line[data-selected='true'] {

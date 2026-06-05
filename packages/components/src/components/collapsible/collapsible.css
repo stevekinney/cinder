@@ -48,8 +48,8 @@
   }
 
   .cinder-collapsible__trigger:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: var(--cinder-ring-offset);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   @media (forced-colors: active) {

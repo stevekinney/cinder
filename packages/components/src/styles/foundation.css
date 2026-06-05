@@ -70,11 +70,19 @@
 }
 
 :focus-visible {
+  /* Strategy A is sanctioned ONLY here — the bare global default that paints a
+     baseline ring for any element a component CSS file does not own. See
+     docs/focus-ring-policy.md § Strategy A. */
+  /* stylelint-disable-next-line cinder/no-focus-visible-colored-outline -- foundation-only Strategy A global default, see policy */
   outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: var(--cinder-ring-offset);
 }
 
 :focus:not(:focus-visible) {
+  /* This resets the legacy `:focus` ring when the element is NOT focus-visible;
+     it is not a focus-visible indicator, so the colored-outline rule does not
+     apply (the lint regex matches the nested `:focus-visible` token). */
+  /* stylelint-disable-next-line cinder/no-focus-visible-colored-outline -- :focus:not(:focus-visible) reset, not a focus-visible ring */
   outline: none;
 }
 

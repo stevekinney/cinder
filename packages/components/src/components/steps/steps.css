@@ -85,6 +85,40 @@
     max-width: 100%;
   }
 
+  /* Focus-state geometry for the interactive body in the WIDE horizontal layout.
+   * The base reset stretches the focusable <a>/<button> to `inline-size: 100%`,
+   * so its :focus-visible ring boxes the entire equal-width column around only
+   * the centered label/description — a wide pill with the marker floating
+   * detached above it and the connector cutting an empty band. Two coordinated
+   * geometry changes make the ring frame the marker + label + description as one
+   * centered step unit, with zero net content movement:
+   *
+   *   1. Shrink the focusable box to its centered content instead of the full
+   *      column (`inline-size: auto; align-self: center`), so the ring is a
+   *      content-width pill directly beneath the marker rather than a strip.
+   *   2. Capture the marker into the box's vertical reach. The marker must stay a
+   *      non-interactive sibling ABOVE the body in flow (steps.test.ts asserts
+   *      `anchor.contains(marker) === false`), so instead of nesting it we raise
+   *      the box's top edge up to the marker's top with a negative block-start
+   *      margin, and add an equal block-start padding so the label/description
+   *      stay exactly where they were. The marker keeps `z-index: 1` and the body
+   *      background is transparent, so the marker paints over the (transparent)
+   *      box with no occlusion. Net: the ring encloses marker + body as one unit,
+   *      the connector (pinned to the marker center) now sits inside the ring's
+   *      vertical span, and the visible content y/x position is invariant.
+   *
+   * The negative margin equals the marker diameter (the in-flow distance from the
+   * box's current top to the marker's top); the added padding restores that plus
+   * the body's existing space-2 top padding so content does not shift. */
+  .cinder-steps[data-cinder-orientation='horizontal']
+    .cinder-steps__interactive.cinder-steps__body {
+    inline-size: auto;
+    max-inline-size: 100%;
+    align-self: center;
+    margin-block-start: calc(-1 * var(--_marker-size));
+    padding-block-start: calc(var(--_marker-size) + var(--cinder-space-2));
+  }
+
   /* ----------------------------------------
  * Item — vertical layout
  * Marker (top of column 1) | Body (column 2, spanning both rows)
@@ -337,6 +371,24 @@
       grid-column: 2;
       grid-row: 1 / span 2;
       padding-bottom: var(--cinder-space-4);
+    }
+
+    /* Undo the wide layout's marker-capture geometry for the interactive body.
+     * That rule (content-width centering + negative block-start margin to pull
+     * the focus box up over the marker) only makes sense in the centered flex
+     * column. In the narrow grid the marker sits in column 1 and the body in
+     * column 2 beside it, so the box must fill its grid cell and stay in flow —
+     * otherwise the higher-specificity wide rule's margin/align-self/inline-size
+     * would leak in and misplace the body. Restore the static-body grid spacing
+     * (the body's existing space-2 padding-top is re-asserted by the
+     * .cinder-steps__interactive.cinder-steps__body base rule). */
+    .cinder-steps[data-cinder-orientation='horizontal']
+      .cinder-steps__interactive.cinder-steps__body {
+      inline-size: 100%;
+      max-inline-size: none;
+      align-self: stretch;
+      margin-block-start: 0;
+      padding-block-start: var(--cinder-space-2);
     }
   }
 }

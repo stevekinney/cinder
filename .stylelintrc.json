@@ -17,12 +17,7 @@
         "/var\\(\\s*--cinder-(?:color-(?:text|text-muted|surface|border|border-subtle|foreground|foreground-muted|success|danger)|font-size-[a-z0-9-]+|line-height-[a-z0-9-]+|accent-subtle|accent-foreground|focus-ring)(?:\\s*[,)])/"
       ]
     },
-    "cinder/no-focus-visible-colored-outline": [
-      true,
-      {
-        "severity": "warning"
-      }
-    ],
+    "cinder/no-focus-visible-colored-outline": true,
     "cinder/no-unguarded-hover-colors": true,
     "csstools/use-logical": [
       "always",

@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { Tabs } from '@lostgradient/cinder/tabs';\n  let active = $state('overview');\n</script>\n\n<Tabs bind:value={active}>\n  <Tabs.List label=\"Project sections\">\n    <Tabs.Trigger value=\"overview\">Overview</Tabs.Trigger>\n    <Tabs.Trigger value=\"activity\">Activity</Tabs.Trigger>\n    <Tabs.Trigger value=\"settings\">Settings</Tabs.Trigger>\n  </Tabs.List>\n\n  <Tabs.Panel value=\"overview\">\n    <p>Cinder is a small but opinionated component library for Svelte 5.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"activity\">\n    <p>You have 3 unread comments and 1 pending review.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"settings\">\n    <p>Adjust your project preferences here.</p>\n  </Tabs.Panel>\n</Tabs>\n"
     },
     {
+      "id": "vertical",
+      "title": "Vertical tabs with keyboard navigation",
+      "description": "A vertical tablist: focus a tab and use ↑/↓ to move. The focus ring must render complete on all sides even though the tab list is a clipping (overflow) container.",
+      "code": "<script lang=\"ts\">\n  import { Tabs } from '@lostgradient/cinder/tabs';\n  let active = $state('design');\n</script>\n\n<Tabs bind:value={active} orientation=\"vertical\">\n  <Tabs.List label=\"Workflow stages (vertical)\">\n    <Tabs.Trigger value=\"design\">Design</Tabs.Trigger>\n    <Tabs.Trigger value=\"develop\">Develop</Tabs.Trigger>\n    <Tabs.Trigger value=\"ship\" disabled>Ship</Tabs.Trigger>\n    <Tabs.Trigger value=\"review\">Review</Tabs.Trigger>\n  </Tabs.List>\n\n  <Tabs.Panel value=\"design\">\n    <p>Sketch the user experience before writing code.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"develop\">\n    <p>Build the components and wire up the state.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"ship\">\n    <p>Disabled tab — its panel is unreachable.</p>\n  </Tabs.Panel>\n  <Tabs.Panel value=\"review\">\n    <p>Review and iterate based on feedback.</p>\n  </Tabs.Panel>\n</Tabs>\n"
+    },
+    {
       "id": "with-badge",
       "title": "Tabs with trailing badges",
       "description": "Tabs use a decorative `trailing` snippet (wrapped in aria-hidden) for badges and counters. The accessible name only includes the visible label.",

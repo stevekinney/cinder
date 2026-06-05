@@ -163,9 +163,20 @@
     overflow: hidden;
   }
 
+  /* The button clips its image child with `overflow: hidden`; paint an INSET
+     ring (Strategy B-inset) so the indicator sits on the thumbnail edge rather
+     than being trimmed or doubling the surrounding grid gap. */
   .message-attachment-button:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-message-attachment-button-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .message-attachment-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .message-attachment-image {

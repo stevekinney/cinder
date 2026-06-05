@@ -705,10 +705,25 @@
     opacity: 1;
   }
 
+  /* The button is a 44px touch target but the visible chip is the centered
+     1.25rem `::before` circle. Reserve a transparent outline placeholder for
+     forced-colors, and paint the ring on the visible circle (Strategy B-inset)
+     so it hugs the chip rather than the oversized hit area. */
   .chat-input-attachment-remove:focus-visible {
     opacity: 1;
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: -12px; /* Offset inward to align with visual button */
+    outline: var(--cinder-ring-width) solid transparent;
+  }
+
+  .chat-input-attachment-remove:focus-visible::before {
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-chat-input-attachment-remove-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .chat-input-attachment-remove:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: -12px;
+    }
   }
 
   /* Touch devices: always show remove button */

@@ -27,6 +27,19 @@ function loadCss(relativePath: string): string {
   return readFileSync(fullPath, 'utf8');
 }
 
+/**
+ * Extract the contents of a Svelte component's single `<style>` block so the
+ * focus-visible declarations can be parsed with `postcss` exactly like a plain
+ * `.css` file. These components author plain CSS (no `lang=` on `<style>`), so
+ * the inner text parses directly.
+ */
+function loadSvelteStyle(relativePath: string): string {
+  const raw = loadCss(relativePath);
+  const match = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  if (!match) throw new Error(`No <style> block found in ${relativePath}`);
+  return match[1]!;
+}
+
 const copyButtonCss = loadCss('../components/copy-button/copy-button.css');
 const dropdownCss = loadCss('../components/dropdown/dropdown.css');
 const commandPaletteCss = loadCss('../components/command-palette/command-palette.css');
@@ -34,8 +47,49 @@ const navigationItemCss = loadCss('../components/navigation-item/navigation-item
 const numberInputCss = loadCss('../components/number-input/number-input.css');
 const selectionPopoverCss = loadCss('../components/selection-popover/selection-popover.css');
 const sideNavigationCss = loadCss('../components/side-navigation/side-navigation.css');
+const sideNavigationGroupCss = loadCss(
+  '../components/side-navigation-group/side-navigation-group.css',
+);
 const sliderCss = loadCss('../components/slider/slider.css');
 const tabsCss = loadCss('../components/tabs/tabs.css');
+
+// Focus-ring sweep targets (15f4d777) — colored outline-only recipes converted
+// to the shared Strategy B / B-inset recipe.
+const accordionItemCss = loadCss('../components/accordion-item/accordion-item.css');
+const collapsibleCss = loadCss('../components/collapsible/collapsible.css');
+const drawerCss = loadCss('../components/drawer/drawer.css');
+const jsonSchemaEditorCss = loadCss('../components/json-schema-editor/json-schema-editor.css');
+const jsonViewerCss = loadCss('../components/json-viewer/json-viewer.css');
+const modalCss = loadCss('../components/modal/modal.css');
+const popoverCss = loadCss('../components/popover/popover.css');
+const ratingCss = loadCss('../components/rating/rating.css');
+const searchFieldCss = loadCss('../components/search-field/search-field.css');
+const sheetCss = loadCss('../components/sheet/sheet.css');
+const toastRegionCss = loadCss('../components/toast-region/toast-region.css');
+const treeCss = loadCss('../components/tree/tree.css');
+
+// Svelte component <style> blocks converted in the same sweep.
+const markdownEditorStyle = loadSvelteStyle('../components/markdown-editor/markdown-editor.svelte');
+const linkPopoverStyle = loadSvelteStyle(
+  '../components/markdown-editor/editor-toolbar/link-popover.svelte',
+);
+const diffLineStyle = loadSvelteStyle('../components/diff-viewer/diff-line.svelte');
+const threadPopoverStyle = loadSvelteStyle('../components/review-editor/thread-popover.svelte');
+const commentSidebarStyle = loadSvelteStyle('../components/review-editor/comment-sidebar.svelte');
+const reviewExportActionsStyle = loadSvelteStyle(
+  '../components/review-editor/export-actions.svelte',
+);
+const conversationExportActionsStyle = loadSvelteStyle(
+  '../components/chat/export/conversation-export-actions.svelte',
+);
+const artifactPanelStyle = loadSvelteStyle('../components/chat/artifact/artifact-panel.svelte');
+const chatStyle = loadSvelteStyle('../components/chat/container/chat.svelte');
+const chatSearchBarStyle = loadSvelteStyle('../components/chat/container/chat-search-bar.svelte');
+const messageAttachmentsStyle = loadSvelteStyle(
+  '../components/chat/message/message-attachments.svelte',
+);
+const chatInputStyle = loadSvelteStyle('../components/chat/input/chat-input.svelte');
+const imageLightboxStyle = loadSvelteStyle('../components/chat/message/image-lightbox.svelte');
 
 const TRANSPARENT_OUTLINE = 'var(--cinder-ring-width) solid transparent';
 const SHARED_BOX_SHADOW = 'var(--_cinder-focus-ring-shadow)';
@@ -125,11 +179,6 @@ const recipes: Array<{
     selector: '.cinder-tab-panel:focus-visible',
   },
   {
-    name: 'tab button',
-    css: tabsCss,
-    selector: '.cinder-tab:focus-visible',
-  },
-  {
     name: 'standalone copy button',
     css: copyButtonCss,
     selector: '.cinder-copy-button:focus-visible',
@@ -148,6 +197,42 @@ const recipes: Array<{
     name: 'selection-popover textarea',
     css: selectionPopoverCss,
     selector: '.cinder-selection-popover__textarea:focus-visible',
+  },
+  // Focus-ring sweep (15f4d777) — Strategy B (outer ring) conversions.
+  {
+    name: 'rating option',
+    css: ratingCss,
+    selector: '.cinder-rating__option:focus-visible',
+  },
+  {
+    name: 'json-viewer toggle',
+    css: jsonViewerCss,
+    selector: '.cinder-json-viewer__toggle:focus-visible',
+  },
+  {
+    name: 'collapsible trigger',
+    css: collapsibleCss,
+    selector: '.cinder-collapsible__trigger:focus-visible',
+  },
+  {
+    name: 'toast action',
+    css: toastRegionCss,
+    selector: '.cinder-toast__action:focus-visible',
+  },
+  {
+    name: 'toast dismiss',
+    css: toastRegionCss,
+    selector: '.cinder-toast__dismiss:focus-visible',
+  },
+  {
+    name: 'popover container',
+    css: popoverCss,
+    selector: '.cinder-popover:focus-visible',
+  },
+  {
+    name: 'json-schema-editor property-row trigger',
+    css: jsonSchemaEditorCss,
+    selector: '.cinder-jse-property-row__trigger:focus-visible',
   },
 ];
 
@@ -219,6 +304,61 @@ describe('number-input stepper — self-owned inset focus ring', () => {
     const outline = declValue(rules[0]!, 'outline');
     expect(outline).toBeDefined();
     expect(outline).not.toContain('transparent');
+  });
+});
+
+describe('tab button — inset focus ring inside the scrollable tab list', () => {
+  // `.cinder-tab-list` sets `overflow-x: auto`, which (per the CSS Overflow
+  // spec) forces the block axis to `auto` too — making the list a clipping
+  // container on both axes. The standard outset focus ring (offset + ring
+  // width painted OUTSIDE the tab border box) is therefore clipped on the
+  // top/bottom/trailing edges. The tab diverges from the shared outer-ring
+  // recipe to the policy-sanctioned Strategy B-inset variant: an INSET ring
+  // painted entirely within the tab border box, plus a forced-colors outline
+  // drawn with a NEGATIVE offset so it, too, stays inside the clip.
+  const SELECTOR = '.cinder-tab:focus-visible';
+
+  test('keeps the transparent-outline placeholder', () => {
+    const root = parse(tabsCss);
+    const rules = findRules(root, SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'outline')).toBe(TRANSPARENT_OUTLINE);
+  });
+
+  test('paints an inset ring (not the shared outset outer-ring recipe)', () => {
+    const root = parse(tabsCss);
+    const rules = findRules(root, SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const boxShadow = declValue(rules[0]!, 'box-shadow');
+    expect(boxShadow).toBeDefined();
+    expect(boxShadow).toContain('inset');
+    expect(boxShadow).toContain('var(--cinder-ring-color)');
+    // It must NOT use the shared outset outer-ring token — that is the recipe
+    // that gets clipped by the list's overflow clamp.
+    expect(boxShadow).not.toContain(SHARED_BOX_SHADOW);
+  });
+
+  test('uses the --_cinder-tab-ring fallback hook (matches the inset-ring convention)', () => {
+    const root = parse(tabsCss);
+    const rules = findRules(root, SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'box-shadow')).toContain(
+      'var(--_cinder-tab-ring, var(--cinder-ring-color))',
+    );
+  });
+
+  test('forced-colors fallback repaints the outline with ButtonText, drawn inside the clip', () => {
+    const root = parse(tabsCss);
+    const rules = findRules(root, SELECTOR).filter((rule) => isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const fallback = rules[0]!;
+    const outline = declValue(fallback, 'outline');
+    expect(outline).toBeDefined();
+    expect(outline).not.toContain('transparent');
+    // ButtonText (a pressable), not Highlight (selection); negative offset draws
+    // the repaint outline INSIDE the tab border box so the list cannot clip it.
+    expect(outline).toBe('var(--cinder-ring-width) solid ButtonText');
+    expect(declValue(fallback, 'outline-offset')).toBe('calc(var(--cinder-ring-width) * -1)');
   });
 });
 
@@ -344,11 +484,381 @@ describe('vertical navigation-item geometry lives on the item', () => {
   });
 });
 
+describe('side-navigation full-bleed rows use the inset ring', () => {
+  // Both the vertical nav item and the group trigger are `inline-size: 100%`
+  // and full-bleed to the SideNavigation container edges. The standard OUTSET
+  // ring (`var(--_cinder-focus-ring-shadow)`) overhangs the border box by 4px
+  // on every side, with no gutter to grow into — it bleeds past the container
+  // boundary (clipped under `overflow: hidden` app sidebars) and overlaps the
+  // adjacent active row's surface-inset background. Both selectors are
+  // realigned to the policy-sanctioned Strategy B-inset variant so the entire
+  // ring is painted within each focusable element's own bounds.
+
+  const VERTICAL_ITEM_SELECTOR = ".cinder-navigation-item[data-variant='vertical']:focus-visible";
+  const TRIGGER_SELECTOR = '.cinder-side-navigation-group__trigger:focus-visible';
+
+  test('vertical nav item keeps the transparent-outline placeholder', () => {
+    const root = parse(navigationItemCss);
+    const rules = findRules(root, VERTICAL_ITEM_SELECTOR).filter(
+      (rule) => !isUnderForcedColors(rule),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'outline')).toBe(TRANSPARENT_OUTLINE);
+  });
+
+  test('vertical nav item paints an inset ring (not the shared outset recipe)', () => {
+    const root = parse(navigationItemCss);
+    const rules = findRules(root, VERTICAL_ITEM_SELECTOR).filter(
+      (rule) => !isUnderForcedColors(rule),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const boxShadow = declValue(rules[0]!, 'box-shadow');
+    expect(boxShadow).toBeDefined();
+    expect(boxShadow).toStartWith('inset');
+    expect(boxShadow).toContain('var(--cinder-ring-color)');
+    // It must NOT use the shared outset outer-ring token — that is the recipe
+    // that overhangs the full-bleed row and bleeds past the container.
+    expect(boxShadow).not.toContain(SHARED_BOX_SHADOW);
+  });
+
+  test('vertical nav item uses the --_cinder-navigation-item-ring fallback hook', () => {
+    const root = parse(navigationItemCss);
+    const rules = findRules(root, VERTICAL_ITEM_SELECTOR).filter(
+      (rule) => !isUnderForcedColors(rule),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'box-shadow')).toContain(
+      'var(--_cinder-navigation-item-ring, var(--cinder-ring-color))',
+    );
+  });
+
+  test('vertical nav item forced-colors fallback repaints the outline inside the box', () => {
+    const root = parse(navigationItemCss);
+    const rules = findRules(root, VERTICAL_ITEM_SELECTOR).filter((rule) =>
+      isUnderForcedColors(rule),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const fallback = rules[0]!;
+    // ButtonText (anchor/button pressable), drawn INSIDE the border box via a
+    // negative offset so the forced-colors outline does not reintroduce the
+    // overhang the inset migration was meant to remove.
+    expect(declValue(fallback, 'outline')).toBe('var(--cinder-ring-width) solid ButtonText');
+    expect(declValue(fallback, 'outline-offset')).toBe('calc(var(--cinder-ring-width) * -1)');
+  });
+
+  test('group trigger keeps the transparent-outline placeholder', () => {
+    const root = parse(sideNavigationGroupCss);
+    const rules = findRules(root, TRIGGER_SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'outline')).toBe(TRANSPARENT_OUTLINE);
+  });
+
+  test('group trigger paints an inset ring (not the shared outset recipe)', () => {
+    const root = parse(sideNavigationGroupCss);
+    const rules = findRules(root, TRIGGER_SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const boxShadow = declValue(rules[0]!, 'box-shadow');
+    expect(boxShadow).toBeDefined();
+    expect(boxShadow).toStartWith('inset');
+    expect(boxShadow).toContain('var(--cinder-ring-color)');
+    expect(boxShadow).not.toContain(SHARED_BOX_SHADOW);
+  });
+
+  test('group trigger uses the --_cinder-side-navigation-group-trigger-ring fallback hook', () => {
+    const root = parse(sideNavigationGroupCss);
+    const rules = findRules(root, TRIGGER_SELECTOR).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'box-shadow')).toContain(
+      'var(--_cinder-side-navigation-group-trigger-ring, var(--cinder-ring-color))',
+    );
+  });
+
+  test('group trigger forced-colors fallback repaints the outline inside the box', () => {
+    const root = parse(sideNavigationGroupCss);
+    const rules = findRules(root, TRIGGER_SELECTOR).filter((rule) => isUnderForcedColors(rule));
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const fallback = rules[0]!;
+    expect(declValue(fallback, 'outline')).toBe('var(--cinder-ring-width) solid ButtonText');
+    expect(declValue(fallback, 'outline-offset')).toBe('calc(var(--cinder-ring-width) * -1)');
+  });
+});
+
 describe('vertical tab geometry', () => {
   test('tabs.css declares .cinder-tab[data-variant="vertical"] with symmetric radius', () => {
     const root = parse(tabsCss);
     const rule = findRule(root, ".cinder-tab[data-variant='vertical']");
     expect(rule).toBeDefined();
     expect(declValue(rule!, 'border-radius')).toBe('var(--cinder-radius-sm)');
+  });
+});
+
+// ============================================================================
+// Focus-ring sweep (15f4d777): converted colored-outline-only recipes.
+// ============================================================================
+
+/**
+ * Assert a selector follows Strategy B-inset: transparent-outline placeholder,
+ * an INSET box-shadow that references `var(--cinder-ring-color)` (directly or
+ * via a private `--_cinder-*-ring` fallback hook), does NOT reuse the shared
+ * outer-ring token, and has a forced-colors fallback that repaints the outline
+ * channel with a system color drawn inside the box (negative offset).
+ */
+function assertInsetRecipe(css: string, selector: string, parser = parse): void {
+  const root = parser(css);
+  const baseRules = findRules(root, selector).filter((rule) => !isUnderForcedColors(rule));
+  expect(baseRules.length).toBeGreaterThanOrEqual(1);
+  const base = baseRules[0]!;
+  expect(declValue(base, 'outline')).toBe(TRANSPARENT_OUTLINE);
+  const boxShadow = declValue(base, 'box-shadow');
+  expect(boxShadow).toBeDefined();
+  expect(boxShadow).toContain('inset');
+  expect(boxShadow).toContain('var(--cinder-ring-color)');
+  expect(boxShadow).not.toContain(SHARED_BOX_SHADOW);
+
+  const fallbackRules = findRules(root, selector).filter((rule) => isUnderForcedColors(rule));
+  expect(fallbackRules.length).toBeGreaterThanOrEqual(1);
+  const fallback = fallbackRules[0]!;
+  expect(declValue(fallback, 'outline')).toBe('var(--cinder-ring-width) solid ButtonText');
+  expect(declValue(fallback, 'outline-offset')).toBe('calc(var(--cinder-ring-width) * -1)');
+}
+
+/**
+ * Assert a selector follows Strategy B (outer ring): transparent-outline
+ * placeholder, box-shadow referencing the shared focus-ring token, and a
+ * forced-colors fallback whose outline does NOT contain `transparent`.
+ */
+function assertOuterRecipe(css: string, selector: string, parser = parse): void {
+  const root = parser(css);
+  const baseRules = findRules(root, selector).filter((rule) => !isUnderForcedColors(rule));
+  expect(baseRules.length).toBeGreaterThanOrEqual(1);
+  const base = baseRules[0]!;
+  expect(declValue(base, 'outline')).toBe(TRANSPARENT_OUTLINE);
+  const boxShadow = declValue(base, 'box-shadow');
+  expect(boxShadow).toBeDefined();
+  expect(boxShadow).toContain(SHARED_BOX_SHADOW);
+
+  const fallbackRules = findRules(root, selector).filter((rule) => isUnderForcedColors(rule));
+  expect(fallbackRules.length).toBeGreaterThanOrEqual(1);
+  const fallback = fallbackRules[0]!;
+  const outline = declValue(fallback, 'outline');
+  expect(outline).toBeDefined();
+  expect(outline).not.toContain('transparent');
+}
+
+describe('focus-ring sweep — Strategy B-inset CSS selectors', () => {
+  const insetCases: Array<{ name: string; css: string; selector: string }> = [
+    { name: 'tree item', css: treeCss, selector: '.cinder-tree-item:focus-visible' },
+    {
+      name: 'accordion trigger',
+      css: accordionItemCss,
+      selector: '.cinder-accordion-item__trigger:focus-visible',
+    },
+    { name: 'modal close', css: modalCss, selector: '.cinder-modal__close:focus-visible' },
+    { name: 'drawer close', css: drawerCss, selector: '.cinder-drawer__close:focus-visible' },
+    { name: 'sheet close', css: sheetCss, selector: '.cinder-sheet__close:focus-visible' },
+    {
+      name: 'search-field clear',
+      css: searchFieldCss,
+      selector: '.cinder-search-field__clear:focus-visible',
+    },
+  ];
+
+  for (const { name, css, selector } of insetCases) {
+    test(`${name}: ${selector} uses the inset recipe + inside-the-clip forced-colors fallback`, () => {
+      assertInsetRecipe(css, selector);
+    });
+  }
+});
+
+describe('focus-ring sweep — Strategy B-inset Svelte selectors', () => {
+  const insetCases: Array<{ name: string; style: string; selector: string }> = [
+    {
+      name: 'markdown-editor surface',
+      style: markdownEditorStyle,
+      selector: '.markdown-editor.surface:focus-visible',
+    },
+    {
+      name: 'diff line',
+      style: diffLineStyle,
+      selector: 'button.diff-line:focus-visible',
+    },
+    {
+      name: 'link-popover close',
+      style: linkPopoverStyle,
+      selector: '.link-popover-close:focus-visible',
+    },
+    {
+      name: 'thread-popover close',
+      style: threadPopoverStyle,
+      selector: '.thread-popover-close:focus-visible',
+    },
+    {
+      name: 'review-editor thread item',
+      style: commentSidebarStyle,
+      selector: '.thread-item:focus-visible',
+    },
+    {
+      name: 'artifact-panel close',
+      style: artifactPanelStyle,
+      selector: '.artifact-panel-close:focus-visible',
+    },
+    {
+      name: 'chat timeline',
+      style: chatStyle,
+      selector: '.chat-timeline:focus-visible',
+    },
+    {
+      name: 'message attachment button',
+      style: messageAttachmentsStyle,
+      selector: '.message-attachment-button:focus-visible',
+    },
+  ];
+
+  for (const { name, style, selector } of insetCases) {
+    test(`${name}: ${selector} uses the inset recipe + inside-the-clip forced-colors fallback`, () => {
+      assertInsetRecipe(style, selector);
+    });
+  }
+});
+
+describe('focus-ring sweep — Strategy B (outer) Svelte selectors', () => {
+  const outerCases: Array<{ name: string; style: string; selector: string }> = [
+    {
+      name: 'review-editor export trigger',
+      style: reviewExportActionsStyle,
+      selector: '.export-actions :global(.export-trigger:focus-visible)',
+    },
+    {
+      name: 'chat export trigger',
+      style: conversationExportActionsStyle,
+      selector: '.conversation-export-actions :global(.export-trigger:focus-visible)',
+    },
+    {
+      name: 'comment-sidebar actions trigger',
+      style: commentSidebarStyle,
+      selector: '.sidebar-header :global(.actions-trigger:focus-visible)',
+    },
+    {
+      name: 'chat empty prompt',
+      style: chatStyle,
+      selector: '.chat-empty-prompt:focus-visible',
+    },
+    {
+      name: 'chat search nav button',
+      style: chatSearchBarStyle,
+      selector: '.chat-search-nav-button:focus-visible',
+    },
+  ];
+
+  for (const { name, style, selector } of outerCases) {
+    test(`${name}: ${selector} uses the shared outer-ring recipe + forced-colors fallback`, () => {
+      assertOuterRecipe(style, selector);
+    });
+  }
+});
+
+describe('chat-input attachment-remove — inset ring painted on the visible chip', () => {
+  // The button is a 44px touch target with the visible chip rendered by its
+  // `::before`. The base :focus-visible keeps only the transparent placeholder;
+  // the inset ring is painted on `::before` so it hugs the chip, not the
+  // oversized hit area. The forced-colors outline keeps the -12px inset.
+  test('base rule keeps the transparent-outline placeholder', () => {
+    const root = parse(chatInputStyle);
+    const rules = findRules(root, '.chat-input-attachment-remove:focus-visible').filter(
+      (rule) => !isUnderForcedColors(rule),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(rules[0]!, 'outline')).toBe(TRANSPARENT_OUTLINE);
+  });
+
+  test('::before paints an inset ring referencing the ring color', () => {
+    const root = parse(chatInputStyle);
+    const rules = findRules(root, '.chat-input-attachment-remove:focus-visible::before').filter(
+      (rule) => !isUnderForcedColors(rule),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const boxShadow = declValue(rules[0]!, 'box-shadow');
+    expect(boxShadow).toBeDefined();
+    expect(boxShadow).toContain('inset');
+    expect(boxShadow).toContain('var(--cinder-ring-color)');
+    expect(boxShadow).not.toContain(SHARED_BOX_SHADOW);
+  });
+
+  test('forced-colors fallback repaints the outline on the chip', () => {
+    const root = parse(chatInputStyle);
+    const rules = findRules(root, '.chat-input-attachment-remove:focus-visible').filter((rule) =>
+      isUnderForcedColors(rule),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    const fallback = rules[0]!;
+    expect(declValue(fallback, 'outline')).toBe('var(--cinder-ring-width) solid ButtonText');
+    expect(declValue(fallback, 'outline-offset')).toBe('-12px');
+  });
+});
+
+describe('image-lightbox white-over-photo allowlist', () => {
+  // Documented exception: white outline for contrast over an arbitrary photo
+  // backdrop. The lint rule permits these via stylelint-disable-next-line; the
+  // recipe test pins that the deliberate white ring is preserved AND that each
+  // is annotated with a disable comment citing the contrast reason.
+  for (const selector of ['.lightbox-close:focus-visible', '.lightbox-nav:focus-visible']) {
+    test(`${selector} keeps the deliberate white outline`, () => {
+      const root = parse(imageLightboxStyle);
+      const rules = findRules(root, selector).filter((rule) => !isUnderForcedColors(rule));
+      expect(rules.length).toBeGreaterThanOrEqual(1);
+      expect(declValue(rules[0]!, 'outline')).toBe('2px solid white');
+    });
+  }
+
+  test('both selectors are annotated with a stylelint-disable allowlist comment', () => {
+    const disableMatches = imageLightboxStyle.match(
+      /stylelint-disable-next-line cinder\/no-focus-visible-colored-outline/g,
+    );
+    expect(disableMatches?.length).toBe(2);
+  });
+});
+
+describe('focus-ring lint rule gates at error severity', () => {
+  // Proves the enforcement promotion: a colored outline-only :focus-visible must
+  // make `stylelint` exit NON-ZERO (error, not warning). We lint an inline
+  // fixture through the repo's real .stylelintrc.json so the configured
+  // severity is what's exercised.
+  const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+
+  async function lintFixture(fixture: string): Promise<{ exitCode: number; output: string }> {
+    const proc = Bun.spawn(
+      [
+        'bunx',
+        'stylelint',
+        '--config',
+        '.stylelintrc.json',
+        '--stdin',
+        '--stdin-filename',
+        'fixture.css',
+      ],
+      { cwd: repoRoot, stdin: new TextEncoder().encode(fixture), stdout: 'pipe', stderr: 'pipe' },
+    );
+    const exitCode = await proc.exited;
+    const [stdout, stderr] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ]);
+    return { exitCode, output: stdout + stderr };
+  }
+
+  test('a colored outline-only focus-visible rule fails stylelint', async () => {
+    const { exitCode, output } = await lintFixture(
+      '.x:focus-visible { outline: 2px solid var(--cinder-accent); }\n',
+    );
+    expect(output).toContain('cinder/no-focus-visible-colored-outline');
+    // Non-zero exit is the gate: at `severity: warning` stylelint would exit 0.
+    expect(exitCode).not.toBe(0);
+  });
+
+  test('the shared transparent-outline + box-shadow recipe passes stylelint', async () => {
+    const { exitCode } = await lintFixture(
+      '.x:focus-visible { outline: var(--cinder-ring-width) solid transparent; box-shadow: var(--_cinder-focus-ring-shadow); }\n',
+    );
+    expect(exitCode).toBe(0);
   });
 });

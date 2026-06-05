@@ -104,9 +104,19 @@
     }
   }
 
+  /* Close button sits in the panel corner; an outset ring would overhang the
+     panel edge, so paint an INSET ring (Strategy B-inset). */
   .artifact-panel-close:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-artifact-panel-close-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .artifact-panel-close:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .artifact-panel-content {

@@ -879,8 +879,16 @@
      landed. Inset offset keeps the ring inside the wrapper's border and uses
      the shared ring-width token so weight matches sibling controls. */
   .markdown-editor.surface:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: calc(-1 * var(--cinder-ring-width));
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-markdown-editor-surface-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .markdown-editor.surface:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   /*

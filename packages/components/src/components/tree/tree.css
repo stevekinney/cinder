@@ -30,14 +30,19 @@
     border-radius: var(--cinder-radius-sm);
   }
 
+  /* Tree items are full-bleed rows whose first/last siblings sit flush against
+   the tree's clipping bounds; an outset ring would be trimmed there. Paint the
+   ring INSET (Strategy B-inset) so it stays inside each row's own border box. */
   .cinder-tree-item:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: calc(-1 * var(--cinder-ring-width));
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-tree-item-ring, var(--cinder-ring-color));
   }
 
   @media (forced-colors: active) {
     .cinder-tree-item:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
     }
   }
 

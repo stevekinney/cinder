@@ -43,6 +43,8 @@
   }
 
   .cinder-avatar-group__trigger:focus-visible {
+    /* cinder-focus-ring-owner: parent — the trigger self-owns its box-shadow
+       ring; the outline is intentionally suppressed. */
     outline: none;
     box-shadow:
       0 0 0 var(--cinder-ring-offset-width) var(--cinder-ring-offset-color),
