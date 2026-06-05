@@ -7,7 +7,7 @@ import { renderThenHydrate } from '../../test/hydrate.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, cleanup } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
 const { copyInheritedPortalAttributes } = await import('./portal.utilities.svelte.ts');
 
@@ -20,6 +20,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Unmount rendered components (runs Svelte teardown) before clearing the DOM —
+  // replaceChildren() alone removes nodes but leaks component effects/subscriptions.
+  cleanup();
   document.body.replaceChildren();
 });
 

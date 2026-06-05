@@ -45,7 +45,13 @@ Object.defineProperty(globalThis, 'ResizeObserver', {
   value: ResizeObserverStub,
 });
 afterAll(() => {
-  globalThis.ResizeObserver = originalResizeObserver;
+  // Restore via defineProperty, mirroring the override. A `value:` descriptor
+  // is non-writable by default, so a plain `globalThis.ResizeObserver = …`
+  // assignment throws in strict-mode ESM and would leave the stub installed.
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: originalResizeObserver,
+  });
 });
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte/pure');
