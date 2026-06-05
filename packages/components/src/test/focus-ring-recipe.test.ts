@@ -10,7 +10,8 @@
  * does not enforce by itself.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'bun:test';
@@ -825,11 +826,18 @@ describe('focus-ring lint rule gates at error severity', () => {
   // severity is what's exercised.
   const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 
+  // Resolve the workspace-installed stylelint binary directly rather than going
+  // through `bunx stylelint`. In CI, `bunx` can re-resolve (or attempt to fetch)
+  // a different stylelint than the one with the local plugin on the path,
+  // producing empty lint output and a confusing assertion failure. The repo-root
+  // `node_modules/.bin/stylelint` is the deterministic, installed copy.
+  const localStylelint = join(repoRoot, 'node_modules', '.bin', 'stylelint');
+  const stylelintCmd = existsSync(localStylelint) ? [localStylelint] : ['bunx', 'stylelint'];
+
   async function lintFixture(fixture: string): Promise<{ exitCode: number; output: string }> {
     const proc = Bun.spawn(
       [
-        'bunx',
-        'stylelint',
+        ...stylelintCmd,
         '--config',
         '.stylelintrc.json',
         '--stdin',
