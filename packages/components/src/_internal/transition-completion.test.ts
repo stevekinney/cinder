@@ -32,22 +32,24 @@ describe('waitForTransitionCompletion', () => {
       return originalGetComputedStyle(target);
     }) as typeof window.getComputedStyle;
 
-    let completionCount = 0;
-    waitForTransitionCompletion({
-      element,
-      reducedMotion: false,
-      onComplete: () => {
-        completionCount += 1;
-      },
-    });
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
 
-    element.dispatchEvent(createTransitionEndEvent('translate'));
-    expect(completionCount).toBe(0);
+      element.dispatchEvent(createTransitionEndEvent('translate'));
+      expect(completionCount).toBe(0);
 
-    element.dispatchEvent(createTransitionEndEvent('opacity'));
-    expect(completionCount).toBe(1);
-
-    window.getComputedStyle = originalGetComputedStyle;
+      element.dispatchEvent(createTransitionEndEvent('opacity'));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
   });
 
   test('completes on the next microtask when reduced motion is enabled', async () => {

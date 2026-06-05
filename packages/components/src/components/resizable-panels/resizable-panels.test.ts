@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -39,9 +39,13 @@ class ResizeObserverStub {
   }
 }
 
+const originalResizeObserver = globalThis.ResizeObserver;
 Object.defineProperty(globalThis, 'ResizeObserver', {
   configurable: true,
   value: ResizeObserverStub,
+});
+afterAll(() => {
+  globalThis.ResizeObserver = originalResizeObserver;
 });
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte/pure');

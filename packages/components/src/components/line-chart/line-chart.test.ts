@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { ChartXValue } from '../chart.types.ts';
@@ -11,7 +11,11 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 
+const originalResizeObserver = globalThis.ResizeObserver;
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+afterAll(() => {
+  globalThis.ResizeObserver = originalResizeObserver;
+});
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: LineChart } = await import('./line-chart.svelte');

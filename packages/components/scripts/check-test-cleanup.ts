@@ -1,5 +1,14 @@
 /**
- * Test-cleanup policy guard.
+ * Test-isolation policy guard (two rules).
+ *
+ * Rule 1 — cleanup: a test rendering via @testing-library/svelte that reads
+ * shared global DOM must call cleanup() (see below).
+ * Rule 2 — global restore: a test that overrides a process-global API
+ * (ResizeObserver/IntersectionObserver/getComputedStyle/matchMedia/rAF…) at
+ * module scope must save the original and restore it in afterAll/afterEach/
+ * finally. The suite shares ONE Window across all files under --parallel=1, so
+ * an unrestored override leaks the stub into every later test file — an ordering
+ * landmine that passes today and detonates when file order shifts.
  *
  * Component tests render into the shared global `document.body` (the test
  * harness installs a single happy-dom Window for the whole suite, and the
@@ -54,7 +63,83 @@ const GLOBAL_DOM_READ_PATTERN = /document\.(?:activeElement|body)\b/;
 // The fix: a call to testing-library's `cleanup()`.
 const CLEANUP_CALL_PATTERN = /\bcleanup\s*\(\s*\)/;
 
-type Violation = { filePath: string };
+// Process-global APIs that a test commonly overrides because happy-dom lacks
+// them or to control behavior. Overriding any of these at module scope without
+// restoring the original leaks the stub into EVERY later test file in the
+// single shared Window — an ordering landmine that passes today and detonates
+// when file order shifts. Each must be saved and restored (afterAll/afterEach/
+// finally). The capture group is the property name we then require to be
+// restored.
+const GLOBAL_OVERRIDE_PATTERNS: readonly RegExp[] = [
+  // `globalThis.X = ...` / `window.X = ...`
+  /\b(?:globalThis|window|navigator)\.(\w+)\s*=/g,
+  // `Object.defineProperty(globalThis, 'X', ...)` / (window, "X", ...)
+  /Object\.defineProperty\(\s*(?:globalThis|window|navigator)\s*,\s*['"](\w+)['"]/g,
+];
+
+// Properties that are reassigned all the time as ordinary local bookkeeping and
+// are NOT shared-global hazards (e.g. `window.location.href = …` reads through a
+// sub-object; `globalThis.foo` test scratch). We only police the known
+// cross-test-pollution surface — observers, layout/animation, media APIs.
+const HAZARDOUS_GLOBALS = new Set<string>([
+  'ResizeObserver',
+  'IntersectionObserver',
+  'MutationObserver',
+  'getComputedStyle',
+  'matchMedia',
+  'requestAnimationFrame',
+  'cancelAnimationFrame',
+  'IntersectionObserverEntry',
+]);
+
+type Violation = { filePath: string; reason: string };
+
+/**
+ * A global override is "restored" if the same property name is assigned back
+ * inside a teardown context. We approximate this structurally: the property
+ * appears in a second assignment (`X = original` / `globalThis.X = …`) AND the
+ * file contains a teardown hook (`afterAll`/`afterEach`) or a `finally` block.
+ * Over-permissive by design — the goal is to catch the "no restore anywhere"
+ * landmine, not to prove the restore is perfectly correct.
+ */
+function isRestored(source: string, property: string): boolean {
+  // The restore must live in a teardown context, AND it must re-assign the
+  // property back. We look for a plain `globalThis.X = …` / `window.X = …`
+  // assignment that sits inside an afterAll/afterEach/finally block. (The
+  // override itself may be a plain assignment OR an Object.defineProperty — we
+  // don't count it here; we only need to confirm a restore exists.)
+  const restoreAssignment = `(?:globalThis|window|navigator)\\.${property}\\s*=`;
+  const teardownWithRestore = new RegExp(
+    // after(All|Each)( … X = … )  — non-greedy across the hook body
+    `\\bafter(?:All|Each)\\s*\\([\\s\\S]*?${restoreAssignment}[\\s\\S]*?\\)` +
+      // …or a finally block that restores
+      `|\\bfinally\\s*\\{[\\s\\S]*?${restoreAssignment}`,
+  );
+  return teardownWithRestore.test(source);
+}
+
+function findCleanupViolations(source: string): string | null {
+  const rendersIntoSharedDom =
+    TESTING_LIBRARY_IMPORT_PATTERN.test(source) &&
+    RENDER_PATTERN.test(source) &&
+    GLOBAL_DOM_READ_PATTERN.test(source);
+  if (!rendersIntoSharedDom) return null;
+  if (CLEANUP_CALL_PATTERN.test(source)) return null;
+  return 'renders into shared document.body but never calls cleanup()';
+}
+
+function findGlobalOverrideViolations(source: string): string | null {
+  const unrestored = new Set<string>();
+  for (const pattern of GLOBAL_OVERRIDE_PATTERNS) {
+    for (const match of source.matchAll(pattern)) {
+      const property = match[1];
+      if (!property || !HAZARDOUS_GLOBALS.has(property)) continue;
+      if (!isRestored(source, property)) unrestored.add(property);
+    }
+  }
+  if (unrestored.size === 0) return null;
+  return `overrides global ${[...unrestored].join(', ')} without restoring the original`;
+}
 
 async function scan(): Promise<Violation[]> {
   const violations: Violation[] = [];
@@ -63,15 +148,13 @@ async function scan(): Promise<Violation[]> {
   for await (const relativePath of glob.scan({ cwd: componentsRoot })) {
     const absolutePath = resolve(componentsRoot, relativePath);
     const source = await Bun.file(absolutePath).text();
+    const filePath = relative(repoRoot, absolutePath);
 
-    const rendersIntoSharedDom =
-      TESTING_LIBRARY_IMPORT_PATTERN.test(source) &&
-      RENDER_PATTERN.test(source) &&
-      GLOBAL_DOM_READ_PATTERN.test(source);
-    if (!rendersIntoSharedDom) continue;
-    if (CLEANUP_CALL_PATTERN.test(source)) continue;
+    const cleanupReason = findCleanupViolations(source);
+    if (cleanupReason) violations.push({ filePath, reason: cleanupReason });
 
-    violations.push({ filePath: relative(repoRoot, absolutePath) });
+    const overrideReason = findGlobalOverrideViolations(source);
+    if (overrideReason) violations.push({ filePath, reason: overrideReason });
   }
 
   return violations;
@@ -81,25 +164,25 @@ async function main(): Promise<void> {
   const violations = await scan();
   if (violations.length === 0) {
     process.stdout.write(
-      'check-test-cleanup — OK (component tests reading shared global DOM call cleanup()).\n',
+      'check-test-cleanup — OK (tests unmount renders and restore overridden globals).\n',
     );
     return;
   }
 
   process.stderr.write(
-    'check-test-cleanup — component test renders into the shared document.body and reads\n' +
-      'global DOM state (document.activeElement / document.body) but never calls cleanup().\n' +
-      "Add `cleanup` from '@testing-library/svelte' and call it in an afterEach so renders\n" +
-      'are unmounted between tests — otherwise stale nodes leak across the full suite and\n' +
-      'flake on CI. Pattern:\n\n' +
-      "  const { render, cleanup } = await import('@testing-library/svelte');\n" +
-      '  afterEach(() => {\n' +
-      '    cleanup();\n' +
-      '    document.body.replaceChildren();\n' +
-      '  });\n\n',
+    'check-test-cleanup — test-isolation hazard(s) detected. Each component test shares one\n' +
+      'process-global Window (--parallel=1), so un-torn-down state leaks into later test files\n' +
+      'and flakes on CI. Two rules:\n\n' +
+      '  1. A test that renders via @testing-library/svelte and reads document.activeElement/\n' +
+      '     document.body MUST call cleanup() in an afterEach.\n' +
+      '  2. A test that overrides a global (ResizeObserver, getComputedStyle, matchMedia, …)\n' +
+      '     MUST save the original and restore it in afterAll/afterEach/finally.\n\n' +
+      '  const original = globalThis.ResizeObserver;\n' +
+      '  globalThis.ResizeObserver = Stub;\n' +
+      '  afterAll(() => { globalThis.ResizeObserver = original; });\n\n',
   );
   for (const violation of violations) {
-    process.stderr.write(`  ${violation.filePath}\n`);
+    process.stderr.write(`  ${violation.filePath} — ${violation.reason}\n`);
   }
   process.exit(1);
 }

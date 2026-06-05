@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { _resetEscapeStack, _resetScrollLock, pushEscapeHandler } from '../../_internal/overlay.ts';
@@ -66,6 +66,9 @@ window.getComputedStyle = ((target: Element) => {
 
   return originalGetComputedStyle(target);
 }) as typeof window.getComputedStyle;
+afterAll(() => {
+  window.getComputedStyle = originalGetComputedStyle;
+});
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
