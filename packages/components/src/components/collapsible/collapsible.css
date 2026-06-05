@@ -48,13 +48,17 @@
   }
 
   .cinder-collapsible__trigger:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: var(--cinder-ring-offset);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   @media (forced-colors: active) {
     .cinder-collapsible__trigger:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
+      /* Outset offset matches the Strategy B box-shadow ring it replaces (and the
+         rest of the sweep's outset forced-colors fallbacks). Without this the HCM
+         outline draws flush at 0px, inconsistent with every other outset site. */
+      outline-offset: 3px;
     }
   }
 

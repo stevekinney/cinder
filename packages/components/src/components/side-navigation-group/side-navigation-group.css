@@ -47,15 +47,36 @@
     }
   }
 
+  /* Focus ring — Strategy B-inset.
+   *
+   * The trigger is `inline-size: 100%` inside an unpadded list/nav, so it
+   * spans the full width of the SideNavigation container. The standard OUTSET
+   * ring (offset 1px + width 3px) would paint 4px past BOTH container edges
+   * (clipped where the app sidebar sets `overflow: hidden`) and, vertically,
+   * 4px into the active item directly below — landing the ring in the same
+   * pixels as that item's `--cinder-surface-inset` background and flattening
+   * the focus signal. The policy-sanctioned B-inset variant (focus-ring-policy.md,
+   * trigger #1: focusable row full-bleed against a container edge) paints a
+   * single-band ring entirely within the trigger's own border box — no
+   * overhang, no neighbor or container bleed, zero layout shift. The
+   * `--_cinder-side-navigation-group-trigger-ring` fallback hook matches the
+   * tab/dropdown/number-input inset-ring convention. */
   .cinder-side-navigation-group__trigger:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-side-navigation-group-trigger-ring, var(--cinder-ring-color));
   }
 
+  /* Forced-colors fallback for the inset ring. Inset box-shadow rings vanish
+   * in Windows High Contrast Mode, so repaint the outline channel with a
+   * NEGATIVE offset that draws the outline INSIDE the trigger border box — a
+   * positive/outset offset would reintroduce the overhang this trigger was
+   * changed to avoid. `ButtonText` is the policy-correct system color for the
+   * <button> the trigger renders as. */
   @media (forced-colors: active) {
     .cinder-side-navigation-group__trigger:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: 3px;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
     }
   }
 

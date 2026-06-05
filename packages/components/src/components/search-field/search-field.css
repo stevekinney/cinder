@@ -88,6 +88,8 @@
   }
 
   .cinder-search-field__input:focus-visible {
+    /* cinder-focus-ring-owner: parent — the .cinder-search-field wrapper paints
+       the ring for the whole field; the bare input suppresses its own. */
     outline: none;
     box-shadow: none;
   }
@@ -152,15 +154,19 @@
     }
   }
 
+  /* The clear button is absolutely positioned inside the field's padding box;
+   an outset ring overhangs the field border. Paint an INSET ring
+   (Strategy B-inset) so the indicator stays within the button's own bounds. */
   .cinder-search-field__clear:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: 1px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-search-field-clear-ring, var(--cinder-ring-color));
   }
 
   @media (forced-colors: active) {
     .cinder-search-field__clear:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: 2px;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
     }
   }
 

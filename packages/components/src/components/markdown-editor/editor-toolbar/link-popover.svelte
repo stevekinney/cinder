@@ -308,9 +308,19 @@
     }
   }
 
+  /* Close button sits in the popover corner; an outset ring would overhang the
+     popover edge, so paint an INSET ring (Strategy B-inset). */
   .link-popover-close:focus-visible {
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-link-popover-close-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .link-popover-close:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .link-popover-content {

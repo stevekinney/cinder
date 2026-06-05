@@ -74,9 +74,16 @@
   }
 
   .cinder-rating__option:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: var(--cinder-ring-offset);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
     border-radius: var(--cinder-radius-sm);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-rating__option:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   .cinder-rating--readonly {

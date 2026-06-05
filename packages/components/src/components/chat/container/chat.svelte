@@ -776,9 +776,19 @@
     background: var(--cinder-surface-inset);
   }
 
+  /* The timeline is a scrollable region; an outset ring is clipped by its own
+     overflow, so paint an INSET ring (Strategy B-inset). */
   .chat-timeline:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-chat-timeline-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .chat-timeline:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   /* Prevent non-last messages from being scroll anchors */
@@ -828,8 +838,15 @@
   }
 
   .chat-empty-prompt:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .chat-empty-prompt:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   /* Unread Divider */

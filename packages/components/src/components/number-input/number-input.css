@@ -54,6 +54,9 @@
 
   .cinder-number-input__input.cinder-input:focus-visible {
     box-shadow: none;
+    /* cinder-focus-ring-owner: parent — the .cinder-number-input wrapper owns
+       the focus ring (see :focus-within below), so the inner input suppresses
+       its own. */
     outline: none;
   }
 

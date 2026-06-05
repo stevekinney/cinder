@@ -295,8 +295,15 @@
   }
 
   .sidebar-header :global(.actions-trigger:focus-visible) {
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .sidebar-header :global(.actions-trigger:focus-visible) {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   /* Confirmation banner */
@@ -371,9 +378,19 @@
     }
   }
 
+  /* Thread items are full-bleed rows in the scrollable sidebar list; an outset
+     ring is clipped at the row edges, so paint an INSET ring (Strategy B-inset). */
   .thread-item:focus-visible {
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-thread-item-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .thread-item:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .thread-item[data-active] {

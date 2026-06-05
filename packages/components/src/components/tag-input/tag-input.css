@@ -89,6 +89,9 @@
      forced-colors block below restores a real outline where box-shadow is
      ignored). */
   .cinder-tag-input__remove:focus-visible {
+    /* cinder-focus-ring-owner: parent — this button self-owns its box-shadow
+       ring; the outline is suppressed and the forced-colors block below
+       restores a system-color outline where box-shadow is ignored. */
     outline: none;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
@@ -162,6 +165,8 @@
   }
 
   .cinder-tag-input__input:focus-visible {
+    /* cinder-focus-ring-owner: parent — the .cinder-tag-input field paints the
+       ring for the whole control; the bare text input suppresses its own. */
     outline: none;
     box-shadow: none;
   }

@@ -62,18 +62,15 @@
   }
 
   .cinder-accordion-item__trigger:focus-visible {
-    /* The accordion's parent has `overflow: clip` so an outset ring is trimmed,
-     and an inset box-shadow leaves a visible bottom stripe that blends with
-     an expanded item's panel border below.
-
-     Paint the indicator with `outline` + a negative offset so the ring is
-     drawn INSIDE the trigger's border box, doesn't contribute to layout,
-     and stays fully clear of the trigger/panel boundary regardless of
-     expansion state. */
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: calc(-1 * var(--cinder-ring-width));
-    /* Reset in case any earlier rule left a box-shadow lingering. */
-    box-shadow: none;
+    /* The accordion's parent has `overflow: clip` so an outset ring is trimmed.
+     Paint an INSET ring (Strategy B-inset) drawn entirely inside the trigger's
+     border box — it does not contribute to layout and stays fully clear of the
+     trigger/panel boundary regardless of expansion state. The accent ring color
+     contrasts with the panel border below, so the bottom edge reads as focus
+     rather than blending into the chrome. */
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-accordion-item-trigger-ring, var(--cinder-ring-color));
   }
 
   /* Round the trigger to match the accordion's outer corners on first/last
@@ -98,6 +95,7 @@
   @media (forced-colors: active) {
     .cinder-accordion-item__trigger:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
     }
   }
 

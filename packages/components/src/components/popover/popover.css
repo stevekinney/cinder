@@ -18,8 +18,15 @@
   }
 
   .cinder-popover:focus-visible {
-    outline: var(--cinder-ring-width, 2px) solid var(--cinder-ring-color, currentColor);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-lg);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-popover:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   .cinder-popover[data-cinder-position-ready='false'] {

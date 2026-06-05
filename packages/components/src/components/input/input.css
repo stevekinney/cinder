@@ -190,9 +190,10 @@
     padding-inline-end: var(--cinder-space-10);
   }
 
-  /* Suppress the inner input's focus ring when grouped — the group owns the ring. */
   .cinder-input-group > .cinder-input:focus-visible {
     box-shadow: none;
+    /* cinder-focus-ring-owner: parent — the .cinder-input-group wrapper paints
+       the ring for the whole grouped control. */
     outline: none;
   }
 

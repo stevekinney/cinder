@@ -124,15 +124,34 @@
     height: auto;
   }
 
+  /* The tab list is a clipping container: `.cinder-tab-list` sets
+   * `overflow-x: auto`, and per the CSS Overflow spec a non-`visible` value on
+   * one axis forces the other axis's used `overflow` to `auto` too — so the
+   * list clips on BOTH axes. The list has zero block padding and a 1px
+   * `border-bottom`, so the standard OUTSET focus ring (offset + ring-width
+   * painted outside the tab border box) pokes past the list's content box and
+   * gets clipped on the top, bottom, and trailing edges — only the first tab's
+   * inline-start edge survives. Use the policy-sanctioned Strategy B-inset
+   * variant: an INSET single-band ring painted entirely within the tab border
+   * box, so the overflow clamp can never clip it in either orientation, with
+   * zero layout shift (no padding or scroll-geometry change). The
+   * `--_cinder-tab-ring` fallback hook matches the dropdown/number-input
+   * inset-ring convention. */
   .cinder-tab:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-tab-ring, var(--cinder-ring-color));
   }
 
   @media (forced-colors: active) {
+    /* Inset box-shadow rings vanish in Windows High Contrast Mode, so repaint
+     * the outline channel with a negative offset that draws the outline INSIDE
+     * the tab border box — a positive/outset offset would itself be clipped by
+     * the list. `ButtonText` is the policy-correct system color for a
+     * button-shaped `role="tab"` pressable (not `Highlight`). */
     .cinder-tab:focus-visible {
-      outline: var(--cinder-ring-width) solid Highlight;
-      outline-offset: 1px;
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
     }
   }
 

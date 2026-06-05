@@ -240,8 +240,16 @@
 
   .chat-search-nav-button:focus-visible,
   .chat-search-close:focus-visible {
-    outline: 2px solid var(--cinder-ring-color);
-    outline-offset: 1px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .chat-search-nav-button:focus-visible,
+    .chat-search-close:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   .chat-search-nav-button:disabled {

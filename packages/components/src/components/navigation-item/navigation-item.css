@@ -62,6 +62,31 @@
     }
   }
 
+  /* Vertical-variant focus ring — Strategy B-inset.
+   *
+   * Vertical items are full-bleed to the SideNavigation container edges
+   * (`inline-size: 100%` below, inside an unpadded list/nav). The standard
+   * OUTSET ring (offset 1px + width 3px = 4px overhang on every side) has no
+   * gutter to grow into: it bleeds past the container boundary (clipped where
+   * the app sidebar sets `overflow: hidden`) and overlaps the adjacent active
+   * row's `--cinder-surface-inset` background, flattening the focus signal.
+   * The policy-sanctioned B-inset variant (focus-ring-policy.md, trigger #1:
+   * focusable row full-bleed against a container edge) paints a single-band
+   * ring entirely within the item's own border box — no overhang, no neighbor
+   * or container bleed, zero layout shift. The horizontal variant keeps the
+   * outset ring (it is not full-bleed and lives on a different surface), so the
+   * inset ring is scoped strictly to `[data-variant='vertical']`. The
+   * `[data-variant='vertical']` attribute selector (specificity 0,2,0) wins
+   * over the base rule (0,1,0) regardless of order; it is placed after for
+   * clarity. The `--_cinder-navigation-item-ring` fallback hook matches the
+   * tab/dropdown/number-input inset-ring convention so a variant can recolor
+   * the ring without re-authoring the shadow. */
+  .cinder-navigation-item[data-variant='vertical']:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-navigation-item-ring, var(--cinder-ring-color));
+  }
+
   /* ----------------------------------------
  * Active state
  * ---------------------------------------- */
@@ -114,10 +139,19 @@
     background-color: var(--cinder-surface-inset);
   }
 
+  /* Forced-colors fallback for the vertical-variant inset ring. Inset
+   * box-shadow rings vanish in Windows High Contrast Mode, so repaint the
+   * outline channel with a NEGATIVE offset that draws the outline INSIDE the
+   * item border box — a positive/outset offset would reintroduce the overhang
+   * this variant was changed to avoid. `ButtonText` is the policy-correct
+   * system color for the anchor/button pressable the item renders as (not
+   * `Highlight`, which is for selection). The `[data-variant='vertical']`
+   * attribute selector duplicates the base rule's specificity (0,2,0) so it
+   * wins inside the media block per the B-inset specificity rule. */
   @media (forced-colors: active) {
-    .cinder-navigation-item:focus-visible {
+    .cinder-navigation-item[data-variant='vertical']:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: 3px;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
     }
   }
 }

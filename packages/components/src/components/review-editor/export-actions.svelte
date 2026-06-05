@@ -191,8 +191,15 @@
   }
 
   .export-actions :global(.export-trigger:focus-visible) {
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .export-actions :global(.export-trigger:focus-visible) {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   .export-icon-success {

@@ -374,6 +374,37 @@ describe('Steps — horizontal layout geometry (CSS contract)', () => {
     expect(body).toMatch(/text-align:\s*center;/);
     expect(body).toMatch(/align-items:\s*center;/);
   });
+
+  test('horizontal interactive body hugs centered content instead of spanning the column', () => {
+    // The focusable <a>/<button> must NOT stretch to inline-size: 100% in the
+    // wide layout — that makes its :focus-visible ring box the whole equal-width
+    // column. It centers on a content-width box so the ring is a pill under the
+    // marker. Match the wide-layout interactive-body rule specifically (the one
+    // with the marker-capture margin), not the base reset or the narrow override.
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{[^}]*margin-block-start/,
+    );
+    expect(body).toMatch(/inline-size:\s*auto;/);
+    expect(body).toMatch(/max-inline-size:\s*100%;/);
+    expect(body).toMatch(/align-self:\s*center;/);
+  });
+
+  test('horizontal interactive body captures the marker into the focus ring with zero net shift', () => {
+    // The box's top edge rises by the marker diameter (negative block-start
+    // margin) so the focus ring encloses the marker; an equal-plus-existing
+    // padding restores the label/description position so content does not move.
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{[^}]*margin-block-start/,
+    );
+    // Negative margin equals one marker diameter — the in-flow distance from the
+    // body's current top up to the marker's top.
+    expect(body).toMatch(/margin-block-start:\s*calc\(-1 \* var\(--_marker-size\)\);/);
+    // Added padding restores the marker diameter plus the body's existing space-2
+    // top padding, so the visible content y-position is invariant.
+    expect(body).toMatch(
+      /padding-block-start:\s*calc\(var\(--_marker-size\) \+ var\(--cinder-space-2\)\);/,
+    );
+  });
 });
 
 describe('Steps — narrow horizontal fallback (CSS contract)', () => {
@@ -428,5 +459,18 @@ describe('Steps — narrow horizontal fallback (CSS contract)', () => {
       /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__body\s*\{/,
     );
     expect(body).toMatch(/text-align:\s*start;/);
+  });
+
+  test('narrow interactive body undoes the wide marker-capture geometry', () => {
+    // The wide layout's content-width centering and negative-margin marker
+    // capture are higher-specificity than the narrow base-body rule, so the
+    // narrow grid must explicitly reset them or the focus box would be pulled
+    // out of its column-2 grid cell and up over column 1.
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{/,
+    );
+    expect(body).toMatch(/inline-size:\s*100%;/);
+    expect(body).toMatch(/align-self:\s*stretch;/);
+    expect(body).toMatch(/margin-block-start:\s*0;/);
   });
 });

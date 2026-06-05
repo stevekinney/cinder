@@ -203,8 +203,8 @@
   }
 
   .cinder-toast__action:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   .cinder-toast__dismiss {
@@ -250,14 +250,17 @@
   }
 
   .cinder-toast__dismiss:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   @media (forced-colors: active) {
     .cinder-toast__action:focus-visible,
     .cinder-toast__dismiss:focus-visible {
-      outline-color: ButtonText;
+      /* Repaint the full outline channel — the transparent placeholder above
+       must be overpainted with a system color, not just recolored. */
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
     }
   }
 }
