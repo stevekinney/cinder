@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
@@ -10,14 +10,41 @@ expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 
 setupHappyDom();
 
-const { render: renderIntoContainer, fireEvent } = await import('@testing-library/svelte');
+const {
+  render: renderIntoContainer,
+  fireEvent,
+  waitFor,
+  cleanup,
+} = await import('@testing-library/svelte');
 const { default: Combobox } = await import('./combobox.svelte');
+
+// These tests render into the shared `document.body` (see `render` below). The
+// listbox opens on focus through Svelte effects, so options are not guaranteed
+// to be in the DOM synchronously on the next line after `await fireEvent.focus`
+// — under coverage instrumentation and on slower CI runners the effect can land
+// a tick later. Without `cleanup()`, torn-down instances also leave pending
+// effects and animation microtasks (see the happy-dom animate stub) that race
+// the next render. `cleanup()` unmounts between tests; `findOption`/`waitFor`
+// de-race the assertions so a one-tick delay no longer reads as an empty list.
+afterEach(() => cleanup());
 
 const fruits = [
   { value: 'apple', label: 'Apple' },
   { value: 'apricot', label: 'Apricot' },
   { value: 'banana', label: 'Banana' },
 ];
+
+/** Wait for an open listbox option whose text contains `label`, then return it. */
+async function findOption(label: string): Promise<Element> {
+  let match: Element | undefined;
+  await waitFor(() => {
+    match = Array.from(document.body.querySelectorAll('[role="option"]')).find((element) =>
+      element.textContent?.includes(label),
+    );
+    expect(match).toBeDefined();
+  });
+  return match as Element;
+}
 
 function readComboboxStyles(): string {
   // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
@@ -38,12 +65,8 @@ describe('Combobox', () => {
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;
     await fireEvent.focus(input);
 
-    const option = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apricot'),
-    );
-    expect(option).toBeDefined();
-
-    await fireEvent.mouseDown(option as Element);
+    const option = await findOption('Apricot');
+    await fireEvent.mouseDown(option);
 
     expect(container.querySelector('[role="listbox"]')).toBeNull();
     expect(input.value).toBe('Apricot');
@@ -54,20 +77,19 @@ describe('Combobox', () => {
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;
     await fireEvent.focus(input);
 
-    const appleOption = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apple'),
-    );
-    expect(appleOption).toBeDefined();
-    await fireEvent.mouseDown(appleOption as Element);
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
 
     await fireEvent.input(input, { target: { value: 'ap' } });
 
     expect(container.querySelector('[role="listbox"]')).not.toBeNull();
-    const filteredOptions = Array.from(container.querySelectorAll('[role="option"]'));
-    expect(filteredOptions.map((option) => option.textContent?.trim())).toEqual([
-      'Apple',
-      'Apricot',
-    ]);
+    await waitFor(() => {
+      const filteredOptions = Array.from(container.querySelectorAll('[role="option"]'));
+      expect(filteredOptions.map((option) => option.textContent?.trim())).toEqual([
+        'Apple',
+        'Apricot',
+      ]);
+    });
   });
 
   test('user can select a different option after the first selection', async () => {
@@ -75,26 +97,22 @@ describe('Combobox', () => {
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;
     await fireEvent.focus(input);
 
-    const appleOption = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apple'),
-    );
-    expect(appleOption).toBeDefined();
-    await fireEvent.mouseDown(appleOption as Element);
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
 
     await fireEvent.input(input, { target: { value: 'apri' } });
 
-    const apricotOption = Array.from(container.querySelectorAll('[role="option"]')).find(
-      (element) => element.textContent?.includes('Apricot'),
-    );
-    expect(apricotOption).toBeDefined();
-    await fireEvent.mouseDown(apricotOption as Element);
+    const apricotOption = await findOption('Apricot');
+    await fireEvent.mouseDown(apricotOption);
 
     expect(input.value).toBe('Apricot');
 
     await fireEvent.focus(input);
 
-    const selectedOption = container.querySelector('[role="option"][aria-selected="true"]');
-    expect(selectedOption?.textContent?.trim()).toBe('Apricot');
+    await waitFor(() => {
+      const selectedOption = container.querySelector('[role="option"][aria-selected="true"]');
+      expect(selectedOption?.textContent?.trim()).toBe('Apricot');
+    });
   });
 
   test('typing after selection does not reset the input to the previously-selected label', async () => {
@@ -102,11 +120,8 @@ describe('Combobox', () => {
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;
     await fireEvent.focus(input);
 
-    const appleOption = Array.from(container.querySelectorAll('[role="option"]')).find((element) =>
-      element.textContent?.includes('Apple'),
-    );
-    expect(appleOption).toBeDefined();
-    await fireEvent.mouseDown(appleOption as Element);
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
 
     await fireEvent.input(input, { target: { value: 'Apr' } });
 

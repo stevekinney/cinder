@@ -103,6 +103,24 @@ end_of_record
     expect(averages.linesFound).toBe(100);
   });
 
+  test('excludes transient SSR test artifacts from the aggregate', () => {
+    // `.cinder-ssr-*.mjs` modules are compiled by the SSR test helpers, imported
+    // once, and deleted — Bun still instruments them, so they leak into LCOV and
+    // depress the aggregate. They must not count toward the ratchet.
+    const withArtifact = `${lcovFixture}TN:
+SF:src/components/portal/.cinder-ssr-12345-1780000000000-abc123.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+`;
+    const records = parseLcovRecords(withArtifact);
+    expect(records.map((record) => record.file)).toEqual(['covered.ts', 'partial.ts']);
+    // Aggregate is unchanged from the artifact-free fixture (still 3/4 = 75%).
+    expect(computeCoverageAverages(records).functions).toBe(75);
+  });
+
   test('reports no failures when the aggregate ratchet is met', () => {
     const averages = computeCoverageAverages(parseLcovRecords(lcovFixture));
     expect(coverageFailures(averages, { functions: 0.7, lines: 0.7 })).toEqual([]);

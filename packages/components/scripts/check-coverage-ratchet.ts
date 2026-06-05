@@ -54,6 +54,20 @@ function isRatchetThreshold(value: number): boolean {
   return Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
+/**
+ * Transient SSR test modules written by `src/test/server-render.ts` and
+ * `src/test/hydrate.ts`. They compile a component in `generate: 'server'` mode
+ * to a `.cinder-ssr-<pid>-<time>-<rand>.mjs` file next to the source, import it
+ * for one render, then delete it. Bun still instruments these modules while
+ * they are imported, so they land in the LCOV report even though they are not
+ * library source — and at ~56% function coverage they drag the aggregate below
+ * the real number (82% vs. a polluted 80.6%). They are not shippable code and
+ * carry no coverage obligation, so exclude them from the ratchet aggregate.
+ */
+function isTransientTestArtifact(file: string): boolean {
+  return /\.cinder-ssr-[^/]*\.mjs$/.test(file);
+}
+
 export function parseLcovRecords(source: string): CoverageRecord[] {
   return source
     .split('end_of_record')
@@ -69,7 +83,8 @@ export function parseLcovRecords(source: string): CoverageRecord[] {
         linesFound: readNumberField(lines, 'LF'),
         linesHit: readNumberField(lines, 'LH'),
       };
-    });
+    })
+    .filter((record) => !isTransientTestArtifact(record.file));
 }
 
 function readStringField(lines: string[], key: string): string {
