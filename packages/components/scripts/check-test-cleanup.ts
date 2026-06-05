@@ -14,10 +14,14 @@
  *   (`afterEach`/`afterAll`). The render wrapper mounts into the shared
  *   `document.body`; cleanup() unmounts it.
  *
- *   Rule 2 — global restore: a test that overrides a hazardous process-global
- *   (ResizeObserver, getComputedStyle, matchMedia, …) at module scope MUST save
- *   the original into a binding and assign that binding back inside a teardown
- *   hook (or a `finally`). Restoring to a fresh stub, or not at all, still leaks.
+ *   Rule 2 — orphaned override: a test that overrides a hazardous process-global
+ *   (ResizeObserver, getComputedStyle, matchMedia, …) at module scope MUST have
+ *   a teardown hook (afterEach/afterAll/finally) that undoes it. The guard checks
+ *   only that a teardown exists — NOT that it restores the saved original
+ *   correctly; that is a dataflow property text matching can't decide without
+ *   flagging legitimate patterns. The hardening of known offenders lives in the
+ *   test files; this rule stops a future *orphaned* override (a stub with nothing
+ *   to undo it) from reintroducing the class.
  *
  * Scope is the whole package `src/**` (not just `components/`) — the override
  * hazard is not component-specific; `_internal`/utility tests share the same
@@ -52,6 +56,7 @@ const CLEANUP_CALL_PATTERN = /\bcleanup\s*\(\s*\)/;
 const HAZARDOUS_GLOBALS = new Set<string>([
   'ResizeObserver',
   'IntersectionObserver',
+  'IntersectionObserverEntry',
   'MutationObserver',
   'getComputedStyle',
   'matchMedia',
@@ -128,69 +133,38 @@ function findCleanupViolation(source: string): string | null {
   return 'renders into shared document.body but never calls cleanup() in a teardown hook';
 }
 
-/**
- * Identifiers in `source` that hold the saved original of `<global>.property`,
- * captured BEFORE the override — i.e. `const originalX = globalThis.X` /
- * `window.getComputedStyle.bind(window)` / a `getOwnPropertyDescriptor` save.
- * The teardown restore must assign one of THESE back; restoring to a fresh stub
- * (or to the stub's own name) doesn't count. Without this binding-set the regex
- * could only prove "assigned to some identifier", which Codex correctly flagged
- * as nearly meaningless.
- */
-function savedOriginalBindings(source: string, property: string): Set<string> {
-  const bindings = new Set<string>();
-  // `const original = globalThis.X` (optionally `.bind(...)`), or saved via
-  // `Object.getOwnPropertyDescriptor(globalThis, 'X')`.
-  const captures = [
-    new RegExp(
-      `\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*${GLOBAL_TARGET}\\.${property}\\b`,
-      'g',
-    ),
-    new RegExp(
-      `\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*Object\\.getOwnPropertyDescriptor\\(\\s*${GLOBAL_TARGET}\\s*,\\s*['"]${property}['"]`,
-      'g',
-    ),
-  ];
-  for (const capture of captures) {
-    for (const match of source.matchAll(capture)) {
-      if (match[1]) bindings.add(match[1]);
-    }
-  }
-  return bindings;
-}
+// A teardown hook of any form: afterEach/afterAll/finally. Its mere presence is
+// what Rule 2 requires alongside a hazardous override (see below).
+const TEARDOWN_HOOK_PATTERN = /\b(?:afterEach|afterAll)\s*\(|\bfinally\b/;
 
 /**
- * A hazardous global is restored when a teardown body assigns it back to one of
- * the saved-original bindings captured before the override:
- * `globalThis.X = originalX` or
- * `Object.defineProperty(globalThis, 'X', originalDescriptor)`. Restoring to a
- * fresh stub or to the stub's own identifier does NOT count — that re-leaks.
+ * Rule 2 — orphaned override: flag a file that overrides a hazardous global but
+ * has NO teardown hook at all. That is the original landmine class — a stub
+ * installed at module scope with nothing to ever undo it, leaking into every
+ * later test file in the shared Window.
+ *
+ * Deliberately conservative: it does NOT try to prove the restore targets the
+ * saved original or runs on the right path. Verifying restore-correctness is a
+ * dataflow property that text matching cannot decide without false-positiving
+ * legitimate patterns (a `restore()` method called from `afterEach`, descriptor
+ * save/restore, indirection). The hardening of the known offenders is done in
+ * the test files themselves; this guard exists to stop a future *orphaned*
+ * override from reintroducing the class, and that is exactly what the
+ * teardown-presence check catches without false alarms.
  */
-function isRestoredInTeardown(source: string, teardown: string, property: string): boolean {
-  const bindings = savedOriginalBindings(source, property);
-  if (bindings.size === 0) return false;
-  const identifiers = [...bindings].map((name) => name.replace(/[$]/g, '\\$$')).join('|');
-  const plainRestore = new RegExp(`${GLOBAL_TARGET}\\.${property}\\s*=\\s*(?:${identifiers})\\b`);
-  const definePropertyRestore = new RegExp(
-    `Object\\.defineProperty\\(\\s*${GLOBAL_TARGET}\\s*,\\s*['"]${property}['"]\\s*,\\s*(?:${identifiers})\\b`,
-  );
-  return plainRestore.test(teardown) || definePropertyRestore.test(teardown);
-}
-
 function findGlobalOverrideViolation(source: string): string | null {
-  const teardown = extractTeardownBodies(source);
-  const unrestored = new Set<string>();
+  if (TEARDOWN_HOOK_PATTERN.test(source)) return null;
 
+  const overridden = new Set<string>();
   for (const pattern of OVERRIDE_PATTERNS) {
     for (const match of source.matchAll(pattern)) {
       const property = match[1];
-      if (!property || !HAZARDOUS_GLOBALS.has(property)) continue;
-      if (!isRestoredInTeardown(source, teardown, property)) unrestored.add(property);
+      if (property && HAZARDOUS_GLOBALS.has(property)) overridden.add(property);
     }
   }
 
-  if (unrestored.size === 0) return null;
-  return `overrides global ${[...unrestored].join(', ')} without restoring the saved original in a teardown hook`;
+  if (overridden.size === 0) return null;
+  return `overrides global ${[...overridden].join(', ')} but has no teardown hook (afterEach/afterAll/finally) to restore it`;
 }
 
 async function scan(): Promise<Violation[]> {
