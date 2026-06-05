@@ -26,8 +26,6 @@ const { default: Combobox } = await import('./combobox.svelte');
 // effects and animation microtasks (see the happy-dom animate stub) that race
 // the next render. `cleanup()` unmounts between tests; `findOption`/`waitFor`
 // de-race the assertions so a one-tick delay no longer reads as an empty list.
-// `cleanup()` unmounts between tests; `findOption`/`waitFor` de-race the
-// assertions so a one-tick delay no longer reads as an empty list.
 // `replaceChildren()` before each test additionally wipes any listbox nodes a
 // prior test left appended to `document.body` that `cleanup()` doesn't track,
 // so `findOption` can never match a stale option from another test.
@@ -49,9 +47,8 @@ async function findOption(label: string): Promise<Element> {
     );
     if (!match) throw new Error(`option containing "${label}" not found`);
   });
-  // `waitFor` only resolves once the callback stops throwing, so `match` is set.
-  if (!match) throw new Error(`option containing "${label}" not found`);
-  return match;
+  // `waitFor` resolves only once the callback stops throwing, so `match` is set.
+  return match!;
 }
 
 /**
@@ -254,8 +251,10 @@ describe('Combobox keyboard', () => {
     await waitFor(() => {
       const active = container.querySelector('[role="option"][data-cinder-active]');
       expect(active?.textContent?.trim()).toBe('Apple');
+      // Set by the same effect as data-cinder-active — assert together so the
+      // read can't race ahead of the activedescendant update.
+      expect(input.getAttribute('aria-activedescendant')).toBe('fruit-option-0');
     });
-    expect(input.getAttribute('aria-activedescendant')).toBe('fruit-option-0');
   });
 
   test('ArrowDown wraps from the last option to the first', async () => {
@@ -283,9 +282,11 @@ describe('Combobox keyboard', () => {
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(input.value).toBe('Apricot'));
-    // Listbox closes after selection.
-    expect(container.querySelector('[role="listbox"]')).toBeNull();
+    await waitFor(() => {
+      expect(input.value).toBe('Apricot');
+      // Listbox closes in the same selection effect — assert together.
+      expect(container.querySelector('[role="listbox"]')).toBeNull();
+    });
   });
 
   test('Escape closes the listbox without selecting', async () => {
