@@ -173,10 +173,17 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       const page = await context.newPage();
 
       await page.goto('/page/button', { waitUntil: 'load' });
-      const colorScheme = await page.evaluate(
-        () => getComputedStyle(document.documentElement).colorScheme,
+      // Prove the browser is actually emulating LIGHT (so light-dark() resolves to
+      // the light arm). `getComputedStyle(documentElement).colorScheme` returns the
+      // AUTHORED `color-scheme: light dark` regardless of emulation, so it is a
+      // vacuous check; `prefers-color-scheme` reflects the emulated preference.
+      const prefersLight = await page.evaluate(
+        () => window.matchMedia('(prefers-color-scheme: light)').matches,
       );
-      expect(colorScheme, 'light-dark() must branch to the light arm').toMatch(/light/);
+      expect(
+        prefersLight,
+        'browser must be emulating light so light-dark() picks the light arm',
+      ).toBe(true);
 
       // raised vs page background.
       const bgL = await page.evaluate((fn) => {

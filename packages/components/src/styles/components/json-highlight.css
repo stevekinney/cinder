@@ -17,8 +17,13 @@
     color: var(--cinder-accent-text);
   }
 
+  /* Use the soft-status FOREGROUND tokens (not the raw --cinder-success/-info
+     fills): those fills were raised into the bright signal-fill tier, which is
+     designed for solid fills with light text on top — borderline as text on a
+     light surface. The `-fg` tokens are the readable text-on-light counterparts
+     (≈8:1 here), consistent with the number token below. */
   .cinder-json-token-string {
-    color: var(--cinder-success);
+    color: var(--cinder-color-success-fg);
   }
 
   /* Semantic warning foreground is calibrated to remain readable on soft surfaces. */
@@ -29,7 +34,7 @@
   .cinder-json-token-boolean,
 /* `null` is a semantic value (not decoration); use the same color as boolean. */
 .cinder-json-token-null {
-    color: var(--cinder-info);
+    color: var(--cinder-color-info-fg);
   }
 
   /* JSON punctuation is rendered text; --cinder-text-muted meets AA in both
