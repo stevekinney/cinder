@@ -59,7 +59,7 @@
     }
 
     .cinder-link[data-color='primary']:hover:not([data-disabled]) {
-      color: var(--cinder-accent-hover);
+      color: var(--cinder-accent-text-hover);
     }
   }
 

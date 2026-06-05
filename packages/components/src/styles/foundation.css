@@ -147,7 +147,7 @@
 }
 
 :where(a:not([class])):hover {
-  color: var(--cinder-accent-hover);
+  color: var(--cinder-accent-text-hover);
 }
 
 :where(code, kbd, samp, pre) {

@@ -167,6 +167,12 @@
   --cinder-surface: light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245));
   --cinder-surface-raised: light-dark(oklch(100% 0.006 245), oklch(24% 0.045 245));
   --cinder-surface-inset: light-dark(oklch(95.5% 0.01 245), oklch(12% 0.03 245));
+  /* Hover/pressed surface derivatives. The mix DIRECTION is per-theme — the
+     `light-dark(black, white)` mix target darkens the surface in light mode and
+     lightens it in dark mode — so only the PERCENTAGE is shared across themes.
+     That shared % is intentional: the resolved steps stay comparably perceptible
+     in both arms (hover ΔL ≈ −0.030 light / +0.024 dark; pressed ΔL ≈ −0.079
+     light / +0.064 dark), so no per-theme percentage split is needed. */
   --cinder-surface-hover: color-mix(
     in oklch,
     var(--cinder-surface),
@@ -203,6 +209,11 @@
      info tint (verified: surface 5.43, bg 5.12, inset 4.82, accent-chip tint 4.98). The bright
      --cinder-accent stays for FILLS; foreground/icon usages adopt this token. */
   --cinder-accent-text: light-dark(oklch(47% 0.16 195), oklch(78% 0.15 195));
+  /* Hover step for text/icon links. Derived as a DARKER step of --cinder-accent-text (not the
+     bright fill-derived --cinder-accent-hover, which is LIGHTER than the resting text color and
+     drops to ~2.75:1 on near-white — below WCAG AA). Light arm resolves to ~oklch(0.39 0.16 195)
+     ≈ 7.9:1 on white, comfortably darker than the 5.66:1 resting color. */
+  --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
 
   /* Status — solid (legacy single-value tokens, retained for back-compat) */
   --cinder-info: light-dark(oklch(50% 0.15 245), oklch(78% 0.13 245));

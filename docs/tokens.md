@@ -167,15 +167,16 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 
 The brand color and its derivatives. `hover` and `active` are computed from `--cinder-accent` with `oklch(from ...)`, so overriding `--cinder-accent` re-derives both. `--cinder-accent-contrast` is the foreground color for text and icons placed on top of `--cinder-accent`.
 
-| Token                      | Default                                                  |
-| -------------------------- | -------------------------------------------------------- |
-| `--cinder-accent`          | `light-dark(oklch(72% 0.2 195), oklch(78% 0.15 195))`    |
-| `--cinder-accent-contrast` | `light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245))` |
-| `--cinder-accent-text`     | `light-dark(oklch(47% 0.16 195), oklch(78% 0.15 195))`   |
-| `--cinder-accent-hover`    | `oklch(from var(--cinder-accent) calc(l - 0.08) c h)`    |
-| `--cinder-accent-active`   | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`    |
+| Token                        | Default                                                    |
+| ---------------------------- | ---------------------------------------------------------- |
+| `--cinder-accent`            | `light-dark(oklch(72% 0.2 195), oklch(78% 0.15 195))`      |
+| `--cinder-accent-contrast`   | `light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245))`   |
+| `--cinder-accent-text`       | `light-dark(oklch(47% 0.16 195), oklch(78% 0.15 195))`     |
+| `--cinder-accent-text-hover` | `oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)` |
+| `--cinder-accent-hover`      | `oklch(from var(--cinder-accent) calc(l - 0.08) c h)`      |
+| `--cinder-accent-active`     | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`      |
 
-`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface; the bright `--cinder-accent` fill is too light to clear WCAG AA as a foreground (~2:1), so links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker use this darker on-brand cyan.
+`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface; the bright `--cinder-accent` fill is too light to clear WCAG AA as a foreground (~2:1), so links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker use this darker on-brand cyan. `--cinder-accent-text-hover` is the hover step for those text/icon links: it darkens `--cinder-accent-text` by 0.08 lightness (light arm ≈ 7.9:1 on white) so links get _darker_ on hover. It exists because the fill-derived `--cinder-accent-hover` is _lighter_ than the resting text color and drops to ~2.75:1 on near-white — links must use `--cinder-accent-text-hover`, not `--cinder-accent-hover`, for their hover color.
 
 ## Status — solid
 
@@ -274,7 +275,7 @@ Shared backdrop, blur, padding, and radius for Modal, Sheet, and Popover. Adjust
 
 | Token                       | Default                                                            |
 | --------------------------- | ------------------------------------------------------------------ |
-| `--cinder-overlay-backdrop` | `light-dark(oklch(20% 0.01 245 / 0.5), oklch(8% 0.02 245 / 0.65))` |
+| `--cinder-overlay-backdrop` | `light-dark(oklch(20% 0.03 245 / 0.5), oklch(8% 0.02 245 / 0.65))` |
 | `--cinder-overlay-blur`     | `4px`                                                              |
 | `--cinder-overlay-padding`  | `var(--cinder-space-6)`                                            |
 | `--cinder-overlay-radius`   | `var(--cinder-radius-lg)`                                          |
