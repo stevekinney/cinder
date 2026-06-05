@@ -12,10 +12,10 @@
     "packages/testing"
   ],
   "scripts": {
-    "build": "bun run --filter=cinder build",
+    "build": "bun run --filter=@lostgradient/cinder build",
     "changeset": "changeset",
     "changeset:publish": "changeset publish",
-    "changeset:publish:dry": "bun run --filter=cinder validate:consumer && bun run --filter=cinder publish:release -- --dry-run --skip-validation",
+    "changeset:publish:dry": "bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation",
     "changeset:version": "changeset version",
     "clean": "bun run --filter='*' clean",
     "dev": "bun run --filter='@cinder/playground' dev",
@@ -31,8 +31,8 @@
     "test:browser:install": "bun run --filter='@cinder/testing' install-browsers",
     "test:browser:ui": "bun run --filter='@cinder/testing' test:playwright:ui",
     "typecheck": "bun run --filter='*' typecheck",
-    "validate": "bun run --filter='*' validate && bun run --filter=cinder validate:consumer",
-    "validate:consumer": "bun run --filter=cinder validate:consumer",
+    "validate": "bun run --filter='*' validate && bun run --filter=@lostgradient/cinder validate:consumer",
+    "validate:consumer": "bun run --filter=@lostgradient/cinder validate:consumer",
     "validate:playground": "bun run --filter='@cinder/playground' validate"
   },
   "lint-staged": {
