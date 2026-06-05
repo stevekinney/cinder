@@ -48,7 +48,9 @@ const repoRoot = resolve(srcRoot, '..', '..', '..');
 const TESTING_LIBRARY_IMPORT_PATTERN = /@testing-library\/svelte/;
 const RENDER_PATTERN = /\brender\s*\(/;
 const GLOBAL_DOM_READ_PATTERN = /document\.(?:activeElement|body)\b/;
-const CLEANUP_CALL_PATTERN = /\bcleanup\s*\(\s*\)/;
+// cleanup() called, OR the bare `cleanup` reference passed to a hook
+// (`afterEach(cleanup)`) — both are valid Testing Library teardown.
+const CLEANUP_TOKEN_PATTERN = /\bcleanup\s*\(\s*\)|\bcleanup\b/;
 
 // Rule 2: a hazardous global overridden without a save+restore leaks into every
 // later file. We police the known cross-test-pollution surface only — observers,
@@ -128,8 +130,9 @@ function findCleanupViolation(source: string): string | null {
     GLOBAL_DOM_READ_PATTERN.test(source);
   if (!rendersIntoSharedDom) return null;
 
-  // cleanup() must live inside a teardown hook, not anywhere in the file.
-  if (CLEANUP_CALL_PATTERN.test(extractTeardownBodies(source))) return null;
+  // cleanup must live inside a teardown hook — either `cleanup()` called in a
+  // hook body or the bare `cleanup` reference passed to one (`afterEach(cleanup)`).
+  if (CLEANUP_TOKEN_PATTERN.test(extractTeardownBodies(source))) return null;
   return 'renders into shared document.body but never calls cleanup() in a teardown hook';
 }
 
