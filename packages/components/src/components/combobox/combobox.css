@@ -123,7 +123,7 @@
 
   .cinder-combobox__option[aria-selected='true'] {
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   .cinder-combobox__option[aria-disabled='true'] {

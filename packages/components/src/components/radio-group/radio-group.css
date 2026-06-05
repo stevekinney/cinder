@@ -160,8 +160,15 @@
   }
 
   .cinder-radio:disabled:checked {
-    background-color: var(--cinder-text-disabled);
-    border-color: var(--cinder-text-disabled);
+    background-color: var(--cinder-fill-disabled);
+    border-color: var(--cinder-fill-disabled);
+  }
+
+  /* Disabled dot uses the disabled FOREGROUND, not --cinder-accent-contrast (dark
+     ink in both arms — ~1.45:1 on the dark-arm fill). Matches checkbox.css; clears
+     the 3:1 UI floor in both themes. */
+  .cinder-radio:disabled:checked + .cinder-radio-row__indicator {
+    color: var(--cinder-text-disabled);
   }
 
   .cinder-radio[aria-invalid='true'] {

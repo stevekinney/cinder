@@ -95,7 +95,7 @@
   }
 
   .cinder-tab[data-cinder-active] {
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     font-weight: var(--cinder-font-medium);
   }
 

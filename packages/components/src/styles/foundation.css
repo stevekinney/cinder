@@ -139,7 +139,7 @@
 }
 
 :where(a:not([class])) {
-  color: var(--cinder-accent);
+  color: var(--cinder-accent-text);
   text-decoration: underline;
   text-decoration-thickness: max(1px, 0.0625em);
   text-underline-offset: 0.15em;
@@ -147,7 +147,7 @@
 }
 
 :where(a:not([class])):hover {
-  color: var(--cinder-accent-hover);
+  color: var(--cinder-accent-text-hover);
 }
 
 :where(code, kbd, samp, pre) {

@@ -296,7 +296,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     font-style: normal;
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     padding: var(--cinder-space-0-5) var(--cinder-space-1-5);
     background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
     border-radius: var(--cinder-radius-sm);

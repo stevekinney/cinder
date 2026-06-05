@@ -163,43 +163,65 @@
   color-scheme: light dark;
 
   /* Backgrounds / surfaces */
-  --cinder-bg: light-dark(oklch(96.5% 0.012 245), oklch(15% 0.035 245));
+  --cinder-bg: light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245));
   --cinder-surface: light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245));
-  --cinder-surface-raised: light-dark(oklch(100% 0.004 245), oklch(24% 0.045 245));
-  --cinder-surface-inset: light-dark(oklch(94% 0.018 245), oklch(12% 0.03 245));
+  --cinder-surface-raised: light-dark(oklch(100% 0.006 245), oklch(24% 0.045 245));
+  --cinder-surface-inset: light-dark(oklch(95.5% 0.01 245), oklch(12% 0.03 245));
+  /* Hover/pressed surface derivatives. The mix DIRECTION is per-theme — the
+     `light-dark(black, white)` mix target darkens the surface in light mode and
+     lightens it in dark mode — so only the PERCENTAGE is shared across themes.
+     That shared % is intentional: the resolved steps stay comparably perceptible
+     in both arms (hover ΔL ≈ −0.030 light / +0.024 dark; pressed ΔL ≈ −0.079
+     light / +0.064 dark), so no per-theme percentage split is needed. */
   --cinder-surface-hover: color-mix(
     in oklch,
     var(--cinder-surface),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%
+    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%
   );
   --cinder-surface-pressed: color-mix(
     in oklch,
     var(--cinder-surface),
-    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 12%
+    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%
   );
 
   /* Text */
-  --cinder-text: light-dark(oklch(20% 0.03 245), oklch(92% 0.02 245));
-  --cinder-text-muted: light-dark(oklch(32% 0.02 245), oklch(82% 0.02 245));
-  --cinder-text-subtle: light-dark(oklch(42% 0.02 245), oklch(72% 0.02 245));
-  --cinder-text-disabled: light-dark(oklch(52% 0.015 245), oklch(62% 0.02 245));
+  --cinder-text: light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245));
+  --cinder-text-muted: light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245));
+  --cinder-text-subtle: light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245));
+  --cinder-text-disabled: light-dark(oklch(52% 0.01 245), oklch(62% 0.02 245));
+  /* Neutral fill for DISABLED SOLID controls (disabled-checked checkbox/radio) so they stop
+     misusing --cinder-text-disabled (a text-lightness token) as an assertive fill. Reads plainly
+     inert. NOTE the glyph on top must use --cinder-text-disabled, NOT --cinder-accent-contrast:
+     accent-contrast is dark ink in both arms and would be ~1.45:1 on the dark-arm fill (0.30) —
+     invisible. --cinder-text-disabled clears the 3:1 UI floor in both themes (light ~3.8:1, dark ~3.7:1). */
+  --cinder-fill-disabled: light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245));
 
   /* Borders */
-  --cinder-border: light-dark(oklch(86% 0.025 245), oklch(35% 0.05 245));
-  --cinder-border-muted: light-dark(oklch(90% 0.018 245), oklch(30% 0.04 245));
-  --cinder-border-strong: light-dark(oklch(75% 0.035 245), oklch(45% 0.06 245));
+  --cinder-border: light-dark(oklch(83% 0.012 245), oklch(35% 0.05 245));
+  --cinder-border-muted: light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245));
+  --cinder-border-strong: light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245));
 
   /* Accent - cyan (hue 195) */
-  --cinder-accent: light-dark(oklch(45% 0.14 195), oklch(78% 0.15 195));
-  --cinder-accent-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.035 245));
+  --cinder-accent: light-dark(oklch(72% 0.2 195), oklch(78% 0.15 195));
+  --cinder-accent-contrast: light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245));
   --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
   --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
+  /* Accent used AS TEXT/ICON on light surfaces. The bright 0.72 fill-accent fails WCAG AA as
+     text (~2:1). This darker on-brand cyan clears 4.5:1 on every surface and every accent/tree/
+     info tint (verified: surface 5.43, bg 5.12, inset 4.82, accent-chip tint 4.98). The bright
+     --cinder-accent stays for FILLS; foreground/icon usages adopt this token. */
+  --cinder-accent-text: light-dark(oklch(47% 0.16 195), oklch(78% 0.15 195));
+  /* Hover step for text/icon links. Derived as a DARKER step of --cinder-accent-text (not the
+     bright fill-derived --cinder-accent-hover, which is LIGHTER than the resting text color and
+     drops to ~2.75:1 on near-white — below WCAG AA). Light arm resolves to ~oklch(0.39 0.16 195)
+     ≈ 7.9:1 on white, comfortably darker than the 5.66:1 resting color. */
+  --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
 
   /* Status — solid (legacy single-value tokens, retained for back-compat) */
-  --cinder-info: light-dark(oklch(45% 0.14 245), oklch(78% 0.13 245));
-  --cinder-success: light-dark(oklch(42% 0.16 145), oklch(78% 0.14 145));
-  --cinder-warning: light-dark(oklch(48% 0.18 75), oklch(82% 0.16 75));
-  --cinder-danger: light-dark(oklch(45% 0.22 25), oklch(72% 0.18 25));
+  --cinder-info: light-dark(oklch(50% 0.15 245), oklch(78% 0.13 245));
+  --cinder-success: light-dark(oklch(50% 0.16 145), oklch(78% 0.14 145));
+  --cinder-warning: light-dark(oklch(54% 0.165 75), oklch(82% 0.16 75));
+  --cinder-danger: light-dark(oklch(50% 0.21 25), oklch(72% 0.18 25));
   /* Text against the danger background. Dark-mode danger is ~72% lightness; pure white fails WCAG AA on it. */
   --cinder-danger-contrast: light-dark(oklch(100% 0 0), oklch(12% 0.02 25));
   /* Text against solid status backgrounds. Light-mode accents are dark enough for white; dark-mode accents are
@@ -215,20 +237,20 @@
      with semantically-paired text and border colors. The solid `--cinder-info|success|
      warning|danger` tokens above remain for accent fills (e.g. solid badges). */
   --cinder-color-info-bg: light-dark(oklch(96% 0.025 245), oklch(28% 0.06 245));
-  --cinder-color-info-fg: light-dark(oklch(28% 0.12 245), oklch(88% 0.1 245));
-  --cinder-color-info-border: light-dark(oklch(82% 0.06 245), oklch(45% 0.08 245));
+  --cinder-color-info-fg: light-dark(oklch(40% 0.13 245), oklch(88% 0.1 245));
+  --cinder-color-info-border: light-dark(oklch(80% 0.05 245), oklch(45% 0.08 245));
 
   --cinder-color-success-bg: light-dark(oklch(96% 0.04 145), oklch(28% 0.07 145));
-  --cinder-color-success-fg: light-dark(oklch(28% 0.13 145), oklch(88% 0.11 145));
-  --cinder-color-success-border: light-dark(oklch(80% 0.08 145), oklch(45% 0.09 145));
+  --cinder-color-success-fg: light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145));
+  --cinder-color-success-border: light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145));
 
   --cinder-color-warning-bg: light-dark(oklch(96% 0.04 75), oklch(28% 0.08 75));
-  --cinder-color-warning-fg: light-dark(oklch(32% 0.14 75), oklch(90% 0.12 75));
-  --cinder-color-warning-border: light-dark(oklch(82% 0.1 75), oklch(50% 0.1 75));
+  --cinder-color-warning-fg: light-dark(oklch(40% 0.13 75), oklch(90% 0.12 75));
+  --cinder-color-warning-border: light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75));
 
   --cinder-color-danger-bg: light-dark(oklch(96% 0.04 25), oklch(28% 0.09 25));
-  --cinder-color-danger-fg: light-dark(oklch(32% 0.16 25), oklch(90% 0.12 25));
-  --cinder-color-danger-border: light-dark(oklch(82% 0.1 25), oklch(50% 0.11 25));
+  --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25));
+  --cinder-color-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
 
   /* Scrollbars — used by the ScrollArea component and any consumer that
      opts into themed native scrollbars via `scrollbar-width` and
@@ -244,9 +266,12 @@
   --cinder-ring-width: 3px;
   --cinder-ring-offset: 1px;
   --cinder-ring-offset-color: var(--cinder-bg);
+  /* Relative to --cinder-accent so a consumer override re-derives the ring hue.
+     The light arm clamps L to 0.58 (the bright fill-accent at L 0.72 is too light
+     to clear 3:1 as a ring against near-white surfaces); `h` tracks the accent hue. */
   --cinder-ring-color: light-dark(
-    oklch(from var(--cinder-accent) 55% 0.12 195),
-    oklch(from var(--cinder-accent) 70% 0.14 195)
+    oklch(from var(--cinder-accent) 0.58 0.16 h),
+    oklch(from var(--cinder-accent) 0.7 0.14 h)
   );
 
   /* ========================================

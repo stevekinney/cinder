@@ -79,7 +79,7 @@
 
   .cinder-badge[data-cinder-variant='accent'] {
     background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     border-color: color-mix(in oklch, var(--cinder-accent), transparent 60%);
   }
 }

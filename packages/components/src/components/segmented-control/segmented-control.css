@@ -299,7 +299,7 @@
   .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
     .cinder-segmented-control-option[data-cinder-selected] {
     background: transparent;
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   /* The base `[data-cinder-selected]` rule paints the filled-pill drop shadow via
@@ -342,7 +342,7 @@
     .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
       .cinder-segmented-control-option[data-cinder-selected]:hover {
       background: transparent;
-      color: var(--cinder-accent);
+      color: var(--cinder-accent-text);
     }
   }
 

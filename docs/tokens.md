@@ -134,14 +134,14 @@ Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinde
 
 Background and surface tokens for the three core elevations — page background, default surface, and raised surface — plus an inset variant for sunken regions and `hover`/`pressed` derivatives that lift or darken via `color-mix`.
 
-| Token                      | Default                                                                                      |
-| -------------------------- | -------------------------------------------------------------------------------------------- |
-| `--cinder-bg`              | `light-dark(oklch(96.5% 0.012 245), oklch(15% 0.035 245))`                                   |
-| `--cinder-surface`         | `light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245))`                                    |
-| `--cinder-surface-raised`  | `light-dark(oklch(100% 0.004 245), oklch(24% 0.045 245))`                                    |
-| `--cinder-surface-inset`   | `light-dark(oklch(94% 0.018 245), oklch(12% 0.03 245))`                                      |
-| `--cinder-surface-hover`   | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)`  |
-| `--cinder-surface-pressed` | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 12%)` |
+| Token                      | Default                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| `--cinder-bg`              | `light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245))`                                     |
+| `--cinder-surface`         | `light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245))`                                   |
+| `--cinder-surface-raised`  | `light-dark(oklch(100% 0.006 245), oklch(24% 0.045 245))`                                   |
+| `--cinder-surface-inset`   | `light-dark(oklch(95.5% 0.01 245), oklch(12% 0.03 245))`                                    |
+| `--cinder-surface-hover`   | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
+| `--cinder-surface-pressed` | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
 
 ## Text colors
 
@@ -149,29 +149,34 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 
 | Token                    | Default                                                 |
 | ------------------------ | ------------------------------------------------------- |
-| `--cinder-text`          | `light-dark(oklch(20% 0.03 245), oklch(92% 0.02 245))`  |
-| `--cinder-text-muted`    | `light-dark(oklch(32% 0.02 245), oklch(82% 0.02 245))`  |
-| `--cinder-text-subtle`   | `light-dark(oklch(42% 0.02 245), oklch(72% 0.02 245))`  |
-| `--cinder-text-disabled` | `light-dark(oklch(52% 0.015 245), oklch(62% 0.02 245))` |
+| `--cinder-text`          | `light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245))` |
+| `--cinder-text-muted`    | `light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245))` |
+| `--cinder-text-subtle`   | `light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245))` |
+| `--cinder-text-disabled` | `light-dark(oklch(52% 0.01 245), oklch(62% 0.02 245))`  |
+| `--cinder-fill-disabled` | `light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245))`  |
 
 ## Borders
 
 | Token                    | Default                                                 |
 | ------------------------ | ------------------------------------------------------- |
-| `--cinder-border`        | `light-dark(oklch(86% 0.025 245), oklch(35% 0.05 245))` |
-| `--cinder-border-muted`  | `light-dark(oklch(90% 0.018 245), oklch(30% 0.04 245))` |
-| `--cinder-border-strong` | `light-dark(oklch(75% 0.035 245), oklch(45% 0.06 245))` |
+| `--cinder-border`        | `light-dark(oklch(83% 0.012 245), oklch(35% 0.05 245))` |
+| `--cinder-border-muted`  | `light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245))`  |
+| `--cinder-border-strong` | `light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245))` |
 
 ## Accent
 
 The brand color and its derivatives. `hover` and `active` are computed from `--cinder-accent` with `oklch(from ...)`, so overriding `--cinder-accent` re-derives both. `--cinder-accent-contrast` is the foreground color for text and icons placed on top of `--cinder-accent`.
 
-| Token                      | Default                                                |
-| -------------------------- | ------------------------------------------------------ |
-| `--cinder-accent`          | `light-dark(oklch(45% 0.14 195), oklch(78% 0.15 195))` |
-| `--cinder-accent-contrast` | `light-dark(oklch(100% 0 0), oklch(15% 0.035 245))`    |
-| `--cinder-accent-hover`    | `oklch(from var(--cinder-accent) calc(l - 0.08) c h)`  |
-| `--cinder-accent-active`   | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`  |
+| Token                        | Default                                                    |
+| ---------------------------- | ---------------------------------------------------------- |
+| `--cinder-accent`            | `light-dark(oklch(72% 0.2 195), oklch(78% 0.15 195))`      |
+| `--cinder-accent-contrast`   | `light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245))`   |
+| `--cinder-accent-text`       | `light-dark(oklch(47% 0.16 195), oklch(78% 0.15 195))`     |
+| `--cinder-accent-text-hover` | `oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)` |
+| `--cinder-accent-hover`      | `oklch(from var(--cinder-accent) calc(l - 0.08) c h)`      |
+| `--cinder-accent-active`     | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`      |
+
+`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface; the bright `--cinder-accent` fill is too light to clear WCAG AA as a foreground (~2:1), so links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker use this darker on-brand cyan. `--cinder-accent-text-hover` is the hover step for those text/icon links: it darkens `--cinder-accent-text` by 0.08 lightness (light arm ≈ 7.9:1 on white) so links get _darker_ on hover. It exists because the fill-derived `--cinder-accent-hover` is _lighter_ than the resting text color and drops to ~2.75:1 on near-white — links must use `--cinder-accent-text-hover`, not `--cinder-accent-hover`, for their hover color.
 
 ## Status — solid
 
@@ -179,10 +184,10 @@ Single-value status tokens for solid fills like badges and dot indicators. For s
 
 | Token                       | Default                                                |
 | --------------------------- | ------------------------------------------------------ |
-| `--cinder-info`             | `light-dark(oklch(45% 0.14 245), oklch(78% 0.13 245))` |
-| `--cinder-success`          | `light-dark(oklch(42% 0.16 145), oklch(78% 0.14 145))` |
-| `--cinder-warning`          | `light-dark(oklch(48% 0.18 75), oklch(82% 0.16 75))`   |
-| `--cinder-danger`           | `light-dark(oklch(45% 0.22 25), oklch(72% 0.18 25))`   |
+| `--cinder-info`             | `light-dark(oklch(50% 0.15 245), oklch(78% 0.13 245))` |
+| `--cinder-success`          | `light-dark(oklch(50% 0.16 145), oklch(78% 0.14 145))` |
+| `--cinder-warning`          | `light-dark(oklch(54% 0.165 75), oklch(82% 0.16 75))`  |
+| `--cinder-danger`           | `light-dark(oklch(50% 0.21 25), oklch(72% 0.18 25))`   |
 | `--cinder-danger-contrast`  | `light-dark(oklch(100% 0 0), oklch(12% 0.02 25))`      |
 | `--cinder-danger-hover`     | `oklch(from var(--cinder-danger) calc(l - 0.08) c h)`  |
 | `--cinder-danger-active`    | `oklch(from var(--cinder-danger) calc(l - 0.15) c h)`  |
@@ -199,17 +204,17 @@ Foreground / background / border triples for soft tinted surfaces. Use these in 
 | Token                           | Default                                                 |
 | ------------------------------- | ------------------------------------------------------- |
 | `--cinder-color-info-bg`        | `light-dark(oklch(96% 0.025 245), oklch(28% 0.06 245))` |
-| `--cinder-color-info-fg`        | `light-dark(oklch(28% 0.12 245), oklch(88% 0.1 245))`   |
-| `--cinder-color-info-border`    | `light-dark(oklch(82% 0.06 245), oklch(45% 0.08 245))`  |
+| `--cinder-color-info-fg`        | `light-dark(oklch(40% 0.13 245), oklch(88% 0.1 245))`   |
+| `--cinder-color-info-border`    | `light-dark(oklch(80% 0.05 245), oklch(45% 0.08 245))`  |
 | `--cinder-color-success-bg`     | `light-dark(oklch(96% 0.04 145), oklch(28% 0.07 145))`  |
-| `--cinder-color-success-fg`     | `light-dark(oklch(28% 0.13 145), oklch(88% 0.11 145))`  |
-| `--cinder-color-success-border` | `light-dark(oklch(80% 0.08 145), oklch(45% 0.09 145))`  |
+| `--cinder-color-success-fg`     | `light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145))`  |
+| `--cinder-color-success-border` | `light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))`  |
 | `--cinder-color-warning-bg`     | `light-dark(oklch(96% 0.04 75), oklch(28% 0.08 75))`    |
-| `--cinder-color-warning-fg`     | `light-dark(oklch(32% 0.14 75), oklch(90% 0.12 75))`    |
-| `--cinder-color-warning-border` | `light-dark(oklch(82% 0.1 75), oklch(50% 0.1 75))`      |
+| `--cinder-color-warning-fg`     | `light-dark(oklch(40% 0.13 75), oklch(90% 0.12 75))`    |
+| `--cinder-color-warning-border` | `light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))`     |
 | `--cinder-color-danger-bg`      | `light-dark(oklch(96% 0.04 25), oklch(28% 0.09 25))`    |
-| `--cinder-color-danger-fg`      | `light-dark(oklch(32% 0.16 25), oklch(90% 0.12 25))`    |
-| `--cinder-color-danger-border`  | `light-dark(oklch(82% 0.1 25), oklch(50% 0.11 25))`     |
+| `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25))`    |
+| `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`    |
 
 ## Scrollbar
 
@@ -226,6 +231,8 @@ Used by the `ScrollArea` component and any consumer that opts into themed native
 
 Categorical chart colors for LineChart, BarChart, AreaChart, and consumers that need to keep custom chart marks aligned with cinder's default series palette.
 
+Each `--cinder-chart-series-*` is a theme-aware design token: it wraps a distinct per-theme OKLCH value in `light-dark()`, darker and higher-chroma in light mode so the mark reads against pale light surfaces, lighter in dark mode so it reads against dark surfaces. Only the color values branch — the hue assigned to each series index is held constant across themes so a given series keeps its identity when the theme flips. This mirrors the Shadow-section rationale: the per-theme arms exist to preserve perceived contrast and hierarchy, not to recolor the chart.
+
 | Token                     | Default                                                |
 | ------------------------- | ------------------------------------------------------ |
 | `--cinder-chart-series-1` | `light-dark(oklch(48% 0.17 255), oklch(72% 0.13 255))` |
@@ -241,12 +248,12 @@ Categorical chart colors for LineChart, BarChart, AreaChart, and consumers that 
 
 The ring tokens drive the focus-visible outline used across interactive primitives. See [`focus-ring-policy.md`](./focus-ring-policy.md) for when components are expected to render the ring vs. when they delegate to the user agent.
 
-| Token                        | Default                                                                                                    |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `--cinder-ring-width`        | `3px`                                                                                                      |
-| `--cinder-ring-offset`       | `1px`                                                                                                      |
-| `--cinder-ring-offset-color` | `var(--cinder-bg)`                                                                                         |
-| `--cinder-ring-color`        | `light-dark(oklch(from var(--cinder-accent) 55% 0.12 195), oklch(from var(--cinder-accent) 70% 0.14 195))` |
+| Token                        | Default                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `--cinder-ring-width`        | `3px`                                                                                                   |
+| `--cinder-ring-offset`       | `1px`                                                                                                   |
+| `--cinder-ring-offset-color` | `var(--cinder-bg)`                                                                                      |
+| `--cinder-ring-color`        | `light-dark(oklch(from var(--cinder-accent) 0.58 0.16 h), oklch(from var(--cinder-accent) 0.7 0.14 h))` |
 
 ## Z-index layers
 

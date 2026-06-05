@@ -7,7 +7,7 @@
  * ======================================== */
 
   .cinder-link {
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     cursor: pointer;
     font-family: inherit;
     font-size: inherit;
@@ -24,7 +24,7 @@
  * ---------------------------------------- */
 
   .cinder-link[data-color='primary'] {
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   .cinder-link[data-color='inherit'] {
@@ -59,7 +59,7 @@
     }
 
     .cinder-link[data-color='primary']:hover:not([data-disabled]) {
-      color: var(--cinder-accent-hover);
+      color: var(--cinder-accent-text-hover);
     }
   }
 

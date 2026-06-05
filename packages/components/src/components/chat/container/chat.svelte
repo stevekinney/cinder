@@ -747,7 +747,7 @@
   .chat-drop-label {
     font-size: var(--cinder-text-lg);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     background: var(--cinder-surface);
     padding: var(--cinder-space-2) var(--cinder-space-4);
     border-radius: var(--cinder-radius-md);
@@ -869,7 +869,7 @@
     padding: var(--cinder-space-0-5) var(--cinder-space-2);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
     background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
     border-radius: var(--cinder-radius-full);
   }
