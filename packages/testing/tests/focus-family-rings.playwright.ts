@@ -37,8 +37,8 @@ const PIXEL_TOLERANCE = 1;
  */
 async function tabUntilFocused(page: Page, target: Locator, maxPresses = 50): Promise<boolean> {
   await page.evaluate(() => {
-    document.body.focus();
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    document.body.focus();
   });
   for (let attempt = 0; attempt < maxPresses; attempt += 1) {
     await page.keyboard.press('Tab');

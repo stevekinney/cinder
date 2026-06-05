@@ -87,8 +87,8 @@ async function colorAlpha(page: Page, color: string): Promise<number> {
  */
 async function tabUntilFocused(page: Page, locator: ReturnType<Page['locator']>): Promise<boolean> {
   await page.evaluate(() => {
-    document.body.focus();
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    document.body.focus();
   });
   for (let attempt = 0; attempt < 50; attempt += 1) {
     await page.keyboard.press('Tab');

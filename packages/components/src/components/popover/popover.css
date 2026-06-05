@@ -19,7 +19,7 @@
 
   .cinder-popover:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--cinder-shadow-lg), var(--_cinder-focus-ring-shadow);
+    box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-lg);
   }
 
   @media (forced-colors: active) {

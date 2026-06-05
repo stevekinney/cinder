@@ -132,6 +132,8 @@ The rule:
 - Allows colored outlines inside `@media (forced-colors: active)`. A comma-separated media query is treated as a forced-colors fallback only when **every** branch contains `(forced-colors: active)`; partial matches (e.g. `(forced-colors: active), (hover: hover)`) are rejected.
 - Permits `outline: none` inside `:focus-visible` only when preceded by a `/* cinder-focus-ring-owner: parent */` comment on the line above.
 
+Separate from the colored-outline allowlist above, `outline: none` inside a `:focus-visible` rule is permitted when a parent element owns the focus ring (it paints the ring via its own `box-shadow`, so the child must suppress the default outline rather than draw a second one). Mark each such site with the `/* cinder-focus-ring-owner: parent */` comment on the line directly above the `outline: none` declaration; the Stylelint rule already enforces that this comment is present before it allows the bare `outline: none`.
+
 The `box-shadow` half of Strategy B (the requirement to reference `var(--_cinder-focus-ring-shadow)` rather than reconstruct the formula longhand) is pinned by parser-based tests in `packages/components/src/test/focus-ring-recipe.test.ts`. New components that follow Strategy B should be added to that test file as a regression target.
 
 Forced-colors fallbacks are exempt from the lint rule because `box-shadow` is suppressed in Windows High Contrast Mode — without an outline channel painted with a system color, the ring would vanish ([WCAG 2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html) failure).
