@@ -10,13 +10,13 @@
  * does not enforce by itself.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'bun:test';
 
 import { parse as parsePostcss, type Rule } from 'postcss';
+import stylelint from 'stylelint';
 
 // Shared helper — same forced-colors detection the Stylelint plugin uses.
 // Keeping it in one place means the two enforcement layers can't disagree
@@ -821,52 +821,38 @@ describe('image-lightbox white-over-photo allowlist', () => {
 
 describe('focus-ring lint rule gates at error severity', () => {
   // Proves the enforcement promotion: a colored outline-only :focus-visible must
-  // make `stylelint` exit NON-ZERO (error, not warning). We lint an inline
-  // fixture through the repo's real .stylelintrc.json so the configured
-  // severity is what's exercised.
-  const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+  // be reported by stylelint as an ERROR (not a warning) when linted through the
+  // repo's real .stylelintrc.json. Uses the stylelint Node API with `configFile`
+  // (the same deterministic approach as the dedicated plugin test) rather than
+  // spawning a `bunx stylelint` subprocess — the subprocess form re-resolved a
+  // stylelint without the local plugin in CI and produced empty output.
+  const ruleName = 'cinder/no-focus-visible-colored-outline';
+  const projectConfig = fileURLToPath(new URL('../../../../.stylelintrc.json', import.meta.url));
 
-  // Resolve the workspace-installed stylelint binary directly rather than going
-  // through `bunx stylelint`. In CI, `bunx` can re-resolve (or attempt to fetch)
-  // a different stylelint than the one with the local plugin on the path,
-  // producing empty lint output and a confusing assertion failure. The repo-root
-  // `node_modules/.bin/stylelint` is the deterministic, installed copy.
-  const localStylelint = join(repoRoot, 'node_modules', '.bin', 'stylelint');
-  const stylelintCmd = existsSync(localStylelint) ? [localStylelint] : ['bunx', 'stylelint'];
-
-  async function lintFixture(fixture: string): Promise<{ exitCode: number; output: string }> {
-    const proc = Bun.spawn(
-      [
-        ...stylelintCmd,
-        '--config',
-        '.stylelintrc.json',
-        '--stdin',
-        '--stdin-filename',
-        'fixture.css',
-      ],
-      { cwd: repoRoot, stdin: new TextEncoder().encode(fixture), stdout: 'pipe', stderr: 'pipe' },
-    );
-    const exitCode = await proc.exited;
-    const [stdout, stderr] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ]);
-    return { exitCode, output: stdout + stderr };
+  async function lintWithProjectConfig(css: string) {
+    return stylelint.lint({ code: css, configFile: projectConfig });
   }
 
-  test('a colored outline-only focus-visible rule fails stylelint', async () => {
-    const { exitCode, output } = await lintFixture(
+  function warningsFor(result: Awaited<ReturnType<typeof stylelint.lint>>) {
+    return result.results.flatMap((file) => file.warnings ?? []).filter((w) => w.rule === ruleName);
+  }
+
+  test('a colored outline-only focus-visible rule is reported as an error', async () => {
+    const result = await lintWithProjectConfig(
       '.x:focus-visible { outline: 2px solid var(--cinder-accent); }\n',
     );
-    expect(output).toContain('cinder/no-focus-visible-colored-outline');
-    // Non-zero exit is the gate: at `severity: warning` stylelint would exit 0.
-    expect(exitCode).not.toBe(0);
+    const hits = warningsFor(result);
+    expect(hits.length).toBeGreaterThan(0);
+    // The gate is the SEVERITY: at `severity: warning` this would be a warning,
+    // not an error, and would not block CI.
+    expect(hits[0]?.severity).toBe('error');
+    expect(result.errored).toBe(true);
   });
 
-  test('the shared transparent-outline + box-shadow recipe passes stylelint', async () => {
-    const { exitCode } = await lintFixture(
+  test('the shared transparent-outline + box-shadow recipe passes', async () => {
+    const result = await lintWithProjectConfig(
       '.x:focus-visible { outline: var(--cinder-ring-width) solid transparent; box-shadow: var(--_cinder-focus-ring-shadow); }\n',
     );
-    expect(exitCode).toBe(0);
+    expect(warningsFor(result)).toEqual([]);
   });
 });
