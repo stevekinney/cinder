@@ -1,4 +1,4 @@
-@import 'cinder/styles';
+@import '@lostgradient/cinder/styles';
 
 /* No consumer overrides in Phase 1 — the plan narrowed ./styles verification to
    "resolution + build + content", not "cascade wins over override". Override testing
