@@ -110,9 +110,15 @@ jobs:
       # Token rotation: NPM_TOKEN should be rotated at least every 90 days per
       # security policy. The token is a Granular Access Token scoped to the
       # `cinder` package only — never use a full-access automation token.
+      # Provenance is DISABLED for this break-glass first publish: npm's
+      # provenance signing fails under Bun's BoringSSL with
+      # ERR_OSSL_NO_DEFAULT_DIGEST. Disabled in both the env here AND
+      # package.json#publishConfig.provenance so npm config precedence is
+      # irrelevant — they agree. Restore provenance when migrating back to
+      # the OIDC release.yaml path (Node runtime, working sigstore).
       - name: Publish to npm
         env:
-          NPM_CONFIG_PROVENANCE: 'true'
+          NPM_CONFIG_PROVENANCE: 'false'
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bun run --filter=@lostgradient/cinder publish:release -- --skip-validation
