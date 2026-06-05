@@ -51,7 +51,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   }
 }
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: Drawer } = await import('./drawer.svelte');
 const originalGetComputedStyle = window.getComputedStyle.bind(window);
 
@@ -94,6 +94,8 @@ async function finishCloseTransition(container: HTMLElement): Promise<void> {
 }
 
 afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
   _resetScrollLock();
   _resetEscapeStack();
 });

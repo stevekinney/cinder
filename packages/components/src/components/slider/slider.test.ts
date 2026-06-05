@@ -1,12 +1,18 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { fireEvent, render, cleanup } = await import('@testing-library/svelte');
 const { default: Slider } = await import('./slider.svelte');
+
+// Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 const { default: SliderFormFieldFixture } =
   await import('../../test/fixtures/slider-form-field-fixture.svelte');
 
