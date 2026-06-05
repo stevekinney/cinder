@@ -121,6 +121,24 @@ end_of_record
     expect(computeCoverageAverages(records).functions).toBe(75);
   });
 
+  test('does not exclude real source whose path merely contains the artifact prefix', () => {
+    // The exclusion is anchored to the final path segment with the generated
+    // `<pid>-<epoch>-<rand>.mjs` shape — a real `.ts` file under a directory that
+    // happens to share the prefix must still count.
+    const lookalike = `${lcovFixture}TN:
+SF:src/.cinder-ssr-12345-1780000000000-abc123.mjs/real-module.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+    const records = parseLcovRecords(lookalike);
+    expect(records.map((record) => record.file)).toContain(
+      'src/.cinder-ssr-12345-1780000000000-abc123.mjs/real-module.ts',
+    );
+  });
+
   test('reports no failures when the aggregate ratchet is met', () => {
     const averages = computeCoverageAverages(parseLcovRecords(lcovFixture));
     expect(coverageFailures(averages, { functions: 0.7, lines: 0.7 })).toEqual([]);

@@ -65,7 +65,11 @@ function isRatchetThreshold(value: number): boolean {
  * carry no coverage obligation, so exclude them from the ratchet aggregate.
  */
 function isTransientTestArtifact(file: string): boolean {
-  return /\.cinder-ssr-[^/]*\.mjs$/.test(file);
+  // Matches the generated contract from server-render.ts / hydrate.ts:
+  // `.cinder-ssr-<pid>-<epoch-ms>-<base36 rand>.mjs`. Anchored to the final path
+  // segment (the leading `(?:^|/)` plus `[^/]*` end) so a real source file that
+  // merely has the prefix inside a directory name is never excluded.
+  return /(?:^|\/)\.cinder-ssr-\d+-\d+-[a-z0-9]+\.mjs$/.test(file);
 }
 
 export function parseLcovRecords(source: string): CoverageRecord[] {
