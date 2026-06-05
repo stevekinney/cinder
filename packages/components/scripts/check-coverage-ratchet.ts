@@ -60,15 +60,17 @@ function isRatchetThreshold(value: number): boolean {
  * to a `.cinder-ssr-<pid>-<time>-<rand>.mjs` file next to the source, import it
  * for one render, then delete it. Bun still instruments these modules while
  * they are imported, so they land in the LCOV report even though they are not
- * library source — and at ~56% function coverage they drag the aggregate below
- * the real number (82% vs. a polluted 80.6%). They are not shippable code and
- * carry no coverage obligation, so exclude them from the ratchet aggregate.
+ * library source — and because they exercise only a fraction of each
+ * component's functions, they drag the aggregate below the real number. They
+ * are not shippable code and carry no coverage obligation, so exclude them from
+ * the ratchet aggregate.
  */
 function isTransientTestArtifact(file: string): boolean {
   // Matches the generated contract from server-render.ts / hydrate.ts:
-  // `.cinder-ssr-<pid>-<epoch-ms>-<base36 rand>.mjs`. Anchored to the final path
-  // segment (the leading `(?:^|/)` plus `[^/]*` end) so a real source file that
-  // merely has the prefix inside a directory name is never excluded.
+  // `.cinder-ssr-<pid>-<epoch-ms>-<base36 rand>.mjs`. The leading `(?:^|/)` and
+  // the trailing `$` anchor the match to the final path segment, so a real
+  // source file that merely has the prefix inside a directory name (e.g.
+  // `.cinder-ssr-…mjs/real.ts`) is never excluded.
   return /(?:^|\/)\.cinder-ssr-\d+-\d+-[a-z0-9]+\.mjs$/.test(file);
 }
 

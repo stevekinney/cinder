@@ -53,16 +53,22 @@ async function findOption(label: string): Promise<Element> {
 
 /**
  * Wait until the listbox has settled after an open/filter interaction — i.e.
- * at least one `[role="option"]` is present, or the explicit empty state is.
+ * at least one `[role="option"]` is present, or the empty state is *active*.
  * The listbox opens through a Svelte effect, so a synchronous read on the next
  * line after `fireEvent.focus`/`keyDown`/`input` can race the effect and see an
  * empty list; awaiting this first makes the subsequent synchronous queries safe.
+ *
+ * The empty-state `.cinder-combobox__empty` element is ALWAYS in the DOM (it is
+ * a permanent `role="status"` region for screen readers), so it can't be the
+ * settled signal on its own — it only carries `data-cinder-active` while the
+ * combobox is open with zero matches. Gate on that active marker, not mere
+ * presence, or the helper resolves on the first poll and de-races nothing.
  */
 async function waitForListbox(): Promise<void> {
   await waitFor(() => {
     const settled =
       document.body.querySelector('[role="option"]') !== null ||
-      document.body.querySelector('.cinder-combobox__empty') !== null;
+      document.body.querySelector('.cinder-combobox__empty[data-cinder-active]') !== null;
     if (!settled) throw new Error('listbox has not opened');
   });
 }
