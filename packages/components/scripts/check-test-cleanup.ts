@@ -1,39 +1,35 @@
 /**
  * Test-isolation policy guard (two rules).
  *
- * Rule 1 — cleanup: a test rendering via @testing-library/svelte that reads
- * shared global DOM must call cleanup() (see below).
- * Rule 2 — global restore: a test that overrides a process-global API
- * (ResizeObserver/IntersectionObserver/getComputedStyle/matchMedia/rAF…) at
- * module scope must save the original and restore it in afterAll/afterEach/
- * finally. The suite shares ONE Window across all files under --parallel=1, so
- * an unrestored override leaks the stub into every later test file — an ordering
- * landmine that passes today and detonates when file order shifts.
+ * The component suite runs every `*.test.ts` in ONE process under
+ * `bun test --parallel=1`, sharing a single happy-dom `Window`. Anything a test
+ * leaves mounted or any global it overrides without restoring bleeds into every
+ * later test file. This passes in isolation and ONLY fails in the full suite —
+ * exactly the class of CI-only flake that crashed `validate` and blocked the
+ * release pipeline (combobox, then dropdown). Two rules close it:
  *
- * Component tests render into the shared global `document.body` (the test
- * harness installs a single happy-dom Window for the whole suite, and the
- * common `render` wrapper returns `container: document.body`). If a test file
- * never calls `@testing-library/svelte`'s `cleanup()`, prior renders stay
- * mounted between tests, and reads of shared global state —
- * `document.activeElement`, `document.body.querySelector(...)` — pick up another
- * test's markup. This fails ONLY in the full suite (where ordering leaks state
- * across files), passes in isolation, and is therefore invisible locally and
- * only surfaces on CI — exactly the class of flake that crashed `validate` and
- * blocked the release pipeline (combobox, then dropdown).
+ *   Rule 1 — cleanup: a test that imports `@testing-library/svelte`, calls its
+ *   `render(`, and reads shared global DOM (`document.activeElement` /
+ *   `document.body`) MUST call `cleanup()` inside a teardown hook
+ *   (`afterEach`/`afterAll`). The render wrapper mounts into the shared
+ *   `document.body`; cleanup() unmounts it.
  *
- * The rule: any `*.test.ts` under `src/components/` that imports
- * `@testing-library/svelte`, calls its `render(`, AND reads shared global DOM
- * state (`document.activeElement` or `document.body`) MUST call `cleanup()`
- * somewhere. `cleanup()` belongs in an `afterEach` (often alongside other
- * teardown); this guard only checks that it is called, not where. Files that
- * drive Svelte's `mount`/`unmount` directly (managing their own target and
- * teardown) are out of scope — they don't use testing-library's shared-body
- * render, so the testing-library import requirement excludes them.
+ *   Rule 2 — global restore: a test that overrides a hazardous process-global
+ *   (ResizeObserver, getComputedStyle, matchMedia, …) at module scope MUST save
+ *   the original into a binding and assign that binding back inside a teardown
+ *   hook (or a `finally`). Restoring to a fresh stub, or not at all, still leaks.
  *
- * Whole-file matching (not line-based) so it survives Prettier reformatting.
- * Like the sibling `check-no-*` guards, oxlint can't express this, so it is a
- * standalone script wired into `bun run lint` (and therefore CI) via
- * `package.json`.
+ * Scope is the whole package `src/**` (not just `components/`) — the override
+ * hazard is not component-specific; `_internal`/utility tests share the same
+ * Window. Files that drive Svelte's `mount`/`unmount` directly (their own
+ * target + teardown, no testing-library) are out of Rule 1 via the
+ * testing-library-import requirement.
+ *
+ * Detection is text-based but structural: teardown-hook bodies are extracted by
+ * brace-matching so "called inside a hook" and "restored inside a hook" are
+ * actually enforced (not merely "the token appears somewhere"). Like the
+ * sibling `check-no-*` guards, oxlint can't express this, so it is a standalone
+ * script wired into `bun run lint` (and therefore CI) via `package.json`.
  */
 
 import { Glob } from 'bun';
@@ -42,45 +38,17 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const srcRoot = resolve(scriptDirectory, '..', 'src');
-const componentsRoot = resolve(srcRoot, 'components');
 const repoRoot = resolve(srcRoot, '..', '..', '..');
 
-// The guard targets the testing-library `render` idiom specifically: those
-// renders mount into the shared global `document.body` and are torn down by
-// `cleanup()`. Files that drive `mount`/`unmount` from `svelte` directly manage
-// their own target and lifecycle (and call `unmount()` themselves), so they are
-// out of scope — requiring a testing-library import keeps them out.
+// Rule 1 signals.
 const TESTING_LIBRARY_IMPORT_PATTERN = /@testing-library\/svelte/;
-
-// A testing-library render. The optional-chaining/await forms are covered by
-// the loose `\(`.
 const RENDER_PATTERN = /\brender\s*\(/;
-
-// Shared global DOM reads that cross-test pollution corrupts. `document.body`
-// also covers the `container: document.body` render-wrapper idiom.
 const GLOBAL_DOM_READ_PATTERN = /document\.(?:activeElement|body)\b/;
-
-// The fix: a call to testing-library's `cleanup()`.
 const CLEANUP_CALL_PATTERN = /\bcleanup\s*\(\s*\)/;
 
-// Process-global APIs that a test commonly overrides because happy-dom lacks
-// them or to control behavior. Overriding any of these at module scope without
-// restoring the original leaks the stub into EVERY later test file in the
-// single shared Window — an ordering landmine that passes today and detonates
-// when file order shifts. Each must be saved and restored (afterAll/afterEach/
-// finally). The capture group is the property name we then require to be
-// restored.
-const GLOBAL_OVERRIDE_PATTERNS: readonly RegExp[] = [
-  // `globalThis.X = ...` / `window.X = ...`
-  /\b(?:globalThis|window|navigator)\.(\w+)\s*=/g,
-  // `Object.defineProperty(globalThis, 'X', ...)` / (window, "X", ...)
-  /Object\.defineProperty\(\s*(?:globalThis|window|navigator)\s*,\s*['"](\w+)['"]/g,
-];
-
-// Properties that are reassigned all the time as ordinary local bookkeeping and
-// are NOT shared-global hazards (e.g. `window.location.href = …` reads through a
-// sub-object; `globalThis.foo` test scratch). We only police the known
-// cross-test-pollution surface — observers, layout/animation, media APIs.
+// Rule 2: a hazardous global overridden without a save+restore leaks into every
+// later file. We police the known cross-test-pollution surface only — observers,
+// layout/animation, and media APIs — not arbitrary `globalThis.foo` scratch.
 const HAZARDOUS_GLOBALS = new Set<string>([
   'ResizeObserver',
   'IntersectionObserver',
@@ -89,71 +57,155 @@ const HAZARDOUS_GLOBALS = new Set<string>([
   'matchMedia',
   'requestAnimationFrame',
   'cancelAnimationFrame',
-  'IntersectionObserverEntry',
 ]);
+
+const GLOBAL_TARGET = '(?:globalThis|window|navigator)';
+
+// An override of a hazardous global: `globalThis.X = …` or
+// `Object.defineProperty(globalThis, 'X', …)`.
+const OVERRIDE_PATTERNS: readonly RegExp[] = [
+  new RegExp(`\\b${GLOBAL_TARGET}\\.(\\w+)\\s*=`, 'g'),
+  new RegExp(`Object\\.defineProperty\\(\\s*${GLOBAL_TARGET}\\s*,\\s*['"](\\w+)['"]`, 'g'),
+];
 
 type Violation = { filePath: string; reason: string };
 
 /**
- * A global override is "restored" if the same property name is assigned back
- * inside a teardown context. We approximate this structurally: the property
- * appears in a second assignment (`X = original` / `globalThis.X = …`) AND the
- * file contains a teardown hook (`afterAll`/`afterEach`) or a `finally` block.
- * Over-permissive by design — the goal is to catch the "no restore anywhere"
- * landmine, not to prove the restore is perfectly correct.
+ * Extract teardown source: the argument list of every `afterEach(...)` /
+ * `afterAll(...)` call (matched by parentheses, so it covers every form —
+ * `afterEach(cleanup)`, `afterEach(() => cleanup())`, and
+ * `afterEach(() => { … })`) plus the body of every `finally { … }` block
+ * (matched by braces). Returns the concatenation so callers can check whether a
+ * token actually lives inside a teardown context (not in a test, a comment, or
+ * an uncalled helper).
  */
-function isRestored(source: string, property: string): boolean {
-  // The restore must live in a teardown context, AND it must re-assign the
-  // property back. We look for a plain `globalThis.X = …` / `window.X = …`
-  // assignment that sits inside an afterAll/afterEach/finally block. (The
-  // override itself may be a plain assignment OR an Object.defineProperty — we
-  // don't count it here; we only need to confirm a restore exists.)
-  const restoreAssignment = `(?:globalThis|window|navigator)\\.${property}\\s*=`;
-  const teardownWithRestore = new RegExp(
-    // after(All|Each)( … X = … )  — non-greedy across the hook body
-    `\\bafter(?:All|Each)\\s*\\([\\s\\S]*?${restoreAssignment}[\\s\\S]*?\\)` +
-      // …or a finally block that restores
-      `|\\bfinally\\s*\\{[\\s\\S]*?${restoreAssignment}`,
-  );
-  return teardownWithRestore.test(source);
+function extractTeardownBodies(source: string): string {
+  const bodies: string[] = [];
+
+  const sliceMatched = (openIndex: number, open: string, close: string): number => {
+    let depth = 0;
+    for (let index = openIndex; index < source.length; index += 1) {
+      const char = source[index];
+      if (char === open) depth += 1;
+      else if (char === close) {
+        depth -= 1;
+        if (depth === 0) {
+          bodies.push(source.slice(openIndex, index + 1));
+          return index + 1;
+        }
+      }
+    }
+    return source.length;
+  };
+
+  // `afterEach(...)` / `afterAll(...)` — match the parenthesised argument list,
+  // which contains the callback in any form (reference, concise arrow, block).
+  const hookCall = /\bafter(?:Each|All)\s*\(/g;
+  for (let match = hookCall.exec(source); match !== null; match = hookCall.exec(source)) {
+    const parenIndex = source.indexOf('(', match.index);
+    if (parenIndex !== -1) sliceMatched(parenIndex, '(', ')');
+  }
+
+  // `finally { ... }` — match the block body.
+  const finallyBlock = /\bfinally\b/g;
+  for (let match = finallyBlock.exec(source); match !== null; match = finallyBlock.exec(source)) {
+    const braceIndex = source.indexOf('{', match.index);
+    if (braceIndex !== -1) sliceMatched(braceIndex, '{', '}');
+  }
+
+  return bodies.join('\n');
 }
 
-function findCleanupViolations(source: string): string | null {
+function findCleanupViolation(source: string): string | null {
   const rendersIntoSharedDom =
     TESTING_LIBRARY_IMPORT_PATTERN.test(source) &&
     RENDER_PATTERN.test(source) &&
     GLOBAL_DOM_READ_PATTERN.test(source);
   if (!rendersIntoSharedDom) return null;
-  if (CLEANUP_CALL_PATTERN.test(source)) return null;
-  return 'renders into shared document.body but never calls cleanup()';
+
+  // cleanup() must live inside a teardown hook, not anywhere in the file.
+  if (CLEANUP_CALL_PATTERN.test(extractTeardownBodies(source))) return null;
+  return 'renders into shared document.body but never calls cleanup() in a teardown hook';
 }
 
-function findGlobalOverrideViolations(source: string): string | null {
+/**
+ * Identifiers in `source` that hold the saved original of `<global>.property`,
+ * captured BEFORE the override — i.e. `const originalX = globalThis.X` /
+ * `window.getComputedStyle.bind(window)` / a `getOwnPropertyDescriptor` save.
+ * The teardown restore must assign one of THESE back; restoring to a fresh stub
+ * (or to the stub's own name) doesn't count. Without this binding-set the regex
+ * could only prove "assigned to some identifier", which Codex correctly flagged
+ * as nearly meaningless.
+ */
+function savedOriginalBindings(source: string, property: string): Set<string> {
+  const bindings = new Set<string>();
+  // `const original = globalThis.X` (optionally `.bind(...)`), or saved via
+  // `Object.getOwnPropertyDescriptor(globalThis, 'X')`.
+  const captures = [
+    new RegExp(
+      `\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*${GLOBAL_TARGET}\\.${property}\\b`,
+      'g',
+    ),
+    new RegExp(
+      `\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*Object\\.getOwnPropertyDescriptor\\(\\s*${GLOBAL_TARGET}\\s*,\\s*['"]${property}['"]`,
+      'g',
+    ),
+  ];
+  for (const capture of captures) {
+    for (const match of source.matchAll(capture)) {
+      if (match[1]) bindings.add(match[1]);
+    }
+  }
+  return bindings;
+}
+
+/**
+ * A hazardous global is restored when a teardown body assigns it back to one of
+ * the saved-original bindings captured before the override:
+ * `globalThis.X = originalX` or
+ * `Object.defineProperty(globalThis, 'X', originalDescriptor)`. Restoring to a
+ * fresh stub or to the stub's own identifier does NOT count — that re-leaks.
+ */
+function isRestoredInTeardown(source: string, teardown: string, property: string): boolean {
+  const bindings = savedOriginalBindings(source, property);
+  if (bindings.size === 0) return false;
+  const identifiers = [...bindings].map((name) => name.replace(/[$]/g, '\\$$')).join('|');
+  const plainRestore = new RegExp(`${GLOBAL_TARGET}\\.${property}\\s*=\\s*(?:${identifiers})\\b`);
+  const definePropertyRestore = new RegExp(
+    `Object\\.defineProperty\\(\\s*${GLOBAL_TARGET}\\s*,\\s*['"]${property}['"]\\s*,\\s*(?:${identifiers})\\b`,
+  );
+  return plainRestore.test(teardown) || definePropertyRestore.test(teardown);
+}
+
+function findGlobalOverrideViolation(source: string): string | null {
+  const teardown = extractTeardownBodies(source);
   const unrestored = new Set<string>();
-  for (const pattern of GLOBAL_OVERRIDE_PATTERNS) {
+
+  for (const pattern of OVERRIDE_PATTERNS) {
     for (const match of source.matchAll(pattern)) {
       const property = match[1];
       if (!property || !HAZARDOUS_GLOBALS.has(property)) continue;
-      if (!isRestored(source, property)) unrestored.add(property);
+      if (!isRestoredInTeardown(source, teardown, property)) unrestored.add(property);
     }
   }
+
   if (unrestored.size === 0) return null;
-  return `overrides global ${[...unrestored].join(', ')} without restoring the original`;
+  return `overrides global ${[...unrestored].join(', ')} without restoring the saved original in a teardown hook`;
 }
 
 async function scan(): Promise<Violation[]> {
   const violations: Violation[] = [];
   const glob = new Glob('**/*.test.ts');
 
-  for await (const relativePath of glob.scan({ cwd: componentsRoot })) {
-    const absolutePath = resolve(componentsRoot, relativePath);
+  for await (const relativePath of glob.scan({ cwd: srcRoot })) {
+    const absolutePath = resolve(srcRoot, relativePath);
     const source = await Bun.file(absolutePath).text();
     const filePath = relative(repoRoot, absolutePath);
 
-    const cleanupReason = findCleanupViolations(source);
+    const cleanupReason = findCleanupViolation(source);
     if (cleanupReason) violations.push({ filePath, reason: cleanupReason });
 
-    const overrideReason = findGlobalOverrideViolations(source);
+    const overrideReason = findGlobalOverrideViolation(source);
     if (overrideReason) violations.push({ filePath, reason: overrideReason });
   }
 
@@ -170,16 +222,16 @@ async function main(): Promise<void> {
   }
 
   process.stderr.write(
-    'check-test-cleanup — test-isolation hazard(s) detected. Each component test shares one\n' +
-      'process-global Window (--parallel=1), so un-torn-down state leaks into later test files\n' +
-      'and flakes on CI. Two rules:\n\n' +
+    'check-test-cleanup — test-isolation hazard(s) detected. The suite shares one process-\n' +
+      'global Window (--parallel=1), so un-torn-down state leaks into later test files and\n' +
+      'flakes on CI. Two rules:\n\n' +
       '  1. A test that renders via @testing-library/svelte and reads document.activeElement/\n' +
-      '     document.body MUST call cleanup() in an afterEach.\n' +
+      '     document.body MUST call cleanup() inside an afterEach/afterAll.\n' +
       '  2. A test that overrides a global (ResizeObserver, getComputedStyle, matchMedia, …)\n' +
-      '     MUST save the original and restore it in afterAll/afterEach/finally.\n\n' +
-      '  const original = globalThis.ResizeObserver;\n' +
-      '  globalThis.ResizeObserver = Stub;\n' +
-      '  afterAll(() => { globalThis.ResizeObserver = original; });\n\n',
+      '     MUST save the original and assign it back inside a teardown hook:\n\n' +
+      '       const original = globalThis.ResizeObserver;\n' +
+      '       globalThis.ResizeObserver = Stub;\n' +
+      '       afterAll(() => { globalThis.ResizeObserver = original; });\n\n',
   );
   for (const violation of violations) {
     process.stderr.write(`  ${violation.filePath} — ${violation.reason}\n`);

@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -49,7 +49,9 @@ function fileEditViewMenus(onOpenRecent = () => {}) {
 }
 
 describe('MenuBar', () => {
-  beforeEach(() => {
+  // Unmount AFTER each test so the last test's render doesn't leak into the next
+  // file (cleanup() in beforeEach never runs after the final test).
+  afterEach(() => {
     cleanup();
   });
 
