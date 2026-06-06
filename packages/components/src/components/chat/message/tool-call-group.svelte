@@ -182,10 +182,16 @@
   /* Focus: ring travels via box-shadow, not outline, so it sits inside the
    * card's colored border instead of doubling up on top of it. */
   .tool-call-header:focus-visible {
-    /* cinder-focus-ring-owner: parent — this header self-owns its inset
-       box-shadow ring; the outline is intentionally suppressed. */
-    outline: none;
-    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-tool-call-header-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .tool-call-header:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .tool-call-icon {
