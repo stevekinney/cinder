@@ -3,7 +3,12 @@ import path from 'node:path';
 
 const tagArg = process.argv.find((arg) => arg.startsWith('--tag='));
 const explicitTag = tagArg ? tagArg.slice('--tag='.length) : undefined;
-const refTag = process.env['GITHUB_REF_NAME'] ?? process.env['TAG_NAME'] ?? '';
+// `TAG_NAME` is the deliberate, workflow-supplied tag and must win over
+// `GITHUB_REF_NAME`. On a `workflow_dispatch` run `GITHUB_REF_NAME` is the
+// dispatch ref (the branch, e.g. `main`), NOT the release tag — so preferring it
+// would always fail the version check even though the workflow checked out the
+// correct `refs/tags/vX.Y.Z` and passed `TAG_NAME` explicitly.
+const refTag = process.env['TAG_NAME'] ?? process.env['GITHUB_REF_NAME'] ?? '';
 const tag = explicitTag ?? refTag;
 
 if (!tag) {
