@@ -1,10 +1,14 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  let { children }: { children?: Snippet } = $props();
+  let {
+    children,
+    variant = 'neutral',
+    size = 'md',
+  }: { children?: Snippet; variant?: string; size?: string } = $props();
 </script>
 
-<span>
+<span data-variant={variant} data-size={size}>
   {#if children !== undefined}
     {@render children()}
   {/if}

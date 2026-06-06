@@ -18,6 +18,7 @@
  *   GET /example-src/:name/:scenario → raw .example.svelte source
  *   GET /events        → Server-Sent Events stream for live reload
  *   GET /ping          → health check ("pong")
+ *   GET /ready         → warmed-bundle readiness check ("ready")
  *
  * A file watcher on `src/` triggers a reload event to all connected SSE clients
  * whenever a file changes. Use `triggerReload()` directly in tests.
@@ -1305,6 +1306,12 @@ export async function handleRequest(request: Request): Promise<Response> {
   // GET /ping
   if (pathname === '/ping') {
     return new Response('pong', { headers: { 'Content-Type': 'text/plain' } });
+  }
+
+  // GET /ready
+  if (pathname === '/ready') {
+    await awaitWarmCache();
+    return new Response('ready', { headers: { 'Content-Type': 'text/plain' } });
   }
 
   // GET /events

@@ -5,6 +5,7 @@ import { analyzeComponent } from './analyze.ts';
 import { validateComponentDocumentationPayload } from './component-documentation-reference.ts';
 import {
   buildComponentDocumentation,
+  loadPackageManifestForDocumentation,
   renderReadmeDocumentation,
 } from './component-documentation.ts';
 import type { ComponentManifest } from './types.ts';
@@ -40,6 +41,16 @@ describe('buildComponentDocumentation', () => {
 
     expect(payload.variables).toEqual(['--cinder-avatar-group-overlap']);
     expect(payload.rawArtifacts.variables).toEqual(['--cinder-avatar-group-overlap']);
+  });
+
+  it('reloads the package manifest for each documentation build request', async () => {
+    const first = await loadPackageManifestForDocumentation();
+    const second = await loadPackageManifestForDocumentation();
+
+    expect(second).not.toBe(first);
+    expect(second.components.map((component) => component.id)).toEqual(
+      first.components.map((component) => component.id),
+    );
   });
 
   it('renders generated README tag references without marking the README unsafe', () => {

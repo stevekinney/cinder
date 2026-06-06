@@ -172,7 +172,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     try {
       const page = await context.newPage();
 
-      await page.goto('/page/button', { waitUntil: 'load' });
+      await page.goto('/page/button?tab=examples', { waitUntil: 'load' });
       // Prove the browser is actually emulating LIGHT (so light-dark() resolves to
       // the light arm). `getComputedStyle(documentElement).colorScheme` returns the
       // AUTHORED `color-scheme: light dark` regardless of emulation, so it is a
@@ -202,7 +202,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       ).toBeGreaterThanOrEqual(0.03);
 
       // surface vs inset, measured off the Table (body = surface, header = inset).
-      await page.goto('/page/table', { waitUntil: 'load' });
+      await page.goto('/page/table?tab=examples', { waitUntil: 'load' });
       const surfaceL = await paintedL(page, '.cinder-table', 'backgroundColor');
       const insetL = await paintedL(page, '.cinder-table__header', 'backgroundColor');
       expect(
@@ -226,7 +226,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     const context = await browser.newContext({ colorScheme: 'light', reducedMotion: 'reduce' });
     try {
       const page = await context.newPage();
-      await page.goto('/page/button', { waitUntil: 'load' });
+      await page.goto('/page/button?tab=examples', { waitUntil: 'load' });
 
       const secondarySelector = ".cinder-button[data-cinder-variant='secondary']";
       const fillL = await paintedL(page, secondarySelector, 'backgroundColor');
@@ -262,7 +262,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     const context = await browser.newContext({ colorScheme: 'light', reducedMotion: 'reduce' });
     try {
       const page = await context.newPage();
-      await page.goto('/page/button', { waitUntil: 'load' });
+      await page.goto('/page/button?tab=examples', { waitUntil: 'load' });
 
       const primarySelector = ".cinder-button[data-cinder-variant='primary']";
       const accent = await paintedOklch(page, primarySelector, 'backgroundColor');
@@ -306,7 +306,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     const context = await browser.newContext({ colorScheme: 'light', reducedMotion: 'reduce' });
     try {
       const page = await context.newPage();
-      await page.goto('/page/table', { waitUntil: 'load' });
+      await page.goto('/page/table?tab=examples', { waitUntil: 'load' });
 
       const bodyL = await paintedL(page, '.cinder-table', 'backgroundColor');
       const headerL = await paintedL(page, '.cinder-table__header', 'backgroundColor');
@@ -336,8 +336,8 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       const lightPage = await lightContext.newPage();
       const darkPage = await darkContext.newPage();
       await Promise.all([
-        lightPage.goto('/page/button', { waitUntil: 'load' }),
-        darkPage.goto('/page/button', { waitUntil: 'load' }),
+        lightPage.goto('/page/button?tab=examples', { waitUntil: 'load' }),
+        darkPage.goto('/page/button?tab=examples', { waitUntil: 'load' }),
       ]);
 
       const primarySelector = ".cinder-button[data-cinder-variant='primary']";

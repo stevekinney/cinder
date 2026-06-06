@@ -124,7 +124,9 @@ export function schemaPropertyNames(schema: JsonValue): string[] {
   if (!isObject(schema)) return [];
   const properties = schema['properties'];
   if (!isObject(properties)) return [];
-  return Object.keys(properties).toSorted((a, b) => a.localeCompare(b));
+  const propertyNames = Object.keys(properties);
+  propertyNames.sort((a, b) => a.localeCompare(b));
+  return propertyNames;
 }
 
 export function schemaRequiredPropertyNames(schema: JsonValue): string[] {

@@ -8,24 +8,40 @@ import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playgroun
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
 const repoRoot = resolvePath(here, '../../..');
+const playgroundBundleDependencyPackages = [
+  '@cinder/diff',
+  '@cinder/markdown',
+  '@cinder/editor',
+  '@cinder/commentary',
+] as const;
 // Probe the cheap liveness endpoint first. `/api/manifest` does real work and
 // can lag behind initial server readiness, which makes local startup look hung
 // even though the playground is already accepting requests.
-const readinessPath = '/ping';
+const livenessPath = '/ping';
+const warmReadinessPath = '/ready';
 const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 let targetPlaygroundUrl = PLAYGROUND_URL;
 const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
 const PLAYGROUND_READY_TIMEOUT_MS = 240_000;
+const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;
+const PLAYGROUND_WARM_READINESS_DELAY_MS = 500;
 
-async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolean> {
+async function playgroundPathResponds(
+  path: string,
+  playgroundUrl: string = targetPlaygroundUrl,
+): Promise<boolean> {
   try {
-    const response = await fetch(playgroundUrl + readinessPath, {
+    const response = await fetch(playgroundUrl + path, {
       signal: AbortSignal.timeout(PLAYGROUND_PORT_PROBE_TIMEOUT_MS),
     });
     return response.ok;
   } catch {
     return false;
   }
+}
+
+async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolean> {
+  return playgroundPathResponds(livenessPath, playgroundUrl);
 }
 
 export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
@@ -75,6 +91,63 @@ function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
   });
 }
 
+export function playgroundBundleDependencyBuildArguments(packageName: string): string[] {
+  return ['run', `--filter=${packageName}`, 'build'];
+}
+
+export function playgroundBundleDependencyBuildPackages(): readonly string[] {
+  return playgroundBundleDependencyPackages;
+}
+
+export function playgroundWarmReadinessEndpointPath(): string {
+  return warmReadinessPath;
+}
+
+async function waitForWarmPlayground(): Promise<void> {
+  const startedAt = Date.now();
+  const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
+  let stableReadinessReads = 0;
+  let lastLog = startedAt;
+
+  while (Date.now() < deadline) {
+    if (await playgroundPathResponds(warmReadinessPath)) {
+      stableReadinessReads += 1;
+      if (stableReadinessReads >= PLAYGROUND_WARM_READINESS_STABLE_READS) return;
+    } else {
+      stableReadinessReads = 0;
+    }
+
+    if (Date.now() - lastLog >= 10_000) {
+      const elapsed = Math.round((Date.now() - startedAt) / 1000);
+      console.log(`Waiting for warm playground bundle cache (${elapsed}s elapsed)...`);
+      lastLog = Date.now();
+    }
+
+    await new Promise<void>((resolve) => setTimeout(resolve, PLAYGROUND_WARM_READINESS_DELAY_MS));
+  }
+
+  throw new Error(
+    `Playground server did not report a warm bundle cache within ${Math.round(
+      PLAYGROUND_READY_TIMEOUT_MS / 1000,
+    )}s at ${targetPlaygroundUrl}${warmReadinessPath}.`,
+  );
+}
+
+async function buildPlaygroundBundleDependencies(): Promise<void> {
+  console.log('Building playground bundle dependencies...');
+  for (const packageName of playgroundBundleDependencyPackages) {
+    const buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
+      cwd: repoRoot,
+      stdio: 'inherit',
+      env: process.env,
+    });
+    const buildCode = await waitForExit(buildProcess);
+    if (buildCode !== 0) {
+      throw new Error(`${packageName} build exited with code ${buildCode}`);
+    }
+  }
+}
+
 const isLocalDefault = isLocalDefaultPlaygroundUrl(PLAYGROUND_URL);
 
 async function main(): Promise<void> {
@@ -104,6 +177,7 @@ async function main(): Promise<void> {
     process.exit(1);
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
+    await buildPlaygroundBundleDependencies();
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
     let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
@@ -209,6 +283,13 @@ async function main(): Promise<void> {
   if (prepCode !== 0) {
     cleanup();
     process.exit(prepCode);
+  }
+
+  try {
+    await waitForWarmPlayground();
+  } catch (error) {
+    cleanup();
+    throw error;
   }
 
   const playwright = spawn('bunx', ['playwright', 'test', ...args], {

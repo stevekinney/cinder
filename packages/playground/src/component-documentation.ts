@@ -59,8 +59,6 @@ export class ComponentDocumentationError extends Error {
   }
 }
 
-let packageManifestCache: PackageManifest | null = null;
-
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -140,8 +138,7 @@ function isPackageManifest(value: unknown): value is PackageManifest {
   );
 }
 
-async function loadPackageManifest(): Promise<PackageManifest> {
-  if (packageManifestCache !== null) return packageManifestCache;
+export async function loadPackageManifestForDocumentation(): Promise<PackageManifest> {
   const raw: unknown = await Bun.file(COMPONENTS_MANIFEST_PATH).json();
   if (!isPackageManifest(raw)) {
     throw new ComponentDocumentationError(
@@ -149,8 +146,7 @@ async function loadPackageManifest(): Promise<PackageManifest> {
       'packages/components/components.json does not match the documentation manifest shape',
     );
   }
-  packageManifestCache = raw;
-  return packageManifestCache;
+  return raw;
 }
 
 async function readRequiredText(path: string, label: string): Promise<string> {
@@ -293,7 +289,7 @@ export async function buildComponentDocumentation(
   componentName: string,
   propsManifest: ComponentManifest,
 ): Promise<ComponentDocumentationPayload> {
-  const packageManifest = await loadPackageManifest();
+  const packageManifest = await loadPackageManifestForDocumentation();
   const entry = packageManifest.components.find((component) => component.id === componentName);
   if (entry === undefined) {
     throw new ComponentDocumentationError(

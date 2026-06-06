@@ -208,6 +208,37 @@ describe('component-page documentation tabs', () => {
 
     await screen.findByText('Fixture purpose for a documentation page.');
     expect(screen.getByText('Rendered README body.')).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Overview' })).toBeNull();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Button' })).toBeTruthy();
+
+    unmount();
+    await tick();
+  });
+
+  test('maps non-stable component status to a non-success badge variant', async () => {
+    const betaFixture: ComponentDocumentationPayload = {
+      ...documentationFixture,
+      component: {
+        ...documentationFixture.component,
+        status: 'beta',
+        statusDescription: 'API is near-final but may change before promotion.',
+      },
+    };
+    globalThis.fetch = (async (url: string | URL | Request) => {
+      const href = url instanceof Request ? url.url : String(url);
+      if (href === '/api/documentation/button') {
+        return new Response(JSON.stringify(betaFixture), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response('not found', { status: 404, statusText: 'Not Found' });
+    }) as typeof fetch;
+
+    const { unmount } = render(ComponentPage);
+
+    const statusBadge = await screen.findByText('beta');
+    expect(statusBadge.getAttribute('data-variant')).toBe('info');
 
     unmount();
     await tick();
@@ -250,6 +281,47 @@ describe('component-page documentation tabs', () => {
     expect(document.getElementById('tabpanel-examples')?.hasAttribute('hidden')).toBe(false);
     expect(document.getElementById('tabpanel-overview')?.hasAttribute('hidden')).toBe(true);
     expect(document.getElementById('example-mount-primary')).toBeTruthy();
+
+    unmount();
+    await tick();
+  });
+
+  test('opens a requested documentation tab from the tab query parameter', async () => {
+    const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
+    happyWindow.happyDOM.setURL('http://localhost/page/button?tab=examples');
+    Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
+    Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
+
+    const { unmount } = render(ComponentPage);
+    await tick();
+
+    expect(screen.getByRole('tab', { name: 'Examples' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    expect(document.getElementById('tabpanel-examples')?.hasAttribute('hidden')).toBe(false);
+    expect(document.getElementById('tabpanel-overview')?.hasAttribute('hidden')).toBe(true);
+
+    unmount();
+    await tick();
+  });
+
+  test('supports ARIA tab keyboard navigation', async () => {
+    const { unmount } = render(ComponentPage);
+    await screen.findByText('Fixture purpose for a documentation page.');
+
+    const overview = screen.getByRole('tab', { name: 'Overview' });
+    const examples = screen.getByRole('tab', { name: 'Examples' });
+    const rawArtifacts = screen.getByRole('tab', { name: 'Raw Artifacts' });
+
+    overview.focus();
+    await fireEvent.keyDown(overview, { key: 'ArrowRight' });
+    expect(examples.getAttribute('aria-selected')).toBe('true');
+
+    await fireEvent.keyDown(examples, { key: 'End' });
+    expect(rawArtifacts.getAttribute('aria-selected')).toBe('true');
+
+    await fireEvent.keyDown(rawArtifacts, { key: 'Home' });
+    expect(overview.getAttribute('aria-selected')).toBe('true');
 
     unmount();
     await tick();

@@ -38,6 +38,7 @@
     | 'styling'
     | 'constraints'
     | 'raw-artifacts';
+  type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
   type ConstraintRuleSummary = {
     id: string;
     severity: string | undefined;
@@ -73,10 +74,15 @@
   const componentName: string =
     window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
 
+  function isDocumentationTabId(value: string | null): value is DocumentationTabId {
+    return value !== null && documentationTabs.some((tab) => tab.id === value);
+  }
+
   function initialDocumentationTab(): DocumentationTabId {
-    return new URLSearchParams(window.location.search).get('snapshot') === '1'
-      ? 'examples'
-      : 'overview';
+    const searchParams = new URLSearchParams(window.location.search);
+    const requestedTab = searchParams.get('tab');
+    if (isDocumentationTabId(requestedTab)) return requestedTab;
+    return searchParams.get('snapshot') === '1' ? 'examples' : 'overview';
   }
 
   let activeTab: DocumentationTabId = $state(initialDocumentationTab());
@@ -302,8 +308,62 @@
     return JSON.stringify(value, null, 2);
   }
 
+  function focusTab(tab: DocumentationTabId): void {
+    requestAnimationFrame(() => document.getElementById(`tab-${tab}`)?.focus());
+  }
+
   function selectTab(tab: DocumentationTabId): void {
     activeTab = tab;
+  }
+
+  function selectAndFocusTab(tab: DocumentationTabId): void {
+    activeTab = tab;
+    focusTab(tab);
+  }
+
+  function onDocumentationTabKeydown(event: KeyboardEvent): void {
+    const currentIndex = documentationTabs.findIndex((tab) => tab.id === activeTab);
+    if (currentIndex === -1) return;
+
+    const lastIndex = documentationTabs.length - 1;
+    let nextIndex: number | null = null;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        nextIndex = currentIndex === 0 ? lastIndex : currentIndex - 1;
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = lastIndex;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    selectAndFocusTab(documentationTabs[nextIndex]!.id);
+  }
+
+  function statusBadgeVariant(status: string): BadgeVariant {
+    switch (status) {
+      case 'stable':
+        return 'success';
+      case 'beta':
+        return 'info';
+      case 'alpha':
+        return 'warning';
+      case 'domain-suite':
+        return 'neutral';
+      default:
+        return 'neutral';
+    }
   }
 
   // Fetch the documentation payload once. componentName is non-reactive, so
@@ -346,6 +406,7 @@
         aria-controls="tabpanel-{tab.id}"
         tabindex={activeTab === tab.id ? 0 : -1}
         onclick={() => selectTab(tab.id)}
+        onkeydown={onDocumentationTabKeydown}
       >
         {tab.label}
       </button>
@@ -373,7 +434,6 @@
       {:else if documentation !== null}
         <div class="overview-layout">
           <div class="overview-main">
-            <h2>Overview</h2>
             <p class="overview-purpose">{documentation.component.purpose}</p>
             <div class="readme-content" aria-label="{documentation.component.name} README">
               {@html documentation.readme.html}
@@ -384,7 +444,9 @@
               <div>
                 <dt>Status</dt>
                 <dd>
-                  <Badge variant="success" size="sm">{documentation.component.status}</Badge>
+                  <Badge variant={statusBadgeVariant(documentation.component.status)} size="sm">
+                    {documentation.component.status}
+                  </Badge>
                   {#if documentation.component.statusDescription !== ''}
                     <span>{documentation.component.statusDescription}</span>
                   {/if}
@@ -581,7 +643,7 @@
         {#if propRows.length === 0}
           <p class="props-empty">This component has no documented props.</p>
         {:else}
-          <div class="props-table-scroll" tabindex="0">
+          <div class="props-table-scroll" role="region" aria-labelledby="props-heading">
             <Table caption={`Props for ${componentName}`} density="condensed">
               <Table.Header>
                 <Table.Row>

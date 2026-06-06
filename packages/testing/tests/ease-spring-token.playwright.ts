@@ -21,7 +21,7 @@ const SPRING_CUBIC_BEZIER = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 
 test.describe('--cinder-ease-spring token', () => {
   test('resolves on the modal element and drives a non-default timing curve', async ({ page }) => {
-    await page.goto('/page/modal', { waitUntil: 'load' });
+    await page.goto('/page/modal?tab=examples', { waitUntil: 'load' });
 
     // The basic example renders a trigger button that opens a generic modal
     // (an "Invite teammate" form); click it to open the modal.

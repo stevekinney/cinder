@@ -9,7 +9,8 @@ test.describe('playground component documentation', () => {
       await expect(preview.getByRole('tab', { name: tabName })).toBeVisible();
     }
 
-    await expect(preview.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(preview.getByRole('heading', { name: 'Button' })).toBeVisible();
+    await expect(preview.getByRole('heading', { name: 'Overview' })).toHaveCount(0);
     await preview.getByRole('tab', { name: 'API' }).click();
     await expect(preview.getByRole('heading', { name: 'API' })).toBeVisible();
     await expect(preview.getByRole('heading', { name: 'JSON Schema' })).toBeVisible();

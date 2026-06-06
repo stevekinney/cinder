@@ -4,6 +4,9 @@ import {
   appendServerOutputBuffer,
   localPlaygroundUrlForReportedPort,
   parsePlaygroundListeningPort,
+  playgroundBundleDependencyBuildArguments,
+  playgroundBundleDependencyBuildPackages,
+  playgroundWarmReadinessEndpointPath,
 } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
@@ -64,5 +67,30 @@ describe('appendServerOutputBuffer', () => {
 
     expect(buffer.length).toBe(4096);
     expect(buffer.endsWith('done')).toBe(true);
+  });
+});
+
+describe('playground bundle dependency build preflight', () => {
+  test('builds every private package the playground browser bundle resolves through dist', () => {
+    expect(playgroundBundleDependencyBuildPackages()).toEqual([
+      '@cinder/diff',
+      '@cinder/markdown',
+      '@cinder/editor',
+      '@cinder/commentary',
+    ]);
+  });
+
+  test('build arguments use Bun workspace filters', () => {
+    expect(playgroundBundleDependencyBuildArguments('@cinder/markdown')).toEqual([
+      'run',
+      '--filter=@cinder/markdown',
+      'build',
+    ]);
+  });
+});
+
+describe('warm playground readiness', () => {
+  test('waits on the warmed-bundle readiness endpoint before Playwright starts', () => {
+    expect(playgroundWarmReadinessEndpointPath()).toBe('/ready');
   });
 });

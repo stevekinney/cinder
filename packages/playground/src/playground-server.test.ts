@@ -174,6 +174,15 @@ describe('/ping', () => {
   });
 });
 
+describe('/ready', () => {
+  it('returns 200 ready after the warm bundle cache has settled', async () => {
+    const response = await handleRequest(req('/ready'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/plain');
+    expect(await response.text()).toBe('ready');
+  });
+});
+
 describe('/styles.css', () => {
   it('returns 200 with text/css when src/styles/index.css exists', async () => {
     const response = await handleRequest(req('/styles.css'));
