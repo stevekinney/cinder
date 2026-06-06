@@ -241,22 +241,27 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     }
   });
 
-  // 3. Primary accent vividness floor + AA safety.
+  // 3. Primary accent legibility floor + AA safety.
   //
-  //    Design decision (89d25073): match dark mode's ENERGY, not just its
-  //    contrast. The light accent is pushed UP to a bright cyan
-  //    oklch(0.72 0.20 195) so the primary button glows on the white page
-  //    instead of reading as a muted dark-teal; the on-accent text flips to a
-  //    dark ink (--cinder-accent-contrast light arm) so it stays readable.
-  //    Chromium serializes the painted accent back as the authored OKLCH, so
-  //    the floors read the nominal components directly:
-  //      - L ≥ 0.65   (pre-fix darken-direction 0.42-0.45 fails) — bright fill.
-  //      - C ≥ 0.18   (pre-fix 0.14 fails) — more vivid.
-  //    The brightened fill must NOT break on-accent contrast: whatever
-  //    --cinder-accent-contrast resolves to (dark ink on the bright fill) must
-  //    clear WCAG AA (≥ 4.5:1). The assertion reads the PAINTED bg + text, so
-  //    it stays correct regardless of which way the text flips.
-  test('primary accent is a bright, vivid cyan that still clears WCAG AA on its label', async ({
+  //    Design decision (89d25073, revised): the light accent is now a darker,
+  //    more ink-like cyan oklch(0.66 0.16 195) that reads more like ink than a
+  //    glow. The previous bright cyan (L=0.72, C=0.20) reached only ~2:1 as a
+  //    foreground; the darkened fill improves that to ~2.7:1 but still does NOT
+  //    clear the 3:1 UI floor, so foreground text/icon use keeps the dedicated
+  //    --cinder-accent-text token — this token remains a FILL. The calmed chroma
+  //    stops the cyan from vibrating against the white page. The
+  //    dark-mode arm stays bright (L=0.78) for energy parity across themes; the
+  //    on-accent text flips to a dark ink (--cinder-accent-contrast light arm)
+  //    so it stays readable. These floors read the PAINTED components (after
+  //    Chromium's sRGB gamut clipping), so they sit a clipping margin BELOW the
+  //    authored value — painted L/C can dip under the authored numbers:
+  //      - L ≥ 0.60   (clipping margin; authored 0.66) — darker, ink-like fill.
+  //      - C ≥ 0.14   (clipping margin; authored 0.16) — moderately saturated.
+  //    The painted fill must NOT break on-accent contrast: whatever
+  //    --cinder-accent-contrast resolves to (dark ink on the fill) must clear
+  //    WCAG AA (≥ 4.5:1). The assertion reads the PAINTED bg + text, so it stays
+  //    correct regardless of which way the text flips.
+  test('primary accent is a darker, ink-like cyan that still clears WCAG AA on its label', async ({
     browser,
   }) => {
     const context = await browser.newContext({ colorScheme: 'light', reducedMotion: 'reduce' });
@@ -267,15 +272,14 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       const primarySelector = ".cinder-button[data-cinder-variant='primary']";
       const accent = await paintedOklch(page, primarySelector, 'backgroundColor');
 
-      expect(accent.L, 'primary accent must be a bright fill in light mode').toBeGreaterThanOrEqual(
-        0.65,
-      );
-      expect(accent.C, 'primary accent must be a vivid, saturated cyan').toBeGreaterThanOrEqual(
-        0.18,
-      );
+      expect(
+        accent.L,
+        'primary accent must be a darker, ink-like fill in light mode',
+      ).toBeGreaterThanOrEqual(0.6);
+      expect(accent.C, 'primary accent must be moderately saturated').toBeGreaterThanOrEqual(0.14);
 
       // The label color IS the --cinder-accent-contrast token (dark ink on the
-      // bright fill in light mode). Read both off the painted element so the
+      // ink-like fill in light mode). Read both off the painted element so the
       // contrast check holds whichever way the text flips.
       const ratio = await page
         .locator(primarySelector)
@@ -287,9 +291,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
           return helpers.contrastRatio(style.backgroundColor, style.color) as number;
         }, WCAG_CONTRAST_FN);
 
-      expect(ratio, 'the label on the brightened accent must clear WCAG AA').toBeGreaterThanOrEqual(
-        4.5,
-      );
+      expect(ratio, 'the label on the accent fill must clear WCAG AA').toBeGreaterThanOrEqual(4.5);
     } finally {
       await context.close();
     }
@@ -356,8 +358,8 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       const darkAccent = await paintedOklch(darkPage, primarySelector, 'backgroundColor');
 
       // Both themes carry a genuinely saturated cyan accent — neither collapses
-      // to a neutral grey (C ≈ 0). The light arm is the dark/vivid fill; the
-      // dark arm is the high-lightness fill. The shared floor proves the
+      // to a neutral grey (C ≈ 0). The light arm is the darker, ink-like fill;
+      // the dark arm is the high-lightness fill. The shared floor proves the
       // accent reads as the brand color in either theme.
       expect(lightAccent.C, 'light primary must be a saturated accent').toBeGreaterThanOrEqual(
         0.06,
@@ -365,9 +367,9 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       expect(darkAccent.C, 'dark primary must be a saturated accent').toBeGreaterThanOrEqual(0.06);
 
       // And the two themes must genuinely differ — proves light-dark() branched
-      // per color-scheme. Both arms are now intentionally bright (light L≈0.72,
-      // dark L≈0.78), so lightness alone is a weak branch signal; the chroma
-      // differs more reliably (light C≈0.20 vs dark C≈0.15). Assert the resolved
+      // per color-scheme. The light arm is now darker and ink-like (L≈0.66) while
+      // the dark arm stays bright (L≈0.78), so lightness branches reliably; the
+      // chroma also differs (light C≈0.16 vs dark C≈0.13). Assert the resolved
       // colors are not identical across both L and C.
       const accentsDiffer =
         Math.abs(lightAccent.L - darkAccent.L) > 0.02 ||
