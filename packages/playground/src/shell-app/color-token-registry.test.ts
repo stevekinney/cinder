@@ -1,0 +1,66 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+
+import { describe, expect, test } from 'bun:test';
+
+import { COLOR_TOKEN_GROUPS, COLOR_TOKEN_NAMES } from './color-token-registry.ts';
+
+const TOKENS_BASE_PATH = join(
+  import.meta.dir,
+  '..',
+  '..',
+  '..',
+  'components',
+  'src',
+  'styles',
+  'tokens-base.css',
+);
+
+function extractRootTokenNames(css: string): Set<string> {
+  const rootMatch = css.match(/^\s*:root\s*\{([\s\S]*?)\n\}/m);
+  const rootBody = rootMatch?.[1];
+  if (rootBody === undefined) {
+    throw new Error('Could not find :root block in tokens-base.css');
+  }
+
+  const stripped = rootBody.replace(/\/\*[\s\S]*?\*\//g, '');
+  return new Set([...stripped.matchAll(/(--cinder-[a-z0-9-]+)\s*:/g)].map((match) => match[1]!));
+}
+
+describe('color token registry', () => {
+  test('contains the expected global color-token inventory', () => {
+    expect(COLOR_TOKEN_NAMES).toHaveLength(56);
+    expect(COLOR_TOKEN_GROUPS.map((group) => group.id)).toEqual([
+      'surfaces',
+      'text',
+      'borders',
+      'accent',
+      'status-solid',
+      'status-triples',
+      'focus',
+      'overlay',
+      'scrollbars',
+      'charts',
+    ]);
+  });
+
+  test('every registered token is declared in tokens-base.css', async () => {
+    const css = await readFile(TOKENS_BASE_PATH, 'utf8');
+    const rootTokenNames = extractRootTokenNames(css);
+
+    const missing = COLOR_TOKEN_NAMES.filter((tokenName) => !rootTokenNames.has(tokenName));
+
+    expect(missing).toEqual([]);
+  });
+
+  test('excludes non-color and non-global token namespaces', () => {
+    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-shadow-sm');
+    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-space-4');
+    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-text-sm');
+    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-z-modal');
+    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-overlay-padding');
+    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-scrollbar-size');
+    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-button-bg');
+    expect(COLOR_TOKEN_NAMES.some((tokenName) => tokenName.startsWith('--_cinder-'))).toBe(false);
+  });
+});

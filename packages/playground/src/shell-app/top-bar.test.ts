@@ -200,9 +200,12 @@ describe('top-bar theme selection', () => {
 
   test('entering focus mode closes an open sidebar drawer', async () => {
     // Focus mode hides the sidebar entirely; an open narrow-viewport drawer must
-    // be closed too, or its scrim is orphaned over the fullscreen preview.
+    // be closed too, or its scrim is orphaned over the fullscreen preview. The
+    // color-token panel is also shell chrome, so it closes with the rest of the
+    // chrome.
     const store = new PreviewStore('button');
     store.isSidebarOpen = true;
+    store.isColorTokenPanelOpen = true;
     const { container } = render(TopBarFixture, { store });
     await tick();
 
@@ -211,6 +214,7 @@ describe('top-bar theme selection', () => {
 
     expect(store.isFocusMode).toBe(true);
     expect(store.isSidebarOpen).toBe(false);
+    expect(store.isColorTokenPanelOpen).toBe(false);
   });
 
   test('toggling focus mode off does not reopen the drawer', async () => {

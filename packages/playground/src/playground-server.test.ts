@@ -707,6 +707,15 @@ describe('/page/:name', () => {
     expect(html).not.toContain('href="/styles/index.css"');
   });
 
+  it('installs the validated color-token message bridge on preview pages', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+
+    expect(html).toContain('cinder:set-color-token-overrides');
+    expect(html).toContain('--cinder-accent');
+    expect(html).not.toContain('--cinder-button-bg');
+  });
+
   it('wraps the body background/color transition in a reduced-motion guard', async () => {
     // The crossfade must only run when the user has not requested reduced
     // motion, so the unguarded `transition: background ...` is gone.

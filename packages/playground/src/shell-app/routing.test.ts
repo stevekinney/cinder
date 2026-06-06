@@ -112,8 +112,59 @@ describe('createPreviewMessage', () => {
   });
 
   it('returns null for an unknown theme value', () => {
-    // @ts-expect-error — exercising runtime validation
     expect(createPreviewMessage('cinder:set-theme', 'midnight')).toBeNull();
+  });
+
+  it('builds a color-token override message for allowed tokens and values', () => {
+    expect(
+      createPreviewMessage('cinder:set-color-token-overrides', {
+        theme: 'light',
+        overrides: {
+          '--cinder-accent': 'oklch(60% 0.2 195)',
+          '--cinder-bg': 'var(--cinder-surface)',
+        },
+      }),
+    ).toEqual({
+      type: 'cinder:set-color-token-overrides',
+      theme: 'light',
+      overrides: {
+        '--cinder-accent': 'oklch(60% 0.2 195)',
+        '--cinder-bg': 'var(--cinder-surface)',
+      },
+    });
+  });
+
+  it('rejects color-token messages with an unknown token name', () => {
+    expect(
+      createPreviewMessage('cinder:set-color-token-overrides', {
+        theme: 'light',
+        overrides: {
+          '--cinder-button-bg': 'oklch(60% 0.2 195)',
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it('rejects color-token messages with an unsafe CSS value', () => {
+    expect(
+      createPreviewMessage('cinder:set-color-token-overrides', {
+        theme: 'light',
+        overrides: {
+          '--cinder-accent': 'url(https://example.com/image.png)',
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it('rejects color-token messages with an invalid theme', () => {
+    expect(
+      createPreviewMessage('cinder:set-color-token-overrides', {
+        theme: 'system',
+        overrides: {
+          '--cinder-accent': 'oklch(60% 0.2 195)',
+        },
+      }),
+    ).toBeNull();
   });
 });
 

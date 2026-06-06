@@ -18,7 +18,8 @@
   // browser` test. These narrow paths bring in only what we render.
   import { EmptyState } from '../../../components/src/components/empty-state/index.ts';
   import { Spinner } from '../../../components/src/components/spinner/index.ts';
-  import { getPreviewStore } from './preview-store.svelte.ts';
+  import { getPreviewStore, type ThemeChoice } from './preview-store.svelte.ts';
+  import type { ColorTokenOverrides } from './color-token-registry.ts';
   import { buildIframeSrc, createPreviewMessage, type PreviewMessage } from './routing.ts';
 
   type Props = {
@@ -59,9 +60,22 @@
     if (message !== null) postToFrame(message);
   }
 
-  // Reactive: theme changes push to the iframe immediately.
+  function syncColorTokenOverrides(theme: ThemeChoice, overrides: ColorTokenOverrides): void {
+    const message = createPreviewMessage('cinder:set-color-token-overrides', {
+      theme,
+      overrides: { ...overrides } as Record<string, string>,
+    });
+    if (message !== null) postToFrame(message);
+  }
+
+  // Reactive: theme and active-theme color-token changes push to the iframe
+  // immediately. Reading `store.colorTokenOverrides[theme]` makes nested
+  // override replacement reactive without serializing this state to the URL.
   $effect(() => {
+    const theme = store.theme;
+    const overrides = store.colorTokenOverrides[theme];
     syncTheme();
+    syncColorTokenOverrides(theme, overrides);
   });
 
   function handleLoad(): void {
@@ -73,6 +87,7 @@
     // (e.g. light/dark toggled this session) must be re-pushed after each
     // navigation/reload.
     syncTheme();
+    syncColorTokenOverrides(store.theme, store.colorTokenOverrides[store.theme]);
   }
 
   /**

@@ -56,6 +56,7 @@ import {
   jsonForScriptTag,
   renderShell,
 } from './render-shell.ts';
+import { COLOR_TOKEN_NAMES } from './shell-app/color-token-registry.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import {
@@ -1057,6 +1058,79 @@ async function getStandaloneManifests(): Promise<ComponentManifest[]> {
   return manifests.filter((entry) => !COMPOSE_ONLY_COMPONENTS.has(entry.kebabName));
 }
 
+function renderPreviewMessageBridgeScript(): string {
+  const colorTokenNamesJson = jsonForScriptTag(COLOR_TOKEN_NAMES);
+
+  return `<script>
+      // Validated postMessage listener for shell→iframe theme and token commands.
+      // The shell SPA is same-origin, but we still validate origin and shape so
+      // unknown messages can't push the iframe into a bad state.
+      (function () {
+        var colorTokenNames = new Set(${colorTokenNamesJson});
+        var blockedColorValuePattern = /[;{}<>]|\\/\\*|\\*\\//;
+        var fallbackColorValuePattern = /^(#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|rgba|hsl|hsla|oklch|oklab|lch|lab|color|color-mix|light-dark)\\(|var\\(--cinder-[a-z0-9-]+\\)|transparent$|currentcolor$|black$|white$)/;
+
+        function isTheme(value) {
+          return value === 'light' || value === 'dark';
+        }
+
+        function isSafeColorValue(value) {
+          if (typeof value !== 'string') return false;
+          var trimmed = value.trim();
+          if (trimmed.length === 0 || trimmed.length > 240) return false;
+          if (blockedColorValuePattern.test(trimmed)) return false;
+          if (trimmed.toLowerCase().indexOf('url(') !== -1) return false;
+          if (window.CSS && typeof window.CSS.supports === 'function') {
+            return window.CSS.supports('color', trimmed);
+          }
+          return fallbackColorValuePattern.test(trimmed.toLowerCase());
+        }
+
+        function applyColorTokenOverrides(overrides) {
+          if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) return;
+          var next = {};
+          for (var tokenName in overrides) {
+            if (!Object.prototype.hasOwnProperty.call(overrides, tokenName)) continue;
+            if (!colorTokenNames.has(tokenName)) return;
+            var value = overrides[tokenName];
+            if (!isSafeColorValue(value)) return;
+            next[tokenName] = value.trim();
+          }
+
+          colorTokenNames.forEach(function (tokenName) {
+            document.documentElement.style.removeProperty(tokenName);
+          });
+          for (var safeTokenName in next) {
+            if (!Object.prototype.hasOwnProperty.call(next, safeTokenName)) continue;
+            document.documentElement.style.setProperty(safeTokenName, next[safeTokenName]);
+          }
+        }
+
+        window.addEventListener('message', function (event) {
+          if (event.origin !== window.location.origin) return;
+          var data = event.data;
+          if (!data || typeof data !== 'object') return;
+
+          if (data.type === 'cinder:set-theme') {
+            // Only light/dark are valid theme overrides; ignore anything else
+            // (a stale/foreign message must never push the iframe into an
+            // unsupported 'system' state — that value was removed from ThemeChoice).
+            if (isTheme(data.value)) {
+              document.documentElement.style.colorScheme = data.value;
+              document.documentElement.dataset.cinderTheme = data.value;
+            }
+            return;
+          }
+
+          if (data.type === 'cinder:set-color-token-overrides') {
+            if (!isTheme(data.theme)) return;
+            applyColorTokenOverrides(data.overrides);
+          }
+        });
+      })();
+    </script>`;
+}
+
 /**
  * Render the standalone component page HTML (the iframe content — no outer shell).
  *
@@ -1127,24 +1201,7 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
       }
       #app { display: contents; }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
-    <script>
-      // Validated postMessage listener for shell→iframe theme commands. The
-      // shell SPA is same-origin, but we still validate origin and shape so
-      // unknown messages can't push the iframe into a bad state.
-      window.addEventListener('message', function (event) {
-        if (event.origin !== window.location.origin) return;
-        var data = event.data;
-        if (!data || typeof data !== 'object') return;
-        if (data.type !== 'cinder:set-theme') return;
-        // Only light/dark are valid theme overrides; ignore anything else (a
-        // stale/foreign message must never push the iframe into an unsupported
-        // 'system' state — that value was removed from ThemeChoice).
-        if (data.value === 'light' || data.value === 'dark') {
-          document.documentElement.style.colorScheme = data.value;
-          document.documentElement.dataset.cinderTheme = data.value;
-        }
-      });
-    </script>
+    ${renderPreviewMessageBridgeScript()}
   </head>
   <body>
     <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
@@ -1194,21 +1251,7 @@ function renderFixturePageHtml(
       }
       #app { display: contents; }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
-    <script>
-      window.addEventListener('message', function (event) {
-        if (event.origin !== window.location.origin) return;
-        var data = event.data;
-        if (!data || typeof data !== 'object') return;
-        if (data.type !== 'cinder:set-theme') return;
-        // Only light/dark are valid theme overrides; ignore anything else (a
-        // stale/foreign message must never push the iframe into an unsupported
-        // 'system' state — that value was removed from ThemeChoice).
-        if (data.value === 'light' || data.value === 'dark') {
-          document.documentElement.style.colorScheme = data.value;
-          document.documentElement.dataset.cinderTheme = data.value;
-        }
-      });
-    </script>
+    ${renderPreviewMessageBridgeScript()}
   </head>
   <body>
     <div id="app"></div>

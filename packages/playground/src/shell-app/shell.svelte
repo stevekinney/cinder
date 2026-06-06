@@ -17,6 +17,7 @@
     setPreviewStore,
   } from './preview-store.svelte.ts';
   import { buildShellHref, parseComponentFromPath, readToolbarStateFromSearch } from './routing.ts';
+  import ColorTokenPanel from './color-token-panel.svelte';
   import Sidebar, { type SidebarHandle } from './sidebar.svelte';
   import TopBar from './top-bar.svelte';
 
@@ -124,15 +125,15 @@
     };
   });
 
-  // Apply the theme to the shell's root document on first paint. The inline
-  // pre-paint script in render-shell.ts already did this before the bundle
-  // loaded, but reapplying here keeps the state machine simple (the inline
-  // script is a perf optimization, not a correctness gate). Pass the override
-  // (null = follow the browser) and the resolved theme so the helper pins
-  // color-scheme only for an explicit choice.
-  if (typeof document !== 'undefined') {
+  // Apply the theme and active-theme color overrides to the shell document.
+  // The inline pre-paint script in render-shell.ts handles the first paint; this
+  // effect keeps later toolbar changes, OS theme changes, and token edits in
+  // sync with the root document.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
     applyThemeToDocument(document, store.themeOverride, store.theme);
-  }
+    store.applyActiveColorTokenOverridesToDocument(document);
+  });
 
   async function selectComponent(name: string): Promise<void> {
     // Selecting from the off-canvas drawer (narrow viewports) should always
@@ -272,6 +273,9 @@
       aria-hidden="true"
       onclick={() => (store.isSidebarOpen = false)}
     ></div>
+  {/if}
+  {#if store.isColorTokenPanelOpen && !store.isFocusMode}
+    <ColorTokenPanel onClose={() => (store.isColorTokenPanelOpen = false)} />
   {/if}
   <!--
     tabindex="-1" makes <main> programmatically focusable so client-side

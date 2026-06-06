@@ -125,6 +125,11 @@
     announce(store.isSidebarOpen ? 'Component list shown' : 'Component list hidden');
   }
 
+  function toggleColorTokenPanel(): void {
+    store.isColorTokenPanelOpen = !store.isColorTokenPanelOpen;
+    announce(store.isColorTokenPanelOpen ? 'Color token panel shown' : 'Color token panel hidden');
+  }
+
   // ── Focus mode ────────────────────────────────────────────────────────────
 
   function toggleFocusMode(): void {
@@ -132,7 +137,10 @@
     // Entering focus mode hides the sidebar entirely; close the narrow-viewport
     // drawer too so it doesn't leave an orphaned full-screen scrim with no
     // visible dismiss affordance behind the now-hidden chrome.
-    if (store.isFocusMode) store.isSidebarOpen = false;
+    if (store.isFocusMode) {
+      store.isSidebarOpen = false;
+      store.isColorTokenPanelOpen = false;
+    }
     announce(store.isFocusMode ? 'Focus mode on. Press Escape to exit.' : 'Focus mode off');
   }
 
@@ -231,6 +239,18 @@
     <Toolbar.Spacer />
 
     <Toolbar.Group>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label="Color token panel"
+        aria-expanded={store.isColorTokenPanelOpen}
+        aria-controls="color-token-panel-heading"
+        data-testid="color-token-panel-toggle"
+        onclick={toggleColorTokenPanel}
+      >
+        <span aria-hidden="true">◐</span>
+      </Button>
+
       {#if store.currentComponent !== ''}
         <Button
           variant="ghost"
