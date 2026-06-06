@@ -37,6 +37,9 @@ describe('vercel.json', () => {
     // No meta-framework: we publish a pre-rendered directory.
     expect(config['framework']).toBeNull();
     expect(config['buildCommand']).toBe('bun run vercel-build');
+    // Static export bundles workspace source at build time, so Vercel must not
+    // prune devDependencies before running the build.
+    expect(config['installCommand']).toContain('NODE_ENV=development bun install');
     // The pre-rendered site lives in public/.
     expect(config['outputDirectory']).toBe('public');
     // cleanUrls serves `public/c/button/index.html` at the clean `/c/button`.
