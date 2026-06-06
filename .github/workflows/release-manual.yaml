@@ -33,7 +33,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: 1.3.2
+          bun-version: 1.3.13
 
       - name: Verify tag matches package.json version
         working-directory: packages/components
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: 1.3.2
+          bun-version: 1.3.13
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -100,22 +100,22 @@ jobs:
       - name: Check package artifact budget
         run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 
-      # Break-glass publish. The primary release path (release.yaml) uses npm
-      # Trusted Publishing (OIDC) and requires no long-lived token. This manual
-      # fallback uses NPM_TOKEN intentionally as an emergency-only alternative
-      # for when the Changesets/OIDC primary path is unavailable. Do NOT use
-      # this workflow for routine releases. Provenance is still emitted via
-      # NPM_CONFIG_PROVENANCE and the `id-token: write` permission on this job.
+      # Break-glass publish. The primary release path (release.yaml) is the
+      # Changesets/OIDC route; this manual fallback uses NPM_TOKEN as an
+      # emergency-only alternative for when that path is unavailable. Do NOT
+      # use this workflow for routine releases.
+      #
+      # Provenance is DISABLED here: `publish:release` runs `npm publish` under
+      # Bun, and npm's provenance signing fails under Bun's BoringSSL with
+      # ERR_OSSL_NO_DEFAULT_DIGEST. Disabled in BOTH the env below AND
+      # package.json#publishConfig.provenance so npm config precedence is
+      # irrelevant — they agree. Re-enable provenance only once it's proven to
+      # sign cleanly under the publish runtime (needs a Node publish path or a
+      # verified Bun/BoringSSL fix).
       #
       # Token rotation: NPM_TOKEN should be rotated at least every 90 days per
       # security policy. The token is a Granular Access Token scoped to the
       # `cinder` package only — never use a full-access automation token.
-      # Provenance is DISABLED for this break-glass first publish: npm's
-      # provenance signing fails under Bun's BoringSSL with
-      # ERR_OSSL_NO_DEFAULT_DIGEST. Disabled in both the env here AND
-      # package.json#publishConfig.provenance so npm config precedence is
-      # irrelevant — they agree. Restore provenance when migrating back to
-      # the OIDC release.yaml path (Node runtime, working sigstore).
       - name: Publish to npm
         env:
           NPM_CONFIG_PROVENANCE: 'false'
