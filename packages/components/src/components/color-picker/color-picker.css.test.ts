@@ -71,24 +71,23 @@ describe('color checker tokens', () => {
 });
 
 describe('color picker thumb contrast outline', () => {
-  test('thumb shadow uses a distinct dark arm while the border remains fixed', () => {
+  test('thumb shadow keeps a dark edge and adds a dark-mode support ring', () => {
     const shadow = lightDarkArms(
       declarationValue(colorPickerCss, '--_cinder-color-picker-thumb-shadow'),
-    );
+    ).map(compactCssValue);
 
     expect(declarationValue(colorPickerCss, '--_cinder-color-picker-thumb-border')).toBe('#fff');
     expect(
-      compactCssValue(
-        declarationValue(colorPickerCss, '--_cinder-color-picker-thumb-shadow-light'),
-      ),
+      compactCssValue(declarationValue(colorPickerCss, '--_cinder-color-picker-thumb-shadow-edge')),
     ).toBe('rgba(0, 0, 0, 0.5)');
     expect(
-      compactCssValue(declarationValue(colorPickerCss, '--_cinder-color-picker-thumb-shadow-dark')),
+      compactCssValue(
+        declarationValue(colorPickerCss, '--_cinder-color-picker-thumb-shadow-support'),
+      ),
     ).toBe('rgba(255, 255, 255, 0.65)');
     expect(shadow).toEqual([
-      'var(--_cinder-color-picker-thumb-shadow-light)',
-      'var(--_cinder-color-picker-thumb-shadow-dark)',
+      '0 0 0 1px var(--_cinder-color-picker-thumb-shadow-edge)',
+      '0 0 0 1px var(--_cinder-color-picker-thumb-shadow-edge), 0 0 0 2px var(--_cinder-color-picker-thumb-shadow-support)',
     ]);
-    expect(shadow[0]).not.toBe(shadow[1]);
   });
 });
