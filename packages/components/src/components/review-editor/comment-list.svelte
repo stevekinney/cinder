@@ -258,8 +258,17 @@
   }
 
   .comment-edit-textarea:focus {
-    outline: none;
     border-color: var(--cinder-accent);
+    outline: var(--cinder-ring-width) solid transparent;
+    outline-offset: var(--cinder-ring-offset);
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .comment-edit-textarea:focus {
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 1px;
+    }
   }
 
   .comment-edit-actions {

@@ -142,10 +142,26 @@
   }
 
   .front-matter-header:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .front-matter-header[data-variant='inline']:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-front-matter-header-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .front-matter-header:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+
+    .front-matter-header[data-variant='inline']:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .front-matter-icon {
