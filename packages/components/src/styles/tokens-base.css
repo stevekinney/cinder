@@ -50,19 +50,26 @@
   --cinder-radius-full: 9999px;
 
   /* Shadows wrap each color argument in `light-dark()` so dark mode paints
-   * a light-neutral elevation instead of invisible black-on-dark. The light
-   * arguments preserve the original `oklch(0% 0 0 / α)` values exactly;
-   * the dark arguments use `oklch(100% 0 0 / α)` with subtle alphas tuned
-   * to lift the surface without producing a glow halo. Each shadow color
-   * is wrapped individually — the offsets, blur radii, spread radii, and
-   * layer counts are unchanged. */
-  --cinder-shadow-sm: 0 1px 2px light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.06));
+   * a light-neutral elevation instead of invisible black-on-dark. The dark
+   * arguments use `oklch(100% 0 0 / α)` with alphas tuned to lift the surface
+   * without producing a glow halo. Each shadow color is wrapped individually —
+   * within any one token the offsets, blur radii, and spread radii are identical
+   * across the light and dark arms (only the color/alpha branches per theme).
+   * This refinement pass did change the geometry of shadow-sm itself: it gained
+   * a 2nd hairline layer for deeper, crisper elevation, and the alphas were
+   * raised — in BOTH arms for shadow-sm
+   * (light 0.08 → 0.1 plus a new 0.06 layer; dark 0.06 → 0.09 plus a new 0.05
+   * layer) and in the DARK arms only for shadow-md and shadow-lg (the light
+   * arms of md/lg keep their original 0.12 / 0.1 and 0.14 / 0.12 values). */
+  --cinder-shadow-sm:
+    0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09)),
+    0 1px 1px light-dark(oklch(0% 0 0 / 0.06), oklch(100% 0 0 / 0.05));
   --cinder-shadow-md:
-    0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06)),
-    0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.05));
+    0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.09)),
+    0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.06));
   --cinder-shadow-lg:
-    0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.08)),
-    0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06));
+    0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.11)),
+    0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.07));
 
   /* ========================================
    * CONTROL HEIGHTS
@@ -158,6 +165,20 @@
   --cinder-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* ========================================
+   * SEMANTIC ALIASES
+   * ----------------------------------------
+   * Intent layer over the raw scale: map raw spacing/radius tokens to the
+   * semantic use cases components reach for, so call sites express intent
+   * ("control padding", "card padding") instead of a numeric step.
+   * ======================================== */
+  --cinder-pad-control: var(--cinder-space-2-5);
+  --cinder-pad-card: var(--cinder-space-4);
+  --cinder-gap-stack: var(--cinder-space-3);
+  --cinder-gap-inline: var(--cinder-space-2);
+  --cinder-radius-control: var(--cinder-radius-md);
+  --cinder-radius-surface: var(--cinder-radius-lg);
+
+  /* ========================================
    * SEMANTIC COLORS
    * ======================================== */
   color-scheme: light dark;
@@ -165,8 +186,8 @@
   /* Backgrounds / surfaces */
   --cinder-bg: light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245));
   --cinder-surface: light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245));
-  --cinder-surface-raised: light-dark(oklch(100% 0.006 245), oklch(24% 0.045 245));
-  --cinder-surface-inset: light-dark(oklch(95.5% 0.01 245), oklch(12% 0.03 245));
+  --cinder-surface-raised: light-dark(oklch(100% 0.006 245), oklch(26% 0.045 245));
+  --cinder-surface-inset: light-dark(oklch(95.5% 0.01 245), oklch(11% 0.03 245));
   /* Hover/pressed surface derivatives. The mix DIRECTION is per-theme — the
      `light-dark(black, white)` mix target darkens the surface in light mode and
      lightens it in dark mode — so only the PERCENTAGE is shared across themes.
@@ -188,29 +209,39 @@
   --cinder-text: light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245));
   --cinder-text-muted: light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245));
   --cinder-text-subtle: light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245));
-  --cinder-text-disabled: light-dark(oklch(52% 0.01 245), oklch(62% 0.02 245));
+  --cinder-text-disabled: light-dark(oklch(52% 0.01 245), oklch(64% 0.02 245));
   /* Neutral fill for DISABLED SOLID controls (disabled-checked checkbox/radio) so they stop
      misusing --cinder-text-disabled (a text-lightness token) as an assertive fill. Reads plainly
      inert. NOTE the glyph on top must use --cinder-text-disabled, NOT --cinder-accent-contrast:
      accent-contrast is dark ink in both arms and would be ~1.45:1 on the dark-arm fill (0.30) —
-     invisible. --cinder-text-disabled clears the 3:1 UI floor in both themes (light ~3.8:1, dark ~3.7:1). */
+     invisible. --cinder-text-disabled clears the 3:1 UI floor in both themes (light ~3.8:1, dark ~4.1:1). */
   --cinder-fill-disabled: light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245));
 
   /* Borders */
-  --cinder-border: light-dark(oklch(83% 0.012 245), oklch(35% 0.05 245));
+  --cinder-border: light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245));
   --cinder-border-muted: light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245));
   --cinder-border-strong: light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245));
 
   /* Accent - cyan (hue 195) */
-  --cinder-accent: light-dark(oklch(72% 0.2 195), oklch(78% 0.15 195));
+  --cinder-accent: light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195));
   --cinder-accent-contrast: light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245));
   --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
   --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
-  /* Accent used AS TEXT/ICON on light surfaces. The bright 0.72 fill-accent fails WCAG AA as
-     text (~2:1). This darker on-brand cyan clears 4.5:1 on every surface and every accent/tree/
-     info tint (verified: surface 5.43, bg 5.12, inset 4.82, accent-chip tint 4.98). The bright
-     --cinder-accent stays for FILLS; foreground/icon usages adopt this token. */
-  --cinder-accent-text: light-dark(oklch(47% 0.16 195), oklch(78% 0.15 195));
+  /* Pressed fill for SOLID accent surfaces that carry the dark-ink --cinder-accent-contrast
+     label (primary Button, FloatingActionButton). The general --cinder-accent-active darkens by
+     0.15; on the L=0.66 light accent that resolves to L=0.51, where the dark-ink label drops to
+     ~4.09:1 — below WCAG AA. This token darkens by a gentler 0.11 (light → L=0.55, ~4.79:1; dark →
+     L=0.67, ~7.1:1) so the pressed label stays AA-legible in both arms. Non-label-bearing
+     consumers keep using --cinder-accent-active. */
+  --cinder-accent-active-on-fill: oklch(from var(--cinder-accent) calc(l - 0.11) c h);
+  /* Accent used AS TEXT/ICON on light surfaces. The fill-accent was darkened to a more ink-like
+     cyan (now L=0.66); as a FOREGROUND its contrast improves (≈2.7:1 on raised, ≈2.4:1 on bg/inset)
+     but still does NOT clear the 3:1 UI floor, so a separate foreground token stays necessary. This
+     darker on-brand cyan clears 4.5:1 on every surface and every accent/tree/info tint (verified:
+     surface 5.43, bg 5.12, inset 4.82, accent-chip tint 4.98). --cinder-accent is a FILL (it carries
+     the dark-ink --cinder-accent-contrast label at ≈7.2:1); all foreground/icon usages adopt this
+     token. */
+  --cinder-accent-text: light-dark(oklch(47% 0.16 195), oklch(78% 0.13 195));
   /* Hover step for text/icon links. Derived as a DARKER step of --cinder-accent-text (not the
      bright fill-derived --cinder-accent-hover, which is LIGHTER than the resting text color and
      drops to ~2.75:1 on near-white — below WCAG AA). Light arm resolves to ~oklch(0.39 0.16 195)

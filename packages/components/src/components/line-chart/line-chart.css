@@ -81,15 +81,64 @@
     pointer-events: none;
   }
 
-  /*
- * SVG focus indicator: drop-shadow filter renders an outline-equivalent ring
- * around the focused circle that stays visible on any background. Stroke alone
- * was invisible against transparent fills.
- */
-  .cinder-line-chart__focus-target:focus-visible {
-    stroke: var(--cinder-accent);
+  .cinder-line-chart__focus-target:focus-visible:not([data-cinder-focus-ring-active='true']) {
+    fill: transparent;
+    stroke: var(--cinder-ring-color);
     stroke-width: var(--cinder-ring-width);
-    filter: drop-shadow(0 0 var(--cinder-ring-width) var(--cinder-ring-color));
+    vector-effect: non-scaling-stroke;
+    filter: none;
+  }
+
+  .cinder-line-chart__focus-ring-layer {
+    pointer-events: none;
+  }
+
+  .cinder-line-chart__focus-ring,
+  .cinder-line-chart__focus-ring-halo,
+  .cinder-line-chart__focus-ring-connector,
+  .cinder-line-chart__focus-ring-dot {
+    fill: none;
+    pointer-events: none;
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .cinder-line-chart__focus-ring {
+    stroke: var(--cinder-ring-color);
+    stroke-width: var(--cinder-ring-width);
+    filter: none;
+  }
+
+  .cinder-line-chart__focus-ring-halo {
+    stroke: var(--cinder-ring-offset-color);
+    stroke-width: calc(
+      var(--cinder-ring-width) + var(--cinder-ring-offset) + var(--cinder-ring-offset)
+    );
+    filter: none;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-line-chart__focus-ring-halo {
+      display: none;
+    }
+
+    .cinder-line-chart__focus-ring,
+    .cinder-line-chart__focus-ring-connector,
+    .cinder-line-chart__focus-ring-dot {
+      fill: none;
+      stroke: ButtonText;
+      stroke-width: var(--cinder-ring-width);
+      filter: none;
+    }
+
+    .cinder-line-chart__focus-target:focus-visible:not([data-cinder-focus-ring-active='true']) {
+      fill: transparent;
+      stroke: ButtonText;
+      stroke-width: var(--cinder-ring-width);
+      vector-effect: non-scaling-stroke;
+      filter: none;
+    }
   }
 
   .cinder-line-chart__tick-label {
