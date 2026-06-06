@@ -2214,6 +2214,10 @@
     "./search-field/styles": {
       "default": "./dist/components/search-field/search-field.css"
     },
+    "./search-field/examples": {
+      "import": "./src/components/search-field/search-field.examples.json",
+      "default": "./src/components/search-field/search-field.examples.json"
+    },
     "./section-heading": {
       "types": "./dist/components/section-heading/index.d.ts",
       "svelte": "./src/components/section-heading/index.ts",
