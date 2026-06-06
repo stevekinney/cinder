@@ -29,6 +29,11 @@
 
   const mergedClass = $derived(classNames(className));
 
+  // Marks a target whose tabindex SkipLink is currently managing, so re-activating
+  // before focus leaves does not recapture the temporary `-1` as the "original"
+  // value or stack a second restore listener.
+  const MANAGED_ATTRIBUTE = 'data-cinder-skip-link-managed';
+
   function handleClick(event: MouseEvent) {
     const element = document.getElementById(target);
 
@@ -39,27 +44,36 @@
 
     event.preventDefault();
 
-    // Save whatever tabindex was set so we can restore it after focus leaves.
-    const originalTabIndex = element.getAttribute('tabindex');
+    const alreadyManaged = element.hasAttribute(MANAGED_ATTRIBUTE);
 
-    element.setAttribute('tabindex', '-1');
-    element.focus();
+    if (!alreadyManaged) {
+      // First activation: capture the genuine original tabindex, mark the
+      // element as managed, and arm a one-shot restore on the next blur.
+      const originalTabIndex = element.getAttribute('tabindex');
+      element.setAttribute(MANAGED_ATTRIBUTE, '');
+      element.setAttribute('tabindex', '-1');
+
+      element.addEventListener(
+        'blur',
+        () => {
+          element.removeAttribute(MANAGED_ATTRIBUTE);
+          if (originalTabIndex === null) {
+            element.removeAttribute('tabindex');
+          } else {
+            element.setAttribute('tabindex', originalTabIndex);
+          }
+        },
+        { once: true },
+      );
+    }
+
+    // Focus without the browser's implicit scroll so the reduced-motion-aware
+    // scrollIntoView below is the single, authoritative scroll.
+    element.focus({ preventScroll: true });
     element.scrollIntoView({
       behavior: motion.current ? 'auto' : 'smooth',
       block: 'start',
     });
-
-    element.addEventListener(
-      'blur',
-      () => {
-        if (originalTabIndex === null) {
-          element.removeAttribute('tabindex');
-        } else {
-          element.setAttribute('tabindex', originalTabIndex);
-        }
-      },
-      { once: true },
-    );
   }
 </script>
 

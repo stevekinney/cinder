@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -8,8 +8,11 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: SkipLink } = await import('./skip-link.svelte');
+
+// Unmount rendered trees between tests so they don't leak into the shared document.body.
+afterEach(() => cleanup());
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
 // the svelte package to resolve to the client build) applies before this import resolves.
 const { createRawSnippet } = await import('svelte');
@@ -122,6 +125,33 @@ describe('SkipLink', () => {
       expect(targetElement.getAttribute('tabindex')).toBe('-1');
 
       fireEvent.blur(targetElement);
+      expect(targetElement.getAttribute('tabindex')).toBe('0');
+    } finally {
+      document.body.removeChild(targetElement);
+    }
+  });
+
+  test('restores the genuine original tabindex when re-activated before blur', () => {
+    // Regression: clicking twice without an intervening blur must not recapture
+    // the temporary -1 as the "original" value, nor stack a second restore listener.
+    const targetElement = document.createElement('div');
+    targetElement.id = 'double-activate';
+    targetElement.setAttribute('tabindex', '0');
+    targetElement.scrollIntoView = () => {};
+    document.body.appendChild(targetElement);
+
+    try {
+      const { container } = render(SkipLink, { props: { target: 'double-activate' } });
+      const anchor = container.querySelector('a')!;
+
+      fireEvent.click(anchor);
+      expect(targetElement.getAttribute('tabindex')).toBe('-1');
+      // Second activation before blur — must NOT capture -1 as the original.
+      fireEvent.click(anchor);
+      expect(targetElement.getAttribute('tabindex')).toBe('-1');
+
+      fireEvent.blur(targetElement);
+      // The genuine original ('0') is restored, not the temporary '-1'.
       expect(targetElement.getAttribute('tabindex')).toBe('0');
     } finally {
       document.body.removeChild(targetElement);

@@ -1,16 +1,26 @@
 # SkipLink
 
-TODO: one-line purpose statement for SkipLink.
+A visually hidden skip-to-content link that becomes visible on keyboard focus and moves focus (and the viewport) to a landmark element, letting keyboard and screen-reader users bypass repeated navigation (WCAG 2.4.1 Bypass Blocks).
 
 ## Usage
+
+Place it as the first focusable element in your layout and point `target` at the `id` of your main content region.
 
 ```svelte
 <script lang="ts">
   import SkipLink from '@lostgradient/cinder/skip-link';
 </script>
 
-<SkipLink>Content</SkipLink>
+<SkipLink target="main-content">Skip to main content</SkipLink>
+
+<!-- … site navigation … -->
+
+<main id="main-content">
+  <!-- … -->
+</main>
 ```
+
+The default label is "Skip to main content"; pass children to override it. SkipLink handles `prefers-reduced-motion` and the tabindex save/restore dance internally, so the target is never left permanently focusable.
 
 ## Props
 
