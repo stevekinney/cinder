@@ -35,6 +35,7 @@
   let query = $state('');
   let draftValues: Partial<Record<ColorTokenName, string>> = $state({});
   let pickerValues: Partial<Record<ColorTokenName, string>> = $state({});
+  let previewValues: Partial<Record<ColorTokenName, string>> = $state({});
   let errors: Partial<Record<ColorTokenName, string>> = $state({});
   let pickerOpen = $state(false);
   let pickerAnchorElement: HTMLElement | null = $state(null);
@@ -76,11 +77,16 @@
     return `#${hex.slice(0, 6)}`.toLowerCase();
   }
 
-  function rgbChannelToHex(channel: string): string | null {
-    const parsed = Number.parseFloat(channel);
-    if (!Number.isFinite(parsed)) return null;
-    const clamped = Math.min(255, Math.max(0, Math.round(parsed)));
+  function byteToHex(channel: number): string {
+    const clamped = Math.min(255, Math.max(0, Math.round(channel)));
     return clamped.toString(16).padStart(2, '0');
+  }
+
+  function rgbChannelToHex(channel: string): string | null {
+    const trimmed = channel.trim();
+    const parsed = Number.parseFloat(trimmed);
+    if (!Number.isFinite(parsed)) return null;
+    return byteToHex(trimmed.endsWith('%') ? (parsed / 100) * 255 : parsed);
   }
 
   function rgbColorToHex(value: string): string | null {
@@ -101,6 +107,125 @@
     return `#${redHex}${greenHex}${blueHex}`;
   }
 
+  function splitColorChannels(value: string): string[] {
+    return value
+      .replace(/\s*\/\s*/g, ' ')
+      .split(/\s+/)
+      .map((part) => part.trim())
+      .filter((part) => part !== '');
+  }
+
+  function parseUnitIntervalChannel(channel: string): number | null {
+    const parsed = Number.parseFloat(channel);
+    if (!Number.isFinite(parsed)) return null;
+    return channel.trim().endsWith('%') ? parsed / 100 : parsed;
+  }
+
+  function parseHueDegrees(channel: string): number | null {
+    const trimmed = channel.trim().toLowerCase();
+    const parsed = Number.parseFloat(trimmed);
+    if (!Number.isFinite(parsed)) return null;
+    if (trimmed.endsWith('turn')) return parsed * 360;
+    if (trimmed.endsWith('rad')) return (parsed * 180) / Math.PI;
+    if (trimmed.endsWith('grad')) return parsed * 0.9;
+    return parsed;
+  }
+
+  function linearSrgbToDisplayChannel(channel: number): number {
+    const clamped = Math.min(1, Math.max(0, channel));
+    if (clamped <= 0.003_130_8) return clamped * 12.92;
+    return 1.055 * clamped ** (1 / 2.4) - 0.055;
+  }
+
+  function oklabToHex(lightness: number, greenRed: number, blueYellow: number): string {
+    const long = lightness + 0.396_337_777_4 * greenRed + 0.215_803_757_3 * blueYellow;
+    const medium = lightness - 0.105_561_345_8 * greenRed - 0.063_854_172_8 * blueYellow;
+    const short = lightness - 0.089_484_177_5 * greenRed - 1.291_485_548 * blueYellow;
+
+    const longCubed = long ** 3;
+    const mediumCubed = medium ** 3;
+    const shortCubed = short ** 3;
+
+    const red =
+      4.076_741_662_1 * longCubed - 3.307_711_591_3 * mediumCubed + 0.230_969_929_2 * shortCubed;
+    const green =
+      -1.268_438_004_6 * longCubed + 2.609_757_401_1 * mediumCubed - 0.341_319_396_5 * shortCubed;
+    const blue =
+      -0.004_196_086_3 * longCubed - 0.703_418_614_7 * mediumCubed + 1.707_614_701 * shortCubed;
+
+    return `#${byteToHex(linearSrgbToDisplayChannel(red) * 255)}${byteToHex(
+      linearSrgbToDisplayChannel(green) * 255,
+    )}${byteToHex(linearSrgbToDisplayChannel(blue) * 255)}`;
+  }
+
+  function oklchColorToHex(value: string): string | null {
+    const match = /^oklch\((?<body>.+)\)$/i.exec(value.trim());
+    const body = match?.groups?.['body'];
+    if (body === undefined) return null;
+
+    const [lightnessValue, chromaValue, hueValue] = splitColorChannels(body);
+    if (lightnessValue === undefined || chromaValue === undefined || hueValue === undefined) {
+      return null;
+    }
+
+    const lightness = parseUnitIntervalChannel(lightnessValue);
+    const chroma = parseUnitIntervalChannel(chromaValue);
+    const hue = parseHueDegrees(hueValue);
+    if (lightness === null || chroma === null || hue === null) return null;
+
+    const hueRadians = (hue * Math.PI) / 180;
+    return oklabToHex(lightness, chroma * Math.cos(hueRadians), chroma * Math.sin(hueRadians));
+  }
+
+  function oklabColorToHex(value: string): string | null {
+    const match = /^oklab\((?<body>.+)\)$/i.exec(value.trim());
+    const body = match?.groups?.['body'];
+    if (body === undefined) return null;
+
+    const [lightnessValue, greenRedValue, blueYellowValue] = splitColorChannels(body);
+    if (
+      lightnessValue === undefined ||
+      greenRedValue === undefined ||
+      blueYellowValue === undefined
+    ) {
+      return null;
+    }
+
+    const lightness = parseUnitIntervalChannel(lightnessValue);
+    const greenRed = parseUnitIntervalChannel(greenRedValue);
+    const blueYellow = parseUnitIntervalChannel(blueYellowValue);
+    if (lightness === null || greenRed === null || blueYellow === null) return null;
+
+    return oklabToHex(lightness, greenRed, blueYellow);
+  }
+
+  function srgbColorFunctionToHex(value: string): string | null {
+    const match = /^color\((?<body>.+)\)$/i.exec(value.trim());
+    const body = match?.groups?.['body'];
+    if (body === undefined) return null;
+
+    const [space, redValue, greenValue, blueValue] = splitColorChannels(body);
+    if (
+      space?.toLowerCase() !== 'srgb' ||
+      redValue === undefined ||
+      greenValue === undefined ||
+      blueValue === undefined
+    ) {
+      return null;
+    }
+
+    const red = parseUnitIntervalChannel(redValue);
+    const green = parseUnitIntervalChannel(greenValue);
+    const blue = parseUnitIntervalChannel(blueValue);
+    if (red === null || green === null || blue === null) return null;
+
+    return `#${byteToHex(red * 255)}${byteToHex(green * 255)}${byteToHex(blue * 255)}`;
+  }
+
+  function modernColorFunctionToHex(value: string): string | null {
+    return oklchColorToHex(value) ?? oklabColorToHex(value) ?? srgbColorFunctionToHex(value);
+  }
+
   function canvasColorToHex(value: string): string | null {
     try {
       const canvas = document.createElement('canvas');
@@ -114,45 +239,70 @@
     }
   }
 
+  function resolvedBackgroundColorToHex(value: string): string | null {
+    if (typeof document === 'undefined') return null;
+
+    const probe = document.createElement('span');
+    probe.style.position = 'fixed';
+    probe.style.pointerEvents = 'none';
+    probe.style.inlineSize = '1px';
+    probe.style.blockSize = '1px';
+    probe.style.inset = '0';
+    probe.style.backgroundColor = value;
+
+    if (probe.style.backgroundColor === '') return null;
+
+    const parent = document.body ?? document.documentElement;
+    parent.append(probe);
+    const resolved = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+
+    if (resolved === '' || resolved === 'transparent') return null;
+
+    return (
+      normalizeHexColor(resolved) ??
+      rgbColorToHex(resolved) ??
+      modernColorFunctionToHex(resolved) ??
+      canvasColorToHex(resolved)
+    );
+  }
+
   function resolveColorToPickerValue(value: string, fallback = '#000000'): string {
     if (typeof document === 'undefined') return fallback;
 
     const normalizedHex = normalizeHexColor(value);
     if (normalizedHex !== null) return normalizedHex;
 
-    const probe = document.createElement('span');
-    probe.style.color = value;
-    if (probe.style.color === '') return fallback;
-
-    document.documentElement.append(probe);
-    const resolved = getComputedStyle(probe).color;
-    probe.remove();
-
     return (
-      normalizeHexColor(resolved) ??
-      rgbColorToHex(resolved) ??
-      canvasColorToHex(resolved) ??
+      resolvedBackgroundColorToHex(value) ??
+      modernColorFunctionToHex(value) ??
       canvasColorToHex(value) ??
       fallback
     );
   }
 
   function pickerValueFor(tokenName: ColorTokenName, value: string): string {
-    return resolveColorToPickerValue(value, resolveColorToPickerValue(`var(${tokenName})`));
+    return resolveColorToPickerValue(
+      value,
+      resolvedBackgroundColorToHex(`var(${tokenName})`) ?? '#000000',
+    );
   }
 
   function syncDrafts(): void {
     const nextDrafts: Partial<Record<ColorTokenName, string>> = {};
     const nextPickerValues: Partial<Record<ColorTokenName, string>> = {};
+    const nextPreviewValues: Partial<Record<ColorTokenName, string>> = {};
     for (const group of COLOR_TOKEN_GROUPS) {
       for (const token of group.tokens) {
         const value = activeOverrides[token.name] ?? defaultValueFor(token.name);
         nextDrafts[token.name] = value;
         nextPickerValues[token.name] = pickerValueFor(token.name, value);
+        nextPreviewValues[token.name] = value;
       }
     }
     draftValues = nextDrafts;
     pickerValues = nextPickerValues;
+    previewValues = nextPreviewValues;
     errors = {};
   }
 
@@ -200,12 +350,14 @@
 
     delete errors[tokenName];
     pickerValues[tokenName] = pickerValueFor(tokenName, value);
+    previewValues[tokenName] = value;
     store.setColorTokenOverride(activeTheme, tokenName, value);
   }
 
   function handleColorPickerValue(tokenName: ColorTokenName, value: string): void {
     pickerValues[tokenName] = value;
     draftValues[tokenName] = value;
+    previewValues[tokenName] = value;
     delete errors[tokenName];
     store.setColorTokenOverride(activeTheme, tokenName, value);
   }
@@ -223,6 +375,7 @@
     store.resetColorTokenOverride(activeTheme, tokenName);
     draftValues[tokenName] = defaultValueFor(tokenName);
     pickerValues[tokenName] = pickerValueFor(tokenName, draftValues[tokenName] ?? '');
+    previewValues[tokenName] = draftValues[tokenName];
     delete errors[tokenName];
   }
 
@@ -282,11 +435,16 @@
                 label="Pick {token.name} color"
                 class="token-color-trigger"
                 title="Pick {token.name} color"
+                aria-expanded={pickerOpen && activePickerTokenName === token.name
+                  ? 'true'
+                  : undefined}
                 onclick={(event) => openColorPicker(token.name, event)}
               >
                 <span
                   class="token-color-trigger__swatch"
-                  style={`--token-picker-color: ${pickerValues[token.name] ?? '#000000'};`}
+                  style={`--token-picker-color: ${
+                    previewValues[token.name] ?? pickerValues[token.name] ?? 'transparent'
+                  };`}
                 ></span>
               </Button>
               <div class="token-copy">
@@ -430,10 +588,11 @@
 
   .token-row {
     display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr) auto;
-    gap: var(--cinder-space-2);
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    column-gap: var(--cinder-space-3);
+    row-gap: var(--cinder-space-2);
     align-items: start;
-    padding: var(--cinder-space-3) var(--cinder-space-4);
+    padding: var(--cinder-space-3-5) var(--cinder-space-4);
     border-bottom: 1px solid var(--cinder-border-muted);
   }
 
@@ -441,14 +600,33 @@
     border-bottom: none;
   }
 
-  .token-row :global(.token-color-trigger) {
-    inline-size: 2rem;
-    block-size: 2rem;
+  .token-row :global(.cinder-button.token-color-trigger) {
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
     padding: 0;
-    border-color: var(--cinder-border-strong);
+    align-self: start;
+    background: transparent;
+    border-color: transparent;
+    border-radius: var(--cinder-radius-md);
+    box-shadow: none;
   }
 
-  .token-row :global(.token-color-trigger[aria-expanded='true']) {
+  @media (hover: hover) {
+    .token-row :global(.cinder-button.token-color-trigger:hover:not(:disabled)) {
+      background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 5%);
+      border-color: transparent;
+    }
+  }
+
+  .token-row :global(.cinder-button.token-color-trigger:focus-visible) {
+    outline: var(--cinder-ring-width) solid transparent;
+    outline-offset: 2px;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .token-row :global(.cinder-button.token-color-trigger[aria-expanded='true']) {
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -459,11 +637,14 @@
 
   :global(.token-color-trigger__swatch) {
     display: block;
-    inline-size: 1.25rem;
-    block-size: 1.25rem;
-    border-radius: calc(var(--cinder-radius-sm) - 1px);
-    background: var(--token-picker-color);
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--cinder-surface), transparent 20%);
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    border: 1px solid var(--cinder-border-strong);
+    border-radius: var(--cinder-radius-sm);
+    background-color: var(--token-picker-color);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--cinder-surface), transparent 15%),
+      0 1px 2px color-mix(in oklch, var(--cinder-text), transparent 88%);
   }
 
   .token-copy {
