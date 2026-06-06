@@ -39,7 +39,7 @@ Rem-based spacing scale. Use these for padding, gap, margin — anywhere you'd o
 
 Corner radii and elevation shadows. `--cinder-radius-full` produces a pill or circle depending on the element's aspect ratio.
 
-Shadow tokens wrap each color argument in `light-dark()` so dark mode paints a light-neutral elevation instead of invisible black-on-dark. The offsets, blur radii, spread radii, and layer counts are identical across themes; only the color values branch.
+Shadow tokens wrap each color argument in `light-dark()` so dark mode paints a light-neutral elevation instead of invisible black-on-dark. The offsets, blur radii, and spread radii are identical across themes; `--cinder-shadow-sm` carries a second hairline layer for deeper, crisper elevation, and the alphas were raised — in both arms for `--cinder-shadow-sm` and in the dark arms only for `--cinder-shadow-md` and `--cinder-shadow-lg`. Only those alphas, the new `sm` layer, and the per-theme color values branch.
 
 | Token                  | Default                                                                                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -47,9 +47,9 @@ Shadow tokens wrap each color argument in `light-dark()` so dark mode paints a l
 | `--cinder-radius-md`   | `0.5rem`                                                                                                                                             |
 | `--cinder-radius-lg`   | `0.75rem`                                                                                                                                            |
 | `--cinder-radius-full` | `9999px`                                                                                                                                             |
-| `--cinder-shadow-sm`   | `0 1px 2px light-dark(oklch(0% 0 0 / 0.08), oklch(100% 0 0 / 0.06))`                                                                                 |
-| `--cinder-shadow-md`   | `0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.05))`    |
-| `--cinder-shadow-lg`   | `0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.08)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.06))` |
+| `--cinder-shadow-sm`   | `0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09)), 0 1px 1px light-dark(oklch(0% 0 0 / 0.06), oklch(100% 0 0 / 0.05))`              |
+| `--cinder-shadow-md`   | `0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.09)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.06))`    |
+| `--cinder-shadow-lg`   | `0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.11)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.07))` |
 
 ## Control heights
 
@@ -138,8 +138,8 @@ Background and surface tokens for the three core elevations — page background,
 | -------------------------- | ------------------------------------------------------------------------------------------- |
 | `--cinder-bg`              | `light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245))`                                     |
 | `--cinder-surface`         | `light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245))`                                   |
-| `--cinder-surface-raised`  | `light-dark(oklch(100% 0.006 245), oklch(24% 0.045 245))`                                   |
-| `--cinder-surface-inset`   | `light-dark(oklch(95.5% 0.01 245), oklch(12% 0.03 245))`                                    |
+| `--cinder-surface-raised`  | `light-dark(oklch(100% 0.006 245), oklch(26% 0.045 245))`                                   |
+| `--cinder-surface-inset`   | `light-dark(oklch(95.5% 0.01 245), oklch(11% 0.03 245))`                                    |
 | `--cinder-surface-hover`   | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
 | `--cinder-surface-pressed` | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
 
@@ -152,14 +152,14 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 | `--cinder-text`          | `light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245))` |
 | `--cinder-text-muted`    | `light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245))` |
 | `--cinder-text-subtle`   | `light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245))` |
-| `--cinder-text-disabled` | `light-dark(oklch(52% 0.01 245), oklch(62% 0.02 245))`  |
+| `--cinder-text-disabled` | `light-dark(oklch(52% 0.01 245), oklch(64% 0.02 245))`  |
 | `--cinder-fill-disabled` | `light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245))`  |
 
 ## Borders
 
 | Token                    | Default                                                 |
 | ------------------------ | ------------------------------------------------------- |
-| `--cinder-border`        | `light-dark(oklch(83% 0.012 245), oklch(35% 0.05 245))` |
+| `--cinder-border`        | `light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245))` |
 | `--cinder-border-muted`  | `light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245))`  |
 | `--cinder-border-strong` | `light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245))` |
 
@@ -167,16 +167,32 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 
 The brand color and its derivatives. `hover` and `active` are computed from `--cinder-accent` with `oklch(from ...)`, so overriding `--cinder-accent` re-derives both. `--cinder-accent-contrast` is the foreground color for text and icons placed on top of `--cinder-accent`.
 
-| Token                        | Default                                                    |
-| ---------------------------- | ---------------------------------------------------------- |
-| `--cinder-accent`            | `light-dark(oklch(72% 0.2 195), oklch(78% 0.15 195))`      |
-| `--cinder-accent-contrast`   | `light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245))`   |
-| `--cinder-accent-text`       | `light-dark(oklch(47% 0.16 195), oklch(78% 0.15 195))`     |
-| `--cinder-accent-text-hover` | `oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)` |
-| `--cinder-accent-hover`      | `oklch(from var(--cinder-accent) calc(l - 0.08) c h)`      |
-| `--cinder-accent-active`     | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`      |
+| Token                            | Default                                                    |
+| -------------------------------- | ---------------------------------------------------------- |
+| `--cinder-accent`                | `light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195))`     |
+| `--cinder-accent-contrast`       | `light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245))`   |
+| `--cinder-accent-text`           | `light-dark(oklch(47% 0.16 195), oklch(78% 0.13 195))`     |
+| `--cinder-accent-text-hover`     | `oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)` |
+| `--cinder-accent-hover`          | `oklch(from var(--cinder-accent) calc(l - 0.08) c h)`      |
+| `--cinder-accent-active`         | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`      |
+| `--cinder-accent-active-on-fill` | `oklch(from var(--cinder-accent) calc(l - 0.11) c h)`      |
 
-`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface; the bright `--cinder-accent` fill is too light to clear WCAG AA as a foreground (~2:1), so links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker use this darker on-brand cyan. `--cinder-accent-text-hover` is the hover step for those text/icon links: it darkens `--cinder-accent-text` by 0.08 lightness (light arm ≈ 7.9:1 on white) so links get _darker_ on hover. It exists because the fill-derived `--cinder-accent-hover` is _lighter_ than the resting text color and drops to ~2.75:1 on near-white — links must use `--cinder-accent-text-hover`, not `--cinder-accent-hover`, for their hover color.
+`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface. `--cinder-accent` is now a darker, more ink-like cyan (`oklch(0.66 0.16 195)`); as a foreground its contrast improves over the previous bright fill but still does _not_ clear the 3:1 UI floor (≈2.7:1 on the raised surface, lower on `--cinder-bg` / `--cinder-surface-inset`) — so foreground usages (links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker) keep using this darker on-brand cyan, which clears 4.5:1 on every surface. `--cinder-accent` remains a _fill_: it carries the dark-ink `--cinder-accent-contrast` label at ≈7.2:1. `--cinder-accent-text-hover` is the hover step for those text/icon links: it darkens `--cinder-accent-text` by 0.08 lightness (light arm ≈ 7.9:1 on white) so links get _darker_ on hover. It exists because the fill-derived `--cinder-accent-hover` is _lighter_ than the resting text color and drops to ~2.75:1 on near-white — links must use `--cinder-accent-text-hover`, not `--cinder-accent-hover`, for their hover color.
+
+`--cinder-accent-active-on-fill` is the pressed fill for solid accent surfaces that carry the dark-ink `--cinder-accent-contrast` label (primary `Button`, `FloatingActionButton`). The general `--cinder-accent-active` darkens the accent by `0.15`; on the darker `L=0.66` accent that resolves to `L=0.51`, where the dark-ink label drops to only ~4.09:1 — under WCAG AA. This token darkens by a gentler `0.11` (light → `L=0.55`, ~4.79:1; dark → `L=0.67`, ~7.1:1) so the pressed label stays AA-legible in both arms. Accent surfaces that do _not_ bear an on-fill label keep using `--cinder-accent-active`.
+
+## Semantic aliases
+
+An intent layer over the raw scale. Rather than reaching for a numeric step like `--cinder-space-2-5`, components reference what the spacing or radius is _for_ — control padding, card padding, a stack gap — so the meaning of a value travels with it and a single retune of the alias re-derives every call site. Every name here maps to a raw spacing or radius token and exists as a `:root` variable in `tokens-base.css`.
+
+| Token                     | Default                   |
+| ------------------------- | ------------------------- |
+| `--cinder-pad-control`    | `var(--cinder-space-2-5)` |
+| `--cinder-pad-card`       | `var(--cinder-space-4)`   |
+| `--cinder-gap-stack`      | `var(--cinder-space-3)`   |
+| `--cinder-gap-inline`     | `var(--cinder-space-2)`   |
+| `--cinder-radius-control` | `var(--cinder-radius-md)` |
+| `--cinder-radius-surface` | `var(--cinder-radius-lg)` |
 
 ## Status — solid
 

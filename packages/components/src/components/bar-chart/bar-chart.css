@@ -71,14 +71,64 @@
     pointer-events: none;
   }
 
-  /*
- * SVG focus indicator: drop-shadow renders a visible ring around the focused
- * element on any background. Matches line-chart and area-chart.
- */
-  .cinder-bar-chart__focus-target:focus-visible {
-    stroke: var(--cinder-accent);
+  .cinder-bar-chart__focus-target:focus-visible:not([data-cinder-focus-ring-active='true']) {
+    fill: transparent;
+    stroke: var(--cinder-ring-color);
     stroke-width: var(--cinder-ring-width);
-    filter: drop-shadow(0 0 var(--cinder-ring-width) var(--cinder-ring-color));
+    vector-effect: non-scaling-stroke;
+    filter: none;
+  }
+
+  .cinder-bar-chart__focus-ring-layer {
+    pointer-events: none;
+  }
+
+  .cinder-bar-chart__focus-ring,
+  .cinder-bar-chart__focus-ring-halo,
+  .cinder-bar-chart__focus-ring-connector,
+  .cinder-bar-chart__focus-ring-dot {
+    fill: none;
+    pointer-events: none;
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .cinder-bar-chart__focus-ring {
+    stroke: var(--cinder-ring-color);
+    stroke-width: var(--cinder-ring-width);
+    filter: none;
+  }
+
+  .cinder-bar-chart__focus-ring-halo {
+    stroke: var(--cinder-ring-offset-color);
+    stroke-width: calc(
+      var(--cinder-ring-width) + var(--cinder-ring-offset) + var(--cinder-ring-offset)
+    );
+    filter: none;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-bar-chart__focus-ring-halo {
+      display: none;
+    }
+
+    .cinder-bar-chart__focus-ring,
+    .cinder-bar-chart__focus-ring-connector,
+    .cinder-bar-chart__focus-ring-dot {
+      fill: none;
+      stroke: ButtonText;
+      stroke-width: var(--cinder-ring-width);
+      filter: none;
+    }
+
+    .cinder-bar-chart__focus-target:focus-visible:not([data-cinder-focus-ring-active='true']) {
+      fill: transparent;
+      stroke: ButtonText;
+      stroke-width: var(--cinder-ring-width);
+      vector-effect: non-scaling-stroke;
+      filter: none;
+    }
   }
 
   .cinder-bar-chart__tick-label {

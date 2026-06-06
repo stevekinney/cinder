@@ -93,7 +93,7 @@ describe('light-mode border parity floor', () => {
 
   test('the default border reads against the secondary button fill (surface-raised)', () => {
     // Secondary button: fill = surface-raised (L=1.0), border = --cinder-border.
-    // Pre-fix border L=0.86 → ΔL=0.14 (fails). Post-fix L=0.83 → ΔL=0.17.
+    // Pre-fix border L=0.86 → ΔL=0.14 (fails). Post-fix L=0.79 → ΔL=0.21.
     expect(raised.L - border.L).toBeGreaterThanOrEqual(0.15);
   });
 });
@@ -102,28 +102,35 @@ describe('light-mode accent vividness floor', () => {
   const accent = lightArmOklch('--cinder-accent');
   const accentContrast = lightArmOklch('--cinder-accent-contrast');
 
-  test('accent is brightened toward dark-mode vividness, not darkened', () => {
-    // Design decision (89d25073): match dark mode's ENERGY, not just its
-    // contrast. Dark accent is L=0.78; the light arm is pushed up to a bright
-    // cyan (L=0.72) so the primary button glows on the white page instead of
-    // reading as a muted dark-teal. Pre-fix darken-direction values (L≈0.42-0.45)
-    // fail this floor; the brightened value passes.
+  test('accent is darkened toward an ink-like cyan, not collapsed to a dark teal', () => {
+    // Design decision (89d25073, revised): the light accent was darkened from
+    // the bright cyan (L=0.72) to a more ink-like L=0.66. As a FOREGROUND its
+    // contrast improves (~2:1 → ~2.7:1) but still does not clear the 3:1 UI
+    // floor, so --cinder-accent-text remains the foreground token; --cinder-accent
+    // is a FILL (it carries the dark-ink label at ~7.2:1). Dark accent stays
+    // L=0.78. The 0.65 floor still passes at 0.66; pre-fix darken-direction
+    // values (L≈0.42-0.45) still fail it, so the accent cannot silently collapse
+    // back toward a dark-teal.
     expect(accent.L).toBeGreaterThanOrEqual(0.65);
   });
 
-  test('accent chroma is strengthened for a more vivid fill', () => {
-    // Pre-fix nominal C=0.14 (fails). Brightened fill carries C=0.20.
-    expect(accent.C).toBeGreaterThanOrEqual(0.18);
+  test('accent chroma stays at the design vividness floor', () => {
+    // Design vividness floor (ticket 89d25073) -- light accent C=0.16, an
+    // ink-like cyan. THIS task lowered the floor from 0.18 to 0.16: that was a
+    // deliberate vividness floor, NOT a contrast guarantee, and the neon-pop
+    // reduction (cyan no longer vibrates against the page) is intentional.
+    // Pre-fix nominal C=0.14 still fails.
+    expect(accent.C).toBeGreaterThanOrEqual(0.16);
   });
 
   test('accent hue is preserved (cyan, hue 195)', () => {
     expect(accent.H).toBe(195);
   });
 
-  test('a bright light accent flips its on-accent text to dark for readability', () => {
-    // A bright L=0.72 fill cannot carry white text at AA, so the light arm of
+  test('the light accent flips its on-accent text to dark for readability', () => {
+    // The ink-like L=0.66 fill cannot carry white text at AA, so the light arm of
     // --cinder-accent-contrast must be a dark ink. Guard the pairing so a future
-    // accent edit can't silently leave white-on-bright-cyan (a contrast failure).
+    // accent edit can't silently leave white-on-cyan (a contrast failure).
     expect(accentContrast.L).toBeLessThanOrEqual(0.3);
   });
 });

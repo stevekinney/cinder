@@ -80,6 +80,28 @@ const PARSE_OKLCH_FN = `
  */
 const WCAG_CONTRAST_FN = `
   function linearRgbFromColor(cssColor) {
+    // Chromium serializes a resolved \`oklch(from …)\` derivation (e.g.
+    // --cinder-accent-active-on-fill) as \`oklab(L a b)\`, NOT \`oklch()\` — so we
+    // accept oklab directly, reading L/a/b without the C/H → a/b step.
+    const oklabMatch = cssColor.match(/oklab\\(([^)]+)\\)/i);
+    if (oklabMatch) {
+      const parts = oklabMatch[1].split(/[ ,/]+/).filter((value) => value.length > 0);
+      const L = parts[0].endsWith('%') ? Number.parseFloat(parts[0]) / 100 : Number.parseFloat(parts[0]);
+      const a = Number.parseFloat(parts[1]);
+      const b = Number.parseFloat(parts[2]);
+      const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+      const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+      const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+      const l = l_ * l_ * l_;
+      const m = m_ * m_ * m_;
+      const s = s_ * s_ * s_;
+      const clamp = (value) => Math.max(0, Math.min(1, value));
+      return [
+        clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+        clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+        clamp(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s),
+      ];
+    }
     const oklchMatch = cssColor.match(/oklch\\(([^)]+)\\)/i);
     if (oklchMatch) {
       const parts = oklchMatch[1].split(/[ ,/]+/).filter((value) => value.length > 0);
@@ -241,22 +263,27 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     }
   });
 
-  // 3. Primary accent vividness floor + AA safety.
+  // 3. Primary accent legibility floor + AA safety.
   //
-  //    Design decision (89d25073): match dark mode's ENERGY, not just its
-  //    contrast. The light accent is pushed UP to a bright cyan
-  //    oklch(0.72 0.20 195) so the primary button glows on the white page
-  //    instead of reading as a muted dark-teal; the on-accent text flips to a
-  //    dark ink (--cinder-accent-contrast light arm) so it stays readable.
-  //    Chromium serializes the painted accent back as the authored OKLCH, so
-  //    the floors read the nominal components directly:
-  //      - L ≥ 0.65   (pre-fix darken-direction 0.42-0.45 fails) — bright fill.
-  //      - C ≥ 0.18   (pre-fix 0.14 fails) — more vivid.
-  //    The brightened fill must NOT break on-accent contrast: whatever
-  //    --cinder-accent-contrast resolves to (dark ink on the bright fill) must
-  //    clear WCAG AA (≥ 4.5:1). The assertion reads the PAINTED bg + text, so
-  //    it stays correct regardless of which way the text flips.
-  test('primary accent is a bright, vivid cyan that still clears WCAG AA on its label', async ({
+  //    Design decision (89d25073, revised): the light accent is now a darker,
+  //    more ink-like cyan oklch(0.66 0.16 195) that reads more like ink than a
+  //    glow. The previous bright cyan (L=0.72, C=0.20) reached only ~2:1 as a
+  //    foreground; the darkened fill improves that to ~2.7:1 but still does NOT
+  //    clear the 3:1 UI floor, so foreground text/icon use keeps the dedicated
+  //    --cinder-accent-text token while --cinder-accent stays a fill. The calmed
+  //    chroma stops the cyan from vibrating against the white page. The
+  //    dark-mode arm stays bright (L=0.78) for energy parity across themes; the
+  //    on-accent text flips to a dark ink (--cinder-accent-contrast light arm)
+  //    so it stays readable. These floors read the PAINTED components (after
+  //    Chromium's sRGB gamut clipping), so they sit a clipping margin BELOW the
+  //    authored value — painted L/C can dip under the authored numbers:
+  //      - L ≥ 0.60   (clipping margin; authored 0.66) — darker, ink-like fill.
+  //      - C ≥ 0.14   (clipping margin; authored 0.16) — moderately saturated.
+  //    The painted fill must NOT break on-accent contrast: whatever
+  //    --cinder-accent-contrast resolves to (dark ink on the fill) must clear
+  //    WCAG AA (≥ 4.5:1). The assertion reads the PAINTED bg + text, so it stays
+  //    correct regardless of which way the text flips.
+  test('primary accent is a darker, ink-like cyan that still clears WCAG AA on its label', async ({
     browser,
   }) => {
     const context = await browser.newContext({ colorScheme: 'light', reducedMotion: 'reduce' });
@@ -267,15 +294,14 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       const primarySelector = ".cinder-button[data-cinder-variant='primary']";
       const accent = await paintedOklch(page, primarySelector, 'backgroundColor');
 
-      expect(accent.L, 'primary accent must be a bright fill in light mode').toBeGreaterThanOrEqual(
-        0.65,
-      );
-      expect(accent.C, 'primary accent must be a vivid, saturated cyan').toBeGreaterThanOrEqual(
-        0.18,
-      );
+      expect(
+        accent.L,
+        'primary accent must be a darker, ink-like fill in light mode',
+      ).toBeGreaterThanOrEqual(0.6);
+      expect(accent.C, 'primary accent must be moderately saturated').toBeGreaterThanOrEqual(0.14);
 
       // The label color IS the --cinder-accent-contrast token (dark ink on the
-      // bright fill in light mode). Read both off the painted element so the
+      // ink-like fill in light mode). Read both off the painted element so the
       // contrast check holds whichever way the text flips.
       const ratio = await page
         .locator(primarySelector)
@@ -287,9 +313,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
           return helpers.contrastRatio(style.backgroundColor, style.color) as number;
         }, WCAG_CONTRAST_FN);
 
-      expect(ratio, 'the label on the brightened accent must clear WCAG AA').toBeGreaterThanOrEqual(
-        4.5,
-      );
+      expect(ratio, 'the label on the accent fill must clear WCAG AA').toBeGreaterThanOrEqual(4.5);
     } finally {
       await context.close();
     }
@@ -356,8 +380,8 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       const darkAccent = await paintedOklch(darkPage, primarySelector, 'backgroundColor');
 
       // Both themes carry a genuinely saturated cyan accent — neither collapses
-      // to a neutral grey (C ≈ 0). The light arm is the dark/vivid fill; the
-      // dark arm is the high-lightness fill. The shared floor proves the
+      // to a neutral grey (C ≈ 0). The light arm is the darker, ink-like fill;
+      // the dark arm is the high-lightness fill. The shared floor proves the
       // accent reads as the brand color in either theme.
       expect(lightAccent.C, 'light primary must be a saturated accent').toBeGreaterThanOrEqual(
         0.06,
@@ -365,9 +389,9 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       expect(darkAccent.C, 'dark primary must be a saturated accent').toBeGreaterThanOrEqual(0.06);
 
       // And the two themes must genuinely differ — proves light-dark() branched
-      // per color-scheme. Both arms are now intentionally bright (light L≈0.72,
-      // dark L≈0.78), so lightness alone is a weak branch signal; the chroma
-      // differs more reliably (light C≈0.20 vs dark C≈0.15). Assert the resolved
+      // per color-scheme. The light arm is now darker and ink-like (L≈0.66) while
+      // the dark arm stays bright (L≈0.78), so lightness branches reliably; the
+      // chroma also differs (light C≈0.16 vs dark C≈0.13). Assert the resolved
       // colors are not identical across both L and C.
       const accentsDiffer =
         Math.abs(lightAccent.L - darkAccent.L) > 0.02 ||
@@ -376,6 +400,87 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     } finally {
       await lightContext.close();
       await darkContext.close();
+    }
+  });
+
+  // 6. Pressed primary button keeps its label AA-legible (regression guard).
+  //
+  //    The primary Button paints --cinder-accent-contrast (dark ink) on its fill.
+  //    Its :active rule swaps the fill to --cinder-accent-active-on-fill. The
+  //    GENERAL --cinder-accent-active (a −0.15 lightness step) would, on the
+  //    darker L=0.66 accent, resolve to L=0.51 where the dark-ink label drops to
+  //    ~4.09:1 — below WCAG AA. The dedicated on-fill token darkens by a gentler
+  //    −0.11 step so the pressed label clears 4.5:1 in BOTH themes. We resolve
+  //    both custom properties off the live button (so the browser evaluates the
+  //    oklch(from …) derivation exactly as it paints it) and assert the ratio.
+  test('pressed primary button keeps its label above WCAG AA in both themes', async ({
+    browser,
+  }) => {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      const context = await browser.newContext({ colorScheme, reducedMotion: 'reduce' });
+      try {
+        const page = await context.newPage();
+        await page.goto('/page/button', { waitUntil: 'load' });
+
+        const primarySelector = ".cinder-button[data-cinder-variant='primary']";
+        // Resolve the pressed fill + label tokens to painted colors via a probe:
+        // set the probe's color to each custom property and read it back computed.
+        const ratio = await page
+          .locator(primarySelector)
+          .first()
+          .evaluate((node, fn) => {
+            // Resolve each token on its OWN probe element. Reusing one probe and
+            // re-reading getComputedStyle after reassigning style.color returns the
+            // FIRST resolved value within the same synchronous turn (the live
+            // CSSStyleDeclaration is not recomputed until style is flushed), which
+            // would make every read collapse to one color. A fresh element per
+            // token forces an independent style resolution.
+            //
+            // The fallback is a loud sentinel: if a token is absent (e.g. a stale
+            // CSS bundle that predates --cinder-accent-active-on-fill) var() falls
+            // back to it rather than silently inheriting the button color and
+            // reading as a benign ratio. We use an explicit `rgb(255 0 255)` so the
+            // computed value is stable and can be compared exactly below — a missing
+            // token must FAIL the guard, never sneak through as a passing ratio.
+            const FALLBACK = 'rgb(255, 0, 255)';
+            const read = (customProperty: string) => {
+              const probe = document.createElement('span');
+              probe.style.color = `var(${customProperty}, rgb(255 0 255))`;
+              node.appendChild(probe);
+              const resolved = getComputedStyle(probe).color;
+              probe.remove();
+              return resolved;
+            };
+            const pressedFill = read('--cinder-accent-active-on-fill');
+            const label = read('--cinder-accent-contrast');
+            // A token that failed to resolve hits the magenta fallback. Catch it
+            // explicitly: otherwise a missing --cinder-accent-active-on-fill would
+            // read as magenta and could still clear 4.5:1 against the dark-ink
+            // label — a false pass for the very regression this guard protects.
+            if (pressedFill === FALLBACK || label === FALLBACK) {
+              throw new Error(
+                `a token failed to resolve (pressedFill=${pressedFill}, label=${label}) — ` +
+                  'hit the magenta fallback (stale CSS bundle?). Rebuild cinder and retry.',
+              );
+            }
+            if (pressedFill === label) {
+              throw new Error(
+                `pressed fill and label resolved to the same color (${pressedFill}) — ` +
+                  'a token failed to resolve. Rebuild cinder and retry.',
+              );
+            }
+            // eslint-disable-next-line no-new-func
+            const helpers = new Function(`${fn}; return { contrastRatio };`)();
+            return helpers.contrastRatio(pressedFill, label) as number;
+          }, WCAG_CONTRAST_FN);
+
+        expect(
+          ratio,
+          `pressed primary button label must clear WCAG AA in ${colorScheme} mode`,
+        ).toBeGreaterThanOrEqual(4.5);
+      } finally {
+        await context.close();
+      }
     }
   });
 });
