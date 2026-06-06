@@ -126,9 +126,9 @@ const RESERVED_STYLES_ENTRIES: ReadonlyArray<readonly [string, string]> = [
   [STYLES_UTILITIES_KEY, './src/styles/utilities.css'],
 ];
 
-/** Canonical `{ default: <css> }` entry for a reserved styles subpath. */
-function stylesExport(cssPath: string): ExportEntry {
-  return { default: cssPath };
+/** Canonical `{ types: <dts>, default: <css> }` entry for a reserved styles subpath. */
+export function stylesExport(cssPath: string): ExportEntry {
+  return orderedExportEntry({ types: `${cssPath}.d.ts`, default: cssPath });
 }
 
 /**
@@ -492,6 +492,7 @@ export const STATIC_FILES_GLOBS: readonly string[] = [
   'src/_internal/**/*.ts',
   '!src/_internal/**/*.test.ts',
   'src/styles/**/*.css',
+  'src/styles/**/*.css.d.ts',
   'src/styles/base-guard.ts',
   'src/components/icons/index.ts',
   'src/utilities/**/*.ts',
