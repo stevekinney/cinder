@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "skip-link",
+  "import": "@lostgradient/cinder/skip-link",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic usage",
+      "description": "Tab into this example to reveal the skip link, then press Enter to jump focus to the main content area.",
+      "code": "<script lang=\"ts\">\n  import { SkipLink } from '@lostgradient/cinder/skip-link';\n</script>\n\n<div\n  style=\"position: relative; min-height: 80px; border: 1px dashed var(--cinder-border); border-radius: 4px; padding: 1rem;\"\n>\n  <SkipLink target=\"skip-link-example-main\" />\n\n  <nav aria-label=\"Example navigation\">\n    <a href=\"#skip-link-example-main\" style=\"margin-right: 1rem;\">Home</a>\n    <a href=\"#skip-link-example-main\" style=\"margin-right: 1rem;\">About</a>\n    <a href=\"#skip-link-example-main\">Contact</a>\n  </nav>\n\n  <main id=\"skip-link-example-main\" style=\"margin-top: 1rem;\">\n    <p>Main content area. Focus lands here when the skip link is activated.</p>\n  </main>\n</div>\n"
+    }
+  ]
+}

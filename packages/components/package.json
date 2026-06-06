@@ -2480,6 +2480,28 @@
       "import": "./src/components/skeleton/skeleton.examples.json",
       "default": "./src/components/skeleton/skeleton.examples.json"
     },
+    "./skip-link": {
+      "types": "./dist/components/skip-link/index.d.ts",
+      "svelte": "./src/components/skip-link/index.ts",
+      "node": "./dist/server/components/skip-link/index.js",
+      "default": "./dist/components/skip-link/index.js"
+    },
+    "./skip-link/schema": {
+      "types": "./dist/components/skip-link/skip-link.schema.d.ts",
+      "svelte": "./src/components/skip-link/skip-link.schema.ts",
+      "node": "./dist/server/components/skip-link/skip-link.schema.js",
+      "default": "./dist/components/skip-link/skip-link.schema.js"
+    },
+    "./skip-link/variables": {
+      "types": "./dist/components/skip-link/skip-link.variables.d.ts",
+      "svelte": "./src/components/skip-link/skip-link.variables.ts",
+      "node": "./dist/server/components/skip-link/skip-link.variables.js",
+      "default": "./dist/components/skip-link/skip-link.variables.js"
+    },
+    "./skip-link/examples": {
+      "import": "./src/components/skip-link/skip-link.examples.json",
+      "default": "./src/components/skip-link/skip-link.examples.json"
+    },
     "./slider": {
       "types": "./dist/components/slider/index.d.ts",
       "svelte": "./src/components/slider/index.ts",
