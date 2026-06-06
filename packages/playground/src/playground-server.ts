@@ -1069,6 +1069,8 @@ function renderPreviewMessageBridgeScript(): string {
         var colorTokenNames = new Set(${colorTokenNamesJson});
         var blockedColorValuePattern = /[;{}<>]|\\/\\*|\\*\\//;
         var fallbackColorValuePattern = /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|rgba|hsl|hsla|oklch|oklab|lch|lab|color|color-mix|light-dark)\\([^;{}<>]+\\)|var\\(--cinder-[a-z0-9-]+\\)|transparent|currentcolor|black|white)$/;
+        var activeTheme = document.documentElement.dataset.cinderTheme;
+        if (!isTheme(activeTheme)) activeTheme = null;
 
         function isTheme(value) {
           return value === 'light' || value === 'dark';
@@ -1118,12 +1120,14 @@ function renderPreviewMessageBridgeScript(): string {
             if (isTheme(data.value)) {
               document.documentElement.style.colorScheme = data.value;
               document.documentElement.dataset.cinderTheme = data.value;
+              activeTheme = data.value;
             }
             return;
           }
 
           if (data.type === 'cinder:set-color-token-overrides') {
             if (!isTheme(data.theme)) return;
+            if (data.theme !== activeTheme) return;
             applyColorTokenOverrides(data.overrides);
           }
         });

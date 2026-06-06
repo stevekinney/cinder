@@ -720,6 +720,8 @@ describe('/page/:name', () => {
     expect(html).toContain('cinder:set-color-token-overrides');
     expect(html).toContain('--cinder-accent');
     expect(html).toContain('|transparent|currentcolor|black|white)$/');
+    expect(html).toContain('var activeTheme = document.documentElement.dataset.cinderTheme');
+    expect(html).toContain('if (data.theme !== activeTheme) return;');
     expect(html).not.toContain('--cinder-button-bg');
     expect(html).not.toContain('transparent$|currentcolor$|black$|white$');
   });

@@ -1,9 +1,40 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const TOKEN_NAME = '--cinder-accent';
+const SUCCESS_TOKEN_NAME = '--cinder-success';
+const DANGER_TOKEN_NAME = '--cinder-danger';
 const SURFACE_TOKEN_NAME = '--cinder-surface';
-const LIGHT_PICKER_OVERRIDE = '#336699';
+const EXPECTED_COLOR_TOKEN_COUNT = 56;
 const LIGHT_ADVANCED_OVERRIDE = 'oklch(60% 0.2 195)';
+const LIGHT_BULK_OVERRIDE = '#118833';
+const DARK_BULK_OVERRIDE = '#884422';
+const STALE_DARK_MESSAGE_OVERRIDE = '#123456';
+const MATCHING_LIGHT_MESSAGE_OVERRIDE = '#654321';
+
+const PICKER_SEED_TOKENS = [
+  '--cinder-surface',
+  '--cinder-surface-raised',
+  '--cinder-accent',
+  '--cinder-color-info-bg',
+  '--cinder-chart-series-1',
+  '--cinder-ring-color',
+] as const;
+
+type ColorTokenSwatchState = {
+  token: string;
+  resolved: string;
+  swatch: string;
+  inputValue: string;
+};
+
+type ColorTriggerFocusState = {
+  token: string | null;
+  triggerBoxShadow: string;
+  triggerMatchesFocusVisible: boolean;
+  swatchBoxShadow: string;
+  swatchOutlineStyle: string;
+  swatchOutlineWidth: string;
+};
 
 async function waitForPlayground(page: Page): Promise<void> {
   await page.waitForSelector('iframe[data-cinder-preview]', { state: 'attached' });
@@ -54,8 +85,345 @@ async function colorTriggerBoxShadowValues(page: Page): Promise<string[]> {
   });
 }
 
+async function expandedColorTriggerTokenNames(page: Page): Promise<string[]> {
+  return page
+    .locator('.color-token-panel .token-color-trigger[aria-expanded="true"]')
+    .evaluateAll((elements) =>
+      elements.map(
+        (element) => element.closest('[data-color-token]')?.getAttribute('data-color-token') ?? '',
+      ),
+    );
+}
+
+async function swatchBoxShadowValue(page: Page, tokenName: string): Promise<string> {
+  return page
+    .locator(`[data-color-token="${tokenName}"] .token-color-trigger__swatch`)
+    .evaluate((element) => getComputedStyle(element).boxShadow);
+}
+
+async function colorTokenSwatchStates(page: Page): Promise<ColorTokenSwatchState[]> {
+  return page.locator('[data-color-token]').evaluateAll((rows) => {
+    return rows.map((row) => {
+      const token = row.getAttribute('data-color-token') ?? '';
+      const input = row.querySelector('input');
+      const swatch = row.querySelector('.token-color-trigger__swatch');
+      const probe = document.createElement('span');
+      probe.style.backgroundColor = `var(${token})`;
+      document.body.append(probe);
+      const resolved = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+
+      return {
+        token,
+        resolved,
+        swatch: swatch === null ? '' : getComputedStyle(swatch).backgroundColor,
+        inputValue: input instanceof HTMLInputElement ? input.value : '',
+      };
+    });
+  });
+}
+
+function countBoxShadowLayers(value: string): number {
+  if (value === 'none') return 0;
+
+  let depth = 0;
+  let layers = 1;
+  for (const char of value) {
+    if (char === '(') depth += 1;
+    if (char === ')') depth = Math.max(0, depth - 1);
+    if (char === ',' && depth === 0) layers += 1;
+  }
+  return layers;
+}
+
+function colorChannelToHex(value: number): string {
+  return Math.max(0, Math.min(255, Math.round(value)))
+    .toString(16)
+    .padStart(2, '0');
+}
+
+function splitColorChannels(value: string): string[] {
+  return value
+    .replace(/\s*\/\s*/g, ' ')
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part !== '');
+}
+
+function parseUnitIntervalChannel(channel: string): number | null {
+  const parsed = Number.parseFloat(channel);
+  if (!Number.isFinite(parsed)) return null;
+  return channel.trim().endsWith('%') ? parsed / 100 : parsed;
+}
+
+function parseHueDegrees(channel: string): number | null {
+  const trimmed = channel.trim().toLowerCase();
+  const parsed = Number.parseFloat(trimmed);
+  if (!Number.isFinite(parsed)) return null;
+  if (trimmed.endsWith('turn')) return parsed * 360;
+  if (trimmed.endsWith('rad')) return (parsed * 180) / Math.PI;
+  if (trimmed.endsWith('grad')) return parsed * 0.9;
+  return parsed;
+}
+
+function linearSrgbToDisplayChannel(channel: number): number {
+  const clamped = Math.min(1, Math.max(0, channel));
+  if (clamped <= 0.003_130_8) return clamped * 12.92;
+  return 1.055 * clamped ** (1 / 2.4) - 0.055;
+}
+
+function oklabToHex(lightness: number, greenRed: number, blueYellow: number): string {
+  const long = lightness + 0.396_337_777_4 * greenRed + 0.215_803_757_3 * blueYellow;
+  const medium = lightness - 0.105_561_345_8 * greenRed - 0.063_854_172_8 * blueYellow;
+  const short = lightness - 0.089_484_177_5 * greenRed - 1.291_485_548 * blueYellow;
+
+  const longCubed = long ** 3;
+  const mediumCubed = medium ** 3;
+  const shortCubed = short ** 3;
+
+  const red =
+    4.076_741_662_1 * longCubed - 3.307_711_591_3 * mediumCubed + 0.230_969_929_2 * shortCubed;
+  const green =
+    -1.268_438_004_6 * longCubed + 2.609_757_401_1 * mediumCubed - 0.341_319_396_5 * shortCubed;
+  const blue =
+    -0.004_196_086_3 * longCubed - 0.703_418_614_7 * mediumCubed + 1.707_614_701 * shortCubed;
+
+  return `#${colorChannelToHex(linearSrgbToDisplayChannel(red) * 255)}${colorChannelToHex(
+    linearSrgbToDisplayChannel(green) * 255,
+  )}${colorChannelToHex(linearSrgbToDisplayChannel(blue) * 255)}`;
+}
+
+function oklchColorToHex(value: string): string | null {
+  const match = /^oklch\((?<body>.+)\)$/i.exec(value.trim());
+  const body = match?.groups?.['body'];
+  if (body === undefined) return null;
+
+  const [lightnessValue, chromaValue, hueValue] = splitColorChannels(body);
+  if (lightnessValue === undefined || chromaValue === undefined || hueValue === undefined) {
+    return null;
+  }
+
+  const lightness = parseUnitIntervalChannel(lightnessValue);
+  const chroma = parseUnitIntervalChannel(chromaValue);
+  const hue = parseHueDegrees(hueValue);
+  if (lightness === null || chroma === null || hue === null) return null;
+
+  const hueRadians = (hue * Math.PI) / 180;
+  return oklabToHex(lightness, chroma * Math.cos(hueRadians), chroma * Math.sin(hueRadians));
+}
+
+function oklabColorToHex(value: string): string | null {
+  const match = /^oklab\((?<body>.+)\)$/i.exec(value.trim());
+  const body = match?.groups?.['body'];
+  if (body === undefined) return null;
+
+  const [lightnessValue, greenRedValue, blueYellowValue] = splitColorChannels(body);
+  if (
+    lightnessValue === undefined ||
+    greenRedValue === undefined ||
+    blueYellowValue === undefined
+  ) {
+    return null;
+  }
+
+  const lightness = parseUnitIntervalChannel(lightnessValue);
+  const greenRed = parseUnitIntervalChannel(greenRedValue);
+  const blueYellow = parseUnitIntervalChannel(blueYellowValue);
+  if (lightness === null || greenRed === null || blueYellow === null) return null;
+
+  return oklabToHex(lightness, greenRed, blueYellow);
+}
+
+function srgbColorFunctionToHex(value: string): string | null {
+  const match = /^color\((?<body>.+)\)$/i.exec(value.trim());
+  const body = match?.groups?.['body'];
+  if (body === undefined) return null;
+
+  const [space, redValue, greenValue, blueValue] = splitColorChannels(body);
+  if (
+    space?.toLowerCase() !== 'srgb' ||
+    redValue === undefined ||
+    greenValue === undefined ||
+    blueValue === undefined
+  ) {
+    return null;
+  }
+
+  const red = parseUnitIntervalChannel(redValue);
+  const green = parseUnitIntervalChannel(greenValue);
+  const blue = parseUnitIntervalChannel(blueValue);
+  if (red === null || green === null || blue === null) return null;
+
+  return `#${colorChannelToHex(red * 255)}${colorChannelToHex(green * 255)}${colorChannelToHex(
+    blue * 255,
+  )}`;
+}
+
+function modernColorFunctionToHex(value: string): string | null {
+  return oklchColorToHex(value) ?? oklabColorToHex(value) ?? srgbColorFunctionToHex(value);
+}
+
+function resolvedRgbColorToHex(value: string): string | null {
+  const match = /^rgba?\((?<channels>.+)\)$/i.exec(value.trim());
+  const channels = match?.groups?.['channels'];
+  if (channels === undefined) return null;
+
+  const [red, green, blue] = channels
+    .replaceAll(',', ' ')
+    .replace(/\s*\/\s*/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(Number.parseFloat);
+
+  if (red === undefined || green === undefined || blue === undefined) return null;
+  if (![red, green, blue].every((channel) => Number.isFinite(channel))) return null;
+
+  return `#${colorChannelToHex(red)}${colorChannelToHex(green)}${colorChannelToHex(blue)}`;
+}
+
+async function resolvedCssColorToHex(page: Page, value: string): Promise<string | null> {
+  const directHex = resolvedRgbColorToHex(value) ?? modernColorFunctionToHex(value);
+  if (directHex !== null) return directHex;
+
+  return page.evaluate((cssColor) => {
+    function channelToHex(channel: number): string {
+      return Math.max(0, Math.min(255, Math.round(channel)))
+        .toString(16)
+        .padStart(2, '0');
+    }
+
+    function rgbToHex(color: string): string | null {
+      const match = /^rgba?\((?<channels>.+)\)$/i.exec(color.trim());
+      const channels = match?.groups?.['channels'];
+      if (channels === undefined) return null;
+
+      const [red, green, blue] = channels
+        .replaceAll(',', ' ')
+        .replace(/\s*\/\s*/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(Number.parseFloat);
+
+      if (red === undefined || green === undefined || blue === undefined) return null;
+      if (![red, green, blue].every((channel) => Number.isFinite(channel))) return null;
+
+      return `#${channelToHex(red)}${channelToHex(green)}${channelToHex(blue)}`;
+    }
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (context !== null) {
+      context.fillStyle = '#000000';
+      context.fillStyle = cssColor;
+      const normalized = context.fillStyle;
+      if (/^#[0-9a-f]{6}$/i.test(normalized)) return normalized.toLowerCase();
+      const canvasHex = rgbToHex(normalized);
+      if (canvasHex !== null) return canvasHex;
+    }
+
+    const probe = document.createElement('span');
+    probe.style.backgroundColor = cssColor;
+    document.body.append(probe);
+    const computed = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+
+    return rgbToHex(computed);
+  }, value);
+}
+
+async function clickRelative(
+  page: Page,
+  locator: Locator,
+  xRatio: number,
+  yRatio: number,
+): Promise<void> {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  await page.mouse.click(box.x + box.width * xRatio, box.y + box.height * yRatio);
+}
+
+async function openColorTokenPanel(page: Page): Promise<Locator> {
+  await page.getByTestId('color-token-panel-toggle').click();
+  const panel = page.getByTestId('color-token-panel');
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
+async function openTokenPicker(page: Page, tokenName: string): Promise<Locator> {
+  const row = page.locator(`[data-color-token="${tokenName}"]`);
+  await row.getByRole('button', { name: `Pick ${tokenName} color` }).click();
+  const dialog = page.getByRole('dialog', { name: `Pick ${tokenName} color` });
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+async function focusNextColorTrigger(page: Page): Promise<string> {
+  for (let index = 0; index < 25; index += 1) {
+    const tokenName = await page.evaluate(() => {
+      const activeElement = document.activeElement;
+      if (!(activeElement instanceof HTMLElement)) return null;
+      if (!activeElement.classList.contains('token-color-trigger')) return null;
+      return activeElement.closest('[data-color-token]')?.getAttribute('data-color-token') ?? null;
+    });
+    if (tokenName !== null) return tokenName;
+    await page.keyboard.press('Tab');
+  }
+
+  throw new Error('Expected keyboard focus to reach a color token trigger.');
+}
+
+async function colorTriggerFocusState(page: Page): Promise<ColorTriggerFocusState> {
+  return page.evaluate(() => {
+    const activeElement = document.activeElement;
+    if (!(activeElement instanceof HTMLElement)) {
+      return {
+        token: null,
+        triggerBoxShadow: '',
+        triggerMatchesFocusVisible: false,
+        swatchBoxShadow: '',
+        swatchOutlineStyle: '',
+        swatchOutlineWidth: '',
+      };
+    }
+
+    const row = activeElement.closest('[data-color-token]');
+    const swatch = activeElement.querySelector('.token-color-trigger__swatch');
+    const swatchStyle = swatch === null ? null : getComputedStyle(swatch);
+    return {
+      token: row?.getAttribute('data-color-token') ?? null,
+      triggerBoxShadow: getComputedStyle(activeElement).boxShadow,
+      triggerMatchesFocusVisible: activeElement.matches(':focus-visible'),
+      swatchBoxShadow: swatchStyle?.boxShadow ?? '',
+      swatchOutlineStyle: swatchStyle?.outlineStyle ?? '',
+      swatchOutlineWidth: swatchStyle?.outlineWidth ?? '',
+    };
+  });
+}
+
+async function postIframeColorOverrideMessage(
+  page: Page,
+  theme: 'light' | 'dark',
+  overrides: Record<string, string>,
+): Promise<void> {
+  await page.evaluate(
+    ({ theme: messageTheme, overrides: messageOverrides }) => {
+      const iframe = document.querySelector<HTMLIFrameElement>('iframe[data-cinder-preview]');
+      iframe?.contentWindow?.postMessage(
+        {
+          type: 'cinder:set-color-token-overrides',
+          theme: messageTheme,
+          overrides: messageOverrides,
+        },
+        window.location.origin,
+      );
+    },
+    { theme, overrides },
+  );
+}
+
 test.describe('playground color token panel', () => {
-  test('edits active-theme color tokens in the shell and iframe without persistence', async ({
+  test('supports visual color editing with correct swatches, focus, theme isolation, and reset UX', async ({
     page,
   }) => {
     await page.goto('/c/button', { waitUntil: 'load' });
@@ -64,9 +432,21 @@ test.describe('playground color token panel', () => {
     await page.getByRole('radio', { name: 'Light' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'light');
 
-    await page.getByRole('button', { name: 'Color token panel' }).click();
-    const panel = page.getByTestId('color-token-panel');
-    await expect(panel).toBeVisible();
+    const panel = await openColorTokenPanel(page);
+    await expect(page.locator('#color-token-filter')).toBeFocused();
+
+    const swatchStates = await colorTokenSwatchStates(page);
+    expect(swatchStates).toHaveLength(EXPECTED_COLOR_TOKEN_COUNT);
+    expect(
+      swatchStates.filter((state) => state.swatch !== state.resolved),
+      'each swatch should render the same browser-resolved color as its token',
+    ).toEqual([]);
+    expect(
+      swatchStates.filter(
+        (state) => state.swatch === 'rgb(0, 0, 0)' && state.resolved !== 'rgb(0, 0, 0)',
+      ),
+      'a swatch must not fall back to black when the token resolves to another color',
+    ).toEqual([]);
 
     const surfaceResolvedColor = await renderedTokenBackgroundValue(page, SURFACE_TOKEN_NAME);
     expect(surfaceResolvedColor).not.toBe('rgb(0, 0, 0)');
@@ -74,27 +454,41 @@ test.describe('playground color token panel', () => {
       .poll(() => swatchBackgroundValue(page, SURFACE_TOKEN_NAME))
       .toBe(surfaceResolvedColor);
 
-    const surfaceRow = page.locator(`[data-color-token="${SURFACE_TOKEN_NAME}"]`);
-    await surfaceRow.getByRole('button', { name: `Pick ${SURFACE_TOKEN_NAME} color` }).click();
-    const surfacePickerDialog = page.getByRole('dialog', {
-      name: `Pick ${SURFACE_TOKEN_NAME} color`,
-    });
-    await expect(surfacePickerDialog).toBeVisible();
-    await expect.poll(() => colorTriggerBoxShadowValue(page, SURFACE_TOKEN_NAME)).toBe('none');
-    await expect
-      .poll(async () => {
-        const boxShadowValues = await colorTriggerBoxShadowValues(page);
-        return boxShadowValues.filter((value) => value !== 'none');
-      })
-      .toEqual([]);
-    await expect(surfacePickerDialog.locator('.cinder-color-picker__hex-value')).toHaveText(
-      /^#[0-9a-f]{6}$/i,
+    for (const tokenName of PICKER_SEED_TOKENS) {
+      const resolvedColor = await renderedTokenBackgroundValue(page, tokenName);
+      const resolvedHex = await resolvedCssColorToHex(page, resolvedColor);
+      const pickerDialog = await openTokenPicker(page, tokenName);
+      const hexValue = pickerDialog.locator('.cinder-color-picker__hex-value');
+      expect(resolvedHex, `${tokenName} resolved to ${resolvedColor}`).not.toBeNull();
+      await expect(hexValue).toHaveText(resolvedHex ?? '');
+      await expect.poll(() => colorTriggerBoxShadowValue(page, tokenName)).toBe('none');
+      await expect
+        .poll(async () => {
+          const boxShadowValues = await colorTriggerBoxShadowValues(page);
+          return boxShadowValues.filter((value) => value !== 'none');
+        })
+        .toEqual([]);
+      await page.keyboard.press('Escape');
+      await expect(pickerDialog).toBeHidden();
+      await expect.poll(() => expandedColorTriggerTokenNames(page)).toEqual([]);
+      await expect(panel).toBeVisible();
+    }
+
+    const normalSurfaceSwatchShadow = await swatchBoxShadowValue(page, SURFACE_TOKEN_NAME);
+    await panel.getByRole('button', { name: 'Close color token panel' }).focus();
+    const focusedTokenName = await focusNextColorTrigger(page);
+    expect(focusedTokenName).toBe('--cinder-bg');
+    const focusState = await colorTriggerFocusState(page);
+    expect(focusState).toEqual(
+      expect.objectContaining({
+        token: '--cinder-bg',
+        triggerBoxShadow: 'none',
+        triggerMatchesFocusVisible: true,
+      }),
     );
-    await expect(surfacePickerDialog.locator('.cinder-color-picker__hex-value')).not.toHaveText(
-      '#000000',
+    expect(countBoxShadowLayers(focusState.swatchBoxShadow)).toBeGreaterThan(
+      countBoxShadowLayers(normalSurfaceSwatchShadow),
     );
-    await page.keyboard.press('Escape');
-    await expect(surfacePickerDialog).toBeHidden();
 
     const accentRow = page.locator(`[data-color-token="${TOKEN_NAME}"]`);
     const accentColorPickerButton = accentRow.getByRole('button', {
@@ -104,30 +498,128 @@ test.describe('playground color token panel', () => {
     await accentColorPickerButton.click();
     const pickerDialog = page.getByRole('dialog', { name: `Pick ${TOKEN_NAME} color` });
     await expect(pickerDialog).toBeVisible();
-    await pickerDialog.getByRole('option', { name: LIGHT_PICKER_OVERRIDE }).click();
+    const priorAccentValue = await shellTokenValue(page, TOKEN_NAME);
+    await clickRelative(page, pickerDialog.locator('.cinder-color-picker__hue'), 0.55, 0.5);
+    await clickRelative(page, pickerDialog.locator('.cinder-color-picker__gradient'), 0.72, 0.35);
+    const visualPickerText = await pickerDialog
+      .locator('.cinder-color-picker__hex-value')
+      .textContent();
+    const visualPickerValue = visualPickerText?.trim() ?? '';
+    expect(visualPickerValue).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(visualPickerValue).not.toBe(priorAccentValue);
 
-    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(LIGHT_PICKER_OVERRIDE);
-    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe(LIGHT_PICKER_OVERRIDE);
-    await expect(accentInput).toHaveValue(LIGHT_PICKER_OVERRIDE);
+    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(visualPickerValue);
+    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe(visualPickerValue);
+    await expect(accentInput).toHaveValue(visualPickerValue);
+    await page.keyboard.press('Escape');
+    await expect(pickerDialog).toBeHidden();
+    await expect.poll(() => expandedColorTriggerTokenNames(page)).toEqual([]);
+    await expect(panel).toBeVisible();
+
+    await page
+      .locator(`[data-color-token="${SUCCESS_TOKEN_NAME}"]`)
+      .getByLabel(`${SUCCESS_TOKEN_NAME} CSS value`)
+      .fill(LIGHT_BULK_OVERRIDE);
+    await expect.poll(() => shellTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
+    await expect.poll(() => iframeTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
 
     await page.getByRole('radio', { name: 'Dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'dark');
-    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_PICKER_OVERRIDE);
-    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_PICKER_OVERRIDE);
+    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
+    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
+    await page
+      .locator(`[data-color-token="${DANGER_TOKEN_NAME}"]`)
+      .getByLabel(`${DANGER_TOKEN_NAME} CSS value`)
+      .fill(DARK_BULK_OVERRIDE);
+    await expect.poll(() => shellTokenValue(page, DANGER_TOKEN_NAME)).toBe(DARK_BULK_OVERRIDE);
 
     await page.getByRole('radio', { name: 'Light' }).click();
-    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(LIGHT_PICKER_OVERRIDE);
-    await accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` }).click();
-    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_PICKER_OVERRIDE);
-    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_PICKER_OVERRIDE);
+    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(visualPickerValue);
+    await expect.poll(() => shellTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
+    await expect(page.getByRole('button', { name: 'Reset light' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Reset light' }).click();
+    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
+    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
+    await expect
+      .poll(() => shellTokenValue(page, SUCCESS_TOKEN_NAME))
+      .not.toBe(LIGHT_BULK_OVERRIDE);
+    await expect
+      .poll(() => iframeTokenValue(page, SUCCESS_TOKEN_NAME))
+      .not.toBe(LIGHT_BULK_OVERRIDE);
+    await expect(page.getByRole('button', { name: 'Reset light' })).toBeDisabled();
 
+    await page.getByRole('radio', { name: 'Dark' }).click();
+    await expect.poll(() => shellTokenValue(page, DANGER_TOKEN_NAME)).toBe(DARK_BULK_OVERRIDE);
+    await expect.poll(() => iframeTokenValue(page, DANGER_TOKEN_NAME)).toBe(DARK_BULK_OVERRIDE);
+
+    await page.getByRole('radio', { name: 'Light' }).click();
     await accentInput.fill(LIGHT_ADVANCED_OVERRIDE);
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(LIGHT_ADVANCED_OVERRIDE);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe(LIGHT_ADVANCED_OVERRIDE);
+
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+    await expect(page.getByTestId('color-token-panel-toggle')).toBeFocused();
+    await expect(page.getByTestId('color-token-panel-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
 
     await page.reload({ waitUntil: 'load' });
     await waitForPlayground(page);
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_ADVANCED_OVERRIDE);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_ADVANCED_OVERRIDE);
+  });
+
+  test('preview frame ignores stale wrong-theme color override messages', async ({ page }) => {
+    await page.goto('/c/button', { waitUntil: 'load' });
+    await waitForPlayground(page);
+
+    await page.getByRole('radio', { name: 'Light' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'light');
+    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe('');
+
+    await postIframeColorOverrideMessage(page, 'dark', {
+      [TOKEN_NAME]: STALE_DARK_MESSAGE_OVERRIDE,
+    });
+    await postIframeColorOverrideMessage(page, 'light', {
+      [SUCCESS_TOKEN_NAME]: LIGHT_BULK_OVERRIDE,
+    });
+    await expect.poll(() => iframeTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
+    expect(await iframeTokenValue(page, TOKEN_NAME)).not.toBe(STALE_DARK_MESSAGE_OVERRIDE);
+
+    await postIframeColorOverrideMessage(page, 'light', {
+      [TOKEN_NAME]: MATCHING_LIGHT_MESSAGE_OVERRIDE,
+    });
+    await expect
+      .poll(() => iframeTokenValue(page, TOKEN_NAME))
+      .toBe(MATCHING_LIGHT_MESSAGE_OVERRIDE);
+  });
+
+  test('token trigger focus remains visible when forced-colors mode disables shadows', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await page.goto('/c/button', { waitUntil: 'load' });
+    await waitForPlayground(page);
+
+    await page.getByRole('radio', { name: 'Light' }).click();
+    const panel = await openColorTokenPanel(page);
+    await expect(page.locator('#color-token-filter')).toBeFocused();
+
+    const focusedTokenName = await focusNextColorTrigger(page);
+    expect(focusedTokenName).toBe('--cinder-bg');
+    const focusState = await colorTriggerFocusState(page);
+    expect(focusState).toEqual(
+      expect.objectContaining({
+        token: '--cinder-bg',
+        triggerBoxShadow: 'none',
+        triggerMatchesFocusVisible: true,
+        swatchBoxShadow: 'none',
+        swatchOutlineStyle: 'solid',
+      }),
+    );
+    expect(focusState.swatchOutlineWidth).not.toBe('0px');
+    await expect(panel).toBeVisible();
   });
 });

@@ -43,6 +43,7 @@
   let pickerOpen = $state(false);
   let pickerAnchorElement: HTMLElement | null = $state(null);
   let activePickerTokenName: ColorTokenName | null = $state(null);
+  let panelElement: HTMLElement | null = $state(null);
   let syncedTheme: ThemeChoice | null = null;
 
   const activeTheme = $derived(store.theme);
@@ -342,6 +343,23 @@
     }
   });
 
+  $effect(() => {
+    const element = panelElement;
+    if (element === null) return;
+    element.querySelector<HTMLInputElement>('#color-token-filter')?.focus();
+  });
+
+  $effect(() => {
+    const element = panelElement;
+    const openTokenName = pickerOpen ? activePickerTokenName : null;
+    if (element === null) return;
+
+    for (const trigger of element.querySelectorAll<HTMLElement>('.token-color-trigger')) {
+      const tokenName = trigger.closest('[data-color-token]')?.getAttribute('data-color-token');
+      trigger.setAttribute('aria-expanded', tokenName === openTokenName ? 'true' : 'false');
+    }
+  });
+
   const filteredGroups = $derived.by(() => {
     const needle = query.trim().toLowerCase();
     if (needle === '') return COLOR_TOKEN_GROUPS;
@@ -423,6 +441,7 @@
 
 <aside
   id="color-token-panel"
+  bind:this={panelElement}
   class="color-token-panel"
   aria-labelledby="color-token-panel-heading"
   data-testid="color-token-panel"
@@ -474,7 +493,7 @@
                 title="Pick {token.name} color"
                 aria-expanded={pickerOpen && activePickerTokenName === token.name
                   ? 'true'
-                  : undefined}
+                  : 'false'}
                 onclick={(event) => openColorPicker(token.name, event)}
               >
                 <span
@@ -553,7 +572,7 @@
     z-index: 12;
     display: flex;
     flex-direction: column;
-    width: min(100vw, 28rem);
+    width: min(100vw, 36rem);
     background: var(--cinder-surface-raised);
     color: var(--cinder-text);
     border-inline-start: 1px solid var(--cinder-border);
@@ -625,11 +644,11 @@
 
   .token-row {
     display: grid;
-    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    grid-template-columns: 2.25rem minmax(8rem, 0.95fr) minmax(12rem, 1.35fr) auto;
     column-gap: var(--cinder-space-3);
-    row-gap: var(--cinder-space-2);
-    align-items: start;
-    padding: var(--cinder-space-3-5) var(--cinder-space-4);
+    row-gap: var(--cinder-space-1-5);
+    align-items: center;
+    padding: var(--cinder-space-2-5) var(--cinder-space-4);
     border-bottom: 1px solid var(--cinder-border-muted);
   }
 
@@ -643,17 +662,16 @@
     min-width: 2.25rem;
     min-height: 2.25rem;
     padding: 0;
-    align-self: start;
-    background: transparent;
-    border-color: transparent;
+    background: var(--cinder-surface);
+    border-color: var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md);
     box-shadow: none;
   }
 
   @media (hover: hover) {
     .token-row :global(.cinder-button.token-color-trigger:hover:not(:disabled)) {
-      background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 5%);
-      border-color: transparent;
+      background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
+      border-color: var(--cinder-border-strong);
     }
   }
 
@@ -716,8 +734,16 @@
   }
 
   .token-editor {
-    grid-column: 2 / -1;
     min-width: 0;
+  }
+
+  @media (forced-colors: active) {
+    .token-row
+      :global(.cinder-button.token-color-trigger:focus-visible .token-color-trigger__swatch) {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
   }
 
   .empty-state {
@@ -767,6 +793,14 @@
 
     .panel-controls {
       grid-template-columns: 1fr;
+    }
+
+    .token-row {
+      grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    }
+
+    .token-editor {
+      grid-column: 2 / -1;
     }
   }
 </style>

@@ -341,6 +341,7 @@ describe('color token overrides', () => {
 
   it('rejects unknown tokens and unsafe values', () => {
     const store = new PreviewStore('button', { theme: 'light' });
+    expect(store.setColorTokenOverride('light', '--cinder-accent', '#336699')).toBe(true);
 
     expect(
       store.setColorTokenOverride('light', '--cinder-accent', 'url(https://example.com)'),
@@ -349,7 +350,9 @@ describe('color token overrides', () => {
     expect(store.setColorTokenOverride('light', '--cinder-button-bg', 'oklch(60% 0.2 195)')).toBe(
       false,
     );
-    expect(store.colorTokenOverrides.light).toEqual({});
+    expect(store.colorTokenOverrides.light).toEqual({
+      '--cinder-accent': '#336699',
+    });
   });
 
   it('does not write color overrides to localStorage or the URL', () => {
