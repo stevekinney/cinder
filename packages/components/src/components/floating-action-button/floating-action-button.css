@@ -179,9 +179,11 @@
     }
   }
 
-  /* :active placed after hover media so press feedback fires on tap as well */
+  /* :active placed after hover media so press feedback fires on tap as well.
+     Uses the gentler on-fill pressed token so the --cinder-accent-contrast label stays
+     AA-legible on the pressed fill (see --cinder-accent-active-on-fill in tokens-base.css). */
   .cinder-fab[data-cinder-color='primary']:active:not(:disabled):not([aria-disabled='true']) {
-    background: var(--cinder-accent-active);
+    background: var(--cinder-accent-active-on-fill);
   }
 
   .cinder-fab[data-cinder-color='secondary']:active:not(:disabled):not([aria-disabled='true']) {
