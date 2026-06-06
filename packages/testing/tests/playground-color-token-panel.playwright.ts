@@ -434,6 +434,24 @@ test.describe('playground color token panel', () => {
 
     const panel = await openColorTokenPanel(page);
     await expect(page.locator('#color-token-filter')).toBeFocused();
+    await expect
+      .poll(() =>
+        panel
+          .locator('.token-group > h3')
+          .evaluateAll((headings) => headings.map((heading) => heading.textContent?.trim() ?? '')),
+      )
+      .toEqual([
+        'Accent',
+        'Status Solids',
+        'Chart Series',
+        'Status Surfaces',
+        'Surfaces',
+        'Text and Disabled Fill',
+        'Borders',
+        'Focus Ring',
+        'Overlay',
+        'Scrollbars',
+      ]);
 
     const swatchStates = await colorTokenSwatchStates(page);
     expect(swatchStates).toHaveLength(EXPECTED_COLOR_TOKEN_COUNT);
@@ -477,11 +495,11 @@ test.describe('playground color token panel', () => {
     const normalSurfaceSwatchShadow = await swatchBoxShadowValue(page, SURFACE_TOKEN_NAME);
     await panel.getByRole('button', { name: 'Close color token panel' }).focus();
     const focusedTokenName = await focusNextColorTrigger(page);
-    expect(focusedTokenName).toBe('--cinder-bg');
+    expect(focusedTokenName).toBe(TOKEN_NAME);
     const focusState = await colorTriggerFocusState(page);
     expect(focusState).toEqual(
       expect.objectContaining({
-        token: '--cinder-bg',
+        token: TOKEN_NAME,
         triggerBoxShadow: 'none',
         triggerMatchesFocusVisible: true,
       }),
@@ -608,11 +626,11 @@ test.describe('playground color token panel', () => {
     await expect(page.locator('#color-token-filter')).toBeFocused();
 
     const focusedTokenName = await focusNextColorTrigger(page);
-    expect(focusedTokenName).toBe('--cinder-bg');
+    expect(focusedTokenName).toBe(TOKEN_NAME);
     const focusState = await colorTriggerFocusState(page);
     expect(focusState).toEqual(
       expect.objectContaining({
-        token: '--cinder-bg',
+        token: TOKEN_NAME,
         triggerBoxShadow: 'none',
         triggerMatchesFocusVisible: true,
         swatchBoxShadow: 'none',

@@ -35,16 +35,16 @@ describe('color token registry', () => {
   test('contains the expected global color-token inventory', () => {
     expect(COLOR_TOKEN_NAMES).toHaveLength(56);
     expect(COLOR_TOKEN_GROUPS.map((group) => group.id)).toEqual([
+      'accent',
+      'status-solid',
+      'charts',
+      'status-triples',
       'surfaces',
       'text',
       'borders',
-      'accent',
-      'status-solid',
-      'status-triples',
       'focus',
       'overlay',
       'scrollbars',
-      'charts',
     ]);
   });
 
