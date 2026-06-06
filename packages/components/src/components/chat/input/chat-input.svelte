@@ -854,10 +854,8 @@
   }
 
   .chat-input-send:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-accent);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   /* Stop button variant - danger-tinted to signal urgency during streaming */
@@ -874,10 +872,11 @@
     }
   }
 
-  .chat-input-send[data-stop]:focus-visible {
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);
+  @media (forced-colors: active) {
+    .chat-input-send:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   /* Spinner */
