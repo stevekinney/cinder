@@ -66,6 +66,7 @@ describe('vercel.json', () => {
     expect(vercelBuild).toContain("bun run --filter='@cinder/diff' build");
     expect(vercelBuild).toContain("bun run --filter='@cinder/markdown' build");
     expect(vercelBuild).toContain("bun run --filter='@cinder/editor' build");
+    expect(vercelBuild).toContain("bun run --filter='@cinder/commentary' build");
     expect(vercelBuild).toContain('scripts/static-export.ts');
     // The export must exist and drive the real server handler.
     const exportScript = await Bun.file(
