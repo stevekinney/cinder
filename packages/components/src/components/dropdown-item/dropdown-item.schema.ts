@@ -22,6 +22,8 @@ const schema = {
     },
     href: {
       type: 'string',
+      description:
+        'Destination URL. Any defined value — including an empty string — selects\nthe anchor branch and renders an `<a>`. Omit `href` entirely to render a\n`<button>`.',
     },
     type: {
       enum: ['button', 'submit', 'reset'],

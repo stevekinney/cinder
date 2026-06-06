@@ -28,9 +28,20 @@ export type DropdownItemButtonProps = DropdownItemBase & {
   form?: string;
 };
 
-/** Anchor variant — renders an `<a href>`. `disabled` blocks navigation and sets aria-disabled. */
+/**
+ * Anchor variant — renders an `<a href>`. `disabled` blocks navigation and sets
+ * aria-disabled. Forwards every anchor-specific attribute (`target`, `rel`,
+ * `download`, `ping`, `hreflang`, `referrerpolicy`, …) by subtracting the shared
+ * `HTMLElement` surface — which the base already provides with `HTMLElement`-typed
+ * event handlers — so the inline-handler contravariance trap never reappears.
+ */
 export type DropdownItemAnchorProps = DropdownItemBase &
-  Pick<HTMLAnchorAttributes, 'target' | 'rel' | 'download' | 'hreflang' | 'referrerpolicy'> & {
+  Omit<HTMLAnchorAttributes, keyof HTMLAttributes<HTMLElement> | 'class' | 'href'> & {
+    /**
+     * Destination URL. Any defined value — including an empty string — selects
+     * the anchor branch and renders an `<a>`. Omit `href` entirely to render a
+     * `<button>`.
+     */
     href: string;
     type?: undefined;
   };
