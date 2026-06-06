@@ -1068,7 +1068,7 @@ function renderPreviewMessageBridgeScript(): string {
       (function () {
         var colorTokenNames = new Set(${colorTokenNamesJson});
         var blockedColorValuePattern = /[;{}<>]|\\/\\*|\\*\\//;
-        var fallbackColorValuePattern = /^(#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|rgba|hsl|hsla|oklch|oklab|lch|lab|color|color-mix|light-dark)\\(|var\\(--cinder-[a-z0-9-]+\\)|transparent$|currentcolor$|black$|white$)/;
+        var fallbackColorValuePattern = /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|rgba|hsl|hsla|oklch|oklab|lch|lab|color|color-mix|light-dark)\\([^;{}<>]+\\)|var\\(--cinder-[a-z0-9-]+\\)|transparent|currentcolor|black|white)$/;
 
         function isTheme(value) {
           return value === 'light' || value === 'dark';

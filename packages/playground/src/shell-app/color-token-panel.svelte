@@ -1,11 +1,14 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+
   import { Button, ColorPicker, Input, Popover } from '../../../components/src/index.ts';
   import {
     COLOR_TOKEN_GROUPS,
     isSafeColorTokenValue,
+    type ColorTokenOverrides,
     type ColorTokenName,
   } from './color-token-registry.ts';
-  import { getPreviewStore } from './preview-store.svelte.ts';
+  import { getPreviewStore, type ThemeChoice } from './preview-store.svelte.ts';
 
   type Props = {
     onClose: () => void;
@@ -40,6 +43,7 @@
   let pickerOpen = $state(false);
   let pickerAnchorElement: HTMLElement | null = $state(null);
   let activePickerTokenName: ColorTokenName | null = $state(null);
+  let syncedTheme: ThemeChoice | null = null;
 
   const activeTheme = $derived(store.theme);
   const activeOverrides = $derived(store.colorTokenOverrides[activeTheme]);
@@ -61,6 +65,19 @@
   function defaultValueFor(tokenName: ColorTokenName): string {
     if (typeof document === 'undefined') return '';
     return getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim();
+  }
+
+  function readDefaultValues(): Partial<Record<ColorTokenName, string>> {
+    const nextValues: Partial<Record<ColorTokenName, string>> = {};
+    if (typeof document === 'undefined') return nextValues;
+
+    const styles = getComputedStyle(document.documentElement);
+    for (const group of COLOR_TOKEN_GROUPS) {
+      for (const token of group.tokens) {
+        nextValues[token.name] = styles.getPropertyValue(token.name).trim();
+      }
+    }
+    return nextValues;
   }
 
   function normalizeHexColor(value: string): string | null {
@@ -288,13 +305,16 @@
     );
   }
 
-  function syncDrafts(): void {
+  function syncDraftsFromSnapshot(
+    defaultValues: Partial<Record<ColorTokenName, string>>,
+    overrides: ColorTokenOverrides,
+  ): void {
     const nextDrafts: Partial<Record<ColorTokenName, string>> = {};
     const nextPickerValues: Partial<Record<ColorTokenName, string>> = {};
     const nextPreviewValues: Partial<Record<ColorTokenName, string>> = {};
     for (const group of COLOR_TOKEN_GROUPS) {
       for (const token of group.tokens) {
-        const value = activeOverrides[token.name] ?? defaultValueFor(token.name);
+        const value = overrides[token.name] ?? defaultValues[token.name] ?? '';
         nextDrafts[token.name] = value;
         nextPickerValues[token.name] = pickerValueFor(token.name, value);
         nextPreviewValues[token.name] = value;
@@ -306,10 +326,20 @@
     errors = {};
   }
 
+  function syncDrafts(): void {
+    syncDraftsFromSnapshot(readDefaultValues(), { ...store.colorTokenOverrides[activeTheme] });
+  }
+
   $effect(() => {
-    activeTheme;
-    activeOverrides;
-    syncDrafts();
+    const nextTheme = activeTheme;
+    if (syncedTheme !== nextTheme) {
+      syncedTheme = nextTheme;
+      const snapshot = untrack(() => ({
+        defaultValues: readDefaultValues(),
+        overrides: { ...store.colorTokenOverrides[nextTheme] },
+      }));
+      syncDraftsFromSnapshot(snapshot.defaultValues, snapshot.overrides);
+    }
   });
 
   const filteredGroups = $derived.by(() => {
@@ -345,6 +375,12 @@
 
     if (!isSafeColorTokenValue(value)) {
       errors[tokenName] = 'Enter a valid CSS color value.';
+      if (hasOverride(tokenName)) {
+        store.resetColorTokenOverride(activeTheme, tokenName);
+      }
+      const defaultValue = defaultValueFor(tokenName);
+      pickerValues[tokenName] = pickerValueFor(tokenName, defaultValue);
+      previewValues[tokenName] = defaultValue;
       return;
     }
 
@@ -386,6 +422,7 @@
 </script>
 
 <aside
+  id="color-token-panel"
   class="color-token-panel"
   aria-labelledby="color-token-panel-heading"
   data-testid="color-token-panel"
@@ -621,13 +658,13 @@
   }
 
   .token-row :global(.cinder-button.token-color-trigger:focus-visible) {
-    outline: var(--cinder-ring-width) solid transparent;
-    outline-offset: 2px;
-    box-shadow: var(--_cinder-focus-ring-shadow);
+    /* cinder-focus-ring-owner: parent */
+    outline: none;
+    box-shadow: none;
   }
 
   .token-row :global(.cinder-button.token-color-trigger[aria-expanded='true']) {
-    box-shadow: var(--_cinder-focus-ring-shadow);
+    box-shadow: none;
   }
 
   .token-row :global(.token-color-trigger .cinder-button__icon) {
@@ -643,6 +680,16 @@
     border-radius: var(--cinder-radius-sm);
     background-color: var(--token-picker-color);
     box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--cinder-surface), transparent 15%),
+      0 1px 2px color-mix(in oklch, var(--cinder-text), transparent 88%);
+  }
+
+  .token-row
+    :global(.cinder-button.token-color-trigger:focus-visible .token-color-trigger__swatch) {
+    outline: var(--cinder-ring-width) solid transparent;
+    outline-offset: 2px;
+    box-shadow:
+      var(--_cinder-focus-ring-shadow),
       inset 0 0 0 1px color-mix(in oklch, var(--cinder-surface), transparent 15%),
       0 1px 2px color-mix(in oklch, var(--cinder-text), transparent 88%);
   }

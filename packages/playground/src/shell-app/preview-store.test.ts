@@ -27,6 +27,9 @@ type LocalStorageStub = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
 };
+type MatchMediaListener =
+  | EventListenerOrEventListenerObject
+  | ((this: MediaQueryList, event: MediaQueryListEvent) => void);
 
 const originalLocalStorage = (globalThis as { localStorage?: Storage }).localStorage;
 const originalWindow = (globalThis as { window?: Window }).window;
@@ -45,6 +48,58 @@ function installLocalStorage(stub: LocalStorageStub | undefined): void {
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
     value: stub as unknown as Storage,
+    writable: true,
+  });
+}
+
+function createMatchMedia(matches = false): Window['matchMedia'] {
+  return ((query: string): MediaQueryList => {
+    const listeners = new Set<MatchMediaListener>();
+    let mediaQueryList: MediaQueryList;
+
+    function notifyListener(listener: MatchMediaListener, event: Event): void {
+      if (typeof listener === 'function') {
+        listener.call(mediaQueryList, event as MediaQueryListEvent);
+        return;
+      }
+      listener.handleEvent(event);
+    }
+
+    mediaQueryList = {
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener(_type: string, listener: EventListenerOrEventListenerObject | null) {
+        if (listener !== null) listeners.add(listener);
+      },
+      removeEventListener(_type: string, listener: EventListenerOrEventListenerObject | null) {
+        if (listener === null) return;
+        listeners.delete(listener);
+      },
+      addListener(listener: (this: MediaQueryList, event: MediaQueryListEvent) => void) {
+        listeners.add(listener);
+      },
+      removeListener(listener: (this: MediaQueryList, event: MediaQueryListEvent) => void) {
+        listeners.delete(listener);
+      },
+      dispatchEvent(event: Event) {
+        for (const listener of listeners) {
+          notifyListener(listener, event);
+        }
+        return true;
+      },
+    };
+    return mediaQueryList;
+  }) as Window['matchMedia'];
+}
+
+function installWindow(href: string): void {
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      location: { href },
+      matchMedia: createMatchMedia(),
+    } as unknown as Window,
     writable: true,
   });
 }
@@ -147,6 +202,41 @@ describe('writePersistedTheme', () => {
   it('does not throw when localStorage is undefined', () => {
     installLocalStorage(undefined);
     expect(() => writePersistedTheme('light')).not.toThrow();
+  });
+});
+
+describe('focus mode chrome state', () => {
+  it('closes sidebar and color token panel when focus mode is enabled directly', () => {
+    installWindow('https://example.com/c/button');
+    Object.defineProperty(globalThis, 'history', {
+      configurable: true,
+      value: {
+        state: null,
+        replaceState: () => {},
+      } as unknown as History,
+      writable: true,
+    });
+
+    const store = new PreviewStore('button');
+    store.isSidebarOpen = true;
+    store.isColorTokenPanelOpen = true;
+
+    store.isFocusMode = true;
+
+    expect(store.isSidebarOpen).toBe(false);
+    expect(store.isColorTokenPanelOpen).toBe(false);
+  });
+
+  it('closes color token panel when URL sync enters focus mode', () => {
+    installWindow('https://example.com/c/button?focus=1');
+
+    const store = new PreviewStore('button');
+    store.isColorTokenPanelOpen = true;
+
+    store.syncFromUrl();
+
+    expect(store.isFocusMode).toBe(true);
+    expect(store.isColorTokenPanelOpen).toBe(false);
   });
 });
 

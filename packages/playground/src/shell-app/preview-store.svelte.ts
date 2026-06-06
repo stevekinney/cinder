@@ -153,6 +153,10 @@ export class PreviewStore {
   }
   set isFocusMode(value: boolean) {
     this.#isFocusMode = value;
+    if (value) {
+      this.isSidebarOpen = false;
+      this.isColorTokenPanelOpen = false;
+    }
     this.#writeUrl();
   }
 
@@ -221,6 +225,9 @@ export class PreviewStore {
     // If the user had the drawer open and navigated away (or landed on ?focus=1
     // via history), the scrim + inert state must not persist into the new URL.
     this.isSidebarOpen = false;
+    if (this.#isFocusMode) {
+      this.isColorTokenPanelOpen = false;
+    }
     const nextOverride = readThemeFromSearch(search) ?? readPersistedTheme();
     if (nextOverride !== this.#override) {
       this.#override = nextOverride;

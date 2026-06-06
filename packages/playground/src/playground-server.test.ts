@@ -719,7 +719,9 @@ describe('/page/:name', () => {
 
     expect(html).toContain('cinder:set-color-token-overrides');
     expect(html).toContain('--cinder-accent');
+    expect(html).toContain('|transparent|currentcolor|black|white)$/');
     expect(html).not.toContain('--cinder-button-bg');
+    expect(html).not.toContain('transparent$|currentcolor$|black$|white$');
   });
 
   it('wraps the body background/color transition in a reduced-motion guard', async () => {

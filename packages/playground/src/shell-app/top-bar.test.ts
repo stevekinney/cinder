@@ -163,6 +163,16 @@ describe('top-bar open-in-new-tab button', () => {
     expect(openCalls[0]?.features).toBe('noopener');
     unmount();
   });
+
+  test('points the color token toggle at the panel container', async () => {
+    const { container, unmount } = render(TopBarFixture, { currentComponent: 'button' });
+    await tick();
+
+    const button = buttonByLabel(container, 'Color token panel');
+    expect(button.getAttribute('aria-controls')).toBe('color-token-panel');
+
+    unmount();
+  });
 });
 
 describe('top-bar resource links', () => {

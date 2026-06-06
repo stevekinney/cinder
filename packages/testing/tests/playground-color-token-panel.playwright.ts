@@ -42,6 +42,18 @@ async function swatchBackgroundValue(page: Page, tokenName: string): Promise<str
     .evaluate((element) => getComputedStyle(element).backgroundColor);
 }
 
+async function colorTriggerBoxShadowValue(page: Page, tokenName: string): Promise<string> {
+  return page
+    .locator(`[data-color-token="${tokenName}"] .token-color-trigger`)
+    .evaluate((element) => getComputedStyle(element).boxShadow);
+}
+
+async function colorTriggerBoxShadowValues(page: Page): Promise<string[]> {
+  return page.locator('.color-token-panel .token-color-trigger').evaluateAll((elements) => {
+    return elements.map((element) => getComputedStyle(element).boxShadow);
+  });
+}
+
 test.describe('playground color token panel', () => {
   test('edits active-theme color tokens in the shell and iframe without persistence', async ({
     page,
@@ -68,6 +80,13 @@ test.describe('playground color token panel', () => {
       name: `Pick ${SURFACE_TOKEN_NAME} color`,
     });
     await expect(surfacePickerDialog).toBeVisible();
+    await expect.poll(() => colorTriggerBoxShadowValue(page, SURFACE_TOKEN_NAME)).toBe('none');
+    await expect
+      .poll(async () => {
+        const boxShadowValues = await colorTriggerBoxShadowValues(page);
+        return boxShadowValues.filter((value) => value !== 'none');
+      })
+      .toEqual([]);
     await expect(surfacePickerDialog.locator('.cinder-color-picker__hex-value')).toHaveText(
       /^#[0-9a-f]{6}$/i,
     );

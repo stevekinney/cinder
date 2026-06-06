@@ -3,7 +3,11 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-import { COLOR_TOKEN_GROUPS, COLOR_TOKEN_NAMES } from './color-token-registry.ts';
+import {
+  COLOR_TOKEN_GROUPS,
+  COLOR_TOKEN_NAMES,
+  isSafeColorTokenValue,
+} from './color-token-registry.ts';
 
 const TOKENS_BASE_PATH = join(
   import.meta.dir,
@@ -62,5 +66,30 @@ describe('color token registry', () => {
     expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-scrollbar-size');
     expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-button-bg');
     expect(COLOR_TOKEN_NAMES.some((tokenName) => tokenName.startsWith('--_cinder-'))).toBe(false);
+  });
+
+  test('fallback color validation requires full value matches', () => {
+    const originalCss = globalThis.CSS;
+    Object.defineProperty(globalThis, 'CSS', {
+      configurable: true,
+      value: undefined,
+      writable: true,
+    });
+
+    try {
+      expect(isSafeColorTokenValue('rgb(1 2 3)')).toBe(true);
+      expect(isSafeColorTokenValue('var(--cinder-accent)')).toBe(true);
+      expect(isSafeColorTokenValue('transparent')).toBe(true);
+      expect(isSafeColorTokenValue('rgb(')).toBe(false);
+      expect(isSafeColorTokenValue('rgb(1 2 3)junk')).toBe(false);
+      expect(isSafeColorTokenValue('var(--cinder-accent)junk')).toBe(false);
+      expect(isSafeColorTokenValue('transparent-junk')).toBe(false);
+    } finally {
+      Object.defineProperty(globalThis, 'CSS', {
+        configurable: true,
+        value: originalCss,
+        writable: true,
+      });
+    }
   });
 });

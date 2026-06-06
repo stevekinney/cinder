@@ -299,7 +299,7 @@
         size="sm"
         aria-label="Color token panel"
         aria-expanded={store.isColorTokenPanelOpen}
-        aria-controls="color-token-panel-heading"
+        aria-controls="color-token-panel"
         data-testid="color-token-panel-toggle"
         onclick={toggleColorTokenPanel}
       >
