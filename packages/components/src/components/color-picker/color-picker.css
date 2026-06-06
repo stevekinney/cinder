@@ -13,12 +13,25 @@
     width: 100%;
     max-width: 280px;
 
-    /* structural-pattern: the transparency checkerboard (shown behind alpha
-     * channels by the alpha slider and the preview chip) is a fixed light/neutral
-     * grid that signals "see-through", not a themeable surface. Declared once here
-     * and reused by both checkerboards below so the raw values have a single home. */
-    --_cinder-color-picker-checker-base: #fff; /* cinder-allow-raw-color: structural-pattern — checkerboard backing */
-    --_cinder-color-picker-checker-tile: #ccc; /* cinder-allow-raw-color: structural-pattern — checkerboard tile */
+    /* structural-pattern: the thumb sits over arbitrary picked colors, so the
+     * ring stays fixed while the outline flips to remain visible in dark chrome. */
+    --_cinder-color-picker-thumb-border: #fff; /* cinder-allow-raw-color: structural-pattern — thumb contrast ring over arbitrary picked color */
+    --_cinder-color-picker-thumb-shadow-light: rgba(
+      0,
+      0,
+      0,
+      0.5
+    ); /* cinder-allow-raw-color: structural-pattern — thumb outline over arbitrary picked color */
+    --_cinder-color-picker-thumb-shadow-dark: rgba(
+      255,
+      255,
+      255,
+      0.65
+    ); /* cinder-allow-raw-color: structural-pattern — thumb outline over dark chrome */
+    --_cinder-color-picker-thumb-shadow: light-dark(
+      var(--_cinder-color-picker-thumb-shadow-light),
+      var(--_cinder-color-picker-thumb-shadow-dark)
+    ); /* cinder-allow-raw-color: structural-pattern — thumb outline theme switch */
   }
 
   .cinder-color-picker[data-cinder-disabled] {
@@ -62,12 +75,11 @@
     width: 14px;
     height: 14px;
     /* structural-pattern: the draggable thumb sits over the user's chosen color,
-     * so its white ring + dark outline are fixed contrast devices (visible on any
-     * hue), not themeable chrome. */
-    border: 2px solid #fff; /* cinder-allow-raw-color: structural-pattern — thumb contrast ring over arbitrary picked color */
+     * so its white ring + contrast outline are hue-agnostic devices. */
+    border: 2px solid var(--_cinder-color-picker-thumb-border);
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); /* cinder-allow-raw-color: structural-pattern — thumb dark outline for contrast on light hues */
+    box-shadow: 0 0 0 1px var(--_cinder-color-picker-thumb-shadow);
     pointer-events: none;
   }
 
@@ -92,13 +104,13 @@
   }
 
   .cinder-color-picker__alpha {
-    background-color: var(--_cinder-color-picker-checker-base);
+    background-color: var(--cinder-color-checker-base);
     background-image:
       linear-gradient(to right, transparent, var(--cinder-color-picker-base, currentColor)),
-      linear-gradient(45deg, var(--_cinder-color-picker-checker-tile) 25%, transparent 25%),
-      linear-gradient(-45deg, var(--_cinder-color-picker-checker-tile) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, var(--_cinder-color-picker-checker-tile) 75%),
-      linear-gradient(-45deg, transparent 75%, var(--_cinder-color-picker-checker-tile) 75%);
+      linear-gradient(45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--cinder-color-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--cinder-color-checker-tile) 75%);
     background-size:
       auto,
       8px 8px,
@@ -126,13 +138,12 @@
     width: 14px;
     height: 14px;
     /* structural-pattern: slider thumb sits over the hue rail / alpha
-     * checkerboard, so its white ring + dark outline are fixed contrast devices,
-     * not themeable chrome (same rationale as the gradient handle). */
-    border: 2px solid #fff; /* cinder-allow-raw-color: structural-pattern — slider thumb contrast ring */
+     * checkerboard, so its ring + outline follow the gradient handle. */
+    border: 2px solid var(--_cinder-color-picker-thumb-border);
     border-radius: 50%;
     background: transparent;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); /* cinder-allow-raw-color: structural-pattern — slider thumb dark outline */
+    box-shadow: 0 0 0 1px var(--_cinder-color-picker-thumb-shadow);
     pointer-events: none;
   }
 
@@ -154,16 +165,16 @@
   }
 
   .cinder-color-picker__preview[data-cinder-alpha] {
-    background-color: var(--_cinder-color-picker-checker-base);
+    background-color: var(--cinder-color-checker-base);
     background-image:
       linear-gradient(
         var(--cinder-color-picker-preview, transparent),
         var(--cinder-color-picker-preview, transparent)
       ),
-      linear-gradient(45deg, var(--_cinder-color-picker-checker-tile) 25%, transparent 25%),
-      linear-gradient(-45deg, var(--_cinder-color-picker-checker-tile) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, var(--_cinder-color-picker-checker-tile) 75%),
-      linear-gradient(-45deg, transparent 75%, var(--_cinder-color-picker-checker-tile) 75%);
+      linear-gradient(45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--cinder-color-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--cinder-color-checker-tile) 75%);
     background-size:
       auto,
       8px 8px,

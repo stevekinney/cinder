@@ -231,6 +231,8 @@ Foreground / background / border triples for soft tinted surfaces. Use these in 
 | `--cinder-color-danger-bg`      | `light-dark(oklch(96% 0.04 25), oklch(28% 0.09 25))`    |
 | `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25))`    |
 | `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`    |
+| `--cinder-color-checker-base`   | `light-dark(#fff, oklch(28% 0.02 245))`                 |
+| `--cinder-color-checker-tile`   | `light-dark(#ccc, oklch(38% 0.02 245))`                 |
 
 ## Scrollbar
 

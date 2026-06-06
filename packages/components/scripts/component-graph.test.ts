@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, setDefaultTimeout } from 'bun:test';
 
 import {
   assertNoAmbiguousImports,
@@ -15,6 +15,11 @@ import {
   UNMODELLABLE_IMPORT_ALLOWLIST,
   type ComputeScopeOptions,
 } from './component-graph.ts';
+
+// This file includes real-tree scans over every component source file. Under
+// parallel CI or multi-worktree local runs, Bun's default 5s test timeout can
+// expire while the scan is still making progress.
+setDefaultTimeout(30_000);
 
 // ---------------------------------------------------------------------------
 // extractImports
