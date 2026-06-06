@@ -44,6 +44,7 @@
   let pickerOpen = $state(false);
   let pickerAnchorElement: HTMLElement | null = $state(null);
   let activePickerTokenName: ColorTokenName | null = $state(null);
+  let cssValueEditorOpen = $state(false);
   let panelElement: HTMLElement | null = $state(null);
   let syncedTheme: ThemeChoice | null = null;
 
@@ -385,6 +386,20 @@
     return activeOverrides[tokenName] !== undefined;
   }
 
+  function tokenValueLabelFor(tokenName: ColorTokenName): string {
+    return pickerValues[tokenName] ?? 'No color';
+  }
+
+  function tokenStateLabelFor(tokenName: ColorTokenName): string {
+    if (!hasOverride(tokenName)) return 'Default';
+
+    const draftValue = draftValues[tokenName]?.trim().toLowerCase() ?? '';
+    const pickerValue = pickerValues[tokenName]?.trim().toLowerCase() ?? '';
+    return draftValue !== '' && pickerValue !== '' && draftValue !== pickerValue
+      ? 'CSS override'
+      : 'Override';
+  }
+
   function handleTokenInput(
     tokenName: ColorTokenName,
     event: Event & { currentTarget: HTMLInputElement },
@@ -423,6 +438,7 @@
   ): void {
     pickerAnchorElement = event.currentTarget;
     activePickerTokenName = tokenName;
+    cssValueEditorOpen = false;
     pickerOpen = true;
   }
 
@@ -483,7 +499,6 @@
         <h3 id="color-token-group-{group.id}">{group.label}</h3>
         <div class="token-list">
           {#each group.tokens as token (token.name)}
-            {@const inputId = inputIdFor(token.name)}
             <div class="token-row" data-color-token={token.name}>
               <Button
                 variant="secondary"
@@ -506,7 +521,7 @@
               <div class="token-row__body">
                 <div class="token-row__heading">
                   <div class="token-copy">
-                    <label for={inputId}>{token.label}</label>
+                    <span class="token-label">{token.label}</span>
                     <code>{token.name}</code>
                   </div>
                   {#if hasOverride(token.name)}
@@ -524,17 +539,9 @@
                     <span class="token-reset-placeholder" aria-hidden="true"></span>
                   {/if}
                 </div>
-                <div class="token-editor">
-                  <Input
-                    id={inputId}
-                    value={draftValues[token.name] ?? ''}
-                    class="token-value-input"
-                    {...errors[token.name] === undefined ? {} : { error: errors[token.name] }}
-                    aria-label="{token.name} CSS value"
-                    autocomplete="off"
-                    spellcheck={false}
-                    oninput={(event) => handleTokenInput(token.name, event)}
-                  />
+                <div class="token-value-summary" aria-label="{token.name} current color">
+                  <span class="token-value-chip">{tokenValueLabelFor(token.name)}</span>
+                  <span class="token-value-state">{tokenStateLabelFor(token.name)}</span>
                 </div>
               </div>
             </div>
@@ -569,6 +576,34 @@
         oninput={(value) => handleColorPickerValue(activePickerToken.name, value)}
         onchange={(value) => handleColorPickerValue(activePickerToken.name, value)}
       />
+      <div class="picker-css-controls">
+        <Button
+          variant="secondary"
+          size="xs"
+          aria-pressed={cssValueEditorOpen ? 'true' : 'false'}
+          onclick={() => {
+            cssValueEditorOpen = !cssValueEditorOpen;
+          }}
+        >
+          CSS
+        </Button>
+      </div>
+      {#if cssValueEditorOpen}
+        <div class="picker-css-editor">
+          <Input
+            id={inputIdFor(activePickerToken.name)}
+            value={draftValues[activePickerToken.name] ?? ''}
+            class="token-css-value-input"
+            {...errors[activePickerToken.name] === undefined
+              ? {}
+              : { error: errors[activePickerToken.name] }}
+            aria-label="{activePickerToken.name} CSS value"
+            autocomplete="off"
+            spellcheck={false}
+            oninput={(event) => handleTokenInput(activePickerToken.name, event)}
+          />
+        </div>
+      {/if}
     </div>
   </Popover>
 {/if}
@@ -724,7 +759,7 @@
 
   .token-row__body {
     display: grid;
-    gap: var(--cinder-space-2);
+    gap: var(--cinder-space-1-5);
     min-width: 0;
   }
 
@@ -742,7 +777,7 @@
     min-width: 0;
   }
 
-  .token-copy label {
+  .token-label {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
     color: var(--cinder-text);
@@ -782,15 +817,45 @@
     }
   }
 
-  .token-editor {
+  .token-value-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    min-width: 0;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .token-value-chip {
+    overflow: hidden;
+    max-inline-size: 10rem;
+    color: var(--cinder-text);
+    font-family: var(--cinder-font-mono);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .token-value-state {
+    flex: 0 0 auto;
+    color: var(--cinder-text-subtle);
+    font-weight: var(--cinder-font-medium);
+  }
+
+  .picker-css-controls {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .picker-css-editor {
+    display: grid;
     min-width: 0;
   }
 
-  .token-editor :global(.cinder-input-field) {
+  .picker-css-editor :global(.cinder-input-field) {
     min-width: 0;
   }
 
-  .token-editor :global(.cinder-input.token-value-input) {
+  .picker-css-editor :global(.cinder-input.token-css-value-input) {
     width: 100%;
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);

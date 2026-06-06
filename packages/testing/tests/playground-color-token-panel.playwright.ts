@@ -38,10 +38,10 @@ type ColorTriggerFocusState = {
 
 type ColorTokenRowLayoutState = {
   triggerTitle: string | null;
-  editorStartsBelowHeading: boolean;
-  editorLeftDelta: number;
-  inputRightGap: number;
-  inputWidth: number;
+  rowInputCount: number;
+  rowHorizontalOverflow: number;
+  valueSummaryRightGap: number;
+  valueChipText: string;
   resetCenterRatio: number | null;
 };
 
@@ -367,6 +367,16 @@ async function openTokenPicker(page: Page, tokenName: string): Promise<Locator> 
   return dialog;
 }
 
+async function fillTokenCssValue(page: Page, tokenName: string, value: string): Promise<void> {
+  const dialog = await openTokenPicker(page, tokenName);
+  const cssButton = dialog.getByRole('button', { name: 'CSS' });
+  await cssButton.click();
+  await expect(cssButton).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByLabel(`${tokenName} CSS value`).fill(value);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+}
+
 async function focusNextColorTrigger(page: Page): Promise<string> {
   for (let index = 0; index < 25; index += 1) {
     const tokenName = await page.evaluate(() => {
@@ -417,25 +427,23 @@ async function colorTokenRowLayoutState(
   return page.locator(`[data-color-token="${tokenName}"]`).evaluate((row) => {
     const trigger = row.querySelector<HTMLElement>('.token-color-trigger');
     const heading = row.querySelector<HTMLElement>('.token-row__heading');
-    const editor = row.querySelector<HTMLElement>('.token-editor');
-    const input = row.querySelector<HTMLInputElement>('input.cinder-input');
-    if (trigger === null || heading === null || editor === null || input === null) {
+    const valueSummary = row.querySelector<HTMLElement>('.token-value-summary');
+    const valueChip = row.querySelector<HTMLElement>('.token-value-chip');
+    if (trigger === null || heading === null || valueSummary === null || valueChip === null) {
       throw new Error('Color token row is missing expected editor structure.');
     }
 
     const rowBox = row.getBoundingClientRect();
-    const headingBox = heading.getBoundingClientRect();
-    const editorBox = editor.getBoundingClientRect();
-    const inputBox = input.getBoundingClientRect();
+    const valueSummaryBox = valueSummary.getBoundingClientRect();
     const resetButton = row.querySelector<HTMLElement>('.token-reset-button');
     const resetBox = resetButton?.getBoundingClientRect();
 
     return {
       triggerTitle: trigger.getAttribute('title'),
-      editorStartsBelowHeading: editorBox.top >= headingBox.bottom - 1,
-      editorLeftDelta: Math.abs(editorBox.left - headingBox.left),
-      inputRightGap: rowBox.right - inputBox.right,
-      inputWidth: inputBox.width,
+      rowInputCount: row.querySelectorAll('input.cinder-input').length,
+      rowHorizontalOverflow: row.scrollWidth - row.clientWidth,
+      valueSummaryRightGap: rowBox.right - valueSummaryBox.right,
+      valueChipText: valueChip.textContent?.trim() ?? '',
       resetCenterRatio:
         resetBox === undefined
           ? null
@@ -555,19 +563,24 @@ test.describe('playground color token panel', () => {
     const accentColorPickerButton = accentRow.getByRole('button', {
       name: `Pick ${TOKEN_NAME} color`,
     });
-    const accentInput = accentRow.getByLabel(`${TOKEN_NAME} CSS value`);
     await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toHaveCount(0);
     expect(await accentColorPickerButton.getAttribute('title')).toBeNull();
+    await expect(panel.locator('.token-row input.cinder-input')).toHaveCount(0);
+    const visibleTokenRowText = await panel
+      .locator('.token-row')
+      .evaluateAll((rows) => rows.map((row) => row.textContent ?? '').join('\n'));
+    expect(visibleTokenRowText).not.toContain('light-dark(');
+    expect(visibleTokenRowText).not.toContain('oklch(');
     const initialAccentRowLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
     expect(initialAccentRowLayout).toEqual(
       expect.objectContaining({
         triggerTitle: null,
-        editorStartsBelowHeading: true,
+        rowInputCount: 0,
       }),
     );
-    expect(initialAccentRowLayout.editorLeftDelta).toBeLessThan(1);
-    expect(initialAccentRowLayout.inputRightGap).toBeGreaterThanOrEqual(0);
-    expect(initialAccentRowLayout.inputWidth).toBeGreaterThan(260);
+    expect(initialAccentRowLayout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
+    expect(initialAccentRowLayout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
+    expect(initialAccentRowLayout.valueChipText).toMatch(/^#[0-9a-f]{6}$/i);
     await accentColorPickerButton.click();
     const pickerDialog = page.getByRole('dialog', { name: `Pick ${TOKEN_NAME} color` });
     await expect(pickerDialog).toBeVisible();
@@ -583,23 +596,19 @@ test.describe('playground color token panel', () => {
 
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(visualPickerValue);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe(visualPickerValue);
-    await expect(accentInput).toHaveValue(visualPickerValue);
     await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toBeVisible();
     const overriddenAccentRowLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
     expect(overriddenAccentRowLayout.resetCenterRatio).toBeGreaterThan(0.9);
-    expect(overriddenAccentRowLayout.editorStartsBelowHeading).toBe(true);
-    expect(overriddenAccentRowLayout.editorLeftDelta).toBeLessThan(1);
-    expect(overriddenAccentRowLayout.inputRightGap).toBeGreaterThanOrEqual(0);
-    expect(overriddenAccentRowLayout.inputWidth).toBeGreaterThan(260);
+    expect(overriddenAccentRowLayout.rowInputCount).toBe(0);
+    expect(overriddenAccentRowLayout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
+    expect(overriddenAccentRowLayout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
+    expect(overriddenAccentRowLayout.valueChipText).toBe(visualPickerValue.toLowerCase());
     await page.keyboard.press('Escape');
     await expect(pickerDialog).toBeHidden();
     await expect.poll(() => expandedColorTriggerTokenNames(page)).toEqual([]);
     await expect(panel).toBeVisible();
 
-    await page
-      .locator(`[data-color-token="${SUCCESS_TOKEN_NAME}"]`)
-      .getByLabel(`${SUCCESS_TOKEN_NAME} CSS value`)
-      .fill(LIGHT_BULK_OVERRIDE);
+    await fillTokenCssValue(page, SUCCESS_TOKEN_NAME, LIGHT_BULK_OVERRIDE);
     await expect.poll(() => shellTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
     await expect.poll(() => iframeTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
 
@@ -607,10 +616,7 @@ test.describe('playground color token panel', () => {
     await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'dark');
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
-    await page
-      .locator(`[data-color-token="${DANGER_TOKEN_NAME}"]`)
-      .getByLabel(`${DANGER_TOKEN_NAME} CSS value`)
-      .fill(DARK_BULK_OVERRIDE);
+    await fillTokenCssValue(page, DANGER_TOKEN_NAME, DARK_BULK_OVERRIDE);
     await expect.poll(() => shellTokenValue(page, DANGER_TOKEN_NAME)).toBe(DARK_BULK_OVERRIDE);
 
     await page.getByRole('radio', { name: 'Light' }).click();
@@ -633,7 +639,7 @@ test.describe('playground color token panel', () => {
     await expect.poll(() => iframeTokenValue(page, DANGER_TOKEN_NAME)).toBe(DARK_BULK_OVERRIDE);
 
     await page.getByRole('radio', { name: 'Light' }).click();
-    await accentInput.fill(LIGHT_ADVANCED_OVERRIDE);
+    await fillTokenCssValue(page, TOKEN_NAME, LIGHT_ADVANCED_OVERRIDE);
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(LIGHT_ADVANCED_OVERRIDE);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe(LIGHT_ADVANCED_OVERRIDE);
 
@@ -659,29 +665,29 @@ test.describe('playground color token panel', () => {
     await page.getByRole('radio', { name: 'Light' }).click();
     const panel = await openColorTokenPanel(page);
     const accentRow = page.locator(`[data-color-token="${TOKEN_NAME}"]`);
-    const accentInput = accentRow.getByLabel(`${TOKEN_NAME} CSS value`);
     const accentColorPickerButton = accentRow.getByRole('button', {
       name: `Pick ${TOKEN_NAME} color`,
     });
 
     expect(await accentColorPickerButton.getAttribute('title')).toBeNull();
+    await expect(panel.locator('.token-row input.cinder-input')).toHaveCount(0);
     await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toHaveCount(0);
     const initialLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
-    expect(initialLayout.editorStartsBelowHeading).toBe(true);
-    expect(initialLayout.editorLeftDelta).toBeLessThan(1);
-    expect(initialLayout.inputRightGap).toBeGreaterThanOrEqual(0);
-    expect(initialLayout.inputWidth).toBeGreaterThan(220);
+    expect(initialLayout.rowInputCount).toBe(0);
+    expect(initialLayout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
+    expect(initialLayout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
+    expect(initialLayout.valueChipText).toMatch(/^#[0-9a-f]{6}$/i);
 
-    await accentInput.fill('#00c4c7');
+    await fillTokenCssValue(page, TOKEN_NAME, '#00c4c7');
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe('#00c4c7');
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe('#00c4c7');
     await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toBeVisible();
     const overriddenLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
     expect(overriddenLayout.resetCenterRatio).toBeGreaterThan(0.85);
-    expect(overriddenLayout.editorStartsBelowHeading).toBe(true);
-    expect(overriddenLayout.editorLeftDelta).toBeLessThan(1);
-    expect(overriddenLayout.inputRightGap).toBeGreaterThanOrEqual(0);
-    expect(overriddenLayout.inputWidth).toBeGreaterThan(220);
+    expect(overriddenLayout.rowInputCount).toBe(0);
+    expect(overriddenLayout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
+    expect(overriddenLayout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
+    expect(overriddenLayout.valueChipText).toBe('#00c4c7');
     await expect(panel).toBeVisible();
   });
 
