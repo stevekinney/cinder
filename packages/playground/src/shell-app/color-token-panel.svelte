@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button, Input } from '../../../components/src/index.ts';
+  import { Button, ColorPicker, Input, Popover } from '../../../components/src/index.ts';
   import {
     COLOR_TOKEN_GROUPS,
     isSafeColorTokenValue,
@@ -15,27 +15,144 @@
 
   const store = getPreviewStore();
 
+  const COLOR_PICKER_SWATCHES = [
+    '#0f172a',
+    '#334155',
+    '#64748b',
+    '#e2e8f0',
+    '#ffffff',
+    '#dc2626',
+    '#ea580c',
+    '#d97706',
+    '#16a34a',
+    '#0891b2',
+    '#336699',
+    '#2563eb',
+    '#7c3aed',
+    '#db2777',
+  ];
+
   let query = $state('');
   let draftValues: Partial<Record<ColorTokenName, string>> = $state({});
+  let pickerValues: Partial<Record<ColorTokenName, string>> = $state({});
   let errors: Partial<Record<ColorTokenName, string>> = $state({});
+  let pickerOpen = $state(false);
+  let pickerAnchorElement: HTMLElement | null = $state(null);
+  let activePickerTokenName: ColorTokenName | null = $state(null);
 
   const activeTheme = $derived(store.theme);
   const activeOverrides = $derived(store.colorTokenOverrides[activeTheme]);
   const activeOverrideCount = $derived(Object.keys(activeOverrides).length);
+  const activePickerToken = $derived.by(() => {
+    if (activePickerTokenName === null) return null;
+
+    for (const group of COLOR_TOKEN_GROUPS) {
+      const token = group.tokens.find((candidate) => candidate.name === activePickerTokenName);
+      if (token !== undefined) return token;
+    }
+
+    return null;
+  });
+  const activePickerValue = $derived(
+    activePickerTokenName === null ? '#000000' : (pickerValues[activePickerTokenName] ?? '#000000'),
+  );
 
   function defaultValueFor(tokenName: ColorTokenName): string {
     if (typeof document === 'undefined') return '';
     return getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim();
   }
 
+  function normalizeHexColor(value: string): string | null {
+    const trimmed = value.trim();
+    const match = /^#(?<hex>[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(trimmed);
+    const hex = match?.groups?.['hex'];
+    if (hex === undefined) return null;
+
+    if (hex.length === 3 || hex.length === 4) {
+      const [red = '0', green = '0', blue = '0'] = hex;
+      return `#${red}${red}${green}${green}${blue}${blue}`.toLowerCase();
+    }
+
+    return `#${hex.slice(0, 6)}`.toLowerCase();
+  }
+
+  function rgbChannelToHex(channel: string): string | null {
+    const parsed = Number.parseFloat(channel);
+    if (!Number.isFinite(parsed)) return null;
+    const clamped = Math.min(255, Math.max(0, Math.round(parsed)));
+    return clamped.toString(16).padStart(2, '0');
+  }
+
+  function rgbColorToHex(value: string): string | null {
+    const match = /^rgba?\((?<channels>.+)\)$/i.exec(value.trim());
+    const channels = match?.groups?.['channels'];
+    if (channels === undefined) return null;
+
+    const [red, green, blue] = channels
+      .replaceAll(',', ' ')
+      .split(/\s+/)
+      .filter((part) => part !== '' && part !== '/');
+
+    if (red === undefined || green === undefined || blue === undefined) return null;
+    const redHex = rgbChannelToHex(red);
+    const greenHex = rgbChannelToHex(green);
+    const blueHex = rgbChannelToHex(blue);
+    if (redHex === null || greenHex === null || blueHex === null) return null;
+    return `#${redHex}${greenHex}${blueHex}`;
+  }
+
+  function canvasColorToHex(value: string): string | null {
+    try {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (context === null) return null;
+      context.fillStyle = '#000000';
+      context.fillStyle = value;
+      return normalizeHexColor(context.fillStyle) ?? rgbColorToHex(context.fillStyle);
+    } catch {
+      return null;
+    }
+  }
+
+  function resolveColorToPickerValue(value: string, fallback = '#000000'): string {
+    if (typeof document === 'undefined') return fallback;
+
+    const normalizedHex = normalizeHexColor(value);
+    if (normalizedHex !== null) return normalizedHex;
+
+    const probe = document.createElement('span');
+    probe.style.color = value;
+    if (probe.style.color === '') return fallback;
+
+    document.documentElement.append(probe);
+    const resolved = getComputedStyle(probe).color;
+    probe.remove();
+
+    return (
+      normalizeHexColor(resolved) ??
+      rgbColorToHex(resolved) ??
+      canvasColorToHex(resolved) ??
+      canvasColorToHex(value) ??
+      fallback
+    );
+  }
+
+  function pickerValueFor(tokenName: ColorTokenName, value: string): string {
+    return resolveColorToPickerValue(value, resolveColorToPickerValue(`var(${tokenName})`));
+  }
+
   function syncDrafts(): void {
     const nextDrafts: Partial<Record<ColorTokenName, string>> = {};
+    const nextPickerValues: Partial<Record<ColorTokenName, string>> = {};
     for (const group of COLOR_TOKEN_GROUPS) {
       for (const token of group.tokens) {
-        nextDrafts[token.name] = activeOverrides[token.name] ?? defaultValueFor(token.name);
+        const value = activeOverrides[token.name] ?? defaultValueFor(token.name);
+        nextDrafts[token.name] = value;
+        nextPickerValues[token.name] = pickerValueFor(token.name, value);
       }
     }
     draftValues = nextDrafts;
+    pickerValues = nextPickerValues;
     errors = {};
   }
 
@@ -82,12 +199,30 @@
     }
 
     delete errors[tokenName];
+    pickerValues[tokenName] = pickerValueFor(tokenName, value);
     store.setColorTokenOverride(activeTheme, tokenName, value);
+  }
+
+  function handleColorPickerValue(tokenName: ColorTokenName, value: string): void {
+    pickerValues[tokenName] = value;
+    draftValues[tokenName] = value;
+    delete errors[tokenName];
+    store.setColorTokenOverride(activeTheme, tokenName, value);
+  }
+
+  function openColorPicker(
+    tokenName: ColorTokenName,
+    event: MouseEvent & { currentTarget: EventTarget & HTMLElement },
+  ): void {
+    pickerAnchorElement = event.currentTarget;
+    activePickerTokenName = tokenName;
+    pickerOpen = true;
   }
 
   function resetToken(tokenName: ColorTokenName): void {
     store.resetColorTokenOverride(activeTheme, tokenName);
     draftValues[tokenName] = defaultValueFor(tokenName);
+    pickerValues[tokenName] = pickerValueFor(tokenName, draftValues[tokenName] ?? '');
     delete errors[tokenName];
   }
 
@@ -140,11 +275,20 @@
           {#each group.tokens as token (token.name)}
             {@const inputId = inputIdFor(token.name)}
             <div class="token-row" data-color-token={token.name}>
-              <span
-                class="token-swatch"
-                style={`background: var(${token.name});`}
-                aria-hidden="true"
-              ></span>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconOnly
+                label="Pick {token.name} color"
+                class="token-color-trigger"
+                title="Pick {token.name} color"
+                onclick={(event) => openColorPicker(token.name, event)}
+              >
+                <span
+                  class="token-color-trigger__swatch"
+                  style={`--token-picker-color: ${pickerValues[token.name] ?? '#000000'};`}
+                ></span>
+              </Button>
               <div class="token-copy">
                 <label for={inputId}>{token.label}</label>
                 <code>{token.name}</code>
@@ -180,6 +324,30 @@
     {/if}
   </div>
 </aside>
+
+{#if activePickerToken !== null}
+  <Popover
+    bind:open={pickerOpen}
+    triggerRef={pickerAnchorElement}
+    placement="left"
+    label="Pick {activePickerToken.name} color"
+    class="color-token-picker-popover"
+  >
+    <div class="picker-popover-content">
+      <div class="picker-popover-header">
+        <span>{activePickerToken.label}</span>
+        <code>{activePickerToken.name}</code>
+      </div>
+      <ColorPicker
+        value={activePickerValue}
+        label="Color picker for {activePickerToken.name}"
+        swatches={COLOR_PICKER_SWATCHES}
+        oninput={(value) => handleColorPickerValue(activePickerToken.name, value)}
+        onchange={(value) => handleColorPickerValue(activePickerToken.name, value)}
+      />
+    </div>
+  </Popover>
+{/if}
 
 <style>
   .color-token-panel {
@@ -262,7 +430,7 @@
 
   .token-row {
     display: grid;
-    grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
     gap: var(--cinder-space-2);
     align-items: start;
     padding: var(--cinder-space-3) var(--cinder-space-4);
@@ -273,11 +441,28 @@
     border-bottom: none;
   }
 
-  .token-swatch {
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 1px solid var(--cinder-border-strong);
-    border-radius: var(--cinder-radius-sm);
+  .token-row :global(.token-color-trigger) {
+    inline-size: 2rem;
+    block-size: 2rem;
+    padding: 0;
+    border-color: var(--cinder-border-strong);
+  }
+
+  .token-row :global(.token-color-trigger[aria-expanded='true']) {
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .token-row :global(.token-color-trigger .cinder-button__icon) {
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  :global(.token-color-trigger__swatch) {
+    display: block;
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+    border-radius: calc(var(--cinder-radius-sm) - 1px);
+    background: var(--token-picker-color);
     box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--cinder-surface), transparent 20%);
   }
 
@@ -311,6 +496,40 @@
     padding: var(--cinder-space-4);
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
+  }
+
+  :global(.color-token-picker-popover) {
+    width: min(18rem, calc(100vw - var(--cinder-space-4)));
+  }
+
+  .picker-popover-content {
+    display: grid;
+    gap: var(--cinder-space-3);
+  }
+
+  .picker-popover-header {
+    display: grid;
+    gap: var(--cinder-space-0-5);
+    min-width: 0;
+  }
+
+  .picker-popover-header span {
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-semibold);
+  }
+
+  .picker-popover-header code {
+    overflow: hidden;
+    color: var(--cinder-text-subtle);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .picker-popover-content :global(.cinder-color-picker) {
+    max-width: none;
   }
 
   @media (max-width: 520px) {

@@ -8,8 +8,11 @@
 
 @import './index.css';
 @import '../components/button/button.css';
+@import '../components/color-picker/color-picker.css';
+@import '../components/color-swatch-picker/color-swatch-picker.css';
 @import '../components/input/input.css';
 @import '../components/number-input/number-input.css';
+@import '../components/popover/popover.css';
 @import '../components/segmented-control/segmented-control.css';
 @import '../components/side-navigation/side-navigation.css';
 /* side-navigation.css intentionally carries no per-item styling — the row

@@ -236,8 +236,11 @@ describe('/c/:name', () => {
     expect(urls.has('/components/toolbar/toolbar.css')).toBe(true);
     expect(urls.has('/components/segmented-control/segmented-control.css')).toBe(true);
     expect(urls.has('/components/button/button.css')).toBe(true);
+    expect(urls.has('/components/color-picker/color-picker.css')).toBe(true);
+    expect(urls.has('/components/color-swatch-picker/color-swatch-picker.css')).toBe(true);
     expect(urls.has('/components/input/input.css')).toBe(true);
     expect(urls.has('/components/number-input/number-input.css')).toBe(true);
+    expect(urls.has('/components/popover/popover.css')).toBe(true);
     expect(urls.has('/components/side-navigation/side-navigation.css')).toBe(true);
     // Regression: side-navigation.css carries no per-item styling, so the shell
     // MUST also load navigation-item.css or the sidebar links fall back to bare
@@ -248,8 +251,11 @@ describe('/c/:name', () => {
       '.cinder-toolbar',
       '.cinder-segmented-control',
       '.cinder-button',
+      '.cinder-color-picker',
+      '.cinder-color-swatch-picker',
       '.cinder-input',
       '.cinder-number-input',
+      '.cinder-popover',
       '.cinder-side-navigation',
       '.cinder-side-navigation__list',
       // The per-row styling (text-decoration:none, padding, active indicator)
