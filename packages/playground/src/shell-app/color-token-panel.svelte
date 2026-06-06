@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
 
   import { Button, ColorPicker, Input, Popover } from '../../../components/src/index.ts';
+  import { RotateCcw } from '../../../components/src/components/icons/index.ts';
   import {
     COLOR_TOKEN_GROUPS,
     isSafeColorTokenValue,
@@ -490,7 +491,6 @@
                 iconOnly
                 label="Pick {token.name} color"
                 class="token-color-trigger"
-                title="Pick {token.name} color"
                 aria-expanded={pickerOpen && activePickerTokenName === token.name
                   ? 'true'
                   : 'false'}
@@ -503,29 +503,39 @@
                   };`}
                 ></span>
               </Button>
-              <div class="token-copy">
-                <label for={inputId}>{token.label}</label>
-                <code>{token.name}</code>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={!hasOverride(token.name)}
-                aria-label="Reset {token.name}"
-                onclick={() => resetToken(token.name)}
-              >
-                Reset
-              </Button>
-              <div class="token-editor">
-                <Input
-                  id={inputId}
-                  value={draftValues[token.name] ?? ''}
-                  {...errors[token.name] === undefined ? {} : { error: errors[token.name] }}
-                  aria-label="{token.name} CSS value"
-                  autocomplete="off"
-                  spellcheck={false}
-                  oninput={(event) => handleTokenInput(token.name, event)}
-                />
+              <div class="token-row__body">
+                <div class="token-row__heading">
+                  <div class="token-copy">
+                    <label for={inputId}>{token.label}</label>
+                    <code>{token.name}</code>
+                  </div>
+                  {#if hasOverride(token.name)}
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      iconOnly
+                      label="Reset {token.name}"
+                      class="token-reset-button"
+                      onclick={() => resetToken(token.name)}
+                    >
+                      <RotateCcw class="token-reset-button__icon" />
+                    </Button>
+                  {:else}
+                    <span class="token-reset-placeholder" aria-hidden="true"></span>
+                  {/if}
+                </div>
+                <div class="token-editor">
+                  <Input
+                    id={inputId}
+                    value={draftValues[token.name] ?? ''}
+                    class="token-value-input"
+                    {...errors[token.name] === undefined ? {} : { error: errors[token.name] }}
+                    aria-label="{token.name} CSS value"
+                    autocomplete="off"
+                    spellcheck={false}
+                    oninput={(event) => handleTokenInput(token.name, event)}
+                  />
+                </div>
               </div>
             </div>
           {/each}
@@ -644,10 +654,9 @@
 
   .token-row {
     display: grid;
-    grid-template-columns: 2.25rem minmax(8rem, 0.95fr) minmax(12rem, 1.35fr) auto;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
     column-gap: var(--cinder-space-3);
-    row-gap: var(--cinder-space-1-5);
-    align-items: center;
+    align-items: start;
     padding: var(--cinder-space-2-5) var(--cinder-space-4);
     border-bottom: 1px solid var(--cinder-border-muted);
   }
@@ -661,6 +670,7 @@
     block-size: 2.25rem;
     min-width: 2.25rem;
     min-height: 2.25rem;
+    margin-block-start: 0.125rem;
     padding: 0;
     background: var(--cinder-surface);
     border-color: var(--cinder-border-muted);
@@ -712,6 +722,20 @@
       0 1px 2px color-mix(in oklch, var(--cinder-text), transparent 88%);
   }
 
+  .token-row__body {
+    display: grid;
+    gap: var(--cinder-space-2);
+    min-width: 0;
+  }
+
+  .token-row__heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2.25rem;
+    column-gap: var(--cinder-space-2);
+    align-items: start;
+    min-width: 0;
+  }
+
   .token-copy {
     display: grid;
     gap: var(--cinder-space-0-5);
@@ -733,8 +757,43 @@
     white-space: nowrap;
   }
 
+  .token-row :global(.cinder-button.token-reset-button),
+  .token-reset-placeholder {
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+  }
+
+  .token-row :global(.cinder-button.token-reset-button) {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0;
+    color: var(--cinder-text-muted);
+    justify-self: end;
+  }
+
+  .token-row :global(.token-reset-button__icon) {
+    inline-size: 1rem;
+    block-size: 1rem;
+  }
+
+  @media (hover: hover) {
+    .token-row :global(.cinder-button.token-reset-button:hover:not(:disabled)) {
+      color: var(--cinder-text);
+    }
+  }
+
   .token-editor {
     min-width: 0;
+  }
+
+  .token-editor :global(.cinder-input-field) {
+    min-width: 0;
+  }
+
+  .token-editor :global(.cinder-input.token-value-input) {
+    width: 100%;
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
   }
 
   @media (forced-colors: active) {
@@ -793,14 +852,6 @@
 
     .panel-controls {
       grid-template-columns: 1fr;
-    }
-
-    .token-row {
-      grid-template-columns: 2.25rem minmax(0, 1fr) auto;
-    }
-
-    .token-editor {
-      grid-column: 2 / -1;
     }
   }
 </style>

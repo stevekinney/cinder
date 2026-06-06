@@ -36,6 +36,15 @@ type ColorTriggerFocusState = {
   swatchOutlineWidth: string;
 };
 
+type ColorTokenRowLayoutState = {
+  triggerTitle: string | null;
+  editorStartsBelowHeading: boolean;
+  editorLeftDelta: number;
+  inputRightGap: number;
+  inputWidth: number;
+  resetCenterRatio: number | null;
+};
+
 async function waitForPlayground(page: Page): Promise<void> {
   await page.waitForSelector('iframe[data-cinder-preview]', { state: 'attached' });
   await page.waitForSelector('[data-testid="color-token-panel-toggle"]', { state: 'visible' });
@@ -401,6 +410,40 @@ async function colorTriggerFocusState(page: Page): Promise<ColorTriggerFocusStat
   });
 }
 
+async function colorTokenRowLayoutState(
+  page: Page,
+  tokenName: string,
+): Promise<ColorTokenRowLayoutState> {
+  return page.locator(`[data-color-token="${tokenName}"]`).evaluate((row) => {
+    const trigger = row.querySelector<HTMLElement>('.token-color-trigger');
+    const heading = row.querySelector<HTMLElement>('.token-row__heading');
+    const editor = row.querySelector<HTMLElement>('.token-editor');
+    const input = row.querySelector<HTMLInputElement>('input.cinder-input');
+    if (trigger === null || heading === null || editor === null || input === null) {
+      throw new Error('Color token row is missing expected editor structure.');
+    }
+
+    const rowBox = row.getBoundingClientRect();
+    const headingBox = heading.getBoundingClientRect();
+    const editorBox = editor.getBoundingClientRect();
+    const inputBox = input.getBoundingClientRect();
+    const resetButton = row.querySelector<HTMLElement>('.token-reset-button');
+    const resetBox = resetButton?.getBoundingClientRect();
+
+    return {
+      triggerTitle: trigger.getAttribute('title'),
+      editorStartsBelowHeading: editorBox.top >= headingBox.bottom - 1,
+      editorLeftDelta: Math.abs(editorBox.left - headingBox.left),
+      inputRightGap: rowBox.right - inputBox.right,
+      inputWidth: inputBox.width,
+      resetCenterRatio:
+        resetBox === undefined
+          ? null
+          : (resetBox.left + resetBox.width / 2 - rowBox.left) / rowBox.width,
+    };
+  });
+}
+
 async function postIframeColorOverrideMessage(
   page: Page,
   theme: 'light' | 'dark',
@@ -513,6 +556,18 @@ test.describe('playground color token panel', () => {
       name: `Pick ${TOKEN_NAME} color`,
     });
     const accentInput = accentRow.getByLabel(`${TOKEN_NAME} CSS value`);
+    await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toHaveCount(0);
+    expect(await accentColorPickerButton.getAttribute('title')).toBeNull();
+    const initialAccentRowLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
+    expect(initialAccentRowLayout).toEqual(
+      expect.objectContaining({
+        triggerTitle: null,
+        editorStartsBelowHeading: true,
+      }),
+    );
+    expect(initialAccentRowLayout.editorLeftDelta).toBeLessThan(1);
+    expect(initialAccentRowLayout.inputRightGap).toBeGreaterThanOrEqual(0);
+    expect(initialAccentRowLayout.inputWidth).toBeGreaterThan(260);
     await accentColorPickerButton.click();
     const pickerDialog = page.getByRole('dialog', { name: `Pick ${TOKEN_NAME} color` });
     await expect(pickerDialog).toBeVisible();
@@ -529,6 +584,13 @@ test.describe('playground color token panel', () => {
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(visualPickerValue);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe(visualPickerValue);
     await expect(accentInput).toHaveValue(visualPickerValue);
+    await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toBeVisible();
+    const overriddenAccentRowLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
+    expect(overriddenAccentRowLayout.resetCenterRatio).toBeGreaterThan(0.9);
+    expect(overriddenAccentRowLayout.editorStartsBelowHeading).toBe(true);
+    expect(overriddenAccentRowLayout.editorLeftDelta).toBeLessThan(1);
+    expect(overriddenAccentRowLayout.inputRightGap).toBeGreaterThanOrEqual(0);
+    expect(overriddenAccentRowLayout.inputWidth).toBeGreaterThan(260);
     await page.keyboard.press('Escape');
     await expect(pickerDialog).toBeHidden();
     await expect.poll(() => expandedColorTriggerTokenNames(page)).toEqual([]);
@@ -587,6 +649,40 @@ test.describe('playground color token panel', () => {
     await waitForPlayground(page);
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_ADVANCED_OVERRIDE);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_ADVANCED_OVERRIDE);
+  });
+
+  test('keeps token row actions and value input usable at narrow widths', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/c/button', { waitUntil: 'load' });
+    await waitForPlayground(page);
+
+    await page.getByRole('radio', { name: 'Light' }).click();
+    const panel = await openColorTokenPanel(page);
+    const accentRow = page.locator(`[data-color-token="${TOKEN_NAME}"]`);
+    const accentInput = accentRow.getByLabel(`${TOKEN_NAME} CSS value`);
+    const accentColorPickerButton = accentRow.getByRole('button', {
+      name: `Pick ${TOKEN_NAME} color`,
+    });
+
+    expect(await accentColorPickerButton.getAttribute('title')).toBeNull();
+    await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toHaveCount(0);
+    const initialLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
+    expect(initialLayout.editorStartsBelowHeading).toBe(true);
+    expect(initialLayout.editorLeftDelta).toBeLessThan(1);
+    expect(initialLayout.inputRightGap).toBeGreaterThanOrEqual(0);
+    expect(initialLayout.inputWidth).toBeGreaterThan(220);
+
+    await accentInput.fill('#00c4c7');
+    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe('#00c4c7');
+    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe('#00c4c7');
+    await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toBeVisible();
+    const overriddenLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
+    expect(overriddenLayout.resetCenterRatio).toBeGreaterThan(0.85);
+    expect(overriddenLayout.editorStartsBelowHeading).toBe(true);
+    expect(overriddenLayout.editorLeftDelta).toBeLessThan(1);
+    expect(overriddenLayout.inputRightGap).toBeGreaterThanOrEqual(0);
+    expect(overriddenLayout.inputWidth).toBeGreaterThan(220);
+    await expect(panel).toBeVisible();
   });
 
   test('preview frame ignores stale wrong-theme color override messages', async ({ page }) => {
