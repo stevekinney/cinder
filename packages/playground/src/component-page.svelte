@@ -303,7 +303,7 @@
 <!-- Heading level is h3 to match the example Card titles (cinder Card renders
      its title as <h3>), keeping the iframe document's heading outline ordered
      rather than inverting to a higher level after the example cards. -->
-<section class="props-section" aria-labelledby="props-heading">
+<section class="props-section">
   <h3 id="props-heading" class="props-heading">API reference</h3>
   {#if propsLoading}
     <div class="props-skeleton" aria-hidden="true">
@@ -319,7 +319,8 @@
     <!-- tabindex="0" makes the scrollable region keyboard-accessible (axe
          scrollable-region-focusable / WCAG 2.1.1) — at narrow widths the wide
          props table can overflow horizontally and must be reachable by keyboard. -->
-    <div class="props-table-scroll" tabindex="0">
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div class="props-table-scroll" role="region" aria-labelledby="props-heading" tabindex="0">
       <Table caption={`Props for ${componentName}`} density="condensed">
         <Table.Header>
           <Table.Row>
@@ -536,6 +537,19 @@
   /* Wide container: a normal horizontally-scrollable table. */
   .props-table-scroll {
     overflow-x: auto;
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  .props-table-scroll:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .props-table-scroll:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .props-error,

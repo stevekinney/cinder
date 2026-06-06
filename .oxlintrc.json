@@ -80,6 +80,7 @@
     ".bun/**",
     "node_modules/**",
     "packages/components/fixtures/**",
+    "**/*.css.d.ts",
     "**/*.svelte",
     "packages/playground/src/**/*.svelte",
     "*.lock"
