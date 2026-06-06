@@ -24,7 +24,12 @@
     dataTableClass,
     formatNumericValue,
     legendVisible,
+    type ChartTarget,
   } from '../../_internal/chart/chart-utilities.ts';
+  import {
+    DEFAULT_CHART_FOCUS_RING_STROKE_PADDING,
+    createBarFocusRingGeometry,
+  } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { BarChartProps } from './bar-chart.types.ts';
@@ -96,6 +101,28 @@
       ? `${rootId}-table-guidance`
       : undefined,
   );
+  const focusedTarget = $derived.by(() => {
+    const currentTarget = interaction.focusedTarget;
+    if (!currentTarget) return undefined;
+    return model.targets.find((target) => target.id === currentTarget.id);
+  });
+  let keyboardFocusModality = $state(false);
+  let focusVisibleTargetId = $state<string>();
+  const focusRingTarget = $derived(
+    keyboardFocusModality && focusedTarget && focusVisibleTargetId === focusedTarget.id
+      ? focusedTarget
+      : undefined,
+  );
+  const barFocusRing = $derived(
+    focusRingTarget
+      ? createBarFocusRingGeometry({
+          target: focusRingTarget,
+          plotWidth: model.geometry.plotWidth,
+          plotHeight: model.geometry.plotHeight,
+          strokePadding: DEFAULT_CHART_FOCUS_RING_STROKE_PADDING,
+        })
+      : null,
+  );
 
   $effect(() => {
     assertValidNonNegativeInteger(
@@ -109,7 +136,43 @@
   $effect(() => {
     interaction.clearStaleTargets(loading, model.empty, model.targets);
   });
+
+  function rememberKeyboardFocusModality(event: KeyboardEvent): void {
+    if (
+      event.key === 'Tab' ||
+      event.key === 'Home' ||
+      event.key === 'End' ||
+      event.key.startsWith('Arrow')
+    ) {
+      keyboardFocusModality = true;
+    }
+  }
+
+  function clearKeyboardFocusModality(): void {
+    keyboardFocusModality = false;
+    focusVisibleTargetId = undefined;
+  }
+
+  function handleTargetFocus(target: ChartTarget): void {
+    interaction.focusedTarget = target;
+    focusVisibleTargetId = keyboardFocusModality ? target.id : undefined;
+  }
+
+  function handleTargetBlur(): void {
+    interaction.focusedTarget = undefined;
+    focusVisibleTargetId = undefined;
+  }
+
+  function handleTargetKeydown(event: KeyboardEvent): void {
+    rememberKeyboardFocusModality(event);
+    interaction.activateByKeyboard(event, rootElement!, model.targets, keyboardEnabled);
+  }
 </script>
+
+<svelte:window
+  onkeydown={rememberKeyboardFocusModality}
+  onpointerdown={clearKeyboardFocusModality}
+/>
 
 <figure
   {...rest}
@@ -160,7 +223,7 @@
         <title id="{rootId}-svg-title">{label}</title>
       {/if}
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
-        {#each model.yTicks as tick, index}
+        {#each model.yTicks as tick, index (tick)}
           <!--
             Bar chart tick positions depend on orientation:
             - Vertical: y-axis labels appear left of the chart (same as line/area).
@@ -199,7 +262,7 @@
             data-cinder-category={bar.categoryLabel}
           />
         {/each}
-        {#each model.categoryTicks as tick (tick.label)}
+        {#each model.categoryTicks as tick (tick.categoryKey)}
           <!--
             Category axis labels differ by orientation:
             - Vertical: labels appear below bars (middle-anchored x, no baseline).
@@ -266,22 +329,40 @@
                 tabindex="0"
                 role="button"
                 data-cinder-target-id={target.id}
+                data-cinder-series-id={target.seriesId}
+                data-cinder-focus-ring-active={barFocusRing && focusRingTarget?.id === target.id
+                  ? 'true'
+                  : undefined}
                 aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
                 aria-describedby={interaction.activeTarget?.id === target.id
                   ? `${rootId}-tooltip`
                   : undefined}
-                onfocus={() => (interaction.focusedTarget = target)}
-                onblur={() => (interaction.focusedTarget = undefined)}
-                onkeydown={(event) =>
-                  interaction.activateByKeyboard(
-                    event,
-                    rootElement!,
-                    model.targets,
-                    keyboardEnabled,
-                  )}
+                onfocus={() => handleTargetFocus(target)}
+                onblur={handleTargetBlur}
+                onkeydown={handleTargetKeydown}
               />
             {/each}
           {/if}
+        {/if}
+        {#if barFocusRing}
+          <g class="cinder-bar-chart__focus-ring-layer" aria-hidden="true">
+            <rect
+              class="cinder-bar-chart__focus-ring-halo"
+              x={barFocusRing.x}
+              y={barFocusRing.y}
+              width={barFocusRing.width}
+              height={barFocusRing.height}
+              rx={barFocusRing.radius}
+            />
+            <rect
+              class="cinder-bar-chart__focus-ring"
+              x={barFocusRing.x}
+              y={barFocusRing.y}
+              width={barFocusRing.width}
+              height={barFocusRing.height}
+              rx={barFocusRing.radius}
+            />
+          </g>
         {/if}
       </g>
     </svg>
@@ -313,8 +394,8 @@
         ></thead
       >
       <tbody>
-        {#each model.tableRows as row}
-          {#each row.values as value}
+        {#each model.tableRows as row (row.categoryKey)}
+          {#each row.values as value (value.seriesId)}
             <tr
               ><th scope="row">{row.categoryLabel}</th><td>{value.seriesLabel}</td><td
                 >{value.valueLabel}</td

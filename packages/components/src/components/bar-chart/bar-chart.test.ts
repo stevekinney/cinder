@@ -46,6 +46,20 @@ describe('BarChart', () => {
     expect(container.querySelector('table')?.className).not.toContain('cinder-sr-only');
   });
 
+  test('data table supports distinct categories with the same formatted label', () => {
+    const { container } = render(BarChart, {
+      label: 'Revenue by month',
+      dataTableVisibility: 'visible',
+      data,
+      categoryKey: 'month',
+      series: [{ id: 'revenue', label: 'Revenue', valueKey: 'revenue' }],
+      xAxis: { format: () => 'Same period' },
+    });
+
+    const rowHeaders = [...container.querySelectorAll('tbody th[scope="row"]')];
+    expect(rowHeaders.map((header) => header.textContent)).toEqual(['Same period', 'Same period']);
+  });
+
   test('renders horizontal stacked bars with distinct attributes', () => {
     const { container } = render(BarChart, {
       label: 'Revenue by month',
@@ -68,8 +82,14 @@ describe('BarChart', () => {
       series,
     });
     const button = getByRole('button', { name: 'Revenue' });
+    expect(container.querySelectorAll('[data-cinder-series-id="revenue"]').length).toBeGreaterThan(
+      0,
+    );
+
     await fireEvent.click(button);
+
     expect(container.querySelectorAll('[data-cinder-series="revenue"]').length).toBe(0);
+    expect(container.querySelectorAll('[data-cinder-series-id="revenue"]').length).toBe(0);
   });
 
   test('invalid value keys throw stable developer errors', () => {
@@ -206,8 +226,107 @@ describe('BarChart', () => {
     expect(queryByText('Jan: 120')).toBeNull();
   });
 
+  test('keyboard focus renders one visual-only SVG focus-ring layer', async () => {
+    const { container, getByRole } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const target = getByRole('button', { name: 'Revenue, Jan, 120' });
+
+    await fireEvent.focus(target);
+    expect(container.querySelector('.cinder-bar-chart__focus-ring-layer')).toBeNull();
+    await fireEvent.blur(target);
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    await fireEvent.focus(target);
+
+    expect(target.getAttribute('data-cinder-series-id')).toBe('revenue');
+    expect(target.getAttribute('data-cinder-focus-ring-active')).toBe('true');
+    const layers = container.querySelectorAll('.cinder-bar-chart__focus-ring-layer');
+    expect(layers.length).toBe(1);
+    const layer = layers[0];
+    expect(layer?.getAttribute('aria-hidden')).toBe('true');
+    expect(layer?.getAttribute('tabindex')).toBeNull();
+    expect(layer?.getAttribute('role')).toBeNull();
+    expect(layer?.getAttribute('aria-label')).toBeNull();
+    expect(layer?.querySelectorAll('.cinder-bar-chart__focus-ring').length).toBeGreaterThan(0);
+    expect(layer?.querySelectorAll('[tabindex], [role], [aria-label]').length).toBe(0);
+  });
+
+  test('pointer input hides a keyboard focus-ring layer without clearing the focused tooltip', async () => {
+    const { container, getByRole, queryByText } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const target = getByRole('button', { name: 'Revenue, Jan, 120' });
+
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    await fireEvent.focus(target);
+    expect(container.querySelector('.cinder-bar-chart__focus-ring-layer')).not.toBeNull();
+    expect(queryByText('Jan: 120')).toBeTruthy();
+
+    await fireEvent.pointerDown(window);
+
+    expect(target.getAttribute('data-cinder-focus-ring-active')).toBeNull();
+    expect(container.querySelector('.cinder-bar-chart__focus-ring-layer')).toBeNull();
+    expect(target.getAttribute('aria-describedby')).toBeTruthy();
+    expect(queryByText('Jan: 120')).toBeTruthy();
+  });
+
+  test('hiding the focused series clears focus-ring and tooltip state', async () => {
+    const { container, getByRole, queryByText } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const target = getByRole('button', { name: 'Revenue, Jan, 120' });
+
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    await fireEvent.focus(target);
+    expect(container.querySelector('.cinder-bar-chart__focus-ring-layer')).not.toBeNull();
+
+    await fireEvent.click(getByRole('button', { name: 'Revenue' }));
+
+    expect(container.querySelectorAll('[data-cinder-series-id="revenue"]').length).toBe(0);
+    expect(container.querySelector('.cinder-bar-chart__focus-ring-layer')).toBeNull();
+    expect(queryByText('Jan: 120')).toBeNull();
+    expect(document.activeElement).not.toBe(target);
+  });
+
+  test('controlled hiddenSeriesIds clears stale focus-ring and tooltip state without a legend click', async () => {
+    const { container, getByRole, queryByText, rerender } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const target = getByRole('button', { name: 'Revenue, Jan, 120' });
+
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    await fireEvent.focus(target);
+    expect(container.querySelector('.cinder-bar-chart__focus-ring-layer')).not.toBeNull();
+    expect(queryByText('Jan: 120')).toBeTruthy();
+
+    await rerender({
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      hiddenSeriesIds: ['revenue'],
+      series,
+    });
+
+    expect(container.querySelectorAll('[data-cinder-series-id="revenue"]').length).toBe(0);
+    expect(container.querySelector('.cinder-bar-chart__focus-ring-layer')).toBeNull();
+    expect(queryByText('Jan: 120')).toBeNull();
+    expect(document.activeElement).not.toBe(target);
+  });
+
   test('arrow keys move DOM focus to the active target', async () => {
-    const { getByRole, queryByText } = render(BarChart, {
+    const { container, getByRole, queryByText } = render(BarChart, {
       label: 'Revenue by month',
       data,
       categoryKey: 'month',
@@ -217,9 +336,12 @@ describe('BarChart', () => {
     const secondTarget = getByRole('button', { name: 'Expansion, Jan, 30' });
 
     await fireEvent.focus(firstTarget);
+    expect(container.querySelector('.cinder-bar-chart__focus-ring-layer')).toBeNull();
     await fireEvent.keyDown(firstTarget, { key: 'ArrowRight' });
 
     expect(document.activeElement).toBe(secondTarget);
+    expect(secondTarget.getAttribute('data-cinder-focus-ring-active')).toBe('true');
+    expect(container.querySelectorAll('.cinder-bar-chart__focus-ring-layer').length).toBe(1);
     expect(secondTarget?.getAttribute('aria-describedby')).toBeTruthy();
     expect(queryByText('Jan: 30')).toBeTruthy();
   });

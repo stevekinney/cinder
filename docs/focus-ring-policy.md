@@ -3,7 +3,7 @@
 This document defines the approved strategies for `:focus-visible` rings in Cinder component CSS. Pick from this list. Do not invent a third approach.
 
 > [!NOTE] Default recipe
-> Component `:focus-visible` rules should use **Strategy B** — the transparent-outline placeholder paired with `box-shadow: var(--_cinder-focus-ring-shadow)`. The `cinder/no-focus-visible-colored-outline` Stylelint rule enforces this: colored `outline` channels are rejected outside `@media (forced-colors: active)`. Strategy A (a colored outline) is retained for the bare `:focus-visible` global default in `foundation.css` only.
+> Component `:focus-visible` rules should use **Strategy B** — the transparent-outline placeholder paired with `box-shadow: var(--_cinder-focus-ring-shadow)` — unless the component matches the documented SVG chart-mark exception below. The `cinder/no-focus-visible-colored-outline` Stylelint rule enforces this: colored `outline` channels are rejected outside `@media (forced-colors: active)`. Strategy A (a colored outline) is retained for the bare `:focus-visible` global default in `foundation.css` only.
 
 ## Token Reference
 
@@ -109,6 +109,12 @@ The offset color band is intentionally omitted — there is no usable space insi
 
 The 2026-06 sweep also adopted B-inset for a batch of clipped/full-bleed children (see the Deviations Appendix). Adding a further component requires documenting the justification here.
 
+## SVG Chart Marks — Stroke ring layer
+
+Use this exception only for keyboard-focusable SVG chart marks, such as the `circle` data targets in AreaChart/LineChart and the `rect` bar targets in BarChart. SVG shapes do not reliably paint HTML `box-shadow`, and chart `svg` viewports intentionally clip overflow, so the normal Strategy B and B-inset recipes are not load-bearing for these marks.
+
+Chart marks keep their transparent focus target for DOM focus and accessible naming, then render a separate `aria-hidden="true"` SVG focus-ring layer above the plot. The layer uses tokenized `stroke`, `stroke-width: var(--cinder-ring-width)`, `vector-effect: non-scaling-stroke`, and `pointer-events: none`; geometry is clamped inside the SVG viewport so edge marks still have a complete visible ring. In forced-colors mode the halo is hidden and the ring stroke uses `ButtonText` with `filter: none`.
+
 ## Picking Between A, B, and B-inset
 
 | Situation                                                        | Strategy                                                       |
@@ -116,6 +122,7 @@ The 2026-06 sweep also adopted B-inset for a batch of clipped/full-bleed childre
 | Component already has a `box-shadow` for elevation or decoration | A                                                              |
 | Form field or button-shaped pressable on the page surface        | B                                                              |
 | Focusable child of an `overflow: hidden` parent                  | B-inset                                                        |
+| Keyboard-focusable SVG chart mark                                | SVG chart mark stroke layer                                    |
 | Variant needs its own ring color                                 | B or B-inset with a `--_cinder-<component>-ring` fallback hook |
 
 ## Variant Ring Colors
