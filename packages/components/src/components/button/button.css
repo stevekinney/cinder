@@ -194,8 +194,8 @@
  * ---------------------------------------- */
 
   .cinder-button[data-cinder-variant='primary'] {
-    /* Ring uses the dedicated --cinder-ring-color (not the bright fill-accent):
-       the L=0.72 accent is the button face, so an accent ring would be invisible
+    /* Ring uses the dedicated --cinder-ring-color (not the fill-accent):
+       the accent is the button face, so an accent ring would be invisible
        against it and fail WCAG 1.4.11 (3:1) against the page. */
     --_cinder-button-ring: var(--cinder-ring-color);
     background: var(--cinder-accent);
@@ -423,7 +423,9 @@
  * hover paint when both states are active on hover-capable devices. Unwrapped
  * so they fire on tap. */
   .cinder-button[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
-    background: var(--cinder-accent-active);
+    /* Use the gentler on-fill pressed token so the --cinder-accent-contrast label stays AA-legible
+       on the pressed fill (the general --cinder-accent-active would drop the label below 4.5:1). */
+    background: var(--cinder-accent-active-on-fill);
   }
 
   .cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not(
