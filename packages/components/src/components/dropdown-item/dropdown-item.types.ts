@@ -1,5 +1,5 @@
 import type { Snippet } from 'svelte';
-import type { HTMLAnchorAttributes, HTMLAttributes } from 'svelte/elements';
+import type { HTMLAnchorAttributes, HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
 export type DropdownItemVariant = 'default' | 'danger';
 
@@ -19,14 +19,22 @@ type DropdownItemBase = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   disabled?: boolean | undefined;
 };
 
-/** Button variant — renders a `<button>`. */
-export type DropdownItemButtonProps = DropdownItemBase & {
-  href?: undefined;
-  /** Button type forwarded to the `<button>` element. Defaults to `"button"`. */
-  type?: 'button' | 'submit' | 'reset';
-  /** Associates the button with a form by id (for `type="submit"` outside the form). */
-  form?: string;
-};
+/**
+ * Button variant — renders a `<button>`. Forwards every button-specific
+ * attribute (`name`, `value`, `form`, `formaction`, `formmethod`,
+ * `formnovalidate`, `formtarget`, `formenctype`, …) by subtracting the shared
+ * `HTMLElement` surface — which the base already provides with `HTMLElement`-typed
+ * event handlers — so a form-submitting menu item (`type="submit"` with `name`/
+ * `value`) keeps full typing without reintroducing the inline-handler
+ * contravariance trap. `disabled` is owned by the base (a managed click guard +
+ * aria-disabled), not the native attribute.
+ */
+export type DropdownItemButtonProps = DropdownItemBase &
+  Omit<HTMLButtonAttributes, keyof HTMLAttributes<HTMLElement> | 'class' | 'disabled' | 'type'> & {
+    href?: undefined;
+    /** Button type forwarded to the `<button>` element. Defaults to `"button"`. */
+    type?: 'button' | 'submit' | 'reset';
+  };
 
 /**
  * Anchor variant — renders an `<a href>`. `disabled` blocks navigation and sets

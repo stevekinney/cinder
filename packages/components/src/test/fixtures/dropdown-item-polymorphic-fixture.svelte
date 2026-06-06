@@ -14,7 +14,14 @@
       <DropdownItem href="https://example.com" onclick={() => (selected = 'link')}>
         Link item
       </DropdownItem>
-      <DropdownItem type="submit" onclick={() => (selected = 'submit')}>Submit item</DropdownItem>
+      <DropdownItem
+        type="submit"
+        name="action"
+        value="logout"
+        onclick={() => (selected = 'submit')}
+      >
+        Submit item
+      </DropdownItem>
       <DropdownItem
         href="https://example.com"
         disabled

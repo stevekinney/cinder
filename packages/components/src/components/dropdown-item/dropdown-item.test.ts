@@ -108,6 +108,16 @@ describe('DropdownItem — polymorphism', () => {
     expect(submitItem?.getAttribute('role')).toBe('menuitem');
   });
 
+  test('button item forwards standard <button> attributes (name/value) for form submission', async () => {
+    const { container } = await openPolyMenu();
+    const items = container.querySelectorAll('[role="menuitem"]');
+    const submitItem = items[1];
+    // The button branch keeps the full HTMLButtonAttributes surface, so a
+    // form-submitting menu item can carry name/value (e.g. <button name="action" value="logout">).
+    expect(submitItem?.getAttribute('name')).toBe('action');
+    expect(submitItem?.getAttribute('value')).toBe('logout');
+  });
+
   test('clicking a link item invokes onclick and closes the menu', async () => {
     const { container } = await openPolyMenu();
     const items = container.querySelectorAll('[role="menuitem"]');
