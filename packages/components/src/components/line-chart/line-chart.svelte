@@ -24,7 +24,12 @@
     dataTableClass,
     formatNumericValue,
     legendVisible,
+    type ChartTarget,
   } from '../../_internal/chart/chart-utilities.ts';
+  import {
+    DEFAULT_CHART_FOCUS_RING_STROKE_PADDING,
+    createPointFocusRingGeometry,
+  } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { LineChartProps } from './line-chart.types.ts';
@@ -84,6 +89,26 @@
       ? `${rootId}-table-guidance`
       : undefined,
   );
+  const focusedTarget = $derived.by(() => {
+    const currentTarget = interaction.focusedTarget;
+    if (!currentTarget) return undefined;
+    return model.targets.find((target) => target.id === currentTarget.id);
+  });
+  let keyboardFocusModality = $state(false);
+  let focusVisibleTargetId = $state<string>();
+  const focusRingTarget = $derived(
+    focusedTarget && focusVisibleTargetId === focusedTarget.id ? focusedTarget : undefined,
+  );
+  const pointFocusRing = $derived(
+    focusRingTarget
+      ? createPointFocusRingGeometry({
+          target: focusRingTarget,
+          plotWidth: model.geometry.plotWidth,
+          plotHeight: model.geometry.plotHeight,
+          strokePadding: DEFAULT_CHART_FOCUS_RING_STROKE_PADDING,
+        })
+      : null,
+  );
 
   $effect(() => {
     assertValidNonNegativeInteger(
@@ -97,7 +122,42 @@
   $effect(() => {
     interaction.clearStaleTargets(loading, model.empty, model.targets);
   });
+
+  function rememberKeyboardFocusModality(event: KeyboardEvent): void {
+    if (
+      event.key === 'Tab' ||
+      event.key === 'Home' ||
+      event.key === 'End' ||
+      event.key.startsWith('Arrow')
+    ) {
+      keyboardFocusModality = true;
+    }
+  }
+
+  function clearKeyboardFocusModality(): void {
+    keyboardFocusModality = false;
+  }
+
+  function handleTargetFocus(target: ChartTarget): void {
+    interaction.focusedTarget = target;
+    focusVisibleTargetId = keyboardFocusModality ? target.id : undefined;
+  }
+
+  function handleTargetBlur(): void {
+    interaction.focusedTarget = undefined;
+    focusVisibleTargetId = undefined;
+  }
+
+  function handleTargetKeydown(event: KeyboardEvent): void {
+    rememberKeyboardFocusModality(event);
+    interaction.activateByKeyboard(event, rootElement!, model.targets, keyboardEnabled);
+  }
 </script>
+
+<svelte:window
+  onkeydown={rememberKeyboardFocusModality}
+  onpointerdown={clearKeyboardFocusModality}
+/>
 
 <figure
   {...rest}
@@ -148,7 +208,7 @@
         <title id="{rootId}-svg-title">{label}</title>
       {/if}
       <g transform={`translate(${model.geometry.marginLeft}, ${model.geometry.marginTop})`}>
-        {#each model.yTicks as tick, index}
+        {#each model.yTicks as tick, index (tick)}
           {@const tickY =
             model.geometry.plotHeight -
             ((tick - model.yDomain[0]) / (model.yDomain[1] - model.yDomain[0])) *
@@ -233,22 +293,77 @@
                 tabindex="0"
                 role="button"
                 data-cinder-target-id={target.id}
+                data-cinder-series-id={target.seriesId}
+                data-cinder-focus-ring-active={pointFocusRing && focusRingTarget?.id === target.id
+                  ? 'true'
+                  : undefined}
                 aria-label={`${target.seriesLabel}, ${target.xLabel}, ${target.valueLabel}`}
                 aria-describedby={interaction.activeTarget?.id === target.id
                   ? `${rootId}-tooltip`
                   : undefined}
-                onfocus={() => (interaction.focusedTarget = target)}
-                onblur={() => (interaction.focusedTarget = undefined)}
-                onkeydown={(event) =>
-                  interaction.activateByKeyboard(
-                    event,
-                    rootElement!,
-                    model.targets,
-                    keyboardEnabled,
-                  )}
+                onfocus={() => handleTargetFocus(target)}
+                onblur={handleTargetBlur}
+                onkeydown={handleTargetKeydown}
               />
             {/each}
           {/if}
+        {/if}
+        {#if pointFocusRing}
+          <g class="cinder-line-chart__focus-ring-layer" aria-hidden="true">
+            {#if pointFocusRing.kind === 'point'}
+              <circle
+                class="cinder-line-chart__focus-ring-halo"
+                cx={pointFocusRing.cx}
+                cy={pointFocusRing.cy}
+                r={pointFocusRing.radius}
+              />
+              <circle
+                class="cinder-line-chart__focus-ring"
+                cx={pointFocusRing.cx}
+                cy={pointFocusRing.cy}
+                r={pointFocusRing.radius}
+              />
+              {#if pointFocusRing.connector && pointFocusRing.dot}
+                <path
+                  class="cinder-line-chart__focus-ring-connector cinder-line-chart__focus-ring-halo"
+                  d={`M ${pointFocusRing.connector.x1} ${pointFocusRing.connector.y1} L ${pointFocusRing.connector.x2} ${pointFocusRing.connector.y2}`}
+                />
+                <path
+                  class="cinder-line-chart__focus-ring-connector cinder-line-chart__focus-ring"
+                  d={`M ${pointFocusRing.connector.x1} ${pointFocusRing.connector.y1} L ${pointFocusRing.connector.x2} ${pointFocusRing.connector.y2}`}
+                />
+                <circle
+                  class="cinder-line-chart__focus-ring-dot cinder-line-chart__focus-ring-halo"
+                  cx={pointFocusRing.dot.cx}
+                  cy={pointFocusRing.dot.cy}
+                  r={pointFocusRing.dot.radius}
+                />
+                <circle
+                  class="cinder-line-chart__focus-ring-dot cinder-line-chart__focus-ring"
+                  cx={pointFocusRing.dot.cx}
+                  cy={pointFocusRing.dot.cy}
+                  r={pointFocusRing.dot.radius}
+                />
+              {/if}
+            {:else}
+              <rect
+                class="cinder-line-chart__focus-ring-halo"
+                x={pointFocusRing.x}
+                y={pointFocusRing.y}
+                width={pointFocusRing.width}
+                height={pointFocusRing.height}
+                rx={pointFocusRing.radius}
+              />
+              <rect
+                class="cinder-line-chart__focus-ring"
+                x={pointFocusRing.x}
+                y={pointFocusRing.y}
+                width={pointFocusRing.width}
+                height={pointFocusRing.height}
+                rx={pointFocusRing.radius}
+              />
+            {/if}
+          </g>
         {/if}
       </g>
     </svg>

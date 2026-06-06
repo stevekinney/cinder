@@ -122,6 +122,7 @@ export type BarChartModel = {
   categories: NormalizedXValue[];
   yTicks: number[];
   categoryTicks: Array<{
+    categoryKey: string;
     label: string;
     x: number;
     y: number;
@@ -140,6 +141,7 @@ export type BarChartModel = {
     hidden: boolean;
   }>;
   tableRows: Array<{
+    categoryKey: string;
     categoryLabel: string;
     values: Array<{ seriesId: string; seriesLabel: string; valueLabel: string }>;
   }>;
@@ -616,6 +618,7 @@ export function createBarModel(options: {
   const categoryTicks = sortedCategories.map((category, index) => {
     const categoryPosition = categoryScale(category.key) ?? 0;
     return {
+      categoryKey: category.key,
       label: formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, { index }),
       x: orientation === 'vertical' ? categoryPosition + categoryScale.bandwidth() / 2 : -8,
       y:
@@ -707,6 +710,7 @@ export function createBarModel(options: {
     });
     if (rowValues.length > 0) {
       tableRows.push({
+        categoryKey: category.key,
         categoryLabel: formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, {
           index: tableRows.length,
         }),

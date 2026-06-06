@@ -77,8 +77,12 @@ describe('AreaChart', () => {
   test('legend toggle hides area geometry', async () => {
     const { getByRole, container } = render(AreaChart, { label: 'Usage trend', series });
     const button = getByRole('button', { name: 'Usage' });
+    expect(container.querySelectorAll('[data-cinder-series-id="usage"]').length).toBeGreaterThan(0);
+
     await fireEvent.click(button);
+
     expect(container.querySelectorAll('[data-cinder-series="usage"]').length).toBe(0);
+    expect(container.querySelectorAll('[data-cinder-series-id="usage"]').length).toBe(0);
   });
 
   test('svg has an accessible title matching the label when data is present', () => {
@@ -166,15 +170,83 @@ describe('AreaChart', () => {
     expect(queryByText('Jan: 30')).toBeNull();
   });
 
+  test('keyboard focus renders one visual-only SVG focus-ring layer', async () => {
+    const { container, getByRole } = render(AreaChart, { label: 'Usage trend', series });
+    const target = getByRole('button', { name: 'Usage, Jan, 30' });
+
+    await fireEvent.focus(target);
+    expect(container.querySelector('.cinder-area-chart__focus-ring-layer')).toBeNull();
+    await fireEvent.blur(target);
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    await fireEvent.focus(target);
+
+    expect(target.getAttribute('data-cinder-series-id')).toBe('usage');
+    expect(target.getAttribute('data-cinder-focus-ring-active')).toBe('true');
+    const layers = container.querySelectorAll('.cinder-area-chart__focus-ring-layer');
+    expect(layers.length).toBe(1);
+    const layer = layers[0];
+    expect(layer?.getAttribute('aria-hidden')).toBe('true');
+    expect(layer?.getAttribute('tabindex')).toBeNull();
+    expect(layer?.getAttribute('role')).toBeNull();
+    expect(layer?.getAttribute('aria-label')).toBeNull();
+    expect(layer?.querySelectorAll('.cinder-area-chart__focus-ring').length).toBeGreaterThan(0);
+    expect(layer?.querySelectorAll('[tabindex], [role], [aria-label]').length).toBe(0);
+  });
+
+  test('hiding the focused series clears focus-ring and tooltip state', async () => {
+    const { container, getByRole, queryByText } = render(AreaChart, {
+      label: 'Usage trend',
+      series,
+    });
+    const target = getByRole('button', { name: 'Usage, Jan, 30' });
+
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    await fireEvent.focus(target);
+    expect(container.querySelector('.cinder-area-chart__focus-ring-layer')).not.toBeNull();
+
+    await fireEvent.click(getByRole('button', { name: 'Usage' }));
+
+    expect(container.querySelectorAll('[data-cinder-series-id="usage"]').length).toBe(0);
+    expect(container.querySelector('.cinder-area-chart__focus-ring-layer')).toBeNull();
+    expect(queryByText('Jan: 30')).toBeNull();
+    expect(document.activeElement).not.toBe(target);
+  });
+
+  test('controlled hiddenSeriesIds clears stale focus-ring and tooltip state without a legend click', async () => {
+    const { container, getByRole, queryByText, rerender } = render(AreaChart, {
+      label: 'Usage trend',
+      series,
+    });
+    const target = getByRole('button', { name: 'Usage, Jan, 30' });
+
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    await fireEvent.focus(target);
+    expect(container.querySelector('.cinder-area-chart__focus-ring-layer')).not.toBeNull();
+    expect(queryByText('Jan: 30')).toBeTruthy();
+
+    await rerender({ label: 'Usage trend', hiddenSeriesIds: ['usage'], series });
+
+    expect(container.querySelectorAll('[data-cinder-series-id="usage"]').length).toBe(0);
+    expect(container.querySelector('.cinder-area-chart__focus-ring-layer')).toBeNull();
+    expect(queryByText('Jan: 30')).toBeNull();
+    expect(document.activeElement).not.toBe(target);
+  });
+
   test('arrow keys move DOM focus to the active target', async () => {
-    const { getByRole, queryByText } = render(AreaChart, { label: 'Usage trend', series });
+    const { container, getByRole, queryByText } = render(AreaChart, {
+      label: 'Usage trend',
+      series,
+    });
     const firstTarget = getByRole('button', { name: 'Usage, Jan, 30' });
     const secondTarget = getByRole('button', { name: 'Storage, Jan, 15' });
 
     await fireEvent.focus(firstTarget);
+    expect(container.querySelector('.cinder-area-chart__focus-ring-layer')).toBeNull();
     await fireEvent.keyDown(firstTarget, { key: 'ArrowRight' });
 
     expect(document.activeElement).toBe(secondTarget);
+    expect(secondTarget.getAttribute('data-cinder-focus-ring-active')).toBe('true');
+    expect(container.querySelectorAll('.cinder-area-chart__focus-ring-layer').length).toBe(1);
     expect(secondTarget?.getAttribute('aria-describedby')).toBeTruthy();
     expect(queryByText('Jan: 15')).toBeTruthy();
   });

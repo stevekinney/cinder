@@ -22,6 +22,7 @@ import stylelint from 'stylelint';
 // Keeping it in one place means the two enforcement layers can't disagree
 // about whether a rule is inside `@media (forced-colors: active)`.
 import { isUnderForcedColors } from '../../scripts/stylelint/focus-ring-helpers.mjs';
+import { DEFAULT_CHART_FOCUS_RING_STROKE_PADDING } from '../_internal/chart/chart-focus-ring.ts';
 
 function loadCss(relativePath: string): string {
   const fullPath = fileURLToPath(new URL(relativePath, import.meta.url));
@@ -53,6 +54,10 @@ const sideNavigationGroupCss = loadCss(
 );
 const sliderCss = loadCss('../components/slider/slider.css');
 const tabsCss = loadCss('../components/tabs/tabs.css');
+const areaChartCss = loadCss('../components/area-chart/area-chart.css');
+const barChartCss = loadCss('../components/bar-chart/bar-chart.css');
+const lineChartCss = loadCss('../components/line-chart/line-chart.css');
+const tokensBaseCss = loadCss('../styles/tokens-base.css');
 
 // Focus-ring sweep targets (15f4d777) — colored outline-only recipes converted
 // to the shared Strategy B / B-inset recipe.
@@ -156,6 +161,10 @@ function declValue(rule: Rule, property: string): string | undefined {
     value = decl.value;
   });
   return value;
+}
+
+function normalizeCssValue(value: string): string {
+  return value.replaceAll(/\s+/g, ' ').replaceAll('( ', '(').replaceAll(' )', ')').trim();
 }
 
 const recipes: Array<{
@@ -756,6 +765,132 @@ describe('focus-ring sweep — Strategy B (outer) Svelte selectors', () => {
       assertOuterRecipe(style, selector);
     });
   }
+});
+
+function cssVariablePixelValue(css: string, property: string): number {
+  let value: string | undefined;
+  parse(css).walkDecls(property, (declaration) => {
+    value = declaration.value;
+  });
+  if (!value?.endsWith('px')) {
+    throw new Error(`Expected ${property} to be a px value; received ${value ?? '(missing)'}.`);
+  }
+  return Number.parseFloat(value);
+}
+
+function resolveChartStrokeWidth(value: string, ringWidth: number, ringOffset: number): number {
+  const normalizedValue = normalizeCssValue(value);
+  if (normalizedValue === 'var(--cinder-ring-width)') return ringWidth;
+  if (
+    normalizedValue ===
+    'calc(var(--cinder-ring-width) + var(--cinder-ring-offset) + var(--cinder-ring-offset))'
+  ) {
+    return ringWidth + ringOffset * 2;
+  }
+  throw new Error(`Unsupported chart focus-ring stroke-width expression: ${value}`);
+}
+
+function assertSvgChartFocusRingRecipe(css: string, prefix: string): void {
+  const root = parse(css);
+  const sharedSelectors = [
+    `.${prefix}__focus-ring`,
+    `.${prefix}__focus-ring-halo`,
+    `.${prefix}__focus-ring-connector`,
+    `.${prefix}__focus-ring-dot`,
+  ];
+
+  for (const selector of sharedSelectors) {
+    const rules = findRules(root, selector).filter((rule) => !isUnderForcedColors(rule));
+    expect(rules.length, `${selector} base rule count`).toBeGreaterThanOrEqual(1);
+    const sharedRule = rules.find((rule) => declValue(rule, 'vector-effect') !== undefined);
+    expect(sharedRule, `${selector} shared SVG rule`).toBeDefined();
+    expect(declValue(sharedRule!, 'fill')).toBe('none');
+    expect(declValue(sharedRule!, 'pointer-events')).toBe('none');
+    expect(declValue(sharedRule!, 'vector-effect')).toBe('non-scaling-stroke');
+  }
+
+  const ring = findRules(root, `.${prefix}__focus-ring`).find(
+    (rule) => !isUnderForcedColors(rule) && declValue(rule, 'stroke') !== undefined,
+  );
+  expect(ring, `${prefix} ring rule`).toBeDefined();
+  expect(declValue(ring!, 'stroke')).toBe('var(--cinder-ring-color)');
+  expect(declValue(ring!, 'stroke-width')).toBe('var(--cinder-ring-width)');
+  expect(declValue(ring!, 'filter')).toBe('none');
+
+  const halo = findRules(root, `.${prefix}__focus-ring-halo`).find(
+    (rule) => !isUnderForcedColors(rule) && declValue(rule, 'stroke') !== undefined,
+  );
+  expect(halo, `${prefix} halo rule`).toBeDefined();
+  expect(declValue(halo!, 'stroke')).toBe('var(--cinder-ring-offset-color)');
+  expect(normalizeCssValue(declValue(halo!, 'stroke-width')!)).toBe(
+    'calc(var(--cinder-ring-width) + var(--cinder-ring-offset) + var(--cinder-ring-offset))',
+  );
+  expect(declValue(halo!, 'filter')).toBe('none');
+
+  const fallbackSelector = `.${prefix}__focus-target:focus-visible:not([data-cinder-focus-ring-active='true'])`;
+  const fallback = findRules(root, fallbackSelector).find((rule) => !isUnderForcedColors(rule));
+  expect(fallback, `${prefix} focus-target fallback`).toBeDefined();
+  expect(declValue(fallback!, 'stroke')).toBe('var(--cinder-ring-color)');
+  expect(declValue(fallback!, 'stroke-width')).toBe('var(--cinder-ring-width)');
+  expect(declValue(fallback!, 'vector-effect')).toBe('non-scaling-stroke');
+  expect(declValue(fallback!, 'filter')).toBe('none');
+
+  const forcedRing = findRules(root, `.${prefix}__focus-ring`).find((rule) =>
+    isUnderForcedColors(rule),
+  );
+  expect(forcedRing, `${prefix} forced-colors ring`).toBeDefined();
+  expect(declValue(forcedRing!, 'fill')).toBe('none');
+  expect(declValue(forcedRing!, 'stroke')).toBe('ButtonText');
+  expect(declValue(forcedRing!, 'stroke-width')).toBe('var(--cinder-ring-width)');
+  expect(declValue(forcedRing!, 'filter')).toBe('none');
+
+  const forcedHalo = findRules(root, `.${prefix}__focus-ring-halo`).find((rule) =>
+    isUnderForcedColors(rule),
+  );
+  expect(forcedHalo, `${prefix} forced-colors halo`).toBeDefined();
+  expect(declValue(forcedHalo!, 'display')).toBe('none');
+
+  const forcedFallback = findRules(root, fallbackSelector).find((rule) =>
+    isUnderForcedColors(rule),
+  );
+  expect(forcedFallback, `${prefix} forced-colors target fallback`).toBeDefined();
+  expect(declValue(forcedFallback!, 'stroke')).toBe('ButtonText');
+  expect(declValue(forcedFallback!, 'stroke-width')).toBe('var(--cinder-ring-width)');
+  expect(declValue(forcedFallback!, 'filter')).toBe('none');
+}
+
+describe('SVG chart focus-ring recipe', () => {
+  const chartCases = [
+    { name: 'area-chart', css: areaChartCss, prefix: 'cinder-area-chart' },
+    { name: 'line-chart', css: lineChartCss, prefix: 'cinder-line-chart' },
+    { name: 'bar-chart', css: barChartCss, prefix: 'cinder-bar-chart' },
+  ];
+
+  for (const { name, css, prefix } of chartCases) {
+    test(`${name}: SVG focus-ring layer uses tokenized non-scaling stroke with forced-colors fallback`, () => {
+      assertSvgChartFocusRingRecipe(css, prefix);
+    });
+  }
+
+  test('halo plus ring stroke budget stays within the geometry stroke padding', () => {
+    const ringWidth = cssVariablePixelValue(tokensBaseCss, '--cinder-ring-width');
+    const ringOffset = cssVariablePixelValue(tokensBaseCss, '--cinder-ring-offset');
+    const root = parse(areaChartCss);
+    const ring = findRules(root, '.cinder-area-chart__focus-ring').find(
+      (rule) => !isUnderForcedColors(rule) && declValue(rule, 'stroke-width') !== undefined,
+    );
+    const halo = findRules(root, '.cinder-area-chart__focus-ring-halo').find(
+      (rule) => !isUnderForcedColors(rule) && declValue(rule, 'stroke-width') !== undefined,
+    );
+
+    expect(ring).toBeDefined();
+    expect(halo).toBeDefined();
+    const totalStrokeBudget =
+      resolveChartStrokeWidth(declValue(ring!, 'stroke-width')!, ringWidth, ringOffset) +
+      resolveChartStrokeWidth(declValue(halo!, 'stroke-width')!, ringWidth, ringOffset);
+
+    expect(totalStrokeBudget).toBeLessThanOrEqual(DEFAULT_CHART_FOCUS_RING_STROKE_PADDING);
+  });
 });
 
 describe('chat-input attachment-remove — inset ring painted on the visible chip', () => {
