@@ -6,6 +6,7 @@ const schema = {
   properties: {
     class: {
       type: 'string',
+      description: 'Custom class merged onto the root `<nav>` element.',
     },
     mobileMenuOpen: {
       type: 'boolean',

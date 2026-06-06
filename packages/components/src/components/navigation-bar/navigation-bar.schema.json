@@ -3,7 +3,8 @@
   "type": "object",
   "properties": {
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Custom class merged onto the root `<nav>` element."
     },
     "mobileMenuOpen": {
       "type": "boolean",
