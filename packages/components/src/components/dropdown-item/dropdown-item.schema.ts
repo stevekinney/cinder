@@ -16,6 +16,17 @@ const schema = {
     class: {
       type: 'string',
     },
+    disabled: {
+      type: 'boolean',
+      description: 'When true the item is inert: click is blocked and aria-disabled is set.',
+    },
+    href: {
+      type: 'string',
+    },
+    type: {
+      enum: ['button', 'submit', 'reset'],
+      description: 'Button type forwarded to the `<button>` element. Defaults to `"button"`.',
+    },
   },
   additionalProperties: false,
   metadata: {

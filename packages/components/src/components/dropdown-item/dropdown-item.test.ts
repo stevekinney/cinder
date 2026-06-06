@@ -8,6 +8,8 @@ setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Fixture } = await import('../../test/fixtures/dropdown-compound-fixture.svelte');
+const { default: PolyFixture } =
+  await import('../../test/fixtures/dropdown-item-polymorphic-fixture.svelte');
 const { default: DropdownItem } = await import('./dropdown-item.svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
@@ -76,5 +78,63 @@ describe('DropdownItem', () => {
     // A real click still works.
     await fireEvent.click(item);
     await waitFor(() => expect(container.querySelector('output')?.textContent).toBe('copy'));
+  });
+});
+
+async function openPolyMenu() {
+  const result = render(PolyFixture);
+  await fireEvent.click(result.container.querySelector('.trigger') as HTMLElement);
+  await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
+  return { ...result, container: document.body };
+}
+
+describe('DropdownItem — polymorphism', () => {
+  test('link item renders as an <a> element with role="menuitem"', async () => {
+    const { container } = await openPolyMenu();
+    const items = container.querySelectorAll('[role="menuitem"]');
+    const linkItem = items[0];
+    expect(linkItem?.tagName.toLowerCase()).toBe('a');
+    expect(linkItem?.getAttribute('href')).toBe('https://example.com');
+    expect(linkItem?.getAttribute('role')).toBe('menuitem');
+    expect(linkItem?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('submit item renders as a <button type="submit">', async () => {
+    const { container } = await openPolyMenu();
+    const items = container.querySelectorAll('[role="menuitem"]');
+    const submitItem = items[1];
+    expect(submitItem?.tagName.toLowerCase()).toBe('button');
+    expect(submitItem?.getAttribute('type')).toBe('submit');
+    expect(submitItem?.getAttribute('role')).toBe('menuitem');
+  });
+
+  test('clicking a link item invokes onclick and closes the menu', async () => {
+    const { container } = await openPolyMenu();
+    const items = container.querySelectorAll('[role="menuitem"]');
+    const linkItem = items[0] as HTMLElement;
+    await fireEvent.click(linkItem);
+    expect(container.querySelector('output')?.textContent).toBe('link');
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+  });
+
+  test('clicking a submit item invokes onclick and closes the menu', async () => {
+    const { container } = await openPolyMenu();
+    const items = container.querySelectorAll('[role="menuitem"]');
+    const submitItem = items[1] as HTMLElement;
+    await fireEvent.click(submitItem);
+    expect(container.querySelector('output')?.textContent).toBe('submit');
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+  });
+
+  test('disabled link item blocks its onclick and does not close the menu', async () => {
+    const { container } = await openPolyMenu();
+    const items = container.querySelectorAll('[role="menuitem"]');
+    const disabledLink = items[2] as HTMLElement;
+    expect(disabledLink?.getAttribute('aria-disabled')).toBe('true');
+    await fireEvent.click(disabledLink);
+    // onclick was blocked
+    expect(container.querySelector('output')?.textContent).toBe('');
+    // menu remains open
+    expect(container.querySelector('[role="menu"]')).not.toBeNull();
   });
 });

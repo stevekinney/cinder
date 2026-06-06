@@ -14,13 +14,16 @@ snippet. The flat `@lostgradient/cinder/dropdown-item` subpath remains exported 
 
 <!-- generated:props:start -->
 
-| Prop            | Type                      | Required | Default | Description                                                                                                                |
-| --------------- | ------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `class`         | `string`                  | no       | —       |                                                                                                                            |
-| `closeOnSelect` | `boolean`                 | no       | —       |                                                                                                                            |
-| `inset`         | `boolean`                 | no       | —       |                                                                                                                            |
-| `variant`       | `"default"` \| `"danger"` | no       | —       |                                                                                                                            |
-| `children`      | `(opaque)`                | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop            | Type                                  | Required | Default | Description                                                                                                                |
+| --------------- | ------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`         | `string`                              | no       | —       |                                                                                                                            |
+| `closeOnSelect` | `boolean`                             | no       | —       |                                                                                                                            |
+| `disabled`      | `boolean`                             | no       | —       | When true the item is inert: click is blocked and aria-disabled is set.                                                    |
+| `href`          | `string`                              | no       | —       |                                                                                                                            |
+| `inset`         | `boolean`                             | no       | —       |                                                                                                                            |
+| `type`          | `"button"` \| `"submit"` \| `"reset"` | no       | —       | Button type forwarded to the `<button>` element. Defaults to `"button"`.                                                   |
+| `variant`       | `"default"` \| `"danger"`             | no       | —       |                                                                                                                            |
+| `children`      | `(opaque)`                            | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

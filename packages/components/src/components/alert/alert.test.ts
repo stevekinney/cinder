@@ -233,4 +233,13 @@ describe('Alert rendering', () => {
       'Alert message here',
     );
   });
+
+  test('variant="danger" renders identically to variant="error" (data-cinder-variant="error")', () => {
+    const { container } = render(Alert, {
+      props: { variant: 'danger', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-alert')?.getAttribute('data-cinder-variant')).toBe(
+      'error',
+    );
+  });
 });

@@ -2,6 +2,8 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 export type CardVariant = 'card' | 'well';
 export type CardTone = 'default' | 'muted';
+/** Controls body padding. `none` removes all padding for flush/full-bleed content. Future values like `compact` may be added. */
+export type CardPadding = 'default' | 'none';
 /** Heading level for the generated card title, so the document outline stays correct. */
 export type CardHeadingLevel = 2 | 3 | 4 | 5 | 6;
 type CardBase = HTMLAttributes<HTMLDivElement> & {
@@ -14,6 +16,8 @@ type CardBase = HTMLAttributes<HTMLDivElement> & {
   footerTone?: CardTone;
   /** Remove side borders/radius and bleed to the viewport edge on narrow screens. */
   edgeToEdgeOnMobile?: boolean;
+  /** Body padding. `none` removes all padding for flush or full-bleed content (e.g. an image). */
+  padding?: CardPadding;
 };
 /** Basic card with no generated header. */
 type CardPlain = CardBase & {

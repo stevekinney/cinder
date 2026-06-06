@@ -12,6 +12,11 @@
       "description": "Size of the badge.",
       "default": "md"
     },
+    "mono": {
+      "type": "boolean",
+      "description": "Render the badge label in a monospace font. Useful for version strings, error codes, or other technical labels.",
+      "default": false
+    },
     "class": {
       "type": "string",
       "description": "Custom class merged with `.cinder-badge`."

@@ -18,11 +18,12 @@ Use Badge for attached counts, statuses, and compact annotations; use `Chip mode
 
 <!-- generated:props:start -->
 
-| Prop      | Type                                                                              | Required | Default     | Description                               |
-| --------- | --------------------------------------------------------------------------------- | -------- | ----------- | ----------------------------------------- |
-| `class`   | `string`                                                                          | no       | —           | Custom class merged with `.cinder-badge`. |
-| `size`    | `"xs"` \| `"sm"` \| `"md"`                                                        | no       | `"md"`      | Size of the badge.                        |
-| `variant` | `"neutral"` \| `"success"` \| `"warning"` \| `"danger"` \| `"info"` \| `"accent"` | no       | `"neutral"` | Visual style.                             |
+| Prop      | Type                                                                              | Required | Default     | Description                                                                                                     |
+| --------- | --------------------------------------------------------------------------------- | -------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
+| `class`   | `string`                                                                          | no       | —           | Custom class merged with `.cinder-badge`.                                                                       |
+| `mono`    | `boolean`                                                                         | no       | `false`     | Render the badge label in a monospace font. Useful for version strings, error codes, or other technical labels. |
+| `size`    | `"xs"` \| `"sm"` \| `"md"`                                                        | no       | `"md"`      | Size of the badge.                                                                                              |
+| `variant` | `"neutral"` \| `"success"` \| `"warning"` \| `"danger"` \| `"info"` \| `"accent"` | no       | `"neutral"` | Visual style.                                                                                                   |
 
 <!-- generated:props:end -->
 

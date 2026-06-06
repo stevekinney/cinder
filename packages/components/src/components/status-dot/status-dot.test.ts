@@ -9,7 +9,16 @@ const { render } = await import('@testing-library/svelte');
 const { within } = await import('@testing-library/dom');
 const { default: StatusDot } = await import('./status-dot.svelte');
 
-const ALL_STATUSES = ['online', 'offline', 'warning', 'error', 'pending', 'neutral'] as const;
+const ALL_STATUSES = [
+  'online',
+  'offline',
+  'warning',
+  'error',
+  'pending',
+  'neutral',
+  'success',
+  'accent',
+] as const;
 
 describe('StatusDot rendering', () => {
   test('renders the root with cinder-status-dot class', () => {
@@ -60,6 +69,20 @@ describe('StatusDot status attribute (color via CSS)', () => {
     const { container } = render(StatusDot, { props: { status } });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('data-cinder-status')).toBe(
       status,
+    );
+  });
+
+  test('renders data-cinder-status="success" without throwing', () => {
+    const { container } = render(StatusDot, { props: { status: 'success' } });
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('data-cinder-status')).toBe(
+      'success',
+    );
+  });
+
+  test('renders data-cinder-status="accent" without throwing', () => {
+    const { container } = render(StatusDot, { props: { status: 'accent' } });
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('data-cinder-status')).toBe(
+      'accent',
     );
   });
 

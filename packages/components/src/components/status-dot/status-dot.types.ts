@@ -9,10 +9,21 @@ import type { HTMLAttributes } from 'svelte/elements';
  * `error` → `--cinder-danger`) lives in `status-dot.css` so consumers can
  * theme without forking the component.
  *
+ * - `success` maps to `--cinder-success` (same hue as `online`).
+ * - `accent` maps to `--cinder-accent`.
+ *
  * Exported so host components (e.g. `stacked-list-item.svelte`) can type
  * their own `status` prop against this union rather than restating it.
  */
-export type StatusDotStatus = 'online' | 'offline' | 'warning' | 'error' | 'pending' | 'neutral';
+export type StatusDotStatus =
+  | 'online'
+  | 'offline'
+  | 'warning'
+  | 'error'
+  | 'pending'
+  | 'neutral'
+  | 'success'
+  | 'accent';
 
 export type StatusDotSize = 'sm' | 'md';
 
@@ -39,7 +50,7 @@ export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
 };
 
 export interface StatusDotSchemaProps {
-  /** Required semantic status. Drives color via `data-cinder-status`. */
+  /** Required semantic status. Drives color via `data-cinder-status`. `success` maps to `--cinder-success`; `accent` maps to `--cinder-accent`. */
   status: StatusDotStatus;
   /** Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way. */
   label?: string;
