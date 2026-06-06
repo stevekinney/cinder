@@ -62,7 +62,11 @@ describe('vercel.json', () => {
     const manifest = (await Bun.file(join(PLAYGROUND_ROOT, 'package.json')).json()) as {
       scripts: Record<string, string>;
     };
-    expect(manifest.scripts['vercel-build']).toContain('scripts/static-export.ts');
+    const vercelBuild = manifest.scripts['vercel-build'] ?? '';
+    expect(vercelBuild).toContain("bun run --filter='@cinder/diff' build");
+    expect(vercelBuild).toContain("bun run --filter='@cinder/markdown' build");
+    expect(vercelBuild).toContain("bun run --filter='@cinder/editor' build");
+    expect(vercelBuild).toContain('scripts/static-export.ts');
     // The export must exist and drive the real server handler.
     const exportScript = await Bun.file(
       join(PLAYGROUND_ROOT, 'scripts', 'static-export.ts'),
