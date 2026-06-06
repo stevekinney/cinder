@@ -248,8 +248,8 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
   //    glow. The previous bright cyan (L=0.72, C=0.20) reached only ~2:1 as a
   //    foreground; the darkened fill improves that to ~2.7:1 but still does NOT
   //    clear the 3:1 UI floor, so foreground text/icon use keeps the dedicated
-  //    --cinder-accent-text token — this token remains a FILL. The calmed chroma
-  //    stops the cyan from vibrating against the white page. The
+  //    --cinder-accent-text token while --cinder-accent stays a fill. The calmed
+  //    chroma stops the cyan from vibrating against the white page. The
   //    dark-mode arm stays bright (L=0.78) for energy parity across themes; the
   //    on-accent text flips to a dark ink (--cinder-accent-contrast light arm)
   //    so it stays readable. These floors read the PAINTED components (after
