@@ -207,12 +207,12 @@
   --cinder-text: light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245));
   --cinder-text-muted: light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245));
   --cinder-text-subtle: light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245));
-  --cinder-text-disabled: light-dark(oklch(52% 0.01 245), oklch(58% 0.02 245));
+  --cinder-text-disabled: light-dark(oklch(52% 0.01 245), oklch(64% 0.02 245));
   /* Neutral fill for DISABLED SOLID controls (disabled-checked checkbox/radio) so they stop
      misusing --cinder-text-disabled (a text-lightness token) as an assertive fill. Reads plainly
      inert. NOTE the glyph on top must use --cinder-text-disabled, NOT --cinder-accent-contrast:
      accent-contrast is dark ink in both arms and would be ~1.45:1 on the dark-arm fill (0.30) —
-     invisible. --cinder-text-disabled clears the 3:1 UI floor in both themes (light ~3.8:1, dark ~3.7:1). */
+     invisible. --cinder-text-disabled clears the 3:1 UI floor in both themes (light ~3.8:1, dark ~4.1:1). */
   --cinder-fill-disabled: light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245));
 
   /* Borders */

@@ -152,7 +152,7 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 | `--cinder-text`          | `light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245))` |
 | `--cinder-text-muted`    | `light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245))` |
 | `--cinder-text-subtle`   | `light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245))` |
-| `--cinder-text-disabled` | `light-dark(oklch(52% 0.01 245), oklch(58% 0.02 245))`  |
+| `--cinder-text-disabled` | `light-dark(oklch(52% 0.01 245), oklch(64% 0.02 245))`  |
 | `--cinder-fill-disabled` | `light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245))`  |
 
 ## Borders

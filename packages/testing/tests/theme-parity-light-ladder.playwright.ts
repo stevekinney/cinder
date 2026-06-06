@@ -80,6 +80,28 @@ const PARSE_OKLCH_FN = `
  */
 const WCAG_CONTRAST_FN = `
   function linearRgbFromColor(cssColor) {
+    // Chromium serializes a resolved \`oklch(from …)\` derivation (e.g.
+    // --cinder-accent-active-on-fill) as \`oklab(L a b)\`, NOT \`oklch()\` — so we
+    // accept oklab directly, reading L/a/b without the C/H → a/b step.
+    const oklabMatch = cssColor.match(/oklab\\(([^)]+)\\)/i);
+    if (oklabMatch) {
+      const parts = oklabMatch[1].split(/[ ,/]+/).filter((value) => value.length > 0);
+      const L = parts[0].endsWith('%') ? Number.parseFloat(parts[0]) / 100 : Number.parseFloat(parts[0]);
+      const a = Number.parseFloat(parts[1]);
+      const b = Number.parseFloat(parts[2]);
+      const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+      const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+      const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+      const l = l_ * l_ * l_;
+      const m = m_ * m_ * m_;
+      const s = s_ * s_ * s_;
+      const clamp = (value) => Math.max(0, Math.min(1, value));
+      return [
+        clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+        clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+        clamp(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s),
+      ];
+    }
     const oklchMatch = cssColor.match(/oklch\\(([^)]+)\\)/i);
     if (oklchMatch) {
       const parts = oklchMatch[1].split(/[ ,/]+/).filter((value) => value.length > 0);
@@ -407,15 +429,33 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
           .locator(primarySelector)
           .first()
           .evaluate((node, fn) => {
-            const probe = document.createElement('span');
-            node.appendChild(probe);
+            // Resolve each token on its OWN probe element. Reusing one probe and
+            // re-reading getComputedStyle after reassigning style.color returns the
+            // FIRST resolved value within the same synchronous turn (the live
+            // CSSStyleDeclaration is not recomputed until style is flushed), which
+            // would make every read collapse to one color. A fresh element per
+            // token forces an independent style resolution.
+            //
+            // The `, magenta` fallback is a loud sentinel: if a token is absent
+            // (e.g. a stale CSS bundle that predates --cinder-accent-active-on-fill)
+            // var() falls back to magenta rather than silently inheriting the
+            // button color and reading as a benign ratio.
             const read = (customProperty: string) => {
-              probe.style.color = `var(${customProperty})`;
-              return getComputedStyle(probe).color;
+              const probe = document.createElement('span');
+              probe.style.color = `var(${customProperty}, magenta)`;
+              node.appendChild(probe);
+              const resolved = getComputedStyle(probe).color;
+              probe.remove();
+              return resolved;
             };
             const pressedFill = read('--cinder-accent-active-on-fill');
             const label = read('--cinder-accent-contrast');
-            probe.remove();
+            if (pressedFill === label) {
+              throw new Error(
+                `pressed fill and label resolved to the same color (${pressedFill}) — ` +
+                  'a token failed to resolve (stale CSS bundle?). Rebuild cinder and retry.',
+              );
+            }
             // eslint-disable-next-line no-new-func
             const helpers = new Function(`${fn}; return { contrastRatio };`)();
             return helpers.contrastRatio(pressedFill, label) as number;
