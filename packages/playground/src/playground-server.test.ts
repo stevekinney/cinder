@@ -352,6 +352,28 @@ describe('chunks under /page-bundle/<filename>.js', () => {
       expect(chunkResponse.headers.get('Content-Type')).toBe('application/javascript');
     }
   }, 60_000);
+
+  it('serves markdown-backed editor page bundles and their chunks', async () => {
+    for (const componentName of ['markdown-editor', 'review-editor']) {
+      const entryResponse = await handleRequest(req(`/page-bundle/${componentName}.js`));
+      expect(entryResponse.status).toBe(200);
+      expect(entryResponse.headers.get('Content-Type')).toBe('application/javascript');
+
+      const body = await entryResponse.text();
+      const chunkUrls = Array.from(
+        body.matchAll(/\/page-bundle\/[A-Za-z0-9_-]+-[a-z0-9]{8,}\.js/g),
+        (match) => match[0],
+      );
+      const unique = Array.from(new Set(chunkUrls));
+      expect(unique.length).toBeGreaterThan(0);
+
+      for (const url of unique) {
+        const chunkResponse = await handleRequest(req(url));
+        expect(chunkResponse.status).toBe(200);
+        expect(chunkResponse.headers.get('Content-Type')).toBe('application/javascript');
+      }
+    }
+  }, 60_000);
 });
 
 // HTTP caching contract for the bundle routes. Content-hashed chunk URLs are

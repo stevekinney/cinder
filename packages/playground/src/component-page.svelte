@@ -72,7 +72,14 @@
   // Extract the component name from the current URL path: /page/<name>
   const componentName: string =
     window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
-  let activeTab: DocumentationTabId = $state('overview');
+
+  function initialDocumentationTab(): DocumentationTabId {
+    return new URLSearchParams(window.location.search).get('snapshot') === '1'
+      ? 'examples'
+      : 'overview';
+  }
+
+  let activeTab: DocumentationTabId = $state(initialDocumentationTab());
 
   // Track which scenarios have had their source fetched so we only
   // hit /example-src once per scenario regardless of how many times the user

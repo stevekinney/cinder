@@ -235,6 +235,26 @@ describe('component-page documentation tabs', () => {
     await tick();
   });
 
+  test('opens the Examples tab by default in snapshot mode', async () => {
+    const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
+    happyWindow.happyDOM.setURL('http://localhost/page/button?snapshot=1');
+    Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
+    Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
+
+    const { unmount } = render(ComponentPage);
+    await tick();
+
+    expect(screen.getByRole('tab', { name: 'Examples' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    expect(document.getElementById('tabpanel-examples')?.hasAttribute('hidden')).toBe(false);
+    expect(document.getElementById('tabpanel-overview')?.hasAttribute('hidden')).toBe(true);
+    expect(document.getElementById('example-mount-primary')).toBeTruthy();
+
+    unmount();
+    await tick();
+  });
+
   test('raw artifact panels render valid JSON in CodeBlock', async () => {
     const { unmount } = render(ComponentPage);
 

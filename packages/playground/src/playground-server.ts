@@ -533,14 +533,14 @@ const SHARED_BUILD_OPTIONS = {
   plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
   target: 'browser',
   format: 'esm',
-  // `svelte` falls back to source resolution for the `@lostgradient/cinder` workspace
-  // package: its exports map advertises `svelte` and `types` conditions
-  // pointing at `./src/components/<name>/index.ts`, with no `bun`/`default`
-  // condition. Without this, examples authored as `import { Button } from
-  // '@lostgradient/cinder/button'` (the public consumer-facing form) fail to resolve at
-  // bundle time. `bun` stays first so cinder workspace internals can still
-  // declare bun-specific overrides if needed.
-  conditions: ['bun', 'svelte'],
+  // `svelte` falls back to source resolution for the `@lostgradient/cinder`
+  // workspace package: its exports map advertises `svelte` and `types`
+  // conditions pointing at `./src/components/<name>/index.ts`, with no browser
+  // source condition. The page bundles themselves are browser bundles, though,
+  // so we avoid the `bun` condition here. Private workspace packages such as
+  // `@cinder/markdown` use that condition for Bun/server source entry points,
+  // which can break Linux browser bundling for markdown-backed components.
+  conditions: ['browser', 'svelte'],
   splitting: true,
   naming: {
     entry: '[name]-[hash].js',
