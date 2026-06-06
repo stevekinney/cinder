@@ -436,13 +436,16 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
             // would make every read collapse to one color. A fresh element per
             // token forces an independent style resolution.
             //
-            // The `, magenta` fallback is a loud sentinel: if a token is absent
-            // (e.g. a stale CSS bundle that predates --cinder-accent-active-on-fill)
-            // var() falls back to magenta rather than silently inheriting the
-            // button color and reading as a benign ratio.
+            // The fallback is a loud sentinel: if a token is absent (e.g. a stale
+            // CSS bundle that predates --cinder-accent-active-on-fill) var() falls
+            // back to it rather than silently inheriting the button color and
+            // reading as a benign ratio. We use an explicit `rgb(255 0 255)` so the
+            // computed value is stable and can be compared exactly below — a missing
+            // token must FAIL the guard, never sneak through as a passing ratio.
+            const FALLBACK = 'rgb(255, 0, 255)';
             const read = (customProperty: string) => {
               const probe = document.createElement('span');
-              probe.style.color = `var(${customProperty}, magenta)`;
+              probe.style.color = `var(${customProperty}, rgb(255 0 255))`;
               node.appendChild(probe);
               const resolved = getComputedStyle(probe).color;
               probe.remove();
@@ -450,10 +453,20 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
             };
             const pressedFill = read('--cinder-accent-active-on-fill');
             const label = read('--cinder-accent-contrast');
+            // A token that failed to resolve hits the magenta fallback. Catch it
+            // explicitly: otherwise a missing --cinder-accent-active-on-fill would
+            // read as magenta and could still clear 4.5:1 against the dark-ink
+            // label — a false pass for the very regression this guard protects.
+            if (pressedFill === FALLBACK || label === FALLBACK) {
+              throw new Error(
+                `a token failed to resolve (pressedFill=${pressedFill}, label=${label}) — ` +
+                  'hit the magenta fallback (stale CSS bundle?). Rebuild cinder and retry.',
+              );
+            }
             if (pressedFill === label) {
               throw new Error(
                 `pressed fill and label resolved to the same color (${pressedFill}) — ` +
-                  'a token failed to resolve (stale CSS bundle?). Rebuild cinder and retry.',
+                  'a token failed to resolve. Rebuild cinder and retry.',
               );
             }
             // eslint-disable-next-line no-new-func
