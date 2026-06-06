@@ -163,6 +163,26 @@ describe('LineChart', () => {
     expect(layer?.querySelectorAll('[tabindex], [role], [aria-label]').length).toBe(0);
   });
 
+  test('pointer input hides a keyboard focus-ring layer without clearing the focused tooltip', async () => {
+    const { container, getByRole, queryByText } = render(LineChart, {
+      label: 'Monthly revenue',
+      series,
+    });
+    const target = getByRole('button', { name: 'Revenue, Jan, 120' });
+
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    await fireEvent.focus(target);
+    expect(container.querySelector('.cinder-line-chart__focus-ring-layer')).not.toBeNull();
+    expect(queryByText('Jan: 120')).toBeTruthy();
+
+    await fireEvent.pointerDown(window);
+
+    expect(target.getAttribute('data-cinder-focus-ring-active')).toBeNull();
+    expect(container.querySelector('.cinder-line-chart__focus-ring-layer')).toBeNull();
+    expect(target.getAttribute('aria-describedby')).toBeTruthy();
+    expect(queryByText('Jan: 120')).toBeTruthy();
+  });
+
   test('hiding the focused series clears focus-ring and tooltip state', async () => {
     const { container, getByRole, queryByText } = render(LineChart, {
       label: 'Monthly revenue',

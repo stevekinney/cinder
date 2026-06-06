@@ -99,7 +99,9 @@
   let keyboardFocusModality = $state(false);
   let focusVisibleTargetId = $state<string>();
   const focusRingTarget = $derived(
-    focusedTarget && focusVisibleTargetId === focusedTarget.id ? focusedTarget : undefined,
+    keyboardFocusModality && focusedTarget && focusVisibleTargetId === focusedTarget.id
+      ? focusedTarget
+      : undefined,
   );
   const pointFocusRing = $derived(
     focusRingTarget
@@ -138,6 +140,7 @@
 
   function clearKeyboardFocusModality(): void {
     keyboardFocusModality = false;
+    focusVisibleTargetId = undefined;
   }
 
   function handleTargetFocus(target: ChartTarget): void {
