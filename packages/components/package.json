@@ -34,18 +34,23 @@
     },
     "./package.json": "./package.json",
     "./styles": {
+      "types": "./src/styles/index.css.d.ts",
       "default": "./src/styles/index.css"
     },
     "./styles/all": {
+      "types": "./src/styles/all.css.d.ts",
       "default": "./src/styles/all.css"
     },
     "./styles/tokens": {
+      "types": "./src/styles/tokens.css.d.ts",
       "default": "./src/styles/tokens.css"
     },
     "./styles/foundation": {
+      "types": "./src/styles/foundation.css.d.ts",
       "default": "./src/styles/foundation.css"
     },
     "./styles/utilities": {
+      "types": "./src/styles/utilities.css.d.ts",
       "default": "./src/styles/utilities.css"
     },
     "./styles/guard": {
@@ -3496,6 +3501,7 @@
     "src/_internal/**/*.ts",
     "!src/_internal/**/*.test.ts",
     "src/styles/**/*.css",
+    "src/styles/**/*.css.d.ts",
     "src/styles/base-guard.ts",
     "src/components/icons/index.ts",
     "src/utilities/**/*.ts",
@@ -3562,7 +3568,6 @@
     "hast-util-sanitize": "^5.0.0",
     "js-yaml": "^4.1.0",
     "libphonenumber-js": "^1.13.3",
-    "lucide-svelte": "^0.503.0",
     "prosemirror-inputrules": "^1.5.1",
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
@@ -3593,6 +3598,7 @@
     "chalk": "^5.6.2",
     "change-case": "^5.4.4",
     "happy-dom": "^15.11.7",
+    "lucide-svelte": "^0.503.0",
     "oxlint": "^1.56.0",
     "oxlint-tsgolint": "^0.17.0",
     "postcss": "^8.5.15",
@@ -3609,6 +3615,7 @@
     "zod": "4.4.1"
   },
   "peerDependencies": {
+    "lucide-svelte": ">=0.400.0",
     "svelte": ">=5.55.0 <6"
   },
   "engines": {

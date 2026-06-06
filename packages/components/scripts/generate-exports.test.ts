@@ -24,6 +24,7 @@ import {
   orderedExportEntry,
   rootLevelExportTargets,
   STATIC_FILES_GLOBS,
+  stylesExport,
   stylesGuardExport,
 } from './generate-exports.ts';
 
@@ -57,6 +58,28 @@ describe('computeRootExport', () => {
       default: './dist/index.js',
     });
     expect(Object.keys(root)).toEqual(['types', 'svelte', 'node', 'default']);
+  });
+});
+
+describe('stylesExport', () => {
+  it('emits types first, pointing at the .d.ts companion, followed by default for the CSS', () => {
+    const entry = stylesExport('./src/styles/index.css');
+    expect(entry).toEqual({
+      types: './src/styles/index.css.d.ts',
+      default: './src/styles/index.css',
+    });
+    expect(Object.keys(entry)).toEqual(['types', 'default']);
+  });
+
+  it('derives the .d.ts path by appending .d.ts to the css path', () => {
+    expect(stylesExport('./src/styles/all.css').types).toBe('./src/styles/all.css.d.ts');
+    expect(stylesExport('./src/styles/tokens.css').types).toBe('./src/styles/tokens.css.d.ts');
+    expect(stylesExport('./src/styles/foundation.css').types).toBe(
+      './src/styles/foundation.css.d.ts',
+    );
+    expect(stylesExport('./src/styles/utilities.css').types).toBe(
+      './src/styles/utilities.css.d.ts',
+    );
   });
 });
 
@@ -125,6 +148,7 @@ describe('computeExports', () => {
 
   it('emits a default-only /styles sidecar export only when hasCss is true', () => {
     const withCss = computeExports([{ name: 'button', isExperimental: false, hasCss: true }]);
+    // Per-component /styles subpaths remain default-only (CSS sidecar, no .d.ts companion).
     expect(withCss['./button/styles']).toEqual({
       default: './dist/components/button/button.css',
     });
@@ -302,5 +326,13 @@ describe('computeFiles', () => {
   it('does not duplicate a root artifact already covered by a static glob', () => {
     const files = computeFiles({ './foo': { default: './foo.json' } }, ['dist', 'foo.json'], []);
     expect(files.filter((entry) => entry === 'foo.json')).toHaveLength(1);
+  });
+
+  it('includes the src/styles/**/*.css.d.ts glob so reserved style type stubs are published', () => {
+    // The type stubs for reserved CSS subpaths live in src/styles/ alongside the
+    // CSS sources. Without this glob they would not be included in the published
+    // tarball, making the `types` condition in every ./styles* subpath point at a
+    // missing file for consumers.
+    expect(STATIC_FILES_GLOBS).toContain('src/styles/**/*.css.d.ts');
   });
 });
