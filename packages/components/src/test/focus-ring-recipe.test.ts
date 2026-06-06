@@ -71,11 +71,23 @@ const treeCss = loadCss('../components/tree/tree.css');
 
 // Svelte component <style> blocks converted in the same sweep.
 const markdownEditorStyle = loadSvelteStyle('../components/markdown-editor/markdown-editor.svelte');
+const prosemirrorCss = loadCss('../components/markdown-editor/prosemirror.css');
+const toolbarButtonStyle = loadSvelteStyle(
+  '../components/markdown-editor/editor-toolbar/toolbar-button.svelte',
+);
+const toolbarDropdownStyle = loadSvelteStyle(
+  '../components/markdown-editor/editor-toolbar/toolbar-dropdown.svelte',
+);
 const linkPopoverStyle = loadSvelteStyle(
   '../components/markdown-editor/editor-toolbar/link-popover.svelte',
 );
 const diffLineStyle = loadSvelteStyle('../components/diff-viewer/diff-line.svelte');
+const frontMatterHeaderStyle = loadSvelteStyle(
+  '../components/diff-viewer/front-matter-header.svelte',
+);
 const threadPopoverStyle = loadSvelteStyle('../components/review-editor/thread-popover.svelte');
+const commentComposerStyle = loadSvelteStyle('../components/review-editor/comment-composer.svelte');
+const commentListStyle = loadSvelteStyle('../components/review-editor/comment-list.svelte');
 const commentSidebarStyle = loadSvelteStyle('../components/review-editor/comment-sidebar.svelte');
 const reviewExportActionsStyle = loadSvelteStyle(
   '../components/review-editor/export-actions.svelte',
@@ -85,7 +97,12 @@ const conversationExportActionsStyle = loadSvelteStyle(
 );
 const artifactPanelStyle = loadSvelteStyle('../components/chat/artifact/artifact-panel.svelte');
 const chatStyle = loadSvelteStyle('../components/chat/container/chat.svelte');
+const chatJumpControlsStyle = loadSvelteStyle(
+  '../components/chat/container/chat-jump-controls.svelte',
+);
 const chatSearchBarStyle = loadSvelteStyle('../components/chat/container/chat-search-bar.svelte');
+const chatMessageStyle = loadSvelteStyle('../components/chat/message/chat-message.svelte');
+const toolCallGroupStyle = loadSvelteStyle('../components/chat/message/tool-call-group.svelte');
 const messageAttachmentsStyle = loadSvelteStyle(
   '../components/chat/message/message-attachments.svelte',
 );
@@ -684,6 +701,11 @@ describe('focus-ring sweep — Strategy B-inset Svelte selectors', () => {
       selector: 'button.diff-line:focus-visible',
     },
     {
+      name: 'inline front-matter header',
+      style: frontMatterHeaderStyle,
+      selector: ".front-matter-header[data-variant='inline']:focus-visible",
+    },
+    {
       name: 'link-popover close',
       style: linkPopoverStyle,
       selector: '.link-popover-close:focus-visible',
@@ -712,6 +734,11 @@ describe('focus-ring sweep — Strategy B-inset Svelte selectors', () => {
       name: 'message attachment button',
       style: messageAttachmentsStyle,
       selector: '.message-attachment-button:focus-visible',
+    },
+    {
+      name: 'tool-call header',
+      style: toolCallGroupStyle,
+      selector: '.tool-call-header:focus-visible',
     },
   ];
 
@@ -749,6 +776,66 @@ describe('focus-ring sweep — Strategy B (outer) Svelte selectors', () => {
       style: chatSearchBarStyle,
       selector: '.chat-search-nav-button:focus-visible',
     },
+    {
+      name: 'diff front-matter header',
+      style: frontMatterHeaderStyle,
+      selector: '.front-matter-header:focus-visible',
+    },
+    {
+      name: 'markdown toolbar button',
+      style: toolbarButtonStyle,
+      selector: '.toolbar-button:focus-visible',
+    },
+    {
+      name: 'markdown toolbar dropdown trigger',
+      style: toolbarDropdownStyle,
+      selector: ':global(.toolbar-dropdown-trigger:focus-visible)',
+    },
+    {
+      name: 'chat jump button',
+      style: chatJumpControlsStyle,
+      selector: '.chat-jump-button:focus-visible',
+    },
+    {
+      name: 'chat new indicator',
+      style: chatJumpControlsStyle,
+      selector: '.chat-new-indicator:focus-visible',
+    },
+    {
+      name: 'chat send button',
+      style: chatInputStyle,
+      selector: '.chat-input-send:focus-visible',
+    },
+    {
+      name: 'chat message row',
+      style: chatMessageStyle,
+      selector: '.chat-message:focus-visible',
+    },
+    {
+      name: 'chat message expand button',
+      style: chatMessageStyle,
+      selector: '.chat-message-expand:focus-visible',
+    },
+    {
+      name: 'chat message retry button',
+      style: chatMessageStyle,
+      selector: '.chat-message-retry:focus-visible',
+    },
+    {
+      name: 'chat message action button',
+      style: chatMessageStyle,
+      selector: ':global(.chat-message-action-button:focus-visible)',
+    },
+    {
+      name: 'chat message edit save',
+      style: chatMessageStyle,
+      selector: '.chat-message-edit-save:focus-visible',
+    },
+    {
+      name: 'chat message edit cancel',
+      style: chatMessageStyle,
+      selector: '.chat-message-edit-cancel:focus-visible',
+    },
   ];
 
   for (const { name, style, selector } of outerCases) {
@@ -756,6 +843,76 @@ describe('focus-ring sweep — Strategy B (outer) Svelte selectors', () => {
       assertOuterRecipe(style, selector);
     });
   }
+});
+
+describe('focus-ring sweep — text-entry focus selectors', () => {
+  const textEntryCases: Array<{ name: string; style: string; selector: string }> = [
+    {
+      name: 'chat message edit textarea',
+      style: chatMessageStyle,
+      selector: '.chat-message-edit-textarea:focus',
+    },
+    {
+      name: 'review comment composer textarea',
+      style: commentComposerStyle,
+      selector: '.comment-composer-textarea:focus',
+    },
+    {
+      name: 'review comment edit textarea',
+      style: commentListStyle,
+      selector: '.comment-edit-textarea:focus',
+    },
+  ];
+
+  for (const { name, style, selector } of textEntryCases) {
+    test(`${name}: ${selector} uses the shared focus ring + Highlight forced-colors fallback`, () => {
+      assertOuterRecipe(style, selector);
+      const root = parse(style);
+      const fallback = findRules(root, selector).find((rule) => isUnderForcedColors(rule));
+      expect(fallback).toBeDefined();
+      expect(declValue(fallback!, 'outline')).toBe('var(--cinder-ring-width) solid Highlight');
+      expect(declValue(fallback!, 'outline-offset')).toBe('1px');
+    });
+  }
+
+  test('review comment composer error state keeps validation border but does not own a danger focus ring', () => {
+    const root = parse(commentComposerStyle);
+    const errorState = findRule(root, ".comment-composer-textarea[data-has-error='true']");
+    expect(errorState).toBeDefined();
+    expect(declValue(errorState!, 'border-color')).toBe('var(--cinder-danger)');
+
+    const errorFocusRules = findRules(
+      root,
+      ".comment-composer-textarea[data-has-error='true']:focus",
+    );
+    expect(errorFocusRules).toEqual([]);
+
+    const focusRules = findRules(root, '.comment-composer-textarea:focus').filter(
+      (rule) => !isUnderForcedColors(rule),
+    );
+    expect(focusRules.length).toBeGreaterThanOrEqual(1);
+    expect(declValue(focusRules[0]!, 'box-shadow')).toContain(SHARED_BOX_SHADOW);
+    expect(declValue(focusRules[0]!, 'box-shadow')).not.toContain('var(--cinder-danger)');
+  });
+});
+
+describe('focus-ring sweep — selected/current state boundaries', () => {
+  test('chat stop button does not override the shared send-button focus ring with danger color', () => {
+    const root = parse(chatInputStyle);
+    const rules = findRules(root, '.chat-input-send[data-stop]:focus-visible');
+    expect(rules).toEqual([]);
+  });
+
+  test('ProseMirror selected nodes use a tokenized selected-state outline, not a focus selector', () => {
+    const root = parse(prosemirrorCss);
+    const selectedNode = findRule(root, '.ProseMirror-selectednode');
+    const selectedListItem = findRule(root, 'li.ProseMirror-selectednode:after');
+    expect(selectedNode).toBeDefined();
+    expect(selectedListItem).toBeDefined();
+    expect(selectedNode!.selector).not.toContain(':focus');
+    expect(declValue(selectedNode!, 'outline')).toBe('2px solid var(--cinder-accent)');
+    expect(declValue(selectedListItem!, 'border')).toBe('2px solid var(--cinder-accent)');
+  });
 });
 
 describe('chat-input attachment-remove — inset ring painted on the visible chip', () => {

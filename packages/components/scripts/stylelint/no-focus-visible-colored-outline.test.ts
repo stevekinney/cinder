@@ -17,9 +17,10 @@ async function lintWithDirectRule(css: string) {
   return result;
 }
 
-async function lintWithProjectConfig(css: string) {
+async function lintWithProjectConfig(css: string, codeFilename?: string) {
   const result = await stylelint.lint({
     code: css,
+    ...(codeFilename === undefined ? {} : { codeFilename }),
     configFile: new URL('../../../../.stylelintrc.json', import.meta.url).pathname,
   });
   return result;
@@ -250,5 +251,41 @@ describe('cinder/no-focus-visible-colored-outline — loaded through .stylelintr
       }
     `);
     expect(warningsFor(result).length).toBe(1);
+  });
+
+  test('colored outline inside a Svelte style block is rejected through the project config', async () => {
+    const result = await lintWithProjectConfig(
+      `
+        <button class="demo">Demo</button>
+
+        <style>
+          .demo:focus-visible {
+            outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+          }
+        </style>
+      `,
+      'fixture.svelte',
+    );
+    const hits = warningsFor(result);
+    expect(hits.length).toBe(1);
+    expect(hits[0]?.severity).toBe('error');
+    expect(result.errored).toBe(true);
+  });
+
+  test('canonical recipe inside a Svelte style block passes through the project config', async () => {
+    const result = await lintWithProjectConfig(
+      `
+        <button class="demo">Demo</button>
+
+        <style>
+          .demo:focus-visible {
+            outline: var(--cinder-ring-width) solid transparent;
+            box-shadow: var(--_cinder-focus-ring-shadow);
+          }
+        </style>
+      `,
+      'fixture.svelte',
+    );
+    expect(warningsFor(result)).toEqual([]);
   });
 });

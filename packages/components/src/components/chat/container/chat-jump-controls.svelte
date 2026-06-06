@@ -121,10 +121,8 @@
   }
 
   .chat-jump-button:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   /* Unread Count Badge */
@@ -180,11 +178,16 @@
   }
 
   .chat-new-indicator:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color),
-      var(--cinder-shadow-lg);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-lg);
+  }
+
+  @media (forced-colors: active) {
+    .chat-jump-button:focus-visible,
+    .chat-new-indicator:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
   }
 
   @keyframes slide-up {
