@@ -22,17 +22,20 @@
       0,
       0.5
     ); /* cinder-allow-raw-color: structural-pattern — thumb outline over arbitrary picked color */
-    --_cinder-color-picker-thumb-shadow-support: rgba(
+    --_cinder-color-picker-thumb-shadow-support-light: transparent;
+    --_cinder-color-picker-thumb-shadow-support-dark: rgba(
       255,
       255,
       255,
       0.65
     ); /* cinder-allow-raw-color: structural-pattern — thumb outline over dark chrome */
-    --_cinder-color-picker-thumb-shadow: light-dark(
+    --_cinder-color-picker-thumb-shadow-support: light-dark(
+      var(--_cinder-color-picker-thumb-shadow-support-light),
+      var(--_cinder-color-picker-thumb-shadow-support-dark)
+    );
+    --_cinder-color-picker-thumb-shadow:
       0 0 0 1px var(--_cinder-color-picker-thumb-shadow-edge),
-      0 0 0 1px var(--_cinder-color-picker-thumb-shadow-edge),
-      0 0 0 2px var(--_cinder-color-picker-thumb-shadow-support)
-    ); /* cinder-allow-raw-color: structural-pattern — thumb outline theme switch */
+      0 0 0 2px var(--_cinder-color-picker-thumb-shadow-support);
   }
 
   .cinder-color-picker[data-cinder-disabled] {
