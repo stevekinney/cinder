@@ -143,7 +143,7 @@ async function openButtonPage(page: Page): Promise<{
   expect(
     propsTableCount,
     '/page/button no longer exposes `.props-table-scroll`; update the stable page-chrome fixture.',
-  ).toBeGreaterThan(0);
+  ).toBe(1);
 
   const firstCard = page.locator('.example-list .cinder-card').first();
   await expect(firstCard).toBeVisible();
@@ -175,6 +175,7 @@ test.describe('playground page chrome focus rings', () => {
     page,
   }) => {
     await page.emulateMedia({ forcedColors: 'active' });
+    await page.waitForFunction(() => matchMedia('(forced-colors: active)').matches);
     const { propsTableScroll } = await openButtonPage(page);
 
     await tabUntilFocused(page, propsTableScroll, 'props table scroll region');

@@ -303,7 +303,7 @@
 <!-- Heading level is h3 to match the example Card titles (cinder Card renders
      its title as <h3>), keeping the iframe document's heading outline ordered
      rather than inverting to a higher level after the example cards. -->
-<section class="props-section" aria-labelledby="props-heading">
+<section class="props-section">
   <h3 id="props-heading" class="props-heading">API reference</h3>
   {#if propsLoading}
     <div class="props-skeleton" aria-hidden="true">
