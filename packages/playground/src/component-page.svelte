@@ -643,7 +643,16 @@
         {#if propRows.length === 0}
           <p class="props-empty">This component has no documented props.</p>
         {:else}
-          <div class="props-table-scroll" role="region" aria-labelledby="props-heading">
+          <!-- tabindex="0" makes the scrollable region keyboard-accessible (axe
+               scrollable-region-focusable / WCAG 2.1.1) when the props table
+               overflows horizontally on narrow viewports. -->
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+          <div
+            class="props-table-scroll"
+            role="region"
+            aria-labelledby="props-heading"
+            tabindex="0"
+          >
             <Table caption={`Props for ${componentName}`} density="condensed">
               <Table.Header>
                 <Table.Row>
@@ -1362,6 +1371,19 @@
   /* Wide container: a normal horizontally-scrollable table. */
   .props-table-scroll {
     overflow-x: auto;
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  .props-table-scroll:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .props-table-scroll:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .props-error,
