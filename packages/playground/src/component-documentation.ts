@@ -164,6 +164,28 @@ async function readRequiredText(path: string, label: string): Promise<string> {
   return await file.text();
 }
 
+async function parseJsonArtifact(path: string, label: string): Promise<JsonValue> {
+  let raw: unknown;
+  try {
+    raw = await Bun.file(path).json();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new ComponentDocumentationError(
+      'invalid-json-artifact',
+      `${label} at ${path} could not be parsed as JSON: ${detail}`,
+    );
+  }
+
+  if (!isJsonValue(raw)) {
+    throw new ComponentDocumentationError(
+      'invalid-json-artifact',
+      `${label} at ${path} did not parse as JSON-compatible data`,
+    );
+  }
+
+  return raw;
+}
+
 async function readRequiredJson(path: string, label: string): Promise<JsonValue> {
   const file = Bun.file(path);
   if (!(await file.exists())) {
@@ -172,27 +194,13 @@ async function readRequiredJson(path: string, label: string): Promise<JsonValue>
       `${label} is required but was not found at ${path}`,
     );
   }
-  const raw: unknown = await file.json();
-  if (!isJsonValue(raw)) {
-    throw new ComponentDocumentationError(
-      'invalid-json-artifact',
-      `${label} did not parse as JSON-compatible data`,
-    );
-  }
-  return raw;
+  return await parseJsonArtifact(path, label);
 }
 
 async function readOptionalJson(path: string, label: string): Promise<JsonValue | null> {
   const file = Bun.file(path);
   if (!(await file.exists())) return null;
-  const raw: unknown = await file.json();
-  if (!isJsonValue(raw)) {
-    throw new ComponentDocumentationError(
-      'invalid-json-artifact',
-      `${label} did not parse as JSON-compatible data`,
-    );
-  }
-  return raw;
+  return await parseJsonArtifact(path, label);
 }
 
 function artifactPath(componentName: string, artifactName: DocumentationArtifactName): string {

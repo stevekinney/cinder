@@ -345,13 +345,14 @@
     {/each}
   </div>
 
-  {#if activeTab === 'overview'}
-    <section
-      class="documentation-panel documentation-panel--overview"
-      id="tabpanel-overview"
-      role="tabpanel"
-      aria-labelledby="tab-overview"
-    >
+  <div
+    class="documentation-panel documentation-panel--overview"
+    id="tabpanel-overview"
+    role="tabpanel"
+    aria-labelledby="tab-overview"
+    hidden={activeTab !== 'overview'}
+  >
+    {#if activeTab === 'overview'}
       {#if documentationLoading}
         <div class="documentation-skeleton" aria-hidden="true">
           {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
@@ -438,98 +439,100 @@
           {/if}
         </div>
       {/if}
-    </section>
-  {:else if activeTab === 'examples'}
-    <section
-      class="documentation-panel"
-      id="tabpanel-examples"
-      role="tabpanel"
-      aria-labelledby="tab-examples"
-    >
-      <h2>Examples</h2>
-      <div class="example-list">
-        {#if examples.length === 0}
-          <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
-        {/if}
+    {/if}
+  </div>
+  <div
+    class="documentation-panel"
+    id="tabpanel-examples"
+    role="tabpanel"
+    aria-labelledby="tab-examples"
+    hidden={activeTab !== 'examples'}
+  >
+    <h2>Examples</h2>
+    <div class="example-list">
+      {#if examples.length === 0}
+        <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
+      {/if}
 
-        {#each examples as { scenario, title, description } (scenario)}
-          {@const accordionEntry = getAccordionEntry(scenario)}
-          {@const source = fetchedSource[scenario]}
-          {@const mountError = mountErrors[scenario]}
-          {@const sourceError = sourceErrors[scenario]}
-          {#if accordionEntry}
-            <Card {title} {...description !== undefined ? { description } : {}}>
-              <div class="example-preview" id="example-mount-{scenario}"></div>
+      {#each examples as { scenario, title, description } (scenario)}
+        {@const accordionEntry = getAccordionEntry(scenario)}
+        {@const source = fetchedSource[scenario]}
+        {@const mountError = mountErrors[scenario]}
+        {@const sourceError = sourceErrors[scenario]}
+        {#if accordionEntry}
+          <Card {title} {...description !== undefined ? { description } : {}}>
+            <div class="example-preview" id="example-mount-{scenario}"></div>
 
-              {#if mountError !== undefined}
-                <div class="example-error">
-                  <Callout variant="danger" title="This example failed to render">
-                    <p class="example-error__message">{mountError.message}</p>
-                    {#if mountError.stack !== undefined}
-                      <pre
-                        class="example-error__stack"
-                        aria-label="Stack trace">{mountError.stack}</pre>
-                    {/if}
-                    <div class="example-error__actions">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        aria-label="Copy error for {title}"
-                        onclick={() => copyError(mountError)}
-                      >
-                        Copy error
-                      </Button>
-                    </div>
-                  </Callout>
-                </div>
-              {/if}
-
-              <Accordion bind:expandedIds={accordionEntry.expandedIds}>
-                <AccordionItem id="source" title="View source">
-                  {#if loadingSource[scenario]}
-                    <p class="source-loading">Loading…</p>
-                  {:else if source === null}
-                    <div class="example-error">
-                      <Callout variant="danger" title="Could not load source">
-                        <dl class="example-error__detail">
-                          <dt>Requested</dt>
-                          <dd>
-                            <code>
-                              {sourceError?.url ?? `/example-src/${componentName}/${scenario}`}
-                            </code>
-                          </dd>
-                          <dt>Reason</dt>
-                          <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
-                        </dl>
-                        <div class="example-error__actions">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            aria-label="Retry loading source for {title}"
-                            onclick={() => fetchSource(scenario)}
-                          >
-                            Retry
-                          </Button>
-                        </div>
-                      </Callout>
-                    </div>
-                  {:else if source !== undefined}
-                    <CodeBlock code={source} language="svelte" copyable />
+            {#if mountError !== undefined}
+              <div class="example-error">
+                <Callout variant="danger" title="This example failed to render">
+                  <p class="example-error__message">{mountError.message}</p>
+                  {#if mountError.stack !== undefined}
+                    <pre
+                      class="example-error__stack"
+                      aria-label="Stack trace">{mountError.stack}</pre>
                   {/if}
-                </AccordionItem>
-              </Accordion>
-            </Card>
-          {/if}
-        {/each}
-      </div>
-    </section>
-  {:else if activeTab === 'api'}
-    <section
-      class="documentation-panel props-section"
-      id="tabpanel-api"
-      role="tabpanel"
-      aria-labelledby="tab-api"
-    >
+                  <div class="example-error__actions">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      aria-label="Copy error for {title}"
+                      onclick={() => copyError(mountError)}
+                    >
+                      Copy error
+                    </Button>
+                  </div>
+                </Callout>
+              </div>
+            {/if}
+
+            <Accordion bind:expandedIds={accordionEntry.expandedIds}>
+              <AccordionItem id="source" title="View source">
+                {#if loadingSource[scenario]}
+                  <p class="source-loading">Loading…</p>
+                {:else if source === null}
+                  <div class="example-error">
+                    <Callout variant="danger" title="Could not load source">
+                      <dl class="example-error__detail">
+                        <dt>Requested</dt>
+                        <dd>
+                          <code>
+                            {sourceError?.url ?? `/example-src/${componentName}/${scenario}`}
+                          </code>
+                        </dd>
+                        <dt>Reason</dt>
+                        <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
+                      </dl>
+                      <div class="example-error__actions">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          aria-label="Retry loading source for {title}"
+                          onclick={() => fetchSource(scenario)}
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    </Callout>
+                  </div>
+                {:else if source !== undefined}
+                  <CodeBlock code={source} language="svelte" copyable />
+                {/if}
+              </AccordionItem>
+            </Accordion>
+          </Card>
+        {/if}
+      {/each}
+    </div>
+  </div>
+  <div
+    class="documentation-panel props-section"
+    id="tabpanel-api"
+    role="tabpanel"
+    aria-labelledby="tab-api"
+    hidden={activeTab !== 'api'}
+  >
+    {#if activeTab === 'api'}
       <h2 id="props-heading" class="props-heading">API</h2>
       {#if documentationLoading}
         <div class="props-skeleton" aria-hidden="true">
@@ -640,14 +643,16 @@
           </div>
         {/if}
       {/if}
-    </section>
-  {:else if activeTab === 'styling'}
-    <section
-      class="documentation-panel"
-      id="tabpanel-styling"
-      role="tabpanel"
-      aria-labelledby="tab-styling"
-    >
+    {/if}
+  </div>
+  <div
+    class="documentation-panel"
+    id="tabpanel-styling"
+    role="tabpanel"
+    aria-labelledby="tab-styling"
+    hidden={activeTab !== 'styling'}
+  >
+    {#if activeTab === 'styling'}
       <h2>Styling</h2>
       {#if documentationLoading}
         <div class="documentation-skeleton" aria-hidden="true">
@@ -677,14 +682,16 @@
           />
         </section>
       {/if}
-    </section>
-  {:else if activeTab === 'constraints'}
-    <section
-      class="documentation-panel"
-      id="tabpanel-constraints"
-      role="tabpanel"
-      aria-labelledby="tab-constraints"
-    >
+    {/if}
+  </div>
+  <div
+    class="documentation-panel"
+    id="tabpanel-constraints"
+    role="tabpanel"
+    aria-labelledby="tab-constraints"
+    hidden={activeTab !== 'constraints'}
+  >
+    {#if activeTab === 'constraints'}
       <h2>Constraints</h2>
       {#if documentationLoading}
         <div class="documentation-skeleton" aria-hidden="true">
@@ -760,14 +767,16 @@
           </div>
         {/if}
       {/if}
-    </section>
-  {:else if activeTab === 'raw-artifacts'}
-    <section
-      class="documentation-panel"
-      id="tabpanel-raw-artifacts"
-      role="tabpanel"
-      aria-labelledby="tab-raw-artifacts"
-    >
+    {/if}
+  </div>
+  <div
+    class="documentation-panel"
+    id="tabpanel-raw-artifacts"
+    role="tabpanel"
+    aria-labelledby="tab-raw-artifacts"
+    hidden={activeTab !== 'raw-artifacts'}
+  >
+    {#if activeTab === 'raw-artifacts'}
       <h2>Raw Artifacts</h2>
       {#if documentationLoading}
         <div class="documentation-skeleton" aria-hidden="true">
@@ -826,8 +835,8 @@
           </section>
         </div>
       {/if}
-    </section>
-  {/if}
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -882,6 +891,10 @@
     flex-direction: column;
     gap: var(--cinder-space-6);
     min-width: 0;
+  }
+
+  .documentation-panel[hidden] {
+    display: none;
   }
 
   .documentation-panel h2,

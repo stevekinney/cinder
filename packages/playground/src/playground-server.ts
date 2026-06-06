@@ -41,6 +41,7 @@ import {
 } from '../../components/scripts/lib/visual-fixtures/schema.ts';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll, resetProject } from './analyze.ts';
+import { validateComponentDocumentationPayload } from './component-documentation-reference.ts';
 import {
   ComponentDocumentationError,
   buildComponentDocumentation,
@@ -1537,6 +1538,13 @@ export async function handleRequest(request: Request): Promise<Response> {
 
     try {
       const documentation = await buildComponentDocumentation(componentName, manifest);
+      const validationErrors = validateComponentDocumentationPayload(documentation);
+      if (validationErrors.length > 0) {
+        throw new Error(
+          `Documentation payload for "${componentName}" failed validation:\n` +
+            validationErrors.map((validationError) => `  - ${validationError}`).join('\n'),
+        );
+      }
       return new Response(JSON.stringify(documentation), {
         headers: { 'Content-Type': 'application/json' },
       });

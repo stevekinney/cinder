@@ -23,6 +23,13 @@ const tableModule = (await import('./component-page-table-mock.svelte')) as unkn
   Body: unknown;
   Cell: unknown;
 };
+const probeModule = (await import('./component-page-scenario-probe.svelte')) as unknown as {
+  default: unknown;
+  ledgerFor: (scenario: string) => { mounts: number; unmounts: number; live: number };
+  resetLedgers: () => void;
+};
+const { default: Probe, ledgerFor, resetLedgers } = probeModule;
+const { tick } = await import('svelte');
 type TableMockComponent = {
   Header: unknown;
   HeaderCell: unknown;
@@ -170,6 +177,7 @@ function installDocumentationFetch(): void {
 }
 
 beforeEach(() => {
+  resetLedgers();
   const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
   happyWindow.happyDOM.setURL('http://localhost/page/button');
   Reflect.set(window, '__CINDER_EXAMPLES__', []);
@@ -178,6 +186,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  resetLedgers();
   globalThis.fetch = originalFetch;
   document.body.innerHTML = '';
 });
@@ -201,6 +210,29 @@ describe('component-page documentation tabs', () => {
     expect(screen.getByText('Rendered README body.')).toBeTruthy();
 
     unmount();
+    await tick();
+  });
+
+  test('keeps tab panels in the DOM and mounts hidden examples on first render', async () => {
+    Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
+    Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
+
+    const { unmount } = render(ComponentPage);
+    await tick();
+
+    for (const tab of screen.getAllByRole('tab')) {
+      const controlledPanel = tab.getAttribute('aria-controls');
+      expect(typeof controlledPanel).toBe('string');
+      expect(document.getElementById(controlledPanel ?? '')).toBeTruthy();
+    }
+
+    const exampleMount = document.getElementById('example-mount-primary');
+    expect(exampleMount).toBeTruthy();
+    expect(ledgerFor('primary').mounts).toBe(1);
+    expect(exampleMount?.querySelectorAll('.scenario-probe').length).toBe(1);
+
+    unmount();
+    await tick();
   });
 
   test('raw artifact panels render valid JSON in CodeBlock', async () => {
@@ -218,5 +250,6 @@ describe('component-page documentation tabs', () => {
     });
 
     unmount();
+    await tick();
   });
 });
