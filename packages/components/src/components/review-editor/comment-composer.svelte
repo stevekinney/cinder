@@ -254,11 +254,10 @@
   }
 
   .comment-composer-textarea:focus {
-    outline: none;
     border-color: var(--cinder-accent);
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-accent);
+    outline: var(--cinder-ring-width) solid transparent;
+    outline-offset: var(--cinder-ring-offset);
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   .comment-composer-textarea:disabled {
@@ -271,10 +270,11 @@
     border-color: var(--cinder-danger);
   }
 
-  .comment-composer-textarea[data-has-error='true']:focus {
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);
+  @media (forced-colors: active) {
+    .comment-composer-textarea:focus {
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 1px;
+    }
   }
 
   .comment-composer-error {
