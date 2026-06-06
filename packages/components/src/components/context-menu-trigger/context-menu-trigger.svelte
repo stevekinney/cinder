@@ -45,7 +45,7 @@
   let startX = 0;
   let startY = 0;
   let suppressClick = false;
-  let suppressNextContextmenuUntil = 0;
+  let suppressNextContextmenu = false;
 
   type TriggerEvent<EventType extends Event> = EventType & {
     currentTarget: EventTarget & HTMLDivElement;
@@ -75,7 +75,8 @@
       callTriggerHandler(oncontextmenu, event);
       return;
     }
-    if (Date.now() < suppressNextContextmenuUntil) {
+    if (suppressNextContextmenu) {
+      suppressNextContextmenu = false;
       event.preventDefault();
       callTriggerHandler(oncontextmenu, event);
       return;
@@ -91,14 +92,16 @@
       return;
     }
     if (event.pointerType !== 'touch') {
+      suppressNextContextmenu = false;
       callTriggerHandler(onpointerdown, event);
       return;
     }
+    suppressNextContextmenu = false;
     startX = event.clientX;
     startY = event.clientY;
     clearLongPress();
     longPressTimer = setTimeout(() => {
-      suppressNextContextmenuUntil = Date.now() + 700;
+      suppressNextContextmenu = true;
       suppressClick = true;
       context.openAt(startX, startY);
     }, context.longPressDelay);
