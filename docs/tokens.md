@@ -167,16 +167,19 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 
 The brand color and its derivatives. `hover` and `active` are computed from `--cinder-accent` with `oklch(from ...)`, so overriding `--cinder-accent` re-derives both. `--cinder-accent-contrast` is the foreground color for text and icons placed on top of `--cinder-accent`.
 
-| Token                        | Default                                                    |
-| ---------------------------- | ---------------------------------------------------------- |
-| `--cinder-accent`            | `light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195))`     |
-| `--cinder-accent-contrast`   | `light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245))`   |
-| `--cinder-accent-text`       | `light-dark(oklch(47% 0.16 195), oklch(78% 0.13 195))`     |
-| `--cinder-accent-text-hover` | `oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)` |
-| `--cinder-accent-hover`      | `oklch(from var(--cinder-accent) calc(l - 0.08) c h)`      |
-| `--cinder-accent-active`     | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`      |
+| Token                            | Default                                                    |
+| -------------------------------- | ---------------------------------------------------------- |
+| `--cinder-accent`                | `light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195))`     |
+| `--cinder-accent-contrast`       | `light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245))`   |
+| `--cinder-accent-text`           | `light-dark(oklch(47% 0.16 195), oklch(78% 0.13 195))`     |
+| `--cinder-accent-text-hover`     | `oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)` |
+| `--cinder-accent-hover`          | `oklch(from var(--cinder-accent) calc(l - 0.08) c h)`      |
+| `--cinder-accent-active`         | `oklch(from var(--cinder-accent) calc(l - 0.15) c h)`      |
+| `--cinder-accent-active-on-fill` | `oklch(from var(--cinder-accent) calc(l - 0.11) c h)`      |
 
 `--cinder-accent-text` is the brand color used _as_ text/icon on a light surface. `--cinder-accent` is now a darker, more ink-like cyan (`oklch(0.66 0.16 195)`); as a foreground its contrast improves over the previous bright fill but still does _not_ clear the 3:1 UI floor (≈2.7:1 on the raised surface, lower on `--cinder-bg` / `--cinder-surface-inset`) — so foreground usages (links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker) keep using this darker on-brand cyan, which clears 4.5:1 on every surface. `--cinder-accent` remains a _fill_: it carries the dark-ink `--cinder-accent-contrast` label at ≈7.2:1. `--cinder-accent-text-hover` is the hover step for those text/icon links: it darkens `--cinder-accent-text` by 0.08 lightness (light arm ≈ 7.9:1 on white) so links get _darker_ on hover. It exists because the fill-derived `--cinder-accent-hover` is _lighter_ than the resting text color and drops to ~2.75:1 on near-white — links must use `--cinder-accent-text-hover`, not `--cinder-accent-hover`, for their hover color.
+
+`--cinder-accent-active-on-fill` is the pressed fill for solid accent surfaces that carry the dark-ink `--cinder-accent-contrast` label (primary `Button`, `FloatingActionButton`). The general `--cinder-accent-active` darkens the accent by `0.15`; on the darker `L=0.66` accent that resolves to `L=0.51`, where the dark-ink label drops to only ~4.09:1 — under WCAG AA. This token darkens by a gentler `0.11` (light → `L=0.55`, ~4.79:1; dark → `L=0.67`, ~7.1:1) so the pressed label stays AA-legible in both arms. Accent surfaces that do _not_ bear an on-fill label keep using `--cinder-accent-active`.
 
 ## Semantic aliases
 

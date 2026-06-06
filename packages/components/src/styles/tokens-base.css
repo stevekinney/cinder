@@ -225,6 +225,13 @@
   --cinder-accent-contrast: light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245));
   --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
   --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
+  /* Pressed fill for SOLID accent surfaces that carry the dark-ink --cinder-accent-contrast
+     label (primary Button, FloatingActionButton). The general --cinder-accent-active darkens by
+     0.15; on the L=0.66 light accent that resolves to L=0.51, where the dark-ink label drops to
+     ~4.09:1 — below WCAG AA. This token darkens by a gentler 0.11 (light → L=0.55, ~4.79:1; dark →
+     L=0.67, ~7.1:1) so the pressed label stays AA-legible in both arms. Non-label-bearing
+     consumers keep using --cinder-accent-active. */
+  --cinder-accent-active-on-fill: oklch(from var(--cinder-accent) calc(l - 0.11) c h);
   /* Accent used AS TEXT/ICON on light surfaces. The fill-accent was darkened to a more ink-like
      cyan (now L=0.66); as a FOREGROUND its contrast improves (≈2.7:1 on raised, ≈2.4:1 on bg/inset)
      but still does NOT clear the 3:1 UI floor, so a separate foreground token stays necessary. This

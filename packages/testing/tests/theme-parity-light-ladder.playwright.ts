@@ -380,4 +380,54 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
       await darkContext.close();
     }
   });
+
+  // 6. Pressed primary button keeps its label AA-legible (regression guard).
+  //
+  //    The primary Button paints --cinder-accent-contrast (dark ink) on its fill.
+  //    Its :active rule swaps the fill to --cinder-accent-active-on-fill. The
+  //    GENERAL --cinder-accent-active (a −0.15 lightness step) would, on the
+  //    darker L=0.66 accent, resolve to L=0.51 where the dark-ink label drops to
+  //    ~4.09:1 — below WCAG AA. The dedicated on-fill token darkens by a gentler
+  //    −0.11 step so the pressed label clears 4.5:1 in BOTH themes. We resolve
+  //    both custom properties off the live button (so the browser evaluates the
+  //    oklch(from …) derivation exactly as it paints it) and assert the ratio.
+  test('pressed primary button keeps its label above WCAG AA in both themes', async ({
+    browser,
+  }) => {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      const context = await browser.newContext({ colorScheme, reducedMotion: 'reduce' });
+      try {
+        const page = await context.newPage();
+        await page.goto('/page/button', { waitUntil: 'load' });
+
+        const primarySelector = ".cinder-button[data-cinder-variant='primary']";
+        // Resolve the pressed fill + label tokens to painted colors via a probe:
+        // set the probe's color to each custom property and read it back computed.
+        const ratio = await page
+          .locator(primarySelector)
+          .first()
+          .evaluate((node, fn) => {
+            const probe = document.createElement('span');
+            node.appendChild(probe);
+            const read = (customProperty: string) => {
+              probe.style.color = `var(${customProperty})`;
+              return getComputedStyle(probe).color;
+            };
+            const pressedFill = read('--cinder-accent-active-on-fill');
+            const label = read('--cinder-accent-contrast');
+            probe.remove();
+            // eslint-disable-next-line no-new-func
+            const helpers = new Function(`${fn}; return { contrastRatio };`)();
+            return helpers.contrastRatio(pressedFill, label) as number;
+          }, WCAG_CONTRAST_FN);
+
+        expect(
+          ratio,
+          `pressed primary button label must clear WCAG AA in ${colorScheme} mode`,
+        ).toBeGreaterThanOrEqual(4.5);
+      } finally {
+        await context.close();
+      }
+    }
+  });
 });
