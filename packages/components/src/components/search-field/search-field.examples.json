@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "search-field",
+  "import": "@lostgradient/cinder/search-field",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Clearable search field",
+      "description": "Search input with an initial value so the clear button is visible.",
+      "code": "<script lang=\"ts\">\n  import { SearchField } from '@lostgradient/cinder/search-field';\n</script>\n\n<SearchField\n  id=\"search-field-basic\"\n  aria-label=\"Search components\"\n  defaultValue=\"cinder\"\n  placeholder=\"Filter by name\"\n/>\n"
+    }
+  ]
+}

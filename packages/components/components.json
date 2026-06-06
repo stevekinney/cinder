@@ -2365,10 +2365,11 @@
       "avoidWhen": ["Selecting from a constrained list of known options — use combobox instead."],
       "related": ["input", "combobox"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/search-field/schema",
-        "variables": "@lostgradient/cinder/search-field/variables"
+        "variables": "@lostgradient/cinder/search-field/variables",
+        "examples": "@lostgradient/cinder/search-field/examples"
       }
     },
     {
