@@ -48,6 +48,9 @@
     'aria-busy': consumerAriaBusy,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
+    'aria-expanded': ariaExpanded,
+    'aria-controls': ariaControls,
+    'aria-haspopup': ariaHaspopup,
     ...rest
   }: ButtonProps = $props();
 
@@ -98,6 +101,9 @@
     | 'aria-busy'
     | 'aria-label'
     | 'aria-labelledby'
+    | 'aria-expanded'
+    | 'aria-controls'
+    | 'aria-haspopup'
   >;
   const buttonAttributes = rest as Omit<
     HTMLButtonAttributes,
@@ -109,6 +115,9 @@
     | 'aria-busy'
     | 'aria-label'
     | 'aria-labelledby'
+    | 'aria-expanded'
+    | 'aria-controls'
+    | 'aria-haspopup'
   >;
 
   // Branch-specific prop reads stay `$derived` because they extract a *value* off `rest`
@@ -212,6 +221,9 @@
     aria-busy={resolvedAriaBusy}
     aria-label={resolvedAriaLabel}
     aria-labelledby={resolvedAriaLabelledBy}
+    aria-expanded={ariaExpanded}
+    aria-controls={ariaControls}
+    aria-haspopup={ariaHaspopup}
     onclick={handleClick}
   >
     {@render buttonContent()}
@@ -227,6 +239,9 @@
     aria-busy={resolvedAriaBusy}
     aria-label={resolvedAriaLabel}
     aria-labelledby={resolvedAriaLabelledBy}
+    aria-expanded={ariaExpanded}
+    aria-controls={ariaControls}
+    aria-haspopup={ariaHaspopup}
     onclick={handleClick}
   >
     {@render buttonContent()}

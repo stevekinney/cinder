@@ -35,6 +35,7 @@
     '#7c3aed',
     '#db2777',
   ];
+  const PICKER_POPOVER_ID = 'color-token-picker-popover';
 
   let query = $state('');
   let draftValues: Partial<Record<ColorTokenName, string>> = $state({});
@@ -351,17 +352,6 @@
     element.querySelector<HTMLInputElement>('#color-token-filter')?.focus();
   });
 
-  $effect(() => {
-    const element = panelElement;
-    const openTokenName = pickerOpen ? activePickerTokenName : null;
-    if (element === null) return;
-
-    for (const trigger of element.querySelectorAll<HTMLElement>('.token-color-trigger')) {
-      const tokenName = trigger.closest('[data-color-token]')?.getAttribute('data-color-token');
-      trigger.setAttribute('aria-expanded', tokenName === openTokenName ? 'true' : 'false');
-    }
-  });
-
   const filteredGroups = $derived.by(() => {
     const needle = query.trim().toLowerCase();
     if (needle === '') return COLOR_TOKEN_GROUPS;
@@ -506,9 +496,13 @@
                 iconOnly
                 label="Pick {token.name} color"
                 class="token-color-trigger"
+                aria-controls={pickerOpen && activePickerTokenName === token.name
+                  ? PICKER_POPOVER_ID
+                  : undefined}
                 aria-expanded={pickerOpen && activePickerTokenName === token.name
                   ? 'true'
                   : 'false'}
+                aria-haspopup="dialog"
                 onclick={(event) => openColorPicker(token.name, event)}
               >
                 <span
@@ -560,8 +554,10 @@
   <Popover
     bind:open={pickerOpen}
     triggerRef={pickerAnchorElement}
+    id={PICKER_POPOVER_ID}
     placement="left"
     label="Pick {activePickerToken.name} color"
+    wireTriggerAria={false}
     class="color-token-picker-popover"
   >
     <div class="picker-popover-content">

@@ -56,7 +56,12 @@ import {
   jsonForScriptTag,
   renderShell,
 } from './render-shell.ts';
-import { COLOR_TOKEN_NAMES } from './shell-app/color-token-registry.ts';
+import {
+  BLOCKED_COLOR_VALUE_PATTERN,
+  COLOR_TOKEN_NAMES,
+  FALLBACK_COLOR_VALUE_PATTERN,
+  MAX_COLOR_TOKEN_VALUE_LENGTH,
+} from './shell-app/color-token-registry.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import {
@@ -1060,6 +1065,10 @@ async function getStandaloneManifests(): Promise<ComponentManifest[]> {
 
 function renderPreviewMessageBridgeScript(): string {
   const colorTokenNamesJson = jsonForScriptTag(COLOR_TOKEN_NAMES);
+  const blockedColorValuePatternSource = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.source);
+  const blockedColorValuePatternFlags = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.flags);
+  const fallbackColorValuePatternSource = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.source);
+  const fallbackColorValuePatternFlags = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.flags);
 
   return `<script>
       // Validated postMessage listener for shell→iframe theme and token commands.
@@ -1067,8 +1076,8 @@ function renderPreviewMessageBridgeScript(): string {
       // unknown messages can't push the iframe into a bad state.
       (function () {
         var colorTokenNames = new Set(${colorTokenNamesJson});
-        var blockedColorValuePattern = /[;{}<>]|\\/\\*|\\*\\//;
-        var fallbackColorValuePattern = /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|rgba|hsl|hsla|oklch|oklab|lch|lab|color|color-mix|light-dark)\\([^;{}<>]+\\)|var\\(--cinder-[a-z0-9-]+\\)|transparent|currentcolor|black|white)$/;
+        var blockedColorValuePattern = new RegExp(${blockedColorValuePatternSource}, ${blockedColorValuePatternFlags});
+        var fallbackColorValuePattern = new RegExp(${fallbackColorValuePatternSource}, ${fallbackColorValuePatternFlags});
         var activeTheme = document.documentElement.dataset.cinderTheme;
         if (!isTheme(activeTheme)) activeTheme = null;
 
@@ -1079,7 +1088,7 @@ function renderPreviewMessageBridgeScript(): string {
         function isSafeColorValue(value) {
           if (typeof value !== 'string') return false;
           var trimmed = value.trim();
-          if (trimmed.length === 0 || trimmed.length > 240) return false;
+          if (trimmed.length === 0 || trimmed.length > ${MAX_COLOR_TOKEN_VALUE_LENGTH}) return false;
           if (blockedColorValuePattern.test(trimmed)) return false;
           if (trimmed.toLowerCase().indexOf('url(') !== -1) return false;
           if (window.CSS && typeof window.CSS.supports === 'function') {

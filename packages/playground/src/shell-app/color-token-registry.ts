@@ -136,9 +136,9 @@ export const COLOR_TOKEN_NAMES = COLOR_TOKEN_GROUPS.flatMap((group) =>
 
 export const COLOR_TOKEN_NAME_SET: ReadonlySet<string> = new Set(COLOR_TOKEN_NAMES);
 
-const MAX_COLOR_TOKEN_VALUE_LENGTH = 240;
-const BLOCKED_COLOR_VALUE_PATTERN = /[;{}<>]|\/\*|\*\//;
-const FALLBACK_COLOR_VALUE_PATTERN =
+export const MAX_COLOR_TOKEN_VALUE_LENGTH = 240;
+export const BLOCKED_COLOR_VALUE_PATTERN = /[;{}<>]|\/\*|\*\//;
+export const FALLBACK_COLOR_VALUE_PATTERN =
   /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|rgba|hsl|hsla|oklch|oklab|lch|lab|color|color-mix|light-dark)\([^;{}<>]+\)|var\(--cinder-[a-z0-9-]+\)|transparent|currentcolor|black|white)$/;
 
 export function isColorTokenName(value: string): value is ColorTokenName {

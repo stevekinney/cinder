@@ -26,6 +26,11 @@ import {
   triggerReload,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
+import {
+  BLOCKED_COLOR_VALUE_PATTERN,
+  FALLBACK_COLOR_VALUE_PATTERN,
+  MAX_COLOR_TOKEN_VALUE_LENGTH,
+} from './shell-app/color-token-registry.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';
@@ -716,10 +721,16 @@ describe('/page/:name', () => {
   it('installs the validated color-token message bridge on preview pages', async () => {
     const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
     const html = await response.text();
+    const blockedPatternSource = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.source);
+    const blockedPatternFlags = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.flags);
+    const fallbackPatternSource = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.source);
+    const fallbackPatternFlags = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.flags);
 
     expect(html).toContain('cinder:set-color-token-overrides');
     expect(html).toContain('--cinder-accent');
-    expect(html).toContain('|transparent|currentcolor|black|white)$/');
+    expect(html).toContain(`new RegExp(${blockedPatternSource}, ${blockedPatternFlags})`);
+    expect(html).toContain(`new RegExp(${fallbackPatternSource}, ${fallbackPatternFlags})`);
+    expect(html).toContain(`trimmed.length > ${MAX_COLOR_TOKEN_VALUE_LENGTH}`);
     expect(html).toContain('var activeTheme = document.documentElement.dataset.cinderTheme');
     expect(html).toContain('if (data.theme !== activeTheme) return;');
     expect(html).not.toContain('--cinder-button-bg');

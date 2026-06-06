@@ -132,6 +132,31 @@ describe('Button rendering', () => {
     expect(button?.getAttribute('data-cinder-loading')).toBe('');
   });
 
+  test('reactively forwards popover trigger ARIA to the native button', async () => {
+    const { container, rerender } = render(Button, {
+      props: {
+        label: 'Toggle',
+        'aria-controls': 'panel-a',
+        'aria-expanded': 'true',
+        'aria-haspopup': 'dialog',
+      } as any,
+    });
+    const button = container.querySelector('button');
+
+    expect(button?.getAttribute('aria-controls')).toBe('panel-a');
+    expect(button?.getAttribute('aria-expanded')).toBe('true');
+    expect(button?.getAttribute('aria-haspopup')).toBe('dialog');
+    await rerender({
+      label: 'Toggle',
+      'aria-controls': undefined,
+      'aria-expanded': 'false',
+      'aria-haspopup': 'menu',
+    } as any);
+    expect(button?.hasAttribute('aria-controls')).toBe(false);
+    expect(button?.getAttribute('aria-expanded')).toBe('false');
+    expect(button?.getAttribute('aria-haspopup')).toBe('menu');
+  });
+
   test('loading link removes href and is un-tab-reachable', () => {
     const { container } = render(Button, {
       props: { href: '/target', label: 'go', loading: true },
