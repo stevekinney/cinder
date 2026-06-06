@@ -112,6 +112,7 @@ describe('createPreviewMessage', () => {
   });
 
   it('returns null for an unknown theme value', () => {
+    // @ts-expect-error - exercising runtime validation for untrusted callers
     expect(createPreviewMessage('cinder:set-theme', 'midnight')).toBeNull();
   });
 
@@ -158,6 +159,7 @@ describe('createPreviewMessage', () => {
 
   it('rejects color-token messages with an invalid theme', () => {
     expect(
+      // @ts-expect-error - exercising runtime validation for untrusted callers
       createPreviewMessage('cinder:set-color-token-overrides', {
         theme: 'system',
         overrides: {

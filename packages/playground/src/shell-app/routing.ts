@@ -250,10 +250,6 @@ export function createPreviewMessage(
 export function createPreviewMessage(
   type: PreviewMessage['type'],
   value: unknown,
-): PreviewMessage | null;
-export function createPreviewMessage(
-  type: PreviewMessage['type'],
-  value: unknown,
 ): PreviewMessage | null {
   if (type === 'cinder:set-theme' && typeof value === 'string' && isThemeChoice(value)) {
     return { type, value };
