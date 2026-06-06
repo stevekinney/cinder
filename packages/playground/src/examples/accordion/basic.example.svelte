@@ -2,6 +2,7 @@
   export const title = 'Basic accordion';
   export const description =
     'Single-select: opening one item closes the others. Uses the Accordion namespace API.';
+  export const featured = true;
 </script>
 
 <script lang="ts">

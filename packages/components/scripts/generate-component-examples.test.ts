@@ -20,6 +20,7 @@ function buildSource({
   title = 'My Example',
   description = 'A description.',
   component,
+  featured = false,
   imports = [`import { Button } from '@lostgradient/cinder/button';`],
   markup = '<Button label="Click" />',
   hasStyle = false,
@@ -28,6 +29,7 @@ function buildSource({
   title?: string;
   description?: string;
   component?: string;
+  featured?: boolean;
   imports?: string[];
   markup?: string;
   hasStyle?: boolean;
@@ -35,10 +37,11 @@ function buildSource({
 } = {}): string {
   const componentLine =
     component !== undefined ? `  export const component = '${component}';\n` : '';
+  const featuredLine = featured ? `  export const featured = true;\n` : '';
   const moduleBlock = `<script lang="ts" module>
   export const title = '${title}';
   export const description = '${description}';
-${componentLine}${extraModuleContent}</script>`;
+${componentLine}${featuredLine}${extraModuleContent}</script>`;
 
   const scriptBlock =
     imports.length > 0 ? `\n<script lang="ts">\n  ${imports.join('\n  ')}\n</script>` : '';
@@ -144,6 +147,16 @@ describe('extractExampleFile — happy path', () => {
     expect(result.kind).toBe('example');
     if (result.kind !== 'example') return;
     expect(result.componentOverride).toBe('input');
+  });
+
+  it('extracts optional featured metadata and strips it from copyable code', () => {
+    const source = buildSource({ featured: true });
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.featured).toBe(true);
+    expect(result.example.code).not.toContain('export const featured');
   });
 
   it('returns undefined componentOverride when component export is absent', () => {

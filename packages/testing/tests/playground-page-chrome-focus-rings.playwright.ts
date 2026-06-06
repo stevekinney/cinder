@@ -166,14 +166,13 @@ async function showButtonExamplesTab(frame: Frame): Promise<Locator> {
   return viewSourceTrigger;
 }
 
-async function showButtonApiTab(frame: Frame): Promise<Locator> {
-  await frame.getByRole('tab', { name: 'API' }).click();
-
+async function showButtonOverviewApiSection(frame: Frame): Promise<Locator> {
+  await frame.getByRole('tab', { name: 'Overview' }).click();
   const propsTableScroll = frame.locator('.props-table-scroll').first();
   const propsTableCount = await frame.locator('.props-table-scroll').count();
   expect(
     propsTableCount,
-    '/c/button API tab no longer exposes `.props-table-scroll`; update the stable page-chrome fixture.',
+    '/c/button overview no longer exposes `.props-table-scroll`; update the stable page-chrome fixture.',
   ).toBe(1);
 
   return propsTableScroll;
@@ -190,7 +189,7 @@ test.describe('playground page chrome focus rings', () => {
     await expect(viewSourceTrigger).toBeFocused();
     expectInsetFocusPaint(await focusPaint(viewSourceTrigger), 'View source trigger');
 
-    const propsTableScroll = await showButtonApiTab(frame);
+    const propsTableScroll = await showButtonOverviewApiSection(frame);
     await tabUntilFocused(page, frame, propsTableScroll, 'props table scroll region');
     await expect(propsTableScroll).toBeFocused();
     expectInsetFocusPaint(await focusPaint(propsTableScroll), 'props table scroll region');
@@ -202,7 +201,7 @@ test.describe('playground page chrome focus rings', () => {
     await page.emulateMedia({ forcedColors: 'active' });
     await page.waitForFunction(() => matchMedia('(forced-colors: active)').matches);
     const frame = await openButtonDocumentationPage(page);
-    const propsTableScroll = await showButtonApiTab(frame);
+    const propsTableScroll = await showButtonOverviewApiSection(frame);
 
     await tabUntilFocused(page, frame, propsTableScroll, 'props table scroll region');
     await expect(propsTableScroll).toBeFocused();

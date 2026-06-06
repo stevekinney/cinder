@@ -7,6 +7,7 @@
       "id": "basic",
       "title": "Collaborator stack",
       "description": "A compact stack of visible collaborators with focusable names.",
+      "featured": true,
       "code": "<script lang=\"ts\">\n  import { AvatarGroup } from '@lostgradient/cinder/avatar-group';\n\n  const avatars = [\n    { id: 'ada', name: 'Ada Lovelace' },\n    { id: 'grace', name: 'Grace Hopper' },\n    { id: 'katherine', name: 'Katherine Johnson' },\n  ];\n</script>\n\n<div class=\"example-preview-row\">\n  <AvatarGroup {avatars} aria-label=\"Active collaborators\" />\n</div>\n"
     },
     {

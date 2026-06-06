@@ -23,6 +23,7 @@ describe('buildComponentDocumentation', () => {
     expect(payload.component.id).toBe('button');
     expect(payload.component.purpose).toContain('Primary interactive control');
     expect(payload.readme.html).toContain('<h1>Button</h1>');
+    expect(payload.readme.html).toContain('class="shiki');
     expect(payload.readme.hadUnsafeContent).toBe(false);
     expect(payload.schema).toBeDefined();
     expect(payload.constraints).not.toBeNull();

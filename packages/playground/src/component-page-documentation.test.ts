@@ -72,7 +72,7 @@ const documentationFixture: ComponentDocumentationPayload = {
     useWhen: ['Triggering a fixture action.'],
     avoidWhen: ['Selecting from a fixed set.'],
     related: ['copy-button'],
-    hasConstraints: true,
+    hasConstraints: false,
     hasExamples: true,
     artifacts: {
       schema: '@lostgradient/cinder/button/schema',
@@ -92,16 +92,7 @@ const documentationFixture: ComponentDocumentationPayload = {
     kebabName: 'button',
     file: 'button.svelte',
     importPath: '@lostgradient/cinder/button',
-    props: [
-      {
-        name: 'variant',
-        control: { kind: 'select', options: ['primary', 'secondary'] },
-        defaultValue: 'secondary',
-        bindable: false,
-        optional: true,
-        description: 'Visual style.',
-      },
-    ],
+    props: [],
   },
   schema: {
     type: 'object',
@@ -111,28 +102,7 @@ const documentationFixture: ComponentDocumentationPayload = {
     },
   },
   variables: ['--cinder-button-background'],
-  constraints: {
-    component: 'button',
-    summary: 'Button constraints summary.',
-    rules: [
-      {
-        id: 'accessible-name',
-        severity: 'error',
-        description: 'Icon-only buttons must have an accessible name.',
-        kind: 'anyOf',
-      },
-    ],
-    examples: {
-      valid: [{ title: 'Visible label', code: '<Button label="Save" />' }],
-      invalid: [
-        {
-          title: 'Missing label',
-          code: '<Button iconOnly />',
-          violates: 'accessible-name',
-        },
-      ],
-    },
-  },
+  constraints: null,
   examples: {
     component: 'button',
     examples: [{ id: 'primary', title: 'Primary', code: '<Button label="Save" />' }],
@@ -150,10 +120,7 @@ const documentationFixture: ComponentDocumentationPayload = {
       },
     },
     variables: ['--cinder-button-background'],
-    constraints: {
-      component: 'button',
-      rules: [{ id: 'accessible-name' }],
-    },
+    constraints: null,
     examples: {
       component: 'button',
       examples: [{ id: 'primary' }],
@@ -193,23 +160,39 @@ afterEach(() => {
 
 describe('component-page documentation tabs', () => {
   test('renders all documentation tabs from a fixture payload', async () => {
+    Reflect.set(window, '__CINDER_EXAMPLES__', [
+      {
+        scenario: 'primary',
+        title: 'Primary',
+        description: 'The default call to action.',
+        featured: true,
+      },
+      {
+        scenario: 'secondary',
+        title: 'Secondary',
+        description: 'A lower-emphasis action.',
+      },
+    ]);
+    Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe, secondary: Probe });
+
     const { unmount } = render(ComponentPage);
 
-    for (const label of [
-      'Overview',
-      'Examples',
-      'API',
-      'Styling',
-      'Constraints',
-      'Raw Artifacts',
-    ]) {
+    for (const label of ['Overview', 'Examples', 'Raw Artifacts']) {
       expect(screen.getByRole('tab', { name: label })).toBeTruthy();
+    }
+    for (const removedTab of ['API', 'Styling', 'Constraints']) {
+      expect(screen.queryByRole('tab', { name: removedTab })).toBeNull();
     }
 
     await screen.findByText('Fixture purpose for a documentation page.');
     expect(screen.getByText('Rendered README body.')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 2, name: 'Overview' })).toBeNull();
     expect(await screen.findByRole('heading', { level: 1, name: 'Button' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Featured Examples' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Primary/ })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'API' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Styling' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Constraints' })).toBeTruthy();
 
     unmount();
     await tick();
@@ -334,10 +317,12 @@ describe('component-page documentation tabs', () => {
     await screen.findByRole('heading', { name: 'Raw Artifacts' });
 
     await waitFor(() => {
-      const blocks = Array.from(document.querySelectorAll('.raw-artifact-panel pre code'));
+      expect(window.location.search).toContain('tab=raw-artifacts');
+      const blocks = Array.from(document.querySelectorAll('.raw-artifact-panel pre'));
       expect(blocks.length).toBe(5);
       for (const block of blocks) {
-        expect(() => JSON.parse(block.textContent ?? '')).not.toThrow();
+        expect(block.getAttribute('data-highlight')).toBe('on');
+        expect(() => JSON.parse(block.querySelector('code')?.textContent ?? '')).not.toThrow();
       }
     });
 

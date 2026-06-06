@@ -52,10 +52,12 @@ export type Example = {
   title: string;
   /** From `export const description` in `<script lang="ts" module>`. */
   description: string;
+  /** Optional Overview promotion flag from `export const featured = true`. */
+  featured?: true;
   /**
    * Full source of the `.example.svelte` file, verbatim, with the module
    * block stripped if and only if it contains ONLY the metadata exports
-   * (`title`, `description`, and optionally `component`).
+   * (`title`, `description`, `featured`, and optionally `component`).
    */
   code: string;
 };
@@ -204,8 +206,10 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
 
   const moduleBlockContent = moduleMatch[1] ?? '';
 
-  // Step 3: extract `title` and `description` (required) and `component` (optional).
+  // Step 3: extract `title` and `description` (required), plus optional
+  // `component` and `featured` metadata.
   const metadataExports = parseStringExports(moduleBlockContent);
+  const booleanMetadataExports = parseBooleanExports(moduleBlockContent);
 
   const title = metadataExports.get('title');
   if (title === undefined) {
@@ -224,6 +228,7 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
   }
 
   const componentOverride = metadataExports.get('component');
+  const featured = booleanMetadataExports.get('featured') === true;
 
   // Validate the override against the closed set of public component ids.
   // Without this check, a bad `export const component = '../../bad/path'`
@@ -263,7 +268,7 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
 
   // Step 6: compute the `code` field.
   // Strip the module block iff it contains ONLY the metadata exports (title,
-  // description, and optionally component). If it has any other statements,
+  // description, featured, and optionally component). If it has any other statements,
   // keep the module block verbatim.
   const code = buildCodeField(source, moduleMatch[0] ?? '', moduleBlockContent, metadataExports);
 
@@ -273,6 +278,7 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
       id: basename(filePath, '.example.svelte'),
       title,
       description,
+      ...(featured ? { featured: true as const } : {}),
       code,
     },
     componentOverride,
@@ -297,6 +303,24 @@ function parseStringExports(moduleBlockContent: string): Map<string, string> {
     const value = match[3];
     if (name !== undefined && value !== undefined) {
       result.set(name, value);
+    }
+  }
+  return result;
+}
+
+/**
+ * Parses all `export const <name> = true|false` statements from a module
+ * block's content. Returns a map from export name → boolean value.
+ */
+function parseBooleanExports(moduleBlockContent: string): Map<string, boolean> {
+  const result = new Map<string, boolean>();
+  const regex = /export\s+const\s+(\w+)\s*=\s*(true|false)\s*;?/gm;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(moduleBlockContent)) !== null) {
+    const name = match[1];
+    const value = match[2];
+    if (name !== undefined && value !== undefined) {
+      result.set(name, value === 'true');
     }
   }
   return result;
@@ -397,7 +421,7 @@ function isValidCinderSubpathWithSuffix(
  * Builds the `code` field for a published example.
  *
  * The module block is stripped if and only if it contains ONLY the metadata
- * exports (`title`, `description`, and optionally `component`) — no other
+ * exports (`title`, `description`, `featured`, and optionally `component`) — no other
  * statements. When other statements are present, the full source is returned
  * verbatim.
  */
@@ -425,6 +449,7 @@ function buildCodeField(
     );
     remaining = remaining.replace(removePattern, '');
   }
+  remaining = remaining.replace(/export\s+const\s+featured\s*=\s*(?:true|false)\s*;?\s*/g, '');
 
   // After removing metadata exports, only whitespace/comments should remain.
   const nonWhitespace = remaining

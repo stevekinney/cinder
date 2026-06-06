@@ -28,16 +28,15 @@
   } from './component-documentation-types.ts';
   import { splitUnionType, toPropReferenceRows } from './manifest-reference.ts';
 
-  type CinderExampleDescriptor = { scenario: string; title: string; description?: string };
+  type CinderExampleDescriptor = {
+    scenario: string;
+    title: string;
+    description?: string;
+    featured?: boolean;
+  };
   type CinderWindow = Window &
     typeof globalThis & { __CINDER_EXAMPLES__?: CinderExampleDescriptor[] };
-  type DocumentationTabId =
-    | 'overview'
-    | 'examples'
-    | 'api'
-    | 'styling'
-    | 'constraints'
-    | 'raw-artifacts';
+  type DocumentationTabId = 'overview' | 'examples' | 'raw-artifacts';
   type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
   type ConstraintRuleSummary = {
     id: string;
@@ -54,11 +53,9 @@
   const documentationTabs: { id: DocumentationTabId; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'examples', label: 'Examples' },
-    { id: 'api', label: 'API' },
-    { id: 'styling', label: 'Styling' },
-    { id: 'constraints', label: 'Constraints' },
     { id: 'raw-artifacts', label: 'Raw Artifacts' },
   ];
+  const documentationTabSearchParam = 'tab';
 
   // The server injects window.__CINDER_EXAMPLES__ before the bundle script tag.
   // Fall back to an empty array so the component doesn't crash if the global is missing.
@@ -69,6 +66,17 @@
   }
 
   const examples: CinderExampleDescriptor[] = readExamples();
+  const explicitlyFeaturedExamples = examples.filter((example) => example.featured === true);
+  const overviewFeaturedExamples =
+    explicitlyFeaturedExamples.length > 0
+      ? explicitlyFeaturedExamples
+      : examples.slice(0, Math.min(2, examples.length));
+  const overviewFeaturedScenarioIds = new Set(
+    overviewFeaturedExamples.map((example) => example.scenario),
+  );
+  const overviewLinkedExamples = examples.filter(
+    (example) => !overviewFeaturedScenarioIds.has(example.scenario),
+  );
 
   // Extract the component name from the current URL path: /page/<name>
   const componentName: string =
@@ -78,14 +86,67 @@
     return value !== null && documentationTabs.some((tab) => tab.id === value);
   }
 
+  function parentSearchParams(): URLSearchParams | null {
+    try {
+      if (window.parent === window) return null;
+      if (window.parent.location.origin !== window.location.origin) return null;
+      return new URL(window.parent.location.href).searchParams;
+    } catch {
+      return null;
+    }
+  }
+
   function initialDocumentationTab(): DocumentationTabId {
     const searchParams = new URLSearchParams(window.location.search);
-    const requestedTab = searchParams.get('tab');
+    const requestedTab =
+      searchParams.get(documentationTabSearchParam) ??
+      parentSearchParams()?.get(documentationTabSearchParam) ??
+      null;
     if (isDocumentationTabId(requestedTab)) return requestedTab;
     return searchParams.get('snapshot') === '1' ? 'examples' : 'overview';
   }
 
   let activeTab: DocumentationTabId = $state(initialDocumentationTab());
+
+  function isSnapshotMode(): boolean {
+    return new URLSearchParams(window.location.search).get('snapshot') === '1';
+  }
+
+  function hrefWithDocumentationTab(href: string, tab: DocumentationTabId): string {
+    const url = new URL(href);
+    url.searchParams.set(documentationTabSearchParam, tab);
+    return `${url.pathname}${url.search}${url.hash}`;
+  }
+
+  function synchronizeDocumentationTabUrl(tab: DocumentationTabId): void {
+    if (isSnapshotMode()) return;
+
+    history.replaceState(history.state, '', hrefWithDocumentationTab(window.location.href, tab));
+
+    try {
+      if (window.parent === window) return;
+      if (window.parent.location.origin !== window.location.origin) return;
+      window.parent.history.replaceState(
+        window.parent.history.state,
+        '',
+        hrefWithDocumentationTab(window.parent.location.href, tab),
+      );
+    } catch {
+      // Direct /page routes and locked-down embeds still have their own iframe URL.
+    }
+  }
+
+  function selectExampleFromOverview(event: MouseEvent, scenario?: string): void {
+    event.preventDefault();
+    selectTab('examples');
+    if (scenario === undefined) return;
+    requestAnimationFrame(() => {
+      document.getElementById(`example-card-${scenario}`)?.scrollIntoView({
+        block: 'start',
+        behavior: 'smooth',
+      });
+    });
+  }
 
   // Track which scenarios have had their source fetched so we only
   // hit /example-src once per scenario regardless of how many times the user
@@ -366,6 +427,36 @@
     }
   }
 
+  $effect(() => {
+    synchronizeDocumentationTabUrl(activeTab);
+  });
+
+  $effect(() => {
+    function syncFromLocation(): void {
+      const requestedTab =
+        parentSearchParams()?.get(documentationTabSearchParam) ??
+        new URLSearchParams(window.location.search).get(documentationTabSearchParam);
+      if (isDocumentationTabId(requestedTab)) activeTab = requestedTab;
+    }
+
+    window.addEventListener('popstate', syncFromLocation);
+    try {
+      if (window.parent !== window && window.parent.location.origin === window.location.origin) {
+        window.parent.addEventListener('popstate', syncFromLocation);
+        return () => {
+          window.removeEventListener('popstate', syncFromLocation);
+          window.parent.removeEventListener('popstate', syncFromLocation);
+        };
+      }
+    } catch {
+      // Cross-origin parents are ignored; direct /page routes still listen above.
+    }
+
+    return () => {
+      window.removeEventListener('popstate', syncFromLocation);
+    };
+  });
+
   // Fetch the documentation payload once. componentName is non-reactive, so
   // this effect runs exactly once. The cancellation flag prevents writing to
   // state after the component is torn down mid-flight.
@@ -432,56 +523,97 @@
           <p class="documentation-error">{documentationError}</p>
         </Callout>
       {:else if documentation !== null}
-        <div class="overview-layout">
-          <div class="overview-main">
+        <section class="overview-hero" aria-labelledby="overview-title">
+          <div class="overview-hero-main">
+            <h1 id="overview-title">{documentation.component.name}</h1>
             <p class="overview-purpose">{documentation.component.purpose}</p>
-            <div class="readme-content" aria-label="{documentation.component.name} README">
-              {@html documentation.readme.html}
-            </div>
+            <p class="overview-import">
+              <span>Import</span>
+              <code>{documentation.component.importSpecifier}</code>
+            </p>
           </div>
-          <aside class="overview-metadata" aria-label="Component metadata">
-            <dl class="metadata-list">
+          <dl class="metadata-list" aria-label="Component metadata">
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <Badge variant={statusBadgeVariant(documentation.component.status)} size="sm">
+                  {documentation.component.status}
+                </Badge>
+                {#if documentation.component.statusDescription !== ''}
+                  <span>{documentation.component.statusDescription}</span>
+                {/if}
+              </dd>
+            </div>
+            <div>
+              <dt>Category</dt>
+              <dd>
+                <strong>{documentation.component.categoryLabel}</strong>
+                {#if documentation.component.categoryDescription !== ''}
+                  <span>{documentation.component.categoryDescription}</span>
+                {/if}
+              </dd>
+            </div>
+            {#if documentation.component.tags.length > 0}
               <div>
-                <dt>Status</dt>
-                <dd>
-                  <Badge variant={statusBadgeVariant(documentation.component.status)} size="sm">
-                    {documentation.component.status}
-                  </Badge>
-                  {#if documentation.component.statusDescription !== ''}
-                    <span>{documentation.component.statusDescription}</span>
-                  {/if}
+                <dt>Tags</dt>
+                <dd class="badge-list">
+                  {#each documentation.component.tags as tag (tag)}
+                    <Badge variant="neutral" size="xs">{tag}</Badge>
+                  {/each}
                 </dd>
               </div>
-              <div>
-                <dt>Category</dt>
-                <dd>
-                  <span>{documentation.component.categoryLabel}</span>
-                  {#if documentation.component.categoryDescription !== ''}
-                    <span>{documentation.component.categoryDescription}</span>
+            {/if}
+          </dl>
+        </section>
+
+        {#if overviewFeaturedExamples.length > 0}
+          <section class="overview-section" aria-labelledby="featured-examples-heading">
+            <div class="section-heading-row">
+              <h2 id="featured-examples-heading">
+                {explicitlyFeaturedExamples.length > 0 ? 'Featured Examples' : 'Start Here'}
+              </h2>
+              <a href="?tab=examples" onclick={(event) => selectExampleFromOverview(event)}>
+                View all examples
+              </a>
+            </div>
+            <div class="featured-example-grid">
+              {#each overviewFeaturedExamples as example (example.scenario)}
+                <a
+                  class="featured-example-card"
+                  href="?tab=examples#example-card-{example.scenario}"
+                  onclick={(event) => selectExampleFromOverview(event, example.scenario)}
+                >
+                  <span>{example.title}</span>
+                  {#if example.description !== undefined}
+                    <small>{example.description}</small>
                   {/if}
-                </dd>
+                </a>
+              {/each}
+            </div>
+            {#if overviewLinkedExamples.length > 0}
+              <div class="example-link-list" aria-label="More examples">
+                {#each overviewLinkedExamples as example (example.scenario)}
+                  <a
+                    href="?tab=examples#example-card-{example.scenario}"
+                    onclick={(event) => selectExampleFromOverview(event, example.scenario)}
+                  >
+                    {example.title}
+                  </a>
+                {/each}
               </div>
-              <div>
-                <dt>Import</dt>
-                <dd><code>{documentation.component.importSpecifier}</code></dd>
-              </div>
-              {#if documentation.component.tags.length > 0}
-                <div>
-                  <dt>Tags</dt>
-                  <dd class="badge-list">
-                    {#each documentation.component.tags as tag (tag)}
-                      <Badge variant="neutral" size="xs">{tag}</Badge>
-                    {/each}
-                  </dd>
-                </div>
-              {/if}
-            </dl>
-          </aside>
-        </div>
+            {/if}
+          </section>
+        {/if}
+
+        <section class="overview-section" aria-label="{documentation.component.name} README">
+          <div class="readme-content">
+            {@html documentation.readme.html}
+          </div>
+        </section>
 
         <div class="guidance-grid">
           <section class="guidance-section" aria-labelledby="use-when-heading">
-            <h3 id="use-when-heading">Use When</h3>
+            <h2 id="use-when-heading">Use When</h2>
             <ul>
               {#each documentation.component.useWhen as item (item)}
                 <li>{item}</li>
@@ -489,7 +621,7 @@
             </ul>
           </section>
           <section class="guidance-section" aria-labelledby="avoid-when-heading">
-            <h3 id="avoid-when-heading">Avoid When</h3>
+            <h2 id="avoid-when-heading">Avoid When</h2>
             <ul>
               {#each documentation.component.avoidWhen as item (item)}
                 <li>{item}</li>
@@ -498,7 +630,7 @@
           </section>
           {#if documentation.component.related.length > 0}
             <section class="guidance-section" aria-labelledby="related-heading">
-              <h3 id="related-heading">Related</h3>
+              <h2 id="related-heading">Related</h2>
               <div class="related-links">
                 {#each documentation.component.related as related (related)}
                   <a href="/c/{related}" target="_top">{related}</a>
@@ -507,6 +639,199 @@
             </section>
           {/if}
         </div>
+
+        <section class="overview-section props-section" aria-labelledby="props-heading">
+          <h2 id="props-heading" class="props-heading">API</h2>
+          <section class="schema-section" aria-labelledby="schema-heading">
+            <h3 id="schema-heading">JSON Schema</h3>
+            <div class="schema-summary">
+              <div>
+                <span>Properties</span>
+                <strong>{schemaProperties.length}</strong>
+              </div>
+              <div>
+                <span>Required</span>
+                <strong>{schemaRequiredProperties.size}</strong>
+              </div>
+            </div>
+            {#if schemaProperties.length > 0}
+              <ul class="schema-property-list">
+                {#each schemaProperties as property (property)}
+                  <li>
+                    <code>{property}</code>
+                    {#if schemaRequiredProperties.has(property)}
+                      <Badge variant="danger" size="xs">required</Badge>
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+            {:else}
+              <p class="props-empty">The generated schema has no properties.</p>
+            {/if}
+          </section>
+
+          {#if propRows.length === 0}
+            <p class="props-empty">This component has no documented props.</p>
+          {:else}
+            <!-- tabindex="0" makes the scrollable region keyboard-accessible (axe
+                 scrollable-region-focusable / WCAG 2.1.1) when the props table
+                 overflows horizontally on narrow viewports. -->
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+            <div
+              class="props-table-scroll"
+              role="region"
+              aria-labelledby="props-heading"
+              tabindex="0"
+            >
+              <Table caption={`Props for ${componentName}`} density="condensed">
+                <Table.Header>
+                  <Table.Row>
+                    <Table.HeaderCell scope="col">Name</Table.HeaderCell>
+                    <Table.HeaderCell scope="col">Type</Table.HeaderCell>
+                    <Table.HeaderCell scope="col">Default</Table.HeaderCell>
+                    <Table.HeaderCell scope="col" align="center">Required</Table.HeaderCell>
+                    <Table.HeaderCell scope="col" align="center">Bindable</Table.HeaderCell>
+                    <Table.HeaderCell scope="col">Description</Table.HeaderCell>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {#each propRows as prop (prop.name)}
+                    <Table.Row>
+                      <Table.Cell>
+                        <code class="props-name">{prop.name}</code>
+                        {#if prop.required}
+                          <span class="props-required-gem" aria-hidden="true"></span>
+                        {/if}
+                      </Table.Cell>
+                      <Table.Cell>
+                        {@const typeMembers = splitUnionType(prop.type)}
+                        <code class={['props-type', typeMembers.length > 1 && 'props-type--union']}>
+                          {#each typeMembers as member, index (index)}
+                            <span class="props-type__member">
+                              {#if index > 0}<span class="props-type__sep" aria-hidden="true"
+                                  >|
+                                </span>{/if}<span class="props-type__value">{member}</span>
+                            </span>
+                          {/each}
+                        </code>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {#if prop.defaultValue !== undefined}
+                          <code class="props-default">{prop.defaultValue}</code>
+                        {:else}
+                          <span class="props-dash" aria-hidden="true">—</span>
+                        {/if}
+                      </Table.Cell>
+                      <Table.Cell align="center">
+                        {#if prop.required}
+                          <span class="props-required-gem" aria-hidden="true"></span>
+                          <span class="props-visually-hidden">Required</span>
+                        {:else}
+                          <span class="props-dash" aria-hidden="true">—</span>
+                        {/if}
+                      </Table.Cell>
+                      <Table.Cell align="center">
+                        {#if prop.bindable}
+                          <Badge variant="info" size="xs">bind:</Badge>
+                        {:else}
+                          <span class="props-dash" aria-hidden="true">—</span>
+                        {/if}
+                      </Table.Cell>
+                      <Table.Cell>
+                        {#if prop.description !== undefined}
+                          <span class="props-description">{prop.description}</span>
+                        {:else}
+                          <span class="props-dash" aria-hidden="true">—</span>
+                        {/if}
+                      </Table.Cell>
+                    </Table.Row>
+                  {/each}
+                </Table.Body>
+              </Table>
+            </div>
+          {/if}
+        </section>
+
+        <section class="overview-section" aria-labelledby="styling-heading">
+          <h2 id="styling-heading">Styling</h2>
+          {#if cssVariables.length === 0}
+            <p class="empty-state">This component does not declare local CSS variables.</p>
+          {:else}
+            <ul class="variable-list">
+              {#each cssVariables as variable (variable)}
+                <li><code>{variable}</code></li>
+              {/each}
+            </ul>
+          {/if}
+        </section>
+
+        <section class="overview-section" aria-labelledby="constraints-heading">
+          <h2 id="constraints-heading">Constraints</h2>
+          {#if documentation.constraints === null}
+            <p class="empty-state">No generated constraints are declared for this component.</p>
+          {:else}
+            {@const constraintsSummary = isRecord(documentation.constraints)
+              ? stringProperty(documentation.constraints, 'summary')
+              : undefined}
+            {#if constraintsSummary !== undefined}
+              <p class="constraint-summary">{constraintsSummary}</p>
+            {/if}
+            {#if constraintRules.length > 0}
+              <ol class="constraint-rules">
+                {#each constraintRules as rule (rule.id)}
+                  <li>
+                    <div class="constraint-rule-header">
+                      <code>{rule.id}</code>
+                      {#if rule.severity !== undefined}
+                        <Badge variant={rule.severity === 'error' ? 'danger' : 'warning'} size="xs">
+                          {rule.severity}
+                        </Badge>
+                      {/if}
+                      {#if rule.kind !== undefined}
+                        <Badge variant="neutral" size="xs">{rule.kind}</Badge>
+                      {/if}
+                    </div>
+                    <p>{rule.description}</p>
+                  </li>
+                {/each}
+              </ol>
+            {:else}
+              <p class="empty-state">The constraints artifact has no readable rules.</p>
+            {/if}
+
+            <div class="constraint-example-grid">
+              <section aria-labelledby="valid-constraint-examples-heading">
+                <h3 id="valid-constraint-examples-heading">Valid Examples</h3>
+                {#if validConstraintExamples.length === 0}
+                  <p class="empty-state">No valid examples are listed.</p>
+                {:else}
+                  {#each validConstraintExamples as example (example.title)}
+                    <div class="constraint-example">
+                      <h4>{example.title}</h4>
+                      <CodeBlock code={example.code} language="svelte" copyable />
+                    </div>
+                  {/each}
+                {/if}
+              </section>
+              <section aria-labelledby="invalid-constraint-examples-heading">
+                <h3 id="invalid-constraint-examples-heading">Invalid Examples</h3>
+                {#if invalidConstraintExamples.length === 0}
+                  <p class="empty-state">No invalid examples are listed.</p>
+                {:else}
+                  {#each invalidConstraintExamples as example (example.title)}
+                    <div class="constraint-example">
+                      <h4>{example.title}</h4>
+                      {#if example.violates !== undefined}
+                        <p class="violates-label">Violates <code>{example.violates}</code></p>
+                      {/if}
+                      <CodeBlock code={example.code} language="svelte" copyable />
+                    </div>
+                  {/each}
+                {/if}
+              </section>
+            </div>
+          {/if}
+        </section>
       {/if}
     {/if}
   </div>
@@ -529,323 +854,72 @@
         {@const mountError = mountErrors[scenario]}
         {@const sourceError = sourceErrors[scenario]}
         {#if accordionEntry}
-          <Card {title} {...description !== undefined ? { description } : {}}>
-            <div class="example-preview" id="example-mount-{scenario}"></div>
+          <section id="example-card-{scenario}" class="example-card-anchor">
+            <Card {title} {...description !== undefined ? { description } : {}}>
+              <div class="example-preview" id="example-mount-{scenario}"></div>
 
-            {#if mountError !== undefined}
-              <div class="example-error">
-                <Callout variant="danger" title="This example failed to render">
-                  <p class="example-error__message">{mountError.message}</p>
-                  {#if mountError.stack !== undefined}
-                    <pre
-                      class="example-error__stack"
-                      aria-label="Stack trace">{mountError.stack}</pre>
+              {#if mountError !== undefined}
+                <div class="example-error">
+                  <Callout variant="danger" title="This example failed to render">
+                    <p class="example-error__message">{mountError.message}</p>
+                    {#if mountError.stack !== undefined}
+                      <pre
+                        class="example-error__stack"
+                        aria-label="Stack trace">{mountError.stack}</pre>
+                    {/if}
+                    <div class="example-error__actions">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        aria-label="Copy error for {title}"
+                        onclick={() => copyError(mountError)}
+                      >
+                        Copy error
+                      </Button>
+                    </div>
+                  </Callout>
+                </div>
+              {/if}
+
+              <Accordion bind:expandedIds={accordionEntry.expandedIds}>
+                <AccordionItem id="source" title="View source">
+                  {#if loadingSource[scenario]}
+                    <p class="source-loading">Loading…</p>
+                  {:else if source === null}
+                    <div class="example-error">
+                      <Callout variant="danger" title="Could not load source">
+                        <dl class="example-error__detail">
+                          <dt>Requested</dt>
+                          <dd>
+                            <code>
+                              {sourceError?.url ?? `/example-src/${componentName}/${scenario}`}
+                            </code>
+                          </dd>
+                          <dt>Reason</dt>
+                          <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
+                        </dl>
+                        <div class="example-error__actions">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            aria-label="Retry loading source for {title}"
+                            onclick={() => fetchSource(scenario)}
+                          >
+                            Retry
+                          </Button>
+                        </div>
+                      </Callout>
+                    </div>
+                  {:else if source !== undefined}
+                    <CodeBlock code={source} language="svelte" copyable />
                   {/if}
-                  <div class="example-error__actions">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      aria-label="Copy error for {title}"
-                      onclick={() => copyError(mountError)}
-                    >
-                      Copy error
-                    </Button>
-                  </div>
-                </Callout>
-              </div>
-            {/if}
-
-            <Accordion bind:expandedIds={accordionEntry.expandedIds}>
-              <AccordionItem id="source" title="View source">
-                {#if loadingSource[scenario]}
-                  <p class="source-loading">Loading…</p>
-                {:else if source === null}
-                  <div class="example-error">
-                    <Callout variant="danger" title="Could not load source">
-                      <dl class="example-error__detail">
-                        <dt>Requested</dt>
-                        <dd>
-                          <code>
-                            {sourceError?.url ?? `/example-src/${componentName}/${scenario}`}
-                          </code>
-                        </dd>
-                        <dt>Reason</dt>
-                        <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
-                      </dl>
-                      <div class="example-error__actions">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          aria-label="Retry loading source for {title}"
-                          onclick={() => fetchSource(scenario)}
-                        >
-                          Retry
-                        </Button>
-                      </div>
-                    </Callout>
-                  </div>
-                {:else if source !== undefined}
-                  <CodeBlock code={source} language="svelte" copyable />
-                {/if}
-              </AccordionItem>
-            </Accordion>
-          </Card>
+                </AccordionItem>
+              </Accordion>
+            </Card>
+          </section>
         {/if}
       {/each}
     </div>
-  </div>
-  <div
-    class="documentation-panel props-section"
-    id="tabpanel-api"
-    role="tabpanel"
-    aria-labelledby="tab-api"
-    hidden={activeTab !== 'api'}
-  >
-    {#if activeTab === 'api'}
-      <h2 id="props-heading" class="props-heading">API</h2>
-      {#if documentationLoading}
-        <div class="props-skeleton" aria-hidden="true">
-          {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
-            <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
-          {/each}
-        </div>
-      {:else if documentationError !== null}
-        <p class="props-error">Could not load documentation: {documentationError}</p>
-      {:else if documentation !== null}
-        <section class="schema-section" aria-labelledby="schema-heading">
-          <h3 id="schema-heading">JSON Schema</h3>
-          <div class="schema-summary">
-            <div>
-              <span>Properties</span>
-              <strong>{schemaProperties.length}</strong>
-            </div>
-            <div>
-              <span>Required</span>
-              <strong>{schemaRequiredProperties.size}</strong>
-            </div>
-          </div>
-          {#if schemaProperties.length > 0}
-            <ul class="schema-property-list">
-              {#each schemaProperties as property (property)}
-                <li>
-                  <code>{property}</code>
-                  {#if schemaRequiredProperties.has(property)}
-                    <Badge variant="danger" size="xs">required</Badge>
-                  {/if}
-                </li>
-              {/each}
-            </ul>
-          {:else}
-            <p class="props-empty">The generated schema has no properties.</p>
-          {/if}
-        </section>
-
-        {#if propRows.length === 0}
-          <p class="props-empty">This component has no documented props.</p>
-        {:else}
-          <!-- tabindex="0" makes the scrollable region keyboard-accessible (axe
-               scrollable-region-focusable / WCAG 2.1.1) when the props table
-               overflows horizontally on narrow viewports. -->
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <div
-            class="props-table-scroll"
-            role="region"
-            aria-labelledby="props-heading"
-            tabindex="0"
-          >
-            <Table caption={`Props for ${componentName}`} density="condensed">
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell scope="col">Name</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Type</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Default</Table.HeaderCell>
-                  <Table.HeaderCell scope="col" align="center">Required</Table.HeaderCell>
-                  <Table.HeaderCell scope="col" align="center">Bindable</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Description</Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {#each propRows as prop (prop.name)}
-                  <Table.Row>
-                    <Table.Cell>
-                      <code class="props-name">{prop.name}</code>
-                      {#if prop.required}
-                        <span class="props-required-gem" aria-hidden="true"></span>
-                      {/if}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {@const typeMembers = splitUnionType(prop.type)}
-                      <code class={['props-type', typeMembers.length > 1 && 'props-type--union']}>
-                        {#each typeMembers as member, index (index)}
-                          <span class="props-type__member">
-                            {#if index > 0}<span class="props-type__sep" aria-hidden="true"
-                                >|
-                              </span>{/if}<span class="props-type__value">{member}</span>
-                          </span>
-                        {/each}
-                      </code>
-                    </Table.Cell>
-                    <Table.Cell>
-                      {#if prop.defaultValue !== undefined}
-                        <code class="props-default">{prop.defaultValue}</code>
-                      {:else}
-                        <span class="props-dash" aria-hidden="true">—</span>
-                      {/if}
-                    </Table.Cell>
-                    <Table.Cell align="center">
-                      {#if prop.required}
-                        <span class="props-required-gem" aria-hidden="true"></span>
-                        <span class="props-visually-hidden">Required</span>
-                      {:else}
-                        <span class="props-dash" aria-hidden="true">—</span>
-                      {/if}
-                    </Table.Cell>
-                    <Table.Cell align="center">
-                      {#if prop.bindable}
-                        <Badge variant="info" size="xs">bind:</Badge>
-                      {:else}
-                        <span class="props-dash" aria-hidden="true">—</span>
-                      {/if}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {#if prop.description !== undefined}
-                        <span class="props-description">{prop.description}</span>
-                      {:else}
-                        <span class="props-dash" aria-hidden="true">—</span>
-                      {/if}
-                    </Table.Cell>
-                  </Table.Row>
-                {/each}
-              </Table.Body>
-            </Table>
-          </div>
-        {/if}
-      {/if}
-    {/if}
-  </div>
-  <div
-    class="documentation-panel"
-    id="tabpanel-styling"
-    role="tabpanel"
-    aria-labelledby="tab-styling"
-    hidden={activeTab !== 'styling'}
-  >
-    {#if activeTab === 'styling'}
-      <h2>Styling</h2>
-      {#if documentationLoading}
-        <div class="documentation-skeleton" aria-hidden="true">
-          {#each Array.from({ length: 3 }, (_, index) => index) as row (row)}
-            <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
-          {/each}
-        </div>
-      {:else if documentationError !== null}
-        <p class="props-error">Could not load documentation: {documentationError}</p>
-      {:else if documentation !== null}
-        {#if cssVariables.length === 0}
-          <p class="empty-state">This component does not declare local CSS variables.</p>
-        {:else}
-          <ul class="variable-list">
-            {#each cssVariables as variable (variable)}
-              <li><code>{variable}</code></li>
-            {/each}
-          </ul>
-        {/if}
-        <section class="raw-artifact-panel" aria-labelledby="variables-json-heading">
-          <h3 id="variables-json-heading">Variables JSON</h3>
-          <CodeBlock
-            code={jsonBlock(documentation.variables)}
-            language="json"
-            highlight={false}
-            copyable
-          />
-        </section>
-      {/if}
-    {/if}
-  </div>
-  <div
-    class="documentation-panel"
-    id="tabpanel-constraints"
-    role="tabpanel"
-    aria-labelledby="tab-constraints"
-    hidden={activeTab !== 'constraints'}
-  >
-    {#if activeTab === 'constraints'}
-      <h2>Constraints</h2>
-      {#if documentationLoading}
-        <div class="documentation-skeleton" aria-hidden="true">
-          {#each Array.from({ length: 3 }, (_, index) => index) as row (row)}
-            <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
-          {/each}
-        </div>
-      {:else if documentationError !== null}
-        <p class="props-error">Could not load documentation: {documentationError}</p>
-      {:else if documentation !== null}
-        {#if documentation.constraints === null}
-          <p class="empty-state">No generated constraints are declared for this component.</p>
-        {:else}
-          {@const constraintsSummary = isRecord(documentation.constraints)
-            ? stringProperty(documentation.constraints, 'summary')
-            : undefined}
-          {#if constraintsSummary !== undefined}
-            <p class="constraint-summary">{constraintsSummary}</p>
-          {/if}
-          {#if constraintRules.length > 0}
-            <ol class="constraint-rules">
-              {#each constraintRules as rule (rule.id)}
-                <li>
-                  <div class="constraint-rule-header">
-                    <code>{rule.id}</code>
-                    {#if rule.severity !== undefined}
-                      <Badge variant={rule.severity === 'error' ? 'danger' : 'warning'} size="xs">
-                        {rule.severity}
-                      </Badge>
-                    {/if}
-                    {#if rule.kind !== undefined}
-                      <Badge variant="neutral" size="xs">{rule.kind}</Badge>
-                    {/if}
-                  </div>
-                  <p>{rule.description}</p>
-                </li>
-              {/each}
-            </ol>
-          {:else}
-            <p class="empty-state">The constraints artifact has no readable rules.</p>
-          {/if}
-
-          <div class="constraint-example-grid">
-            <section aria-labelledby="valid-constraint-examples-heading">
-              <h3 id="valid-constraint-examples-heading">Valid Examples</h3>
-              {#if validConstraintExamples.length === 0}
-                <p class="empty-state">No valid examples are listed.</p>
-              {:else}
-                {#each validConstraintExamples as example (example.title)}
-                  <div class="constraint-example">
-                    <h4>{example.title}</h4>
-                    <CodeBlock code={example.code} language="svelte" copyable />
-                  </div>
-                {/each}
-              {/if}
-            </section>
-            <section aria-labelledby="invalid-constraint-examples-heading">
-              <h3 id="invalid-constraint-examples-heading">Invalid Examples</h3>
-              {#if invalidConstraintExamples.length === 0}
-                <p class="empty-state">No invalid examples are listed.</p>
-              {:else}
-                {#each invalidConstraintExamples as example (example.title)}
-                  <div class="constraint-example">
-                    <h4>{example.title}</h4>
-                    {#if example.violates !== undefined}
-                      <p class="violates-label">Violates <code>{example.violates}</code></p>
-                    {/if}
-                    <CodeBlock code={example.code} language="svelte" copyable />
-                  </div>
-                {/each}
-              {/if}
-            </section>
-          </div>
-        {/if}
-      {/if}
-    {/if}
   </div>
   <div
     class="documentation-panel"
@@ -871,7 +945,6 @@
             <CodeBlock
               code={jsonBlock(documentation.rawArtifacts.manifestEntry)}
               language="json"
-              highlight={false}
               copyable
             />
           </section>
@@ -880,7 +953,6 @@
             <CodeBlock
               code={jsonBlock(documentation.rawArtifacts.schema)}
               language="json"
-              highlight={false}
               copyable
             />
           </section>
@@ -889,7 +961,6 @@
             <CodeBlock
               code={jsonBlock(documentation.rawArtifacts.variables)}
               language="json"
-              highlight={false}
               copyable
             />
           </section>
@@ -898,7 +969,6 @@
             <CodeBlock
               code={jsonBlock(documentation.rawArtifacts.constraints)}
               language="json"
-              highlight={false}
               copyable
             />
           </section>
@@ -907,7 +977,6 @@
             <CodeBlock
               code={jsonBlock(documentation.rawArtifacts.examples)}
               language="json"
-              highlight={false}
               copyable
             />
           </section>
@@ -922,21 +991,22 @@
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-6);
+    min-height: 100%;
   }
 
   .documentation-tabs {
     display: flex;
     align-items: center;
-    gap: var(--cinder-space-1);
+    gap: var(--cinder-space-2);
     overflow-x: auto;
     border-block-end: 1px solid var(--cinder-border);
+    padding-block-end: var(--cinder-space-2);
   }
 
   .documentation-tab {
     appearance: none;
-    border: 0;
-    border-block-end: 2px solid transparent;
-    border-radius: 0;
+    border: 1px solid transparent;
+    border-radius: var(--cinder-radius-sm);
     background: transparent;
     color: var(--cinder-text-muted);
     cursor: pointer;
@@ -955,13 +1025,27 @@
   }
 
   .documentation-tab:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
   .documentation-tab--active {
-    border-block-end-color: var(--cinder-accent);
+    background: var(--cinder-surface-inset);
     color: var(--cinder-text);
+    box-shadow: inset 0 -2px 0 var(--cinder-accent);
+  }
+
+  .documentation-tab--active:focus-visible {
+    box-shadow:
+      inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color),
+      inset 0 -2px 0 var(--cinder-accent);
+  }
+
+  @media (forced-colors: active) {
+    .documentation-tab:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
   }
 
   .documentation-panel {
@@ -1005,18 +1089,28 @@
     margin: 0;
   }
 
-  .overview-layout {
+  .overview-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 22rem);
     gap: var(--cinder-space-8);
     align-items: start;
+    padding-block-end: var(--cinder-space-6);
+    border-block-end: 1px solid var(--cinder-border);
   }
 
-  .overview-main {
+  .overview-hero-main {
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-4);
     min-width: 0;
+  }
+
+  .overview-hero h1 {
+    margin: 0;
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-2xl);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-tight);
   }
 
   .overview-purpose {
@@ -1024,6 +1118,101 @@
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-base);
     line-height: var(--cinder-leading-relaxed);
+  }
+
+  .overview-import {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    margin: 0;
+    color: var(--cinder-text-subtle);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .overview-import span {
+    font-weight: var(--cinder-font-medium);
+  }
+
+  .overview-import code {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+  }
+
+  .overview-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-4);
+    min-width: 0;
+  }
+
+  .section-heading-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--cinder-space-4);
+  }
+
+  .section-heading-row a,
+  .example-link-list a,
+  .featured-example-card,
+  .related-links a {
+    border-radius: var(--cinder-radius-sm);
+    color: var(--cinder-link, var(--cinder-accent));
+    text-decoration: none;
+  }
+
+  .section-heading-row a:hover,
+  .example-link-list a:hover,
+  .featured-example-card:hover,
+  .related-links a:hover {
+    text-decoration: underline;
+  }
+
+  .section-heading-row a:focus-visible,
+  .example-link-list a:focus-visible,
+  .featured-example-card:focus-visible,
+  .related-links a:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .featured-example-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--cinder-space-3);
+  }
+
+  .featured-example-card {
+    border: 1px solid var(--cinder-border);
+    background: var(--cinder-surface-raised);
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-4);
+  }
+
+  .featured-example-card span {
+    color: var(--cinder-text);
+    font-weight: var(--cinder-font-semibold);
+  }
+
+  .featured-example-card small {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-relaxed);
+  }
+
+  .example-link-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-2) var(--cinder-space-4);
+    font-size: var(--cinder-text-sm);
   }
 
   .readme-content {
@@ -1048,6 +1237,10 @@
   .readme-content :global(h2:first-child),
   .readme-content :global(h3:first-child) {
     margin-top: 0;
+  }
+
+  .readme-content :global(h1:first-child) {
+    display: none;
   }
 
   .readme-content :global(h1) {
@@ -1080,11 +1273,6 @@
     overflow-x: auto;
   }
 
-  .overview-metadata {
-    border-inline-start: 1px solid var(--cinder-border);
-    padding-inline-start: var(--cinder-space-6);
-  }
-
   .metadata-list {
     display: flex;
     flex-direction: column;
@@ -1109,10 +1297,12 @@
   .metadata-list dd {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: var(--cinder-space-2);
     margin: 0;
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-relaxed);
   }
 
   .metadata-list code,
@@ -1127,16 +1317,8 @@
   .related-links {
     display: flex;
     flex-wrap: wrap;
+    align-items: flex-start;
     gap: var(--cinder-space-2);
-  }
-
-  .related-links a {
-    color: var(--cinder-link, var(--cinder-accent));
-    text-decoration: none;
-  }
-
-  .related-links a:hover {
-    text-decoration: underline;
   }
 
   .guidance-grid,
@@ -1239,6 +1421,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-8);
+  }
+
+  .example-card-anchor {
+    scroll-margin-block-start: var(--cinder-space-6);
   }
 
   .no-examples {
@@ -1548,16 +1734,9 @@
   }
 
   @media (max-width: 46rem) {
-    .overview-layout {
+    .overview-hero {
       grid-template-columns: 1fr;
       gap: var(--cinder-space-6);
-    }
-
-    .overview-metadata {
-      border-block-start: 1px solid var(--cinder-border);
-      border-inline-start: 0;
-      padding-block-start: var(--cinder-space-5);
-      padding-inline-start: 0;
     }
 
     .documentation-tab {

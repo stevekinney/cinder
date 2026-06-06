@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 
-import { renderMarkdown } from '@cinder/markdown/rendering';
+import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
 
 import type {
   ComponentDocumentationPayload,
@@ -302,6 +302,7 @@ export async function buildComponentDocumentation(
     readmePath(componentName),
     `${componentName} README.md`,
   );
+  await initializeHighlighter();
   const readme = renderReadmeDocumentation(readmeMarkdown);
   const schema = await readRequiredJson(
     artifactPath(componentName, 'schema'),

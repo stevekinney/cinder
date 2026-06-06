@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Collaborator stack';
   export const description = 'A compact stack of visible collaborators with focusable names.';
+  export const featured = true;
 </script>
 
 <script lang="ts">
