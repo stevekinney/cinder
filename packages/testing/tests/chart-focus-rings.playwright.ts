@@ -296,23 +296,45 @@ async function ringScreenshotClip(
   root: Locator,
   chart: ChartDefinition,
 ): Promise<ScreenshotClip> {
+  await root.scrollIntoViewIfNeeded();
+
   const ring = root.locator(primaryRingSelector(chart)).first();
   const svg = root.locator('svg').first();
   const ringBox = await ring.boundingBox();
   const svgBox = await svg.boundingBox();
   if (!ringBox || !svgBox) throw new Error(`${chart.slug}: missing ring or SVG screenshot clip.`);
   const deviceScaleFactor = await page.evaluate(() => window.devicePixelRatio || 1);
+  const viewport = page.viewportSize();
+  if (viewport === null) throw new Error(`${chart.slug}: missing viewport for screenshot clip.`);
   const padding = Math.ceil(deviceScaleFactor * 4);
-  const x = Math.max(svgBox.x, ringBox.x - padding);
-  const y = Math.max(svgBox.y, ringBox.y - padding);
-  const right = Math.min(svgBox.x + svgBox.width, ringBox.x + ringBox.width + padding);
-  const bottom = Math.min(svgBox.y + svgBox.height, ringBox.y + ringBox.height + padding);
+  const x = Math.max(0, svgBox.x, ringBox.x - padding);
+  const y = Math.max(0, svgBox.y, ringBox.y - padding);
+  const right = Math.min(
+    viewport.width,
+    svgBox.x + svgBox.width,
+    ringBox.x + ringBox.width + padding,
+  );
+  const bottom = Math.min(
+    viewport.height,
+    svgBox.y + svgBox.height,
+    ringBox.y + ringBox.height + padding,
+  );
+
+  if (right <= x || bottom <= y) {
+    throw new Error(
+      `${chart.slug}: focus ring screenshot clip is outside the viewport. ${JSON.stringify({
+        ringBox,
+        svgBox,
+        viewport,
+      })}`,
+    );
+  }
 
   return {
     x,
     y,
-    width: Math.max(1, right - x),
-    height: Math.max(1, bottom - y),
+    width: right - x,
+    height: bottom - y,
   };
 }
 
