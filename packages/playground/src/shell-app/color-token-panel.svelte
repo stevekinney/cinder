@@ -707,16 +707,16 @@
     min-height: 2.25rem;
     margin-block-start: 0.125rem;
     padding: 0;
-    background: var(--cinder-surface);
-    border-color: var(--cinder-border-muted);
-    border-radius: var(--cinder-radius-md);
+    background: transparent;
+    border-color: transparent;
+    border-radius: var(--cinder-radius-sm);
     box-shadow: none;
   }
 
   @media (hover: hover) {
     .token-row :global(.cinder-button.token-color-trigger:hover:not(:disabled)) {
-      background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
-      border-color: var(--cinder-border-strong);
+      background: transparent;
+      border-color: transparent;
     }
   }
 
@@ -737,24 +737,19 @@
 
   :global(.token-color-trigger__swatch) {
     display: block;
-    inline-size: 1.75rem;
-    block-size: 1.75rem;
+    inline-size: 2rem;
+    block-size: 2rem;
     border: 1px solid var(--cinder-border-strong);
     border-radius: var(--cinder-radius-sm);
     background-color: var(--token-picker-color);
-    box-shadow:
-      inset 0 0 0 1px color-mix(in oklch, var(--cinder-surface), transparent 15%),
-      0 1px 2px color-mix(in oklch, var(--cinder-text), transparent 88%);
+    box-shadow: none;
   }
 
   .token-row
     :global(.cinder-button.token-color-trigger:focus-visible .token-color-trigger__swatch) {
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: 2px;
-    box-shadow:
-      var(--_cinder-focus-ring-shadow),
-      inset 0 0 0 1px color-mix(in oklch, var(--cinder-surface), transparent 15%),
-      0 1px 2px color-mix(in oklch, var(--cinder-text), transparent 88%);
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   .token-row__body {

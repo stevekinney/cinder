@@ -38,6 +38,13 @@ type ColorTriggerFocusState = {
 
 type ColorTokenRowLayoutState = {
   triggerTitle: string | null;
+  triggerMatchesFocusVisible: boolean;
+  triggerBackgroundColor: string;
+  triggerBorderColor: string;
+  triggerBoxShadow: string;
+  swatchHeight: number;
+  swatchWidth: number;
+  swatchShadowLayerCount: number;
   rowInputCount: number;
   rowHorizontalOverflow: number;
   valueSummaryRightGap: number;
@@ -425,21 +432,51 @@ async function colorTokenRowLayoutState(
   tokenName: string,
 ): Promise<ColorTokenRowLayoutState> {
   return page.locator(`[data-color-token="${tokenName}"]`).evaluate((row) => {
+    function countShadowLayers(value: string): number {
+      if (value === 'none') return 0;
+
+      let depth = 0;
+      let layers = 1;
+      for (const char of value) {
+        if (char === '(') depth += 1;
+        if (char === ')') depth = Math.max(0, depth - 1);
+        if (char === ',' && depth === 0) layers += 1;
+      }
+      return layers;
+    }
+
     const trigger = row.querySelector<HTMLElement>('.token-color-trigger');
     const heading = row.querySelector<HTMLElement>('.token-row__heading');
     const valueSummary = row.querySelector<HTMLElement>('.token-value-summary');
     const valueChip = row.querySelector<HTMLElement>('.token-value-chip');
-    if (trigger === null || heading === null || valueSummary === null || valueChip === null) {
+    const swatch = row.querySelector<HTMLElement>('.token-color-trigger__swatch');
+    if (
+      trigger === null ||
+      heading === null ||
+      valueSummary === null ||
+      valueChip === null ||
+      swatch === null
+    ) {
       throw new Error('Color token row is missing expected editor structure.');
     }
 
     const rowBox = row.getBoundingClientRect();
     const valueSummaryBox = valueSummary.getBoundingClientRect();
+    const swatchBox = swatch.getBoundingClientRect();
+    const triggerStyle = getComputedStyle(trigger);
+    const swatchStyle = getComputedStyle(swatch);
     const resetButton = row.querySelector<HTMLElement>('.token-reset-button');
     const resetBox = resetButton?.getBoundingClientRect();
 
     return {
       triggerTitle: trigger.getAttribute('title'),
+      triggerMatchesFocusVisible: trigger.matches(':focus-visible'),
+      triggerBackgroundColor: triggerStyle.backgroundColor,
+      triggerBorderColor: triggerStyle.borderColor,
+      triggerBoxShadow: triggerStyle.boxShadow,
+      swatchHeight: swatchBox.height,
+      swatchWidth: swatchBox.width,
+      swatchShadowLayerCount: countShadowLayers(swatchStyle.boxShadow),
       rowInputCount: row.querySelectorAll('input.cinder-input').length,
       rowHorizontalOverflow: row.scrollWidth - row.clientWidth,
       valueSummaryRightGap: rowBox.right - valueSummaryBox.right,
@@ -450,6 +487,23 @@ async function colorTokenRowLayoutState(
           : (resetBox.left + resetBox.width / 2 - rowBox.left) / rowBox.width,
     };
   });
+}
+
+function expectCleanSwatchChrome(layout: ColorTokenRowLayoutState): void {
+  expect(layout.triggerMatchesFocusVisible).toBe(false);
+  expect(layout.triggerBackgroundColor).toBe('rgba(0, 0, 0, 0)');
+  expect(layout.triggerBorderColor).toBe('rgba(0, 0, 0, 0)');
+  expect(layout.triggerBoxShadow).toBe('none');
+  expect(layout.swatchHeight).toBeGreaterThanOrEqual(31);
+  expect(layout.swatchWidth).toBeGreaterThanOrEqual(31);
+  expect(layout.swatchShadowLayerCount).toBeLessThanOrEqual(1);
+}
+
+function expectCleanTokenRowLayout(layout: ColorTokenRowLayoutState): void {
+  expectCleanSwatchChrome(layout);
+  expect(layout.rowInputCount).toBe(0);
+  expect(layout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
+  expect(layout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
 }
 
 async function postIframeColorOverrideMessage(
@@ -558,6 +612,8 @@ test.describe('playground color token panel', () => {
     expect(countBoxShadowLayers(focusState.swatchBoxShadow)).toBeGreaterThan(
       countBoxShadowLayers(normalSurfaceSwatchShadow),
     );
+    await panel.locator('#color-token-filter').focus();
+    await expect(panel.locator('#color-token-filter')).toBeFocused();
 
     const accentRow = page.locator(`[data-color-token="${TOKEN_NAME}"]`);
     const accentColorPickerButton = accentRow.getByRole('button', {
@@ -575,11 +631,9 @@ test.describe('playground color token panel', () => {
     expect(initialAccentRowLayout).toEqual(
       expect.objectContaining({
         triggerTitle: null,
-        rowInputCount: 0,
       }),
     );
-    expect(initialAccentRowLayout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
-    expect(initialAccentRowLayout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
+    expectCleanTokenRowLayout(initialAccentRowLayout);
     expect(initialAccentRowLayout.valueChipText).toMatch(/^#[0-9a-f]{6}$/i);
     await accentColorPickerButton.click();
     const pickerDialog = page.getByRole('dialog', { name: `Pick ${TOKEN_NAME} color` });
@@ -599,9 +653,7 @@ test.describe('playground color token panel', () => {
     await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toBeVisible();
     const overriddenAccentRowLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
     expect(overriddenAccentRowLayout.resetCenterRatio).toBeGreaterThan(0.9);
-    expect(overriddenAccentRowLayout.rowInputCount).toBe(0);
-    expect(overriddenAccentRowLayout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
-    expect(overriddenAccentRowLayout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
+    expectCleanTokenRowLayout(overriddenAccentRowLayout);
     expect(overriddenAccentRowLayout.valueChipText).toBe(visualPickerValue.toLowerCase());
     await page.keyboard.press('Escape');
     await expect(pickerDialog).toBeHidden();
@@ -672,21 +724,19 @@ test.describe('playground color token panel', () => {
     expect(await accentColorPickerButton.getAttribute('title')).toBeNull();
     await expect(panel.locator('.token-row input.cinder-input')).toHaveCount(0);
     await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toHaveCount(0);
+    await panel.locator('#color-token-filter').focus();
     const initialLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
-    expect(initialLayout.rowInputCount).toBe(0);
-    expect(initialLayout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
-    expect(initialLayout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
+    expectCleanTokenRowLayout(initialLayout);
     expect(initialLayout.valueChipText).toMatch(/^#[0-9a-f]{6}$/i);
 
     await fillTokenCssValue(page, TOKEN_NAME, '#00c4c7');
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe('#00c4c7');
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe('#00c4c7');
     await expect(accentRow.getByRole('button', { name: `Reset ${TOKEN_NAME}` })).toBeVisible();
+    await panel.locator('#color-token-filter').focus();
     const overriddenLayout = await colorTokenRowLayoutState(page, TOKEN_NAME);
     expect(overriddenLayout.resetCenterRatio).toBeGreaterThan(0.85);
-    expect(overriddenLayout.rowInputCount).toBe(0);
-    expect(overriddenLayout.rowHorizontalOverflow).toBeLessThanOrEqual(1);
-    expect(overriddenLayout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
+    expectCleanTokenRowLayout(overriddenLayout);
     expect(overriddenLayout.valueChipText).toBe('#00c4c7');
     await expect(panel).toBeVisible();
   });
