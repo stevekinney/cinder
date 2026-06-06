@@ -42,6 +42,10 @@ import {
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll, resetProject } from './analyze.ts';
 import {
+  ComponentDocumentationError,
+  buildComponentDocumentation,
+} from './component-documentation.ts';
+import {
   COMPOSE_ONLY_COMPONENTS,
   discoverComponents,
   discoverExamples,
@@ -1517,6 +1521,35 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(JSON.stringify(manifest), {
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  // GET /api/documentation/:name — component documentation payload
+  const apiDocumentationMatch = pathname.match(/^\/api\/documentation\/([^/]+)$/);
+  if (apiDocumentationMatch) {
+    const componentName = apiDocumentationMatch[1]!;
+    if (!isSafeSegment(componentName)) return notFound();
+    await awaitWarmCache();
+    const manifests = await getManifests();
+    const manifest = manifests.find((m) => m.kebabName === componentName);
+    if (manifest === undefined) {
+      return notFound(`Documentation for "${componentName}" not found`);
+    }
+
+    try {
+      const documentation = await buildComponentDocumentation(componentName, manifest);
+      return new Response(JSON.stringify(documentation), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      if (error instanceof ComponentDocumentationError && error.code === 'unknown-component') {
+        return notFound(`Documentation for "${componentName}" not found`);
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      return new Response(`Documentation route failed for "${componentName}":\n${message}`, {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain' },
+      });
+    }
   }
 
   // GET /page/:name — standalone component page (iframe content, no shell)

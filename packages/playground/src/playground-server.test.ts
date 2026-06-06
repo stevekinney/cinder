@@ -18,6 +18,7 @@ import {
   resolveFixtureFilePath,
 } from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import type { ComponentManifest } from './analyze.ts';
+import { isComponentDocumentationPayload } from './component-documentation-reference.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
   PORT,
@@ -987,6 +988,32 @@ describe('/api/manifest/:name', () => {
 
   it('returns 404 for segments with uppercase (isSafeSegment blocked)', async () => {
     const response = await handleRequest(req('/api/manifest/Button'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+});
+
+describe('/api/documentation/:name', () => {
+  it('returns 200 documentation JSON for a known component', async () => {
+    const response = await handleRequest(req('/api/documentation/button'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/json');
+    const body: unknown = await response.json();
+    expect(isComponentDocumentationPayload(body)).toBe(true);
+    if (!isComponentDocumentationPayload(body)) return;
+    expect(body.component.id).toBe('button');
+    expect(body.component.purpose).toContain('Primary interactive control');
+    expect(body.readme.html).toContain('<h1>Button</h1>');
+    expect(body.constraints).not.toBeNull();
+    expect(body.examples).not.toBeNull();
+  }, 30_000);
+
+  it('returns 404 for an unknown component', async () => {
+    const response = await handleRequest(req('/api/documentation/does-not-exist'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+
+  it('returns 404 for segments with uppercase (isSafeSegment blocked)', async () => {
+    const response = await handleRequest(req('/api/documentation/Button'));
     expect(response.status).toBe(404);
   }, 30_000);
 });

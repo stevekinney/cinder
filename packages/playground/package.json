@@ -14,6 +14,7 @@
     "vercel-build": "bun run scripts/static-export.ts"
   },
   "dependencies": {
+    "@cinder/markdown": "workspace:*",
     "@lostgradient/cinder": "workspace:*",
     "shiki": "^3.0.0"
   },

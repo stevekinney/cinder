@@ -14,6 +14,11 @@
 
 import { join } from 'node:path';
 
+import {
+  isComponentDocumentationPayload,
+  validateComponentDocumentationPayload,
+  variablesList,
+} from './component-documentation-reference.ts';
 import { discoverComponents } from './discover.ts';
 import { type PlaygroundServer, PORT, startServer, triggerReload } from './playground-server.ts';
 
@@ -201,6 +206,56 @@ async function validateComponentRoutes(baseUrl: string, components: string[]): P
   );
 }
 
+async function validateDocumentationRoutes(baseUrl: string, components: string[]): Promise<void> {
+  process.stdout.write(
+    `[validate:playground] crawling ${components.length} documentation routes…\n`,
+  );
+
+  for (const name of components) {
+    const documentationUrl = `${baseUrl}/api/documentation/${name}`;
+    let documentationResponse: Response;
+    try {
+      documentationResponse = await fetch(documentationUrl, {
+        signal: AbortSignal.timeout(5_000),
+      });
+    } catch (error) {
+      fail(`fetch ${documentationUrl} threw: ${String(error)}`);
+    }
+    if (documentationResponse.status !== 200) {
+      fail(`GET ${documentationUrl} returned ${documentationResponse.status}, expected 200`);
+    }
+    const body: unknown = await documentationResponse.json();
+    if (!isComponentDocumentationPayload(body)) {
+      fail(`GET ${documentationUrl} did not return a valid documentation payload`);
+    }
+
+    const payloadErrors = validateComponentDocumentationPayload(body);
+    if (payloadErrors.length > 0) {
+      fail(
+        `GET ${documentationUrl} returned invalid documentation:\n` +
+          payloadErrors.map((error) => `  - ${error}`).join('\n'),
+      );
+    }
+
+    for (const [artifactName, artifact] of Object.entries(body.rawArtifacts)) {
+      if (JSON.stringify(artifact) === undefined) {
+        fail(`GET ${documentationUrl} raw ${artifactName} artifact is not renderable as JSON`);
+      }
+    }
+
+    if (name === 'button' && body.constraints === null) {
+      fail('GET /api/documentation/button must include generated constraints');
+    }
+    if (name === 'avatar-group' && variablesList(body.variables).length === 0) {
+      fail('GET /api/documentation/avatar-group must include generated CSS variables');
+    }
+  }
+
+  process.stdout.write(
+    `[validate:playground] all ${components.length} documentation routes returned readable payloads.\n`,
+  );
+}
+
 /**
  * Validate the SSE reload path:
  *   1. Connect to /events and wait for the ': connected' handshake.
@@ -303,6 +358,7 @@ if (import.meta.main) {
     // import.meta.dirname is packages/playground/src/; examples live under examples/.
     await validateExampleTitles(join(import.meta.dirname, 'examples'));
     await validateComponentRoutes(baseUrl, components);
+    await validateDocumentationRoutes(baseUrl, components);
     await validateSseReload(baseUrl);
 
     process.stdout.write('[validate:playground] all checks passed.\n');

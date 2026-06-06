@@ -19,7 +19,7 @@
  *   - `/page-bundle/<name>.js` + every hashed chunk each imports
  *   - `/styles.css`, `/styles/all.css`, and every `/styles/*` + `/components/*`
  *     CSS the rendered HTML references
- *   - `/api/manifest` and `/api/manifest/<name>`
+ *   - `/api/manifest/<name>` and `/api/documentation/<name>`
  *   - `/example-src/<name>/<scenario>` for every example
  *   - `/ping` (so the deploy smoke-test has a static `pong`)
  *
@@ -30,12 +30,12 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { handleRequest } from '../src/playground-server.ts';
 import {
   discoverComponents,
   discoverExamples,
   discoverSidebarComponents,
 } from '../src/discover.ts';
+import { handleRequest } from '../src/playground-server.ts';
 
 const PLAYGROUND_ROOT = join(import.meta.dirname, '..');
 const OUTPUT_DIRECTORY = join(PLAYGROUND_ROOT, 'public');
@@ -232,6 +232,7 @@ async function main(): Promise<void> {
     if (pageHtml !== null) collect(pageHtml);
     await renderJsBundleGraph(`/page-bundle/${name}.js`);
     await render(`/api/manifest/${name}`);
+    await render(`/api/documentation/${name}`);
     for (const scenario of await discoverExamples(name)) {
       await render(`/example-src/${name}/${scenario}`);
     }
