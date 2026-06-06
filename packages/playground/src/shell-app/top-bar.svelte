@@ -16,6 +16,9 @@
   const store = getPreviewStore();
   const announcer = getAnnouncer();
 
+  const GITHUB_REPOSITORY_URL = 'https://github.com/stevekinney/cinder';
+  const NPM_PACKAGE_URL = 'https://www.npmjs.com/package/@lostgradient/cinder';
+
   // The viewport-size presets (Mobile/Tablet/Desktop/Full + custom px) simulate
   // a narrower preview canvas on a wide screen. Below ~840px the toolbar can't
   // fit them AND they're meaningless (you're already constrained), so the CSS
@@ -242,6 +245,58 @@
       <Button
         variant="ghost"
         size="sm"
+        iconOnly={true}
+        aria-label="Open GitHub repository"
+        href={GITHUB_REPOSITORY_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <svg
+          class="toolbar-icon"
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5z" />
+          <path d="M8 4v16" />
+          <path d="M12 8h4" />
+          <path d="M12 12h3" />
+        </svg>
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        iconOnly={true}
+        aria-label="Open npm package"
+        href={NPM_PACKAGE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <svg
+          class="toolbar-icon"
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+          <path d="M12 12 4 7.5" />
+          <path d="m12 12 8-4.5" />
+          <path d="M12 12v9" />
+        </svg>
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="sm"
         aria-label="Color token panel"
         aria-expanded={store.isColorTokenPanelOpen}
         aria-controls="color-token-panel-heading"
@@ -441,6 +496,12 @@
     color: var(--cinder-text-subtle);
     padding-inline-start: 3px;
     flex-shrink: 0;
+  }
+
+  .toolbar-icon {
+    display: block;
+    width: 1rem;
+    height: 1rem;
   }
 
   /*
