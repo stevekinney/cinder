@@ -232,6 +232,15 @@ Foreground / background / border triples for soft tinted surfaces. Use these in 
 | `--cinder-color-danger-fg`      | `light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25))`    |
 | `--cinder-color-danger-border`  | `light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))`    |
 
+## Transparency checkerboard
+
+Shared checkerboard colors for color-domain components that need to show alpha over a structural pattern.
+
+| Token                         | Default                                 |
+| ----------------------------- | --------------------------------------- |
+| `--cinder-color-checker-base` | `light-dark(#fff, oklch(28% 0.02 245))` |
+| `--cinder-color-checker-tile` | `light-dark(#ccc, oklch(38% 0.02 245))` |
+
 ## Scrollbar
 
 Used by the `ScrollArea` component and any consumer that opts into themed native scrollbars. Thumb alpha is tuned so the resolved thumb-on-surface contrast clears WCAG 1.4.11 (3:1) over common light- and dark-mode surface tokens.

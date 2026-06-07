@@ -283,6 +283,12 @@
   --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.12 25));
   --cinder-color-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
 
+  /* Transparency checkerboard tokens shared by color-domain components. Light
+     mode preserves the historical white/gray grid; dark mode keeps the pattern
+     visible without flashing a white backing inside dark chrome. */
+  --cinder-color-checker-base: light-dark(#fff, oklch(28% 0.02 245));
+  --cinder-color-checker-tile: light-dark(#ccc, oklch(38% 0.02 245));
+
   /* Scrollbars — used by the ScrollArea component and any consumer that
      opts into themed native scrollbars via `scrollbar-width` and
      `::-webkit-scrollbar-*`. Thumb alpha is tuned so the resolved

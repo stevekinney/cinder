@@ -36,20 +36,17 @@
 
   .cinder-color-field__swatch[data-cinder-alpha]:not([data-cinder-empty]) {
     /* structural-pattern: transparency checkerboard so partially-transparent
-     * swatches stay visible — a fixed light/neutral grid signalling "see-through",
-     * not a themeable surface. Raw values declared once here with markers. */
-    --_cinder-color-field-checker-base: #fff; /* cinder-allow-raw-color: structural-pattern — checkerboard backing */
-    --_cinder-color-field-checker-tile: #ccc; /* cinder-allow-raw-color: structural-pattern — checkerboard tile */
-    background-color: var(--_cinder-color-field-checker-base);
+     * swatches stay visible while following the shared checker tokens. */
+    background-color: var(--cinder-color-checker-base);
     background-image:
       linear-gradient(
         var(--cinder-color-field-swatch, transparent),
         var(--cinder-color-field-swatch, transparent)
       ),
-      linear-gradient(45deg, var(--_cinder-color-field-checker-tile) 25%, transparent 25%),
-      linear-gradient(-45deg, var(--_cinder-color-field-checker-tile) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, var(--_cinder-color-field-checker-tile) 75%),
-      linear-gradient(-45deg, transparent 75%, var(--_cinder-color-field-checker-tile) 75%);
+      linear-gradient(45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--cinder-color-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--cinder-color-checker-tile) 75%);
     background-size:
       auto,
       6px 6px,
