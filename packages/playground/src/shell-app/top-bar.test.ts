@@ -86,6 +86,12 @@ function buttonByLabel(container: HTMLElement, label: string): HTMLButtonElement
   return button;
 }
 
+function linkByLabel(container: HTMLElement, label: string): HTMLAnchorElement {
+  const link = container.querySelector<HTMLAnchorElement>(`a[aria-label="${label}"]`);
+  if (link === null) throw new Error(`No link with aria-label "${label}"`);
+  return link;
+}
+
 /** Find a button whose aria-label matches a pattern (for long/verbose labels). */
 function buttonByLabelMatch(container: HTMLElement, pattern: RegExp): HTMLButtonElement {
   const buttons = [...container.querySelectorAll<HTMLButtonElement>('button[aria-label]')];
@@ -157,6 +163,35 @@ describe('top-bar open-in-new-tab button', () => {
     expect(openCalls[0]?.features).toBe('noopener');
     unmount();
   });
+
+  test('points the color token toggle at the panel container', async () => {
+    const { container, unmount } = render(TopBarFixture, { currentComponent: 'button' });
+    await tick();
+
+    const button = buttonByLabel(container, 'Color token panel');
+    expect(button.getAttribute('aria-controls')).toBe('color-token-panel');
+
+    unmount();
+  });
+});
+
+describe('top-bar resource links', () => {
+  test('renders external links to the GitHub repository and npm package', async () => {
+    const { container, unmount } = render(TopBarFixture, { currentComponent: 'button' });
+    await tick();
+
+    const githubLink = linkByLabel(container, 'Open GitHub repository');
+    expect(githubLink.getAttribute('href')).toBe('https://github.com/stevekinney/cinder');
+    expect(githubLink.getAttribute('target')).toBe('_blank');
+    expect(githubLink.getAttribute('rel')).toBe('noopener noreferrer');
+
+    const npmLink = linkByLabel(container, 'Open npm package');
+    expect(npmLink.getAttribute('href')).toBe('https://www.npmjs.com/package/@lostgradient/cinder');
+    expect(npmLink.getAttribute('target')).toBe('_blank');
+    expect(npmLink.getAttribute('rel')).toBe('noopener noreferrer');
+
+    unmount();
+  });
 });
 
 describe('top-bar theme selection', () => {
@@ -200,9 +235,12 @@ describe('top-bar theme selection', () => {
 
   test('entering focus mode closes an open sidebar drawer', async () => {
     // Focus mode hides the sidebar entirely; an open narrow-viewport drawer must
-    // be closed too, or its scrim is orphaned over the fullscreen preview.
+    // be closed too, or its scrim is orphaned over the fullscreen preview. The
+    // color-token panel is also shell chrome, so it closes with the rest of the
+    // chrome.
     const store = new PreviewStore('button');
     store.isSidebarOpen = true;
+    store.isColorTokenPanelOpen = true;
     const { container } = render(TopBarFixture, { store });
     await tick();
 
@@ -211,6 +249,7 @@ describe('top-bar theme selection', () => {
 
     expect(store.isFocusMode).toBe(true);
     expect(store.isSidebarOpen).toBe(false);
+    expect(store.isColorTokenPanelOpen).toBe(false);
   });
 
   test('toggling focus mode off does not reopen the drawer', async () => {

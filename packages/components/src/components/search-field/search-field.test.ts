@@ -25,6 +25,21 @@ describe('SearchField rendering', () => {
     expect(input.getAttribute('type')).toBe('search');
   });
 
+  test('forwards accessible input attributes while preserving the search role', () => {
+    const { getByRole } = render(SearchField, {
+      props: {
+        id: 'search',
+        'aria-label': 'Search components',
+        defaultValue: 'cinder',
+      },
+    });
+
+    const input = getByRole('searchbox', { name: 'Search components' });
+    expect(input).toBeInstanceOf(HTMLInputElement);
+    expect((input as HTMLInputElement).value).toBe('cinder');
+    expect((input as HTMLInputElement).type).toBe('search');
+  });
+
   test('renders the leading search icon as aria-hidden', () => {
     const { container } = render(SearchField, { props: { id: 'search' } });
     const leading = container.querySelector('.cinder-search-field__leading');

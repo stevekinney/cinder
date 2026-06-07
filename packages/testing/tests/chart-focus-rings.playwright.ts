@@ -303,6 +303,9 @@ async function ringScreenshotClip(
   const ringBox = await ring.boundingBox();
   const svgBox = await svg.boundingBox();
   if (!ringBox || !svgBox) throw new Error(`${chart.slug}: missing ring or SVG screenshot clip.`);
+  expect(ringBox.width, `${chart.slug}: ring screenshot width`).toBeGreaterThan(0);
+  expect(ringBox.height, `${chart.slug}: ring screenshot height`).toBeGreaterThan(0);
+  expectBoxInside(ringBox, svgBox, `${chart.slug} screenshot ring inside SVG`);
   const deviceScaleFactor = await page.evaluate(() => window.devicePixelRatio || 1);
   const viewport = page.viewportSize();
   if (viewport === null) throw new Error(`${chart.slug}: missing viewport for screenshot clip.`);

@@ -136,8 +136,17 @@ describe('exports drift', () => {
     expect(exports['./styles/utilities']).toBeDefined();
     // The slim base points at the layer-order + tokens/foundation/utilities
     // aggregator; the all-in entry points at the full-cascade aggregator.
-    expect(exports['./styles']).toEqual({ default: './src/styles/index.css' });
-    expect(exports['./styles/all']).toEqual({ default: './src/styles/all.css' });
+    // Each CSS-only subpath also carries a `types` condition (first, per
+    // nodenext ordering) pointing at an `export {};` stub so a side-effect
+    // import typechecks under `moduleResolution: bundler`.
+    expect(exports['./styles']).toEqual({
+      types: './src/styles/index.css.d.ts',
+      default: './src/styles/index.css',
+    });
+    expect(exports['./styles/all']).toEqual({
+      types: './src/styles/all.css.d.ts',
+      default: './src/styles/all.css',
+    });
   });
 
   test('checked-in exports contain no forbidden keys', async () => {

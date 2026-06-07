@@ -14,7 +14,9 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 
 import {
+  applyColorTokenOverridesToDocument,
   applyThemeToDocument,
+  PreviewStore,
   readPersistedTheme,
   THEME_STORAGE_KEY,
   writePersistedTheme,
@@ -25,8 +27,13 @@ type LocalStorageStub = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
 };
+type MatchMediaListener =
+  | EventListenerOrEventListenerObject
+  | ((this: MediaQueryList, event: MediaQueryListEvent) => void);
 
 const originalLocalStorage = (globalThis as { localStorage?: Storage }).localStorage;
+const originalWindow = (globalThis as { window?: Window }).window;
+const originalHistory = (globalThis as { history?: History }).history;
 
 function installLocalStorage(stub: LocalStorageStub | undefined): void {
   if (stub === undefined) {
@@ -45,6 +52,58 @@ function installLocalStorage(stub: LocalStorageStub | undefined): void {
   });
 }
 
+function createMatchMedia(matches = false): Window['matchMedia'] {
+  return ((query: string): MediaQueryList => {
+    const listeners = new Set<MatchMediaListener>();
+    let mediaQueryList: MediaQueryList;
+
+    function notifyListener(listener: MatchMediaListener, event: Event): void {
+      if (typeof listener === 'function') {
+        listener.call(mediaQueryList, event as MediaQueryListEvent);
+        return;
+      }
+      listener.handleEvent(event);
+    }
+
+    mediaQueryList = {
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener(_type: string, listener: EventListenerOrEventListenerObject | null) {
+        if (listener !== null) listeners.add(listener);
+      },
+      removeEventListener(_type: string, listener: EventListenerOrEventListenerObject | null) {
+        if (listener === null) return;
+        listeners.delete(listener);
+      },
+      addListener(listener: (this: MediaQueryList, event: MediaQueryListEvent) => void) {
+        listeners.add(listener);
+      },
+      removeListener(listener: (this: MediaQueryList, event: MediaQueryListEvent) => void) {
+        listeners.delete(listener);
+      },
+      dispatchEvent(event: Event) {
+        for (const listener of listeners) {
+          notifyListener(listener, event);
+        }
+        return true;
+      },
+    };
+    return mediaQueryList;
+  }) as Window['matchMedia'];
+}
+
+function installWindow(href: string): void {
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      location: { href },
+      matchMedia: createMatchMedia(),
+    } as unknown as Window,
+    writable: true,
+  });
+}
+
 afterEach(() => {
   if (originalLocalStorage === undefined) {
     delete (globalThis as { localStorage?: Storage }).localStorage;
@@ -52,6 +111,24 @@ afterEach(() => {
     Object.defineProperty(globalThis, 'localStorage', {
       configurable: true,
       value: originalLocalStorage,
+      writable: true,
+    });
+  }
+  if (originalWindow === undefined) {
+    delete (globalThis as { window?: Window }).window;
+  } else {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: originalWindow,
+      writable: true,
+    });
+  }
+  if (originalHistory === undefined) {
+    delete (globalThis as { history?: History }).history;
+  } else {
+    Object.defineProperty(globalThis, 'history', {
+      configurable: true,
+      value: originalHistory,
       writable: true,
     });
   }
@@ -128,9 +205,58 @@ describe('writePersistedTheme', () => {
   });
 });
 
+describe('focus mode chrome state', () => {
+  it('closes sidebar and color token panel when focus mode is enabled directly', () => {
+    installWindow('https://example.com/c/button');
+    Object.defineProperty(globalThis, 'history', {
+      configurable: true,
+      value: {
+        state: null,
+        replaceState: () => {},
+      } as unknown as History,
+      writable: true,
+    });
+
+    const store = new PreviewStore('button');
+    store.isSidebarOpen = true;
+    store.isColorTokenPanelOpen = true;
+
+    store.isFocusMode = true;
+
+    expect(store.isSidebarOpen).toBe(false);
+    expect(store.isColorTokenPanelOpen).toBe(false);
+  });
+
+  it('closes color token panel when URL sync enters focus mode', () => {
+    installWindow('https://example.com/c/button?focus=1');
+
+    const store = new PreviewStore('button');
+    store.isColorTokenPanelOpen = true;
+
+    store.syncFromUrl();
+
+    expect(store.isFocusMode).toBe(true);
+    expect(store.isColorTokenPanelOpen).toBe(false);
+  });
+});
+
 function makeFakeDocument(): Document {
+  const properties = new Map<string, string>();
+  const style = {
+    colorScheme: '',
+    setProperty(name: string, value: string) {
+      properties.set(name, value);
+    },
+    removeProperty(name: string) {
+      properties.delete(name);
+      return '';
+    },
+    getPropertyValue(name: string) {
+      return properties.get(name) ?? '';
+    },
+  };
   return {
-    documentElement: { style: { colorScheme: '' }, dataset: {} as Record<string, string> },
+    documentElement: { style, dataset: {} as Record<string, string> },
   } as unknown as Document;
 }
 
@@ -174,5 +300,101 @@ describe('applyThemeToDocument', () => {
       applyThemeToDocument(doc, null, resolved);
       expect(doc.documentElement.dataset['cinderTheme']).toBe(resolved);
     }
+  });
+});
+
+describe('color token overrides', () => {
+  it('stores overrides per theme', () => {
+    const store = new PreviewStore('button', { theme: 'light' });
+
+    expect(store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)')).toBe(
+      true,
+    );
+    expect(store.setColorTokenOverride('dark', '--cinder-accent', 'oklch(78% 0.16 195)')).toBe(
+      true,
+    );
+
+    expect(store.colorTokenOverrides.light['--cinder-accent']).toBe('oklch(60% 0.2 195)');
+    expect(store.colorTokenOverrides.dark['--cinder-accent']).toBe('oklch(78% 0.16 195)');
+    expect(store.getActiveColorTokenOverrides()).toEqual({
+      '--cinder-accent': 'oklch(60% 0.2 195)',
+    });
+  });
+
+  it('resets one token or the full active-theme override set', () => {
+    const store = new PreviewStore('button', { theme: 'light' });
+    store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
+    store.setColorTokenOverride('light', '--cinder-bg', 'oklch(97% 0.02 245)');
+    store.setColorTokenOverride('dark', '--cinder-accent', 'oklch(78% 0.16 195)');
+
+    store.resetColorTokenOverride('light', '--cinder-bg');
+    expect(store.colorTokenOverrides.light).toEqual({
+      '--cinder-accent': 'oklch(60% 0.2 195)',
+    });
+
+    store.resetColorTokenOverrides('light');
+    expect(store.colorTokenOverrides.light).toEqual({});
+    expect(store.colorTokenOverrides.dark).toEqual({
+      '--cinder-accent': 'oklch(78% 0.16 195)',
+    });
+  });
+
+  it('rejects unknown tokens and unsafe values', () => {
+    const store = new PreviewStore('button', { theme: 'light' });
+    expect(store.setColorTokenOverride('light', '--cinder-accent', '#336699')).toBe(true);
+
+    expect(
+      store.setColorTokenOverride('light', '--cinder-accent', 'url(https://example.com)'),
+    ).toBe(false);
+    // @ts-expect-error — exercising runtime validation for untrusted callers
+    expect(store.setColorTokenOverride('light', '--cinder-button-bg', 'oklch(60% 0.2 195)')).toBe(
+      false,
+    );
+    expect(store.colorTokenOverrides.light).toEqual({
+      '--cinder-accent': '#336699',
+    });
+  });
+
+  it('does not write color overrides to localStorage or the URL', () => {
+    const storageCalls: string[] = [];
+    const historyCalls: string[] = [];
+    installLocalStorage({
+      getItem: () => null,
+      setItem: (key, value) => {
+        storageCalls.push(`${key}:${value}`);
+      },
+    });
+    Object.defineProperty(globalThis, 'history', {
+      configurable: true,
+      value: {
+        replaceState(_state: unknown, _unused: string, href: string) {
+          historyCalls.push(href);
+        },
+      },
+      writable: true,
+    });
+
+    const store = new PreviewStore('button', { theme: 'light' });
+    store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
+    store.resetColorTokenOverride('light', '--cinder-accent');
+    store.setColorTokenOverride('dark', '--cinder-accent', 'oklch(78% 0.16 195)');
+    store.resetColorTokenOverrides('dark');
+
+    expect(storageCalls).toEqual([]);
+    expect(historyCalls).toEqual([]);
+  });
+
+  it('applies only validated color token overrides to a document root', () => {
+    const doc = makeFakeDocument();
+
+    doc.documentElement.style.setProperty('--cinder-bg', 'oklch(97% 0.01 245)');
+    applyColorTokenOverridesToDocument(doc, {
+      '--cinder-accent': 'oklch(60% 0.2 195)',
+    });
+
+    expect(doc.documentElement.style.getPropertyValue('--cinder-bg')).toBe('');
+    expect(doc.documentElement.style.getPropertyValue('--cinder-accent')).toBe(
+      'oklch(60% 0.2 195)',
+    );
   });
 });
