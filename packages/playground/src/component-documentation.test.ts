@@ -64,6 +64,7 @@ describe('buildComponentDocumentation', () => {
 | ---- | ---- | -------- | ------- | ----------- |
 | \`class\` | \`string\` | no | - | Optional extra class on the underlying <Modal>. |
 | \`description\` | \`string\` | no | - | Rendered as a single <p> and wired to aria-describedby. |
+| \`dangerousTagMention\` | \`string\` | no | - | Mentions <script>, <style>, and <img src="avatar.png"> as literal text. |
 
 <!-- generated:props:end -->
 `);
@@ -71,6 +72,11 @@ describe('buildComponentDocumentation', () => {
     expect(readme.hadUnsafeContent).toBe(false);
     expect(readme.html).toContain('&#x3C;Modal>');
     expect(readme.html).toContain('&#x3C;p>');
+    expect(readme.html).toContain('&#x3C;script>');
+    expect(readme.html).toContain('&#x3C;style>');
+    expect(readme.html).not.toContain('<script>');
+    expect(readme.html).not.toContain('<style>');
+    expect(readme.html).not.toContain('<img');
   });
 
   it('marks unsafe README rendering and validation fails on it', async () => {

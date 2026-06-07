@@ -212,26 +212,19 @@ const generatedRegionPattern =
 const inlineCodeSpanPattern = /(`+[^`\n]*?`+)/g;
 const htmlLikeTagPattern =
   /<\/?[A-Za-z][A-Za-z0-9.-]*(?:\s+[A-Za-z_:][A-Za-z0-9_:.-]*(?:=(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/g;
-const unsafeHtmlTagNamePattern = /^<\/?\s*(?:script|iframe|object|embed|style|link|meta|img)\b/i;
-const unsafeHtmlAttributePattern = /\son[a-z]+\s*=|javascript\s*:/i;
 
 function escapeHtmlToken(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function escapeSafeGeneratedTagReferences(value: string): string {
-  return value.replace(htmlLikeTagPattern, (tag) => {
-    if (unsafeHtmlTagNamePattern.test(tag) || unsafeHtmlAttributePattern.test(tag)) return tag;
-    return escapeHtmlToken(tag);
-  });
+function escapeGeneratedTagReferences(value: string): string {
+  return value.replace(htmlLikeTagPattern, (tag) => escapeHtmlToken(tag));
 }
 
 function escapeGeneratedRegionMarkdown(value: string): string {
   return value
     .split(inlineCodeSpanPattern)
-    .map((segment, index) =>
-      index % 2 === 1 ? segment : escapeSafeGeneratedTagReferences(segment),
-    )
+    .map((segment, index) => (index % 2 === 1 ? segment : escapeGeneratedTagReferences(segment)))
     .join('');
 }
 
