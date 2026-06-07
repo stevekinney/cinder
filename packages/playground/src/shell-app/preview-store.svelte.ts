@@ -13,6 +13,13 @@
 import { getContext, setContext } from 'svelte';
 import { MediaQuery } from 'svelte/reactivity';
 
+import {
+  COLOR_TOKEN_NAMES,
+  isColorTokenName,
+  isSafeColorTokenValue,
+  type ColorTokenName,
+  type ColorTokenOverrides,
+} from './color-token-registry.ts';
 import type { ThemeChoice, ToolbarSearchState } from './routing.ts';
 import {
   buildToolbarSearch,
@@ -22,6 +29,8 @@ import {
 } from './routing.ts';
 
 export type { ThemeChoice };
+
+export type ColorTokenOverrideState = Record<ThemeChoice, ColorTokenOverrides>;
 
 const PREVIEW_STORE_KEY = Symbol('cinder-preview-store');
 
@@ -77,6 +86,21 @@ export function applyThemeToDocument(
   doc.documentElement.dataset['cinderTheme'] = override ?? resolved;
 }
 
+export function applyColorTokenOverridesToDocument(
+  doc: Document,
+  overrides: ColorTokenOverrides,
+): void {
+  for (const tokenName of COLOR_TOKEN_NAMES) {
+    doc.documentElement.style.removeProperty(tokenName);
+  }
+
+  for (const [tokenName, value] of Object.entries(overrides)) {
+    if (!isColorTokenName(tokenName)) continue;
+    if (typeof value !== 'string' || !isSafeColorTokenValue(value)) continue;
+    doc.documentElement.style.setProperty(tokenName, value.trim());
+  }
+}
+
 export class PreviewStore {
   currentComponent = $state<string>('');
 
@@ -104,6 +128,8 @@ export class PreviewStore {
   #browserPrefersDark = new MediaQuery('(prefers-color-scheme: dark)', false);
   #previewWidth = $state<number | null>(null);
 
+  colorTokenOverrides = $state<ColorTokenOverrideState>({ light: {}, dark: {} });
+
   /**
    * Narrow-viewport sidebar drawer state. Pure shell-local UI: it is never
    * serialized to the URL (a drawer that reopens on reload is annoying, not
@@ -111,6 +137,9 @@ export class PreviewStore {
    * write the URL. On wide viewports the CSS ignores it entirely.
    */
   isSidebarOpen = $state<boolean>(false);
+
+  /** Right-side color-token editor state. Session-only and never serialized. */
+  isColorTokenPanelOpen = $state<boolean>(false);
 
   constructor(initialComponent: string, initialState: Partial<ToolbarSearchState> = {}) {
     this.currentComponent = initialComponent;
@@ -124,6 +153,10 @@ export class PreviewStore {
   }
   set isFocusMode(value: boolean) {
     this.#isFocusMode = value;
+    if (value) {
+      this.isSidebarOpen = false;
+      this.isColorTokenPanelOpen = false;
+    }
     this.#writeUrl();
   }
 
@@ -172,6 +205,7 @@ export class PreviewStore {
     writePersistedTheme(value);
     if (typeof document !== 'undefined') {
       applyThemeToDocument(document, this.#override, this.#resolvedBrowserTheme());
+      this.applyActiveColorTokenOverridesToDocument(document);
     }
     this.#writeUrl();
   }
@@ -191,13 +225,72 @@ export class PreviewStore {
     // If the user had the drawer open and navigated away (or landed on ?focus=1
     // via history), the scrim + inert state must not persist into the new URL.
     this.isSidebarOpen = false;
+    if (this.#isFocusMode) {
+      this.isColorTokenPanelOpen = false;
+    }
     const nextOverride = readThemeFromSearch(search) ?? readPersistedTheme();
     if (nextOverride !== this.#override) {
       this.#override = nextOverride;
       if (typeof document !== 'undefined') {
         applyThemeToDocument(document, this.#override, this.#resolvedBrowserTheme());
+        this.applyActiveColorTokenOverridesToDocument(document);
       }
     }
+  }
+
+  getColorTokenOverride(theme: ThemeChoice, tokenName: ColorTokenName): string | undefined {
+    return this.colorTokenOverrides[theme][tokenName];
+  }
+
+  getActiveColorTokenOverrides(): ColorTokenOverrides {
+    return { ...this.colorTokenOverrides[this.theme] };
+  }
+
+  setColorTokenOverride(theme: ThemeChoice, tokenName: ColorTokenName, value: string): boolean {
+    if (!THEME_VALUES.has(theme)) return false;
+    if (!isColorTokenName(tokenName)) return false;
+    if (!isSafeColorTokenValue(value)) return false;
+
+    this.colorTokenOverrides = {
+      ...this.colorTokenOverrides,
+      [theme]: {
+        ...this.colorTokenOverrides[theme],
+        [tokenName]: value.trim(),
+      },
+    };
+
+    if (theme === this.theme && typeof document !== 'undefined') {
+      this.applyActiveColorTokenOverridesToDocument(document);
+    }
+    return true;
+  }
+
+  resetColorTokenOverride(theme: ThemeChoice, tokenName: ColorTokenName): void {
+    const nextThemeOverrides = { ...this.colorTokenOverrides[theme] };
+    delete nextThemeOverrides[tokenName];
+    this.colorTokenOverrides = {
+      ...this.colorTokenOverrides,
+      [theme]: nextThemeOverrides,
+    };
+
+    if (theme === this.theme && typeof document !== 'undefined') {
+      this.applyActiveColorTokenOverridesToDocument(document);
+    }
+  }
+
+  resetColorTokenOverrides(theme: ThemeChoice): void {
+    this.colorTokenOverrides = {
+      ...this.colorTokenOverrides,
+      [theme]: {},
+    };
+
+    if (theme === this.theme && typeof document !== 'undefined') {
+      this.applyActiveColorTokenOverridesToDocument(document);
+    }
+  }
+
+  applyActiveColorTokenOverridesToDocument(doc: Document): void {
+    applyColorTokenOverridesToDocument(doc, this.colorTokenOverrides[this.theme]);
   }
 
   /**

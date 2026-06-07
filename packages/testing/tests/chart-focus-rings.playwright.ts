@@ -20,8 +20,6 @@ type ElementBox = {
   height: number;
 };
 
-type ScreenshotClip = ElementBox;
-
 type TabbableSummary = {
   tagName: string;
   role: string | null;
@@ -291,33 +289,21 @@ async function assertVisibleRing(root: Locator, chart: ChartDefinition, forcedCo
   }
 }
 
-async function ringScreenshotClip(
-  page: Page,
-  root: Locator,
-  chart: ChartDefinition,
-): Promise<ScreenshotClip> {
+async function chartSvgScreenshot(root: Locator): Promise<Buffer> {
+  const svg = root.locator('svg').first();
+  await svg.scrollIntoViewIfNeeded();
+  return svg.screenshot();
+}
+
+async function assertRingScreenshotArea(root: Locator, chart: ChartDefinition): Promise<void> {
   const ring = root.locator(primaryRingSelector(chart)).first();
   const svg = root.locator('svg').first();
   const ringBox = await ring.boundingBox();
   const svgBox = await svg.boundingBox();
   if (!ringBox || !svgBox) throw new Error(`${chart.slug}: missing ring or SVG screenshot clip.`);
-  const deviceScaleFactor = await page.evaluate(() => window.devicePixelRatio || 1);
-  const padding = Math.ceil(deviceScaleFactor * 4);
-  const x = Math.max(svgBox.x, ringBox.x - padding);
-  const y = Math.max(svgBox.y, ringBox.y - padding);
-  const right = Math.min(svgBox.x + svgBox.width, ringBox.x + ringBox.width + padding);
-  const bottom = Math.min(svgBox.y + svgBox.height, ringBox.y + ringBox.height + padding);
-
-  return {
-    x,
-    y,
-    width: Math.max(1, right - x),
-    height: Math.max(1, bottom - y),
-  };
-}
-
-async function clippedScreenshot(page: Page, clip: ScreenshotClip): Promise<Buffer> {
-  return page.screenshot({ clip });
+  expect(ringBox.width, `${chart.slug}: ring screenshot width`).toBeGreaterThan(0);
+  expect(ringBox.height, `${chart.slug}: ring screenshot height`).toBeGreaterThan(0);
+  expectBoxInside(ringBox, svgBox, `${chart.slug} screenshot ring inside SVG`);
 }
 
 function changedPixelCount(beforeBuffer: Buffer, afterBuffer: Buffer): number {
@@ -357,13 +343,13 @@ test.describe('chart SVG focus rings', () => {
         content: '[role="tooltip"] { visibility: hidden !important; }',
       });
       await insertSentinelBeforeChartViewport(root, chart);
-      const clip = await ringScreenshotClip(page, root, chart);
-      const afterFocus = await clippedScreenshot(page, clip);
+      await assertRingScreenshotArea(root, chart);
+      const afterFocus = await chartSvgScreenshot(root);
       await page.locator('[data-chart-focus-sentinel]').first().focus();
-      const beforeFocus = await clippedScreenshot(page, clip);
+      const beforeFocus = await chartSvgScreenshot(root);
       await focusFromSentinel(page, chart);
       await expect(target).toHaveAttribute('data-cinder-target-id', chart.targetId);
-      const afterRefocus = await clippedScreenshot(page, clip);
+      const afterRefocus = await chartSvgScreenshot(root);
 
       expect(
         changedPixelCount(beforeFocus, afterFocus),

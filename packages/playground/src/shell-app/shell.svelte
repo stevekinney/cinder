@@ -17,6 +17,7 @@
     setPreviewStore,
   } from './preview-store.svelte.ts';
   import { buildShellHref, parseComponentFromPath, readToolbarStateFromSearch } from './routing.ts';
+  import ColorTokenPanel from './color-token-panel.svelte';
   import Sidebar, { type SidebarHandle } from './sidebar.svelte';
   import TopBar from './top-bar.svelte';
 
@@ -124,15 +125,20 @@
     };
   });
 
-  // Apply the theme to the shell's root document on first paint. The inline
-  // pre-paint script in render-shell.ts already did this before the bundle
-  // loaded, but reapplying here keeps the state machine simple (the inline
-  // script is a perf optimization, not a correctness gate). Pass the override
-  // (null = follow the browser) and the resolved theme so the helper pins
-  // color-scheme only for an explicit choice.
-  if (typeof document !== 'undefined') {
+  // Apply the theme to the shell document. The inline pre-paint script in
+  // render-shell.ts handles the first paint; this effect keeps later toolbar
+  // changes and OS theme changes in sync without also running for token drags.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
     applyThemeToDocument(document, store.themeOverride, store.theme);
-  }
+  });
+
+  // Apply active-theme color overrides independently so continuous picker edits
+  // update only custom properties rather than rewriting the root theme signals.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    store.applyActiveColorTokenOverridesToDocument(document);
+  });
 
   async function selectComponent(name: string): Promise<void> {
     // Selecting from the off-canvas drawer (narrow viewports) should always
@@ -179,12 +185,41 @@
     return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   }
 
+  function isColorTokenPickerEscape(event: KeyboardEvent): boolean {
+    if (document.querySelector('.token-color-trigger[aria-expanded="true"]') !== null) return true;
+    return event
+      .composedPath()
+      .some(
+        (target) =>
+          target instanceof HTMLElement && target.classList.contains('color-token-picker-popover'),
+      );
+  }
+
+  function restoreColorTokenToggleFocus(): void {
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('button[aria-controls="color-token-panel"]')?.focus();
+    });
+  }
+
+  function closeColorTokenPanel(): void {
+    store.isColorTokenPanelOpen = false;
+    restoreColorTokenToggleFocus();
+  }
+
   function handleKeydown(event: KeyboardEvent): void {
-    // Escape precedence: close the drawer first (if open), otherwise exit focus
-    // mode. A single key never does both.
+    // Escape precedence: close the drawer first, then any shell side panel, then
+    // focus mode. A single key never does more than one of those shell-level
+    // actions. Nested overlays like the color picker popover get first claim via
+    // the shared overlay Escape stack, so keep the panel open while that popover
+    // is still mounted.
     if (event.key === 'Escape') {
       if (store.isSidebarOpen) {
         store.isSidebarOpen = false;
+        return;
+      }
+      if (store.isColorTokenPanelOpen) {
+        if (isColorTokenPickerEscape(event)) return;
+        closeColorTokenPanel();
         return;
       }
       if (store.isFocusMode) {
@@ -272,6 +307,9 @@
       aria-hidden="true"
       onclick={() => (store.isSidebarOpen = false)}
     ></div>
+  {/if}
+  {#if store.isColorTokenPanelOpen && !store.isFocusMode}
+    <ColorTokenPanel onClose={closeColorTokenPanel} />
   {/if}
   <!--
     tabindex="-1" makes <main> programmatically focusable so client-side

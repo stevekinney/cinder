@@ -18,7 +18,8 @@
   // browser` test. These narrow paths bring in only what we render.
   import { EmptyState } from '../../../components/src/components/empty-state/index.ts';
   import { Spinner } from '../../../components/src/components/spinner/index.ts';
-  import { getPreviewStore } from './preview-store.svelte.ts';
+  import { getPreviewStore, type ThemeChoice } from './preview-store.svelte.ts';
+  import type { ColorTokenOverrides } from './color-token-registry.ts';
   import { buildIframeSrc, createPreviewMessage, type PreviewMessage } from './routing.ts';
 
   type Props = {
@@ -30,6 +31,7 @@
   const store = getPreviewStore();
 
   let iframeEl = $state<HTMLIFrameElement | null>(null);
+  let lastSyncedTheme: ThemeChoice | null = null;
 
   let src = $derived(buildIframeSrc(componentName));
 
@@ -54,14 +56,31 @@
     win.postMessage(message, window.location.origin);
   }
 
-  function syncTheme(): void {
-    const message = createPreviewMessage('cinder:set-theme', store.theme);
+  function syncTheme(theme: ThemeChoice = store.theme): void {
+    const message = createPreviewMessage('cinder:set-theme', theme);
     if (message !== null) postToFrame(message);
   }
 
-  // Reactive: theme changes push to the iframe immediately.
+  function syncColorTokenOverrides(theme: ThemeChoice, overrides: ColorTokenOverrides): void {
+    const message = createPreviewMessage('cinder:set-color-token-overrides', {
+      theme,
+      overrides: { ...overrides } as Record<string, string>,
+    });
+    if (message !== null) postToFrame(message);
+  }
+
+  // Reactive: active-theme color-token changes push to the iframe immediately.
+  // Theme messages only post when the resolved theme actually changes, avoiding
+  // redundant postMessages during continuous color-picker drags while still
+  // sending theme before overrides on a real theme change.
   $effect(() => {
-    syncTheme();
+    const theme = store.theme;
+    const overrides = store.colorTokenOverrides[theme];
+    if (lastSyncedTheme !== theme) {
+      syncTheme(theme);
+      lastSyncedTheme = theme;
+    }
+    syncColorTokenOverrides(theme, overrides);
   });
 
   function handleLoad(): void {
@@ -72,7 +91,10 @@
     // pre-paint script reads localStorage for theme, but a shell-driven choice
     // (e.g. light/dark toggled this session) must be re-pushed after each
     // navigation/reload.
-    syncTheme();
+    const theme = store.theme;
+    syncTheme(theme);
+    lastSyncedTheme = theme;
+    syncColorTokenOverrides(theme, store.colorTokenOverrides[theme]);
   }
 
   /**

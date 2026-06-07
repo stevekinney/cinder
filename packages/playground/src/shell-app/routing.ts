@@ -1,3 +1,9 @@
+import {
+  isColorTokenName,
+  isSafeColorTokenValue,
+  type ColorTokenOverrides,
+} from './color-token-registry.ts';
+
 /**
  * Pure routing helpers for the playground shell SPA.
  *
@@ -197,7 +203,36 @@ export function buildToolbarSearch(search: URLSearchParams, state: ToolbarSearch
  * receiver MUST validate the origin AND the value against the allowed set
  * before applying any effect.
  */
-export type PreviewMessage = { type: 'cinder:set-theme'; value: ThemeChoice };
+export type PreviewMessage =
+  | { type: 'cinder:set-theme'; value: ThemeChoice }
+  | {
+      type: 'cinder:set-color-token-overrides';
+      theme: ThemeChoice;
+      overrides: ColorTokenOverrides;
+    };
+
+type ColorTokenOverridePayload = {
+  theme: ThemeChoice;
+  overrides: Record<string, string>;
+};
+
+function isColorTokenOverridePayload(value: unknown): value is ColorTokenOverridePayload {
+  if (typeof value !== 'object' || value === null) return false;
+  if (!('theme' in value)) return false;
+  const theme = value.theme;
+  if (typeof theme !== 'string' || !isThemeChoice(theme)) return false;
+  if (!('overrides' in value)) return false;
+  const overrides = value.overrides;
+  if (typeof overrides !== 'object' || overrides === null || Array.isArray(overrides)) return false;
+
+  for (const [name, rawValue] of Object.entries(overrides)) {
+    if (!isColorTokenName(name)) return false;
+    if (typeof rawValue !== 'string') return false;
+    if (!isSafeColorTokenValue(rawValue)) return false;
+  }
+
+  return true;
+}
 
 /**
  * Construct a typed preview message. Returns `null` if the value doesn't
@@ -207,9 +242,24 @@ export type PreviewMessage = { type: 'cinder:set-theme'; value: ThemeChoice };
 export function createPreviewMessage(
   type: 'cinder:set-theme',
   value: ThemeChoice,
+): PreviewMessage | null;
+export function createPreviewMessage(
+  type: 'cinder:set-color-token-overrides',
+  value: ColorTokenOverridePayload,
+): PreviewMessage | null;
+export function createPreviewMessage(
+  type: PreviewMessage['type'],
+  value: unknown,
 ): PreviewMessage | null {
-  if (type === 'cinder:set-theme' && isThemeChoice(value)) {
+  if (type === 'cinder:set-theme' && typeof value === 'string' && isThemeChoice(value)) {
     return { type, value };
+  }
+  if (type === 'cinder:set-color-token-overrides' && isColorTokenOverridePayload(value)) {
+    return {
+      type,
+      theme: value.theme,
+      overrides: value.overrides as ColorTokenOverrides,
+    };
   }
   return null;
 }

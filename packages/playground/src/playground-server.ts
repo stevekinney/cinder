@@ -56,6 +56,14 @@ import {
   jsonForScriptTag,
   renderShell,
 } from './render-shell.ts';
+import {
+  BLOCKED_COLOR_VALUE_PATTERN,
+  COLOR_TOKEN_NAMES,
+  COLOR_VALUE_VARIABLE_REFERENCE_PATTERN,
+  FALLBACK_COLOR_VALUE_PATTERN,
+  MAX_COLOR_TOKEN_VALUE_LENGTH,
+  SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN,
+} from './shell-app/color-token-registry.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import {
@@ -1057,6 +1065,119 @@ async function getStandaloneManifests(): Promise<ComponentManifest[]> {
   return manifests.filter((entry) => !COMPOSE_ONLY_COMPONENTS.has(entry.kebabName));
 }
 
+function renderPreviewMessageBridgeScript(): string {
+  const colorTokenNamesJson = jsonForScriptTag(COLOR_TOKEN_NAMES);
+  const blockedColorValuePatternSource = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.source);
+  const blockedColorValuePatternFlags = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.flags);
+  const fallbackColorValuePatternSource = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.source);
+  const fallbackColorValuePatternFlags = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.flags);
+  const variableReferencePatternSource = jsonForScriptTag(
+    COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.source,
+  );
+  const variableReferencePatternFlags = jsonForScriptTag(
+    COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.flags,
+  );
+  const safeVariableNamePatternSource = jsonForScriptTag(
+    SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.source,
+  );
+  const safeVariableNamePatternFlags = jsonForScriptTag(
+    SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.flags,
+  );
+
+  return `<script>
+      // Validated postMessage listener for shell→iframe theme and token commands.
+      // The shell SPA is same-origin, but we still validate origin and shape so
+      // unknown messages can't push the iframe into a bad state.
+      (function () {
+        var colorTokenNames = new Set(${colorTokenNamesJson});
+        var blockedColorValuePattern = new RegExp(${blockedColorValuePatternSource}, ${blockedColorValuePatternFlags});
+        var fallbackColorValuePattern = new RegExp(${fallbackColorValuePatternSource}, ${fallbackColorValuePatternFlags});
+        var variableReferencePattern = new RegExp(${variableReferencePatternSource}, ${variableReferencePatternFlags});
+        var safeVariableNamePattern = new RegExp(${safeVariableNamePatternSource}, ${safeVariableNamePatternFlags});
+        var activeTheme = document.documentElement.dataset.cinderTheme;
+        if (!isTheme(activeTheme)) activeTheme = null;
+
+        function isTheme(value) {
+          return value === 'light' || value === 'dark';
+        }
+
+        function hasOnlySafeColorVariableReferences(value) {
+          if (value.toLowerCase().indexOf('var(') === -1) return true;
+          variableReferencePattern.lastIndex = 0;
+          var references = Array.from(value.matchAll(variableReferencePattern));
+          variableReferencePattern.lastIndex = 0;
+          if (references.length === 0) return false;
+          for (var index = 0; index < references.length; index += 1) {
+            var variableName = references[index][1];
+            if (typeof variableName !== 'string') return false;
+            if (!safeVariableNamePattern.test(variableName.trim())) return false;
+          }
+          var withoutReferences = value.replace(variableReferencePattern, '');
+          variableReferencePattern.lastIndex = 0;
+          return withoutReferences.toLowerCase().indexOf('var(') === -1;
+        }
+
+        function isSafeColorValue(value) {
+          if (typeof value !== 'string') return false;
+          var trimmed = value.trim();
+          if (trimmed.length === 0 || trimmed.length > ${MAX_COLOR_TOKEN_VALUE_LENGTH}) return false;
+          if (blockedColorValuePattern.test(trimmed)) return false;
+          if (trimmed.toLowerCase().indexOf('url(') !== -1) return false;
+          if (!hasOnlySafeColorVariableReferences(trimmed)) return false;
+          if (!fallbackColorValuePattern.test(trimmed.toLowerCase())) return false;
+          if (window.CSS && typeof window.CSS.supports === 'function') {
+            return window.CSS.supports('color', trimmed);
+          }
+          return true;
+        }
+
+        function applyColorTokenOverrides(overrides) {
+          if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) return;
+          var next = {};
+          for (var tokenName in overrides) {
+            if (!Object.prototype.hasOwnProperty.call(overrides, tokenName)) continue;
+            if (!colorTokenNames.has(tokenName)) return;
+            var value = overrides[tokenName];
+            if (!isSafeColorValue(value)) return;
+            next[tokenName] = value.trim();
+          }
+
+          colorTokenNames.forEach(function (tokenName) {
+            document.documentElement.style.removeProperty(tokenName);
+          });
+          for (var safeTokenName in next) {
+            if (!Object.prototype.hasOwnProperty.call(next, safeTokenName)) continue;
+            document.documentElement.style.setProperty(safeTokenName, next[safeTokenName]);
+          }
+        }
+
+        window.addEventListener('message', function (event) {
+          if (event.origin !== window.location.origin) return;
+          var data = event.data;
+          if (!data || typeof data !== 'object') return;
+
+          if (data.type === 'cinder:set-theme') {
+            // Only light/dark are valid theme overrides; ignore anything else
+            // (a stale/foreign message must never push the iframe into an
+            // unsupported 'system' state — that value was removed from ThemeChoice).
+            if (isTheme(data.value)) {
+              document.documentElement.style.colorScheme = data.value;
+              document.documentElement.dataset.cinderTheme = data.value;
+              activeTheme = data.value;
+            }
+            return;
+          }
+
+          if (data.type === 'cinder:set-color-token-overrides') {
+            if (!isTheme(data.theme)) return;
+            if (data.theme !== activeTheme) return;
+            applyColorTokenOverrides(data.overrides);
+          }
+        });
+      })();
+    </script>`;
+}
+
 /**
  * Render the standalone component page HTML (the iframe content — no outer shell).
  *
@@ -1127,24 +1248,7 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
       }
       #app { display: contents; }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
-    <script>
-      // Validated postMessage listener for shell→iframe theme commands. The
-      // shell SPA is same-origin, but we still validate origin and shape so
-      // unknown messages can't push the iframe into a bad state.
-      window.addEventListener('message', function (event) {
-        if (event.origin !== window.location.origin) return;
-        var data = event.data;
-        if (!data || typeof data !== 'object') return;
-        if (data.type !== 'cinder:set-theme') return;
-        // Only light/dark are valid theme overrides; ignore anything else (a
-        // stale/foreign message must never push the iframe into an unsupported
-        // 'system' state — that value was removed from ThemeChoice).
-        if (data.value === 'light' || data.value === 'dark') {
-          document.documentElement.style.colorScheme = data.value;
-          document.documentElement.dataset.cinderTheme = data.value;
-        }
-      });
-    </script>
+    ${renderPreviewMessageBridgeScript()}
   </head>
   <body>
     <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
@@ -1194,21 +1298,7 @@ function renderFixturePageHtml(
       }
       #app { display: contents; }
     </style>${styleTag ? `\n    ${styleTag}` : ''}
-    <script>
-      window.addEventListener('message', function (event) {
-        if (event.origin !== window.location.origin) return;
-        var data = event.data;
-        if (!data || typeof data !== 'object') return;
-        if (data.type !== 'cinder:set-theme') return;
-        // Only light/dark are valid theme overrides; ignore anything else (a
-        // stale/foreign message must never push the iframe into an unsupported
-        // 'system' state — that value was removed from ThemeChoice).
-        if (data.value === 'light' || data.value === 'dark') {
-          document.documentElement.style.colorScheme = data.value;
-          document.documentElement.dataset.cinderTheme = data.value;
-        }
-      });
-    </script>
+    ${renderPreviewMessageBridgeScript()}
   </head>
   <body>
     <div id="app"></div>
