@@ -507,6 +507,9 @@ export type {
 export { default as Skeleton } from './components/skeleton/index.ts';
 export type { SkeletonProps } from './components/skeleton/index.ts';
 
+export { default as SkipLink } from './components/skip-link/index.ts';
+export type { SkipLinkProps, SkipLinkSchemaProps } from './components/skip-link/index.ts';
+
 export { default as Slider } from './components/slider/index.ts';
 export type { SliderMode, SliderProps, SliderValue } from './components/slider/index.ts';
 
