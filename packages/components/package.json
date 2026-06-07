@@ -1826,6 +1826,31 @@
       "import": "./src/components/markdown-editor/markdown-editor.examples.json",
       "default": "./src/components/markdown-editor/markdown-editor.examples.json"
     },
+    "./matrix-chart": {
+      "types": "./dist/components/matrix-chart/index.d.ts",
+      "svelte": "./src/components/matrix-chart/index.ts",
+      "node": "./dist/server/components/matrix-chart/index.js",
+      "default": "./dist/components/matrix-chart/index.js"
+    },
+    "./matrix-chart/schema": {
+      "types": "./dist/components/matrix-chart/matrix-chart.schema.d.ts",
+      "svelte": "./src/components/matrix-chart/matrix-chart.schema.ts",
+      "node": "./dist/server/components/matrix-chart/matrix-chart.schema.js",
+      "default": "./dist/components/matrix-chart/matrix-chart.schema.js"
+    },
+    "./matrix-chart/variables": {
+      "types": "./dist/components/matrix-chart/matrix-chart.variables.d.ts",
+      "svelte": "./src/components/matrix-chart/matrix-chart.variables.ts",
+      "node": "./dist/server/components/matrix-chart/matrix-chart.variables.js",
+      "default": "./dist/components/matrix-chart/matrix-chart.variables.js"
+    },
+    "./matrix-chart/styles": {
+      "default": "./dist/components/matrix-chart/matrix-chart.css"
+    },
+    "./matrix-chart/examples": {
+      "import": "./src/components/matrix-chart/matrix-chart.examples.json",
+      "default": "./src/components/matrix-chart/matrix-chart.examples.json"
+    },
     "./menu-bar": {
       "types": "./dist/components/menu-bar/index.d.ts",
       "svelte": "./src/components/menu-bar/index.ts",
@@ -2594,6 +2619,56 @@
     "./sortable-list/styles": {
       "default": "./dist/components/sortable-list/sortable-list.css"
     },
+    "./spectrogram": {
+      "types": "./dist/components/spectrogram/index.d.ts",
+      "svelte": "./src/components/spectrogram/index.ts",
+      "node": "./dist/server/components/spectrogram/index.js",
+      "default": "./dist/components/spectrogram/index.js"
+    },
+    "./spectrogram/schema": {
+      "types": "./dist/components/spectrogram/spectrogram.schema.d.ts",
+      "svelte": "./src/components/spectrogram/spectrogram.schema.ts",
+      "node": "./dist/server/components/spectrogram/spectrogram.schema.js",
+      "default": "./dist/components/spectrogram/spectrogram.schema.js"
+    },
+    "./spectrogram/variables": {
+      "types": "./dist/components/spectrogram/spectrogram.variables.d.ts",
+      "svelte": "./src/components/spectrogram/spectrogram.variables.ts",
+      "node": "./dist/server/components/spectrogram/spectrogram.variables.js",
+      "default": "./dist/components/spectrogram/spectrogram.variables.js"
+    },
+    "./spectrogram/styles": {
+      "default": "./dist/components/spectrogram/spectrogram.css"
+    },
+    "./spectrogram/examples": {
+      "import": "./src/components/spectrogram/spectrogram.examples.json",
+      "default": "./src/components/spectrogram/spectrogram.examples.json"
+    },
+    "./spectrum-chart": {
+      "types": "./dist/components/spectrum-chart/index.d.ts",
+      "svelte": "./src/components/spectrum-chart/index.ts",
+      "node": "./dist/server/components/spectrum-chart/index.js",
+      "default": "./dist/components/spectrum-chart/index.js"
+    },
+    "./spectrum-chart/schema": {
+      "types": "./dist/components/spectrum-chart/spectrum-chart.schema.d.ts",
+      "svelte": "./src/components/spectrum-chart/spectrum-chart.schema.ts",
+      "node": "./dist/server/components/spectrum-chart/spectrum-chart.schema.js",
+      "default": "./dist/components/spectrum-chart/spectrum-chart.schema.js"
+    },
+    "./spectrum-chart/variables": {
+      "types": "./dist/components/spectrum-chart/spectrum-chart.variables.d.ts",
+      "svelte": "./src/components/spectrum-chart/spectrum-chart.variables.ts",
+      "node": "./dist/server/components/spectrum-chart/spectrum-chart.variables.js",
+      "default": "./dist/components/spectrum-chart/spectrum-chart.variables.js"
+    },
+    "./spectrum-chart/styles": {
+      "default": "./dist/components/spectrum-chart/spectrum-chart.css"
+    },
+    "./spectrum-chart/examples": {
+      "import": "./src/components/spectrum-chart/spectrum-chart.examples.json",
+      "default": "./src/components/spectrum-chart/spectrum-chart.examples.json"
+    },
     "./spinner": {
       "types": "./dist/components/spinner/index.d.ts",
       "svelte": "./src/components/spinner/index.ts",
@@ -3264,6 +3339,31 @@
     "./visually-hidden/examples": {
       "import": "./src/components/visually-hidden/visually-hidden.examples.json",
       "default": "./src/components/visually-hidden/visually-hidden.examples.json"
+    },
+    "./waveform": {
+      "types": "./dist/components/waveform/index.d.ts",
+      "svelte": "./src/components/waveform/index.ts",
+      "node": "./dist/server/components/waveform/index.js",
+      "default": "./dist/components/waveform/index.js"
+    },
+    "./waveform/schema": {
+      "types": "./dist/components/waveform/waveform.schema.d.ts",
+      "svelte": "./src/components/waveform/waveform.schema.ts",
+      "node": "./dist/server/components/waveform/waveform.schema.js",
+      "default": "./dist/components/waveform/waveform.schema.js"
+    },
+    "./waveform/variables": {
+      "types": "./dist/components/waveform/waveform.variables.d.ts",
+      "svelte": "./src/components/waveform/waveform.variables.ts",
+      "node": "./dist/server/components/waveform/waveform.variables.js",
+      "default": "./dist/components/waveform/waveform.variables.js"
+    },
+    "./waveform/styles": {
+      "default": "./dist/components/waveform/waveform.css"
+    },
+    "./waveform/examples": {
+      "import": "./src/components/waveform/waveform.examples.json",
+      "default": "./src/components/waveform/waveform.examples.json"
     },
     "./markdown": {
       "types": "./dist/markdown/index.d.ts",

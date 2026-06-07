@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "matrix-chart",
+  "import": "@lostgradient/cinder/matrix-chart",
+  "examples": [
+    {
+      "id": "confusion-matrix",
+      "title": "Confusion matrix",
+      "description": "A 3-class confusion matrix showing predicted vs actual classification results.",
+      "code": "<script lang=\"ts\">\n  import { MatrixChart } from '@lostgradient/cinder/matrix-chart';\n\n  const data = [\n    { actual: 'Cat', predicted: 'Cat', count: 50 },\n    { actual: 'Cat', predicted: 'Dog', count: 5 },\n    { actual: 'Cat', predicted: 'Bird', count: 2 },\n    { actual: 'Dog', predicted: 'Cat', count: 3 },\n    { actual: 'Dog', predicted: 'Dog', count: 42 },\n    { actual: 'Dog', predicted: 'Bird', count: 1 },\n    { actual: 'Bird', predicted: 'Cat', count: 4 },\n    { actual: 'Bird', predicted: 'Dog', count: 2 },\n    { actual: 'Bird', predicted: 'Bird', count: 38 },\n  ];\n</script>\n\n<MatrixChart\n  label=\"Confusion matrix — Animal classifier\"\n  description=\"Rows are actual classes; columns are predicted classes. Diagonal cells are correct predictions.\"\n  {data}\n  xField=\"predicted\"\n  yField=\"actual\"\n  valueField=\"count\"\n  colorScale=\"sequential\"\n  dataTableVisibility=\"visible\"\n/>\n"
+    },
+    {
+      "id": "performance-heatmap",
+      "title": "Performance heatmap",
+      "description": "Team performance scores across quarters, colored with a diverging scale.",
+      "code": "<script lang=\"ts\">\n  import { MatrixChart } from '@lostgradient/cinder/matrix-chart';\n\n  const data = [\n    { team: 'Engineering', quarter: 'Q1', score: 82 },\n    { team: 'Engineering', quarter: 'Q2', score: 91 },\n    { team: 'Engineering', quarter: 'Q3', score: 78 },\n    { team: 'Engineering', quarter: 'Q4', score: 95 },\n    { team: 'Design', quarter: 'Q1', score: 74 },\n    { team: 'Design', quarter: 'Q2', score: 68 },\n    { team: 'Design', quarter: 'Q3', score: 85 },\n    { team: 'Design', quarter: 'Q4', score: 90 },\n    { team: 'Marketing', quarter: 'Q1', score: 60 },\n    { team: 'Marketing', quarter: 'Q2', score: 72 },\n    { team: 'Marketing', quarter: 'Q3', score: 65 },\n    { team: 'Marketing', quarter: 'Q4', score: 88 },\n    { team: 'Sales', quarter: 'Q1', score: 88 },\n    { team: 'Sales', quarter: 'Q2', score: 93 },\n    { team: 'Sales', quarter: 'Q3', score: 97 },\n    { team: 'Sales', quarter: 'Q4', score: 84 },\n  ];\n</script>\n\n<MatrixChart\n  label=\"Team performance scores by quarter\"\n  description=\"Higher scores indicate stronger team performance for the period.\"\n  {data}\n  xField=\"quarter\"\n  yField=\"team\"\n  valueField=\"score\"\n  colorScale=\"sequential\"\n  dataTableVisibility=\"visible\"\n/>\n"
+    }
+  ]
+}

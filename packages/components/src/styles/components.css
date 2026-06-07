@@ -67,6 +67,7 @@
 @import '../components/label/label.css';
 @import '../components/line-chart/line-chart.css';
 @import '../components/link/link.css';
+@import '../components/matrix-chart/matrix-chart.css';
 @import '../components/load-more/load-more.css';
 @import '../components/menu-bar/menu-bar.css';
 @import '../components/message/message.css';
@@ -90,6 +91,8 @@
 @import '../components/select/select.css';
 @import '../components/segmented-control/segmented-control.css';
 @import '../components/selection-popover/selection-popover.css';
+@import '../components/spectrogram/spectrogram.css';
+@import '../components/spectrum-chart/spectrum-chart.css';
 @import '../components/side-navigation/side-navigation.css';
 @import '../components/side-navigation-group/side-navigation-group.css';
 @import '../components/sheet/sheet.css';
@@ -125,6 +128,7 @@
 @import '../components/tree/tree.css';
 @import '../components/_tree-select-all/tree-select-all.css';
 @import '../components/typography/typography.css';
+@import '../components/waveform/waveform.css';
 
 /* Shared internal partial — base chrome for Alert/Banner dismiss buttons.
  * Imported last to preserve the original source order of the inline rule it
