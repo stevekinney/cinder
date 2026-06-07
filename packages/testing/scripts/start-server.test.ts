@@ -100,6 +100,9 @@ describe('warm playground readiness', () => {
       'stale playground server',
     );
     expect(playgroundWarmReadinessMissingEndpointMessage('http://localhost:5555')).toContain(
+      'stop the stale server before rerunning the test wrapper',
+    );
+    expect(playgroundWarmReadinessMissingEndpointMessage('http://localhost:5555')).toContain(
       'PLAYWRIGHT_REUSE_SERVER=0',
     );
   });

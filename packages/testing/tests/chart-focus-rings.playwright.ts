@@ -31,6 +31,8 @@ type TabbableSummary = {
   seriesId: string | null;
 };
 
+const SCREENSHOT_CLIP_PADDING_CSS_PIXELS = 4;
+
 const charts: ChartDefinition[] = [
   {
     slug: 'area-chart',
@@ -306,10 +308,9 @@ async function ringScreenshotClip(
   expect(ringBox.width, `${chart.slug}: ring screenshot width`).toBeGreaterThan(0);
   expect(ringBox.height, `${chart.slug}: ring screenshot height`).toBeGreaterThan(0);
   expectBoxInside(ringBox, svgBox, `${chart.slug} screenshot ring inside SVG`);
-  const deviceScaleFactor = await page.evaluate(() => window.devicePixelRatio || 1);
   const viewport = page.viewportSize();
   if (viewport === null) throw new Error(`${chart.slug}: missing viewport for screenshot clip.`);
-  const padding = Math.ceil(deviceScaleFactor * 4);
+  const padding = SCREENSHOT_CLIP_PADDING_CSS_PIXELS;
   const x = Math.max(0, svgBox.x, ringBox.x - padding);
   const y = Math.max(0, svgBox.y, ringBox.y - padding);
   const right = Math.min(

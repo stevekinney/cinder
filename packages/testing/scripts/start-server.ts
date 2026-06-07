@@ -120,7 +120,8 @@ export function playgroundWarmReadinessMissingEndpointMessage(playgroundUrl: str
   return (
     `Playground server at ${playgroundUrl} responded to ${livenessPath} but returned 404 for ` +
     `${warmReadinessPath}. This usually means a stale playground server is already running; ` +
-    'stop it or set PLAYWRIGHT_REUSE_SERVER=0 so the test wrapper starts a fresh server.'
+    'stop the stale server before rerunning the test wrapper. To avoid reusing an already-running ' +
+    'server after that, run with PLAYWRIGHT_REUSE_SERVER=0.'
   );
 }
 
