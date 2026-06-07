@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, setDefaultTimeout, test } from 'bun:test';
 import { parse, type ChildNode } from 'postcss';
 
 import { COMPONENT_LAYER_NAME, isSingleComponentLayer } from '../../scripts/check-component-css.ts';
@@ -25,6 +25,11 @@ import { COMPONENT_LAYER_NAME, isSingleComponentLayer } from '../../scripts/chec
  */
 
 const repoRoot = join(import.meta.dir, '..', '..');
+
+// This file scans and parses every component CSS file. Under parallel CI or
+// multi-worktree local runs, Bun's default 5s test timeout can expire while the
+// scan is still making progress.
+setDefaultTimeout(30_000);
 
 /**
  * CSS files that legitimately do NOT carry the wrapper, by exact path under the

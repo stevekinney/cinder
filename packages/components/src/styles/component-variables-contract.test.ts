@@ -36,9 +36,14 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, setDefaultTimeout, test } from 'bun:test';
 
 const COMPONENTS_DIR = join(import.meta.dir, '..', 'components');
+
+// This file scans every component variables manifest. Under parallel CI or
+// multi-worktree local runs, Bun's default 5s test timeout can expire while the
+// scan is still making progress.
+setDefaultTimeout(30_000);
 
 /**
  * Runtime-state variable names that the generator currently mis-emits as public
