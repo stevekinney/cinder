@@ -16,19 +16,11 @@
     /* structural-pattern: the thumb sits over arbitrary picked colors, so the
      * white ring and dark edge stay fixed; dark chrome gets one extra outer ring. */
     --_cinder-color-picker-thumb-border: #fff; /* cinder-allow-raw-color: structural-pattern — thumb contrast ring over arbitrary picked color */
-    --_cinder-color-picker-thumb-shadow-edge: rgba(
-      0,
-      0,
-      0,
-      0.5
-    ); /* cinder-allow-raw-color: structural-pattern — thumb outline over arbitrary picked color */
+    /* prettier-ignore */
+    --_cinder-color-picker-thumb-shadow-edge: rgba(0, 0, 0, 0.5); /* cinder-allow-raw-color: structural-pattern — thumb outline over arbitrary picked color */
     --_cinder-color-picker-thumb-shadow-support-light: transparent;
-    --_cinder-color-picker-thumb-shadow-support-dark: rgba(
-      255,
-      255,
-      255,
-      0.65
-    ); /* cinder-allow-raw-color: structural-pattern — thumb outline over dark chrome */
+    /* prettier-ignore */
+    --_cinder-color-picker-thumb-shadow-support-dark: rgba(255, 255, 255, 0.65); /* cinder-allow-raw-color: structural-pattern — thumb outline over dark chrome */
     --_cinder-color-picker-thumb-shadow-support: light-dark(
       var(--_cinder-color-picker-thumb-shadow-support-light),
       var(--_cinder-color-picker-thumb-shadow-support-dark)
