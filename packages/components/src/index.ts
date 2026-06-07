@@ -89,7 +89,7 @@ export { default as Callout } from './components/callout/index.ts';
 export type { CalloutProps, CalloutVariant } from './components/callout/index.ts';
 
 export { default as Card } from './components/card/index.ts';
-export type { CardProps, CardTone, CardVariant } from './components/card/index.ts';
+export type { CardPadding, CardProps, CardTone, CardVariant } from './components/card/index.ts';
 
 export { default as Chat } from './components/chat/index.ts';
 export type { ChatProps } from './components/chat/index.ts';
@@ -215,7 +215,12 @@ export type {
 } from './components/dropdown/index.ts';
 
 export { default as DropdownItem } from './components/dropdown-item/index.ts';
-export type { DropdownItemProps, DropdownItemVariant } from './components/dropdown-item/index.ts';
+export type {
+  DropdownItemAnchorProps,
+  DropdownItemButtonProps,
+  DropdownItemProps,
+  DropdownItemVariant,
+} from './components/dropdown-item/index.ts';
 
 export { default as DropdownGroup } from './components/dropdown-group/index.ts';
 export type { DropdownGroupProps } from './components/dropdown-group/index.ts';

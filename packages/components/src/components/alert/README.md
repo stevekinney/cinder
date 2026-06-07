@@ -16,11 +16,11 @@ A status message that communicates contextual feedback and can optionally be dis
 
 <!-- generated:props:start -->
 
-| Prop          | Type                                                | Required | Default  | Description                               |
-| ------------- | --------------------------------------------------- | -------- | -------- | ----------------------------------------- |
-| `class`       | `string`                                            | no       | —        | Custom class merged with `.cinder-alert`. |
-| `dismissible` | `boolean`                                           | no       | `false`  | Allow the alert to be dismissed.          |
-| `variant`     | `"info"` \| `"success"` \| `"warning"` \| `"error"` | no       | `"info"` | Visual style.                             |
+| Prop          | Type                                                              | Required | Default  | Description                                                                        |
+| ------------- | ----------------------------------------------------------------- | -------- | -------- | ---------------------------------------------------------------------------------- |
+| `class`       | `string`                                                          | no       | —        | Custom class merged with `.cinder-alert`.                                          |
+| `dismissible` | `boolean`                                                         | no       | `false`  | Allow the alert to be dismissed.                                                   |
+| `variant`     | `"info"` \| `"success"` \| `"warning"` \| `"error"` \| `"danger"` | no       | `"info"` | Visual style. `danger` is an accepted alias for `error` — both render identically. |
 
 <!-- generated:props:end -->
 

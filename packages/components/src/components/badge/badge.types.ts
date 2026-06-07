@@ -11,6 +11,8 @@ export type BadgeSize = 'xs' | 'sm' | 'md';
 export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
   size?: BadgeSize;
+  /** Render the badge label in a monospace font. */
+  mono?: boolean;
   class?: string;
   /**
    * Badge content — intentionally required. A badge without content is
@@ -32,6 +34,11 @@ export interface BadgeSchemaProps {
    * @default "md"
    */
   size?: BadgeSize;
+  /**
+   * Render the badge label in a monospace font. Useful for version strings, error codes, or other technical labels.
+   * @default false
+   */
+  mono?: boolean;
   /** Custom class merged with `.cinder-badge`. */
   class?: string;
 }

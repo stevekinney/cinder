@@ -85,6 +85,25 @@ describe('Badge', () => {
   });
 });
 
+describe('Badge — mono affordance', () => {
+  test('mono=true stamps data-cinder-mono on the root span', () => {
+    const { container } = render(Badge, {
+      children: textSnippet('v1.0.0'),
+      mono: true,
+    });
+    const span = container.querySelector('.cinder-badge');
+    expect(span?.hasAttribute('data-cinder-mono')).toBe(true);
+  });
+
+  test('mono=false (default) does not stamp data-cinder-mono', () => {
+    const { container } = render(Badge, {
+      children: textSnippet('label'),
+    });
+    const span = container.querySelector('.cinder-badge');
+    expect(span?.hasAttribute('data-cinder-mono')).toBe(false);
+  });
+});
+
 describe('Badge — omitted children (runtime safety net)', () => {
   test('renders without throwing when children is omitted (JS consumer safety)', () => {
     // children: Snippet is required in TypeScript, but the optional-chain guard

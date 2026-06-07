@@ -23,6 +23,7 @@
   let {
     variant = 'neutral',
     size = 'md',
+    mono = false,
     class: customClassName,
     children,
     ...rest
@@ -33,6 +34,7 @@
   class={classNames('cinder-badge', customClassName)}
   data-cinder-variant={variant}
   data-cinder-size={size}
+  data-cinder-mono={mono ? '' : undefined}
   {...rest}
 >
   {@render children?.()}

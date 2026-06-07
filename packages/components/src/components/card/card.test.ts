@@ -191,6 +191,29 @@ describe('Card', () => {
       container.querySelector('.cinder-card')?.hasAttribute('data-cinder-edge-to-edge-mobile'),
     ).toBe(true);
   });
+
+  test('padding prop is reflected as data-cinder-padding on the body element', () => {
+    const { container } = render(Card, {
+      props: {
+        children: emptySnippet,
+        padding: 'none',
+      },
+    });
+    expect(container.querySelector('.cinder-card__body')?.getAttribute('data-cinder-padding')).toBe(
+      'none',
+    );
+  });
+
+  test('padding defaults to "default" when not provided', () => {
+    const { container } = render(Card, {
+      props: {
+        children: emptySnippet,
+      },
+    });
+    expect(container.querySelector('.cinder-card__body')?.getAttribute('data-cinder-padding')).toBe(
+      'default',
+    );
+  });
 });
 
 describe('Card CSS contract', () => {

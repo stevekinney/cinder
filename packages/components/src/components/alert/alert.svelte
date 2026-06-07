@@ -35,6 +35,10 @@
     ...rest
   }: AlertProps = $props();
 
+  // `danger` is a consumer-friendly alias for `error` — normalize before stamping the
+  // data attribute so the CSS rules only need to handle `error`.
+  const resolvedVariant = $derived(variant === 'danger' ? 'error' : variant);
+
   let visible = $state(true);
   let rootElement: HTMLDivElement | undefined = $state();
 
@@ -114,7 +118,7 @@
     bind:this={rootElement}
     {...restWithoutForbidden}
     class={classNames('cinder-alert', 'cinder-_status-surface', className)}
-    data-cinder-variant={variant}
+    data-cinder-variant={resolvedVariant}
     role="alert"
   >
     {#if icon}

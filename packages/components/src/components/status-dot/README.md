@@ -16,13 +16,13 @@ A semantic status indicator that pairs a colored dot with an accessible label.
 
 <!-- generated:props:start -->
 
-| Prop        | Type                                                                                | Required | Default | Description                                                                                              |
-| ----------- | ----------------------------------------------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------- |
-| `class`     | `string`                                                                            | no       | —       | Extra classes appended to the root element.                                                              |
-| `label`     | `string`                                                                            | no       | —       | Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way. |
-| `showLabel` | `boolean`                                                                           | no       | `true`  | Whether to render the visible label.                                                                     |
-| `size`      | `"sm"` \| `"md"`                                                                    | no       | `"md"`  | Dot size.                                                                                                |
-| `status`    | `"online"` \| `"offline"` \| `"warning"` \| `"error"` \| `"pending"` \| `"neutral"` | yes      | —       | Required semantic status. Drives color via `data-cinder-status`.                                         |
+| Prop        | Type                                                                                                             | Required | Default | Description                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `class`     | `string`                                                                                                         | no       | —       | Extra classes appended to the root element.                                                                                                |
+| `label`     | `string`                                                                                                         | no       | —       | Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way.                                   |
+| `showLabel` | `boolean`                                                                                                        | no       | `true`  | Whether to render the visible label.                                                                                                       |
+| `size`      | `"sm"` \| `"md"`                                                                                                 | no       | `"md"`  | Dot size.                                                                                                                                  |
+| `status`    | `"online"` \| `"offline"` \| `"warning"` \| `"error"` \| `"pending"` \| `"neutral"` \| `"success"` \| `"accent"` | yes      | —       | Required semantic status. Drives color via `data-cinder-status`. `success` maps to `--cinder-success`; `accent` maps to `--cinder-accent`. |
 
 <!-- generated:props:end -->
 

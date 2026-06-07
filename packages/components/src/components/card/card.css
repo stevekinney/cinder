@@ -60,6 +60,10 @@
     background: var(--cinder-surface-inset);
   }
 
+  .cinder-card__body[data-cinder-padding='none'] {
+    padding: 0;
+  }
+
   .cinder-card[data-cinder-variant='well'] .cinder-card__body {
     background: var(--cinder-surface-inset);
   }

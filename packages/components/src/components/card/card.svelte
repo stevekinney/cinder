@@ -12,7 +12,13 @@
    * @avoidWhen Presenting a single key metric — use stat or stat-group instead.
    * @related surface, stat, stacked-list-item, section-heading
    */
-  export type { CardHeadingLevel, CardProps, CardTone, CardVariant } from './card.types.ts';
+  export type {
+    CardHeadingLevel,
+    CardPadding,
+    CardProps,
+    CardTone,
+    CardVariant,
+  } from './card.types.ts';
 </script>
 
 <script lang="ts">
@@ -31,6 +37,7 @@
     bodyTone = 'default',
     footerTone = 'default',
     edgeToEdgeOnMobile = false,
+    padding = 'default',
     ...rest
   }: CardProps = $props();
 
@@ -64,7 +71,7 @@
     </div>
   {/if}
 
-  <div class="cinder-card__body" data-cinder-tone={bodyTone}>
+  <div class="cinder-card__body" data-cinder-tone={bodyTone} data-cinder-padding={padding}>
     {@render children()}
   </div>
 

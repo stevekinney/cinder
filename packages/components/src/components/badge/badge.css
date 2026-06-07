@@ -82,4 +82,21 @@
     color: var(--cinder-accent-text);
     border-color: color-mix(in oklch, var(--cinder-accent), transparent 60%);
   }
+
+  /* ----------------------------------------
+ * Mono affordance
+ * ---------------------------------------- */
+
+  .cinder-badge[data-cinder-mono] {
+    font-family: var(
+      --cinder-font-mono,
+      ui-monospace,
+      SFMono-Regular,
+      'SF Mono',
+      Menlo,
+      Consolas,
+      'Liberation Mono',
+      monospace
+    );
+  }
 }

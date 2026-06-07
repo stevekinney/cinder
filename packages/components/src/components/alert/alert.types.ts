@@ -1,7 +1,8 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-export type AlertVariant = 'info' | 'success' | 'warning' | 'error';
+/** `danger` is an accepted alias for `error` — both render identically. */
+export type AlertVariant = 'info' | 'success' | 'warning' | 'error' | 'danger';
 
 /**
  * Props for the {@link Alert} component — a live-region notification card.
@@ -36,7 +37,7 @@ export type AlertProps = Omit<
  */
 export interface AlertSchemaProps {
   /**
-   * Visual style.
+   * Visual style. `danger` is an accepted alias for `error` — both render identically.
    * @default "info"
    */
   variant?: AlertVariant;

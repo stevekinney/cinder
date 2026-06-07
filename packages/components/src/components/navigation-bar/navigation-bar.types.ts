@@ -11,7 +11,8 @@ export type NavigationBarToggleAttributes = {
 export type NavigationBarItemsContext = {
   variant: NavigationVariant;
 };
-export type NavigationBarProps = HTMLAttributes<HTMLElement> & {
+export type NavigationBarProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
+  /** Custom class merged onto the root `<nav>` element. */
   class?: string;
   brand?: Snippet;
   /** Receives a context object with the current variant. */

@@ -77,4 +77,12 @@
   .cinder-status-dot[data-cinder-status='neutral'] {
     --cinder-status-dot-color: var(--cinder-text-muted);
   }
+
+  .cinder-status-dot[data-cinder-status='success'] {
+    --cinder-status-dot-color: var(--cinder-success);
+  }
+
+  .cinder-status-dot[data-cinder-status='accent'] {
+    --cinder-status-dot-color: var(--cinder-accent);
+  }
 }

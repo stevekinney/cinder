@@ -23,7 +23,7 @@ import type { AlertProps } from './alert.types.ts';
 // runtime). The snapshot mirrors that omit set so the assertions verify the
 // reduced surface rather than pinning the pre-P6-C2 shape.
 
-type _SnapshotAlertVariant = 'info' | 'success' | 'warning' | 'error';
+type _SnapshotAlertVariant = 'info' | 'success' | 'warning' | 'error' | 'danger';
 
 type SnapshotAlertProps = Omit<
   HTMLAttributes<HTMLDivElement>,

@@ -5,8 +5,9 @@ const schema = {
   type: 'object',
   properties: {
     variant: {
-      enum: ['info', 'success', 'warning', 'error'],
-      description: 'Visual style.',
+      enum: ['info', 'success', 'warning', 'error', 'danger'],
+      description:
+        'Visual style. `danger` is an accepted alias for `error` — both render identically.',
       default: 'info',
     },
     dismissible: {
