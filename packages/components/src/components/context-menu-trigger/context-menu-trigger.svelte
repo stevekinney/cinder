@@ -76,7 +76,6 @@
       return;
     }
     if (suppressNextContextmenu) {
-      suppressNextContextmenu = false;
       event.preventDefault();
       callTriggerHandler(oncontextmenu, event);
       return;

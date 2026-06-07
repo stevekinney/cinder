@@ -369,6 +369,14 @@
     return JSON.stringify(value, null, 2);
   }
 
+  function documentationTabClass(tab: DocumentationTabId): string {
+    return activeTab === tab ? 'documentation-tab documentation-tab--active' : 'documentation-tab';
+  }
+
+  function propsTypeClass(typeMembers: readonly string[]): string {
+    return typeMembers.length > 1 ? 'props-type props-type--union' : 'props-type';
+  }
+
   function focusTab(tab: DocumentationTabId): void {
     requestAnimationFrame(() => document.getElementById(`tab-${tab}`)?.focus());
   }
@@ -490,7 +498,7 @@
     {#each documentationTabs as tab (tab.id)}
       <button
         type="button"
-        class={['documentation-tab', activeTab === tab.id && 'documentation-tab--active']}
+        class={documentationTabClass(tab.id)}
         role="tab"
         id="tab-{tab.id}"
         aria-selected={activeTab === tab.id}
@@ -705,7 +713,7 @@
                       </Table.Cell>
                       <Table.Cell>
                         {@const typeMembers = splitUnionType(prop.type)}
-                        <code class={['props-type', typeMembers.length > 1 && 'props-type--union']}>
+                        <code class={propsTypeClass(typeMembers)}>
                           {#each typeMembers as member, index (index)}
                             <span class="props-type__member">
                               {#if index > 0}<span class="props-type__sep" aria-hidden="true"

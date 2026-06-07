@@ -72,6 +72,14 @@ export function classifyExampleTitle(source: string): 'ok' | 'missing' | 'untitl
   return 'ok';
 }
 
+export function validateRawArtifactSerialization(artifact: unknown): string | null {
+  try {
+    return JSON.stringify(artifact) === undefined ? 'artifact serialized to undefined' : null;
+  } catch (error) {
+    return `artifact could not be serialized as JSON: ${String(error)}`;
+  }
+}
+
 /**
  * Scan every `.example.svelte` file and fail when any is missing a `title`
  * export or uses the `'Untitled'` sentinel. Reports the count of checked files.
@@ -238,8 +246,9 @@ async function validateDocumentationRoutes(baseUrl: string, components: string[]
     }
 
     for (const [artifactName, artifact] of Object.entries(body.rawArtifacts)) {
-      if (JSON.stringify(artifact) === undefined) {
-        fail(`GET ${documentationUrl} raw ${artifactName} artifact is not renderable as JSON`);
+      const serializationError = validateRawArtifactSerialization(artifact);
+      if (serializationError !== null) {
+        fail(`GET ${documentationUrl} raw ${artifactName} artifact ${serializationError}`);
       }
     }
 

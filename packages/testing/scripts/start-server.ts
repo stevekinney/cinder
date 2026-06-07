@@ -26,18 +26,31 @@ const PLAYGROUND_READY_TIMEOUT_MS = 240_000;
 const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;
 const PLAYGROUND_WARM_READINESS_DELAY_MS = 500;
 
-async function playgroundPathResponds(
+type PlaygroundPathProbeResult = {
+  ok: boolean;
+  status: number | null;
+};
+
+async function probePlaygroundPath(
   path: string,
   playgroundUrl: string = targetPlaygroundUrl,
-): Promise<boolean> {
+): Promise<PlaygroundPathProbeResult> {
   try {
     const response = await fetch(playgroundUrl + path, {
       signal: AbortSignal.timeout(PLAYGROUND_PORT_PROBE_TIMEOUT_MS),
     });
-    return response.ok;
+    return { ok: response.ok, status: response.status };
   } catch {
-    return false;
+    return { ok: false, status: null };
   }
+}
+
+async function playgroundPathResponds(
+  path: string,
+  playgroundUrl: string = targetPlaygroundUrl,
+): Promise<boolean> {
+  const result = await probePlaygroundPath(path, playgroundUrl);
+  return result.ok;
 }
 
 async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolean> {
@@ -103,6 +116,14 @@ export function playgroundWarmReadinessEndpointPath(): string {
   return warmReadinessPath;
 }
 
+export function playgroundWarmReadinessMissingEndpointMessage(playgroundUrl: string): string {
+  return (
+    `Playground server at ${playgroundUrl} responded to ${livenessPath} but returned 404 for ` +
+    `${warmReadinessPath}. This usually means a stale playground server is already running; ` +
+    'stop it or set PLAYWRIGHT_REUSE_SERVER=0 so the test wrapper starts a fresh server.'
+  );
+}
+
 async function waitForWarmPlayground(): Promise<void> {
   const startedAt = Date.now();
   const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
@@ -110,10 +131,14 @@ async function waitForWarmPlayground(): Promise<void> {
   let lastLog = startedAt;
 
   while (Date.now() < deadline) {
-    if (await playgroundPathResponds(warmReadinessPath)) {
+    const readiness = await probePlaygroundPath(warmReadinessPath);
+    if (readiness.ok) {
       stableReadinessReads += 1;
       if (stableReadinessReads >= PLAYGROUND_WARM_READINESS_STABLE_READS) return;
     } else {
+      if (readiness.status === 404) {
+        throw new Error(playgroundWarmReadinessMissingEndpointMessage(targetPlaygroundUrl));
+      }
       stableReadinessReads = 0;
     }
 

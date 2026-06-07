@@ -7,6 +7,7 @@ import {
   playgroundBundleDependencyBuildArguments,
   playgroundBundleDependencyBuildPackages,
   playgroundWarmReadinessEndpointPath,
+  playgroundWarmReadinessMissingEndpointMessage,
 } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
@@ -92,5 +93,14 @@ describe('playground bundle dependency build preflight', () => {
 describe('warm playground readiness', () => {
   test('waits on the warmed-bundle readiness endpoint before Playwright starts', () => {
     expect(playgroundWarmReadinessEndpointPath()).toBe('/ready');
+  });
+
+  test('explains stale reused servers that do not expose the readiness endpoint', () => {
+    expect(playgroundWarmReadinessMissingEndpointMessage('http://localhost:5555')).toContain(
+      'stale playground server',
+    );
+    expect(playgroundWarmReadinessMissingEndpointMessage('http://localhost:5555')).toContain(
+      'PLAYWRIGHT_REUSE_SERVER=0',
+    );
   });
 });

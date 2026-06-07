@@ -245,6 +245,20 @@ describe('ContextMenu', () => {
     }
   });
 
+  test('long-press suppresses duplicate synthetic contextmenu events until another pointerdown', async () => {
+    const { container } = render(ContextMenuHarness, { props: { longPressDelay: 0 } });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    await fireEvent.contextMenu(region, { clientX: 99, clientY: 101 });
+    await fireEvent.contextMenu(region, { clientX: 140, clientY: 160 });
+
+    expect(queryMenu()?.getAttribute('data-cinder-requested-x')).toBe('14');
+    expect(queryMenu()?.getAttribute('data-cinder-requested-y')).toBe('18');
+  });
+
   test('long-press suppression clears before a later mouse contextmenu request', async () => {
     const { container } = render(ContextMenuHarness, { props: { longPressDelay: 0 } });
     const region = container.querySelector('.context-menu-region') as HTMLElement;
