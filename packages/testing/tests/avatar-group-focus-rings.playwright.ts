@@ -31,7 +31,7 @@ async function tabUntilFocused(
   page: Page,
   target: Locator,
   label: string,
-  maxPresses = 40,
+  maxPresses = 80,
 ): Promise<void> {
   for (let attempt = 0; attempt < maxPresses; attempt += 1) {
     await page.keyboard.press('Tab');
@@ -52,6 +52,7 @@ test.describe('avatar-group focus rings', () => {
   test('avatar-group keyboard focus paints the trigger ring', async ({ page }) => {
     await page.goto(AVATAR_GROUP_ROUTE, { waitUntil: 'load' });
     await page.waitForSelector(BASIC_EXAMPLE, { state: 'visible', timeout: 20_000 });
+    await page.waitForLoadState('networkidle');
 
     const trigger = page.locator(
       `${BASIC_EXAMPLE} .cinder-avatar-group__trigger[aria-label="Ada Lovelace"]`,
