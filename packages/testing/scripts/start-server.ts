@@ -31,12 +31,27 @@ type PlaygroundPathProbeResult = {
   status: number | null;
 };
 
+export function playgroundUrlForPath(
+  path: string,
+  playgroundUrl: string = targetPlaygroundUrl,
+): string {
+  const url = new URL(playgroundUrl);
+  const basePath = url.pathname.replace(/\/+$/, '');
+  const probePath = path.startsWith('/') ? path : `/${path}`;
+
+  url.pathname = `${basePath}${probePath}`;
+  url.search = '';
+  url.hash = '';
+
+  return url.toString();
+}
+
 async function probePlaygroundPath(
   path: string,
   playgroundUrl: string = targetPlaygroundUrl,
 ): Promise<PlaygroundPathProbeResult> {
   try {
-    const response = await fetch(playgroundUrl + path, {
+    const response = await fetch(playgroundUrlForPath(path, playgroundUrl), {
       signal: AbortSignal.timeout(PLAYGROUND_PORT_PROBE_TIMEOUT_MS),
     });
     return { ok: response.ok, status: response.status };

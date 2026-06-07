@@ -6,6 +6,7 @@ import {
   parsePlaygroundListeningPort,
   playgroundBundleDependencyBuildArguments,
   playgroundBundleDependencyBuildPackages,
+  playgroundUrlForPath,
   playgroundWarmReadinessEndpointPath,
   playgroundWarmReadinessMissingEndpointMessage,
 } from './start-server.ts';
@@ -91,6 +92,15 @@ describe('playground bundle dependency build preflight', () => {
 });
 
 describe('warm playground readiness', () => {
+  test('normalizes probe paths against playground URLs with trailing slashes', () => {
+    expect(playgroundUrlForPath('/ping', 'http://localhost:5555/')).toBe(
+      'http://localhost:5555/ping',
+    );
+    expect(playgroundUrlForPath('/ready', 'https://example.com/playground/')).toBe(
+      'https://example.com/playground/ready',
+    );
+  });
+
   test('waits on the warmed-bundle readiness endpoint before Playwright starts', () => {
     expect(playgroundWarmReadinessEndpointPath()).toBe('/ready');
   });
