@@ -47,9 +47,8 @@
        ring; the outline is intentionally suppressed. */
     outline: none;
     box-shadow:
-      0 0 0 var(--cinder-ring-offset-width) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset-width) + var(--cinder-ring-width))
-        var(--cinder-ring-color);
+      0 0 0 var(--cinder-ring-offset, 1px) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset, 1px) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   .cinder-avatar-group__overflow {
