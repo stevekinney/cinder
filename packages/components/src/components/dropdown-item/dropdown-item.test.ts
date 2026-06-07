@@ -136,6 +136,18 @@ describe('DropdownItem — polymorphism', () => {
     await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
   });
 
+  test('Space activates a link item (matching button-row keyboard behavior)', async () => {
+    // A native <a> activates on Enter but not Space; the WAI-ARIA menuitem
+    // pattern requires both. The component translates Space into activation.
+    const { container } = await openPolyMenu();
+    const items = container.querySelectorAll('[role="menuitem"]');
+    const linkItem = items[0] as HTMLElement;
+    const event = await fireEvent.keyDown(linkItem, { key: ' ' });
+    // Space is consumed (no page scroll) and the link is activated.
+    expect(event).toBe(false); // fireEvent returns false when preventDefault was called
+    expect(container.querySelector('output')?.textContent).toBe('link');
+  });
+
   test('disabled link item blocks its onclick and does not close the menu', async () => {
     const { container } = await openPolyMenu();
     const items = container.querySelectorAll('[role="menuitem"]');

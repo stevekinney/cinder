@@ -24,7 +24,7 @@
     },
     "type": {
       "enum": ["button", "submit", "reset"],
-      "description": "Button type forwarded to the `<button>` element. Defaults to `\"button\"`."
+      "description": "Button type forwarded to the `<button>` element. Defaults to `\"button\"`.\n\nNOTE: `type=\"submit\"` only submits a surrounding `<form>` when the menu\nstays inside that form's DOM subtree. DropdownMenu portals its panel to\n`document.body` on the non-popover fallback path, so a submit item is then\nNOT a form descendant and native submission is skipped. To submit a form\nfrom a portaled menu, set `form=\"<form-id>\"` to associate the button with\nthe form by id, or handle submission in `onclick`."
     }
   },
   "additionalProperties": false,

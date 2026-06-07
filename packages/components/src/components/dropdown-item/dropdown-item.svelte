@@ -84,7 +84,23 @@
     }
   }
 
-  const anchorAttributes = rest as Omit<HTMLAnchorAttributes, 'class' | 'href' | 'onclick'>;
+  // A native `<a>` activates on Enter but NOT Space, whereas a `<button>` (and
+  // the WAI-ARIA menuitem pattern) activates on both. Without this, Space on a
+  // link row would scroll the page instead of following the row — inconsistent
+  // with button rows. Translate Space into an activation click on the anchor.
+  function handleAnchorKeydown(
+    event: KeyboardEvent & { currentTarget: EventTarget & HTMLAnchorElement },
+  ): void {
+    if (event.key !== ' ' && event.key !== 'Spacebar') return;
+    event.preventDefault(); // stop the page from scrolling
+    if (disabled) return;
+    event.currentTarget.click();
+  }
+
+  const anchorAttributes = rest as Omit<
+    HTMLAnchorAttributes,
+    'class' | 'href' | 'onclick' | 'onkeydown'
+  >;
   const buttonAttributes = rest as Omit<
     HTMLButtonAttributes,
     'class' | 'type' | 'disabled' | 'onclick'
@@ -108,6 +124,7 @@
     data-disabled={disabled ? '' : undefined}
     aria-disabled={disabled ? 'true' : undefined}
     onclick={handleClick}
+    onkeydown={handleAnchorKeydown}
   >
     {#if children}
       {@render children()}

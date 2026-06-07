@@ -32,7 +32,16 @@ type DropdownItemBase = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
 export type DropdownItemButtonProps = DropdownItemBase &
   Omit<HTMLButtonAttributes, keyof HTMLAttributes<HTMLElement> | 'class' | 'disabled' | 'type'> & {
     href?: undefined;
-    /** Button type forwarded to the `<button>` element. Defaults to `"button"`. */
+    /**
+     * Button type forwarded to the `<button>` element. Defaults to `"button"`.
+     *
+     * NOTE: `type="submit"` only submits a surrounding `<form>` when the menu
+     * stays inside that form's DOM subtree. DropdownMenu portals its panel to
+     * `document.body` on the non-popover fallback path, so a submit item is then
+     * NOT a form descendant and native submission is skipped. To submit a form
+     * from a portaled menu, set `form="<form-id>"` to associate the button with
+     * the form by id, or handle submission in `onclick`.
+     */
     type?: 'button' | 'submit' | 'reset';
   };
 
