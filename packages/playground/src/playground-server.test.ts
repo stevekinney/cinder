@@ -26,6 +26,13 @@ import {
   triggerReload,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
+import {
+  BLOCKED_COLOR_VALUE_PATTERN,
+  COLOR_VALUE_VARIABLE_REFERENCE_PATTERN,
+  FALLBACK_COLOR_VALUE_PATTERN,
+  MAX_COLOR_TOKEN_VALUE_LENGTH,
+  SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN,
+} from './shell-app/color-token-registry.ts';
 
 const FIXTURE_COMPONENT = 'button';
 const FIXTURE_SCENARIO = 'primary';
@@ -236,8 +243,11 @@ describe('/c/:name', () => {
     expect(urls.has('/components/toolbar/toolbar.css')).toBe(true);
     expect(urls.has('/components/segmented-control/segmented-control.css')).toBe(true);
     expect(urls.has('/components/button/button.css')).toBe(true);
+    expect(urls.has('/components/color-picker/color-picker.css')).toBe(true);
+    expect(urls.has('/components/color-swatch-picker/color-swatch-picker.css')).toBe(true);
     expect(urls.has('/components/input/input.css')).toBe(true);
     expect(urls.has('/components/number-input/number-input.css')).toBe(true);
+    expect(urls.has('/components/popover/popover.css')).toBe(true);
     expect(urls.has('/components/side-navigation/side-navigation.css')).toBe(true);
     // Regression: side-navigation.css carries no per-item styling, so the shell
     // MUST also load navigation-item.css or the sidebar links fall back to bare
@@ -248,8 +258,11 @@ describe('/c/:name', () => {
       '.cinder-toolbar',
       '.cinder-segmented-control',
       '.cinder-button',
+      '.cinder-color-picker',
+      '.cinder-color-swatch-picker',
       '.cinder-input',
       '.cinder-number-input',
+      '.cinder-popover',
       '.cinder-side-navigation',
       '.cinder-side-navigation__list',
       // The per-row styling (text-decoration:none, padding, active indicator)
@@ -705,6 +718,47 @@ describe('/page/:name', () => {
     const html = await response.text();
     expect(html).toContain('href="/styles/all.css"');
     expect(html).not.toContain('href="/styles/index.css"');
+  });
+
+  it('installs the validated color-token message bridge on preview pages', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+    const blockedPatternSource = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.source);
+    const blockedPatternFlags = jsonForScriptTag(BLOCKED_COLOR_VALUE_PATTERN.flags);
+    const fallbackPatternSource = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.source);
+    const fallbackPatternFlags = jsonForScriptTag(FALLBACK_COLOR_VALUE_PATTERN.flags);
+    const variableReferencePatternSource = jsonForScriptTag(
+      COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.source,
+    );
+    const variableReferencePatternFlags = jsonForScriptTag(
+      COLOR_VALUE_VARIABLE_REFERENCE_PATTERN.flags,
+    );
+    const safeVariableNamePatternSource = jsonForScriptTag(
+      SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.source,
+    );
+    const safeVariableNamePatternFlags = jsonForScriptTag(
+      SAFE_COLOR_VALUE_VARIABLE_NAME_PATTERN.flags,
+    );
+
+    expect(html).toContain('cinder:set-color-token-overrides');
+    expect(html).toContain('--cinder-accent');
+    expect(html).toContain(`new RegExp(${blockedPatternSource}, ${blockedPatternFlags})`);
+    expect(html).toContain(`new RegExp(${fallbackPatternSource}, ${fallbackPatternFlags})`);
+    expect(html).toContain(
+      `new RegExp(${variableReferencePatternSource}, ${variableReferencePatternFlags})`,
+    );
+    expect(html).toContain(
+      `new RegExp(${safeVariableNamePatternSource}, ${safeVariableNamePatternFlags})`,
+    );
+    expect(html).toContain(`trimmed.length > ${MAX_COLOR_TOKEN_VALUE_LENGTH}`);
+    expect(html).toContain('if (!hasOnlySafeColorVariableReferences(trimmed)) return false;');
+    expect(html).toContain(
+      'if (!fallbackColorValuePattern.test(trimmed.toLowerCase())) return false;',
+    );
+    expect(html).toContain('var activeTheme = document.documentElement.dataset.cinderTheme');
+    expect(html).toContain('if (data.theme !== activeTheme) return;');
+    expect(html).not.toContain('--cinder-button-bg');
+    expect(html).not.toContain('transparent$|currentcolor$|black$|white$');
   });
 
   it('wraps the body background/color transition in a reduced-motion guard', async () => {
