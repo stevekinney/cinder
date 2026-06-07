@@ -35,6 +35,7 @@
     closeOnSelect = true,
     class: customClassName,
     onclick,
+    onkeydown,
     href,
     children,
     ...rest
@@ -84,13 +85,23 @@
     }
   }
 
+  type AnchorKeydownHandler = (
+    event: KeyboardEvent & { currentTarget: EventTarget & HTMLAnchorElement },
+  ) => void;
+
   // A native `<a>` activates on Enter but NOT Space, whereas a `<button>` (and
   // the WAI-ARIA menuitem pattern) activates on both. Without this, Space on a
   // link row would scroll the page instead of following the row — inconsistent
-  // with button rows. Translate Space into an activation click on the anchor.
+  // with button rows. Translate Space into an activation click on the anchor,
+  // while still forwarding any consumer-provided onkeydown handler (which runs
+  // first and may preventDefault to opt out of Space-to-activate).
   function handleAnchorKeydown(
     event: KeyboardEvent & { currentTarget: EventTarget & HTMLAnchorElement },
   ): void {
+    if (typeof onkeydown === 'function') {
+      (onkeydown as AnchorKeydownHandler)(event);
+    }
+    if (event.defaultPrevented) return;
     if (event.key !== ' ' && event.key !== 'Spacebar') return;
     event.preventDefault(); // stop the page from scrolling
     if (disabled) return;
@@ -141,6 +152,7 @@
     data-disabled={disabled ? '' : undefined}
     aria-disabled={disabled ? 'true' : undefined}
     onclick={handleClick}
+    {onkeydown}
   >
     {#if children}
       {@render children()}

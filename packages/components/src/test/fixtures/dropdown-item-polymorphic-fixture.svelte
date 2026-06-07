@@ -5,13 +5,18 @@
   import DropdownTrigger from '../../components/dropdown-trigger/dropdown-trigger.svelte';
 
   let selected = $state('');
+  let lastLinkKey = $state('');
 </script>
 
 <div>
   <Dropdown id="poly-menu">
     <DropdownTrigger class="trigger">Actions</DropdownTrigger>
     <DropdownMenu>
-      <DropdownItem href="https://example.com" onclick={() => (selected = 'link')}>
+      <DropdownItem
+        href="https://example.com"
+        onclick={() => (selected = 'link')}
+        onkeydown={(event) => (lastLinkKey = event.key)}
+      >
         Link item
       </DropdownItem>
       <DropdownItem
@@ -33,4 +38,5 @@
   </Dropdown>
 
   <output>{selected}</output>
+  <output data-testid="last-link-key">{lastLinkKey}</output>
 </div>

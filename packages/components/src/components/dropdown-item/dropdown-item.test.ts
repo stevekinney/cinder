@@ -148,6 +148,17 @@ describe('DropdownItem — polymorphism', () => {
     expect(container.querySelector('output')?.textContent).toBe('link');
   });
 
+  test('a link item still forwards a consumer onkeydown handler', async () => {
+    // The Space-to-activate handler must compose with — not replace — a
+    // consumer-provided onkeydown (it is part of the public HTMLAttributes surface).
+    const { container } = await openPolyMenu();
+    const items = container.querySelectorAll('[role="menuitem"]');
+    const linkItem = items[0] as HTMLElement;
+    await fireEvent.keyDown(linkItem, { key: 'ArrowRight' });
+    const keyOutput = container.querySelector('[data-testid="last-link-key"]');
+    expect(keyOutput?.textContent).toBe('ArrowRight');
+  });
+
   test('disabled link item blocks its onclick and does not close the menu', async () => {
     const { container } = await openPolyMenu();
     const items = container.querySelectorAll('[role="menuitem"]');
