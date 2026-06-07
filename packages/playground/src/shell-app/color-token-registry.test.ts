@@ -92,4 +92,30 @@ describe('color token registry', () => {
       });
     }
   });
+
+  test('CSS.supports path still enforces the playground color allowlist', () => {
+    const originalCss = globalThis.CSS;
+    Object.defineProperty(globalThis, 'CSS', {
+      configurable: true,
+      value: {
+        supports: () => true,
+      },
+      writable: true,
+    });
+
+    try {
+      expect(isSafeColorTokenValue('rgb(1 2 3)')).toBe(true);
+      expect(isSafeColorTokenValue('var(--cinder-accent)')).toBe(true);
+      expect(isSafeColorTokenValue('color-mix(in oklch, var(--cinder-accent), white)')).toBe(true);
+      expect(isSafeColorTokenValue('var(--anything)')).toBe(false);
+      expect(isSafeColorTokenValue('color-mix(in oklch, var(--anything), white)')).toBe(false);
+      expect(isSafeColorTokenValue('rebeccapurple')).toBe(false);
+    } finally {
+      Object.defineProperty(globalThis, 'CSS', {
+        configurable: true,
+        value: originalCss,
+        writable: true,
+      });
+    }
+  });
 });

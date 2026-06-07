@@ -365,4 +365,30 @@ describe('preview-frame handleLoad', () => {
       overrides: { '--cinder-accent': 'oklch(61% 0.2 195)' },
     });
   });
+
+  test('does not repost the theme when only color-token overrides change after load', async () => {
+    const store = new PreviewStore('button', { theme: 'light' });
+    const { container } = render(PreviewFrameFixture, { store, componentName: 'button' });
+    await tick();
+
+    const iframe = iframeIn(container);
+    if (iframe === null) throw new Error('expected an iframe');
+
+    const messages = captureFrameMessages(iframe);
+    iframe.dispatchEvent(new Event('load'));
+    await tick();
+    messages.length = 0;
+
+    store.setColorTokenOverride('light', '--cinder-accent', 'oklch(61% 0.2 195)');
+    await tick();
+
+    expect(messages.filter((message) => message.type === 'cinder:set-theme')).toEqual([]);
+    expect(messages).toEqual([
+      {
+        type: 'cinder:set-color-token-overrides',
+        theme: 'light',
+        overrides: { '--cinder-accent': 'oklch(61% 0.2 195)' },
+      },
+    ]);
+  });
 });

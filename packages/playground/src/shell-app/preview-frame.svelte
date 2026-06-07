@@ -31,6 +31,7 @@
   const store = getPreviewStore();
 
   let iframeEl = $state<HTMLIFrameElement | null>(null);
+  let lastSyncedTheme: ThemeChoice | null = null;
 
   let src = $derived(buildIframeSrc(componentName));
 
@@ -55,8 +56,8 @@
     win.postMessage(message, window.location.origin);
   }
 
-  function syncTheme(): void {
-    const message = createPreviewMessage('cinder:set-theme', store.theme);
+  function syncTheme(theme: ThemeChoice = store.theme): void {
+    const message = createPreviewMessage('cinder:set-theme', theme);
     if (message !== null) postToFrame(message);
   }
 
@@ -68,13 +69,17 @@
     if (message !== null) postToFrame(message);
   }
 
-  // Reactive: theme and active-theme color-token changes push to the iframe
-  // immediately. Reading `store.colorTokenOverrides[theme]` makes nested
-  // override replacement reactive without serializing this state to the URL.
+  // Reactive: active-theme color-token changes push to the iframe immediately.
+  // Theme messages only post when the resolved theme actually changes, avoiding
+  // redundant postMessages during continuous color-picker drags while still
+  // sending theme before overrides on a real theme change.
   $effect(() => {
     const theme = store.theme;
     const overrides = store.colorTokenOverrides[theme];
-    syncTheme();
+    if (lastSyncedTheme !== theme) {
+      syncTheme(theme);
+      lastSyncedTheme = theme;
+    }
     syncColorTokenOverrides(theme, overrides);
   });
 
@@ -86,8 +91,10 @@
     // pre-paint script reads localStorage for theme, but a shell-driven choice
     // (e.g. light/dark toggled this session) must be re-pushed after each
     // navigation/reload.
-    syncTheme();
-    syncColorTokenOverrides(store.theme, store.colorTokenOverrides[store.theme]);
+    const theme = store.theme;
+    syncTheme(theme);
+    lastSyncedTheme = theme;
+    syncColorTokenOverrides(theme, store.colorTokenOverrides[theme]);
   }
 
   /**

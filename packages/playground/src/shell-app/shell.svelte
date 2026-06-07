@@ -125,13 +125,18 @@
     };
   });
 
-  // Apply the theme and active-theme color overrides to the shell document.
-  // The inline pre-paint script in render-shell.ts handles the first paint; this
-  // effect keeps later toolbar changes, OS theme changes, and token edits in
-  // sync with the root document.
+  // Apply the theme to the shell document. The inline pre-paint script in
+  // render-shell.ts handles the first paint; this effect keeps later toolbar
+  // changes and OS theme changes in sync without also running for token drags.
   $effect(() => {
     if (typeof document === 'undefined') return;
     applyThemeToDocument(document, store.themeOverride, store.theme);
+  });
+
+  // Apply active-theme color overrides independently so continuous picker edits
+  // update only custom properties rather than rewriting the root theme signals.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
     store.applyActiveColorTokenOverridesToDocument(document);
   });
 
