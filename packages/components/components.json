@@ -627,6 +627,51 @@
       }
     },
     {
+      "name": "ChoiceGrid",
+      "id": "choice-grid",
+      "import": "@lostgradient/cinder/choice-grid",
+      "exportName": "ChoiceGrid",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Responsive grid of large selectable choices with roving keyboard focus, selection state, and optional correct/incorrect/pending feedback for quiz and assessment surfaces.",
+      "tags": ["form", "selection", "quiz", "assessment"],
+      "useWhen": [
+        "Presenting a small fixed set of large selectable answers where all options should stay visible (quiz or assessment surfaces).",
+        "Building a touch-friendly selector grid with stable cell dimensions that must not shift when feedback states are applied."
+      ],
+      "avoidWhen": [
+        "Selecting from a long dynamic list — use combobox or select instead.",
+        "Choosing one of two to five short values in a compact inline context — use segmented-control instead."
+      ],
+      "related": ["choice-grid-item", "segmented-control", "radio-group", "checkbox-group"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/choice-grid/schema",
+        "variables": "@lostgradient/cinder/choice-grid/variables",
+        "examples": "@lostgradient/cinder/choice-grid/examples"
+      }
+    },
+    {
+      "name": "ChoiceGridItem",
+      "id": "choice-grid-item",
+      "import": "@lostgradient/cinder/choice-grid-item",
+      "exportName": "ChoiceGridItem",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Selectable answer tile used inside a ChoiceGrid; carries selected, disabled, correct, incorrect, and pending states without shifting cell dimensions.",
+      "tags": ["form", "selection", "quiz"],
+      "useWhen": ["Composing individual answer choices inside a ChoiceGrid parent."],
+      "avoidWhen": ["Used outside a ChoiceGrid — this leaf requires the parent context."],
+      "related": ["choice-grid"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/choice-grid-item/schema",
+        "variables": "@lostgradient/cinder/choice-grid-item/variables"
+      }
+    },
+    {
       "name": "ClickAwayListener",
       "id": "click-away-listener",
       "import": "@lostgradient/cinder/click-away-listener",

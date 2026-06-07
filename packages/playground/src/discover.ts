@@ -23,6 +23,7 @@ const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/c
  */
 export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
   'accordion-item',
+  'choice-grid-item',
   'tab-list',
   'tab',
   'tab-panel',

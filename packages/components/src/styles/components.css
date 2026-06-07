@@ -27,6 +27,7 @@
 @import '../components/callout/callout.css';
 @import '../components/card/card.css';
 @import '../components/chip/chip.css';
+@import '../components/choice-grid/choice-grid.css';
 @import '../components/checkbox/checkbox.css';
 @import '../components/checkbox-group/checkbox-group.css';
 @import '../components/code-block/code-block.css';

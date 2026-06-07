@@ -604,6 +604,52 @@
       "import": "./src/components/chip/chip.examples.json",
       "default": "./src/components/chip/chip.examples.json"
     },
+    "./choice-grid": {
+      "types": "./dist/components/choice-grid/index.d.ts",
+      "svelte": "./src/components/choice-grid/index.ts",
+      "node": "./dist/server/components/choice-grid/index.js",
+      "default": "./dist/components/choice-grid/index.js"
+    },
+    "./choice-grid/schema": {
+      "types": "./dist/components/choice-grid/choice-grid.schema.d.ts",
+      "svelte": "./src/components/choice-grid/choice-grid.schema.ts",
+      "node": "./dist/server/components/choice-grid/choice-grid.schema.js",
+      "default": "./dist/components/choice-grid/choice-grid.schema.js"
+    },
+    "./choice-grid/variables": {
+      "types": "./dist/components/choice-grid/choice-grid.variables.d.ts",
+      "svelte": "./src/components/choice-grid/choice-grid.variables.ts",
+      "node": "./dist/server/components/choice-grid/choice-grid.variables.js",
+      "default": "./dist/components/choice-grid/choice-grid.variables.js"
+    },
+    "./choice-grid/styles": {
+      "default": "./dist/components/choice-grid/choice-grid.css"
+    },
+    "./choice-grid/examples": {
+      "import": "./src/components/choice-grid/choice-grid.examples.json",
+      "default": "./src/components/choice-grid/choice-grid.examples.json"
+    },
+    "./choice-grid-item": {
+      "types": "./dist/components/choice-grid-item/index.d.ts",
+      "svelte": "./src/components/choice-grid-item/index.ts",
+      "node": "./dist/server/components/choice-grid-item/index.js",
+      "default": "./dist/components/choice-grid-item/index.js"
+    },
+    "./choice-grid-item/schema": {
+      "types": "./dist/components/choice-grid-item/choice-grid-item.schema.d.ts",
+      "svelte": "./src/components/choice-grid-item/choice-grid-item.schema.ts",
+      "node": "./dist/server/components/choice-grid-item/choice-grid-item.schema.js",
+      "default": "./dist/components/choice-grid-item/choice-grid-item.schema.js"
+    },
+    "./choice-grid-item/variables": {
+      "types": "./dist/components/choice-grid-item/choice-grid-item.variables.d.ts",
+      "svelte": "./src/components/choice-grid-item/choice-grid-item.variables.ts",
+      "node": "./dist/server/components/choice-grid-item/choice-grid-item.variables.js",
+      "default": "./dist/components/choice-grid-item/choice-grid-item.variables.js"
+    },
+    "./choice-grid-item/styles": {
+      "default": "./dist/components/choice-grid-item/choice-grid-item.css"
+    },
     "./click-away-listener": {
       "types": "./dist/components/click-away-listener/index.d.ts",
       "svelte": "./src/components/click-away-listener/index.ts",
