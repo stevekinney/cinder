@@ -19,7 +19,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 /** Load any cinder page so the global styles + component sidecars are applied. */
 async function loadStyledPage(page: Page): Promise<void> {
-  await page.goto('/page/callout', { waitUntil: 'load' });
+  await page.goto('/page/callout?tab=examples', { waitUntil: 'load' });
 }
 
 /**

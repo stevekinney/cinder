@@ -8,10 +8,7 @@
 
 import { describe, expect, it } from 'bun:test';
 
-import {
-  extractExampleMetadataFromSource,
-  unescapeStringLiteral,
-} from './example-metadata.ts';
+import { extractExampleMetadataFromSource, unescapeStringLiteral } from './example-metadata.ts';
 
 describe('extractExampleMetadataFromSource — title', () => {
   it('extracts a single-quoted title', () => {
@@ -91,11 +88,9 @@ describe('extractExampleMetadataFromSource — description', () => {
   });
 
   it('extracts a multi-line description from a template literal', () => {
-    const source = [
-      'export const description = `First line',
-      'Second line',
-      'Third line`;',
-    ].join('\n');
+    const source = ['export const description = `First line', 'Second line', 'Third line`;'].join(
+      '\n',
+    );
     expect(extractExampleMetadataFromSource(source).description).toBe(
       'First line\nSecond line\nThird line',
     );
@@ -116,6 +111,16 @@ describe('extractExampleMetadataFromSource — description', () => {
     const meta = extractExampleMetadataFromSource(source);
     expect(meta.title).toBe('My Example');
     expect(meta.description).toBe('What it shows');
+  });
+
+  it('extracts optional featured metadata', () => {
+    const source = [
+      `export const title = 'My Example';`,
+      `export const description = 'What it shows';`,
+      `export const featured = true;`,
+    ].join('\n');
+    const meta = extractExampleMetadataFromSource(source);
+    expect(meta.featured).toBe(true);
   });
 
   it('preserves an empty-string description as "" when explicitly authored', () => {

@@ -25,6 +25,7 @@
       "id": "primary",
       "title": "Primary button",
       "description": "The default button variant.",
+      "featured": true,
       "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n</script>\n\n<Button label=\"Click me\" />\n"
     },
     {

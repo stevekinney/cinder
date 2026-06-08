@@ -4,6 +4,11 @@ import {
   appendServerOutputBuffer,
   localPlaygroundUrlForReportedPort,
   parsePlaygroundListeningPort,
+  playgroundBundleDependencyBuildArguments,
+  playgroundBundleDependencyBuildPackages,
+  playgroundUrlForPath,
+  playgroundWarmReadinessEndpointPath,
+  playgroundWarmReadinessMissingEndpointMessage,
 } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
@@ -64,5 +69,51 @@ describe('appendServerOutputBuffer', () => {
 
     expect(buffer.length).toBe(4096);
     expect(buffer.endsWith('done')).toBe(true);
+  });
+});
+
+describe('playground bundle dependency build preflight', () => {
+  test('builds every private package the playground browser bundle resolves through dist', () => {
+    expect(playgroundBundleDependencyBuildPackages()).toEqual([
+      '@cinder/diff',
+      '@cinder/markdown',
+      '@cinder/editor',
+      '@cinder/commentary',
+    ]);
+  });
+
+  test('build arguments use Bun workspace filters', () => {
+    expect(playgroundBundleDependencyBuildArguments('@cinder/markdown')).toEqual([
+      'run',
+      '--filter=@cinder/markdown',
+      'build',
+    ]);
+  });
+});
+
+describe('warm playground readiness', () => {
+  test('normalizes probe paths against playground URLs with trailing slashes', () => {
+    expect(playgroundUrlForPath('/ping', 'http://localhost:5555/')).toBe(
+      'http://localhost:5555/ping',
+    );
+    expect(playgroundUrlForPath('/ready', 'https://example.com/playground/')).toBe(
+      'https://example.com/playground/ready',
+    );
+  });
+
+  test('waits on the warmed-bundle readiness endpoint before Playwright starts', () => {
+    expect(playgroundWarmReadinessEndpointPath()).toBe('/ready');
+  });
+
+  test('explains stale reused servers that do not expose the readiness endpoint', () => {
+    expect(playgroundWarmReadinessMissingEndpointMessage('http://localhost:5555')).toContain(
+      'stale playground server',
+    );
+    expect(playgroundWarmReadinessMissingEndpointMessage('http://localhost:5555')).toContain(
+      'stop the stale server before rerunning the test wrapper',
+    );
+    expect(playgroundWarmReadinessMissingEndpointMessage('http://localhost:5555')).toContain(
+      'PLAYWRIGHT_REUSE_SERVER=0',
+    );
   });
 });

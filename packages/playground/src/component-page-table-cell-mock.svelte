@@ -1,0 +1,11 @@
+<script lang="ts">
+  import type { Snippet } from 'svelte';
+
+  let { children }: { children?: Snippet } = $props();
+</script>
+
+<td>
+  {#if children !== undefined}
+    {@render children()}
+  {/if}
+</td>

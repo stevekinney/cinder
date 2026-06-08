@@ -18,6 +18,7 @@
  *   GET /example-src/:name/:scenario → raw .example.svelte source
  *   GET /events        → Server-Sent Events stream for live reload
  *   GET /ping          → health check ("pong")
+ *   GET /ready         → warmed-bundle readiness check ("ready")
  *
  * A file watcher on `src/` triggers a reload event to all connected SSE clients
  * whenever a file changes. Use `triggerReload()` directly in tests.
@@ -41,6 +42,11 @@ import {
 } from '../../components/scripts/lib/visual-fixtures/schema.ts';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { analyzeAll, resetProject } from './analyze.ts';
+import { validateComponentDocumentationPayload } from './component-documentation-reference.ts';
+import {
+  ComponentDocumentationError,
+  buildComponentDocumentation,
+} from './component-documentation.ts';
 import {
   COMPOSE_ONLY_COMPONENTS,
   discoverComponents,
@@ -536,14 +542,14 @@ const SHARED_BUILD_OPTIONS = {
   plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
   target: 'browser',
   format: 'esm',
-  // `svelte` falls back to source resolution for the `@lostgradient/cinder` workspace
-  // package: its exports map advertises `svelte` and `types` conditions
-  // pointing at `./src/components/<name>/index.ts`, with no `bun`/`default`
-  // condition. Without this, examples authored as `import { Button } from
-  // '@lostgradient/cinder/button'` (the public consumer-facing form) fail to resolve at
-  // bundle time. `bun` stays first so cinder workspace internals can still
-  // declare bun-specific overrides if needed.
-  conditions: ['bun', 'svelte'],
+  // `svelte` falls back to source resolution for the `@lostgradient/cinder`
+  // workspace package: its exports map advertises `svelte` and `types`
+  // conditions pointing at `./src/components/<name>/index.ts`, with no browser
+  // source condition. The page bundles themselves are browser bundles, though,
+  // so we avoid the `bun` condition here. Private workspace packages such as
+  // `@cinder/markdown` use that condition for Bun/server source entry points,
+  // which can break Linux browser bundling for markdown-backed components.
+  conditions: ['browser', 'svelte'],
   splitting: true,
   naming: {
     entry: '[name]-[hash].js',
@@ -1392,6 +1398,12 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response('pong', { headers: { 'Content-Type': 'text/plain' } });
   }
 
+  // GET /ready
+  if (pathname === '/ready') {
+    await awaitWarmCache();
+    return new Response('ready', { headers: { 'Content-Type': 'text/plain' } });
+  }
+
   // GET /events
   if (pathname === '/events') {
     let controller: ReadableStreamDefaultController<string> | undefined;
@@ -1607,6 +1619,42 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(JSON.stringify(manifest), {
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  // GET /api/documentation/:name — component documentation payload
+  const apiDocumentationMatch = pathname.match(/^\/api\/documentation\/([^/]+)$/);
+  if (apiDocumentationMatch) {
+    const componentName = apiDocumentationMatch[1]!;
+    if (!isSafeSegment(componentName)) return notFound();
+    await awaitWarmCache();
+    const manifests = await getManifests();
+    const manifest = manifests.find((m) => m.kebabName === componentName);
+    if (manifest === undefined) {
+      return notFound(`Documentation for "${componentName}" not found`);
+    }
+
+    try {
+      const documentation = await buildComponentDocumentation(componentName, manifest);
+      const validationErrors = validateComponentDocumentationPayload(documentation);
+      if (validationErrors.length > 0) {
+        throw new Error(
+          `Documentation payload for "${componentName}" failed validation:\n` +
+            validationErrors.map((validationError) => `  - ${validationError}`).join('\n'),
+        );
+      }
+      return new Response(JSON.stringify(documentation), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      if (error instanceof ComponentDocumentationError && error.code === 'unknown-component') {
+        return notFound(`Documentation for "${componentName}" not found`);
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      return new Response(`Documentation route failed for "${componentName}":\n${message}`, {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain' },
+      });
+    }
   }
 
   // GET /page/:name — standalone component page (iframe content, no shell)

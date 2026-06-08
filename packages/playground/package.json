@@ -11,9 +11,10 @@
     "test": "bun run scripts/run-tests.ts",
     "typecheck": "tsc --noEmit && bunx svelte-check --tsconfig tsconfig.json --threshold error",
     "validate": "bun run scripts/check-raw-native-controls.ts --strict && bun run src/validate-playground.ts",
-    "vercel-build": "bun run scripts/static-export.ts"
+    "vercel-build": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && bun run --filter='@cinder/editor' build && bun run --filter='@cinder/commentary' build && bun run scripts/static-export.ts"
   },
   "dependencies": {
+    "@cinder/markdown": "workspace:*",
     "@lostgradient/cinder": "workspace:*",
     "shiki": "^3.0.0"
   },

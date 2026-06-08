@@ -20,6 +20,8 @@ type ElementBox = {
   height: number;
 };
 
+type ScreenshotClip = ElementBox;
+
 type TabbableSummary = {
   tagName: string;
   role: string | null;
@@ -28,6 +30,8 @@ type TabbableSummary = {
   targetId: string | null;
   seriesId: string | null;
 };
+
+const SCREENSHOT_CLIP_PADDING_CSS_PIXELS = 4;
 
 const charts: ChartDefinition[] = [
   {
@@ -289,13 +293,13 @@ async function assertVisibleRing(root: Locator, chart: ChartDefinition, forcedCo
   }
 }
 
-async function chartSvgScreenshot(root: Locator): Promise<Buffer> {
-  const svg = root.locator('svg').first();
-  await svg.scrollIntoViewIfNeeded();
-  return svg.screenshot();
-}
+async function ringScreenshotClip(
+  page: Page,
+  root: Locator,
+  chart: ChartDefinition,
+): Promise<ScreenshotClip> {
+  await root.scrollIntoViewIfNeeded();
 
-async function assertRingScreenshotArea(root: Locator, chart: ChartDefinition): Promise<void> {
   const ring = root.locator(primaryRingSelector(chart)).first();
   const svg = root.locator('svg').first();
   const ringBox = await ring.boundingBox();
@@ -304,6 +308,42 @@ async function assertRingScreenshotArea(root: Locator, chart: ChartDefinition): 
   expect(ringBox.width, `${chart.slug}: ring screenshot width`).toBeGreaterThan(0);
   expect(ringBox.height, `${chart.slug}: ring screenshot height`).toBeGreaterThan(0);
   expectBoxInside(ringBox, svgBox, `${chart.slug} screenshot ring inside SVG`);
+  const viewport = page.viewportSize();
+  if (viewport === null) throw new Error(`${chart.slug}: missing viewport for screenshot clip.`);
+  const padding = SCREENSHOT_CLIP_PADDING_CSS_PIXELS;
+  const x = Math.max(0, svgBox.x, ringBox.x - padding);
+  const y = Math.max(0, svgBox.y, ringBox.y - padding);
+  const right = Math.min(
+    viewport.width,
+    svgBox.x + svgBox.width,
+    ringBox.x + ringBox.width + padding,
+  );
+  const bottom = Math.min(
+    viewport.height,
+    svgBox.y + svgBox.height,
+    ringBox.y + ringBox.height + padding,
+  );
+
+  if (right <= x || bottom <= y) {
+    throw new Error(
+      `${chart.slug}: focus ring screenshot clip is outside the viewport. ${JSON.stringify({
+        ringBox,
+        svgBox,
+        viewport,
+      })}`,
+    );
+  }
+
+  return {
+    x,
+    y,
+    width: right - x,
+    height: bottom - y,
+  };
+}
+
+async function clippedScreenshot(page: Page, clip: ScreenshotClip): Promise<Buffer> {
+  return page.screenshot({ clip });
 }
 
 function changedPixelCount(beforeBuffer: Buffer, afterBuffer: Buffer): number {
@@ -343,13 +383,13 @@ test.describe('chart SVG focus rings', () => {
         content: '[role="tooltip"] { visibility: hidden !important; }',
       });
       await insertSentinelBeforeChartViewport(root, chart);
-      await assertRingScreenshotArea(root, chart);
-      const afterFocus = await chartSvgScreenshot(root);
+      const clip = await ringScreenshotClip(page, root, chart);
+      const afterFocus = await clippedScreenshot(page, clip);
       await page.locator('[data-chart-focus-sentinel]').first().focus();
-      const beforeFocus = await chartSvgScreenshot(root);
+      const beforeFocus = await clippedScreenshot(page, clip);
       await focusFromSentinel(page, chart);
       await expect(target).toHaveAttribute('data-cinder-target-id', chart.targetId);
-      const afterRefocus = await chartSvgScreenshot(root);
+      const afterRefocus = await clippedScreenshot(page, clip);
 
       expect(
         changedPixelCount(beforeFocus, afterFocus),

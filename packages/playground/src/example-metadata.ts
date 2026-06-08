@@ -15,6 +15,8 @@ export type ExampleMetadata = {
   title: string;
   /** Optional description; omitted entirely when no `description` export exists. */
   description?: string;
+  /** True when the example should be promoted on the documentation Overview. */
+  featured?: boolean;
 };
 
 // Named group `quote` = the surrounding quote (one of `'`, `"`, `` ` ``);
@@ -25,9 +27,8 @@ export type ExampleMetadata = {
 const STRING_PATTERN = /(?<quote>['"`])(?<body>(?:[^\\]|\\.)*?)\k<quote>/.source;
 
 const TITLE_PATTERN = new RegExp(`export\\s+const\\s+title\\s*=\\s*${STRING_PATTERN}`);
-const DESCRIPTION_PATTERN = new RegExp(
-  `export\\s+const\\s+description\\s*=\\s*${STRING_PATTERN}`,
-);
+const DESCRIPTION_PATTERN = new RegExp(`export\\s+const\\s+description\\s*=\\s*${STRING_PATTERN}`);
+const FEATURED_PATTERN = /export\s+const\s+featured\s*=\s*true\s*;?/;
 
 /**
  * Extract title/description from example source text via regex. Pure — no I/O.
@@ -51,6 +52,9 @@ export function extractExampleMetadataFromSource(source: string): ExampleMetadat
   const descriptionBody = descriptionMatch?.groups?.['body'];
   if (descriptionBody !== undefined) {
     meta.description = unescapeStringLiteral(descriptionBody);
+  }
+  if (FEATURED_PATTERN.test(source)) {
+    meta.featured = true;
   }
   return meta;
 }

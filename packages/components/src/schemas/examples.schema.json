@@ -48,6 +48,11 @@
             "description": "One-sentence description of what this example demonstrates.",
             "minLength": 1
           },
+          "featured": {
+            "type": "boolean",
+            "const": true,
+            "description": "When true, the playground promotes this example on the component Overview."
+          },
           "code": {
             "type": "string",
             "description": "The complete, self-contained Svelte snippet source. Consumers can paste this directly into a .svelte file. Imports use the published cinder subpath specifiers.",

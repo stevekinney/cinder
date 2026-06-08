@@ -25,7 +25,7 @@
 import { expect, test } from '@playwright/test';
 
 async function loadCard(themedPage: import('@playwright/test').Page) {
-  await themedPage.goto('/page/card', { waitUntil: 'load' });
+  await themedPage.goto('/page/card?tab=examples', { waitUntil: 'load' });
   const card = themedPage.locator('.cinder-card').first();
   await expect(card).toBeVisible();
   return card;

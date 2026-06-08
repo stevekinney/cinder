@@ -18,6 +18,7 @@ import {
   resolveFixtureFilePath,
 } from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import type { ComponentManifest } from './analyze.ts';
+import { isComponentDocumentationPayload } from './component-documentation-reference.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
   PORT,
@@ -177,6 +178,15 @@ describe('/ping', () => {
     const response = await handleRequest(req('/ping'));
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('pong');
+  });
+});
+
+describe('/ready', () => {
+  it('returns 200 ready after the warm bundle cache has settled', async () => {
+    const response = await handleRequest(req('/ready'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/plain');
+    expect(await response.text()).toBe('ready');
   });
 });
 
@@ -362,6 +372,28 @@ describe('chunks under /page-bundle/<filename>.js', () => {
       const chunkResponse = await handleRequest(req(url));
       expect(chunkResponse.status).toBe(200);
       expect(chunkResponse.headers.get('Content-Type')).toBe('application/javascript');
+    }
+  }, 60_000);
+
+  it('serves markdown-backed editor page bundles and their chunks', async () => {
+    for (const componentName of ['markdown-editor', 'review-editor']) {
+      const entryResponse = await handleRequest(req(`/page-bundle/${componentName}.js`));
+      expect(entryResponse.status).toBe(200);
+      expect(entryResponse.headers.get('Content-Type')).toBe('application/javascript');
+
+      const body = await entryResponse.text();
+      const chunkUrls = Array.from(
+        body.matchAll(/\/page-bundle\/[A-Za-z0-9_-]+-[a-z0-9]{8,}\.js/g),
+        (match) => match[0],
+      );
+      const unique = Array.from(new Set(chunkUrls));
+      expect(unique.length).toBeGreaterThan(0);
+
+      for (const url of unique) {
+        const chunkResponse = await handleRequest(req(url));
+        expect(chunkResponse.status).toBe(200);
+        expect(chunkResponse.headers.get('Content-Type')).toBe('application/javascript');
+      }
     }
   }, 60_000);
 });
@@ -1041,6 +1073,32 @@ describe('/api/manifest/:name', () => {
 
   it('returns 404 for segments with uppercase (isSafeSegment blocked)', async () => {
     const response = await handleRequest(req('/api/manifest/Button'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+});
+
+describe('/api/documentation/:name', () => {
+  it('returns 200 documentation JSON for a known component', async () => {
+    const response = await handleRequest(req('/api/documentation/button'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/json');
+    const body: unknown = await response.json();
+    expect(isComponentDocumentationPayload(body)).toBe(true);
+    if (!isComponentDocumentationPayload(body)) return;
+    expect(body.component.id).toBe('button');
+    expect(body.component.purpose).toContain('Primary interactive control');
+    expect(body.readme.html).toContain('<h1>Button</h1>');
+    expect(body.constraints).not.toBeNull();
+    expect(body.examples).not.toBeNull();
+  }, 30_000);
+
+  it('returns 404 for an unknown component', async () => {
+    const response = await handleRequest(req('/api/documentation/does-not-exist'));
+    expect(response.status).toBe(404);
+  }, 30_000);
+
+  it('returns 404 for segments with uppercase (isSafeSegment blocked)', async () => {
+    const response = await handleRequest(req('/api/documentation/Button'));
     expect(response.status).toBe(404);
   }, 30_000);
 });

@@ -122,6 +122,7 @@ describe('component CSS @layer invariant', () => {
     expect(files.length).toBeGreaterThan(100);
   });
 
+  // Whole-tree CSS parsing can exceed Bun's 5s default under CPU contention.
   test('every component CSS file wraps its rules in a single @layer cinder.components block', async () => {
     const files = await wrappedCssFiles();
     const offenders: string[] = [];
@@ -134,7 +135,7 @@ describe('component CSS @layer invariant', () => {
     }
 
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   test('directly-imported component CSS (e.g. prosemirror.css) is enumerated and wrapped', async () => {
     // Codex flagged that CSS imported by a component's source — not via the
