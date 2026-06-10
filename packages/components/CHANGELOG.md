@@ -1,5 +1,67 @@
 # @lostgradient/cinder
 
+## 0.2.0
+
+### Minor Changes
+
+- API-ergonomics refinements across several components ([#328](https://github.com/stevekinney/cinder/issues/328), resolving [#307](https://github.com/stevekinney/cinder/issues/307), [#309](https://github.com/stevekinney/cinder/issues/309), [#315](https://github.com/stevekinney/cinder/issues/315)). All additive and backward-compatible.
+  - **Card `padding="none"`** — removes body padding for full-bleed content, replacing the consumer workaround that reached into the internal `.cinder-card__body` class. Stamps `data-cinder-padding` on the body.
+  - **`Dropdown.Item` polymorphism** — renders `<a href>` when `href` is present and lets `type="submit"` flow to the `<button>`. Shared event handlers are typed at the `HTMLElement` base so existing button consumers with inline handlers keep typechecking; `role="menuitem"`, roving `tabindex`, and close-on-select are preserved on both branches.
+  - **Alert `variant="danger"`** — an additive alias for `error`.
+  - **NavigationBar** type refinements, **Badge `mono`**, and additional **StatusDot** statuses.
+
+- `Button` now forwards the popup-trigger ARIA attributes `aria-expanded`, `aria-controls`, and `aria-haspopup` ([#306](https://github.com/stevekinney/cinder/issues/306)), so a button that opens a menu, dialog, or disclosure can be wired up without reaching past the component's prop surface.
+
+- Add the `ChoiceGrid` compound component ([#332](https://github.com/stevekinney/cinder/issues/332), resolving [#318](https://github.com/stevekinney/cinder/issues/318)).
+
+  A responsive grid of large selectable choices with roving keyboard focus, single/multi-select, and correct/incorrect/pending feedback states — for quiz, assessment, and answer-selection surfaces. `ChoiceGrid` composes `ChoiceGrid.Item` via context. Single-select renders a `radiogroup` (arrow keys move selection, per WAI-ARIA); multi-select renders a `group` of checkboxes (arrows move focus only). Disabled items are skipped by both focusable-item computation and arrow navigation. Supports `columns="responsive"` (auto-fill) or a fixed 1–4.
+
+- Add `DataTable`, `PricingCard`, and `SubscriptionBadge` components ([#340](https://github.com/stevekinney/cinder/issues/340), resolving [#334](https://github.com/stevekinney/cinder/issues/334)–[#336](https://github.com/stevekinney/cinder/issues/336)).
+  - **DataTable** — a data-driven `<DataTable rows columns caption />` wrapper over the compositional Table family: sortable columns (reusing Table's bindable `sort` + `aria-sort`), a horizontal-scroll responsive container, and `<th scope="row">` row-header semantics via a new additive `as?: 'td' | 'th'` prop on `TableCell` (default `'td'`, so existing consumers are unchanged).
+  - **PricingCard** — a plan tile with name, price, feature list, an optional consumer-supplied caveat line, and a selectable state shown with both accent treatment and a visible "Selected" text flag (WCAG 1.4.1). The CTA is a real cinder `Button`.
+  - **SubscriptionBadge** — an opinionated `Badge` variant for the six billing states.
+
+- Add `MatrixChart` and the signal-visualization chart components ([#333](https://github.com/stevekinney/cinder/issues/333), resolving [#319](https://github.com/stevekinney/cinder/issues/319) and [#324](https://github.com/stevekinney/cinder/issues/324)).
+  - **MatrixChart** — a categorical × categorical heatmap (confusion matrices, correlation grids) with sequential and zero-centered diverging color scales, cell + axis labels, and an accessible data-table fallback. Sparse/missing and non-finite cells render predictably as "missing".
+  - **Waveform** — time-domain amplitude as a path or bars, with min/max-envelope downsampling for large buffers.
+  - **SpectrumChart** — frequency-bin magnitude bars with a zero-guarded real max.
+  - **Spectrogram** — a time × frequency heatmap.
+
+  All reuse the shared `_internal/chart` infrastructure (palette, formatting, accessible fallback) plus a new shared `_internal/chart/heatmap-utilities`.
+
+- Add `MediaControls`, `CapabilityGate`, `ShareCard`, `KeyboardShortcuts`, and `ShortcutHint` components ([#339](https://github.com/stevekinney/cinder/issues/339), resolving [#320](https://github.com/stevekinney/cinder/issues/320)–[#323](https://github.com/stevekinney/cinder/issues/323)).
+  - **MediaControls** — accessible play/pause/replay with optional progress; the play/pause control is a stable-label `aria-pressed` toggle, with distinct loading and unavailable states and both compact icon-only and expanded layouts.
+  - **CapabilityGate** — presents a feature's availability (supported / unsupported / permission-needed / permission-denied / loading / unavailable) with primary, fallback, and dismiss actions, backed by a `role="status"` live region carrying `aria-busy`.
+  - **ShareCard** — copy-link / copy-text / native `navigator.share` with a graceful copy fallback; user-cancel (`AbortError`) is silent.
+  - **KeyboardShortcuts** and **ShortcutHint** — keyboard-shortcut discovery surfaces.
+
+- Add the `SkipLink` (skip-to-content) component ([#329](https://github.com/stevekinney/cinder/issues/329), resolving [#308](https://github.com/stevekinney/cinder/issues/308)).
+
+  A composed skip-to-content primitive that owns the non-obvious focus management internally: the tabindex save → focus → restore-on-blur dance, `prefers-reduced-motion` handling, and a native-anchor-jump fallback when the target id is absent. Composes over `VisuallyHidden` (`as="a"`, `focusable`). The prop surface is intentionally minimal (`target`, `children`, `class`).
+
+- [#312](https://github.com/stevekinney/cinder/pull/312) [`dd69bba`](https://github.com/stevekinney/cinder/commit/dd69bba51e4784a0051b9fa5cfc9f9992dbe413c) Thanks [@stevekinney](https://github.com/stevekinney)! - Visual-token refinement that improves light/dark separation and accent legibility, plus six new semantic alias tokens.
+  - **Accent reads more like ink.** `--cinder-accent` is now `light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195))` — the light arm darkens from the previous bright cyan toward a more ink-like read (its foreground contrast improves from ~2:1 to ~2.7:1, though it still uses the dedicated `--cinder-accent-text` token for foreground use), and the dark-arm chroma calms from 0.15 to 0.13 to stop the cyan vibrating. As a fill it carries the dark-ink `--cinder-accent-contrast` label at ~7.2:1. Because `--cinder-accent-hover` and `--cinder-accent-active` derive from `--cinder-accent` with `oklch(from …)`, both hover and active states re-derive automatically. `--cinder-accent-text` keeps its dark-arm chroma in lockstep at 0.13.
+  - **New `--cinder-accent-active-on-fill` token keeps pressed primary buttons AA-legible.** Darkening the base accent dropped the general `--cinder-accent-active` (a `−0.15` lightness step → `L=0.51`) to ~4.09:1 for the dark-ink label on a pressed primary `Button`/`FloatingActionButton`, below WCAG AA. The new token uses a gentler `−0.11` step (light `L=0.55` ~4.79:1, dark ~7.1:1); those two components now consume it for their pressed fill. `--cinder-accent-active` is unchanged for every other consumer.
+  - **Wider dark surface ladder.** The dark elevation steps now run 15 → 20 → 26 → 11 (`--cinder-surface-raised` 24% → 26%, `--cinder-surface-inset` 12% → 11%); `--cinder-bg` and `--cinder-surface` are unchanged.
+  - **Stronger borders in both arms.** `--cinder-border` becomes `light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245))` for a more defined edge against surfaces.
+  - **Deeper small elevation.** `--cinder-shadow-sm` gains a second hairline layer and higher alphas in both arms; `--cinder-shadow-md` and `--cinder-shadow-lg` raise their dark-arm alphas (light arms unchanged).
+  - **Disabled text holds AA against the widened dark surfaces.** `--cinder-text-disabled` dark arm moves from 62% to 64% so disabled labels keep ≥4.5:1 on the lifted dark `--cinder-surface-raised` (a disabled RadioGroup legend would otherwise drop to ~3.6:1).
+  - **Six new semantic alias tokens** (additive, public) that express intent over the raw scale: `--cinder-pad-control`, `--cinder-pad-card`, `--cinder-gap-stack`, `--cinder-gap-inline`, `--cinder-radius-control`, and `--cinder-radius-surface`.
+
+### Patch Changes
+
+- Fix the `AvatarGroup` trigger focus ring ([#331](https://github.com/stevekinney/cinder/issues/331)) — restore the ring by replacing an invalid offset token with `--cinder-ring-offset` plus a fallback.
+
+- Add keyboard focus rings to chart marks. Area, bar, and line charts now render an SVG focus ring on keyboard focus (driven by the shared `_internal/chart/chart-focus-ring` helper) and respond to the pointer-vs-keyboard focus modality, so the ring shows for keyboard navigation without flashing on click.
+
+- Promote the transparency-checkerboard colors to public theme-aware tokens ([#330](https://github.com/stevekinney/cinder/issues/330)). The color picker, color field, and swatch picker now repoint their alpha checkerboards to the shared tokens, and the color-picker thumb keeps its dark-contrast edge across themes with an added dark-mode support ring.
+
+- Normalize domain/editor focus indicators ([#313](https://github.com/stevekinney/cinder/issues/313)). Chat, review-editor, diff-viewer, and markdown-editor surfaces now use the shared focus-ring recipe (`--_cinder-focus-ring-shadow`) instead of hand-rolled `box-shadow` rings, with documented inset variants where dense-surface geometry would otherwise clip the outer ring.
+
+- Packaging fixes for consumers ([#327](https://github.com/stevekinney/cinder/issues/327), resolving [#311](https://github.com/stevekinney/cinder/issues/311) and [#314](https://github.com/stevekinney/cinder/issues/314)).
+  - **`lucide-svelte` is now a peer dependency** (`>=0.400.0 <1`) instead of a regular dependency, so consumers use their own copy rather than a nested duplicate. It stays a devDependency so cinder's own build, tests, and playground still resolve the icons it imports.
+  - **`types` condition on the CSS-only style subpaths** (`./styles`, `./styles/all`, `./styles/tokens`, `./styles/foundation`, `./styles/utilities`) — a side-effect `import '@lostgradient/cinder/styles'` now resolves types correctly under `moduleResolution: bundler` (the SvelteKit default).
+
 ## 0.1.1
 
 ### Patch Changes
