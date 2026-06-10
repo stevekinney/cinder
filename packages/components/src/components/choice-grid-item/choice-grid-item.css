@@ -49,7 +49,13 @@
    * ---------------------------------------- */
 
   @media (hover: hover) {
-    .cinder-choice-grid-item:not([data-cinder-disabled]):hover {
+    /* Neutral hover only. Excludes selected and graded (correct/incorrect/
+     * pending) tiles so their accent/feedback colors aren't clobbered to a
+     * neutral raised fill on hover — those states own their own hover rules
+     * (or intentionally stay flat). */
+    .cinder-choice-grid-item:not([data-cinder-disabled]):not([data-cinder-selected]):not(
+        [data-cinder-state]
+      ):hover {
       border-color: var(--cinder-border);
       background: var(--cinder-surface-raised);
     }
@@ -60,7 +66,7 @@
    * ---------------------------------------- */
 
   .cinder-choice-grid-item:focus-visible {
-    border-color: var(--cinder-color-accent-9);
+    border-color: var(--cinder-accent);
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -76,15 +82,22 @@
    * Selected state
    * ---------------------------------------- */
 
+  /* Selected uses accent border + accent text with no filled background,
+   * matching the segmented-control convention. */
   .cinder-choice-grid-item[data-cinder-selected] {
-    border-color: var(--cinder-color-accent-9);
-    background: var(--cinder-color-accent-3);
-    color: var(--cinder-color-accent-11);
+    border-color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   @media (hover: hover) {
-    .cinder-choice-grid-item[data-cinder-selected]:not([data-cinder-disabled]):hover {
-      background: var(--cinder-color-accent-4);
+    /* Excludes graded tiles (a wrong pick can be both selected AND
+     * data-cinder-state) so hover doesn't flip their feedback border to accent
+     * — the feedback border must keep dominating on hover as it does at rest.
+     * Mirrors the neutral-hover guard above. */
+    .cinder-choice-grid-item[data-cinder-selected]:not([data-cinder-disabled]):not(
+        [data-cinder-state]
+      ):hover {
+      border-color: var(--cinder-accent-hover);
     }
   }
 
@@ -105,22 +118,22 @@
 
   /* Correct */
   .cinder-choice-grid-item[data-cinder-state='correct'] {
-    border-color: var(--cinder-color-green-8);
-    background: var(--cinder-color-green-3);
-    color: var(--cinder-color-green-11);
+    border-color: var(--cinder-color-success-border);
+    background: var(--cinder-color-success-bg);
+    color: var(--cinder-color-success-fg);
   }
 
   /* Incorrect */
   .cinder-choice-grid-item[data-cinder-state='incorrect'] {
-    border-color: var(--cinder-color-red-8);
-    background: var(--cinder-color-red-3);
-    color: var(--cinder-color-red-11);
+    border-color: var(--cinder-color-danger-border);
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
   }
 
   /* Pending */
   .cinder-choice-grid-item[data-cinder-state='pending'] {
-    border-color: var(--cinder-color-amber-8);
-    background: var(--cinder-color-amber-3);
-    color: var(--cinder-color-amber-11);
+    border-color: var(--cinder-color-warning-border);
+    background: var(--cinder-color-warning-bg);
+    color: var(--cinder-color-warning-fg);
   }
 }
