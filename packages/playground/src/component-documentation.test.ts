@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
-import { analyzeComponent } from './analyze.ts';
+import { analyzeAll, analyzeComponent } from './analyze.ts';
 import { validateComponentDocumentationPayload } from './component-documentation-reference.ts';
 import {
   buildComponentDocumentation,
@@ -90,5 +90,30 @@ describe('buildComponentDocumentation', () => {
         readme: unsafeReadme,
       }),
     ).toContain('button README rendering stripped unsafe content');
+  });
+});
+
+describe('every component documentation payload passes validation', () => {
+  // The static-export deploy fetches /api/documentation/:name for every
+  // component and aborts the build on any non-2xx response. That route builds
+  // the same payload below and 500s when validateComponentDocumentationPayload
+  // returns errors — most easily tripped by a raw HTML tag in README prose
+  // (e.g. `<table>` instead of `` `<table>` ``), which the markdown sanitizer
+  // strips and flags as hadUnsafeContent. Sweeping every component here catches
+  // that at unit-test time (a gating job) instead of post-merge on Vercel.
+  it('builds and validates the doc payload for all components', async () => {
+    const manifests = await analyzeAll(COMPONENTS_ROOT);
+    expect(manifests.length).toBeGreaterThan(0);
+
+    const failures: string[] = [];
+    for (const manifest of manifests) {
+      const payload = await buildComponentDocumentation(manifest.kebabName, manifest);
+      const errors = validateComponentDocumentationPayload(payload);
+      if (errors.length > 0) {
+        failures.push(`${manifest.kebabName}: ${errors.join('; ')}`);
+      }
+    }
+
+    expect(failures).toEqual([]);
   });
 });

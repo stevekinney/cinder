@@ -1,6 +1,6 @@
 # DataTable
 
-Data-driven accessible table that renders rows and columns into a real <table> with <caption>, scoped column and row headers, optional sortable columns, and a horizontal-scroll responsive container.
+Data-driven accessible table that renders rows and columns into a real `<table>` with `<caption>`, scoped column and row headers, optional sortable columns, and a horizontal-scroll responsive container.
 
 ## Usage
 
