@@ -1,0 +1,18 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+ * SUBSCRIPTION BADGE
+ *
+ * Thin wrapper over .cinder-badge that identifies subscription-state
+ * badge instances in the DOM. All visual styling (tone, size, layout)
+ * is inherited from Badge — this rule exists only to give the component
+ * a stable CSS anchor for host-application overrides and for the
+ * component graph invariant check that every component has a CSS entry.
+ * ======================================== */
+
+  .cinder-subscription-badge {
+    /* No additional overrides needed — Badge tones cover all six states.
+     * Host applications can target .cinder-subscription-badge to further
+     * customize without touching the base Badge rules. */
+  }
+}

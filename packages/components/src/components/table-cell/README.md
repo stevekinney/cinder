@@ -14,11 +14,12 @@ snippet. The flat `@lostgradient/cinder/table-cell` subpath remains exported for
 
 <!-- generated:props:start -->
 
-| Prop       | Type                                | Required | Default | Description                                                                                                                |
-| ---------- | ----------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `align`    | `"left"` \| `"center"` \| `"right"` | no       | —       | Visual alignment for numeric columns.                                                                                      |
-| `class`    | `string`                            | no       | —       | Additional class names merged with `.cinder-table__cell`.                                                                  |
-| `children` | `(opaque)`                          | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop       | Type                                | Required | Default | Description                                                                                                                                                                                                                                                                                             |
+| ---------- | ----------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `align`    | `"left"` \| `"center"` \| `"right"` | no       | —       | Visual alignment for numeric columns.                                                                                                                                                                                                                                                                   |
+| `as`       | `"td"` \| `"th"`                    | no       | —       | When `'th'`, renders a `<th scope="row">` instead of `<td>`, marking this cell as the row-header identifier for assistive technology. All existing CSS classes and attribute forwarding are preserved — this is purely a tag and scope change. Defaults to `'td'` so existing consumers are unaffected. |
+| `class`    | `string`                            | no       | —       | Additional class names merged with `.cinder-table__cell`.                                                                                                                                                                                                                                               |
+| `children` | `(opaque)`                          | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                              |
 
 <!-- generated:props:end -->
 

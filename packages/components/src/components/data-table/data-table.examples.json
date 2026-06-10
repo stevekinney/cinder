@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "data-table",
+  "import": "@lostgradient/cinder/data-table",
+  "examples": [
+    {
+      "id": "roster",
+      "title": "Class roster",
+      "description": "A class roster with a sortable grade column. The Name column is the row header (scope=\"row\"). Bind sort state and reorder rows in a $derived expression.",
+      "code": "<script lang=\"ts\">\n  import { DataTable } from '@lostgradient/cinder/data-table';\n  import type { TableSort } from '@lostgradient/cinder/table';\n\n  type Student = {\n    name: string;\n    subject: string;\n    grade: number;\n  };\n\n  const students: Student[] = [\n    { name: 'Ada Lovelace', subject: 'Mathematics', grade: 98 },\n    { name: 'Grace Hopper', subject: 'Computer Science', grade: 92 },\n    { name: 'Alan Turing', subject: 'Cryptography', grade: 95 },\n    { name: 'Margaret Hamilton', subject: 'Software Engineering', grade: 89 },\n  ];\n\n  const columns = [\n    { key: 'name' as const, label: 'Name', rowHeader: true },\n    { key: 'subject' as const, label: 'Subject' },\n    { key: 'grade' as const, label: 'Grade', sortable: true, align: 'end' as const },\n  ];\n\n  let sort: TableSort | undefined = $state();\n\n  const sortedStudents = $derived.by(() => {\n    if (!sort) return students;\n    return [...students].sort((a, b) => {\n      const key = sort!.column as keyof Student;\n      const aValue = a[key];\n      const bValue = b[key];\n      const comparison =\n        typeof aValue === 'number' && typeof bValue === 'number'\n          ? aValue - bValue\n          : String(aValue).localeCompare(String(bValue));\n      return sort!.direction === 'ascending' ? comparison : -comparison;\n    });\n  });\n</script>\n\n<DataTable caption=\"Spring semester roster\" {columns} rows={sortedStudents} bind:sort />\n"
+    },
+    {
+      "id": "sortable",
+      "title": "Sortable data table",
+      "description": "Multiple sortable columns with a scrollable wrapper. Sort state is bound and rows are reordered via $derived.",
+      "code": "<script lang=\"ts\">\n  import { DataTable } from '@lostgradient/cinder/data-table';\n  import type { TableSort } from '@lostgradient/cinder/table';\n\n  type Contributor = {\n    name: string;\n    role: string;\n    commits: number;\n    reviews: number;\n  };\n\n  const contributors: Contributor[] = [\n    { name: 'Ada Lovelace', role: 'Mathematician', commits: 142, reviews: 34 },\n    { name: 'Grace Hopper', role: 'Computer Scientist', commits: 98, reviews: 41 },\n    { name: 'Alan Turing', role: 'Cryptanalyst', commits: 76, reviews: 28 },\n    { name: 'Margaret Hamilton', role: 'Software Engineer', commits: 304, reviews: 87 },\n    { name: 'Linus Torvalds', role: 'Systems Engineer', commits: 512, reviews: 19 },\n    { name: 'Dennis Ritchie', role: 'Language Designer', commits: 231, reviews: 55 },\n  ];\n\n  const columns = [\n    { key: 'name' as const, label: 'Name', sortable: true, rowHeader: true },\n    { key: 'role' as const, label: 'Role', sortable: true },\n    { key: 'commits' as const, label: 'Commits', sortable: true, align: 'end' as const },\n    { key: 'reviews' as const, label: 'Reviews', sortable: true, align: 'end' as const },\n  ];\n\n  let sort: TableSort | undefined = $state();\n\n  const sortedContributors = $derived.by(() => {\n    if (!sort) return contributors;\n    return [...contributors].sort((a, b) => {\n      const key = sort!.column as keyof Contributor;\n      const aValue = a[key];\n      const bValue = b[key];\n      const comparison =\n        typeof aValue === 'number' && typeof bValue === 'number'\n          ? aValue - bValue\n          : String(aValue).localeCompare(String(bValue));\n      return sort!.direction === 'ascending' ? comparison : -comparison;\n    });\n  });\n</script>\n\n<DataTable caption=\"Top contributors\" {columns} rows={sortedContributors} bind:sort scrollable />\n"
+    }
+  ]
+}

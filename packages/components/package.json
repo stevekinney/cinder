@@ -1078,6 +1078,31 @@
       "import": "./src/components/data-list/data-list.examples.json",
       "default": "./src/components/data-list/data-list.examples.json"
     },
+    "./data-table": {
+      "types": "./dist/components/data-table/index.d.ts",
+      "svelte": "./src/components/data-table/index.ts",
+      "node": "./dist/server/components/data-table/index.js",
+      "default": "./dist/components/data-table/index.js"
+    },
+    "./data-table/schema": {
+      "types": "./dist/components/data-table/data-table.schema.d.ts",
+      "svelte": "./src/components/data-table/data-table.schema.ts",
+      "node": "./dist/server/components/data-table/data-table.schema.js",
+      "default": "./dist/components/data-table/data-table.schema.js"
+    },
+    "./data-table/variables": {
+      "types": "./dist/components/data-table/data-table.variables.d.ts",
+      "svelte": "./src/components/data-table/data-table.variables.ts",
+      "node": "./dist/server/components/data-table/data-table.variables.js",
+      "default": "./dist/components/data-table/data-table.variables.js"
+    },
+    "./data-table/styles": {
+      "default": "./dist/components/data-table/data-table.css"
+    },
+    "./data-table/examples": {
+      "import": "./src/components/data-table/data-table.examples.json",
+      "default": "./src/components/data-table/data-table.examples.json"
+    },
     "./description-list": {
       "types": "./dist/components/description-list/index.d.ts",
       "svelte": "./src/components/description-list/index.ts",
@@ -2194,6 +2219,31 @@
       "import": "./src/components/portal/portal.examples.json",
       "default": "./src/components/portal/portal.examples.json"
     },
+    "./pricing-card": {
+      "types": "./dist/components/pricing-card/index.d.ts",
+      "svelte": "./src/components/pricing-card/index.ts",
+      "node": "./dist/server/components/pricing-card/index.js",
+      "default": "./dist/components/pricing-card/index.js"
+    },
+    "./pricing-card/schema": {
+      "types": "./dist/components/pricing-card/pricing-card.schema.d.ts",
+      "svelte": "./src/components/pricing-card/pricing-card.schema.ts",
+      "node": "./dist/server/components/pricing-card/pricing-card.schema.js",
+      "default": "./dist/components/pricing-card/pricing-card.schema.js"
+    },
+    "./pricing-card/variables": {
+      "types": "./dist/components/pricing-card/pricing-card.variables.d.ts",
+      "svelte": "./src/components/pricing-card/pricing-card.variables.ts",
+      "node": "./dist/server/components/pricing-card/pricing-card.variables.js",
+      "default": "./dist/components/pricing-card/pricing-card.variables.js"
+    },
+    "./pricing-card/styles": {
+      "default": "./dist/components/pricing-card/pricing-card.css"
+    },
+    "./pricing-card/examples": {
+      "import": "./src/components/pricing-card/pricing-card.examples.json",
+      "default": "./src/components/pricing-card/pricing-card.examples.json"
+    },
     "./progress": {
       "types": "./dist/components/progress/index.d.ts",
       "svelte": "./src/components/progress/index.ts",
@@ -2935,6 +2985,31 @@
     "./steps/examples": {
       "import": "./src/components/steps/steps.examples.json",
       "default": "./src/components/steps/steps.examples.json"
+    },
+    "./subscription-badge": {
+      "types": "./dist/components/subscription-badge/index.d.ts",
+      "svelte": "./src/components/subscription-badge/index.ts",
+      "node": "./dist/server/components/subscription-badge/index.js",
+      "default": "./dist/components/subscription-badge/index.js"
+    },
+    "./subscription-badge/schema": {
+      "types": "./dist/components/subscription-badge/subscription-badge.schema.d.ts",
+      "svelte": "./src/components/subscription-badge/subscription-badge.schema.ts",
+      "node": "./dist/server/components/subscription-badge/subscription-badge.schema.js",
+      "default": "./dist/components/subscription-badge/subscription-badge.schema.js"
+    },
+    "./subscription-badge/variables": {
+      "types": "./dist/components/subscription-badge/subscription-badge.variables.d.ts",
+      "svelte": "./src/components/subscription-badge/subscription-badge.variables.ts",
+      "node": "./dist/server/components/subscription-badge/subscription-badge.variables.js",
+      "default": "./dist/components/subscription-badge/subscription-badge.variables.js"
+    },
+    "./subscription-badge/styles": {
+      "default": "./dist/components/subscription-badge/subscription-badge.css"
+    },
+    "./subscription-badge/examples": {
+      "import": "./src/components/subscription-badge/subscription-badge.examples.json",
+      "default": "./src/components/subscription-badge/subscription-badge.examples.json"
     },
     "./surface": {
       "types": "./dist/components/surface/index.d.ts",

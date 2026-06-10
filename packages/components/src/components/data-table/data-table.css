@@ -1,0 +1,12 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+ * DATA TABLE
+ * Thin wrapper div that scopes the data-driven DataTable component.
+ * Visual treatment for the table itself lives in table.css.
+ * ======================================== */
+
+  .cinder-data-table {
+    display: contents;
+  }
+}

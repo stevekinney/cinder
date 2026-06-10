@@ -1,0 +1,143 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+ * PRICING CARD
+ * ======================================== */
+
+  .cinder-pricing-card {
+    display: flex;
+    flex-direction: column;
+    inline-size: 100%;
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border-muted);
+    color: var(--cinder-text);
+    box-shadow: var(--cinder-shadow-sm);
+    overflow: hidden;
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-pricing-card[data-cinder-selected] {
+    border-color: var(--cinder-accent);
+    box-shadow:
+      var(--cinder-shadow-sm),
+      0 0 0 2px color-mix(in oklch, var(--cinder-accent), transparent 70%);
+  }
+
+  /* ----------------------------------------
+ * Header
+ * ---------------------------------------- */
+
+  .cinder-pricing-card__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-4) var(--cinder-space-4) var(--cinder-space-3);
+    border-bottom: 1px solid var(--cinder-border-muted);
+  }
+
+  .cinder-pricing-card[data-cinder-selected] .cinder-pricing-card__header {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+  }
+
+  /* ----------------------------------------
+ * Name & price
+ * ---------------------------------------- */
+
+  .cinder-pricing-card__name {
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+    margin: 0;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+
+  .cinder-pricing-card[data-cinder-selected] .cinder-pricing-card__name {
+    color: var(--cinder-accent-text);
+  }
+
+  .cinder-pricing-card__price {
+    font-size: var(--cinder-text-3xl);
+    font-weight: var(--cinder-font-bold);
+    color: var(--cinder-text);
+    margin: 0;
+    line-height: 1;
+  }
+
+  /* ----------------------------------------
+ * Body
+ * ---------------------------------------- */
+
+  .cinder-pricing-card__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-4);
+  }
+
+  /* ----------------------------------------
+ * Features list
+ * ---------------------------------------- */
+
+  .cinder-pricing-card__features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-pricing-card__feature {
+    display: flex;
+    align-items: baseline;
+    gap: var(--cinder-space-2);
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+  }
+
+  .cinder-pricing-card__feature::before {
+    content: '';
+    display: inline-block;
+    inline-size: 0.375rem;
+    block-size: 0.375rem;
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-accent);
+    flex-shrink: 0;
+    translate: 0 0.1em;
+  }
+
+  /* ----------------------------------------
+ * Caveat
+ * ---------------------------------------- */
+
+  .cinder-pricing-card__caveat {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    margin: 0;
+    font-style: italic;
+  }
+
+  /* ----------------------------------------
+ * Footer (CTA)
+ * ---------------------------------------- */
+
+  .cinder-pricing-card__footer {
+    padding: var(--cinder-space-3) var(--cinder-space-4) var(--cinder-space-4);
+    border-top: 1px solid var(--cinder-border-muted);
+  }
+
+  /* ----------------------------------------
+ * Responsive
+ * ---------------------------------------- */
+
+  @media (width < 640px) {
+    .cinder-pricing-card__price {
+      font-size: var(--cinder-text-2xl);
+    }
+  }
+}

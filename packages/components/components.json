@@ -1128,6 +1128,39 @@
       }
     },
     {
+      "name": "DataTable",
+      "id": "data-table",
+      "import": "@lostgradient/cinder/data-table",
+      "exportName": "DataTable",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Data-driven convenience wrapper over the compositional Table family that renders a full semantic table from a columns array and a rows array.",
+      "tags": ["table", "data"],
+      "useWhen": [
+        "Rendering a structured dataset where columns and rows are known at runtime (e.g. API responses, config-driven dashboards).",
+        "You want correct scope=col / scope=row semantics and aria-sort wiring without writing Table.Header / Table.Body manually."
+      ],
+      "avoidWhen": [
+        "You need custom cell rendering, interactive cells, nested components, or column spanning — use the compositional Table family directly.",
+        "You need row selection — DataTable does not expose a selection prop; use Table with selectable instead."
+      ],
+      "related": [
+        "table",
+        "table-header",
+        "table-body",
+        "table-row",
+        "table-cell",
+        "table-header-cell"
+      ],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/data-table/schema",
+        "variables": "@lostgradient/cinder/data-table/variables",
+        "examples": "@lostgradient/cinder/data-table/examples"
+      }
+    },
+    {
       "name": "DescriptionList",
       "id": "description-list",
       "import": "@lostgradient/cinder/description-list",
@@ -2343,6 +2376,32 @@
       }
     },
     {
+      "name": "PricingCard",
+      "id": "pricing-card",
+      "import": "@lostgradient/cinder/pricing-card",
+      "exportName": "PricingCard",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Presents a single pricing plan with its name, price, feature list, and a call-to-action button.",
+      "tags": ["pricing", "plan"],
+      "useWhen": [
+        "Letting users compare and select subscription tiers or product plans.",
+        "Highlighting one tier as selected or recommended in a pricing comparison."
+      ],
+      "avoidWhen": [
+        "Showing generic grouped content without a distinct price or CTA — use card instead.",
+        "Displaying a single key metric in isolation — use stat or stat-group instead."
+      ],
+      "related": ["card", "button", "stat", "stat-group"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/pricing-card/schema",
+        "variables": "@lostgradient/cinder/pricing-card/variables",
+        "examples": "@lostgradient/cinder/pricing-card/examples"
+      }
+    },
+    {
       "name": "Progress",
       "id": "progress",
       "import": "@lostgradient/cinder/progress",
@@ -3133,6 +3192,32 @@
         "schema": "@lostgradient/cinder/steps/schema",
         "variables": "@lostgradient/cinder/steps/variables",
         "examples": "@lostgradient/cinder/steps/examples"
+      }
+    },
+    {
+      "name": "SubscriptionBadge",
+      "id": "subscription-badge",
+      "import": "@lostgradient/cinder/subscription-badge",
+      "exportName": "SubscriptionBadge",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Opinionated Badge variant that communicates billing subscription states with a standardized tone, icon, and human-readable label.",
+      "tags": ["billing", "subscription", "status"],
+      "useWhen": [
+        "Displaying the billing state of a subscription in a dashboard, invoice list, or account settings page.",
+        "Annotating a plan name, customer row, or invoice line with its current payment lifecycle state."
+      ],
+      "avoidWhen": [
+        "The subscription state is not one of the six recognized values — use Badge directly with a custom label instead.",
+        "You need an interactive control that lets users change the state — use a Button or Select."
+      ],
+      "related": ["badge", "status-dot", "chip"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/subscription-badge/schema",
+        "variables": "@lostgradient/cinder/subscription-badge/variables",
+        "examples": "@lostgradient/cinder/subscription-badge/examples"
       }
     },
     {

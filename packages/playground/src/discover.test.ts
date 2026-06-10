@@ -229,8 +229,12 @@ describe('discoverSidebarComponents', () => {
     // ships as its own sidebar family alongside keyboard-shortcuts). The gate is
     // `<=` so each PR in the wave can land independently while staying under the
     // final cumulative total.
+    // The features wave (#334-336) adds three more families — data-table,
+    // pricing-card, and subscription-badge — landing the sidebar at 109,
+    // measured empirically via discoverSidebarComponents(). (#337/#338 ship as
+    // examples on existing families and do not add sidebar entries.)
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(106);
+    expect(sidebar.length).toBeLessThanOrEqual(109);
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {
