@@ -1,4 +1,12 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* Compound-family aggregation: DataTable renders the whole Table family, so
+ * `cinder/data-table/styles` must pull in the Table CSS (which itself imports
+ * table-body / table-cell / table-header / table-header-cell / table-row and
+ * defines `.cinder-table-scroll`). Without this, the data-table subpath ships
+ * an unstyled table and the scroll override below has no base behaviour to
+ * extend. Sibling-leaf paths resolve identically in `src/` and `dist/`. */
+@import '../table/table.css';
+
 @layer cinder.components {
   /* ========================================
  * DATA TABLE
