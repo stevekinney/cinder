@@ -5,6 +5,8 @@
  * ======================================== */
 
   .cinder-pricing-card {
+    container-type: inline-size;
+    container-name: cinder-pricing-card;
     display: flex;
     flex-direction: column;
     inline-size: 100%;
@@ -157,7 +159,13 @@
  * Responsive
  * ---------------------------------------- */
 
-  @media (width < 640px) {
+  /* Shrink the price only when the card itself is genuinely cramped — near the
+   * tight end of an auto-fit grid (examples floor at ~14rem). A viewport @media
+   * here would be wrong: a pricing card reacts to its own box width, not the
+   * viewport (RESPONSIVE-POLICY.md). The previous 640px viewport breakpoint
+   * fired on phones; the equivalent container threshold is far smaller because
+   * pricing cards render at ~14–22rem, not full-viewport width. */
+  @container cinder-pricing-card (width < 16rem) {
     .cinder-pricing-card__price {
       font-size: var(--cinder-text-2xl);
     }

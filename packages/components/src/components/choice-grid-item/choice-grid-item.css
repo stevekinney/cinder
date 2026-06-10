@@ -60,7 +60,7 @@
    * ---------------------------------------- */
 
   .cinder-choice-grid-item:focus-visible {
-    border-color: var(--cinder-color-accent-9);
+    border-color: var(--cinder-accent);
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -76,15 +76,18 @@
    * Selected state
    * ---------------------------------------- */
 
+  /* Selected: accent border + accent text on the resting surface, matching the
+   * segmented-control "accent text, no filled background" convention. (The prior
+   * accent-3 fill referenced an undefined token, so this formalizes the
+   * transparent-surface render that already shipped.) */
   .cinder-choice-grid-item[data-cinder-selected] {
-    border-color: var(--cinder-color-accent-9);
-    background: var(--cinder-color-accent-3);
-    color: var(--cinder-color-accent-11);
+    border-color: var(--cinder-accent);
+    color: var(--cinder-accent-text);
   }
 
   @media (hover: hover) {
     .cinder-choice-grid-item[data-cinder-selected]:not([data-cinder-disabled]):hover {
-      background: var(--cinder-color-accent-4);
+      border-color: var(--cinder-accent-hover);
     }
   }
 
@@ -105,22 +108,22 @@
 
   /* Correct */
   .cinder-choice-grid-item[data-cinder-state='correct'] {
-    border-color: var(--cinder-color-green-8);
-    background: var(--cinder-color-green-3);
-    color: var(--cinder-color-green-11);
+    border-color: var(--cinder-color-success-border);
+    background: var(--cinder-color-success-bg);
+    color: var(--cinder-color-success-fg);
   }
 
   /* Incorrect */
   .cinder-choice-grid-item[data-cinder-state='incorrect'] {
-    border-color: var(--cinder-color-red-8);
-    background: var(--cinder-color-red-3);
-    color: var(--cinder-color-red-11);
+    border-color: var(--cinder-color-danger-border);
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
   }
 
   /* Pending */
   .cinder-choice-grid-item[data-cinder-state='pending'] {
-    border-color: var(--cinder-color-amber-8);
-    background: var(--cinder-color-amber-3);
-    color: var(--cinder-color-amber-11);
+    border-color: var(--cinder-color-warning-border);
+    background: var(--cinder-color-warning-bg);
+    color: var(--cinder-color-warning-fg);
   }
 }
