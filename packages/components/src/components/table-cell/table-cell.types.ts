@@ -15,8 +15,8 @@ export type TableCellProps = Omit<HTMLTdAttributes, 'class' | 'align' | 'scope'>
    * The `<th>`-only attributes (`colspan`, `rowspan`, `headers`, `abbr`) are
    * not surfaced here; a discriminated `td`/`th` union was tried but produced a
    * union TypeScript reports as "too complex to represent" against the full
-   * element attribute interfaces. Pass those via the row-header column config
-   * if needed.
+   * element attribute interfaces. Use the compositional Table family directly
+   * if a row-header cell needs those `<th>`-only attributes.
    */
   as?: 'td' | 'th';
   /** Additional class names merged with `.cinder-table__cell`. */
