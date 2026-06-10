@@ -90,7 +90,13 @@
   }
 
   @media (hover: hover) {
-    .cinder-choice-grid-item[data-cinder-selected]:not([data-cinder-disabled]):hover {
+    /* Excludes graded tiles (a wrong pick can be both selected AND
+     * data-cinder-state) so hover doesn't flip their feedback border to accent
+     * — the feedback border must keep dominating on hover as it does at rest.
+     * Mirrors the neutral-hover guard above. */
+    .cinder-choice-grid-item[data-cinder-selected]:not([data-cinder-disabled]):not(
+        [data-cinder-state]
+      ):hover {
       border-color: var(--cinder-accent-hover);
     }
   }
