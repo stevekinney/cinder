@@ -10,6 +10,11 @@
   import { CodeBlock } from '@lostgradient/cinder/code-block';
   import { Skeleton } from '@lostgradient/cinder/skeleton';
   import { Table } from '@lostgradient/cinder/table';
+  import { Tab } from '@lostgradient/cinder/tab';
+  import { TabList } from '@lostgradient/cinder/tab-list';
+  import { TabPanel } from '@lostgradient/cinder/tab-panel';
+  import { Tabs } from '@lostgradient/cinder/tabs';
+  import { splitReadmeHtml } from './split-readme-html.ts';
   import {
     formatErrorForClipboard,
     toMountErrorDetail,
@@ -51,7 +56,7 @@
   };
 
   const documentationTabs: { id: DocumentationTabId; label: string }[] = [
-    { id: 'overview', label: 'Overview' },
+    { id: 'overview', label: 'Documentation' },
     { id: 'examples', label: 'Examples' },
     { id: 'raw-artifacts', label: 'Raw Artifacts' },
   ];
@@ -103,7 +108,7 @@
       parentSearchParams()?.get(documentationTabSearchParam) ??
       null;
     if (isDocumentationTabId(requestedTab)) return requestedTab;
-    return searchParams.get('snapshot') === '1' ? 'examples' : 'overview';
+    return 'examples';
   }
 
   let activeTab: DocumentationTabId = $state(initialDocumentationTab());
@@ -237,6 +242,11 @@
   // every scenario for this component together with this page, sharing one
   // Svelte runtime, and exposes the components on window.__CINDER_SCENARIOS__.
   $effect(() => {
+    // Depend on activeTab so the effect reruns when the Examples panel mounts
+    // (e.g. if the user loads with ?tab=overview, the containers don't exist
+    // on first run — re-tracking means we retry once Examples becomes active).
+    if (activeTab !== 'examples') return;
+
     // Per-run local collection so the cleanup only unmounts this run's mounts.
     // Svelte 5 disposal is unmount(component), not component.destroy().
     const localApps: ReturnType<typeof mount>[] = [];
@@ -369,55 +379,12 @@
     return JSON.stringify(value, null, 2);
   }
 
-  function documentationTabClass(tab: DocumentationTabId): string {
-    return activeTab === tab ? 'documentation-tab documentation-tab--active' : 'documentation-tab';
-  }
-
   function propsTypeClass(typeMembers: readonly string[]): string {
     return typeMembers.length > 1 ? 'props-type props-type--union' : 'props-type';
   }
 
-  function focusTab(tab: DocumentationTabId): void {
-    requestAnimationFrame(() => document.getElementById(`tab-${tab}`)?.focus());
-  }
-
   function selectTab(tab: DocumentationTabId): void {
     activeTab = tab;
-  }
-
-  function selectAndFocusTab(tab: DocumentationTabId): void {
-    activeTab = tab;
-    focusTab(tab);
-  }
-
-  function onDocumentationTabKeydown(event: KeyboardEvent): void {
-    const currentIndex = documentationTabs.findIndex((tab) => tab.id === activeTab);
-    if (currentIndex === -1) return;
-
-    const lastIndex = documentationTabs.length - 1;
-    let nextIndex: number | null = null;
-
-    switch (event.key) {
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        nextIndex = currentIndex === 0 ? lastIndex : currentIndex - 1;
-        break;
-      case 'ArrowRight':
-      case 'ArrowDown':
-        nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1;
-        break;
-      case 'Home':
-        nextIndex = 0;
-        break;
-      case 'End':
-        nextIndex = lastIndex;
-        break;
-      default:
-        return;
-    }
-
-    event.preventDefault();
-    selectAndFocusTab(documentationTabs[nextIndex]!.id);
   }
 
   function statusBadgeVariant(status: string): BadgeVariant {
@@ -494,32 +461,14 @@
 </script>
 
 <div class="documentation-page">
-  <div class="documentation-tabs" role="tablist" aria-label="Component documentation">
-    {#each documentationTabs as tab (tab.id)}
-      <button
-        type="button"
-        class={documentationTabClass(tab.id)}
-        role="tab"
-        id="tab-{tab.id}"
-        aria-selected={activeTab === tab.id}
-        aria-controls="tabpanel-{tab.id}"
-        tabindex={activeTab === tab.id ? 0 : -1}
-        onclick={() => selectTab(tab.id)}
-        onkeydown={onDocumentationTabKeydown}
-      >
-        {tab.label}
-      </button>
-    {/each}
-  </div>
+  <Tabs bind:value={activeTab} class="documentation-tabs-root">
+    <TabList label="Component documentation" class="documentation-tabs">
+      {#each documentationTabs as tab (tab.id)}
+        <Tab value={tab.id}>{tab.label}</Tab>
+      {/each}
+    </TabList>
 
-  <div
-    class="documentation-panel documentation-panel--overview"
-    id="tabpanel-overview"
-    role="tabpanel"
-    aria-labelledby="tab-overview"
-    hidden={activeTab !== 'overview'}
-  >
-    {#if activeTab === 'overview'}
+    <TabPanel value="overview" class="documentation-panel documentation-panel--overview">
       {#if documentationLoading}
         <div class="documentation-skeleton" aria-hidden="true">
           {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
@@ -615,7 +564,18 @@
 
         <section class="overview-section" aria-label="{documentation.component.name} README">
           <div class="readme-content">
-            {@html documentation.readme.html}
+            {#each splitReadmeHtml(documentation.readme.html) as segment, i (i)}
+              {#if segment.type === 'html'}
+                {@html segment.content}
+              {:else}
+                {@const block = documentation.readme.codeBlocks[segment.index]}
+                {#if block !== undefined}
+                  <CodeBlock code={block.value} language={block.language ?? 'plaintext'} copyable />
+                {:else}
+                  <div class="readme-pre-fallback">{@html segment.fallbackHtml}</div>
+                {/if}
+              {/if}
+            {/each}
           </div>
         </section>
 
@@ -841,102 +801,88 @@
           {/if}
         </section>
       {/if}
-    {/if}
-  </div>
-  <div
-    class="documentation-panel"
-    id="tabpanel-examples"
-    role="tabpanel"
-    aria-labelledby="tab-examples"
-    hidden={activeTab !== 'examples'}
-  >
-    <h2>Examples</h2>
-    <div class="example-list">
-      {#if examples.length === 0}
-        <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
-      {/if}
-
-      {#each examples as { scenario, title, description } (scenario)}
-        {@const accordionEntry = getAccordionEntry(scenario)}
-        {@const source = fetchedSource[scenario]}
-        {@const mountError = mountErrors[scenario]}
-        {@const sourceError = sourceErrors[scenario]}
-        {#if accordionEntry}
-          <section id="example-card-{scenario}" class="example-card-anchor">
-            <Card {title} {...description !== undefined ? { description } : {}}>
-              <div class="example-preview" id="example-mount-{scenario}"></div>
-
-              {#if mountError !== undefined}
-                <div class="example-error">
-                  <Callout variant="danger" title="This example failed to render">
-                    <p class="example-error__message">{mountError.message}</p>
-                    {#if mountError.stack !== undefined}
-                      <pre
-                        class="example-error__stack"
-                        aria-label="Stack trace">{mountError.stack}</pre>
-                    {/if}
-                    <div class="example-error__actions">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        aria-label="Copy error for {title}"
-                        onclick={() => copyError(mountError)}
-                      >
-                        Copy error
-                      </Button>
-                    </div>
-                  </Callout>
-                </div>
-              {/if}
-
-              <Accordion bind:expandedIds={accordionEntry.expandedIds}>
-                <AccordionItem id="source" title="View source">
-                  {#if loadingSource[scenario]}
-                    <p class="source-loading">Loading…</p>
-                  {:else if source === null}
-                    <div class="example-error">
-                      <Callout variant="danger" title="Could not load source">
-                        <dl class="example-error__detail">
-                          <dt>Requested</dt>
-                          <dd>
-                            <code>
-                              {sourceError?.url ?? `/example-src/${componentName}/${scenario}`}
-                            </code>
-                          </dd>
-                          <dt>Reason</dt>
-                          <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
-                        </dl>
-                        <div class="example-error__actions">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            aria-label="Retry loading source for {title}"
-                            onclick={() => fetchSource(scenario)}
-                          >
-                            Retry
-                          </Button>
-                        </div>
-                      </Callout>
-                    </div>
-                  {:else if source !== undefined}
-                    <CodeBlock code={source} language="svelte" copyable />
-                  {/if}
-                </AccordionItem>
-              </Accordion>
-            </Card>
-          </section>
+    </TabPanel>
+    <TabPanel value="examples" class="documentation-panel">
+      <h2>Examples</h2>
+      <div class="example-list">
+        {#if examples.length === 0}
+          <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
         {/if}
-      {/each}
-    </div>
-  </div>
-  <div
-    class="documentation-panel"
-    id="tabpanel-raw-artifacts"
-    role="tabpanel"
-    aria-labelledby="tab-raw-artifacts"
-    hidden={activeTab !== 'raw-artifacts'}
-  >
-    {#if activeTab === 'raw-artifacts'}
+
+        {#each examples as { scenario, title, description } (scenario)}
+          {@const accordionEntry = getAccordionEntry(scenario)}
+          {@const source = fetchedSource[scenario]}
+          {@const mountError = mountErrors[scenario]}
+          {@const sourceError = sourceErrors[scenario]}
+          {#if accordionEntry}
+            <section id="example-card-{scenario}" class="example-card-anchor">
+              <Card {title} {...description !== undefined ? { description } : {}}>
+                <div class="example-preview" id="example-mount-{scenario}"></div>
+
+                {#if mountError !== undefined}
+                  <div class="example-error">
+                    <Callout variant="danger" title="This example failed to render">
+                      <p class="example-error__message">{mountError.message}</p>
+                      {#if mountError.stack !== undefined}
+                        <pre
+                          class="example-error__stack"
+                          aria-label="Stack trace">{mountError.stack}</pre>
+                      {/if}
+                      <div class="example-error__actions">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          aria-label="Copy error for {title}"
+                          onclick={() => copyError(mountError)}
+                        >
+                          Copy error
+                        </Button>
+                      </div>
+                    </Callout>
+                  </div>
+                {/if}
+
+                <Accordion bind:expandedIds={accordionEntry.expandedIds}>
+                  <AccordionItem id="source" title="View source">
+                    {#if loadingSource[scenario]}
+                      <p class="source-loading">Loading…</p>
+                    {:else if source === null}
+                      <div class="example-error">
+                        <Callout variant="danger" title="Could not load source">
+                          <dl class="example-error__detail">
+                            <dt>Requested</dt>
+                            <dd>
+                              <code>
+                                {sourceError?.url ?? `/example-src/${componentName}/${scenario}`}
+                              </code>
+                            </dd>
+                            <dt>Reason</dt>
+                            <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
+                          </dl>
+                          <div class="example-error__actions">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              aria-label="Retry loading source for {title}"
+                              onclick={() => fetchSource(scenario)}
+                            >
+                              Retry
+                            </Button>
+                          </div>
+                        </Callout>
+                      </div>
+                    {:else if source !== undefined}
+                      <CodeBlock code={source} language="svelte" copyable />
+                    {/if}
+                  </AccordionItem>
+                </Accordion>
+              </Card>
+            </section>
+          {/if}
+        {/each}
+      </div>
+    </TabPanel>
+    <TabPanel value="raw-artifacts" class="documentation-panel">
       <h2>Raw Artifacts</h2>
       {#if documentationLoading}
         <div class="documentation-skeleton" aria-hidden="true">
@@ -990,8 +936,8 @@
           </section>
         </div>
       {/if}
-    {/if}
-  </div>
+    </TabPanel>
+  </Tabs>
 </div>
 
 <style>
@@ -1002,7 +948,14 @@
     min-height: 100%;
   }
 
-  .documentation-tabs {
+  :global(.documentation-tabs-root) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-6);
+    min-height: 100%;
+  }
+
+  :global(.documentation-tabs) {
     display: flex;
     align-items: center;
     gap: var(--cinder-space-2);
@@ -1011,79 +964,30 @@
     padding-block-end: var(--cinder-space-2);
   }
 
-  .documentation-tab {
-    appearance: none;
-    border: 1px solid transparent;
-    border-radius: var(--cinder-radius-sm);
-    background: transparent;
-    color: var(--cinder-text-muted);
-    cursor: pointer;
-    flex: 0 0 auto;
-    font: inherit;
-    font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-medium);
-    padding: var(--cinder-space-3) var(--cinder-space-4);
-  }
-
-  @media (hover: hover) {
-    .documentation-tab:hover {
-      color: var(--cinder-text);
-      background: var(--cinder-surface-hover);
-    }
-  }
-
-  .documentation-tab:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
-  }
-
-  .documentation-tab--active {
-    background: var(--cinder-surface-inset);
-    color: var(--cinder-text);
-    box-shadow: inset 0 -2px 0 var(--cinder-accent);
-  }
-
-  .documentation-tab--active:focus-visible {
-    box-shadow:
-      inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color),
-      inset 0 -2px 0 var(--cinder-accent);
-  }
-
-  @media (forced-colors: active) {
-    .documentation-tab:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: calc(var(--cinder-ring-width) * -1);
-    }
-  }
-
-  .documentation-panel {
+  :global(.documentation-panel) {
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-6);
     min-width: 0;
   }
 
-  .documentation-panel[hidden] {
-    display: none;
-  }
-
-  .documentation-panel h2,
-  .documentation-panel h3,
-  .documentation-panel h4 {
+  :global(.documentation-panel h2),
+  :global(.documentation-panel h3),
+  :global(.documentation-panel h4) {
     color: var(--cinder-text);
     font-weight: var(--cinder-font-semibold);
     margin: 0;
   }
 
-  .documentation-panel h2 {
+  :global(.documentation-panel h2) {
     font-size: var(--cinder-text-xl);
   }
 
-  .documentation-panel h3 {
+  :global(.documentation-panel h3) {
     font-size: var(--cinder-text-lg);
   }
 
-  .documentation-panel h4 {
+  :global(.documentation-panel h4) {
     font-size: var(--cinder-text-base);
   }
 
@@ -1266,9 +1170,20 @@
   .readme-content :global(p),
   .readme-content :global(ul),
   .readme-content :global(ol),
-  .readme-content :global(pre),
   .readme-content :global(table) {
     margin: 0 0 var(--cinder-space-4);
+  }
+
+  /* CodeBlock and its fallback get the same bottom-margin as prose elements
+   * so code-to-paragraph transitions don't collapse. The fallback wrapper also
+   * provides an overflow-x scroll container for wide pre blocks. */
+  .readme-content :global(.cinder-code-block),
+  .readme-pre-fallback {
+    margin-block-end: var(--cinder-space-4);
+  }
+
+  .readme-pre-fallback {
+    overflow-x: auto;
   }
 
   .readme-content :global(code) {
@@ -1276,7 +1191,6 @@
     font-size: 0.95em;
   }
 
-  .readme-content :global(pre),
   .readme-content :global(table) {
     overflow-x: auto;
   }

@@ -177,13 +177,15 @@ describe('component-page documentation tabs', () => {
 
     const { unmount } = render(ComponentPage);
 
-    for (const label of ['Overview', 'Examples', 'Raw Artifacts']) {
+    for (const label of ['Documentation', 'Examples', 'Raw Artifacts']) {
       expect(screen.getByRole('tab', { name: label })).toBeTruthy();
     }
     for (const removedTab of ['API', 'Styling', 'Constraints']) {
       expect(screen.queryByRole('tab', { name: removedTab })).toBeNull();
     }
 
+    // Examples is the default tab. Switch to Documentation to verify its content.
+    await fireEvent.click(screen.getByRole('tab', { name: 'Documentation' }));
     await screen.findByText('Fixture purpose for a documentation page.');
     expect(screen.getByText('Rendered README body.')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 2, name: 'Overview' })).toBeNull();
@@ -220,6 +222,9 @@ describe('component-page documentation tabs', () => {
 
     const { unmount } = render(ComponentPage);
 
+    // Status badge is in the Documentation tab panel — click it first.
+    await fireEvent.click(screen.getByRole('tab', { name: 'Documentation' }));
+    await tick();
     const statusBadge = await screen.findByText('beta');
     expect(statusBadge.getAttribute('data-variant')).toBe('info');
 
@@ -227,18 +232,18 @@ describe('component-page documentation tabs', () => {
     await tick();
   });
 
-  test('keeps tab panels in the DOM and mounts hidden examples on first render', async () => {
+  test('mounts examples on first render (examples is the default tab)', async () => {
     Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
     Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
 
     const { unmount } = render(ComponentPage);
     await tick();
 
-    for (const tab of screen.getAllByRole('tab')) {
-      const controlledPanel = tab.getAttribute('aria-controls');
-      expect(typeof controlledPanel).toBe('string');
-      expect(document.getElementById(controlledPanel ?? '')).toBeTruthy();
-    }
+    // Active tab's panel is in DOM; aria-controls points to the panel id.
+    const activeTab = screen.getByRole('tab', { name: 'Examples' });
+    const controlledPanel = activeTab.getAttribute('aria-controls');
+    expect(typeof controlledPanel).toBe('string');
+    expect(document.getElementById(controlledPanel ?? '')).toBeTruthy();
 
     const exampleMount = document.getElementById('example-mount-primary');
     expect(exampleMount).toBeTruthy();
@@ -249,20 +254,18 @@ describe('component-page documentation tabs', () => {
     await tick();
   });
 
-  test('opens the Examples tab by default in snapshot mode', async () => {
-    const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
-    happyWindow.happyDOM.setURL('http://localhost/page/button?snapshot=1');
+  test('opens the Examples tab by default', async () => {
     Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
     Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
 
     const { unmount } = render(ComponentPage);
     await tick();
 
-    expect(screen.getByRole('tab', { name: 'Examples' }).getAttribute('aria-selected')).toBe(
-      'true',
-    );
-    expect(document.getElementById('tabpanel-examples')?.hasAttribute('hidden')).toBe(false);
-    expect(document.getElementById('tabpanel-overview')?.hasAttribute('hidden')).toBe(true);
+    const examplesTab = screen.getByRole('tab', { name: 'Examples' });
+    expect(examplesTab.getAttribute('aria-selected')).toBe('true');
+    // Active panel is in DOM; inactive panels are unmounted by Cinder TabPanel.
+    const examplesPanel = document.getElementById(examplesTab.getAttribute('aria-controls') ?? '');
+    expect(examplesPanel).toBeTruthy();
     expect(document.getElementById('example-mount-primary')).toBeTruthy();
 
     unmount();
@@ -271,18 +274,18 @@ describe('component-page documentation tabs', () => {
 
   test('opens a requested documentation tab from the tab query parameter', async () => {
     const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
-    happyWindow.happyDOM.setURL('http://localhost/page/button?tab=examples');
+    happyWindow.happyDOM.setURL('http://localhost/page/button?tab=overview');
     Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
     Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
 
     const { unmount } = render(ComponentPage);
     await tick();
 
-    expect(screen.getByRole('tab', { name: 'Examples' }).getAttribute('aria-selected')).toBe(
-      'true',
-    );
-    expect(document.getElementById('tabpanel-examples')?.hasAttribute('hidden')).toBe(false);
-    expect(document.getElementById('tabpanel-overview')?.hasAttribute('hidden')).toBe(true);
+    const docTab = screen.getByRole('tab', { name: 'Documentation' });
+    expect(docTab.getAttribute('aria-selected')).toBe('true');
+    // Active panel is in DOM; inactive panels are unmounted by Cinder TabPanel.
+    const docPanel = document.getElementById(docTab.getAttribute('aria-controls') ?? '');
+    expect(docPanel).toBeTruthy();
 
     unmount();
     await tick();
@@ -290,21 +293,30 @@ describe('component-page documentation tabs', () => {
 
   test('supports ARIA tab keyboard navigation', async () => {
     const { unmount } = render(ComponentPage);
-    await screen.findByText('Fixture purpose for a documentation page.');
+    // Examples tab is active by default; wait for the fetch to populate the panel.
+    await screen.findByText(/No examples found for/);
 
-    const overview = screen.getByRole('tab', { name: 'Overview' });
+    const documentation = screen.getByRole('tab', { name: 'Documentation' });
     const examples = screen.getByRole('tab', { name: 'Examples' });
     const rawArtifacts = screen.getByRole('tab', { name: 'Raw Artifacts' });
 
-    overview.focus();
-    await fireEvent.keyDown(overview, { key: 'ArrowRight' });
+    // Click Documentation first so ArrowRight proves a real transition (examples → not selected).
+    await fireEvent.click(documentation);
+    await tick();
+    expect(documentation.getAttribute('aria-selected')).toBe('true');
+
+    documentation.focus();
+    await fireEvent.keyDown(documentation, { key: 'ArrowRight' });
+    await tick();
     expect(examples.getAttribute('aria-selected')).toBe('true');
 
     await fireEvent.keyDown(examples, { key: 'End' });
+    await tick();
     expect(rawArtifacts.getAttribute('aria-selected')).toBe('true');
 
     await fireEvent.keyDown(rawArtifacts, { key: 'Home' });
-    expect(overview.getAttribute('aria-selected')).toBe('true');
+    await tick();
+    expect(documentation.getAttribute('aria-selected')).toBe('true');
 
     unmount();
     await tick();
