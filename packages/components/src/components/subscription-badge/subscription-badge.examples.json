@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "subscription-badge",
+  "import": "@lostgradient/cinder/subscription-badge",
+  "examples": [
+    {
+      "id": "all-states",
+      "title": "Subscription badge states",
+      "description": "All six billing lifecycle states, each with a distinct icon, label, and tone.",
+      "code": "<script lang=\"ts\">\n  import { SubscriptionBadge } from '@lostgradient/cinder/subscription-badge';\n</script>\n\n<div class=\"example-preview-row\">\n  <SubscriptionBadge state=\"active\" />\n  <SubscriptionBadge state=\"trialing\" />\n  <SubscriptionBadge state=\"past-due\" />\n  <SubscriptionBadge state=\"canceled\" />\n  <SubscriptionBadge state=\"expired\" />\n  <SubscriptionBadge state=\"refunded\" />\n</div>\n"
+    },
+    {
+      "id": "in-context",
+      "title": "Subscription badge in context",
+      "description": "SubscriptionBadge shown alongside plan details inside a Card, representing typical dashboard usage.",
+      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n  import { SubscriptionBadge } from '@lostgradient/cinder/subscription-badge';\n\n  const plans = [\n    { name: 'Pro — Monthly', state: 'active' },\n    { name: 'Team — Annual', state: 'trialing' },\n    { name: 'Starter — Monthly', state: 'past-due' },\n    { name: 'Enterprise', state: 'canceled' },\n  ] as const;\n</script>\n\n<div class=\"example-preview-column\">\n  {#each plans as plan (plan.name)}\n    <Card>\n      <div style=\"display: flex; align-items: center; justify-content: space-between; gap: 1rem;\">\n        <span style=\"font-size: var(--cinder-text-sm); color: var(--cinder-text);\">{plan.name}</span\n        >\n        <SubscriptionBadge state={plan.state} />\n      </div>\n    </Card>\n  {/each}\n</div>\n"
+    }
+  ]
+}

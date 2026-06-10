@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "pricing-card",
+  "import": "@lostgradient/cinder/pricing-card",
+  "examples": [
+    {
+      "id": "tiers",
+      "title": "Pricing tiers",
+      "description": "Three plan tiles side by side with one pre-selected.",
+      "code": "<script lang=\"ts\">\n  import { PricingCard } from '@lostgradient/cinder/pricing-card';\n\n  let selectedPlan = $state<'starter' | 'pro' | 'enterprise'>('pro');\n</script>\n\n<div\n  style=\"display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--cinder-space-4); align-items: start;\"\n>\n  <PricingCard\n    name=\"Starter\"\n    price=\"Free\"\n    features={['3 projects', '1 GB storage', 'Community support']}\n    cta=\"Get started\"\n    selected={selectedPlan === 'starter'}\n    onselect={() => {\n      selectedPlan = 'starter';\n    }}\n  />\n\n  <PricingCard\n    name=\"Pro\"\n    price=\"$9/mo\"\n    features={['Unlimited projects', '10 GB storage', 'Priority support', 'Custom domains']}\n    cta=\"Choose Pro\"\n    selected={selectedPlan === 'pro'}\n    onselect={() => {\n      selectedPlan = 'pro';\n    }}\n  />\n\n  <PricingCard\n    name=\"Enterprise\"\n    price=\"$49/mo\"\n    features={[\n      'Unlimited projects',\n      '500 GB storage',\n      'Dedicated support',\n      'Custom domains',\n      'SSO & audit logs',\n    ]}\n    cta=\"Contact sales\"\n    selected={selectedPlan === 'enterprise'}\n    onselect={() => {\n      selectedPlan = 'enterprise';\n    }}\n  />\n</div>\n"
+    },
+    {
+      "id": "with-caveat",
+      "title": "With caveat",
+      "description": "A pricing card with a consumer-supplied caveat beneath the feature list, useful for legal disclaimers or billing notes.",
+      "code": "<script lang=\"ts\">\n  import { PricingCard } from '@lostgradient/cinder/pricing-card';\n</script>\n\n<div style=\"max-inline-size: 22rem;\">\n  <PricingCard\n    name=\"Growth\"\n    price=\"$29/mo\"\n    features={['Unlimited projects', '50 GB storage', 'Email & chat support', 'Advanced analytics']}\n    caveat=\"Billed annually. Monthly billing available at $35/mo.\"\n    cta=\"Start free trial\"\n    onselect={() => {}}\n  />\n</div>\n"
+    }
+  ]
+}

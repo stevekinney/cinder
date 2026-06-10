@@ -18,9 +18,15 @@
   import type { TableCellProps } from './table-cell.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { align = 'left', class: className, children, ...rest }: TableCellProps = $props();
+  let { align = 'left', as = 'td', class: className, children, ...rest }: TableCellProps = $props();
 </script>
 
-<td {...rest} class={classNames('cinder-table__cell', className)} data-cinder-align={align}>
+<svelte:element
+  this={as}
+  {...rest}
+  scope={as === 'th' ? 'row' : undefined}
+  class={classNames('cinder-table__cell', className)}
+  data-cinder-align={align}
+>
   {@render children?.()}
-</td>
+</svelte:element>

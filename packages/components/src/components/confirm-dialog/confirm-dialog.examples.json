@@ -8,6 +8,12 @@
       "title": "Confirm dialog",
       "description": "A destructive action gated behind an explicit confirm and cancel prompt.",
       "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { ConfirmDialog } from '@lostgradient/cinder/confirm-dialog';\n\n  let open = $state(false);\n  let triggerRef: HTMLElement | null = $state(null);\n  let lastAction = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; align-items: flex-start;\">\n  <Button\n    label=\"Delete item\"\n    variant=\"danger\"\n    onclick={(event) => {\n      triggerRef = event.currentTarget as HTMLElement;\n      open = true;\n    }}\n  />\n\n  {#if lastAction}\n    <p style=\"margin: 0; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);\">\n      Last action: <strong>{lastAction}</strong>\n    </p>\n  {/if}\n</div>\n\n<ConfirmDialog\n  bind:open\n  {triggerRef}\n  title=\"Delete item?\"\n  description=\"This permanently removes the item. This action cannot be undone.\"\n  destructive\n  confirmLabel=\"Delete\"\n  onconfirm={() => (lastAction = 'confirmed')}\n  oncancel={() => (lastAction = 'cancelled')}\n/>\n"
+    },
+    {
+      "id": "delete-account",
+      "title": "Delete account",
+      "description": "A destructive ConfirmDialog for permanent account and data deletion. Default focus lands on Cancel to guard against accidental confirmation.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { ConfirmDialog } from '@lostgradient/cinder/confirm-dialog';\n\n  let open = $state(false);\n  let triggerRef: HTMLElement | null = $state(null);\n  let lastAction = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem; align-items: flex-start;\">\n  <Button\n    label=\"Delete account\"\n    variant=\"danger\"\n    onclick={(event) => {\n      triggerRef = event.currentTarget as HTMLElement;\n      open = true;\n    }}\n  />\n\n  {#if lastAction}\n    <p style=\"margin: 0; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);\">\n      Last action: <strong>{lastAction}</strong>\n    </p>\n  {/if}\n</div>\n\n<ConfirmDialog\n  bind:open\n  {triggerRef}\n  title=\"Delete your account?\"\n  description=\"This will permanently delete your account and all associated data. This action cannot be undone.\"\n  destructive\n  confirmLabel=\"Delete account\"\n  onconfirm={() => (lastAction = 'account deleted')}\n  oncancel={() => (lastAction = 'cancelled')}\n/>\n"
     }
   ]
 }

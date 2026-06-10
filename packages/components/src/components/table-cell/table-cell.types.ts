@@ -1,9 +1,24 @@
 import type { Snippet } from 'svelte';
 import type { HTMLTdAttributes } from 'svelte/elements';
 
-export type TableCellProps = Omit<HTMLTdAttributes, 'class' | 'align'> & {
+export type TableCellProps = Omit<HTMLTdAttributes, 'class' | 'align' | 'scope'> & {
   /** Visual alignment for numeric columns. */
   align?: 'left' | 'center' | 'right';
+  /**
+   * When `'th'`, renders a `<th scope="row">` instead of `<td>`, marking this
+   * cell as the row-header identifier for assistive technology. The component
+   * sets `scope="row"` itself (so `scope` is not part of the prop surface).
+   * Defaults to `'td'` so existing consumers are unaffected.
+   *
+   * The attribute surface is typed against `<td>` for both modes — `<td>` and
+   * `<th>` share `HTMLTableCellElement`, so this covers the common attributes.
+   * The `<th>`-only attributes (`colspan`, `rowspan`, `headers`, `abbr`) are
+   * not surfaced here; a discriminated `td`/`th` union was tried but produced a
+   * union TypeScript reports as "too complex to represent" against the full
+   * element attribute interfaces. Use the compositional Table family directly
+   * if a row-header cell needs those `<th>`-only attributes.
+   */
+  as?: 'td' | 'th';
   /** Additional class names merged with `.cinder-table__cell`. */
   class?: string;
   /**

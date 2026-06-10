@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "caption": {
+      "type": "string",
+      "description": "Visual caption rendered as a `<caption>` element above the table."
+    },
+    "stickyHeader": {
+      "type": "boolean",
+      "description": "When true, the header sticks to the top of the scrolling container."
+    },
+    "density": {
+      "enum": ["comfortable", "condensed", "spacious"],
+      "description": "Vertical padding density for header and body cells.\nDefaults to `'comfortable'`."
+    },
+    "scrollable": {
+      "type": "boolean",
+      "description": "When true, wraps the table in a `.cinder-table-scroll` container that\nenables horizontal overflow scrolling on small viewports."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class names merged onto DataTable's root wrapper element (the\n`<div class=\"cinder-data-table\">` that contains the table). To style the\n`<table>` itself, target `.cinder-data-table table` from this class."
+    }
+  },
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "columns",
+        "reason": "unknown-shape"
+      },
+      {
+        "name": "rows",
+        "reason": "generic-type-parameter"
+      },
+      {
+        "name": "sort",
+        "reason": "unknown-shape"
+      }
+    ]
+  }
+}

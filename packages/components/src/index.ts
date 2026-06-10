@@ -191,6 +191,13 @@ export { copyToClipboard } from './utilities/clipboard.ts';
 export { default as DataList } from './components/data-list/index.ts';
 export type { DataListProps } from './components/data-list/index.ts';
 
+export { default as DataTable } from './components/data-table/index.ts';
+export type {
+  DataTableColumn,
+  DataTableProps,
+  DataTableRow,
+} from './components/data-table/index.ts';
+
 export { default as DescriptionList } from './components/description-list/index.ts';
 export type {
   DescriptionListItem,
@@ -428,6 +435,9 @@ export type { PinInputMode, PinInputProps } from './components/pin-input/index.t
 export { default as Popover } from './components/popover/index.ts';
 export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/popover/index.ts';
 
+export { default as PricingCard } from './components/pricing-card/index.ts';
+export type { PricingCardProps } from './components/pricing-card/index.ts';
+
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
 
@@ -593,6 +603,12 @@ export type {
   StatusDotSize,
   StatusDotStatus,
 } from './components/status-dot/index.ts';
+
+export { default as SubscriptionBadge } from './components/subscription-badge/index.ts';
+export type {
+  SubscriptionBadgeProps,
+  SubscriptionState,
+} from './components/subscription-badge/index.ts';
 
 export { default as Surface } from './components/surface/index.ts';
 export type { SurfaceProps, SurfaceTone } from './components/surface/index.ts';

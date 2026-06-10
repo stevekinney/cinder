@@ -172,10 +172,18 @@
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
 
-  // Sample the clamped/sanitized samples (the values the chart actually plots)
-  // for the accessible table, capped at 20 rows so the table stays readable. The
-  // caption reports the true length + sampling. Clamping is applied lazily at the
-  // stride points so the full buffer is never copied here either.
+  // Stride the clamped/sanitized SOURCE samples for the accessible table, capped
+  // at 20 rows so the table stays readable. The caption reports the true length +
+  // sampling. Clamping is applied lazily at the stride points so the full buffer
+  // is never copied here either.
+  //
+  // Deliberate: the table strides the original `data` (the true signal), NOT the
+  // min/max envelope that `renderSamples` draws for buffers over the render cap.
+  // The envelope is a visual approximation that preserves peaks at the cost of
+  // exact per-sample values; the table is the faithful textual representation of
+  // the underlying signal, which is the more useful accessible equivalent. The
+  // two intentionally differ for long buffers — the table is not a row-for-row
+  // transcript of the rendered path.
   const TABLE_SAMPLE_LIMIT = 20;
   const isTableSampled = $derived(data.length > TABLE_SAMPLE_LIMIT);
   const tableSamples = $derived.by(() => {

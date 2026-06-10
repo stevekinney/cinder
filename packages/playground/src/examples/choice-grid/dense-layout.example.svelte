@@ -11,12 +11,7 @@
 </script>
 
 <div style="max-width: 20rem; margin: 0 auto;">
-  <ChoiceGrid
-    ariaLabel="Choose a difficulty"
-    bind:value={selected}
-    columns="responsive"
-    minColumnWidth="8rem"
-  >
+  <ChoiceGrid ariaLabel="Choose a difficulty" bind:value={selected} columns={2}>
     <ChoiceGrid.Item value="easy">Easy</ChoiceGrid.Item>
     <ChoiceGrid.Item value="medium">Medium</ChoiceGrid.Item>
     <ChoiceGrid.Item value="hard">Hard</ChoiceGrid.Item>

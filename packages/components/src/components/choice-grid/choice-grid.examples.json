@@ -13,7 +13,7 @@
       "id": "dense-layout",
       "title": "Dense phone layout",
       "description": "Fixed 2-column grid with compact cells — suitable for narrow mobile viewports.",
-      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string | null>(null);\n</script>\n\n<div style=\"max-width: 20rem; margin: 0 auto;\">\n  <ChoiceGrid\n    ariaLabel=\"Choose a difficulty\"\n    bind:value={selected}\n    columns=\"responsive\"\n    minColumnWidth=\"8rem\"\n  >\n    <ChoiceGrid.Item value=\"easy\">Easy</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"medium\">Medium</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"hard\">Hard</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"expert\">Expert</ChoiceGrid.Item>\n  </ChoiceGrid>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string | null>(null);\n</script>\n\n<div style=\"max-width: 20rem; margin: 0 auto;\">\n  <ChoiceGrid ariaLabel=\"Choose a difficulty\" bind:value={selected} columns={2}>\n    <ChoiceGrid.Item value=\"easy\">Easy</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"medium\">Medium</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"hard\">Hard</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"expert\">Expert</ChoiceGrid.Item>\n  </ChoiceGrid>\n</div>\n"
     },
     {
       "id": "feedback-states",

@@ -186,6 +186,7 @@
       "name": "@cinder/playground",
       "version": "0.0.1",
       "dependencies": {
+        "@cinder/markdown": "workspace:*",
         "@lostgradient/cinder": "workspace:*",
         "shiki": "^3.0.0",
       },

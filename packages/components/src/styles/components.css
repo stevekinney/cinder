@@ -44,6 +44,7 @@
 @import '../components/context-menu/context-menu.css';
 @import '../components/copy-button/copy-button.css';
 @import '../components/data-list/data-list.css';
+@import '../components/data-table/data-table.css';
 @import '../components/description-list/description-list.css';
 @import '../components/diff-statistics/diff-statistics.css';
 @import '../components/divider/divider.css';
@@ -82,6 +83,7 @@
 @import '../components/phone-input/phone-input.css';
 @import '../components/pin-input/pin-input.css';
 @import '../components/popover/popover.css';
+@import '../components/pricing-card/pricing-card.css';
 @import '../components/progress/progress.css';
 @import '../components/_radio/radio.css';
 @import '../components/radio-group/radio-group.css';
@@ -111,6 +113,7 @@
 @import '../components/stat-group/stat-group.css';
 @import '../components/status-dot/status-dot.css';
 @import '../components/steps/steps.css';
+@import '../components/subscription-badge/subscription-badge.css';
 @import '../components/surface/surface.css';
 @import '../components/tab/tab.css';
 @import '../components/tab-list/tab-list.css';
