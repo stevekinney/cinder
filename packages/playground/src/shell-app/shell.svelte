@@ -334,7 +334,7 @@
     height: 100vh;
     font-family: var(--cinder-font-sans);
     font-size: var(--cinder-text-base);
-    background: var(--cinder-bg);
+    background: var(--cinder-surface-raised);
     color: var(--cinder-text);
   }
 
