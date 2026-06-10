@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "waveform",
+  "import": "@lostgradient/cinder/waveform",
+  "examples": [
+    {
+      "id": "bars-mode",
+      "title": "Audio waveform (bars mode)",
+      "description": "Pre-computed audio amplitude samples rendered as vertical amplitude bars.",
+      "code": "<script lang=\"ts\">\n  import { Waveform } from '@lostgradient/cinder/waveform';\n\n  // Simulate a voice recording envelope (louder in the middle) with deterministic noise\n  const voiceData = Array.from({ length: 128 }, (_, index) => {\n    const envelope = Math.sin((index / 128) * Math.PI);\n    // Deterministic pseudo-noise using multiple harmonics\n    const noise = (Math.sin(index * 7.3) + Math.sin(index * 13.7) + Math.sin(index * 23.1)) / 7.5;\n    return Math.max(-1, Math.min(1, envelope * 0.8 + noise));\n  });\n</script>\n\n<Waveform\n  label=\"Voice recording waveform\"\n  description=\"Simulated voice recording amplitude envelope displayed as bars.\"\n  data={voiceData}\n  renderMode=\"bars\"\n  height={80}\n/>\n"
+    },
+    {
+      "id": "sine-wave-path",
+      "title": "Sine wave (path mode)",
+      "description": "A time-domain sine wave rendered as a continuous SVG path.",
+      "code": "<script lang=\"ts\">\n  import { Waveform } from '@lostgradient/cinder/waveform';\n\n  const sineData = Array.from({ length: 256 }, (_, index) => Math.sin((index / 256) * Math.PI * 8));\n</script>\n\n<Waveform\n  label=\"Sine wave — 4 Hz\"\n  description=\"A pure 4 Hz sine wave sampled at 256 points, displayed in path mode.\"\n  data={sineData}\n  renderMode=\"path\"\n  height={100}\n  dataTableVisibility=\"visible\"\n/>\n"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-spectrogram {
+    display: grid;
+    gap: var(--cinder-space-3);
+    color: var(--cinder-text);
+  }
+
+  .cinder-spectrogram__description {
+    margin: 0;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-spectrogram__viewport {
+    position: relative;
+  }
+
+  .cinder-spectrogram svg {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  .cinder-spectrogram__cell {
+    stroke: none;
+  }
+
+  .cinder-spectrogram__tick-label {
+    fill: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-spectrogram__state {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--cinder-text-muted);
+    background: color-mix(in oklch, var(--cinder-surface) 88%, transparent);
+    z-index: 1;
+  }
+}

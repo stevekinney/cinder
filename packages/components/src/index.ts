@@ -370,6 +370,10 @@ export type {
 export { default as Message } from './components/message/index.ts';
 export type { MessageProps, MessageRole } from './components/message/index.ts';
 
+export { default as MatrixChart } from './components/matrix-chart/index.ts';
+export type { MatrixChartProps, MatrixChartSchemaProps } from './components/matrix-chart/index.ts';
+export type { MatrixColorScale } from './components/matrix-chart/matrix-chart.types.ts';
+
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
 
@@ -530,6 +534,20 @@ export type {
   StackedListItemProps,
 } from './components/stacked-list-item/index.ts';
 
+export { default as Spectrogram } from './components/spectrogram/index.ts';
+export type {
+  SpectrogramFrame,
+  SpectrogramProps,
+  SpectrogramSchemaProps,
+} from './components/spectrogram/index.ts';
+
+export { default as SpectrumChart } from './components/spectrum-chart/index.ts';
+export type {
+  SpectrumBin,
+  SpectrumChartProps,
+  SpectrumChartSchemaProps,
+} from './components/spectrum-chart/index.ts';
+
 export { default as Spinner } from './components/spinner/index.ts';
 export type { SpinnerProps, SpinnerSize } from './components/spinner/index.ts';
 
@@ -674,3 +692,10 @@ export type {
   VisuallyHiddenElement,
   VisuallyHiddenProps,
 } from './components/visually-hidden/index.ts';
+
+export { default as Waveform } from './components/waveform/index.ts';
+export type {
+  WaveformProps,
+  WaveformRenderMode,
+  WaveformSchemaProps,
+} from './components/waveform/index.ts';

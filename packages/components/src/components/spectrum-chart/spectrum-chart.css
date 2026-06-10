@@ -1,0 +1,49 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-spectrum-chart {
+    display: grid;
+    gap: var(--cinder-space-3);
+    color: var(--cinder-text);
+  }
+
+  .cinder-spectrum-chart__description {
+    margin: 0;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-spectrum-chart__viewport {
+    position: relative;
+  }
+
+  .cinder-spectrum-chart svg {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  .cinder-spectrum-chart__bar {
+    fill: var(--cinder-chart-series-1);
+    rx: 2;
+  }
+
+  .cinder-spectrum-chart__grid-line {
+    stroke: var(--cinder-border-muted);
+    stroke-dasharray: 3 3;
+  }
+
+  .cinder-spectrum-chart__tick-label {
+    fill: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-spectrum-chart__state {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--cinder-text-muted);
+    background: color-mix(in oklch, var(--cinder-surface) 88%, transparent);
+    z-index: 1;
+  }
+}

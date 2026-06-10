@@ -145,7 +145,23 @@ export async function checkComponentArtifacts(): Promise<DriftIssue[]> {
       { filename: 'README.md', expected: artifacts.readme },
     ];
 
+    // Every discovered component MUST ship a README.md. The artifact generator
+    // only UPDATES an existing README (it never creates one from scratch), so a
+    // brand-new component otherwise leaves `artifacts.readme === null` and slips
+    // through the `expected === null` skip below — but the playground
+    // documentation route hard-requires the file and 500s without it, failing
+    // the deploy. Flag the absence explicitly so a missing README is a loud
+    // drift failure here rather than a red deploy later. (Seed a skeleton with
+    // `create-component` / `migrate-component`, then re-run `components:generate`
+    // to fill the generated regions.)
+    if (!existsSync(join(component.directory, 'README.md'))) {
+      issues.push({ component: component.name, file: 'README.md', reason: 'missing' });
+    }
+
     for (const { filename, expected } of files) {
+      // A null `expected` means the generator produced no content for this
+      // artifact — legitimate for metadata-only schema/variables (type-only
+      // components) and for a not-yet-seeded README (handled explicitly above).
       if (expected === null) continue;
       const path = join(component.directory, filename);
       if (!existsSync(path)) {

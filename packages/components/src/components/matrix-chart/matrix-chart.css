@@ -1,0 +1,50 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-matrix-chart {
+    display: grid;
+    gap: var(--cinder-space-3);
+    color: var(--cinder-text);
+  }
+
+  .cinder-matrix-chart__description {
+    margin: 0;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-matrix-chart__viewport {
+    position: relative;
+  }
+
+  .cinder-matrix-chart svg {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  .cinder-matrix-chart__cell {
+    rx: 2;
+    stroke: var(--cinder-surface);
+    stroke-width: 1.5;
+  }
+
+  .cinder-matrix-chart__cell-label {
+    font-size: var(--cinder-text-xs);
+    pointer-events: none;
+  }
+
+  .cinder-matrix-chart__tick-label {
+    fill: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+  }
+
+  .cinder-matrix-chart__state {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--cinder-text-muted);
+    background: color-mix(in oklch, var(--cinder-surface) 88%, transparent);
+    z-index: 1;
+  }
+}

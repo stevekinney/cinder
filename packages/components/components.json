@@ -1956,6 +1956,32 @@
       }
     },
     {
+      "name": "MatrixChart",
+      "id": "matrix-chart",
+      "import": "@lostgradient/cinder/matrix-chart",
+      "exportName": "MatrixChart",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Categorical × categorical heatmap for dense analytics, confusion matrices, and correlation grids.",
+      "tags": ["chart", "heatmap", "matrix", "analytics"],
+      "useWhen": [
+        "Showing density or magnitude across two categorical dimensions simultaneously.",
+        "Rendering a confusion matrix where rows are actual classes and columns are predicted classes."
+      ],
+      "avoidWhen": [
+        "Showing a continuous trend over time — use line-chart instead.",
+        "Comparing discrete category totals — use bar-chart instead."
+      ],
+      "related": ["bar-chart", "line-chart", "area-chart"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/matrix-chart/schema",
+        "variables": "@lostgradient/cinder/matrix-chart/variables",
+        "examples": "@lostgradient/cinder/matrix-chart/examples"
+      }
+    },
+    {
       "name": "MenuBar",
       "id": "menu-bar",
       "import": "@lostgradient/cinder/menu-bar",
@@ -2778,6 +2804,60 @@
       }
     },
     {
+      "name": "Spectrogram",
+      "id": "spectrogram",
+      "import": "@lostgradient/cinder/spectrogram",
+      "exportName": "Spectrogram",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Responsive SVG time × frequency heatmap for visualizing audio spectrogram data.",
+      "tags": ["chart", "spectrogram", "signal", "audio"],
+      "useWhen": [
+        "Visualizing how frequency content of a signal changes over time (time × frequency heatmap).",
+        "Displaying pre-computed spectrogram frames from an FFT or short-time Fourier transform."
+      ],
+      "avoidWhen": [
+        "Only a single spectrum snapshot is needed — use spectrum-chart instead.",
+        "Real-time live audio spectrogram is needed — feed frames as props yourself.",
+        "A categorical × categorical heatmap without a time axis is needed — use matrix-chart instead."
+      ],
+      "related": ["spectrum-chart", "waveform", "matrix-chart"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/spectrogram/schema",
+        "variables": "@lostgradient/cinder/spectrogram/variables",
+        "examples": "@lostgradient/cinder/spectrogram/examples"
+      }
+    },
+    {
+      "name": "SpectrumChart",
+      "id": "spectrum-chart",
+      "import": "@lostgradient/cinder/spectrum-chart",
+      "exportName": "SpectrumChart",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Responsive SVG frequency-bin bar chart for visualizing audio spectrum magnitude data.",
+      "tags": ["chart", "spectrum", "signal", "audio"],
+      "useWhen": [
+        "Displaying pre-computed frequency-domain magnitude data from an FFT or spectrum analyzer.",
+        "Showing a static frequency response or spectrum snapshot with labelled frequency bins."
+      ],
+      "avoidWhen": [
+        "Real-time live audio spectrum is needed — feed live AnalyserNode data as props yourself.",
+        "A full time × frequency heatmap is needed — use spectrogram instead.",
+        "General categorical bar comparison — use bar-chart instead."
+      ],
+      "related": ["waveform", "spectrogram", "bar-chart"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/spectrum-chart/schema",
+        "variables": "@lostgradient/cinder/spectrum-chart/variables",
+        "examples": "@lostgradient/cinder/spectrum-chart/examples"
+      }
+    },
+    {
       "name": "Spinner",
       "id": "spinner",
       "import": "@lostgradient/cinder/spinner",
@@ -3483,6 +3563,32 @@
         "schema": "@lostgradient/cinder/visually-hidden/schema",
         "variables": "@lostgradient/cinder/visually-hidden/variables",
         "examples": "@lostgradient/cinder/visually-hidden/examples"
+      }
+    },
+    {
+      "name": "Waveform",
+      "id": "waveform",
+      "import": "@lostgradient/cinder/waveform",
+      "exportName": "Waveform",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Responsive SVG rendering of time-domain audio amplitude data as a waveform path or bar display.",
+      "tags": ["chart", "waveform", "signal", "audio"],
+      "useWhen": [
+        "Visualizing pre-recorded or pre-processed audio amplitude samples in a static display.",
+        "Showing an audio waveform thumbnail or preview with mocked or pre-computed sample data."
+      ],
+      "avoidWhen": [
+        "Real-time live audio capture is needed — wire AudioContext / AnalyserNode yourself and feed samples as props.",
+        "Frequency-domain data — use spectrum-chart or spectrogram instead."
+      ],
+      "related": ["spectrum-chart", "spectrogram", "bar-chart", "line-chart"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/waveform/schema",
+        "variables": "@lostgradient/cinder/waveform/variables",
+        "examples": "@lostgradient/cinder/waveform/examples"
       }
     }
   ]

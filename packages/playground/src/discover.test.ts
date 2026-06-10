@@ -221,8 +221,12 @@ describe('discoverSidebarComponents', () => {
     // examples found" and timing out the sweep — status-dot, message,
     // description-list, color-field — surfacing them in the sidebar and landing
     // it at 97 distinct families, measured empirically via discoverSidebarComponents().
+    // The MVP issue wave (#318-324) adds the ChoiceGrid family, the four chart
+    // families (matrix-chart, waveform, spectrum-chart, spectrogram), and the
+    // interaction-pattern families (media-controls, capability-gate, share-card,
+    // keyboard-shortcuts) — landing it at 105.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(97);
+    expect(sidebar.length).toBeLessThanOrEqual(105);
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {
