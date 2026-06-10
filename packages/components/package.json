@@ -486,6 +486,31 @@
     "./callout/styles": {
       "default": "./dist/components/callout/callout.css"
     },
+    "./capability-gate": {
+      "types": "./dist/components/capability-gate/index.d.ts",
+      "svelte": "./src/components/capability-gate/index.ts",
+      "node": "./dist/server/components/capability-gate/index.js",
+      "default": "./dist/components/capability-gate/index.js"
+    },
+    "./capability-gate/schema": {
+      "types": "./dist/components/capability-gate/capability-gate.schema.d.ts",
+      "svelte": "./src/components/capability-gate/capability-gate.schema.ts",
+      "node": "./dist/server/components/capability-gate/capability-gate.schema.js",
+      "default": "./dist/components/capability-gate/capability-gate.schema.js"
+    },
+    "./capability-gate/variables": {
+      "types": "./dist/components/capability-gate/capability-gate.variables.d.ts",
+      "svelte": "./src/components/capability-gate/capability-gate.variables.ts",
+      "node": "./dist/server/components/capability-gate/capability-gate.variables.js",
+      "default": "./dist/components/capability-gate/capability-gate.variables.js"
+    },
+    "./capability-gate/styles": {
+      "default": "./dist/components/capability-gate/capability-gate.css"
+    },
+    "./capability-gate/examples": {
+      "import": "./src/components/capability-gate/capability-gate.examples.json",
+      "default": "./src/components/capability-gate/capability-gate.examples.json"
+    },
     "./card": {
       "types": "./dist/components/card/index.d.ts",
       "svelte": "./src/components/card/index.ts",
@@ -1708,6 +1733,31 @@
       "import": "./src/components/kbd/kbd.examples.json",
       "default": "./src/components/kbd/kbd.examples.json"
     },
+    "./keyboard-shortcuts": {
+      "types": "./dist/components/keyboard-shortcuts/index.d.ts",
+      "svelte": "./src/components/keyboard-shortcuts/index.ts",
+      "node": "./dist/server/components/keyboard-shortcuts/index.js",
+      "default": "./dist/components/keyboard-shortcuts/index.js"
+    },
+    "./keyboard-shortcuts/schema": {
+      "types": "./dist/components/keyboard-shortcuts/keyboard-shortcuts.schema.d.ts",
+      "svelte": "./src/components/keyboard-shortcuts/keyboard-shortcuts.schema.ts",
+      "node": "./dist/server/components/keyboard-shortcuts/keyboard-shortcuts.schema.js",
+      "default": "./dist/components/keyboard-shortcuts/keyboard-shortcuts.schema.js"
+    },
+    "./keyboard-shortcuts/variables": {
+      "types": "./dist/components/keyboard-shortcuts/keyboard-shortcuts.variables.d.ts",
+      "svelte": "./src/components/keyboard-shortcuts/keyboard-shortcuts.variables.ts",
+      "node": "./dist/server/components/keyboard-shortcuts/keyboard-shortcuts.variables.js",
+      "default": "./dist/components/keyboard-shortcuts/keyboard-shortcuts.variables.js"
+    },
+    "./keyboard-shortcuts/styles": {
+      "default": "./dist/components/keyboard-shortcuts/keyboard-shortcuts.css"
+    },
+    "./keyboard-shortcuts/examples": {
+      "import": "./src/components/keyboard-shortcuts/keyboard-shortcuts.examples.json",
+      "default": "./src/components/keyboard-shortcuts/keyboard-shortcuts.examples.json"
+    },
     "./label": {
       "types": "./dist/components/label/index.d.ts",
       "svelte": "./src/components/label/index.ts",
@@ -1850,6 +1900,31 @@
     "./matrix-chart/examples": {
       "import": "./src/components/matrix-chart/matrix-chart.examples.json",
       "default": "./src/components/matrix-chart/matrix-chart.examples.json"
+    },
+    "./media-controls": {
+      "types": "./dist/components/media-controls/index.d.ts",
+      "svelte": "./src/components/media-controls/index.ts",
+      "node": "./dist/server/components/media-controls/index.js",
+      "default": "./dist/components/media-controls/index.js"
+    },
+    "./media-controls/schema": {
+      "types": "./dist/components/media-controls/media-controls.schema.d.ts",
+      "svelte": "./src/components/media-controls/media-controls.schema.ts",
+      "node": "./dist/server/components/media-controls/media-controls.schema.js",
+      "default": "./dist/components/media-controls/media-controls.schema.js"
+    },
+    "./media-controls/variables": {
+      "types": "./dist/components/media-controls/media-controls.variables.d.ts",
+      "svelte": "./src/components/media-controls/media-controls.variables.ts",
+      "node": "./dist/server/components/media-controls/media-controls.variables.js",
+      "default": "./dist/components/media-controls/media-controls.variables.js"
+    },
+    "./media-controls/styles": {
+      "default": "./dist/components/media-controls/media-controls.css"
+    },
+    "./media-controls/examples": {
+      "import": "./src/components/media-controls/media-controls.examples.json",
+      "default": "./src/components/media-controls/media-controls.examples.json"
     },
     "./menu-bar": {
       "types": "./dist/components/menu-bar/index.d.ts",
@@ -2412,6 +2487,31 @@
       "import": "./src/components/selection-popover/selection-popover.examples.json",
       "default": "./src/components/selection-popover/selection-popover.examples.json"
     },
+    "./share-card": {
+      "types": "./dist/components/share-card/index.d.ts",
+      "svelte": "./src/components/share-card/index.ts",
+      "node": "./dist/server/components/share-card/index.js",
+      "default": "./dist/components/share-card/index.js"
+    },
+    "./share-card/schema": {
+      "types": "./dist/components/share-card/share-card.schema.d.ts",
+      "svelte": "./src/components/share-card/share-card.schema.ts",
+      "node": "./dist/server/components/share-card/share-card.schema.js",
+      "default": "./dist/components/share-card/share-card.schema.js"
+    },
+    "./share-card/variables": {
+      "types": "./dist/components/share-card/share-card.variables.d.ts",
+      "svelte": "./src/components/share-card/share-card.variables.ts",
+      "node": "./dist/server/components/share-card/share-card.variables.js",
+      "default": "./dist/components/share-card/share-card.variables.js"
+    },
+    "./share-card/styles": {
+      "default": "./dist/components/share-card/share-card.css"
+    },
+    "./share-card/examples": {
+      "import": "./src/components/share-card/share-card.examples.json",
+      "default": "./src/components/share-card/share-card.examples.json"
+    },
     "./sheet": {
       "types": "./dist/components/sheet/index.d.ts",
       "svelte": "./src/components/sheet/index.ts",
@@ -2436,6 +2536,31 @@
     "./sheet/examples": {
       "import": "./src/components/sheet/sheet.examples.json",
       "default": "./src/components/sheet/sheet.examples.json"
+    },
+    "./shortcut-hint": {
+      "types": "./dist/components/shortcut-hint/index.d.ts",
+      "svelte": "./src/components/shortcut-hint/index.ts",
+      "node": "./dist/server/components/shortcut-hint/index.js",
+      "default": "./dist/components/shortcut-hint/index.js"
+    },
+    "./shortcut-hint/schema": {
+      "types": "./dist/components/shortcut-hint/shortcut-hint.schema.d.ts",
+      "svelte": "./src/components/shortcut-hint/shortcut-hint.schema.ts",
+      "node": "./dist/server/components/shortcut-hint/shortcut-hint.schema.js",
+      "default": "./dist/components/shortcut-hint/shortcut-hint.schema.js"
+    },
+    "./shortcut-hint/variables": {
+      "types": "./dist/components/shortcut-hint/shortcut-hint.variables.d.ts",
+      "svelte": "./src/components/shortcut-hint/shortcut-hint.variables.ts",
+      "node": "./dist/server/components/shortcut-hint/shortcut-hint.variables.js",
+      "default": "./dist/components/shortcut-hint/shortcut-hint.variables.js"
+    },
+    "./shortcut-hint/styles": {
+      "default": "./dist/components/shortcut-hint/shortcut-hint.css"
+    },
+    "./shortcut-hint/examples": {
+      "import": "./src/components/shortcut-hint/shortcut-hint.examples.json",
+      "default": "./src/components/shortcut-hint/shortcut-hint.examples.json"
     },
     "./side-navigation": {
       "types": "./dist/components/side-navigation/index.d.ts",
