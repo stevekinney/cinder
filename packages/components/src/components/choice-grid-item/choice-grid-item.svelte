@@ -112,7 +112,10 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    if (isDisabled) return;
+    // Always forward to the parent so arrow/Home/End navigation works even when
+    // this tile is disabled (a disabled tile that holds focus must not trap the
+    // keyboard). The parent's `select()` already refuses to activate a disabled
+    // item, so Space/Enter on a disabled tile is a safe no-op.
     context.handleKeydown(event);
   }
 </script>

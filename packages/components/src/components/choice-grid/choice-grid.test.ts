@@ -308,6 +308,51 @@ describe('ChoiceGrid disabled-aware navigation', () => {
     // No selection happened from navigation alone.
     expect(boxes[1]?.getAttribute('aria-checked')).toBe('false');
   });
+
+  test('arrow navigation still works when focus is on a disabled item', async () => {
+    // Regression: a disabled tile must not trap the keyboard — arrows must still
+    // move focus to the next enabled item.
+    const { container } = render(Wrapper, {
+      ariaLabel: 'Pick one',
+      items: [
+        { value: 'a', label: 'A', disabled: true },
+        { value: 'b', label: 'B' },
+        { value: 'c', label: 'C' },
+      ],
+    });
+    const radios = Array.from(container.querySelectorAll<HTMLElement>('[role="radio"]'));
+    // Force focus onto the disabled first tile, then press ArrowRight.
+    radios[0]?.focus();
+    await fireEvent.keyDown(radios[0] as Element, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(radios[1] ?? null);
+  });
+
+  test('Space on a disabled item does not select it', async () => {
+    const { container } = render(Wrapper, {
+      ariaLabel: 'Pick one',
+      items: [{ value: 'a', label: 'A', disabled: true }],
+    });
+    const disabled = container.querySelectorAll<HTMLElement>('[role="radio"]')[0];
+    disabled?.focus();
+    await fireEvent.keyDown(disabled as Element, { key: ' ' });
+    expect(disabled?.getAttribute('aria-checked')).toBe('false');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accessible name
+// ---------------------------------------------------------------------------
+
+describe('ChoiceGrid accessible name', () => {
+  test('an empty ariaLabel does not emit aria-label="" (which would suppress naming)', () => {
+    const { container } = render(Wrapper, {
+      ariaLabel: '',
+      items: [{ value: 'a', label: 'A' }],
+    });
+    const group = container.querySelector('[role="radiogroup"]');
+    // Empty string is normalized to undefined → the attribute is absent.
+    expect(group?.hasAttribute('aria-label')).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

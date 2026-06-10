@@ -14,7 +14,7 @@
   <ChoiceGrid
     ariaLabel="Choose a difficulty"
     bind:value={selected}
-    columns={2}
+    columns="responsive"
     minColumnWidth="8rem"
   >
     <ChoiceGrid.Item value="easy">Easy</ChoiceGrid.Item>

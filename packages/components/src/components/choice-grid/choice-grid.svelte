@@ -77,7 +77,10 @@
   }
 
   function select(candidate: string): void {
-    if (disabled) return;
+    // Refuse to activate when the grid is disabled OR the specific item is
+    // disabled — items forward keydown unconditionally (so navigation isn't
+    // trapped), which means Space/Enter can reach here for a disabled item.
+    if (isItemDisabled(candidate)) return;
     if (multiple) {
       multiSelection.toggle(candidate);
     } else {
@@ -90,6 +93,21 @@
     return items.get(candidate)?.disabled ?? false;
   }
 
+  // Item values ordered by their RENDERED DOM position, not Map-insertion order.
+  // Reordering keyed `{#each}` children reorders the DOM without re-registering,
+  // so roving navigation and the default tabindex target must follow the visual
+  // order — otherwise focus moves along the wrong sequence.
+  function orderedKeys(): string[] {
+    return [...items.entries()]
+      .sort(([, a], [, b]) => {
+        const position = a.element.compareDocumentPosition(b.element);
+        if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+        if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+        return 0;
+      })
+      .map(([key]) => key);
+  }
+
   // The single ENABLED value that should hold `tabindex="0"`. Disabled items are
   // never focusable: prefer the (enabled) selected value, else the first enabled
   // registered item. Returns null when every item is disabled.
@@ -97,8 +115,8 @@
     void version;
     void value;
     void values;
-    const entries = [...items.entries()];
-    if (entries.length === 0) return null;
+    const ordered = orderedKeys();
+    if (ordered.length === 0) return null;
 
     if (!multiple && value !== null && value !== undefined) {
       if (items.has(value) && !isItemDisabled(value)) return value;
@@ -108,7 +126,8 @@
         if (items.has(selected) && !isItemDisabled(selected)) return selected;
       }
     }
-    for (const [key] of entries) {
+    // First enabled item in DOM order.
+    for (const key of ordered) {
       if (!isItemDisabled(key)) return key;
     }
     return null;
@@ -142,7 +161,7 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    const keys = [...items.keys()];
+    const keys = orderedKeys();
     const currentIndex = keys.findIndex((key) => {
       const entry = items.get(key);
       return entry?.element === event.currentTarget || entry?.element === event.target;
@@ -206,6 +225,11 @@
     handleKeydown,
   });
 
+  // Empty strings are normalized to `undefined` so `aria-label=""` does not
+  // suppress the accessible-name fallback and leave the group unnamed.
+  const resolvedAriaLabel = $derived(ariaLabel?.trim() ? ariaLabel : undefined);
+  const resolvedAriaLabelledby = $derived(ariaLabelledby?.trim() ? ariaLabelledby : undefined);
+
   // Dev-time guardrails for the two easy-to-miss API contracts.
   $effect(() => {
     if (values.length > 0 && !multiple) {
@@ -213,7 +237,9 @@
         'ChoiceGrid: `values` was provided without `multiple`. Binding `values` does not enable multi-select — set `multiple` explicitly. The grid is operating in single-select mode and ignoring `values`.',
       );
     }
-    if (ariaLabel === undefined && ariaLabelledby === undefined) {
+    // Check the resolved (non-empty) names so `ariaLabel=""` / `ariaLabelledby=""`
+    // still warn — an empty string leaves the control unnamed.
+    if (!resolvedAriaLabel && !resolvedAriaLabelledby) {
       devWarn(
         'ChoiceGrid: no `ariaLabel` or `ariaLabelledby` provided. The radiogroup/group has no accessible name — pass one.',
       );
@@ -235,8 +261,8 @@
   {...rest}
   {role}
   class={classNames('cinder-choice-grid', className)}
-  aria-label={ariaLabel}
-  aria-labelledby={ariaLabelledby}
+  aria-label={resolvedAriaLabel}
+  aria-labelledby={resolvedAriaLabelledby}
   aria-disabled={disabled || undefined}
   data-cinder-multiple={multiple || undefined}
   data-cinder-disabled={disabled || undefined}
