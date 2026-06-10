@@ -124,6 +124,10 @@ describe('MatrixChart', () => {
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     // The chart-level SVG title (direct child, for aria-labelledby) should not be present when loading
     expect(container.querySelector('svg > title')).toBeNull();
+    // The heatmap plot must NOT draw under the loading overlay — data may be
+    // present while loading, so cells/labels are suppressed until loading ends.
+    expect(container.querySelectorAll('.cinder-matrix-chart__cell').length).toBe(0);
+    expect(container.querySelectorAll('.cinder-matrix-chart__tick-label').length).toBe(0);
   });
 
   test('shows loading state text', () => {

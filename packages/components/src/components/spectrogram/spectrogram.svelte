@@ -209,48 +209,53 @@
       {#if !loading && !isEmpty}
         <title id="{rootId}-svg-title">{label}</title>
       {/if}
-      <g transform={`translate(${marginLeft}, ${marginTop})`}>
-        <!-- Frequency cells: a full frames × binCount rectangular grid. Ragged or
-             non-finite cells render as the "missing" fill. Low frequency (bin 0)
-             is at the bottom. -->
-        {#each frames as _frame, frameIndex (frameIndex)}
-          {#each binIndices as binIndex (binIndex)}
-            <rect
-              class="cinder-spectrogram__cell"
-              x={frameIndex * cellWidth}
-              y={binY(binIndex)}
-              width={cellWidth}
-              height={cellHeight}
-              fill={cellFill(binValueAt(frameIndex, binIndex))}
-              aria-hidden="true"
-            />
+      <!-- The plot only renders with data and when not loading — otherwise the
+           cells/labels would draw under the loading or empty overlay (frames may
+           be present while loading, so isEmpty alone is not enough). -->
+      {#if !loading && !isEmpty}
+        <g transform={`translate(${marginLeft}, ${marginTop})`}>
+          <!-- Frequency cells: a full frames × binCount rectangular grid. Ragged or
+               non-finite cells render as the "missing" fill. Low frequency (bin 0)
+               is at the bottom. -->
+          {#each frames as _frame, frameIndex (frameIndex)}
+            {#each binIndices as binIndex (binIndex)}
+              <rect
+                class="cinder-spectrogram__cell"
+                x={frameIndex * cellWidth}
+                y={binY(binIndex)}
+                width={cellWidth}
+                height={cellHeight}
+                fill={cellFill(binValueAt(frameIndex, binIndex))}
+                aria-hidden="true"
+              />
+            {/each}
           {/each}
-        {/each}
-        <!-- Y-axis frequency labels (bin 0 / lowest frequency at the bottom) -->
-        {#each yLabels as yLabel, index (index)}
-          {#if index % yLabelStep === 0}
-            <text
-              class="cinder-spectrogram__tick-label"
-              x={-6}
-              y={binY(index) + cellHeight / 2}
-              text-anchor="end"
-              dominant-baseline="middle">{yLabel}</text
-            >
-          {/if}
-        {/each}
-        <!-- X-axis time labels -->
-        {#each frames as frame, index (index)}
-          {#if index % xLabelStep === 0}
-            <text
-              class="cinder-spectrogram__tick-label"
-              x={index * cellWidth + cellWidth / 2}
-              y={plotHeight + 16}
-              text-anchor="middle"
-              dominant-baseline="auto">{frame.label}</text
-            >
-          {/if}
-        {/each}
-      </g>
+          <!-- Y-axis frequency labels (bin 0 / lowest frequency at the bottom) -->
+          {#each yLabels as yLabel, index (index)}
+            {#if index % yLabelStep === 0}
+              <text
+                class="cinder-spectrogram__tick-label"
+                x={-6}
+                y={binY(index) + cellHeight / 2}
+                text-anchor="end"
+                dominant-baseline="middle">{yLabel}</text
+              >
+            {/if}
+          {/each}
+          <!-- X-axis time labels -->
+          {#each frames as frame, index (index)}
+            {#if index % xLabelStep === 0}
+              <text
+                class="cinder-spectrogram__tick-label"
+                x={index * cellWidth + cellWidth / 2}
+                y={plotHeight + 16}
+                text-anchor="middle"
+                dominant-baseline="auto">{frame.label}</text
+              >
+            {/if}
+          {/each}
+        </g>
+      {/if}
     </svg>
   </div>
   {#if hasDataTable}

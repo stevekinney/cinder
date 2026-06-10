@@ -248,61 +248,66 @@
       {#if !loading && !isEmpty}
         <title id="{rootId}-svg-title">{label}</title>
       {/if}
-      <g transform={`translate(${marginLeft}, ${marginTop})`}>
-        <!-- X-axis labels (column headers) -->
-        {#each xLabels as xLabel, index (xLabel)}
-          <text
-            class="cinder-matrix-chart__tick-label"
-            x={index * cellWidth + cellWidth / 2}
-            y={-8}
-            text-anchor="middle"
-            dominant-baseline="auto">{xLabel}</text
-          >
-        {/each}
-        <!-- Y-axis labels (row headers) -->
-        {#each yLabels as yLabel, index (yLabel)}
-          <text
-            class="cinder-matrix-chart__tick-label"
-            x={-8}
-            y={index * cellHeight + cellHeight / 2}
-            text-anchor="end"
-            dominant-baseline="middle">{yLabel}</text
-          >
-        {/each}
-        <!-- Matrix cells -->
-        {#each cells as cell (cell.key)}
-          <g>
-            <rect
-              class="cinder-matrix-chart__cell"
-              x={cell.x}
-              y={cell.y}
-              width={cell.width}
-              height={cell.height}
-              fill={cellFill(cell.value)}
-              aria-hidden="true"
-              data-cinder-x={cell.xLabel}
-              data-cinder-y={cell.yLabel}
+      <!-- The plot only renders with data and when not loading — otherwise the
+           heatmap cells/labels would draw under the loading or empty overlay
+           (data may be present while loading, so isEmpty alone is not enough). -->
+      {#if !loading && !isEmpty}
+        <g transform={`translate(${marginLeft}, ${marginTop})`}>
+          <!-- X-axis labels (column headers) -->
+          {#each xLabels as xLabel, index (xLabel)}
+            <text
+              class="cinder-matrix-chart__tick-label"
+              x={index * cellWidth + cellWidth / 2}
+              y={-8}
+              text-anchor="middle"
+              dominant-baseline="auto">{xLabel}</text
             >
-              <title
-                >{cell.xLabel} × {cell.yLabel}: {cell.value !== null
-                  ? formatValue(cell.value)
-                  : 'no data'}</title
+          {/each}
+          <!-- Y-axis labels (row headers) -->
+          {#each yLabels as yLabel, index (yLabel)}
+            <text
+              class="cinder-matrix-chart__tick-label"
+              x={-8}
+              y={index * cellHeight + cellHeight / 2}
+              text-anchor="end"
+              dominant-baseline="middle">{yLabel}</text
+            >
+          {/each}
+          <!-- Matrix cells -->
+          {#each cells as cell (cell.key)}
+            <g>
+              <rect
+                class="cinder-matrix-chart__cell"
+                x={cell.x}
+                y={cell.y}
+                width={cell.width}
+                height={cell.height}
+                fill={cellFill(cell.value)}
+                aria-hidden="true"
+                data-cinder-x={cell.xLabel}
+                data-cinder-y={cell.yLabel}
               >
-            </rect>
-            {#if showCellLabels && cell.value !== null}
-              <text
-                class="cinder-matrix-chart__cell-label"
-                x={cell.x + cell.width / 2}
-                y={cell.y + cell.height / 2}
-                text-anchor="middle"
-                dominant-baseline="middle"
-                fill={cellLabelFill(cell.value)}
-                aria-hidden="true">{formatValue(cell.value)}</text
-              >
-            {/if}
-          </g>
-        {/each}
-      </g>
+                <title
+                  >{cell.xLabel} × {cell.yLabel}: {cell.value !== null
+                    ? formatValue(cell.value)
+                    : 'no data'}</title
+                >
+              </rect>
+              {#if showCellLabels && cell.value !== null}
+                <text
+                  class="cinder-matrix-chart__cell-label"
+                  x={cell.x + cell.width / 2}
+                  y={cell.y + cell.height / 2}
+                  text-anchor="middle"
+                  dominant-baseline="middle"
+                  fill={cellLabelFill(cell.value)}
+                  aria-hidden="true">{formatValue(cell.value)}</text
+                >
+              {/if}
+            </g>
+          {/each}
+        </g>
+      {/if}
     </svg>
   </div>
   {#if hasDataTable}

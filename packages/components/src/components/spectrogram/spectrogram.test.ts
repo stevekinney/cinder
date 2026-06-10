@@ -65,6 +65,18 @@ describe('Spectrogram', () => {
     expect(container.querySelector('svg > title')).toBeNull();
   });
 
+  test('does not draw the heatmap under the loading overlay when frames are present', () => {
+    // frames may be present while loading — the cells/labels must stay hidden
+    // until loading ends, rather than drawing under the loading overlay.
+    const { container } = render(Spectrogram, {
+      label: 'Loading spectrogram',
+      loading: true,
+      frames: mockFrames,
+    });
+    expect(container.querySelectorAll('.cinder-spectrogram__cell').length).toBe(0);
+    expect(container.querySelectorAll('.cinder-spectrogram__tick-label').length).toBe(0);
+  });
+
   test('shows loading state', () => {
     const { getByText } = render(Spectrogram, {
       label: 'Loading spectrogram',
