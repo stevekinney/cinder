@@ -74,7 +74,12 @@
       </TableRow>
     </TableHeader>
     <TableBody>
-      {#each rows as row, rowIndex (rowHeaderKey !== undefined ? String(row[rowHeaderKey]) : rowIndex)}
+      <!-- Key by positional index, not the row-header value: row-header values
+           (names, labels, statuses) are display data and are NOT guaranteed
+           unique, so keying by them would corrupt row identity when two rows
+           share a value. DataTable does not reorder rows itself, so the index
+           is a stable identity for the consumer-owned ordering. -->
+      {#each rows as row, rowIndex (rowIndex)}
         <TableRow>
           {#each columns as column (column.key)}
             <TableCell

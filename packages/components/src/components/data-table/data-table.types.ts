@@ -80,6 +80,10 @@ export type DataTableProps<Row extends DataTableRow = DataTableRow> = {
    * enables horizontal overflow scrolling on small viewports.
    */
   scrollable?: boolean;
-  /** Additional class names merged onto the root `<table>` element. */
+  /**
+   * Additional class names merged onto DataTable's root wrapper element (the
+   * `<div class="cinder-data-table">` that contains the table). To style the
+   * `<table>` itself, target `.cinder-data-table table` from this class.
+   */
   class?: string;
 };

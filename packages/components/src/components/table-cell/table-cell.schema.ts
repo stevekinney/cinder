@@ -11,7 +11,7 @@ const schema = {
     as: {
       enum: ['td', 'th'],
       description:
-        "When `'th'`, renders a `<th scope=\"row\">` instead of `<td>`, marking this\ncell as the row-header identifier for assistive technology. All existing\nCSS classes and attribute forwarding are preserved — this is purely a tag\nand scope change. Defaults to `'td'` so existing consumers are unaffected.",
+        'When `\'th\'`, renders a `<th scope="row">` instead of `<td>`, marking this\ncell as the row-header identifier for assistive technology. The component\nsets `scope="row"` itself (so `scope` is not part of the prop surface).\nDefaults to `\'td\'` so existing consumers are unaffected.\n\nThe attribute surface is typed against `<td>` for both modes — `<td>` and\n`<th>` share `HTMLTableCellElement`, so this covers the common attributes.\nThe `<th>`-only attributes (`colspan`, `rowspan`, `headers`, `abbr`) are\nnot surfaced here; a discriminated `td`/`th` union was tried but produced a\nunion TypeScript reports as "too complex to represent" against the full\nelement attribute interfaces. Pass those via the row-header column config\nif needed.',
     },
     class: {
       type: 'string',

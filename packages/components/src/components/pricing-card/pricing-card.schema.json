@@ -23,8 +23,7 @@
     },
     "caveat": {
       "type": "string",
-      "description": "Optional footnote or caveat beneath the features list.",
-      "default": "undefined"
+      "description": "Optional footnote or caveat beneath the features list."
     },
     "selected": {
       "type": "boolean",

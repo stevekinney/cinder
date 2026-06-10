@@ -40,7 +40,15 @@
   {...rest}
 >
   <div class="cinder-pricing-card__header">
-    <h3 class="cinder-pricing-card__name">{name}</h3>
+    <div class="cinder-pricing-card__heading-row">
+      <h3 class="cinder-pricing-card__name">{name}</h3>
+      <!-- A visible, non-color cue for the selected plan: the accent border and
+           CTA tint alone would not be perceivable to a colour-blind sighted
+           user (WCAG 1.4.1), so the selected state also carries explicit text. -->
+      {#if selected}
+        <span class="cinder-pricing-card__selected-flag">Selected</span>
+      {/if}
+    </div>
     <p class="cinder-pricing-card__price">{price}</p>
   </div>
 

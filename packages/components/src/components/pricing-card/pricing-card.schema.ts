@@ -26,7 +26,6 @@ const schema = {
     caveat: {
       type: 'string',
       description: 'Optional footnote or caveat beneath the features list.',
-      default: 'undefined',
     },
     selected: {
       type: 'boolean',

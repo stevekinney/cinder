@@ -6,7 +6,17 @@
  * Visual treatment for the table itself lives in table.css.
  * ======================================== */
 
+  /* The non-scrollable wrapper is a pure structural pass-through: `display:
+   * contents` lets the inner <table> participate directly in the parent layout
+   * with no extra box. */
   .cinder-data-table {
     display: contents;
+  }
+
+  /* When scrollable, the wrapper MUST generate a box so its `overflow-x: auto`
+   * (from .cinder-table-scroll) has something to scroll — `display: contents`
+   * would erase the box and silently disable horizontal scrolling. */
+  .cinder-data-table.cinder-table-scroll {
+    display: block;
   }
 }

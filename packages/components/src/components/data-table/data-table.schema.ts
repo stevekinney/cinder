@@ -24,7 +24,8 @@ const schema = {
     },
     class: {
       type: 'string',
-      description: 'Additional class names merged onto the root `<table>` element.',
+      description:
+        'Additional class names merged onto DataTable\'s root wrapper element (the\n`<div class="cinder-data-table">` that contains the table). To style the\n`<table>` itself, target `.cinder-data-table table` from this class.',
     },
   },
   additionalProperties: false,

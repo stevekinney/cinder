@@ -127,6 +127,24 @@ describe('DataTable — sort interaction', () => {
     const headerCells = Array.from(container.querySelectorAll('thead th'));
     expect(headerCells[0]?.getAttribute('aria-sort')).toBe('descending');
   });
+
+  test('never reorders rows itself — clicking a sort header leaves body order unchanged', async () => {
+    // DataTable is controlled: it reports sort intent via the bindable `sort`
+    // prop but the consumer owns row ordering. Clicking a sortable header must
+    // NOT reorder the DOM rows — only the caller re-sorting `rows` does that.
+    const { container } = render(DataTable, { columns, rows });
+    const rowHeaderText = () =>
+      Array.from(container.querySelectorAll('tbody tr th[scope="row"]')).map(
+        (cell) => cell.textContent,
+      );
+    const before = rowHeaderText();
+    expect(before).toEqual(['Ada Lovelace', 'Grace Hopper']);
+    // 'commits' is sortable and would, if the component sorted internally,
+    // reorder Grace (98) above Ada (142) on ascending.
+    const commitsButton = container.querySelectorAll('thead th button')[1] as HTMLButtonElement;
+    await fireEvent.click(commitsButton);
+    expect(rowHeaderText()).toEqual(before);
+  });
 });
 
 describe('DataTable — row header cells (scope="row")', () => {
