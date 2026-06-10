@@ -7,6 +7,16 @@
  * Tests that hit /bundle/button/primary.js and /example-src/button/primary rely
  * on scripts/playground/examples/button/primary.example.svelte existing. A
  * beforeAll guard asserts this up front so failures are diagnosable.
+ *
+ * PRECONDITION: the /bundle/* and /page-bundle/* "build artifact" tests bundle
+ * the playground FROM SOURCE, which resolves @cinder/diff, @cinder/markdown,
+ * @cinder/editor, and @cinder/commentary through their built `dist/` subpath
+ * exports. Run `bun run --filter=@cinder/diff --filter=@cinder/markdown
+ * --filter=@cinder/editor --filter=@cinder/commentary build` before this file
+ * in a fresh checkout, or those tests fail with "Could not resolve" import
+ * errors. CI does this in the main-green `Build playground bundle dependencies`
+ * step; the Playwright runner does it via start-server.ts. The package list is
+ * pinned by the "playground bundle dependency build preflight" test.
  */
 
 import { afterEach, beforeAll, describe, expect, it } from 'bun:test';

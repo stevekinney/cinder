@@ -49,5 +49,24 @@ jobs:
       - name: Typecheck workspace
         run: bun run typecheck
 
+      # The full `bun run test` suite includes @cinder/playground's bundle/route
+      # tests (playground-server.test.ts), which bundle the playground FROM
+      # SOURCE and resolve these private packages through their built `dist/`
+      # subpath exports (e.g. @cinder/markdown/pipeline, @cinder/editor/
+      # component-runtime, @cinder/commentary/anchor-decorations). Without a
+      # prior build those imports fail to resolve and the bundle tests error.
+      # The package list is the SAME one the Playwright runner builds in
+      # packages/testing/scripts/start-server.ts and is pinned by the
+      # "playground bundle dependency build preflight" test in start-server.test.ts
+      # — keep this filter list in sync with that test's `toEqual` assertion.
+      - name: Build playground bundle dependencies
+        run: >-
+          bun run
+          --filter=@cinder/diff
+          --filter=@cinder/markdown
+          --filter=@cinder/editor
+          --filter=@cinder/commentary
+          build
+
       - name: Test workspace
         run: bun run test
