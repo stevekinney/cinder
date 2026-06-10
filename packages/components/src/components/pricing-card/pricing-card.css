@@ -165,7 +165,7 @@
    * viewport (RESPONSIVE-POLICY.md). The previous 640px viewport breakpoint
    * fired on phones; the equivalent container threshold is far smaller because
    * pricing cards render at ~14–22rem, not full-viewport width. */
-  @container cinder-pricing-card (width < 16rem) {
+  @container cinder-pricing-card (max-width: 16rem) {
     .cinder-pricing-card__price {
       font-size: var(--cinder-text-2xl);
     }

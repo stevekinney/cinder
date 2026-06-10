@@ -49,7 +49,13 @@
    * ---------------------------------------- */
 
   @media (hover: hover) {
-    .cinder-choice-grid-item:not([data-cinder-disabled]):hover {
+    /* Neutral hover only. Excludes selected and graded (correct/incorrect/
+     * pending) tiles so their accent/feedback colors aren't clobbered to a
+     * neutral raised fill on hover — those states own their own hover rules
+     * (or intentionally stay flat). */
+    .cinder-choice-grid-item:not([data-cinder-disabled]):not([data-cinder-selected]):not(
+        [data-cinder-state]
+      ):hover {
       border-color: var(--cinder-border);
       background: var(--cinder-surface-raised);
     }
