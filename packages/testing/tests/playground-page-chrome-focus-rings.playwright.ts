@@ -167,7 +167,7 @@ async function showButtonExamplesTab(frame: Frame): Promise<Locator> {
 }
 
 async function showButtonOverviewApiSection(frame: Frame): Promise<Locator> {
-  await frame.getByRole('tab', { name: 'Overview' }).click();
+  await frame.getByRole('tab', { name: 'Documentation' }).click();
   const propsTableScroll = frame.locator('.props-table-scroll').first();
   const propsTableCount = await frame.locator('.props-table-scroll').count();
   expect(
