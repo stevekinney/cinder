@@ -172,51 +172,56 @@
       {#if !loading && !isEmpty}
         <title id="{rootId}-svg-title">{label}</title>
       {/if}
-      <g transform={`translate(${marginLeft}, ${marginTop})`}>
-        <!-- Y-axis ticks -->
-        {#each yTicks as tick, index (index)}
-          <text
-            class="cinder-spectrum-chart__tick-label"
-            x={-6}
-            y={scaleY(tick)}
-            text-anchor="end"
-            dominant-baseline="middle"
-            >{formatNumericValue(tick, undefined, undefined, { index })}</text
-          >
-          <line
-            class="cinder-spectrum-chart__grid-line"
-            x1="0"
-            x2={plotWidth}
-            y1={scaleY(tick)}
-            y2={scaleY(tick)}
-            aria-hidden="true"
-          />
-        {/each}
-        <!-- Frequency bars -->
-        {#each spectrumBars as bar, index (index)}
-          <rect
-            class="cinder-spectrum-chart__bar"
-            x={bar.x}
-            y={bar.y}
-            width={bar.barWidth}
-            height={bar.barHeight}
-            aria-hidden="true"
-            data-cinder-bin={bar.label}
-          />
-        {/each}
-        <!-- X-axis frequency labels (sampled to avoid overlap) -->
-        {#each spectrumBars as bar, index (index)}
-          {#if index % xLabelStep === 0}
+      <!-- Plot geometry only renders with data — otherwise the loading/empty
+           overlay would have a stray baseline grid line and ticks drawn under it
+           (yTicks falls back to [0] when there is no data). -->
+      {#if !loading && !isEmpty}
+        <g transform={`translate(${marginLeft}, ${marginTop})`}>
+          <!-- Y-axis ticks -->
+          {#each yTicks as tick, index (index)}
             <text
               class="cinder-spectrum-chart__tick-label"
-              x={bar.x + bar.barWidth / 2}
-              y={plotHeight + 16}
-              text-anchor="middle"
-              dominant-baseline="auto">{bar.label}</text
+              x={-6}
+              y={scaleY(tick)}
+              text-anchor="end"
+              dominant-baseline="middle"
+              >{formatNumericValue(tick, undefined, undefined, { index })}</text
             >
-          {/if}
-        {/each}
-      </g>
+            <line
+              class="cinder-spectrum-chart__grid-line"
+              x1="0"
+              x2={plotWidth}
+              y1={scaleY(tick)}
+              y2={scaleY(tick)}
+              aria-hidden="true"
+            />
+          {/each}
+          <!-- Frequency bars -->
+          {#each spectrumBars as bar, index (index)}
+            <rect
+              class="cinder-spectrum-chart__bar"
+              x={bar.x}
+              y={bar.y}
+              width={bar.barWidth}
+              height={bar.barHeight}
+              aria-hidden="true"
+              data-cinder-bin={bar.label}
+            />
+          {/each}
+          <!-- X-axis frequency labels (sampled to avoid overlap) -->
+          {#each spectrumBars as bar, index (index)}
+            {#if index % xLabelStep === 0}
+              <text
+                class="cinder-spectrum-chart__tick-label"
+                x={bar.x + bar.barWidth / 2}
+                y={plotHeight + 16}
+                text-anchor="middle"
+                dominant-baseline="auto">{bar.label}</text
+              >
+            {/if}
+          {/each}
+        </g>
+      {/if}
     </svg>
   </div>
   {#if hasDataTable}

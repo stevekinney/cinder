@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -10,12 +10,18 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 
+// Capture the original so it can be restored — overwriting globalThis without
+// restoring leaks the stub into any later test file that relies on the real one.
+const originalResizeObserver = globalThis.ResizeObserver;
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
 
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: Waveform } = await import('./waveform.svelte');
 
 afterEach(() => cleanup());
+afterAll(() => {
+  globalThis.ResizeObserver = originalResizeObserver;
+});
 
 // A small sine-wave-like mock dataset
 const sineData = Array.from({ length: 64 }, (_, index) => Math.sin((index / 64) * Math.PI * 4));

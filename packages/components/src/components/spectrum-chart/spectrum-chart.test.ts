@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -10,12 +10,18 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 
+// Capture the original so it can be restored — overwriting globalThis without
+// restoring leaks the stub into any later test file that relies on the real one.
+const originalResizeObserver = globalThis.ResizeObserver;
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
 
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: SpectrumChart } = await import('./spectrum-chart.svelte');
 
 afterEach(() => cleanup());
+afterAll(() => {
+  globalThis.ResizeObserver = originalResizeObserver;
+});
 
 const mockBins = [
   { label: '100 Hz', value: 0.2 },
@@ -77,6 +83,12 @@ describe('SpectrumChart', () => {
 
     expect(getByText('No spectrum data')).toBeTruthy();
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    // No plot geometry draws under the empty-state overlay — bars, grid lines,
+    // and tick labels are all suppressed when there's no data (yTicks otherwise
+    // returns [0], leaving a stray baseline grid line under the overlay).
+    expect(container.querySelectorAll('.cinder-spectrum-chart__bar').length).toBe(0);
+    expect(container.querySelectorAll('.cinder-spectrum-chart__grid-line').length).toBe(0);
+    expect(container.querySelectorAll('.cinder-spectrum-chart__tick-label').length).toBe(0);
   });
 
   test('renders accessible data table when dataTableVisibility is visible', () => {
