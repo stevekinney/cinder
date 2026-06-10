@@ -34,6 +34,6 @@
   xField="quarter"
   yField="team"
   valueField="score"
-  colorScale="sequential"
+  colorScale="diverging"
   dataTableVisibility="visible"
 />

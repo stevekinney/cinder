@@ -127,3 +127,4 @@ packages/testing/playwright-report/
 packages/testing/test-results/
 packages/testing/.playwright/
 tmp/
+tmp-*

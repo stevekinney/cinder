@@ -143,10 +143,15 @@
       .filter((_, index) => index % tableFrameStep === 0)
       .slice(0, maxTableFrames),
   );
+  // Bins listed top-to-bottom to MATCH the visual: the SVG places bin 0 (lowest
+  // frequency) at the bottom, so the table's first row is the highest sampled
+  // bin and the last row is bin 0 — a screen-reader user reads the same vertical
+  // frequency order they would see.
   const tableBinIndices = $derived(
     Array.from({ length: binCount }, (_, index) => index)
       .filter((index) => index % tableBinStep === 0)
-      .slice(0, maxTableBins),
+      .slice(0, maxTableBins)
+      .reverse(),
   );
   const isTruncated = $derived(frames.length > maxTableFrames || binCount > maxTableBins);
   const tableCaption = $derived(

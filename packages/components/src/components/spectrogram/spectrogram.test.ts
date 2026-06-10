@@ -149,7 +149,11 @@ describe('Spectrogram', () => {
     });
 
     const rowHeaders = [...container.querySelectorAll('tbody th[scope="row"]')];
-    expect(rowHeaders[0]?.textContent).toBe('100 Hz');
+    // The table lists bins top-to-bottom to MATCH the visual (bin 0 / lowest
+    // frequency at the BOTTOM), so the first row is the highest bin and the last
+    // row is the lowest.
+    expect(rowHeaders[0]?.textContent).toBe('3.2 kHz');
+    expect(rowHeaders[rowHeaders.length - 1]?.textContent).toBe('100 Hz');
   });
 
   test('renders a full rectangular grid for ragged frames (no overflow, missing cells)', () => {
