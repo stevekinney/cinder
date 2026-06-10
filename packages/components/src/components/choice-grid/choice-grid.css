@@ -1,0 +1,27 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@import '../choice-grid-item/choice-grid-item.css';
+
+@layer cinder.components {
+  /* ========================================
+   * CHOICE GRID — parent container
+   * ======================================== */
+
+  .cinder-choice-grid {
+    /* Default grid layout: responsive auto-fill. Overridden by the
+     * --cinder-choice-grid-columns inline style set from the `columns` prop. */
+    display: grid;
+    grid-template-columns: var(
+      --cinder-choice-grid-columns,
+      repeat(auto-fill, minmax(min(10rem, 100%), 1fr))
+    );
+    gap: var(--cinder-space-3);
+    inline-size: 100%;
+  }
+
+  /* Disabled grid dims every item. Individual item disabled states also apply. */
+  .cinder-choice-grid[data-cinder-disabled] {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}

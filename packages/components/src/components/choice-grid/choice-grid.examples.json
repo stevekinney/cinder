@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "choice-grid",
+  "import": "@lostgradient/cinder/choice-grid",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic single-select",
+      "description": "A simple quiz question with four answer options and roving keyboard focus.",
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string | null>(null);\n</script>\n\n<ChoiceGrid ariaLabel=\"What is the capital of France?\" bind:value={selected}>\n  <ChoiceGrid.Item value=\"london\">London</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"berlin\">Berlin</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"paris\">Paris</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"madrid\">Madrid</ChoiceGrid.Item>\n</ChoiceGrid>\n\n{#if selected}\n  <p style=\"margin-top: 1rem; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);\">\n    Selected: {selected}\n  </p>\n{/if}\n"
+    },
+    {
+      "id": "dense-layout",
+      "title": "Dense phone layout",
+      "description": "Fixed 2-column grid with compact cells — suitable for narrow mobile viewports.",
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string | null>(null);\n</script>\n\n<div style=\"max-width: 20rem; margin: 0 auto;\">\n  <ChoiceGrid\n    ariaLabel=\"Choose a difficulty\"\n    bind:value={selected}\n    columns={2}\n    minColumnWidth=\"8rem\"\n  >\n    <ChoiceGrid.Item value=\"easy\">Easy</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"medium\">Medium</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"hard\">Hard</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"expert\">Expert</ChoiceGrid.Item>\n  </ChoiceGrid>\n</div>\n"
+    },
+    {
+      "id": "feedback-states",
+      "title": "Feedback states",
+      "description": "Correct, incorrect, and pending states for quiz and assessment surfaces. Cell dimensions stay stable across states.",
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n  import type { ChoiceGridItemState } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string | null>(null);\n  let revealed = $state(false);\n\n  const correctAnswer = 'paris';\n\n  function getState(value: string): ChoiceGridItemState {\n    if (!revealed || selected === null) return 'neutral';\n    if (value === correctAnswer) return 'correct';\n    if (value === selected && value !== correctAnswer) return 'incorrect';\n    return 'neutral';\n  }\n</script>\n\n<ChoiceGrid ariaLabel=\"What is the capital of France?\" bind:value={selected}>\n  <ChoiceGrid.Item value=\"london\" state={getState('london')}>London</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"berlin\" state={getState('berlin')}>Berlin</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"paris\" state={getState('paris')}>Paris</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"madrid\" state={getState('madrid')}>Madrid</ChoiceGrid.Item>\n</ChoiceGrid>\n\n<div style=\"margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;\">\n  <button\n    onclick={() => { revealed = !revealed; }}\n    style=\"padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid var(--cinder-border); background: var(--cinder-surface); cursor: pointer; color: var(--cinder-text);\"\n  >\n    {revealed ? 'Hide feedback' : 'Reveal answer'}\n  </button>\n  <button\n    onclick={() => { selected = null; revealed = false; }}\n    style=\"padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid var(--cinder-border); background: var(--cinder-surface); cursor: pointer; color: var(--cinder-text);\"\n  >\n    Reset\n  </button>\n</div>\n"
+    },
+    {
+      "id": "multi-select",
+      "title": "Multi-select",
+      "description": "Toggle multiple answers simultaneously — useful for checkboxes presented as large tiles.",
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string[]>([]);\n</script>\n\n<ChoiceGrid multiple ariaLabel=\"Which topics interest you?\" bind:values={selected} columns={2}>\n  <ChoiceGrid.Item value=\"design\">Design</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"engineering\">Engineering</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"product\">Product</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"data\">Data</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"marketing\">Marketing</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"leadership\">Leadership</ChoiceGrid.Item>\n</ChoiceGrid>\n\n{#if selected.length > 0}\n  <p style=\"margin-top: 1rem; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);\">\n    Selected: {selected.join(', ')}\n  </p>\n{/if}\n"
+    }
+  ]
+}

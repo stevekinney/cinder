@@ -1,0 +1,126 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  /* ========================================
+   * CHOICE GRID ITEM — selectable answer tile
+   * ======================================== */
+
+  .cinder-choice-grid-item {
+    /* Stable sizing: min-height ensures cells never shrink when feedback state
+     * text/icons appear. Width is determined by the parent grid track. */
+    min-block-size: 4rem;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--cinder-space-4) var(--cinder-space-3);
+    border-radius: var(--cinder-radius-lg);
+    border: 2px solid var(--cinder-border-muted);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background 120ms ease,
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+    outline: none; /* Focus ring provided via box-shadow below. */
+
+    /* Touch target: ensure at least 44px for mobile accessibility. */
+    touch-action: manipulation;
+  }
+
+  /* Item content wrapper — prevents the flex alignment from collapsing the
+   * children when they are shorter than the min-height baseline. */
+  .cinder-choice-grid-item__content {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    font-size: var(--cinder-text-base);
+    font-weight: var(--cinder-font-medium);
+    line-height: var(--cinder-leading-snug);
+    pointer-events: none; /* Clicks bubble to the item div. */
+  }
+
+  /* ----------------------------------------
+   * Hover (non-touch devices only)
+   * ---------------------------------------- */
+
+  @media (hover: hover) {
+    .cinder-choice-grid-item:not([data-cinder-disabled]):hover {
+      border-color: var(--cinder-border);
+      background: var(--cinder-surface-raised);
+    }
+  }
+
+  /* ----------------------------------------
+   * Focus ring
+   * ---------------------------------------- */
+
+  .cinder-choice-grid-item:focus-visible {
+    border-color: var(--cinder-color-accent-9);
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  /* Forced Colors Mode — box-shadow rings are invisible; use a real outline. */
+  @media (forced-colors: active) {
+    .cinder-choice-grid-item:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
+  /* ----------------------------------------
+   * Selected state
+   * ---------------------------------------- */
+
+  .cinder-choice-grid-item[data-cinder-selected] {
+    border-color: var(--cinder-color-accent-9);
+    background: var(--cinder-color-accent-3);
+    color: var(--cinder-color-accent-11);
+  }
+
+  @media (hover: hover) {
+    .cinder-choice-grid-item[data-cinder-selected]:not([data-cinder-disabled]):hover {
+      background: var(--cinder-color-accent-4);
+    }
+  }
+
+  /* ----------------------------------------
+   * Disabled state
+   * ---------------------------------------- */
+
+  .cinder-choice-grid-item[data-cinder-disabled] {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  /* ----------------------------------------
+   * Feedback states — correct / incorrect / pending
+   * Dimensions are IDENTICAL to the neutral state (stable cell sizing guarantee).
+   * Only color / border / text change.
+   * ---------------------------------------- */
+
+  /* Correct */
+  .cinder-choice-grid-item[data-cinder-state='correct'] {
+    border-color: var(--cinder-color-green-8);
+    background: var(--cinder-color-green-3);
+    color: var(--cinder-color-green-11);
+  }
+
+  /* Incorrect */
+  .cinder-choice-grid-item[data-cinder-state='incorrect'] {
+    border-color: var(--cinder-color-red-8);
+    background: var(--cinder-color-red-3);
+    color: var(--cinder-color-red-11);
+  }
+
+  /* Pending */
+  .cinder-choice-grid-item[data-cinder-state='pending'] {
+    border-color: var(--cinder-color-amber-8);
+    background: var(--cinder-color-amber-3);
+    color: var(--cinder-color-amber-11);
+  }
+}
