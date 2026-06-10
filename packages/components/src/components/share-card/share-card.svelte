@@ -50,10 +50,17 @@
 
   let announceTimer: ReturnType<typeof setTimeout> | undefined;
 
+  // Clear BOTH transient timers — the copied-state reset AND any pending
+  // announcement auto-clear — so a new copy/share cycle never has a stale timer
+  // from a previous cycle mutating the current state out from under it.
   function clearTimer() {
     if (resetTimer !== undefined) {
       clearTimeout(resetTimer);
       resetTimer = undefined;
+    }
+    if (announceTimer !== undefined) {
+      clearTimeout(announceTimer);
+      announceTimer = undefined;
     }
   }
 
@@ -78,21 +85,23 @@
     }
     if (!succeeded) {
       // Clear any lingering "copied" state from a previous success so a failed
-      // attempt doesn't leave a button stuck showing the copied label.
+      // attempt doesn't leave a button stuck showing the copied label. Route the
+      // failure through announce() so it auto-clears and a second identical
+      // failure re-announces (the live region only fires on a change).
       clearTimer();
       copiedKey = null;
-      announcement = 'Copy failed';
+      announce('Copy failed');
       return;
     }
     clearTimer();
     copiedKey = key;
     // The success message is overridable so a fallback copy (after a failed
     // native share) announces the full story rather than overwriting the
-    // "Share failed" notice with a bare "Copied!".
-    announcement = successMessage;
+    // "Share failed" notice with a bare "Copied!". announce() owns the message
+    // lifecycle; resetTimer owns only the copied visual state.
+    announce(successMessage);
     resetTimer = setTimeout(() => {
       copiedKey = null;
-      announcement = '';
     }, confirmDuration);
   }
 
@@ -261,9 +270,11 @@
           data-cinder-action={action.key}
           data-cinder-copied={copiedKey === action.key ? '' : undefined}
           onclick={() => {
-            if (action.onClick) {
-              action.onClick();
-            } else if (action.copyValue) {
+            // onClick is a side-effect callback (e.g. analytics), NOT an
+            // override — run it AND still perform the copy when copyValue is
+            // present, matching the native-share button's behaviour.
+            action.onClick?.();
+            if (action.copyValue) {
               handleCopy(action.key, action.copyValue);
             }
           }}

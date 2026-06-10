@@ -120,6 +120,38 @@ describe('ShareCard', () => {
     expect(clicked).toBe(true);
   });
 
+  test('onClick does NOT suppress the copy when copyValue is also present', async () => {
+    // onClick is a side-effect callback (analytics), not a copy override — both
+    // must run.
+    let clicked = false;
+    let copied = '';
+    const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
+    (navigator as { clipboard?: unknown }).clipboard = {
+      writeText: async (text: string) => {
+        copied = text;
+      },
+    };
+    const { getByRole } = render(ShareCard, {
+      value: 'https://example.com',
+      actions: [
+        {
+          key: 'copy-and-track',
+          label: 'Copy and track',
+          copyValue: 'https://example.com/tracked',
+          onClick: () => {
+            clicked = true;
+          },
+        },
+      ],
+    });
+    fireEvent.click(getByRole('button', { name: /Copy and track/i }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(clicked).toBe(true);
+    expect(copied).toBe('https://example.com/tracked');
+    if (originalClipboard === undefined) delete (navigator as { clipboard?: unknown }).clipboard;
+    else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
+  });
+
   test('applies custom class', () => {
     const { container } = render(ShareCard, {
       value: 'https://example.com',

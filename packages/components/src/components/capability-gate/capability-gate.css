@@ -51,7 +51,8 @@
   .cinder-capability-gate__feature {
     font-weight: 600;
     font-size: var(--cinder-text-sm);
-    text-transform: capitalize;
+    /* No text-transform: `feature` is consumer-owned text — capitalizing it
+       would corrupt names like "MIDI" → "Midi" or "iOS" → "Ios". */
   }
 
   .cinder-capability-gate__state-text {
