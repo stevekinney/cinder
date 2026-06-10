@@ -227,4 +227,23 @@ describe('ShareCard native share', () => {
     // The copy fallback ran, preserving the value.
     expect(copied).toBe('https://example.com/x');
   });
+
+  test('the share button reflects the copied state after a fallback copy', async () => {
+    (navigator as { share?: unknown }).share = async () => {
+      throw new DOMException('denied', 'NotAllowedError');
+    };
+    (navigator as { clipboard?: unknown }).clipboard = {
+      writeText: async () => {},
+    };
+    const { container } = render(ShareCard, { value: 'https://example.com/x' });
+    const shareButton = container.querySelector('[data-cinder-action="native-share"]');
+    await fireEvent.click(shareButton!);
+    // The share → fallback-copy chain awaits navigator.share then the clipboard
+    // write; let those microtasks/timers settle before asserting the UI state.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // The fallback copy succeeded — the share button must surface the copied
+    // affordance, not silently stay on the "Share" label.
+    expect(shareButton?.getAttribute('data-cinder-copied')).toBe('');
+    expect(shareButton?.getAttribute('aria-label')).toBe('Copied!');
+  });
 });

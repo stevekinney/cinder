@@ -126,6 +126,19 @@ describe('MediaControls', () => {
     expect(container.querySelector('[role="progressbar"]')).toBeNull();
   });
 
+  test('does not render a progress bar for a non-finite progress value', () => {
+    // `typeof NaN === 'number'` is true, so a naive type check would render a
+    // progressbar with NaN aria values. A non-finite progress is treated as
+    // "no progress".
+    const { container: nanContainer } = render(MediaControls, { progress: Number.NaN });
+    expect(nanContainer.querySelector('[role="progressbar"]')).toBeNull();
+    cleanup();
+    const { container: infContainer } = render(MediaControls, {
+      progress: Number.POSITIVE_INFINITY,
+    });
+    expect(infContainer.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
   test('renders with compact layout by default', () => {
     const { container } = render(MediaControls);
     const root = container.querySelector('.cinder-media-controls');

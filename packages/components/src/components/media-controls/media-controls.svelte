@@ -38,9 +38,12 @@
 
   const isDisabled = $derived(disabled || loading || unavailable);
   const iconOnly = $derived(layout === 'compact');
-  const hasProgress = $derived(typeof progress === 'number');
+  // A non-finite progress (NaN/Infinity) is treated as "no progress" rather than
+  // rendering a progressbar with NaN aria values — `typeof NaN === 'number'` is
+  // true, so the finite check is what actually guards the bar.
+  const hasProgress = $derived(Number.isFinite(progress));
   const clampedProgress = $derived(
-    typeof progress === 'number' ? Math.max(0, Math.min(1, progress)) : 0,
+    Number.isFinite(progress) ? Math.max(0, Math.min(1, progress as number)) : 0,
   );
   const progressPercent = $derived(Math.round(clampedProgress * 100));
 

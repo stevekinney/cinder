@@ -196,38 +196,63 @@
   <div class="cinder-share-card__actions" role="group" aria-label="Share actions">
     {#each resolvedActions as action (action.key)}
       {#if action.key === 'native-share' || action.useNativeShare}
+        <!-- When native share is unavailable or fails, `handleNativeShare` falls
+             back to a clipboard copy keyed `share-fallback`. Reflect that copied
+             state on the share button so the visual matches the live-region
+             announcement instead of silently staying on the Share label. -->
+        {@const shareCopied = copiedKey === 'share-fallback'}
         <button
           type="button"
           class="cinder-share-card__action"
           data-cinder-action={action.key}
+          data-cinder-copied={shareCopied ? '' : undefined}
           onclick={() => {
             // Honour a consumer onClick (analytics/side-effects) on the native
             // share action too, then run the share.
             action.onClick?.();
             handleNativeShare();
           }}
-          aria-label={action.label}
+          aria-label={shareCopied ? copiedLabel : action.label}
         >
-          <!-- Share icon -->
-          <span class="cinder-share-card__action-icon" aria-hidden="true">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="cinder-share-card__icon"
-            >
-              <circle cx="18" cy="5" r="3" />
-              <circle cx="6" cy="12" r="3" />
-              <circle cx="18" cy="19" r="3" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-            </svg>
-          </span>
-          {action.label}
+          {#if shareCopied}
+            <!-- Copied state icon (after a fallback copy) -->
+            <span class="cinder-share-card__action-icon" aria-hidden="true">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="cinder-share-card__icon"
+              >
+                <polyline points="20,6 9,17 4,12" />
+              </svg>
+            </span>
+            {copiedLabel}
+          {:else}
+            <!-- Share icon -->
+            <span class="cinder-share-card__action-icon" aria-hidden="true">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="cinder-share-card__icon"
+              >
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+            </span>
+            {action.label}
+          {/if}
         </button>
       {:else}
         <button
