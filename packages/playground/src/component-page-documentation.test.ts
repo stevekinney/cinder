@@ -300,6 +300,11 @@ describe('component-page documentation tabs', () => {
     const examples = screen.getByRole('tab', { name: 'Examples' });
     const rawArtifacts = screen.getByRole('tab', { name: 'Raw Artifacts' });
 
+    // Click Documentation first so ArrowRight proves a real transition (examples → not selected).
+    await fireEvent.click(documentation);
+    await tick();
+    expect(documentation.getAttribute('aria-selected')).toBe('true');
+
     documentation.focus();
     await fireEvent.keyDown(documentation, { key: 'ArrowRight' });
     await tick();

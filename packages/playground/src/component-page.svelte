@@ -14,6 +14,7 @@
   import { TabList } from '@lostgradient/cinder/tab-list';
   import { TabPanel } from '@lostgradient/cinder/tab-panel';
   import { Tabs } from '@lostgradient/cinder/tabs';
+  import { splitReadmeHtml } from './split-readme-html.ts';
   import {
     formatErrorForClipboard,
     toMountErrorDetail,
@@ -381,34 +382,6 @@
     activeTab = tab;
   }
 
-  type ReadmeSegment = { type: 'html'; content: string } | { type: 'code'; index: number };
-
-  function splitReadmeHtml(html: string): ReadmeSegment[] {
-    const segments: ReadmeSegment[] = [];
-    let codeIndex = 0;
-    let remaining = html;
-
-    while (remaining.length > 0) {
-      const preStart = remaining.indexOf('<pre');
-      if (preStart === -1) {
-        segments.push({ type: 'html', content: remaining });
-        break;
-      }
-      if (preStart > 0) {
-        segments.push({ type: 'html', content: remaining.slice(0, preStart) });
-      }
-      const preEnd = remaining.indexOf('</pre>', preStart);
-      if (preEnd === -1) {
-        segments.push({ type: 'html', content: remaining.slice(preStart) });
-        break;
-      }
-      segments.push({ type: 'code', index: codeIndex++ });
-      remaining = remaining.slice(preEnd + 6);
-    }
-
-    return segments;
-  }
-
   function statusBadgeVariant(status: string): BadgeVariant {
     switch (status) {
       case 'stable':
@@ -593,6 +566,8 @@
                 {@const block = documentation.readme.codeBlocks[segment.index]}
                 {#if block !== undefined}
                   <CodeBlock code={block.value} language={block.language ?? 'plaintext'} copyable />
+                {:else}
+                  {@html segment.fallbackHtml}
                 {/if}
               {/if}
             {/each}
@@ -903,60 +878,58 @@
       </div>
     </TabPanel>
     <TabPanel value="raw-artifacts" class="documentation-panel">
-      {#if activeTab === 'raw-artifacts'}
-        <h2>Raw Artifacts</h2>
-        {#if documentationLoading}
-          <div class="documentation-skeleton" aria-hidden="true">
-            {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
-              <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
-            {/each}
-          </div>
-        {:else if documentationError !== null}
-          <p class="props-error">Could not load documentation: {documentationError}</p>
-        {:else if documentation !== null}
-          <div class="raw-artifact-grid">
-            <section class="raw-artifact-panel" aria-labelledby="manifest-entry-heading">
-              <h3 id="manifest-entry-heading">Manifest Entry</h3>
-              <CodeBlock
-                code={jsonBlock(documentation.rawArtifacts.manifestEntry)}
-                language="json"
-                copyable
-              />
-            </section>
-            <section class="raw-artifact-panel" aria-labelledby="schema-artifact-heading">
-              <h3 id="schema-artifact-heading">Schema</h3>
-              <CodeBlock
-                code={jsonBlock(documentation.rawArtifacts.schema)}
-                language="json"
-                copyable
-              />
-            </section>
-            <section class="raw-artifact-panel" aria-labelledby="variables-artifact-heading">
-              <h3 id="variables-artifact-heading">Variables</h3>
-              <CodeBlock
-                code={jsonBlock(documentation.rawArtifacts.variables)}
-                language="json"
-                copyable
-              />
-            </section>
-            <section class="raw-artifact-panel" aria-labelledby="constraints-artifact-heading">
-              <h3 id="constraints-artifact-heading">Constraints</h3>
-              <CodeBlock
-                code={jsonBlock(documentation.rawArtifacts.constraints)}
-                language="json"
-                copyable
-              />
-            </section>
-            <section class="raw-artifact-panel" aria-labelledby="examples-artifact-heading">
-              <h3 id="examples-artifact-heading">Examples</h3>
-              <CodeBlock
-                code={jsonBlock(documentation.rawArtifacts.examples)}
-                language="json"
-                copyable
-              />
-            </section>
-          </div>
-        {/if}
+      <h2>Raw Artifacts</h2>
+      {#if documentationLoading}
+        <div class="documentation-skeleton" aria-hidden="true">
+          {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
+            <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
+          {/each}
+        </div>
+      {:else if documentationError !== null}
+        <p class="props-error">Could not load documentation: {documentationError}</p>
+      {:else if documentation !== null}
+        <div class="raw-artifact-grid">
+          <section class="raw-artifact-panel" aria-labelledby="manifest-entry-heading">
+            <h3 id="manifest-entry-heading">Manifest Entry</h3>
+            <CodeBlock
+              code={jsonBlock(documentation.rawArtifacts.manifestEntry)}
+              language="json"
+              copyable
+            />
+          </section>
+          <section class="raw-artifact-panel" aria-labelledby="schema-artifact-heading">
+            <h3 id="schema-artifact-heading">Schema</h3>
+            <CodeBlock
+              code={jsonBlock(documentation.rawArtifacts.schema)}
+              language="json"
+              copyable
+            />
+          </section>
+          <section class="raw-artifact-panel" aria-labelledby="variables-artifact-heading">
+            <h3 id="variables-artifact-heading">Variables</h3>
+            <CodeBlock
+              code={jsonBlock(documentation.rawArtifacts.variables)}
+              language="json"
+              copyable
+            />
+          </section>
+          <section class="raw-artifact-panel" aria-labelledby="constraints-artifact-heading">
+            <h3 id="constraints-artifact-heading">Constraints</h3>
+            <CodeBlock
+              code={jsonBlock(documentation.rawArtifacts.constraints)}
+              language="json"
+              copyable
+            />
+          </section>
+          <section class="raw-artifact-panel" aria-labelledby="examples-artifact-heading">
+            <h3 id="examples-artifact-heading">Examples</h3>
+            <CodeBlock
+              code={jsonBlock(documentation.rawArtifacts.examples)}
+              language="json"
+              copyable
+            />
+          </section>
+        </div>
       {/if}
     </TabPanel>
   </Tabs>
