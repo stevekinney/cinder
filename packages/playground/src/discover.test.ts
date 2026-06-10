@@ -221,14 +221,16 @@ describe('discoverSidebarComponents', () => {
     // examples found" and timing out the sweep — status-dot, message,
     // description-list, color-field — surfacing them in the sidebar and landing
     // it at 97 distinct families, measured empirically via discoverSidebarComponents().
-    // The MVP issue wave (#318-324) raises the ceiling to 105 once all three of
+    // The MVP issue wave (#318-324) raises the ceiling to 106 once all three of
     // its PRs land: the ChoiceGrid family (#318), the four chart families
     // (matrix-chart, waveform, spectrum-chart, spectrogram; #319/#324), and the
-    // interaction-pattern families (media-controls, capability-gate, share-card,
-    // keyboard-shortcuts; #320-323). The gate is `<=` so each PR in the wave can
-    // land independently while staying under the final cumulative total.
+    // five interaction-pattern families (media-controls, capability-gate,
+    // share-card, keyboard-shortcuts, shortcut-hint; #320-323 — shortcut-hint
+    // ships as its own sidebar family alongside keyboard-shortcuts). The gate is
+    // `<=` so each PR in the wave can land independently while staying under the
+    // final cumulative total.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(105);
+    expect(sidebar.length).toBeLessThanOrEqual(106);
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {
