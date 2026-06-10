@@ -73,7 +73,10 @@
     }
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) measuredWidth = entry.contentRect.width;
+      // Ignore zero-width measurements (element hidden / display:none) so the
+      // last good width is kept instead of collapsing the chart geometry to a
+      // degenerate 1px viewport, matching the getBoundingClientRect fallback.
+      if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
     });
     observer.observe(element);
     return () => observer.disconnect();

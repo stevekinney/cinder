@@ -10,7 +10,12 @@ import type { ChartDataTableVisibility } from '../chart.types.ts';
 export type SpectrogramFrame = {
   /** Time-axis label for this frame, e.g. '0 ms' or 't=0'. */
   label: string;
-  /** Magnitude values per frequency bin. Length must be consistent across all frames. */
+  /**
+   * Magnitude values per frequency bin. A consistent length across frames is
+   * preferred, but ragged frames are supported: the grid uses the maximum bin
+   * count across all frames and renders any missing bins in shorter frames as
+   * "missing" cells. Non-finite values (NaN/Infinity) also render as missing.
+   */
   bins: number[];
 };
 

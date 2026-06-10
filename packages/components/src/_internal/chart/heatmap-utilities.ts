@@ -57,6 +57,31 @@ export function heatmapDomain(values: ReadonlyArray<number | null | undefined>):
 }
 
 /**
+ * Compute the [min, max] domain over a sequence of rows (e.g. spectrogram
+ * frames) WITHOUT first flattening them into one big array. A single nested pass
+ * over the original arrays, so a large frames × bins grid never materializes a
+ * full flattened copy just to find its colour domain.
+ */
+export function heatmapDomainOfRows(
+  rows: ReadonlyArray<ReadonlyArray<number | null | undefined>>,
+): HeatmapDomain {
+  let min = Infinity;
+  let max = -Infinity;
+  let count = 0;
+  for (const row of rows) {
+    for (const value of row) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        if (value < min) min = value;
+        if (value > max) max = value;
+        count += 1;
+      }
+    }
+  }
+  if (count === 0) return { min: 0, max: 1, isEmpty: true };
+  return { min, max, isEmpty: false };
+}
+
+/**
  * Normalize `value` into `[0, 1]` against the domain.
  *
  * - Sequential: linear from `min`→0 to `max`→1. A degenerate domain

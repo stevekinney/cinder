@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   finiteNumbers,
   heatmapDomain,
+  heatmapDomainOfRows,
   normalizeHeatmapValue,
   toFiniteOrNull,
 } from './heatmap-utilities.ts';
@@ -35,6 +36,34 @@ describe('heatmapDomain', () => {
 
   test('reports empty when no finite values', () => {
     expect(heatmapDomain([NaN, null]).isEmpty).toBe(true);
+  });
+});
+
+describe('heatmapDomainOfRows', () => {
+  test('matches the flattened domain without materializing a flat array', () => {
+    const rows = [
+      [1, NaN, 5],
+      [3, Infinity],
+      [-2, 4],
+    ];
+    expect(heatmapDomainOfRows(rows)).toEqual({ min: -2, max: 5, isEmpty: false });
+  });
+
+  test('reports empty when every row is empty or all-non-finite', () => {
+    expect(heatmapDomainOfRows([[], [NaN, Infinity], []]).isEmpty).toBe(true);
+  });
+
+  test('handles ragged rows (differing lengths)', () => {
+    expect(
+      heatmapDomainOfRows([
+        [0.2, 0.4],
+        [0.5, 0.6, 0.7, 0.8],
+      ]),
+    ).toEqual({
+      min: 0.2,
+      max: 0.8,
+      isEmpty: false,
+    });
   });
 });
 

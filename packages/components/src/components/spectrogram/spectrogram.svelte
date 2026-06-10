@@ -26,7 +26,7 @@
   import { dataTableClass } from '../../_internal/chart/chart-utilities.ts';
   import {
     heatmapCellFill,
-    heatmapDomain,
+    heatmapDomainOfRows,
     toFiniteOrNull,
   } from '../../_internal/chart/heatmap-utilities.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -71,7 +71,9 @@
     }
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) measuredWidth = entry.contentRect.width;
+      // Ignore zero-width measurements (hidden / display:none) so the last good
+      // width is kept rather than collapsing the geometry, matching the fallback.
+      if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
     });
     observer.observe(element);
     return () => observer.disconnect();
@@ -84,6 +86,11 @@
   // rectangular grid: shorter frames leave explicit missing cells rather than
   // overflowing the plot or silently dropping rows.
   const binCount = $derived(frames.reduce((max, frame) => Math.max(max, frame.bins.length), 0));
+
+  // The bin-index list [0, 1, …, binCount-1], computed once and reused for every
+  // frame's column rather than rebuilding an Array.from() per frame in the render
+  // loop.
+  const binIndices = $derived(Array.from({ length: binCount }, (_, index) => index));
 
   // A frame with zero bins contributes no usable data; the chart is "empty" when
   // there are no frames OR no frequency bins anywhere.
@@ -100,7 +107,9 @@
   }
 
   // Global color domain over the finite values only (shared with MatrixChart).
-  const domain = $derived(heatmapDomain(frames.flatMap((frame) => frame.bins)));
+  // Computed in a single nested pass over the frames so a large frames × bins
+  // grid never materializes a full flattened copy of every bin.
+  const domain = $derived(heatmapDomainOfRows(frames.map((frame) => frame.bins)));
 
   function cellFill(value: number | null): string {
     return heatmapCellFill(value, domain, 'sequential');
@@ -205,7 +214,7 @@
              non-finite cells render as the "missing" fill. Low frequency (bin 0)
              is at the bottom. -->
         {#each frames as _frame, frameIndex (frameIndex)}
-          {#each Array.from({ length: binCount }, (_, binIndex) => binIndex) as binIndex (binIndex)}
+          {#each binIndices as binIndex (binIndex)}
             <rect
               class="cinder-spectrogram__cell"
               x={frameIndex * cellWidth}

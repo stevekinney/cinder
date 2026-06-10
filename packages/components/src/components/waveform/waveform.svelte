@@ -56,7 +56,9 @@
     }
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) measuredWidth = entry.contentRect.width;
+      // Ignore zero-width measurements (hidden / display:none) so the last good
+      // width is kept rather than collapsing the geometry, matching the fallback.
+      if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
     });
     observer.observe(element);
     return () => observer.disconnect();
