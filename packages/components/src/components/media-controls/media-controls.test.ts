@@ -37,6 +37,20 @@ describe('MediaControls', () => {
     expect(button.getAttribute('data-cinder-state')).toBe('replay');
   });
 
+  test('data-cinder-state reflects loading and unavailable states', () => {
+    // data-cinder-state must not read "paused" when the button actually shows a
+    // loading or unavailable affordance — instrumentation should match the UI.
+    const { getByRole: getLoading } = render(MediaControls, { loading: true });
+    expect(getLoading('button', { hidden: true }).getAttribute('data-cinder-state')).toBe(
+      'loading',
+    );
+    cleanup();
+    const { getByRole: getUnavailable } = render(MediaControls, { unavailable: true });
+    expect(getUnavailable('button', { hidden: true }).getAttribute('data-cinder-state')).toBe(
+      'unavailable',
+    );
+  });
+
   test('button is disabled when disabled=true', () => {
     const { getByRole } = render(MediaControls, { disabled: true });
     const button = getByRole('button', { hidden: true });

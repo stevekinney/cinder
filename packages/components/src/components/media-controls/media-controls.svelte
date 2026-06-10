@@ -114,7 +114,15 @@
     aria-busy={loading ? 'true' : undefined}
     disabled={isDisabled}
     onclick={handlePrimaryAction}
-    data-cinder-state={replay ? 'replay' : playing ? 'playing' : 'paused'}
+    data-cinder-state={loading
+      ? 'loading'
+      : unavailable
+        ? 'unavailable'
+        : replay
+          ? 'replay'
+          : playing
+            ? 'playing'
+            : 'paused'}
   >
     {#if loading}
       <!-- Loading state: spinner-like indicator -->

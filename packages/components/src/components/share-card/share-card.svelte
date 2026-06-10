@@ -150,8 +150,8 @@
   const valueRegionLabel = $derived(looksLikeUrl(value) ? 'Link to share' : 'Text to share');
 
   onDestroy(() => {
+    // clearTimer() clears BOTH resetTimer and announceTimer.
     clearTimer();
-    if (announceTimer !== undefined) clearTimeout(announceTimer);
   });
 
   // Build the default actions when no explicit actions are provided. The default
@@ -218,9 +218,10 @@
           data-cinder-copied={shareCopied ? '' : undefined}
           onclick={() => {
             // Honour a consumer onClick (analytics/side-effects) on the native
-            // share action too, then run the share.
+            // share action too, then run the share. `void` marks the floating
+            // promise as intentional (the handler is synchronous).
             action.onClick?.();
-            handleNativeShare();
+            void handleNativeShare();
           }}
           aria-label={shareCopied ? copiedLabel : action.label}
         >
@@ -273,10 +274,12 @@
           onclick={() => {
             // onClick is a side-effect callback (e.g. analytics), NOT an
             // override — run it AND still perform the copy when copyValue is
-            // present, matching the native-share button's behaviour.
+            // present, matching the native-share button's behaviour. An empty
+            // string is a legitimate copyValue, so test for `undefined`, not
+            // truthiness. `void` marks the floating promise as intentional.
             action.onClick?.();
-            if (action.copyValue) {
-              handleCopy(action.key, action.copyValue);
+            if (action.copyValue !== undefined) {
+              void handleCopy(action.key, action.copyValue);
             }
           }}
           aria-label={copiedKey === action.key ? copiedLabel : action.label}
