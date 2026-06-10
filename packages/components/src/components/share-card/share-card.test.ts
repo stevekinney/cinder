@@ -90,6 +90,47 @@ describe('ShareCard', () => {
     else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
   });
 
+  test('an identical success re-announces after the confirmation window resets through blank', async () => {
+    // The live region (VisuallyHiddenLiveRegion) only re-announces when its
+    // `message` prop TRANSITIONS. share-card uses a single write per announce and
+    // auto-clears to '' after `confirmDuration`, so the next identical copy
+    // transitions '' → "Copied!" and re-announces. This matches the canonical
+    // copy-button / media-controls contract (within-window identical re-announce
+    // is not provided by any consumer and belongs in the live region if ever
+    // wanted). A bespoke synchronous blank-then-set would be a no-op that
+    // silently defeats the region's own re-announce mechanism.
+    const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
+    (navigator as { clipboard?: unknown }).clipboard = {
+      writeText: async () => {},
+    };
+
+    const { container, getByRole } = render(ShareCard, {
+      value: 'https://example.com',
+      copyLinkLabel: 'Copy link',
+      copiedLabel: 'Copied!',
+      // Short window so the auto-clear fires within the test.
+      confirmDuration: 20,
+    });
+    const liveRegion = container.querySelector('.cinder-sr-only');
+    const button = getByRole('button', { name: /Copy link/i });
+
+    fireEvent.click(button);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(liveRegion?.textContent).toBe('Copied!');
+
+    // Let the confirmation window elapse: the message auto-clears to ''.
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(liveRegion?.textContent).toBe('');
+
+    // A second identical copy now transitions '' → "Copied!" and re-announces.
+    fireEvent.click(button);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(liveRegion?.textContent).toBe('Copied!');
+
+    if (originalClipboard === undefined) delete (navigator as { clipboard?: unknown }).clipboard;
+    else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
+  });
+
   test('renders custom actions', () => {
     const { getByRole } = render(ShareCard, {
       value: 'https://example.com',

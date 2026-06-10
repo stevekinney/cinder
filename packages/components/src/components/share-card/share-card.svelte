@@ -64,12 +64,13 @@
     }
   }
 
-  // Set a transient announcement that clears itself, so the live region isn't
-  // left holding a stale message and a repeated identical action still
-  // re-announces (the live region only fires on a change).
+  // Set a transient announcement that auto-clears to '' after the confirmation
+  // window, so a stale message isn't left in the live region and the NEXT
+  // announcement (even an identical one) re-fires because the prop transitions
+  // through ''. A single write — the live region (VisuallyHiddenLiveRegion) owns
+  // the blank-then-set re-announce timing, matching copy-button / media-controls.
   function announce(message: string) {
     if (announceTimer !== undefined) clearTimeout(announceTimer);
-    announcement = '';
     announcement = message;
     announceTimer = setTimeout(() => {
       announcement = '';
