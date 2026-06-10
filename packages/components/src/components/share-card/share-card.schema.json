@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "string",
+      "description": "The URL or text to share/copy."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for the share card."
+    },
+    "description": {
+      "type": "string",
+      "description": "Additional descriptive text."
+    },
+    "copyLinkLabel": {
+      "type": "string",
+      "description": "Label for the copy-link button."
+    },
+    "copiedLabel": {
+      "type": "string",
+      "description": "Label shown after a successful copy."
+    },
+    "shareLabel": {
+      "type": "string",
+      "description": "Label for the native-share button."
+    },
+    "confirmDuration": {
+      "type": "number",
+      "description": "Duration in ms to show the copied confirmation state.",
+      "default": 2000
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class names merged with `.cinder-share-card`."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["value"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "actions",
+        "reason": "unknown-shape"
+      },
+      {
+        "name": "preview",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}

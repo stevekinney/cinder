@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "keyboard-shortcuts",
+  "import": "@lostgradient/cinder/keyboard-shortcuts",
+  "examples": [
+    {
+      "id": "command-palette",
+      "title": "Command palette shortcuts reference",
+      "description": "A grouped shortcut reference panel suitable for embedding in a modal or sheet.",
+      "code": "<script lang=\"ts\">\n  import { KeyboardShortcuts } from '@lostgradient/cinder/keyboard-shortcuts';\n</script>\n\n<div style=\"max-width: 28rem;\">\n  <KeyboardShortcuts\n    heading=\"Keyboard Shortcuts\"\n    groups={[\n      {\n        label: 'General',\n        shortcuts: [\n          { action: 'Open command palette', keys: ['Ctrl', 'K'], keysLabel: 'Control plus K' },\n          { action: 'Search', keys: ['Ctrl', 'F'], keysLabel: 'Control plus F' },\n          { action: 'Go back', keys: ['Alt', '←'], keysLabel: 'Alt plus Left arrow' },\n        ],\n      },\n      {\n        label: 'Editing',\n        shortcuts: [\n          { action: 'Save', keys: ['Ctrl', 'S'], keysLabel: 'Control plus S' },\n          { action: 'Undo', keys: ['Ctrl', 'Z'], keysLabel: 'Control plus Z' },\n          { action: 'Redo', keys: ['Ctrl', 'Shift', 'Z'], keysLabel: 'Control plus Shift plus Z' },\n        ],\n      },\n    ]}\n  />\n</div>\n"
+    }
+  ]
+}

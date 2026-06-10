@@ -501,6 +501,32 @@
       }
     },
     {
+      "name": "CapabilityGate",
+      "id": "capability-gate",
+      "import": "@lostgradient/cinder/capability-gate",
+      "exportName": "CapabilityGate",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Present feature availability and next action for browser permission or support states, with accessible status text and focus management.",
+      "tags": ["feedback", "permission", "notice"],
+      "useWhen": [
+        "Surfacing that a feature requires a browser permission such as microphone or notifications.",
+        "Communicating that a feature is unsupported in the current browser with a clear fallback path."
+      ],
+      "avoidWhen": [
+        "Performing the actual feature detection or permission request — wire that in userland.",
+        "Storing permission state — CapabilityGate is a pure presentation component."
+      ],
+      "related": ["alert", "banner", "callout", "modal"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/capability-gate/schema",
+        "variables": "@lostgradient/cinder/capability-gate/variables",
+        "examples": "@lostgradient/cinder/capability-gate/examples"
+      }
+    },
+    {
       "name": "Card",
       "id": "card",
       "import": "@lostgradient/cinder/card",
@@ -1836,6 +1862,29 @@
       }
     },
     {
+      "name": "KeyboardShortcuts",
+      "id": "keyboard-shortcuts",
+      "import": "@lostgradient/cinder/keyboard-shortcuts",
+      "exportName": "KeyboardShortcuts",
+      "category": "typography",
+      "status": "alpha",
+      "purpose": "Grouped keyboard-shortcut reference that renders key combos via Kbd with accessible labels not reliant only on visual keycaps.",
+      "tags": ["shortcut", "keyboard"],
+      "useWhen": [
+        "Displaying a reference panel of keyboard shortcuts grouped by feature area.",
+        "Embedding a shortcut table inside a modal, sheet, popover, or help page."
+      ],
+      "avoidWhen": ["Showing a single inline shortcut hint — use shortcut-hint instead."],
+      "related": ["kbd", "shortcut-hint", "modal", "sheet", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/keyboard-shortcuts/schema",
+        "variables": "@lostgradient/cinder/keyboard-shortcuts/variables",
+        "examples": "@lostgradient/cinder/keyboard-shortcuts/examples"
+      }
+    },
+    {
       "name": "Label",
       "id": "label",
       "import": "@lostgradient/cinder/label",
@@ -1979,6 +2028,32 @@
         "schema": "@lostgradient/cinder/matrix-chart/schema",
         "variables": "@lostgradient/cinder/matrix-chart/variables",
         "examples": "@lostgradient/cinder/matrix-chart/examples"
+      }
+    },
+    {
+      "name": "MediaControls",
+      "id": "media-controls",
+      "import": "@lostgradient/cinder/media-controls",
+      "exportName": "MediaControls",
+      "category": "action",
+      "status": "alpha",
+      "purpose": "Accessible playback controls for play, pause, and replay actions with optional progress display.",
+      "tags": ["action", "media"],
+      "useWhen": [
+        "Embedding play/pause/replay controls for audio or video content.",
+        "Rendering media controls inside a toolbar or standalone on a card."
+      ],
+      "avoidWhen": [
+        "You need waveform visualization or Web Audio integration — wire that separately.",
+        "You need a full media player UI with seek scrubbing — use a dedicated player component."
+      ],
+      "related": ["button", "toolbar", "progress", "tooltip"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/media-controls/schema",
+        "variables": "@lostgradient/cinder/media-controls/variables",
+        "examples": "@lostgradient/cinder/media-controls/examples"
       }
     },
     {
@@ -2573,6 +2648,32 @@
       }
     },
     {
+      "name": "ShareCard",
+      "id": "share-card",
+      "import": "@lostgradient/cinder/share-card",
+      "exportName": "ShareCard",
+      "category": "action",
+      "status": "alpha",
+      "purpose": "Compact share card with copy-link, copy-text, and native navigator.share actions, with accessible success announcements and graceful fallback when navigator.share is unavailable.",
+      "tags": ["action", "clipboard"],
+      "useWhen": [
+        "Offering a quick way to share a link or text with copy and native share options.",
+        "Presenting a result, invite link, or exported report link with sharing affordances."
+      ],
+      "avoidWhen": [
+        "Generating the share text or images — compose ShareCard with your own copy generation logic.",
+        "Posting directly to social media or analytics — wire those externally."
+      ],
+      "related": ["copy-button", "card", "button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/share-card/schema",
+        "variables": "@lostgradient/cinder/share-card/variables",
+        "examples": "@lostgradient/cinder/share-card/examples"
+      }
+    },
+    {
       "name": "Sheet",
       "id": "sheet",
       "import": "@lostgradient/cinder/sheet",
@@ -2596,6 +2697,29 @@
         "schema": "@lostgradient/cinder/sheet/schema",
         "variables": "@lostgradient/cinder/sheet/variables",
         "examples": "@lostgradient/cinder/sheet/examples"
+      }
+    },
+    {
+      "name": "ShortcutHint",
+      "id": "shortcut-hint",
+      "import": "@lostgradient/cinder/shortcut-hint",
+      "exportName": "ShortcutHint",
+      "category": "typography",
+      "status": "alpha",
+      "purpose": "Inline shortcut hint that renders a key combo via Kbd alongside an action label, with an accessible text representation not reliant on visual keycaps alone.",
+      "tags": ["shortcut", "inline"],
+      "useWhen": [
+        "Showing a keyboard shortcut inline beside a label in a toolbar button, menu item, or tooltip.",
+        "Pairing with command-palette items to surface available shortcuts."
+      ],
+      "avoidWhen": ["Displaying a full shortcut reference table — use keyboard-shortcuts instead."],
+      "related": ["kbd", "keyboard-shortcuts", "tooltip"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/shortcut-hint/schema",
+        "variables": "@lostgradient/cinder/shortcut-hint/variables",
+        "examples": "@lostgradient/cinder/shortcut-hint/examples"
       }
     },
     {

@@ -26,6 +26,7 @@
 @import '../components/button-group/button-group.css';
 @import '../components/callout/callout.css';
 @import '../components/card/card.css';
+@import '../components/capability-gate/capability-gate.css';
 @import '../components/chip/chip.css';
 @import '../components/choice-grid/choice-grid.css';
 @import '../components/checkbox/checkbox.css';
@@ -64,11 +65,13 @@
 @import '../components/json-viewer/json-viewer.css';
 @import '../components/kanban-board/kanban-board.css';
 @import '../components/kbd/kbd.css';
+@import '../components/keyboard-shortcuts/keyboard-shortcuts.css';
 @import '../components/label/label.css';
 @import '../components/line-chart/line-chart.css';
 @import '../components/link/link.css';
 @import '../components/matrix-chart/matrix-chart.css';
 @import '../components/load-more/load-more.css';
+@import '../components/media-controls/media-controls.css';
 @import '../components/menu-bar/menu-bar.css';
 @import '../components/message/message.css';
 @import '../components/modal/modal.css';
@@ -87,6 +90,7 @@
 @import '../components/review-editor/review-editor.css';
 @import '../components/scroll-area/scroll-area.css';
 @import '../components/search-field/search-field.css';
+@import '../components/share-card/share-card.css';
 @import '../components/section-heading/section-heading.css';
 @import '../components/select/select.css';
 @import '../components/segmented-control/segmented-control.css';
@@ -96,6 +100,7 @@
 @import '../components/side-navigation/side-navigation.css';
 @import '../components/side-navigation-group/side-navigation-group.css';
 @import '../components/sheet/sheet.css';
+@import '../components/shortcut-hint/shortcut-hint.css';
 @import '../components/sidebar/sidebar.css';
 @import '../components/skeleton/skeleton.css';
 @import '../components/slider/slider.css';
