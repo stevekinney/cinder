@@ -1,0 +1,26 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-shortcut-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-xs);
+  }
+
+  .cinder-shortcut-hint__label {
+    color: var(--cinder-text);
+  }
+
+  .cinder-shortcut-hint__keys {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-xs);
+    flex-shrink: 0;
+  }
+
+  .cinder-shortcut-hint__separator {
+    font-size: var(--cinder-type-xs);
+    color: var(--cinder-text-muted);
+    line-height: 1;
+    user-select: none;
+  }
+}

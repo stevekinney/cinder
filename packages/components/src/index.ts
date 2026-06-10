@@ -319,6 +319,13 @@ export type {
 export { default as JsonViewer } from './components/json-viewer/index.ts';
 export type { JsonViewerProps } from './components/json-viewer/index.ts';
 
+export { default as CapabilityGate } from './components/capability-gate/index.ts';
+export type {
+  CapabilityGateProps,
+  CapabilityGateState,
+  CapabilityGateVariant,
+} from './components/capability-gate/index.ts';
+
 export { default as KanbanBoard } from './components/kanban-board/index.ts';
 export type {
   KanbanBoardCardContext,
@@ -334,6 +341,13 @@ export type {
 export { default as Kbd } from './components/kbd/index.ts';
 export type { KbdProps } from './components/kbd/index.ts';
 
+export { default as KeyboardShortcuts } from './components/keyboard-shortcuts/index.ts';
+export type {
+  KeyboardShortcutEntry,
+  KeyboardShortcutGroup,
+  KeyboardShortcutsProps,
+} from './components/keyboard-shortcuts/index.ts';
+
 export { default as Label } from './components/label/index.ts';
 export type { LabelProps } from './components/label/index.ts';
 
@@ -345,6 +359,9 @@ export type { LineChartProps, LineChartSchemaProps } from './components/line-cha
 
 export { default as LoadMore } from './components/load-more/index.ts';
 export type { LoadMoreProps } from './components/load-more/index.ts';
+
+export { default as MediaControls } from './components/media-controls/index.ts';
+export type { MediaControlsLayout, MediaControlsProps } from './components/media-controls/index.ts';
 
 export { default as MarkdownEditor } from './components/markdown-editor/index.ts';
 export type {
@@ -496,8 +513,14 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover/index.ts';
 
+export { default as ShareCard } from './components/share-card/index.ts';
+export type { ShareCardAction, ShareCardProps } from './components/share-card/index.ts';
+
 export { default as Sheet } from './components/sheet/index.ts';
 export type { SheetProps } from './components/sheet/index.ts';
+
+export { default as ShortcutHint } from './components/shortcut-hint/index.ts';
+export type { ShortcutHintProps } from './components/shortcut-hint/index.ts';
 
 export { default as SideNavigation } from './components/side-navigation/index.ts';
 export type { SideNavigationProps } from './components/side-navigation/index.ts';

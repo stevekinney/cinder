@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "shortcut-hint",
+  "import": "@lostgradient/cinder/shortcut-hint",
+  "examples": [
+    {
+      "id": "toolbar",
+      "title": "Toolbar shortcut hints",
+      "description": "Inline shortcut hints in a compact toolbar, keys positioned after the label.",
+      "code": "<script lang=\"ts\">\n  import { ShortcutHint } from '@lostgradient/cinder/shortcut-hint';\n</script>\n\n<div style=\"display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;\">\n  <ShortcutHint keys={['Ctrl', 'S']}>Save</ShortcutHint>\n  <ShortcutHint keys={['Ctrl', 'Z']}>Undo</ShortcutHint>\n  <ShortcutHint keys={['Escape']}>Cancel</ShortcutHint>\n  <ShortcutHint keys={['Space']} keysLabel=\"Space bar\" keysPosition=\"before\">Play</ShortcutHint>\n</div>\n"
+    }
+  ]
+}
