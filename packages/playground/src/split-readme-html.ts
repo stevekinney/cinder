@@ -34,9 +34,10 @@ export function splitReadmeHtml(html: string): ReadmeSegment[] {
       segments.push({ type: 'html', content: remaining.slice(preStart) });
       break;
     }
-    const fallbackHtml = remaining.slice(preStart, preEnd + 6);
+    const closeTag = '</pre>';
+    const fallbackHtml = remaining.slice(preStart, preEnd + closeTag.length);
     segments.push({ type: 'code', index: codeIndex++, fallbackHtml });
-    remaining = remaining.slice(preEnd + 6);
+    remaining = remaining.slice(preEnd + closeTag.length);
   }
 
   return segments;

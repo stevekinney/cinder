@@ -242,6 +242,11 @@
   // every scenario for this component together with this page, sharing one
   // Svelte runtime, and exposes the components on window.__CINDER_SCENARIOS__.
   $effect(() => {
+    // Depend on activeTab so the effect reruns when the Examples panel mounts
+    // (e.g. if the user loads with ?tab=overview, the containers don't exist
+    // on first run — re-tracking means we retry once Examples becomes active).
+    if (activeTab !== 'examples') return;
+
     // Per-run local collection so the cleanup only unmounts this run's mounts.
     // Svelte 5 disposal is unmount(component), not component.destroy().
     const localApps: ReturnType<typeof mount>[] = [];
