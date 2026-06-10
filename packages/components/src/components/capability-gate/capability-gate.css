@@ -3,8 +3,8 @@
   .cinder-capability-gate {
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-sm);
-    padding: var(--cinder-space-md);
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-3);
     border-radius: var(--cinder-radius-md);
     border: 1px solid var(--cinder-border);
     background-color: var(--cinder-surface);
@@ -13,18 +13,18 @@
 
   /* Variant-based color theming */
   .cinder-capability-gate[data-cinder-variant='error'] {
-    border-color: var(--cinder-color-danger-border, var(--cinder-border));
-    background-color: var(--cinder-color-danger-surface, var(--cinder-surface));
+    border-color: var(--cinder-color-danger-border);
+    background-color: var(--cinder-color-danger-bg);
   }
 
   .cinder-capability-gate[data-cinder-variant='warning'] {
-    border-color: var(--cinder-color-warning-border, var(--cinder-border));
-    background-color: var(--cinder-color-warning-surface, var(--cinder-surface));
+    border-color: var(--cinder-color-warning-border);
+    background-color: var(--cinder-color-warning-bg);
   }
 
   .cinder-capability-gate[data-cinder-variant='success'] {
-    border-color: var(--cinder-color-success-border, var(--cinder-border));
-    background-color: var(--cinder-color-success-surface, var(--cinder-surface));
+    border-color: var(--cinder-color-success-border);
+    background-color: var(--cinder-color-success-bg);
   }
 
   /* Banner presentation — full width, less rounding */
@@ -44,29 +44,29 @@
   .cinder-capability-gate__status {
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-xs);
+    gap: var(--cinder-space-1);
     flex: 1;
   }
 
   .cinder-capability-gate__feature {
     font-weight: 600;
-    font-size: var(--cinder-type-sm);
+    font-size: var(--cinder-text-sm);
     text-transform: capitalize;
   }
 
   .cinder-capability-gate__state-text {
-    font-size: var(--cinder-type-sm);
+    font-size: var(--cinder-text-sm);
     color: var(--cinder-text-muted);
   }
 
   .cinder-capability-gate__content {
-    font-size: var(--cinder-type-sm);
+    font-size: var(--cinder-text-sm);
   }
 
   .cinder-capability-gate__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--cinder-space-xs);
+    gap: var(--cinder-space-1);
     align-items: center;
   }
 
@@ -75,9 +75,9 @@
   .cinder-capability-gate__dismiss {
     display: inline-flex;
     align-items: center;
-    padding: var(--cinder-space-xs) var(--cinder-space-sm);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
     border-radius: var(--cinder-radius-sm);
-    font-size: var(--cinder-type-sm);
+    font-size: var(--cinder-text-sm);
     font-weight: 500;
     cursor: pointer;
     border: 1px solid transparent;
@@ -85,13 +85,16 @@
   }
 
   .cinder-capability-gate__primary {
-    background-color: var(--cinder-color-accent);
-    color: var(--cinder-color-accent-contrast, #fff);
-    border-color: var(--cinder-color-accent);
+    background-color: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+    border-color: var(--cinder-accent);
   }
 
-  .cinder-capability-gate__primary:hover {
-    opacity: 0.9;
+  @media (hover: hover) {
+    .cinder-capability-gate__primary:hover {
+      background-color: var(--cinder-accent-hover);
+      border-color: var(--cinder-accent-hover);
+    }
   }
 
   .cinder-capability-gate__primary:focus-visible,

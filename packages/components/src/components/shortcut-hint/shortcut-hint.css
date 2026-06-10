@@ -3,7 +3,7 @@
   .cinder-shortcut-hint {
     display: inline-flex;
     align-items: center;
-    gap: var(--cinder-space-xs);
+    gap: var(--cinder-space-1);
   }
 
   .cinder-shortcut-hint__label {
@@ -13,12 +13,12 @@
   .cinder-shortcut-hint__keys {
     display: inline-flex;
     align-items: center;
-    gap: var(--cinder-space-xs);
+    gap: var(--cinder-space-1);
     flex-shrink: 0;
   }
 
   .cinder-shortcut-hint__separator {
-    font-size: var(--cinder-type-xs);
+    font-size: var(--cinder-text-xs);
     color: var(--cinder-text-muted);
     line-height: 1;
     user-select: none;

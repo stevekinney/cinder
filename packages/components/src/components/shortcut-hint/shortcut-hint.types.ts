@@ -30,4 +30,6 @@ export interface ShortcutHintSchemaProps {
   keysPosition?: 'before' | 'after';
   /** Additional class names merged with `.cinder-shortcut-hint`. */
   class?: string;
+  /** The action label rendered beside the keys. */
+  children?: Snippet;
 }

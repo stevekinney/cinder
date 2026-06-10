@@ -48,11 +48,25 @@
     BROWSER && typeof navigator !== 'undefined' && typeof navigator.share === 'function',
   );
 
+  let announceTimer: ReturnType<typeof setTimeout> | undefined;
+
   function clearTimer() {
     if (resetTimer !== undefined) {
       clearTimeout(resetTimer);
       resetTimer = undefined;
     }
+  }
+
+  // Set a transient announcement that clears itself, so the live region isn't
+  // left holding a stale message and a repeated identical action still
+  // re-announces (the live region only fires on a change).
+  function announce(message: string) {
+    if (announceTimer !== undefined) clearTimeout(announceTimer);
+    announcement = '';
+    announcement = message;
+    announceTimer = setTimeout(() => {
+      announcement = '';
+    }, confirmDuration);
   }
 
   async function handleCopy(key: string, text: string, successMessage = copiedLabel) {
@@ -63,6 +77,10 @@
       succeeded = false;
     }
     if (!succeeded) {
+      // Clear any lingering "copied" state from a previous success so a failed
+      // attempt doesn't leave a button stuck showing the copied label.
+      clearTimer();
+      copiedKey = null;
       announcement = 'Copy failed';
       return;
     }
@@ -104,7 +122,7 @@
     }
     try {
       await navigator.share(shareData);
-      announcement = 'Shared successfully';
+      announce('Shared successfully');
     } catch (error) {
       // A user-cancelled share rejects with AbortError — NOT a failure, stay
       // silent. Every other rejection (NotAllowedError, TypeError, platform
@@ -117,7 +135,14 @@
     }
   }
 
-  onDestroy(clearTimer);
+  // Accessible label for the read-only value region — "Link to share" only when
+  // the value actually looks like a URL, otherwise "Text to share".
+  const valueRegionLabel = $derived(looksLikeUrl(value) ? 'Link to share' : 'Text to share');
+
+  onDestroy(() => {
+    clearTimer();
+    if (announceTimer !== undefined) clearTimeout(announceTimer);
+  });
 
   // Build the default actions when no explicit actions are provided. The default
   // surface always offers copy (the universal fallback); the native-share button
@@ -164,7 +189,7 @@
   {/if}
 
   <!-- Value display: truncated read-only URL/text field -->
-  <div class="cinder-share-card__value" aria-label="Link to share">
+  <div class="cinder-share-card__value" aria-label={valueRegionLabel}>
     <span class="cinder-share-card__value-text" title={value}>{value}</span>
   </div>
 
@@ -175,7 +200,12 @@
           type="button"
           class="cinder-share-card__action"
           data-cinder-action={action.key}
-          onclick={handleNativeShare}
+          onclick={() => {
+            // Honour a consumer onClick (analytics/side-effects) on the native
+            // share action too, then run the share.
+            action.onClick?.();
+            handleNativeShare();
+          }}
           aria-label={action.label}
         >
           <!-- Share icon -->

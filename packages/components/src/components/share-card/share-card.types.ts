@@ -62,4 +62,8 @@ export interface ShareCardSchemaProps {
   confirmDuration?: number;
   /** Additional class names merged with `.cinder-share-card`. */
   class?: string;
+  /** Explicit actions to show. When omitted, default copy + native-share actions render. */
+  actions?: ShareCardAction[];
+  /** Preview content slot rendered above the actions. */
+  preview?: Snippet;
 }

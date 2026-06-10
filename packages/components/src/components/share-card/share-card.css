@@ -3,8 +3,8 @@
   .cinder-share-card {
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-sm);
-    padding: var(--cinder-space-md);
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-3);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background-color: var(--cinder-surface);
@@ -20,18 +20,18 @@
   .cinder-share-card__meta {
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-xs);
+    gap: var(--cinder-space-1);
   }
 
   .cinder-share-card__title {
     font-weight: 600;
-    font-size: var(--cinder-type-sm);
+    font-size: var(--cinder-text-sm);
     margin: 0;
     color: var(--cinder-text);
   }
 
   .cinder-share-card__description {
-    font-size: var(--cinder-type-xs);
+    font-size: var(--cinder-text-xs);
     color: var(--cinder-text-muted);
     margin: 0;
   }
@@ -39,13 +39,13 @@
   .cinder-share-card__value {
     display: flex;
     align-items: center;
-    gap: var(--cinder-space-xs);
-    padding: var(--cinder-space-xs) var(--cinder-space-sm);
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background-color: var(--cinder-surface-inset);
-    font-size: var(--cinder-type-xs);
-    font-family: var(--cinder-type-mono, monospace);
+    font-size: var(--cinder-text-xs);
+    font-family: var(--cinder-font-mono, monospace);
     min-width: 0;
   }
 
@@ -62,20 +62,20 @@
   .cinder-share-card__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--cinder-space-xs);
+    gap: var(--cinder-space-1);
   }
 
   .cinder-share-card__action {
     display: inline-flex;
     align-items: center;
-    gap: var(--cinder-space-xs);
-    padding: var(--cinder-space-xs) var(--cinder-space-sm);
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background-color: var(--cinder-surface);
     color: var(--cinder-text);
     cursor: pointer;
-    font-size: var(--cinder-type-sm);
+    font-size: var(--cinder-text-sm);
     font-weight: 500;
     transition:
       background-color 0.15s ease,

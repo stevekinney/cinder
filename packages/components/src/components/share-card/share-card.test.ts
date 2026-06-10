@@ -141,6 +141,20 @@ describe('ShareCard', () => {
     // Only the copy-link button should be rendered by default when no native share.
     expect(actions.length).toBeGreaterThanOrEqual(1);
   });
+
+  test('value region is labelled "Link to share" for a URL', () => {
+    const { container } = render(ShareCard, { value: 'https://example.com/x' });
+    expect(container.querySelector('.cinder-share-card__value')?.getAttribute('aria-label')).toBe(
+      'Link to share',
+    );
+  });
+
+  test('value region is labelled "Text to share" for non-URL text', () => {
+    const { container } = render(ShareCard, { value: 'Just some text' });
+    expect(container.querySelector('.cinder-share-card__value')?.getAttribute('aria-label')).toBe(
+      'Text to share',
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -48,6 +48,22 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'onPause',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onPlay',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onReplay',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

@@ -24,5 +24,13 @@
     }
   },
   "additionalProperties": false,
-  "required": ["keys"]
+  "required": ["keys"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

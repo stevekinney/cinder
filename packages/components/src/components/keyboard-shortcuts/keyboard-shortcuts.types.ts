@@ -41,4 +41,6 @@ export interface KeyboardShortcutsSchemaProps {
   heading?: string;
   /** Additional class names merged with `.cinder-keyboard-shortcuts`. */
   class?: string;
+  /** Intro content rendered above the groups. */
+  children?: Snippet;
 }

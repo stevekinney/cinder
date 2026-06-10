@@ -13,7 +13,7 @@
       "id": "result-card",
       "title": "Export result share card",
       "description": "A share card for a generated report link with custom actions.",
-      "code": "<script lang=\"ts\">\n  import { ShareCard } from '@lostgradient/cinder/share-card';\n</script>\n\n<div style=\"max-width: 22rem;\">\n  <ShareCard\n    value=\"https://reports.example.com/r/q4-revenue-2024\"\n    title=\"Q4 Revenue Report\"\n    description=\"This link expires in 7 days.\"\n    actions={[\n      { key: 'copy-link', label: 'Copy link', copyValue: 'https://reports.example.com/r/q4-revenue-2024' },\n      { key: 'copy-text', label: 'Copy title', copyValue: 'Q4 Revenue Report' },\n    ]}\n  />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { ShareCard } from '@lostgradient/cinder/share-card';\n</script>\n\n<div style=\"max-width: 22rem;\">\n  <ShareCard\n    value=\"https://reports.example.com/r/q4-revenue-2024\"\n    title=\"Q4 Revenue Report\"\n    description=\"This link expires in 7 days.\"\n    actions={[\n      {\n        key: 'copy-link',\n        label: 'Copy link',\n        copyValue: 'https://reports.example.com/r/q4-revenue-2024',\n      },\n      { key: 'copy-text', label: 'Copy title', copyValue: 'Q4 Revenue Report' },\n    ]}\n  />\n</div>\n"
     }
   ]
 }

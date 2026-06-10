@@ -47,6 +47,26 @@ const schema = {
   },
   additionalProperties: false,
   required: ['feature', 'state'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onDismiss',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onFallbackAction',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onPrimaryAction',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

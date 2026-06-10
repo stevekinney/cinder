@@ -45,5 +45,21 @@
       "description": "Additional class names merged with `.cinder-media-controls`."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "onPause",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "onPlay",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "onReplay",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

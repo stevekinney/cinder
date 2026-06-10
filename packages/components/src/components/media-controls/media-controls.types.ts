@@ -71,4 +71,10 @@ export interface MediaControlsSchemaProps {
   layout?: MediaControlsLayout;
   /** Additional class names merged with `.cinder-media-controls`. */
   class?: string;
+  /** Called when the play action is triggered. */
+  onPlay?: () => void;
+  /** Called when the pause action is triggered. */
+  onPause?: () => void;
+  /** Called when the replay action is triggered. */
+  onReplay?: () => void;
 }

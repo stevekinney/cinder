@@ -102,7 +102,9 @@ describe('KeyboardShortcuts', () => {
     for (const section of sections) {
       const labelledBy = section.getAttribute('aria-labelledby');
       expect(labelledBy).not.toBeNull();
-      const referencedElement = container.querySelector(`#${labelledBy}`);
+      // CSS.escape the id — $props.id() can contain characters that need
+      // escaping in a selector (otherwise the query can break/flap).
+      const referencedElement = container.querySelector(`#${CSS.escape(labelledBy ?? '')}`);
       expect(referencedElement).not.toBeNull();
     }
   });

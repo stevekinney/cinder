@@ -72,4 +72,12 @@ export interface CapabilityGateSchemaProps {
   dismissAction?: string;
   /** Additional class names merged with `.cinder-capability-gate`. */
   class?: string;
+  /** Called when the primary action button is activated. */
+  onPrimaryAction?: () => void;
+  /** Called when the fallback action button is activated. */
+  onFallbackAction?: () => void;
+  /** Called when the gate is dismissed. */
+  onDismiss?: () => void;
+  /** Custom content rendered below the status text and before the actions. */
+  children?: Snippet;
 }

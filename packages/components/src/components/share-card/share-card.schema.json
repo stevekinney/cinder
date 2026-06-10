@@ -37,5 +37,17 @@
     }
   },
   "additionalProperties": false,
-  "required": ["value"]
+  "required": ["value"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "actions",
+        "reason": "unknown-shape"
+      },
+      {
+        "name": "preview",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

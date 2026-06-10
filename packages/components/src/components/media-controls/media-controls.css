@@ -3,21 +3,21 @@
   .cinder-media-controls {
     display: inline-flex;
     align-items: center;
-    gap: var(--cinder-space-sm);
+    gap: var(--cinder-space-2);
   }
 
   .cinder-media-controls__button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--cinder-space-xs);
-    padding: var(--cinder-space-xs) var(--cinder-space-sm);
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background-color: var(--cinder-surface);
     color: var(--cinder-text);
     cursor: pointer;
-    font-size: var(--cinder-type-sm);
+    font-size: var(--cinder-text-sm);
     font-weight: 500;
     line-height: 1;
     transition:
@@ -87,7 +87,7 @@
 
   /* Compact (icon-only) layout */
   .cinder-media-controls[data-cinder-layout='compact'] .cinder-media-controls__button {
-    padding: var(--cinder-space-xs);
+    padding: var(--cinder-space-1);
   }
 
   /* Progress bar */
@@ -106,7 +106,7 @@
   .cinder-media-controls__progress-fill {
     height: 100%;
     border-radius: var(--cinder-radius-full, 9999px);
-    background-color: var(--cinder-color-accent, currentColor);
+    background-color: var(--cinder-accent);
     transition: width 0.1s ease;
   }
 }

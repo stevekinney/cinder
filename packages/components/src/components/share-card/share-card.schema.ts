@@ -40,6 +40,18 @@ const schema = {
   },
   additionalProperties: false,
   required: ['value'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'actions',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'preview',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;
