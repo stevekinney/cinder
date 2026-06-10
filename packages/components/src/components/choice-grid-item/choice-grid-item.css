@@ -76,10 +76,8 @@
    * Selected state
    * ---------------------------------------- */
 
-  /* Selected: accent border + accent text on the resting surface, matching the
-   * segmented-control "accent text, no filled background" convention. (The prior
-   * accent-3 fill referenced an undefined token, so this formalizes the
-   * transparent-surface render that already shipped.) */
+  /* Selected uses accent border + accent text with no filled background,
+   * matching the segmented-control convention. */
   .cinder-choice-grid-item[data-cinder-selected] {
     border-color: var(--cinder-accent);
     color: var(--cinder-accent-text);
