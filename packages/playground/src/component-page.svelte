@@ -572,7 +572,7 @@
                 {#if block !== undefined}
                   <CodeBlock code={block.value} language={block.language ?? 'plaintext'} copyable />
                 {:else}
-                  {@html segment.fallbackHtml}
+                  <div class="readme-pre-fallback">{@html segment.fallbackHtml}</div>
                 {/if}
               {/if}
             {/each}
@@ -1172,6 +1172,18 @@
   .readme-content :global(ol),
   .readme-content :global(table) {
     margin: 0 0 var(--cinder-space-4);
+  }
+
+  /* CodeBlock and its fallback get the same bottom-margin as prose elements
+   * so code-to-paragraph transitions don't collapse. The fallback wrapper also
+   * provides an overflow-x scroll container for wide pre blocks. */
+  .readme-content :global(.cinder-code-block),
+  .readme-pre-fallback {
+    margin-block-end: var(--cinder-space-4);
+  }
+
+  .readme-pre-fallback {
+    overflow-x: auto;
   }
 
   .readme-content :global(code) {
