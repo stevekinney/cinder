@@ -192,4 +192,18 @@ describe('Waveform', () => {
       expect(rect.getAttribute('height')).toBe('0');
     }
   });
+
+  test('a buffer far larger than the render cap is envelope-downsampled to a bounded bar count', () => {
+    // 50k samples must NOT produce 50k <rect>s — clamping is folded into the
+    // downsampling pass so the full buffer is never materialized for rendering.
+    const big = Array.from({ length: 50_000 }, (_, index) => Math.sin(index / 50));
+    const { container } = render(Waveform, {
+      label: 'Large buffer',
+      data: big,
+      renderMode: 'bars',
+    });
+    const rects = container.querySelectorAll('.cinder-waveform__bar');
+    expect(rects.length).toBeLessThanOrEqual(2000);
+    expect(rects.length).toBeGreaterThan(0);
+  });
 });

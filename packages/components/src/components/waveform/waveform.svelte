@@ -71,20 +71,23 @@
   // accessible table reports the ORIGINAL length and notes the sampling.
   const MAX_RENDER_POINTS = 2000;
 
-  // Clamp samples to [-1, 1]; non-finite samples (NaN/Infinity) collapse to the
-  // baseline (0) rather than producing invalid SVG coordinates.
-  const clampedData = $derived(
-    data.map((sample) => (Number.isFinite(sample) ? Math.max(-1, Math.min(1, sample)) : 0)),
-  );
+  // Clamp a single sample to [-1, 1]; non-finite samples (NaN/Infinity) collapse
+  // to the baseline (0) rather than producing invalid SVG coordinates. Applied
+  // lazily per-sample so a multi-million-sample buffer is never copied wholesale
+  // — only the ~MAX_RENDER_POINTS values that actually render are materialized.
+  function clampSample(sample: number | undefined): number {
+    return sample !== undefined && Number.isFinite(sample) ? Math.max(-1, Math.min(1, sample)) : 0;
+  }
 
   // Envelope-downsampled samples for rendering: each bucket contributes its min
   // and max so peaks aren't lost. The two extremes are emitted in their ORIGINAL
   // temporal order (min-then-max only if the min occurred first) so the rendered
-  // path doesn't invert the local waveform shape. When the data already fits,
-  // this is a no-op.
+  // path doesn't invert the local waveform shape. Clamping is folded into this
+  // pass so the full input buffer is never duplicated. When the data already
+  // fits, we still produce a fresh clamped array of just `length` points.
   const renderSamples = $derived.by((): number[] => {
-    const length = clampedData.length;
-    if (length <= MAX_RENDER_POINTS) return clampedData;
+    const length = data.length;
+    if (length <= MAX_RENDER_POINTS) return data.map(clampSample);
     const bucketCount = Math.floor(MAX_RENDER_POINTS / 2);
     const bucketSize = length / bucketCount;
     const out: number[] = [];
@@ -95,12 +98,12 @@
         bucket === bucketCount - 1
           ? length
           : Math.min(length, Math.floor((bucket + 1) * bucketSize));
-      let min = clampedData[start] ?? 0;
+      let min = clampSample(data[start]);
       let max = min;
       let minIndex = start;
       let maxIndex = start;
       for (let index = start; index < end; index += 1) {
-        const sample = clampedData[index]!;
+        const sample = clampSample(data[index]);
         if (sample < min) {
           min = sample;
           minIndex = index;
@@ -169,22 +172,23 @@
 
   // Sample the clamped/sanitized samples (the values the chart actually plots)
   // for the accessible table, capped at 20 rows so the table stays readable. The
-  // caption reports the true length + sampling.
+  // caption reports the true length + sampling. Clamping is applied lazily at the
+  // stride points so the full buffer is never copied here either.
   const TABLE_SAMPLE_LIMIT = 20;
-  const isTableSampled = $derived(clampedData.length > TABLE_SAMPLE_LIMIT);
+  const isTableSampled = $derived(data.length > TABLE_SAMPLE_LIMIT);
   const tableSamples = $derived.by(() => {
-    if (clampedData.length === 0) return [];
-    const step = Math.max(1, Math.ceil(clampedData.length / TABLE_SAMPLE_LIMIT));
+    if (data.length === 0) return [];
+    const step = Math.max(1, Math.ceil(data.length / TABLE_SAMPLE_LIMIT));
     const out: { index: number; value: number }[] = [];
-    for (let index = 0; index < clampedData.length; index += step) {
-      out.push({ index, value: clampedData[index]! });
+    for (let index = 0; index < data.length; index += step) {
+      out.push({ index, value: clampSample(data[index]) });
     }
     return out;
   });
   const tableCaption = $derived.by(() => {
     const base = dataTableCaption ?? label;
     if (!isTableSampled) return base;
-    return `${base} (${tableSamples.length} of ${clampedData.length} samples shown)`;
+    return `${base} (${tableSamples.length} of ${data.length} samples shown)`;
   });
 </script>
 
