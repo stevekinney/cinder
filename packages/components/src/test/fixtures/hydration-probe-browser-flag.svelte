@@ -3,9 +3,9 @@
   build flag — the buggy pattern from the original ShareCard native-share bug.
 
   `BROWSER` is a compile-time constant: false in the server build, true in the
-  client build. So the affordance is absent in SSR HTML; whether it ever appears
-  after hydration depends entirely on what `BROWSER` resolves to in the CLIENT
-  compilation the test hydrates with. This fixture exists only to measure that.
+  client build. So the affordance is ABSENT from the server-condition SSR render
+  and PRESENT in the browser-condition SSR render. checkBuildFlagHydrationSafety
+  compares those two renders and flags the divergence (buildFlagInvariant: false).
 -->
 <script lang="ts">
   import { BROWSER } from 'esm-env';

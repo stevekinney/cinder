@@ -13,11 +13,11 @@
  *
  * What this proves and what it does not: it documents that the SHIPPED ShareCard
  * is build-flag-invariant — its SSR output is identical under `BROWSER=false` and
- * `BROWSER=true`. It is NOT a complete regression net on its own: because the
- * native-share affordance is gated on `hydrated && navigator.share` and the
- * helper clears browser globals for both renders, a regression that re-introduced
- * a bare `{#if BROWSER}` gate could still render the button absent in both passes
- * (the `navigator.share` half is never satisfied in SSR) and slip through here.
+ * `BROWSER=true`. It is NOT a complete regression net on its own: the native-share
+ * affordance is gated on `hydrated && navigator.share`, and `hydrated` is false in
+ * both SSR passes, so a regression that re-introduced a bare `{#if BROWSER}` gate
+ * could still render the button absent in both passes (the `navigator.share` half
+ * is never reached) and slip through here.
  * The proof that the harness CATCHES a `{#if BROWSER}` regression lives in the
  * synthetic `hydration-probe-child-browser-flag` fixture (a ShareCard-shaped
  * parent with an unconditional child), which the helper reports as
