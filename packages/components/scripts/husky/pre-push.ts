@@ -123,14 +123,22 @@ type BatchOutcome = {
  * Run a batch of jobs through a small async pool, print any failures inline,
  * and return a {@link BatchOutcome} so the caller can render a digest and write
  * the full log.
+ *
+ * `maxConcurrency` caps the pool; the default is CPU-bound (up to 4). The test
+ * phase passes `1` to serialize — see the call site in `runScoped` for why.
  */
-async function runJobs(jobs: readonly Job[]): Promise<BatchOutcome> {
+async function runJobs(
+  jobs: readonly Job[],
+  maxConcurrency = Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4)),
+): Promise<BatchOutcome> {
   if (jobs.length === 0) return { ok: true, failures: [], output: '' };
-  // Clamp to at least 1: if `navigator.hardwareConcurrency` is ever undefined,
-  // `Math.min(undefined, 4)` is NaN, no workers would start, and every job would
-  // be silently treated as passing — a false green. `?? 1` and `Math.max(1, …)`
-  // prevent that.
-  const concurrency = Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4));
+  // Floor to a finite integer ≥ 1. A non-finite `maxConcurrency` (e.g. a caller
+  // computing `Math.min(navigator.hardwareConcurrency, 4)` where
+  // `hardwareConcurrency` is undefined → `NaN`) must NOT slip through: `NaN`
+  // would make `Math.min(concurrency, jobs.length)` NaN, start zero workers, and
+  // silently pass every job — a false green. `Number.isFinite` rejects NaN and
+  // ±Infinity; the `Math.max(1, …)` then guards 0 / negatives.
+  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
   const results: JobResult[] = [];
   let nextIndex = 0;
   const workers: Promise<void>[] = [];
@@ -230,6 +238,11 @@ async function runFull(): Promise<boolean> {
     // The full-suite path can produce very large output. Stream it directly so
     // Bun never keeps the hook alive waiting on captured pipe readers after the
     // command has exited.
+    // NOTE: the root `test` script is `bun run --filter='*' test`, which runs
+    // every package's tests concurrently — so the same shared-`dist/` rebuild
+    // race the scoped path serializes around (see `runScoped`) can still occur
+    // here. The atomic-build-output follow-up is the real fix; this path is
+    // taken only on root-config escalation / fail-safe, not routine pushes.
     const result = await runHookCommand('bun', ['run', script], {
       cwd: REPO_ROOT,
       stderr: 'inherit',
@@ -431,7 +444,14 @@ async function runScoped(
 
     if (phaseJobs.length === 0) continue;
     info(`Running ${script} (${phaseJobs.map((job) => job.packageName).join(', ')})…`);
-    const phase = await runJobs(phaseJobs);
+    // The `test` phase runs serially (concurrency 1). Each package's `test`
+    // script runs inline `bun run --filter=<dep> build` steps that `rm -rf dist`
+    // and re-emit shared dependency `dist/` dirs (e.g. `@cinder/markdown`,
+    // `@cinder/editor`). Run in parallel, two jobs race those writes while a
+    // third job's bundler reads the dist mid-write, yielding non-deterministic
+    // `error: "<name>" is not declared in this file`. Lint (oxlint) and typecheck
+    // (`tsc --noEmit`) are read-only, so they stay parallel.
+    const phase = await runJobs(phaseJobs, script === 'test' ? 1 : undefined);
     fullOutput += phase.output;
     allFailures.push(...phase.failures);
     ok = phase.ok && ok;
