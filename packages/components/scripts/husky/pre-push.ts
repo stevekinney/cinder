@@ -132,11 +132,13 @@ async function runJobs(
   maxConcurrency = Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4)),
 ): Promise<BatchOutcome> {
   if (jobs.length === 0) return { ok: true, failures: [], output: '' };
-  // Clamp to at least 1: if `navigator.hardwareConcurrency` is ever undefined,
-  // `Math.min(undefined, 4)` is NaN, no workers would start, and every job would
-  // be silently treated as passing — a false green. `?? 1` and `Math.max(1, …)`
-  // prevent that.
-  const concurrency = Math.max(1, maxConcurrency);
+  // Floor to a finite integer ≥ 1. A non-finite `maxConcurrency` (e.g. a caller
+  // computing `Math.min(navigator.hardwareConcurrency, 4)` where
+  // `hardwareConcurrency` is undefined → `NaN`) must NOT slip through: `NaN`
+  // would make `Math.min(concurrency, jobs.length)` NaN, start zero workers, and
+  // silently pass every job — a false green. `Number.isFinite` rejects NaN and
+  // ±Infinity; the `Math.max(1, …)` then guards 0 / negatives.
+  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
   const results: JobResult[] = [];
   let nextIndex = 0;
   const workers: Promise<void>[] = [];
