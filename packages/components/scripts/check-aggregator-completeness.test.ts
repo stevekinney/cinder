@@ -175,6 +175,65 @@ describe('computeImportClosure', () => {
     expect(reachable.has(join(componentsDirectory, 'alpha/alpha.css'))).toBe(true);
     expect(reachable.has(join(componentsDirectory, 'beta/beta.css'))).toBe(true);
   });
+
+  // CSS only honors @import at the top level of the stylesheet prelude. An import
+  // nested inside @media (or @supports) is NOT applied by the bundle, so counting
+  // it would be a false-pass — exactly what walkAtRules() would have done.
+  it('does NOT follow an @import nested inside @media', () => {
+    const { componentsDirectory, aggregatorFile } = makeFixture({
+      components: ['alpha', 'beta'],
+      aggregatorImports: ['../components/alpha/alpha.css'],
+      extraFiles: [
+        {
+          path: 'alpha/alpha.css',
+          content: `@media (min-width: 1px) {\n  @import '../beta/beta.css';\n}\n.cinder-alpha {}\n`,
+        },
+      ],
+    });
+
+    const reachable = computeImportClosure(aggregatorFile);
+    expect(reachable.has(join(componentsDirectory, 'beta/beta.css'))).toBe(false);
+  });
+
+  // A @import that appears AFTER a style rule is past the prelude and is ignored
+  // by the bundle — it must not count as coverage.
+  it('does NOT follow a late @import after a style rule', () => {
+    const { componentsDirectory, aggregatorFile } = makeFixture({
+      components: ['alpha', 'beta'],
+      aggregatorImports: ['../components/alpha/alpha.css'],
+      extraFiles: [
+        {
+          path: 'alpha/alpha.css',
+          content: `.cinder-alpha {}\n@import '../beta/beta.css';\n`,
+        },
+      ],
+    });
+
+    const reachable = computeImportClosure(aggregatorFile);
+    expect(reachable.has(join(componentsDirectory, 'beta/beta.css'))).toBe(false);
+  });
+
+  // The real cinder partials open with a `@layer …;` statement prelude before
+  // their sibling-leaf @import (e.g. command-menu.css). That statement must NOT
+  // end the prelude, so the @import after it is still honored.
+  it('honors an @import that follows a leading @layer statement', () => {
+    const { componentsDirectory, aggregatorFile } = makeFixture({
+      components: ['alpha', 'beta'],
+      aggregatorImports: ['../components/alpha/alpha.css'],
+      extraFiles: [
+        {
+          path: 'alpha/alpha.css',
+          content:
+            `@layer cinder.tokens, cinder.components;\n` +
+            `@import '../beta/beta.css';\n` +
+            `@layer cinder.components {\n  .cinder-alpha {}\n}\n`,
+        },
+      ],
+    });
+
+    const reachable = computeImportClosure(aggregatorFile);
+    expect(reachable.has(join(componentsDirectory, 'beta/beta.css'))).toBe(true);
+  });
 });
 
 describe('checkAggregatorCompleteness', () => {

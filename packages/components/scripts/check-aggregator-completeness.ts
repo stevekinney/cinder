@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Glob } from 'bun';
-import { parse } from 'postcss';
+import { parse, type Root } from 'postcss';
 
 /**
  * Aggregator-completeness gate for `src/styles/components.css`.
@@ -64,8 +64,8 @@ export type AggregatorViolation = {
  * the first whitespace-delimited token (dropping any trailing layer/media), and
  * accept it only if it's a relative path (`.`-prefixed). Bare/aliased/absolute
  * specifiers don't resolve to a local component file on disk, so they're not
- * part of the on-disk closure — see `aggregateImportContractViolations` for the
- * separate check that flags them as unsupported in the aggregate stylesheet.
+ * part of the on-disk closure and are simply ignored (cinder's aggregate
+ * stylesheet uses only relative imports).
  */
 function extractRelativeImportSpecifier(params: string): string | undefined {
   let raw = params.trim();
@@ -89,10 +89,45 @@ function extractRelativeImportSpecifier(params: string): string | undefined {
 }
 
 /**
+ * Collect the relative specifiers of the **honored** top-level `@import` rules
+ * of one parsed stylesheet, in source order.
+ *
+ * Matches CSS semantics, not a naive tree walk: a `@import` is honored by the
+ * browser/bundler only at the top level (NOT nested inside `@media`/`@supports`)
+ * and only in the stylesheet prelude — before any style rule. Per the spec the
+ * prelude may also contain a leading `@charset` and `@layer` statements; once a
+ * style rule or any other at-rule appears, later `@import`s are ignored. We
+ * mirror that: walk only `root.nodes` (top level), stop honoring `@import` after
+ * the prelude ends. This is what prevents a nested or late `@import` from being
+ * falsely counted as coverage when the real bundle would drop it.
+ */
+function honoredImportSpecifiers(root: Root): string[] {
+  const specifiers: string[] = [];
+  for (const node of root.nodes) {
+    if (node.type === 'comment') continue;
+    if (node.type === 'atrule') {
+      if (node.name === 'import') {
+        const specifier = extractRelativeImportSpecifier(node.params);
+        if (specifier !== undefined) specifiers.push(specifier);
+        continue;
+      }
+      // `@charset` and the statement form of `@layer` (no block) may legally
+      // precede imports without ending the prelude.
+      if (node.name === 'charset') continue;
+      if (node.name === 'layer' && node.nodes === undefined) continue;
+    }
+    // Any style rule, declaration, or other at-rule (incl. @media/@supports
+    // and a block-form @layer) ends the import prelude — stop honoring imports.
+    break;
+  }
+  return specifiers;
+}
+
+/**
  * Compute the set of absolute file paths reachable from `entryFile` by
- * following `@import` statements over the **CSS** import graph. The entry file
- * itself is included. Missing targets are skipped rather than thrown — a
- * dangling `@import` is a different defect, governed by the build.
+ * following the **honored** CSS `@import` chain (see {@link honoredImportSpecifiers}).
+ * The entry file itself is included. Missing targets are skipped rather than
+ * thrown — a dangling `@import` is a different defect, governed by the build.
  *
  * Uses a real CSS parser (postcss) rather than a regex so that commented-out
  * imports (`/* @import '…'; *\/`) are NOT counted as coverage — a regex would
@@ -111,12 +146,9 @@ export function computeImportClosure(entryFile: string): Set<string> {
     reachable.add(file);
 
     const root = parse(readFileSync(file, 'utf8'), { from: file });
-    root.walkAtRules('import', (atRule) => {
-      const specifier = extractRelativeImportSpecifier(atRule.params);
-      if (specifier !== undefined) {
-        stack.push(resolve(dirname(file), specifier));
-      }
-    });
+    for (const specifier of honoredImportSpecifiers(root)) {
+      stack.push(resolve(dirname(file), specifier));
+    }
   }
 
   return reachable;
