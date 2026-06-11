@@ -263,11 +263,14 @@ function parseSpans(html: string): ElementContent[] {
 /**
  * Decode HTML entities in text content.
  *
- * Ampersand forms (&amp; and &#x26;) must be decoded LAST. Decoding them
- * earlier would cascade: &#x26;lt; → &lt; → < instead of &lt; (a literal
- * less-than entity in source code).
+ * Ampersand forms must be decoded LAST, with &amp; before &#x26;. Decoding
+ * them earlier would cascade: &#x26;lt; → &lt; → < instead of &lt;. The
+ * &amp; step must precede &#x26; so that &#x26;amp; → &#x26;amp; → &amp;
+ * (correct), not &#x26;amp; → &amp; → & (loses the entity).
+ *
+ * @internal exported for unit testing only
  */
-function decodeHtmlEntities(text: string): string {
+export function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&#x3C;/gi, '<')
     .replace(/&#x3E;/gi, '>')
@@ -277,9 +280,9 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&#x2F;/g, '/')
-    .replace(/&#x26;/gi, '&') // ampersand last — must not cascade into other entity decodes
-    .replace(/&amp;/g, '&');
+    .replace(/&#x2F;/gi, '/')
+    .replace(/&amp;/g, '&') // &amp; before &#x26; — prevents &#x26;amp; cascading to &
+    .replace(/&#x26;/gi, '&'); // hex ampersand last
 }
 
 /**

@@ -7,16 +7,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import type { Element, ElementContent, Text } from 'hast';
 import { initializeHighlighter, resetHighlighter } from './highlighter.js';
-import { rehypeShikiSync } from './rehype-shiki-sync.js';
-
-/**
- * To test internal functions, we need to either:
- * 1. Export them (which exposes implementation details)
- * 2. Test through the public API
- *
- * We'll test through the public API (rehypeShikiSync) for integration behavior,
- * and create minimal test helpers that mirror the internal logic for unit tests.
- */
+import { decodeHtmlEntities, rehypeShikiSync } from './rehype-shiki-sync.js';
 
 // Helper to create a mock hast tree with a code block
 function createCodeBlockTree(
@@ -76,22 +67,6 @@ function extractLanguageFromClass(element: Element): string | null {
   }
 
   return null;
-}
-
-// Helper to decode HTML entities (mirrors internal decodeHtmlEntities)
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&#x3C;/gi, '<')
-    .replace(/&#x3E;/gi, '>')
-    .replace(/&#x22;/gi, '"')
-    .replace(/&#x27;/gi, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x2F;/g, '/')
-    .replace(/&#x26;/gi, '&')
-    .replace(/&amp;/g, '&');
 }
 
 // Helper to collect all text from an element (handles nested spans from Shiki)
@@ -312,9 +287,15 @@ describe('rehype-shiki-sync', () => {
 
     it('does not cascade &#x26;#x3C; into <', () => {
       // &#x26;#x3C; represents the literal text "&#x3C;" in source code.
-      // Decoding &#x26; last means it becomes &#x3C; after all passes complete —
-      // the &#x3C; replace already ran (no match), so the result stays &#x3C;.
+      // Because &#x26; is decoded last, the earlier &#x3C; pass already ran
+      // and did not match, so the result stays &#x3C; (not <).
       expect(decodeHtmlEntities('&#x26;#x3C;')).toBe('&#x3C;');
+    });
+
+    it('does not cascade &#x26;amp; into &', () => {
+      // &#x26;amp; is what Shiki emits when source code contains literal "&amp;".
+      // &amp; must be decoded before &#x26; so this stays as &amp;, not &.
+      expect(decodeHtmlEntities('&#x26;amp;')).toBe('&amp;');
     });
   });
 
