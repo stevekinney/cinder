@@ -1,9 +1,9 @@
 <script lang="ts" module>
   export const title = 'Docs sidebar';
   export const description =
-    'Documentation sidebar with grouped navigation sections. The active item receives aria-current="page". ' +
-    'Composed inside Sidebar so the column collapses to a drawer below the ~767px viewport breakpoint — ' +
-    'resize your browser window to see the mobile drawer behavior.';
+    'Documentation sidebar with grouped navigation sections. The active item receives aria-current="page".' +
+    ' Composed inside Sidebar so the column collapses to a drawer below the ~767px viewport breakpoint —' +
+    ' resize your browser window to see the mobile drawer behavior.';
 </script>
 
 <script lang="ts">

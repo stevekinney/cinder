@@ -245,6 +245,32 @@ describe('DataTable — scrollable', () => {
   });
 });
 
+describe('DataTable — rest props', () => {
+  test('forwards arbitrary HTML attributes to the root wrapper <div>', () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows,
+      id: 'contributors',
+      'data-testid': 'roster',
+    });
+    const wrapper = container.querySelector('.cinder-data-table');
+    expect(wrapper?.getAttribute('id')).toBe('contributors');
+    expect(wrapper?.getAttribute('data-testid')).toBe('roster');
+  });
+
+  test('forwards arbitrary HTML attributes to the scrollable wrapper <div>', () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows,
+      scrollable: true,
+      id: 'contributors',
+    });
+    const wrapper = container.querySelector('.cinder-table-scroll');
+    expect(wrapper?.classList.contains('cinder-data-table')).toBe(true);
+    expect(wrapper?.getAttribute('id')).toBe('contributors');
+  });
+});
+
 describe('DataTable — density', () => {
   test('density prop is forwarded to the table element', () => {
     const { container } = render(DataTable, { columns, rows, density: 'condensed' });
