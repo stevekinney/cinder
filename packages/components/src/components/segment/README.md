@@ -26,15 +26,15 @@ Individual option inside a SegmentedControl that renders the button, wires the v
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                                                                                                             |
-| ---------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`   | no       | —       | Custom class merged with `.cinder-segmented-control-option`.                                                                                                                                            |
-| `controls` | `string`   | no       | —       | ID of the panel this segment controls — only meaningful when the parent `SegmentedControl` uses `variant="tablist"`.                                                                                    |
-| `disabled` | `boolean`  | no       | —       | Disable just this segment (independent of the control-level `disabled`).                                                                                                                                |
-| `children` | `(opaque)` | yes      | —       | The segment's label content. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                 |
-| `leading`  | `(opaque)` | no       | —       | Optional decorative content rendered before the label, inside `aria-hidden`. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `trailing` | `(opaque)` | no       | —       | Optional decorative content rendered after the label, inside `aria-hidden`. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.  |
-| `value`    | `(opaque)` | yes      | —       | Value this segment represents. Must be unique within the parent control. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                        |
+| Prop       | Type       | Required | Default | Description                                                                                                                                             |
+| ---------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`    | `string`   | no       | —       | Custom class merged with `.cinder-segmented-control-option`.                                                                                            |
+| `controls` | `string`   | no       | —       | ID of the panel this segment controls — only meaningful when the parent `SegmentedControl` uses `variant="tablist"`.                                    |
+| `disabled` | `boolean`  | no       | —       | Disable just this segment (independent of the control-level `disabled`).                                                                                |
+| `children` | `(opaque)` | yes      | —       | The segment's label content. Not expressible in JSON Schema; see the component types for the signature.                                                 |
+| `leading`  | `(opaque)` | no       | —       | Optional decorative content rendered before the label, inside `aria-hidden`. Not expressible in JSON Schema; see the component types for the signature. |
+| `trailing` | `(opaque)` | no       | —       | Optional decorative content rendered after the label, inside `aria-hidden`. Not expressible in JSON Schema; see the component types for the signature.  |
+| `value`    | `(opaque)` | yes      | —       | Value this segment represents. Must be unique within the parent control. Not expressible in JSON Schema; see the component types for the signature.     |
 
 <!-- generated:props:end -->
 

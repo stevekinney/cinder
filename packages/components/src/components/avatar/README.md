@@ -16,14 +16,14 @@ Displays a user's profile photo, initials, or fallback icon at a consistent size
 
 <!-- generated:props:start -->
 
-| Prop    | Type                                           | Required | Default | Description                                                                                                                                                  |
-| ------- | ---------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `alt`   | `string`                                       | no       | —       | Alternative text for the image. Defaults to `name` when present.                                                                                             |
-| `name`  | `string`                                       | no       | —       | Display name used to compute initials when no image is available. Also used as the default `alt` for the image.                                              |
-| `shape` | `"circle"` \| `"square"`                       | no       | —       | Shape. Default `circle`.                                                                                                                                     |
-| `size`  | `"xs"` \| `"sm"` \| `"md"` \| `"lg"` \| `"xl"` | no       | —       | Size token. Default `md`.                                                                                                                                    |
-| `src`   | `string`                                       | no       | —       | Image source. When omitted, the initials fallback renders.                                                                                                   |
-| `class` | `(opaque)`                                     | no       | —       | Additional class names merged with `.cinder-avatar`. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop    | Type                                           | Required | Default | Description                                                                                                                     |
+| ------- | ---------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `alt`   | `string`                                       | no       | —       | Alternative text for the image. Defaults to `name` when present.                                                                |
+| `name`  | `string`                                       | no       | —       | Display name used to compute initials when no image is available. Also used as the default `alt` for the image.                 |
+| `shape` | `"circle"` \| `"square"`                       | no       | —       | Shape. Default `circle`.                                                                                                        |
+| `size`  | `"xs"` \| `"sm"` \| `"md"` \| `"lg"` \| `"xl"` | no       | —       | Size token. Default `md`.                                                                                                       |
+| `src`   | `string`                                       | no       | —       | Image source. When omitted, the initials fallback renders.                                                                      |
+| `class` | `(opaque)`                                     | no       | —       | Additional class names merged with `.cinder-avatar`. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

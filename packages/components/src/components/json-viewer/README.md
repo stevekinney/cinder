@@ -16,13 +16,13 @@ Collapsible tree visualization of an arbitrary JSON value with hard depth and by
 
 <!-- generated:props:start -->
 
-| Prop           | Type       | Required | Default | Description                                                                                                                                                   |
-| -------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`        | `string`   | no       | —       | Additional class names merged with `.cinder-json-viewer`.                                                                                                     |
-| `initialDepth` | `number`   | no       | —       | Initial collapse depth. Nodes deeper than this start collapsed. Default 1.                                                                                    |
-| `maxBytes`     | `number`   | no       | —       | Hard byte cap on the serialized payload. Default 1_048_576 (1 MB).                                                                                            |
-| `maxDepth`     | `number`   | no       | —       | Hard depth cap. Nodes deeper than this never render their children. Default 50.                                                                               |
-| `value`        | `(opaque)` | yes      | —       | The value to render. Any JSON-serializable structure. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop           | Type       | Required | Default | Description                                                                                                                      |
+| -------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `class`        | `string`   | no       | —       | Additional class names merged with `.cinder-json-viewer`.                                                                        |
+| `initialDepth` | `number`   | no       | —       | Initial collapse depth. Nodes deeper than this start collapsed. Default 1.                                                       |
+| `maxBytes`     | `number`   | no       | —       | Hard byte cap on the serialized payload. Default 1_048_576 (1 MB).                                                               |
+| `maxDepth`     | `number`   | no       | —       | Hard depth cap. Nodes deeper than this never render their children. Default 50.                                                  |
+| `value`        | `(opaque)` | yes      | —       | The value to render. Any JSON-serializable structure. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

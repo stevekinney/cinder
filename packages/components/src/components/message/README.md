@@ -16,14 +16,14 @@ Chat-style bubble that renders a role label, optional timestamp, and arbitrary b
 
 <!-- generated:props:start -->
 
-| Prop        | Type                                    | Required | Default | Description                                                                                                                                      |
-| ----------- | --------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `class`     | `string`                                | no       | —       | Additional class names merged with `.cinder-message`.                                                                                            |
-| `datetime`  | `string`                                | no       | —       | The machine-readable date/time value placed on the `<time datetime>` attribute.                                                                  |
-| `name`      | `string`                                | no       | —       | Optional speaker name override (defaults derived from role).                                                                                     |
-| `role`      | `"user"` \| `"assistant"` \| `"system"` | yes      | —       | Role of the speaker — drives visual treatment.                                                                                                   |
-| `timestamp` | `string`                                | no       | —       | Human-readable display text rendered inside the `<time>` element. Falls back to `datetime` when omitted.                                         |
-| `children`  | `(opaque)`                              | yes      | —       | Message body content. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop        | Type                                    | Required | Default | Description                                                                                              |
+| ----------- | --------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `class`     | `string`                                | no       | —       | Additional class names merged with `.cinder-message`.                                                    |
+| `datetime`  | `string`                                | no       | —       | The machine-readable date/time value placed on the `<time datetime>` attribute.                          |
+| `name`      | `string`                                | no       | —       | Optional speaker name override (defaults derived from role).                                             |
+| `role`      | `"user"` \| `"assistant"` \| `"system"` | yes      | —       | Role of the speaker — drives visual treatment.                                                           |
+| `timestamp` | `string`                                | no       | —       | Human-readable display text rendered inside the `<time>` element. Falls back to `datetime` when omitted. |
+| `children`  | `(opaque)`                              | yes      | —       | Message body content. Not expressible in JSON Schema; see the component types for the signature.         |
 
 <!-- generated:props:end -->
 

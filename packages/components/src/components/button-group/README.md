@@ -16,13 +16,13 @@ Clusters related action buttons into a unified visual group with shared borders.
 
 <!-- generated:props:start -->
 
-| Prop          | Type                           | Required | Default | Description                                                                                                                                                                                   |
-| ------------- | ------------------------------ | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`       | `string`                       | no       | —       | Additional class merged with `.cinder-button-group`.                                                                                                                                          |
-| `label`       | `string`                       | no       | —       |                                                                                                                                                                                               |
-| `labelledBy`  | `string`                       | no       | —       |                                                                                                                                                                                               |
-| `orientation` | `"horizontal"` \| `"vertical"` | no       | —       | Orientation of the visual collapse. Default: 'horizontal'.                                                                                                                                    |
-| `children`    | `(opaque)`                     | yes      | —       | Buttons (or split-button compositions) to render inside the group. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop          | Type                           | Required | Default | Description                                                                                                                                   |
+| ------------- | ------------------------------ | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`       | `string`                       | no       | —       | Additional class merged with `.cinder-button-group`.                                                                                          |
+| `label`       | `string`                       | no       | —       |                                                                                                                                               |
+| `labelledBy`  | `string`                       | no       | —       |                                                                                                                                               |
+| `orientation` | `"horizontal"` \| `"vertical"` | no       | —       | Orientation of the visual collapse. Default: 'horizontal'.                                                                                    |
+| `children`    | `(opaque)`                     | yes      | —       | Buttons (or split-button compositions) to render inside the group. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

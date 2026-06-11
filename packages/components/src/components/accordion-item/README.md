@@ -17,13 +17,13 @@ required.
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                                                                                  |
-| ---------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`   | no       | —       | Additional CSS class merged with `.cinder-accordion-item`.                                                                                                                   |
-| `disabled` | `boolean`  | no       | `false` | When true, the item cannot be toggled.                                                                                                                                       |
-| `id`       | `string`   | yes      | —       | Unique identifier matched against Accordion's expandedIds.                                                                                                                   |
-| `title`    | `string`   | yes      | —       | Visible header label for the item.                                                                                                                                           |
-| `children` | `(opaque)` | yes      | —       | Panel content rendered when the item is expanded. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop       | Type       | Required | Default | Description                                                                                                                  |
+| ---------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `class`    | `string`   | no       | —       | Additional CSS class merged with `.cinder-accordion-item`.                                                                   |
+| `disabled` | `boolean`  | no       | `false` | When true, the item cannot be toggled.                                                                                       |
+| `id`       | `string`   | yes      | —       | Unique identifier matched against Accordion's expandedIds.                                                                   |
+| `title`    | `string`   | yes      | —       | Visible header label for the item.                                                                                           |
+| `children` | `(opaque)` | yes      | —       | Panel content rendered when the item is expanded. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

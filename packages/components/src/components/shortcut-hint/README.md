@@ -25,13 +25,13 @@ Inline shortcut hint that renders a key combo via Kbd alongside an action label,
 
 <!-- generated:props:start -->
 
-| Prop           | Type                    | Required | Default   | Description                                                                                                                                                           |
-| -------------- | ----------------------- | -------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`        | `string`                | no       | —         | Additional class names merged with `.cinder-shortcut-hint`.                                                                                                           |
-| `keys`         | `string`[]              | yes      | —         | The key sequence to display.                                                                                                                                          |
-| `keysLabel`    | `string`                | no       | —         | Accessible label for the key combo.                                                                                                                                   |
-| `keysPosition` | `"before"` \| `"after"` | no       | `"after"` | Position of keys relative to children.                                                                                                                                |
-| `children`     | `(opaque)`              | no       | —         | The action label rendered beside the keys. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop           | Type                    | Required | Default   | Description                                                                                                           |
+| -------------- | ----------------------- | -------- | --------- | --------------------------------------------------------------------------------------------------------------------- |
+| `class`        | `string`                | no       | —         | Additional class names merged with `.cinder-shortcut-hint`.                                                           |
+| `keys`         | `string`[]              | yes      | —         | The key sequence to display.                                                                                          |
+| `keysLabel`    | `string`                | no       | —         | Accessible label for the key combo.                                                                                   |
+| `keysPosition` | `"before"` \| `"after"` | no       | `"after"` | Position of keys relative to children.                                                                                |
+| `children`     | `(opaque)`              | no       | —         | The action label rendered beside the keys. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

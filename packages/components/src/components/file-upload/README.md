@@ -34,21 +34,21 @@ announces results, and can render consumer-driven upload progress rows.
 
 <!-- generated:props:start -->
 
-| Prop         | Type       | Required | Default | Description                                                                                                                                                                                     |
-| ------------ | ---------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `accept`     | `string`   | no       | —       | Native file accept filter.                                                                                                                                                                      |
-| `disabled`   | `boolean`  | no       | —       | Disables the file picker and drag-and-drop surface.                                                                                                                                             |
-| `id`         | `string`   | no       | —       | Stable id for the native file input. Required when composing with `FormField`.                                                                                                                  |
-| `maxSize`    | `number`   | no       | —       | Maximum allowed file size in bytes.                                                                                                                                                             |
-| `multiple`   | `boolean`  | no       | —       | Allow more than one file. Default `false`.                                                                                                                                                      |
-| `name`       | `string`   | no       | —       | Native input name used for form submission.                                                                                                                                                     |
-| `class`      | `(opaque)` | no       | —       | Additional classes merged with `.cinder-file-upload`. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                   |
-| `dragActive` | `(opaque)` | no       | —       | Replaces the default drag-active dropzone body. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                      |
-| `fileList`   | `(opaque)` | no       | —       | Replaces the default file-list renderer. Receives the resolved rows. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `files`      | `(opaque)` | no       | —       | Consumer-driven file rows, including upload progress and error states. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                  |
-| `idle`       | `(opaque)` | no       | —       | Replaces the default resting-state dropzone body. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                    |
-| `onchange`   | `(opaque)` | no       | —       | Fires with accepted files after local validation passes. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.             |
-| `onreject`   | `(opaque)` | no       | —       | Fires with rejected files and reasons after local validation runs. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.   |
+| Prop         | Type       | Required | Default | Description                                                                                                                                       |
+| ------------ | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accept`     | `string`   | no       | —       | Native file accept filter.                                                                                                                        |
+| `disabled`   | `boolean`  | no       | —       | Disables the file picker and drag-and-drop surface.                                                                                               |
+| `id`         | `string`   | no       | —       | Stable id for the native file input. Required when composing with `FormField`.                                                                    |
+| `maxSize`    | `number`   | no       | —       | Maximum allowed file size in bytes.                                                                                                               |
+| `multiple`   | `boolean`  | no       | —       | Allow more than one file. Default `false`.                                                                                                        |
+| `name`       | `string`   | no       | —       | Native input name used for form submission.                                                                                                       |
+| `class`      | `(opaque)` | no       | —       | Additional classes merged with `.cinder-file-upload`. Not expressible in JSON Schema; see the component types for the signature.                  |
+| `dragActive` | `(opaque)` | no       | —       | Replaces the default drag-active dropzone body. Not expressible in JSON Schema; see the component types for the signature.                        |
+| `fileList`   | `(opaque)` | no       | —       | Replaces the default file-list renderer. Receives the resolved rows. Not expressible in JSON Schema; see the component types for the signature.   |
+| `files`      | `(opaque)` | no       | —       | Consumer-driven file rows, including upload progress and error states. Not expressible in JSON Schema; see the component types for the signature. |
+| `idle`       | `(opaque)` | no       | —       | Replaces the default resting-state dropzone body. Not expressible in JSON Schema; see the component types for the signature.                      |
+| `onchange`   | `(opaque)` | no       | —       | Fires with accepted files after local validation passes. Not expressible in JSON Schema; see the component types for the signature.               |
+| `onreject`   | `(opaque)` | no       | —       | Fires with rejected files and reasons after local validation runs. Not expressible in JSON Schema; see the component types for the signature.     |
 
 <!-- generated:props:end -->
 

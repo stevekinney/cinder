@@ -40,10 +40,10 @@ export interface UnsupportedProp {
   name: string;
   reason: UnsupportedReason;
   /**
-   * Whether the prop is required on the component. Recorded so the generated
-   * README can show a faithful Required column for props the JSON schema cannot
-   * express (e.g. a required `onselect: () => void` callback). Absent for the
-   * legacy fallback-path entries, which the renderer continues to treat as
+   * `true` when the prop is required on the component; omitted when it is
+   * optional. Recorded so the generated README can show a faithful Required
+   * column for props the JSON schema cannot express (e.g. a required
+   * `onselect: () => void` callback). The renderer treats an absent value as
    * not-required.
    */
   required?: boolean;

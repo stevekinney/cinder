@@ -16,12 +16,12 @@ A styled keyboard key element for displaying keyboard shortcuts in help text and
 
 <!-- generated:props:start -->
 
-| Prop       | Type             | Required | Default | Description                                                                                                                                   |
-| ---------- | ---------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`         | no       | —       | Additional class names merged with `.cinder-kbd`.                                                                                             |
-| `label`    | `string`         | no       | —       | Key label content.                                                                                                                            |
-| `size`     | `"sm"` \| `"md"` | no       | `"md"`  | Keyboard key size.                                                                                                                            |
-| `children` | `(opaque)`       | no       | —       | Key label content. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop       | Type             | Required | Default | Description                                                                                   |
+| ---------- | ---------------- | -------- | ------- | --------------------------------------------------------------------------------------------- |
+| `class`    | `string`         | no       | —       | Additional class names merged with `.cinder-kbd`.                                             |
+| `label`    | `string`         | no       | —       | Key label content.                                                                            |
+| `size`     | `"sm"` \| `"md"` | no       | `"md"`  | Keyboard key size.                                                                            |
+| `children` | `(opaque)`       | no       | —       | Key label content. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 
