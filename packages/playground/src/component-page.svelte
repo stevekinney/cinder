@@ -970,6 +970,7 @@
     flex-direction: column;
     gap: var(--cinder-space-6);
     min-width: 0;
+    background: var(--cinder-surface-raised);
   }
 
   :global(.documentation-panel h2),
