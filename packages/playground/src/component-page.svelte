@@ -946,6 +946,7 @@
     flex-direction: column;
     gap: var(--cinder-space-6);
     min-height: 100%;
+    background: var(--cinder-surface-raised);
   }
 
   :global(.documentation-tabs-root) {
