@@ -27,11 +27,12 @@ afterEach(() => {
 
 /**
  * Build a throwaway component tree on disk: a `components/` directory with one
- * `<name>/<name>.css` per entry, plus a `styles/components.css` aggregator that
- * imports the given names. Extra raw files can be dropped in per component to
- * model sub-component partials, nested partials, and JS-only imports. The
- * aggregator import lines are written verbatim, so a caller can pass a
- * commented-out or `url(...)`-wrapped specifier to exercise the parser.
+ * `<name>/<name>.css` per entry, plus a `styles/components.css` aggregator. Each
+ * `aggregatorImports` entry is emitted as `@import '<specifier>';` (quoted bare
+ * form). Extra raw files can be dropped in per component to model sub-component
+ * partials, nested partials, and JS-only imports. Tests that need a non-standard
+ * aggregator (a commented-out or `url(...)`-wrapped import) write the
+ * `components.css` themselves rather than going through `aggregatorImports`.
  */
 function makeFixture(options: {
   components: string[];
@@ -313,7 +314,11 @@ describe('checkAggregatorCompleteness', () => {
     });
 
     const violations = checkAggregatorCompleteness(componentsDirectory, aggregatorFile);
+    // Reported with forward slashes (a multi-segment path), never backslashes —
+    // so the value is stable across platforms and matches the POSIX-keyed
+    // exclusion list on Windows too.
     expect(violations.map((violation) => violation.path)).toEqual(['alpha/internal/extra.css']);
+    expect(violations[0]?.path).not.toContain('\\');
   });
 
   it('treats a second component CSS file as covered when the first @imports it', () => {

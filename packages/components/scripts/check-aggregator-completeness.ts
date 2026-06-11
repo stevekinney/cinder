@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, sep as pathSeparator, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Glob } from 'bun';
@@ -178,7 +178,10 @@ export function checkAggregatorCompleteness(
   const violations: AggregatorViolation[] = [];
   for (const absolutePath of componentCssFiles) {
     if (reachable.has(absolutePath)) continue;
-    const relativePath = relative(componentsDirectory, absolutePath);
+    // Normalize to forward slashes so the comparison against the (POSIX-keyed)
+    // exclusion list — and the reported path — are stable on Windows, where
+    // `relative()` yields backslashes.
+    const relativePath = relative(componentsDirectory, absolutePath).split(pathSeparator).join('/');
     if (excludedPaths.has(relativePath)) continue;
 
     violations.push({
