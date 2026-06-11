@@ -265,12 +265,16 @@ function parseSpans(html: string): ElementContent[] {
  */
 function decodeHtmlEntities(text: string): string {
   return text
+    .replace(/&#x3C;/gi, '<')
+    .replace(/&#x3E;/gi, '>')
+    .replace(/&#x26;/gi, '&')
+    .replace(/&#x22;/gi, '"')
+    .replace(/&#x27;/gi, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
     .replace(/&#x2F;/g, '/');
 }
 
