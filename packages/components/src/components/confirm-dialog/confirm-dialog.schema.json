@@ -37,15 +37,19 @@
     "unsupportedProps": [
       {
         "name": "oncancel",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Fired when the user cancels via ANY dismissal affordance — cancel button, Escape,\nbackdrop click, or the close-X button. Optional.\nParent-driven `open = false` does NOT fire this callback.\nCallbacks are not awaited; thrown callbacks do not block close."
       },
       {
         "name": "onconfirm",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Fired when the user activates the confirm button. Required. Component closes itself after."
       },
       {
         "name": "triggerRef",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Forwarded to <Modal>; focus is restored here on close."
       }
     ]
   }

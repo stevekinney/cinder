@@ -16,10 +16,13 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Items — typically `GridListItem` instances.',
       },
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Extra class names merged with `cinder-grid-list`.',
       },
     ],
   },

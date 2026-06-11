@@ -20,7 +20,8 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       },
       {
         "name": "keyboardStep",
@@ -36,7 +37,8 @@
       },
       {
         "name": "panes",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "required": true
       },
       {
         "name": "snapThreshold",

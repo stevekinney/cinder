@@ -48,6 +48,7 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'onopenchange',
@@ -56,6 +57,7 @@ const schema = {
       {
         name: 'trigger',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'triggerRef',

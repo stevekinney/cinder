@@ -55,10 +55,13 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Tree items (snippet).',
       },
       {
         name: 'selectionControls',
         reason: 'function-or-snippet',
+        description: 'Optional selection controls rendered before the role="tree" element.',
       },
     ],
   },

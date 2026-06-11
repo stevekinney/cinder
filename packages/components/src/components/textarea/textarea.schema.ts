@@ -41,10 +41,12 @@ const schema = {
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Extra class names merged with `.cinder-textarea`.',
       },
       {
         name: 'value',
         reason: 'unknown-shape',
+        description: 'Bound value of the textarea.',
       },
     ],
   },

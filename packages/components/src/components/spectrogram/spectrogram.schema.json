@@ -52,5 +52,19 @@
     }
   },
   "additionalProperties": false,
-  "required": ["frames", "label"]
+  "required": ["frames", "label"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "empty",
+        "reason": "function-or-snippet",
+        "description": "Snippet rendered when there are no frames."
+      },
+      {
+        "name": "loadingContent",
+        "reason": "function-or-snippet",
+        "description": "Snippet rendered while loading."
+      }
+    ]
+  }
 }

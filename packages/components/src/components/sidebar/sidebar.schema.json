@@ -20,15 +20,18 @@
     "unsupportedProps": [
       {
         "name": "brand",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Optional branding region rendered above the navigation."
       },
       {
         "name": "footer",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Optional footer region (e.g. user account, sign-out)."
       },
       {
         "name": "navigation",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Navigation region. Typically a `<SideNavigation>` subtree. Optional — when\nomitted, no `<nav>` landmark is rendered (so the sidebar can serve as app chrome\nwithout a navigation list, and an empty `<nav>` isn't announced to screen readers)."
       }
     ]
   }

@@ -43,6 +43,20 @@ const schema = {
   },
   additionalProperties: false,
   required: ['datetime', 'timestamp', 'title'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        description: 'Item body content.',
+      },
+      {
+        name: 'marker',
+        reason: 'function-or-snippet',
+        description: 'Decorative custom marker glyph. Must not contain interactive descendants.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

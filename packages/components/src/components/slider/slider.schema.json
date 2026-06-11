@@ -73,7 +73,8 @@
       },
       {
         "name": "valueText",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Formats the numeric value for `aria-valuetext`."
       }
     ]
   }

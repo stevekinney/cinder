@@ -30,6 +30,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Item content — label text, an icon, or richer markup.',
       },
     ],
   },

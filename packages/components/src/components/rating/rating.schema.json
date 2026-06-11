@@ -69,7 +69,8 @@
     "unsupportedProps": [
       {
         "name": "onchange",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Fires only for user-initiated committed value changes (click, arrow keys,\nSpace/Enter). Never fires for hover preview or external prop synchronization."
       }
     ]
   }

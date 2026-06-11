@@ -17,10 +17,13 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Must be <li> elements containing NavigationItem and/or SideNavigationGroup.',
       },
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Additional CSS class merged with `.cinder-side-navigation`.',
       },
     ],
   },

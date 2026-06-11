@@ -26,10 +26,11 @@ The default label is "Skip to main content"; pass children to override it. SkipL
 
 <!-- generated:props:start -->
 
-| Prop     | Type     | Required | Default | Description                                                          |
-| -------- | -------- | -------- | ------- | -------------------------------------------------------------------- |
-| `class`  | `string` | no       | —       | Additional classes merged onto the visually-hidden anchor.           |
-| `target` | `string` | yes      | —       | The `id` of the element to receive focus when the link is activated. |
+| Prop       | Type       | Required | Default | Description                                                                                                                                                                                             |
+| ---------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`    | `string`   | no       | —       | Additional classes merged onto the visually-hidden anchor.                                                                                                                                              |
+| `target`   | `string`   | yes      | —       | The `id` of the element to receive focus when the link is activated.                                                                                                                                    |
+| `children` | `(opaque)` | no       | —       | Optional override for the visible label. Defaults to "Skip to main content". A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

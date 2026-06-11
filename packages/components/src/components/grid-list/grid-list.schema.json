@@ -12,11 +12,14 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Items — typically `GridListItem` instances."
       },
       {
         "name": "class",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Extra class names merged with `cinder-grid-list`."
       }
     ]
   }

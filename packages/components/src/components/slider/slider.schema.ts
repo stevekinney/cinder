@@ -77,6 +77,7 @@ const schema = {
       {
         name: 'valueText',
         reason: 'function-or-snippet',
+        description: 'Formats the numeric value for `aria-valuetext`.',
       },
     ],
   },

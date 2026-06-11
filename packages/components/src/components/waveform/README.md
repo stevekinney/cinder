@@ -26,17 +26,19 @@ Responsive SVG rendering of time-domain audio amplitude data as a waveform path 
 
 <!-- generated:props:start -->
 
-| Prop                  | Type                                                | Required | Default | Description |
-| --------------------- | --------------------------------------------------- | -------- | ------- | ----------- |
-| `class`               | `string`                                            | no       | —       |             |
-| `data`                | `number`[]                                          | yes      | —       |             |
-| `dataTableCaption`    | `string`                                            | no       | —       |             |
-| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |             |
-| `description`         | `string`                                            | no       | —       |             |
-| `height`              | `number`                                            | no       | —       |             |
-| `label`               | `string`                                            | yes      | —       |             |
-| `loading`             | `boolean`                                           | no       | —       |             |
-| `renderMode`          | `"path"` \| `"bars"`                                | no       | —       |             |
+| Prop                  | Type                                                | Required | Default | Description                                                                                                                                                             |
+| --------------------- | --------------------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`               | `string`                                            | no       | —       |                                                                                                                                                                         |
+| `data`                | `number`[]                                          | yes      | —       |                                                                                                                                                                         |
+| `dataTableCaption`    | `string`                                            | no       | —       |                                                                                                                                                                         |
+| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |                                                                                                                                                                         |
+| `description`         | `string`                                            | no       | —       |                                                                                                                                                                         |
+| `height`              | `number`                                            | no       | —       |                                                                                                                                                                         |
+| `label`               | `string`                                            | yes      | —       |                                                                                                                                                                         |
+| `loading`             | `boolean`                                           | no       | —       |                                                                                                                                                                         |
+| `renderMode`          | `"path"` \| `"bars"`                                | no       | —       |                                                                                                                                                                         |
+| `empty`               | `(opaque)`                                          | no       | —       | Snippet rendered when the chart has no data. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `loadingContent`      | `(opaque)`                                          | no       | —       | Snippet rendered while loading. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.              |
 
 <!-- generated:props:end -->
 

@@ -110,5 +110,17 @@
     }
   },
   "additionalProperties": false,
-  "required": ["label", "series"]
+  "required": ["label", "series"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "empty",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "loadingContent",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

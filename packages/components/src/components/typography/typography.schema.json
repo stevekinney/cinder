@@ -140,5 +140,15 @@
       "description": "Additional class names merged with `.cinder-typography`."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "The text content or composed inline content."
+      }
+    ]
+  }
 }

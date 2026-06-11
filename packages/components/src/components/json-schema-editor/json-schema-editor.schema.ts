@@ -51,10 +51,13 @@ const schema = {
       {
         name: 'original',
         reason: 'unknown-shape',
+        description: 'Optional explicit baseline; defaults to the initial `schema`.',
       },
       {
         name: 'schema',
         reason: 'unknown-shape',
+        required: true,
+        description: 'The schema being edited. May be a string (JSON text) or pre-parsed value.',
       },
     ],
   },

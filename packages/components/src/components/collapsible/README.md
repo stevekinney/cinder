@@ -49,13 +49,15 @@ For multiple coordinated sections where opening one may close others, use [`Acco
 
 <!-- generated:props:start -->
 
-| Prop       | Type      | Required | Default | Description                                                                         |
-| ---------- | --------- | -------- | ------- | ----------------------------------------------------------------------------------- |
-| `class`    | `string`  | no       | —       | Additional classes merged onto the root element.                                    |
-| `disabled` | `boolean` | no       | `false` | When true, the trigger cannot be toggled.                                           |
-| `idBase`   | `string`  | no       | —       | Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted.    |
-| `open`     | `boolean` | no       | `false` | Bindable open state. Without binding, the initial value the component then manages. |
-| `trigger`  | `string`  | yes      | —       | Trigger label text. (The snippet form is template-only; see the type above.)        |
+| Prop       | Type       | Required | Default | Description                                                                                                                                                                                                      |
+| ---------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`    | `string`   | no       | —       | Additional classes merged onto the root element.                                                                                                                                                                 |
+| `disabled` | `boolean`  | no       | `false` | When true, the trigger cannot be toggled.                                                                                                                                                                        |
+| `idBase`   | `string`   | no       | —       | Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted.                                                                                                                                 |
+| `open`     | `boolean`  | no       | `false` | Bindable open state. Without binding, the initial value the component then manages.                                                                                                                              |
+| `trigger`  | `string`   | yes      | —       | Trigger label text. (The snippet form is template-only; see the type above.)                                                                                                                                     |
+| `children` | `(opaque)` | yes      | —       | Panel content shown when open. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                        |
+| `onToggle` | `(opaque)` | no       | —       | Fired on every successful toggle with the next open state. Not called while disabled. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

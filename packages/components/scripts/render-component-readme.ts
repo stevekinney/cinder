@@ -55,11 +55,9 @@ function replaceRegion(text: string, region: Region, body: string): string {
 function renderPropsTable(schema: ComponentSchemaOutput): string {
   const propertyEntries = Object.entries(schema.properties);
   const requiredSet = new Set(schema.required ?? []);
-  const unsupported = new Map(
-    (schema.metadata?.unsupportedProps ?? []).map((entry) => [entry.name, entry.reason]),
-  );
+  const unsupported = schema.metadata?.unsupportedProps ?? [];
 
-  if (propertyEntries.length === 0 && unsupported.size === 0) {
+  if (propertyEntries.length === 0 && unsupported.length === 0) {
     return 'This component does not declare any props.';
   }
 
@@ -75,10 +73,14 @@ function renderPropsTable(schema: ComponentSchemaOutput): string {
     rows.push(`| \`${name}\` | ${type} | ${required} | ${def} | ${description} |`);
   }
 
-  for (const [name, reason] of [...unsupported.entries()].toSorted(([a], [b]) =>
-    a.localeCompare(b),
-  )) {
-    rows.push(`| \`${name}\` | \`(opaque)\` | no | — | ${describeUnsupportedReason(reason)} |`);
+  for (const entry of [...unsupported].toSorted((a, b) => a.name.localeCompare(b.name))) {
+    const required = entry.required ? 'yes' : 'no';
+    // An authored JSDoc description (when the generator captured one) leads, then
+    // the reason prose explains why the JSON schema can't express the prop.
+    const authored = (entry.description ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+    const reasonProse = describeUnsupportedReason(entry.reason);
+    const description = authored ? `${authored} ${reasonProse}` : reasonProse;
+    rows.push(`| \`${entry.name}\` | \`(opaque)\` | ${required} | — | ${description} |`);
   }
 
   return rows.join('\n');

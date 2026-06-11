@@ -32,10 +32,14 @@ const schema = {
       {
         name: 'items',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Receives a context object with the current variant.',
       },
       {
         name: 'menuToggle',
         reason: 'function-or-snippet',
+        description:
+          'Snippet receiving toggle button attributes. Consumer renders the actual <button> and should mark decorative glyphs or icons inside it as aria-hidden so the button name comes from text or aria-label, not the ornament.',
       },
     ],
   },

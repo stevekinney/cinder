@@ -41,18 +41,23 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description: 'Nested TreeItem children for branch nodes.',
       },
       {
         name: 'loadChildren',
         reason: 'function-or-snippet',
+        description:
+          'Async loader called the first time the item is expanded. Implies `branch=true`.\nThe loader mutates consumer-owned reactive state; it returns no data.\nErrors are forwarded to `onLoadError` if provided, otherwise logged via\n`console.error` with a `[cinder-tree]` prefix.',
       },
       {
         name: 'onLoadError',
         reason: 'function-or-snippet',
+        description: 'Called when `loadChildren` rejects with a non-abort error.',
       },
       {
         name: 'row',
         reason: 'function-or-snippet',
+        description: 'Optional row content snippet override. Default renders `label`.',
       },
     ],
   },

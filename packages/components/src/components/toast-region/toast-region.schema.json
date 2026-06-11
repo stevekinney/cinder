@@ -31,7 +31,8 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Optional children. When provided, the region wraps them so descendants\ncan call `useToast()` and read the region's context. Most apps mount\n`<ToastRegion>` as a self-closing tag at the root of their layout and\nleave this empty — but some patterns (modal-scoped regions, tests)\nbenefit from explicit child composition."
       }
     ]
   }

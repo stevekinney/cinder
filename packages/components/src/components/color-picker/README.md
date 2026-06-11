@@ -26,8 +26,8 @@ Full-featured input for selecting a color via hue, saturation, lightness, and he
 | `name`         | `string`   | no       | —       | Form field name. When set, a hidden input mirrors the current value for form submission.                                                                                                                                   |
 | `swatches`     | `string`[] | no       | —       | Optional palette of preset colors rendered below the picker.                                                                                                                                                               |
 | `value`        | `string`   | no       | —       | Bindable value. Reading the value yields a hex string (`#rrggbb`, or `#rrggbbaa` when `alpha` is true). Setting the value accepts hex, `rgb()`, `rgba()`, `hsl()`, or `hsla()` input; invalid input is normalized to `''`. |
-| `onchange`     | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                 |
-| `oninput`      | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                 |
+| `onchange`     | `(opaque)` | no       | —       | Fired on commit (pointer up, swatch click, slider key). A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                         |
+| `oninput`      | `(opaque)` | no       | —       | Fired on every intermediate update (drag, slider key, swatch click). A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                            |
 
 <!-- generated:props:end -->
 

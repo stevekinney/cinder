@@ -82,6 +82,8 @@ const schema = {
       {
         name: 'onchange',
         reason: 'function-or-snippet',
+        description:
+          'Fires on successful blur-time commit when the canonical hex actually\nchanges. Value callback by repo convention — not forwarded to the inner\nnative `<input>`.',
       },
     ],
   },

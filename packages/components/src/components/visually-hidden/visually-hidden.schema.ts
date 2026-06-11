@@ -120,6 +120,17 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description:
+          'Required content — must render something assistive technology can announce.\nThe render site uses optional chaining (`children?.()`) as a JS-consumer safety\nnet, but omitting children defeats the entire purpose of this component: an empty\n`.cinder-sr-only` announces nothing to AT. Always provide meaningful content.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

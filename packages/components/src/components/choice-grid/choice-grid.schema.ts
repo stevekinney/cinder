@@ -58,10 +58,13 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: '`ChoiceGridItem` children.',
       },
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Additional class names merged with `.cinder-choice-grid`.',
       },
     ],
   },

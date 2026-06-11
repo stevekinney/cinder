@@ -132,6 +132,16 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Required content rendered inside the ratio box.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

@@ -32,31 +32,38 @@
     "unsupportedProps": [
       {
         "name": "class",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Additional classes merged with `.cinder-file-upload`."
       },
       {
         "name": "dragActive",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Replaces the default drag-active dropzone body."
       },
       {
         "name": "fileList",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Replaces the default file-list renderer. Receives the resolved rows."
       },
       {
         "name": "files",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Consumer-driven file rows, including upload progress and error states."
       },
       {
         "name": "idle",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Replaces the default resting-state dropzone body."
       },
       {
         "name": "onchange",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Fires with accepted files after local validation passes."
       },
       {
         "name": "onreject",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Fires with rejected files and reasons after local validation runs."
       }
     ]
   }

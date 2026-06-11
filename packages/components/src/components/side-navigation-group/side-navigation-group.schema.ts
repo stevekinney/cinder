@@ -29,18 +29,25 @@ const schema = {
       {
         name: 'badge',
         reason: 'function-or-snippet',
+        description:
+          'Optional trailing badge rendered inside the header button after the label, before the chevron.',
       },
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description:
+          'Must be <li>-wrapped NavigationItems (or SideNavigationItems) rendered inside the disclosed <ul>.',
       },
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Additional CSS class merged with `.cinder-side-navigation-group`.',
       },
       {
         name: 'icon',
         reason: 'function-or-snippet',
+        description: 'Optional leading icon rendered inside the header button before the label.',
       },
     ],
   },

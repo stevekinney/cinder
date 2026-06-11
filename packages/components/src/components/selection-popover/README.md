@@ -104,16 +104,16 @@ The component treats that point as a Floating UI virtual anchor, not as the pane
 
 <!-- generated:props:start -->
 
-| Prop              | Type       | Required | Default | Description                                                                                                                |
-| ----------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `class`           | `string`   | no       | —       | Additional class names merged with `.cinder-selection-popover`.                                                            |
-| `id`              | `string`   | yes      | —       | Unique identifier for the popover.                                                                                         |
-| `open`            | `boolean`  | no       | —       | Whether the popover is visible.                                                                                            |
-| `oncancel`        | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `onclose`         | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `oncommentsubmit` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `onexpand`        | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `position`        | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| Prop              | Type       | Required | Default | Description                                                                                                                                                                          |
+| ----------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `class`           | `string`   | no       | —       | Additional class names merged with `.cinder-selection-popover`.                                                                                                                      |
+| `id`              | `string`   | yes      | —       | Unique identifier for the popover.                                                                                                                                                   |
+| `open`            | `boolean`  | no       | —       | Whether the popover is visible.                                                                                                                                                      |
+| `oncancel`        | `(opaque)` | no       | —       | Called when the composer is canceled. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                     |
+| `onclose`         | `(opaque)` | no       | —       | Called when the popover should close. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                     |
+| `oncommentsubmit` | `(opaque)` | no       | —       | Called when a comment is submitted. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                       |
+| `onexpand`        | `(opaque)` | no       | —       | Called when the compact action expands into the composer. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `position`        | `(opaque)` | yes      | —       | Viewport-relative anchor point for the popover. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                              |
 
 <!-- generated:props:end -->
 

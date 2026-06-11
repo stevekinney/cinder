@@ -25,7 +25,7 @@ Single boolean toggle for opt-in selections within forms or settings.
 | `id`            | `string`   | no       | —       | Unique identifier for label association and ARIA wiring. Optional: when omitted, a stable id is generated via `$props.id()` (or inherited from a FormField context), matching Input/Autocomplete. Provide it when you need a known id to reference. |
 | `indeterminate` | `boolean`  | no       | —       | Bound indeterminate state. Mutually exclusive with `checked` visually.                                                                                                                                                                              |
 | `label`         | `string`   | no       | —       | Visible label rendered in a `<label>` element associated via `for`.                                                                                                                                                                                 |
-| `class`         | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                             |
+| `class`         | `(opaque)` | no       | —       | Extra class names merged with `.cinder-checkbox`. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                           |
 
 <!-- generated:props:end -->
 

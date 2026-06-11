@@ -26,6 +26,17 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description:
+          'Badge content — intentionally required. A badge without content is\nsemantically meaningless. The render site uses optional chaining\n(`children?.()`) as a runtime safety net for JS consumers.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

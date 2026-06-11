@@ -34,6 +34,8 @@ const schema = {
       {
         name: 'highlighter',
         reason: 'function-or-snippet',
+        description:
+          'Custom highlighter for this instance, used in place of the bundled Shiki\ndefault. Receives `(code, language)` and returns an HTML string (sync or\nasync). When provided, the default highlighter is never imported.',
       },
     ],
   },

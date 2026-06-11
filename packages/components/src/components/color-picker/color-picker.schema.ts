@@ -48,10 +48,12 @@ const schema = {
       {
         name: 'onchange',
         reason: 'function-or-snippet',
+        description: 'Fired on commit (pointer up, swatch click, slider key).',
       },
       {
         name: 'oninput',
         reason: 'function-or-snippet',
+        description: 'Fired on every intermediate update (drag, slider key, swatch click).',
       },
     ],
   },

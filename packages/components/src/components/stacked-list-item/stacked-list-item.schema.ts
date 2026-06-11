@@ -43,14 +43,17 @@ const schema = {
       {
         name: 'description',
         reason: 'function-or-snippet',
+        description: 'Secondary description below the title.',
       },
       {
         name: 'leading',
         reason: 'function-or-snippet',
+        description: 'Leading visual (avatar, icon, status dot).',
       },
       {
         name: 'meta',
         reason: 'function-or-snippet',
+        description: 'Tertiary metadata (timestamp, badge, system label).',
       },
       {
         name: 'target',
@@ -59,10 +62,13 @@ const schema = {
       {
         name: 'title',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Primary label. Required.',
       },
       {
         name: 'trailing',
         reason: 'function-or-snippet',
+        description: 'Trailing region (chevron, action button, dropdown trigger).',
       },
     ],
   },

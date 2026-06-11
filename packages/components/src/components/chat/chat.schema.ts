@@ -63,6 +63,9 @@ const schema = {
       {
         name: 'conversation',
         reason: 'unknown-shape',
+        required: true,
+        description:
+          'The conversation transcript to render. Pass a {@link ConversationHistory}\nsnapshot; consumers holding a stateful conversation object pass its current\nsnapshot (e.g. `conversation.current`).',
       },
       {
         name: 'empty',

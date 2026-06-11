@@ -13,11 +13,14 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Must be <li> elements containing NavigationItem and/or SideNavigationGroup."
       },
       {
         "name": "class",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Additional CSS class merged with `.cinder-side-navigation`."
       }
     ]
   }

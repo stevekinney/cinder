@@ -43,14 +43,19 @@ const schema = {
       {
         name: 'onError',
         reason: 'function-or-snippet',
+        description: 'Notified when onLoadMore throws or rejects.',
       },
       {
         name: 'onLoadMore',
         reason: 'function-or-snippet',
+        description:
+          'Called when the next page should be loaded. Caller flips `loading` and `hasMore`.',
       },
       {
         name: 'root',
         reason: 'unknown-shape',
+        description:
+          'Scroll container the sentinel is observed within. Pass the scrollable\nancestor element when the list scrolls inside a container rather than the\nviewport. `null`/omitted observes against the viewport. Captured at\nattachment time.',
       },
     ],
   },

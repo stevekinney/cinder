@@ -33,23 +33,28 @@
     "unsupportedProps": [
       {
         "name": "hunks",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Bindable: reactive access to computed hunks.\nParent components can bind to this to reactively access hunk data."
       },
       {
         "name": "onrevertall",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Called when user wants to revert all changes"
       },
       {
         "name": "onreverthunk",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Called when user wants to revert a specific hunk"
       },
       {
         "name": "toolbar",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Override the entire toolbar for advanced customization.\nWhen provided, replaces the default toolbar completely."
       },
       {
         "name": "toolbarActions",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Additional toolbar actions rendered in the toolbar-right section.\nUse this to inject custom buttons (e.g., export actions) without\nreplacing the entire toolbar."
       }
     ]
   }

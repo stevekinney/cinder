@@ -39,6 +39,16 @@ export type UnsupportedReason =
 export interface UnsupportedProp {
   name: string;
   reason: UnsupportedReason;
+  /**
+   * Whether the prop is required on the component. Recorded so the generated
+   * README can show a faithful Required column for props the JSON schema cannot
+   * express (e.g. a required `onselect: () => void` callback). Absent for the
+   * legacy fallback-path entries, which the renderer continues to treat as
+   * not-required.
+   */
+  required?: boolean;
+  /** The prop's JSDoc description, when one is authored. */
+  description?: string;
 }
 
 export interface PropertySchema {
@@ -148,7 +158,7 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
 
     const propType = getPropType(symbol);
     if (!propType) {
-      unsupportedProps.push({ name: propName, reason: 'unknown-shape' });
+      unsupportedProps.push(makeUnsupportedProp(symbol, propName, 'unknown-shape'));
       continue;
     }
 
@@ -158,7 +168,7 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
       hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
     );
     if (converted.kind === 'unsupported') {
-      unsupportedProps.push({ name: propName, reason: converted.reason });
+      unsupportedProps.push(makeUnsupportedProp(symbol, propName, converted.reason));
       continue;
     }
 
@@ -170,6 +180,46 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
     properties[propName] = schemaEntry;
 
     if (!symbol.isOptional()) required.push(propName);
+  }
+
+  // When a `<Name>SchemaProps` allowlist is used, props that exist on the full
+  // `<Name>Props` but are deliberately omitted from the allowlist never reach the
+  // loop above. That is correct for HTML-attribute and expressible props — the
+  // allowlist is the curated JSON-expressible surface. But a component-authored
+  // FUNCTION or SNIPPET prop (e.g. a required `onselect: () => void`) is part of
+  // the public API and JSON Schema simply cannot represent it. Omitting it
+  // silently means tooling and the generated README have no way to discover the
+  // prop exists at all. Record exactly those props in `unsupportedProps` so they
+  // are documented as known-but-unexpressible, without polluting the schema with
+  // the hundreds of inherited HTML attributes.
+  if (usedFocusedAllowList) {
+    const fullPropsType = findExportedType(sourceFile, propsTypeName);
+    if (fullPropsType) {
+      const recordedNames = new Set([
+        ...Object.keys(properties),
+        ...unsupportedProps.map((entry) => entry.name),
+      ]);
+      for (const symbol of fullPropsType.getProperties()) {
+        const propName = symbol.getName();
+        if (recordedNames.has(propName)) continue;
+        // Only component-authored props — never the inherited svelte/elements
+        // event handlers (onclick, etc.) or aria-*/global attributes.
+        if (isInheritedFromSvelteElements(symbol)) continue;
+        const propType = getPropType(symbol);
+        if (!propType) continue;
+        const converted = convertType(
+          propType,
+          0,
+          hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
+        );
+        // Record ONLY function/snippet props. An expressible prop the author
+        // deliberately curated out of the allowlist stays out; a non-callback
+        // unsupported shape is the author's omission to make, not ours to surface.
+        if (converted.kind === 'unsupported' && converted.reason === 'function-or-snippet') {
+          unsupportedProps.push(makeUnsupportedProp(symbol, propName, 'function-or-snippet'));
+        }
+      }
+    }
   }
 
   const schema: ComponentSchemaOutput = {
@@ -190,6 +240,24 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
   const schemaModule = renderSchemaModule(schema, depthToSrc);
 
   return { schema, schemaJson, schemaModule };
+}
+
+/**
+ * Build an `unsupportedProps` entry, capturing the prop's required-ness and
+ * authored description so the generated README can report a prop the JSON schema
+ * cannot express (e.g. a required `() => void` callback) without falsely showing
+ * it as optional and undescribed.
+ */
+function makeUnsupportedProp(
+  symbol: MorphSymbol,
+  name: string,
+  reason: UnsupportedReason,
+): UnsupportedProp {
+  const entry: UnsupportedProp = { name, reason };
+  if (!symbol.isOptional()) entry.required = true;
+  const description = readJsDocDescription(symbol);
+  if (description) entry.description = description;
+  return entry;
 }
 
 function applyComponentSchemaRules(componentName: string, schema: ComponentSchemaOutput): void {
@@ -266,10 +334,8 @@ function convertUnion(parts: Type[], depth = 0, expandObjectShapes = false): Con
 }
 
 function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
-  if (type.isStringLiteral())
-    return { kind: 'ok', schema: { const: stringLiteralValue(type) } };
-  if (type.isNumberLiteral())
-    return { kind: 'ok', schema: { const: numberLiteralValue(type) } };
+  if (type.isStringLiteral()) return { kind: 'ok', schema: { const: stringLiteralValue(type) } };
+  if (type.isNumberLiteral()) return { kind: 'ok', schema: { const: numberLiteralValue(type) } };
   if (type.isBooleanLiteral()) {
     return { kind: 'ok', schema: { const: booleanLiteralValue(type) } };
   }
@@ -611,9 +677,7 @@ function findExportedType(sourceFile: SourceFile, name: string): Type | null {
 }
 
 function readJsDocDescription(symbol: MorphSymbol): string | undefined {
-  const tags = symbol
-    .getDeclarations()
-    .flatMap((d) => (Node.isJSDocable(d) ? d.getJsDocs() : []));
+  const tags = symbol.getDeclarations().flatMap((d) => (Node.isJSDocable(d) ? d.getJsDocs() : []));
   for (const doc of tags) {
     const text = doc.getDescription().trim();
     if (text) return text;

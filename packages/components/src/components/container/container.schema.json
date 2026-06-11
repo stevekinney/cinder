@@ -126,5 +126,15 @@
       "description": "Additional classes merged onto the root element."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Required content rendered inside the container."
+      }
+    ]
+  }
 }

@@ -68,14 +68,18 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Panel content. Required.',
       },
       {
         name: 'trigger',
         reason: 'function-or-snippet',
+        description: 'Optional trigger snippet rendered inside a wrapper.',
       },
       {
         name: 'triggerRef',
         reason: 'unknown-shape',
+        description: 'Explicit anchor element. Wins over the snippet-resolved focusable.',
       },
     ],
   },

@@ -24,7 +24,9 @@
     "unsupportedProps": [
       {
         "name": "value",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "required": true,
+        "description": "The value to render. Any JSON-serializable structure."
       }
     ]
   }

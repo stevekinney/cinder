@@ -52,18 +52,22 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description: 'Custom content rendered below the status text and before the actions.',
       },
       {
         name: 'onDismiss',
         reason: 'function-or-snippet',
+        description: 'Called when the gate is dismissed.',
       },
       {
         name: 'onFallbackAction',
         reason: 'function-or-snippet',
+        description: 'Called when the fallback action button is activated.',
       },
       {
         name: 'onPrimaryAction',
         reason: 'function-or-snippet',
+        description: 'Called when the primary action button is activated.',
       },
     ],
   },

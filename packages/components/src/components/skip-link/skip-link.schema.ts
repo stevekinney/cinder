@@ -15,6 +15,15 @@ const schema = {
   },
   additionalProperties: false,
   required: ['target'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        description: 'Optional override for the visible label. Defaults to "Skip to main content".',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

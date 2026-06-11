@@ -32,6 +32,7 @@ const schema = {
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Additional class names merged with `.cinder-avatar`.',
       },
     ],
   },

@@ -24,6 +24,16 @@ const schema = {
   },
   additionalProperties: false,
   required: ['id', 'title'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Panel content rendered when the item is expanded.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

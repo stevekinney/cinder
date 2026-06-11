@@ -18,12 +18,13 @@ Moves content into `document.body` or another host element while keeping inline 
 
 <!-- generated:props:start -->
 
-| Prop                | Type               | Required | Default | Description |
-| ------------------- | ------------------ | -------- | ------- | ----------- |
-| `class`             | `string`           | no       | —       |             |
-| `disabled`          | `boolean`          | no       | —       |             |
-| `inheritAttributes` | `boolean`          | no       | —       |             |
-| `target`            | `string` \| `null` | no       | —       |             |
+| Prop                | Type               | Required | Default | Description                                                                                                                |
+| ------------------- | ------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`             | `string`           | no       | —       |                                                                                                                            |
+| `disabled`          | `boolean`          | no       | —       |                                                                                                                            |
+| `inheritAttributes` | `boolean`          | no       | —       |                                                                                                                            |
+| `target`            | `string` \| `null` | no       | —       |                                                                                                                            |
+| `children`          | `(opaque)`         | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

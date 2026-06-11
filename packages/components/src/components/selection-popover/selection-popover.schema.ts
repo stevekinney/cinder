@@ -24,22 +24,28 @@ const schema = {
       {
         name: 'oncancel',
         reason: 'function-or-snippet',
+        description: 'Called when the composer is canceled.',
       },
       {
         name: 'onclose',
         reason: 'function-or-snippet',
+        description: 'Called when the popover should close.',
       },
       {
         name: 'oncommentsubmit',
         reason: 'function-or-snippet',
+        description: 'Called when a comment is submitted.',
       },
       {
         name: 'onexpand',
         reason: 'function-or-snippet',
+        description: 'Called when the compact action expands into the composer.',
       },
       {
         name: 'position',
         reason: 'unknown-shape',
+        required: true,
+        description: 'Viewport-relative anchor point for the popover.',
       },
     ],
   },

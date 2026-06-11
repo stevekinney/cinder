@@ -33,7 +33,7 @@ Right-click and long-press menu positioned at the user's pointer while reusing d
 | `disabled`       | `boolean`                    | no       | —       |                                                                                                                            |
 | `longPressDelay` | `number`                     | no       | —       |                                                                                                                            |
 | `open`           | `boolean`                    | no       | —       |                                                                                                                            |
-| `children`       | `(opaque)`                   | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `children`       | `(opaque)`                   | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 | `onopenchange`   | `(opaque)`                   | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->

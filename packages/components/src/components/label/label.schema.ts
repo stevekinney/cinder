@@ -25,10 +25,13 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'The label text or composed content.',
       },
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Additional class names merged with `.cinder-label`.',
       },
     ],
   },

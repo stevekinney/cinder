@@ -25,12 +25,12 @@ Grouped keyboard-shortcut reference that renders key combos via Kbd with accessi
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                                |
-| ---------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`   | no       | —       | Additional class names merged with `.cinder-keyboard-shortcuts`.                                                           |
-| `heading`  | `string`   | no       | —       | Optional heading for the entire shortcuts panel.                                                                           |
-| `children` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `groups`   | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| Prop       | Type       | Required | Default | Description                                                                                                                                                         |
+| ---------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`    | `string`   | no       | —       | Additional class names merged with `.cinder-keyboard-shortcuts`.                                                                                                    |
+| `heading`  | `string`   | no       | —       | Optional heading for the entire shortcuts panel.                                                                                                                    |
+| `children` | `(opaque)` | no       | —       | Intro content rendered above the groups. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `groups`   | `(opaque)` | yes      | —       | Groups of shortcuts to display. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                             |
 
 <!-- generated:props:end -->
 

@@ -52,7 +52,7 @@ The key distinction between AlertDialog and ConfirmDialog is _who initiates_ the
 | `destructive`      | `boolean`  | no       | —       |                                                                                                                            |
 | `open`             | `boolean`  | yes      | —       |                                                                                                                            |
 | `title`            | `string`   | yes      | —       |                                                                                                                            |
-| `onacknowledge`    | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onacknowledge`    | `(opaque)` | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 | `oncancel`         | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 | `triggerRef`       | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 

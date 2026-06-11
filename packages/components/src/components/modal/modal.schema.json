@@ -34,7 +34,8 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       },
       {
         "name": "footer",
@@ -42,7 +43,8 @@
       },
       {
         "name": "ondismiss",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Fired on user-initiated dismissal. Includes: Escape key (native dialog 'cancel' event),\nbackdrop click, and the close-X button. EXCLUDES: parent-driven open = false.\nCallbacks are not awaited and thrown callbacks do not block close."
       },
       {
         "name": "triggerRef",

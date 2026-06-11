@@ -21,6 +21,7 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description: 'DropdownLabel plus grouped DropdownItem rows.',
       },
     ],
   },

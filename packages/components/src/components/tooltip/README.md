@@ -24,7 +24,7 @@ Hover-and-focus triggered hint for terse controls, anchored to a focusable child
 | `describe`  | `boolean`                                      | no       | —       | Whether to wire tooltip text to the trigger via aria-describedby.                                                          |
 | `placement` | `"top"` \| `"right"` \| `"bottom"` \| `"left"` | no       | —       |                                                                                                                            |
 | `text`      | `string`                                       | yes      | —       |                                                                                                                            |
-| `children`  | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `children`  | `(opaque)`                                     | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

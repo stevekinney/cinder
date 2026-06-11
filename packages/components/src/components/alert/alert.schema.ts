@@ -21,6 +21,23 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+      },
+      {
+        name: 'icon',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onDismiss',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

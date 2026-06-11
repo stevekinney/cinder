@@ -53,14 +53,17 @@ const schema = {
       {
         name: 'onPause',
         reason: 'function-or-snippet',
+        description: 'Called when the pause action is triggered.',
       },
       {
         name: 'onPlay',
         reason: 'function-or-snippet',
+        description: 'Called when the play action is triggered.',
       },
       {
         name: 'onReplay',
         reason: 'function-or-snippet',
+        description: 'Called when the replay action is triggered.',
       },
     ],
   },

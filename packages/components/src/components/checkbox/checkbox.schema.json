@@ -36,7 +36,8 @@
     "unsupportedProps": [
       {
         "name": "class",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Extra class names merged with `.cinder-checkbox`."
       }
     ]
   }

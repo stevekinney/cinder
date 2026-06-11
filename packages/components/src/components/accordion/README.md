@@ -27,10 +27,11 @@ The leaf remains importable individually for à-la-carte builds — see
 
 <!-- generated:props:start -->
 
-| Prop       | Type      | Required | Default | Description                                               |
-| ---------- | --------- | -------- | ------- | --------------------------------------------------------- |
-| `class`    | `string`  | no       | —       | Additional CSS class merged with `.cinder-accordion`.     |
-| `multiple` | `boolean` | no       | `false` | When true, multiple items may be expanded simultaneously. |
+| Prop       | Type       | Required | Default | Description                                                                                                                                        |
+| ---------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`    | `string`   | no       | —       | Additional CSS class merged with `.cinder-accordion`.                                                                                              |
+| `multiple` | `boolean`  | no       | `false` | When true, multiple items may be expanded simultaneously.                                                                                          |
+| `children` | `(opaque)` | yes      | —       | AccordionItem children. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

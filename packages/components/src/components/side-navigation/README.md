@@ -28,11 +28,11 @@ The leaves remain importable individually for à-la-carte builds — see
 
 <!-- generated:props:start -->
 
-| Prop        | Type       | Required | Default | Description                                                                                                                |
-| ----------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `ariaLabel` | `string`   | yes      | —       | Accessible name for the <nav> landmark. Required, non-empty, distinct from other navs on the page.                         |
-| `children`  | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `class`     | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| Prop        | Type       | Required | Default | Description                                                                                                                                                                                            |
+| ----------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ariaLabel` | `string`   | yes      | —       | Accessible name for the <nav> landmark. Required, non-empty, distinct from other navs on the page.                                                                                                     |
+| `children`  | `(opaque)` | yes      | —       | Must be <li> elements containing NavigationItem and/or SideNavigationGroup. A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `class`     | `(opaque)` | no       | —       | Additional CSS class merged with `.cinder-side-navigation`. A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                    |
 
 <!-- generated:props:end -->
 

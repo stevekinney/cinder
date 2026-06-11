@@ -16,5 +16,14 @@
       "description": "Additional class names merged with `.cinder-kbd`."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet",
+        "description": "Key label content."
+      }
+    ]
+  }
 }

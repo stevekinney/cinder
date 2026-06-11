@@ -59,5 +59,19 @@
     }
   },
   "additionalProperties": false,
-  "required": ["data", "label", "valueField", "xField", "yField"]
+  "required": ["data", "label", "valueField", "xField", "yField"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "empty",
+        "reason": "function-or-snippet",
+        "description": "Snippet rendered when the chart has no data."
+      },
+      {
+        "name": "loadingContent",
+        "reason": "function-or-snippet",
+        "description": "Snippet rendered while the chart is loading."
+      }
+    ]
+  }
 }

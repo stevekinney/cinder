@@ -33,6 +33,7 @@ const schema = {
       {
         name: 'onacknowledge',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'oncancel',

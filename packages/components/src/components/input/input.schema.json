@@ -48,7 +48,8 @@
       },
       {
         "name": "value",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "required": true
       }
     ]
   }

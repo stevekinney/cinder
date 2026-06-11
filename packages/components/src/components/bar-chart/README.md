@@ -45,6 +45,8 @@ Responsive SVG bar chart for grouped or stacked category comparisons.
 | `series`                   | { color?: `string`; id: `string`; label: `string`; valueKey: `string` }[] | yes      | —       | Series value keys. Schema cannot prove every valueKey exists on every row; runtime validation enforces it.                                                        |
 | `xAxis`                    | { label?: `string`; tickCount?: `number` }                                | no       | —       |                                                                                                                                                                   |
 | `yAxis`                    | { label?: `string`; tickCount?: `number` }                                | no       | —       |                                                                                                                                                                   |
+| `empty`                    | `(opaque)`                                                                | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                        |
+| `loadingContent`           | `(opaque)`                                                                | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                        |
 
 <!-- generated:props:end -->
 

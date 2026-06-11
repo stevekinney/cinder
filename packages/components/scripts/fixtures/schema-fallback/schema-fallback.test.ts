@@ -210,9 +210,53 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     const { properties, metadata } = generateSchema('opaque-object', 'opaque-object');
     expect(properties['value']).toBeUndefined();
     expect(properties['values']).toBeUndefined();
+    // Unsupported entries now carry the prop's required-ness and authored JSDoc
+    // description so the generated README can document a prop the JSON schema
+    // can't express without falsely showing it as optional and undescribed.
     expect(metadata?.unsupportedProps).toEqual([
-      { name: 'value', reason: 'unknown-shape' },
-      { name: 'values', reason: 'unknown-shape' },
+      {
+        name: 'value',
+        reason: 'unknown-shape',
+        required: true,
+        description: 'Untagged object should not be widened to a permissive object schema.',
+      },
+      {
+        name: 'values',
+        reason: 'unknown-shape',
+        required: true,
+        description:
+          'Untagged object arrays should stay unsupported unless their item type is explicit.',
+      },
+    ]);
+  });
+
+  test('allowlist-omitted callback props are recorded in unsupportedProps, not dropped', () => {
+    const { properties, required, metadata } = generateSchema(
+      'allowlist-omits-callback',
+      'allowlist-omits-callback',
+    );
+
+    // The curated allowlist expresses only `label` in the schema proper.
+    expect(Object.keys(properties)).toEqual(['label']);
+    expect(required).toEqual(['label']);
+
+    // The required `onselect` and optional `ondismiss` callbacks — omitted from
+    // the allowlist but part of the component's public API — are surfaced in
+    // `unsupportedProps` with faithful required-ness and authored descriptions.
+    // The inherited HTML `onclick` (and friends) and the deliberately-curated-out
+    // expressible `label` are NOT recorded — only component-authored callbacks.
+    expect(metadata?.unsupportedProps).toEqual([
+      {
+        name: 'ondismiss',
+        reason: 'function-or-snippet',
+        description: 'Optional teardown callback.',
+      },
+      {
+        name: 'onselect',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Fired when the option is selected.',
+      },
     ]);
   });
 });

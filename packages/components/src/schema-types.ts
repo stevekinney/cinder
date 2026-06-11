@@ -13,6 +13,15 @@
 export interface ComponentSchemaUnsupportedProp {
   readonly name: string;
   readonly reason: string;
+  /**
+   * Whether the prop is required on the component. Present for props that the
+   * JSON schema cannot express but that are still part of the component's API
+   * (e.g. a required `onselect: () => void` callback), so tooling and docs can
+   * report them faithfully. Absent for legacy entries (treated as not-required).
+   */
+  readonly required?: boolean;
+  /** The prop's authored JSDoc description, when one exists. */
+  readonly description?: string;
 }
 
 export interface ComponentSchemaMetadata {
