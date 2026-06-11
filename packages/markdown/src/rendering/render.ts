@@ -29,8 +29,8 @@ import type {
   Html,
   ImageReference,
   LinkReference,
-  Root as MdastRoot,
   Nodes as MdastNodes,
+  Root as MdastRoot,
   Parent,
 } from 'mdast';
 import rehypeSanitize from 'rehype-sanitize';
@@ -401,8 +401,14 @@ function renderFromMdast(
     // eslint-disable-next-line no-unsafe-type-assertion -- unified's `runSync` returns the broad unist `Node`; the prior rehype steps guarantee a hast `Root` here.
     .runSync(highlightedHast as HastRoot);
 
-  // Stringify the sanitized hast to HTML
-  const html = unified().use(rehypeStringify).stringify(sanitizedHast);
+  // Stringify the sanitized hast to HTML.
+  // useNamedReferences: true makes rehype-stringify emit &amp; instead of &#x26;
+  // for & in text nodes. Without this, & in highlighted code (from Shiki's
+  // &#x26; output decoded back to &) would be re-encoded as &#x26; — which
+  // browsers render correctly but which is unnecessarily verbose.
+  const html = unified()
+    .use(rehypeStringify, { characterReferences: { useNamedReferences: true } })
+    .stringify(sanitizedHast);
 
   return {
     rawMarkdown: markdown,

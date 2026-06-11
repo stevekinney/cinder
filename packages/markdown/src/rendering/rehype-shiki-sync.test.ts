@@ -7,16 +7,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import type { Element, ElementContent, Text } from 'hast';
 import { initializeHighlighter, resetHighlighter } from './highlighter.js';
-import { rehypeShikiSync } from './rehype-shiki-sync.js';
-
-/**
- * To test internal functions, we need to either:
- * 1. Export them (which exposes implementation details)
- * 2. Test through the public API
- *
- * We'll test through the public API (rehypeShikiSync) for integration behavior,
- * and create minimal test helpers that mirror the internal logic for unit tests.
- */
+import { decodeHtmlEntities, rehypeShikiSync } from './rehype-shiki-sync.js';
 
 // Helper to create a mock hast tree with a code block
 function createCodeBlockTree(
@@ -76,18 +67,6 @@ function extractLanguageFromClass(element: Element): string | null {
   }
 
   return null;
-}
-
-// Helper to decode HTML entities (mirrors internal decodeHtmlEntities)
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, '/');
 }
 
 // Helper to collect all text from an element (handles nested spans from Shiki)
@@ -287,6 +266,48 @@ describe('rehype-shiki-sync', () => {
 
     it('handles empty string', () => {
       expect(decodeHtmlEntities('')).toBe('');
+    });
+
+    it('decodes &#x3C; to <', () => {
+      expect(decodeHtmlEntities('&#x3C;div&#x3E;')).toBe('<div>');
+    });
+
+    it('decodes &#x26; to &', () => {
+      expect(decodeHtmlEntities('foo&#x26;bar')).toBe('foo&bar');
+    });
+
+    it('decodes &#x22; to "', () => {
+      expect(decodeHtmlEntities('&#x22;hello&#x22;')).toBe('"hello"');
+    });
+
+    it('does not cascade &#x26;lt; into <', () => {
+      // &#x26;lt; represents the literal text "&lt;" — must stay as "&lt;", not become "<"
+      expect(decodeHtmlEntities('&#x26;lt;')).toBe('&lt;');
+    });
+
+    it('does not cascade &#x26;#x3C; into <', () => {
+      // &#x26;#x3C; represents the literal text "&#x3C;" in source code.
+      // Single-pass: &#x26; → & in one match, leaving #x3C; as unmatched literal text,
+      // so the result is &#x3C; (not <).
+      expect(decodeHtmlEntities('&#x26;#x3C;')).toBe('&#x3C;');
+    });
+
+    it('does not cascade &#x26;amp; into &', () => {
+      // &#x26;amp; is what Shiki emits when source code contains literal "&amp;".
+      // Single-pass prevents re-scanning: &#x26; → & but the resulting &amp; is not re-decoded.
+      expect(decodeHtmlEntities('&#x26;amp;')).toBe('&amp;');
+    });
+
+    it('does not cascade &amp;#x26; into &', () => {
+      // &amp;#x26; represents literal "&#x26;" in source code.
+      // Single-pass: &amp; → & and #x26; is literal text, so the result is &#x26; not &.
+      expect(decodeHtmlEntities('&amp;#x26;')).toBe('&#x26;');
+    });
+
+    it('does not cascade &amp;#x26;lt; into <', () => {
+      // &amp;#x26;lt; represents literal "&#x26;lt;" in source code.
+      // Single-pass: &amp; → & leaves #x26;lt; as literal, result is &#x26;lt; not &lt; or <.
+      expect(decodeHtmlEntities('&amp;#x26;lt;')).toBe('&#x26;lt;');
     });
   });
 

@@ -260,18 +260,36 @@ function parseSpans(html: string): ElementContent[] {
   return children;
 }
 
+const HTML_ENTITY_PATTERN = /&(?:lt|gt|amp|quot|apos|#39|#x27|#x2F|#x3C|#x3E|#x22|#x26);/gi;
+
+const HTML_ENTITY_MAP: Record<string, string> = {
+  '&lt;': '<',
+  '&gt;': '>',
+  '&amp;': '&',
+  '&quot;': '"',
+  '&apos;': "'",
+  '&#39;': "'",
+  '&#x27;': "'",
+  '&#x2f;': '/',
+  '&#x3c;': '<',
+  '&#x3e;': '>',
+  '&#x22;': '"',
+  '&#x26;': '&',
+};
+
 /**
- * Decode HTML entities in text content.
+ * Decode HTML entities in text content using a single-pass replacement.
+ *
+ * Single-pass prevents cascade: `&#x26;amp;` → `&amp;` (not `&`) because
+ * the `&amp;` produced by decoding `&#x26;` is never re-scanned.
+ *
+ * @internal exported for unit testing only
  */
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, '/');
+export function decodeHtmlEntities(text: string): string {
+  return text.replace(
+    HTML_ENTITY_PATTERN,
+    (match) => HTML_ENTITY_MAP[match.toLowerCase()] ?? match,
+  );
 }
 
 /**

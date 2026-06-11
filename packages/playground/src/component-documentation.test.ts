@@ -70,10 +70,10 @@ describe('buildComponentDocumentation', () => {
 `);
 
     expect(readme.hadUnsafeContent).toBe(false);
-    expect(readme.html).toContain('&#x3C;Modal>');
-    expect(readme.html).toContain('&#x3C;p>');
-    expect(readme.html).toContain('&#x3C;script>');
-    expect(readme.html).toContain('&#x3C;style>');
+    expect(readme.html).toContain('&lt;Modal>');
+    expect(readme.html).toContain('&lt;p>');
+    expect(readme.html).toContain('&lt;script>');
+    expect(readme.html).toContain('&lt;style>');
     expect(readme.html).not.toContain('<script>');
     expect(readme.html).not.toContain('<style>');
     expect(readme.html).not.toContain('<img');

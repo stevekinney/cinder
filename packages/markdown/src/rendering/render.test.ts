@@ -552,10 +552,21 @@ py = "Python"
       // Should not contain raw script tags
       expect(result.html).not.toMatch(/<script>/);
       // Content should be preserved (escaped) - the exact encoding varies
-      // (could be &lt;, &#x3C;, or double-encoded &#x26;#x3C;)
+      // (could be &lt; or &#x3C;) but must NOT be double-encoded &#x26;#x3C;
       expect(result.html).toContain('script');
       // The key assertion: no executable script tag
       expect(result.html).not.toContain('<script>alert');
+      // Must not double-encode: Shiki outputs &#x3C; for < and rehype-stringify
+      // must not further encode the & to produce &#x26;#x3C;
+      expect(result.html).not.toContain('&#x26;#x3C;');
+    });
+
+    it('does not double-encode ampersand in highlighted code', () => {
+      const result = renderMarkdown('```javascript\nconst x = a && b;\n```');
+      // & in source → Shiki may emit &#x26; → must decode to & → rehype-stringify re-encodes as &amp;
+      // The final output must contain &amp; for the ampersand, never &#x26;
+      expect(result.html).not.toContain('&#x26;');
+      expect(result.html).toContain('&amp;');
     });
   });
 });
