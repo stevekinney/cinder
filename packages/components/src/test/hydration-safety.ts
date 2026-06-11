@@ -3,50 +3,40 @@
  * Build-flag hydration-safety test helper.
  *
  * Catches the class of hydration bug where a component's server-rendered markup
- * depends on a *build-time* environment flag — the canonical example being
- * `esm-env`'s `BROWSER`, which is `false` in the server build and `true` in the
- * client build. A `{#if BROWSER}` branch then renders nothing on the server but
- * something on the client's initial hydration pass, so the SSR HTML and the
- * client's hydration target disagree. This is exactly the original ShareCard
- * native-share bug; the fix is to gate client-only affordances on a `hydrated`
- * `$effect` (false during SSR *and* the initial hydration render, flipped true
- * by an effect afterwards) rather than on the build flag.
+ * depends on a *build-time* flag — canonically `esm-env`'s `BROWSER` (`false` in
+ * the server build, `true` in the client build). A `{#if BROWSER}` branch then
+ * renders nothing on the server but something on the client's initial hydration
+ * render, so the two disagree. This was the original ShareCard native-share bug;
+ * the fix gates client-only affordances on a `hydrated` `$effect` (false during
+ * SSR *and* the initial hydration render) instead of the build flag.
  *
- * How it works — two-sided invariance under the browser-condition flip:
- *   1. Build + server-render the component with the `browser` export condition
- *      OFF → esm-env resolves `BROWSER=false` → the SSR markup a real server
- *      produces.
- *   2. Build + server-render the SAME component with the `browser` condition ON
- *      → `BROWSER=true` → the markup the client's initial hydration render
- *      WANTS.
- *   3. Compare. If they differ, the component's render depends on the build-flag
- *      split — a hydration mismatch waiting to happen. If they match, it is
- *      build-flag-invariant and hydration-safe in this respect.
+ * Mechanism — two-sided invariance under the browser-condition flip: build +
+ * server-render the component twice, with the `browser` export condition off
+ * (`BROWSER=false`, real server markup) and on (`BROWSER=true`, the declarative
+ * markup the client's initial render wants), and compare. Differ → the render
+ * depends on the build flag. Match → it is build-flag-invariant.
  *
- * A `hydrated`-`$effect` gate is build-flag-invariant (the SSR render is the
- * same regardless of `BROWSER`, because `hydrated` starts `false` either way),
- * so it passes. A `{#if BROWSER}` gate is not, so it fails. That contrast is the
- * helper's whole contract.
+ * Why a static double-render rather than a real hydrate: Svelte 5 does not
+ * reliably emit a `hydration_mismatch` warning for an `{#if}` condition that
+ * merely evaluates differently — that warning is tied to hydration-walk
+ * structure failures, while a build-flag branch divergence is reconciled
+ * silently (confirmed in both happy-dom and a real Chromium dev hydrate). So
+ * runtime warning capture cannot observe this bug; the build-time render
+ * divergence is the deterministic signal. (See the PR for the full evidence.)
  *
- * Why static double-render, not a real hydrate: Svelte 5 only emits its
- * `hydration_mismatch` console warning for STRUCTURAL hydration-walk failures
- * (misaligned anchors, a missing expected node), NOT for an `{#if}` condition
- * that merely evaluates differently — it reconciles that silently, in both
- * happy-dom and a real browser. So neither a bun-test `hydrate()` nor a
- * Playwright console capture can observe this bug at runtime. The faithful,
- * deterministic signal is the build-time render divergence itself.
- *
- * Scope: this covers control-flow that branches on the build flag (`{#if}`,
- * `{#each}` over flag-derived data, attribute presence) — the #17 bug class. It
- * is a "build-flag hydration-safety check", not a universal hydration-mismatch
- * detector; it does not exercise bindings, actions, or runtime-only effects.
+ * Scope: build-flag control flow (`{#if BROWSER}`, `{#each}` over flag-derived
+ * data, flag-derived attribute presence). This is a proxy for the client
+ * compilation's initial declarative markup shape, NOT a full hydration pass — it
+ * does not validate bindings, actions, event attachment, lifecycle ordering, or
+ * DOM mutation during hydration. See {@link HydrationSafetyResult.buildFlagInvariant}.
  *
  * `Bun.build` resolves the full import graph, so a component that unconditionally
- * renders child `.svelte` components is handled natively — no special casing for
- * child effects (unlike `renderThenHydrate`, which only server-compiles the
+ * renders child `.svelte` components is handled natively — the "unconditional
+ * child-effects" case `renderThenHydrate` cannot (it server-compiles only the
  * top-level component).
  */
 import type { BunPlugin } from 'bun';
+import { unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -60,10 +50,13 @@ const hydrationSafetyTempDir = join(here, '..', '..', 'tmp', 'hydration-safety')
 /**
  * Minimal server-target Svelte plugin with `dev: false`. Dev mode is wrong here:
  * its element instrumentation (`push_element`) reads a component context that a
- * bare `render()` on a bundled module never establishes, and the server half
- * never needs a dev warning. Components carrying a `<style>` block are out of
- * scope for this helper (library components keep styles in `src/styles/`); CSS
- * is injected so the rare style-bearing fixture still compiles.
+ * bare `render()` on a bundled module never establishes. This is acceptable
+ * because the helper only compares production SSR HTML under two build
+ * conditions — it is not a warning-capture or development-hydration validator,
+ * and `{#if BROWSER}` markup divergence shows up in production output regardless.
+ * Components carrying a `<style>` block are out of scope (library components keep
+ * styles in `src/styles/`); CSS is injected so the rare style-bearing fixture
+ * still compiles.
  */
 function serverCompilePlugin(): BunPlugin {
   return {
@@ -114,11 +107,14 @@ async function renderWithConditions(
   const artifact = build.outputs[0];
   if (!artifact) throw new Error(`hydration-safety: no server artifact for ${componentPath}`);
 
-  // External svelte alone isn't enough: the test process runs under the
-  // `browser` export condition, so a runtime-resolved bare `svelte` import
-  // lands on the CLIENT build, whose `onDestroy`/`setContext` throw during a
-  // server render. Repoint the bare svelte specifiers at Svelte's server index
-  // (and server internals) — the same rewrite renderToServerHtml/hydrate.ts use.
+  // External svelte alone isn't enough: the test process runs under the `browser`
+  // export condition, so a runtime-resolved `svelte`/`svelte/internal/server`
+  // import lands on the CLIENT build, whose `onDestroy`/`setContext` throw during
+  // a server render. Repoint those at Svelte's server index — the same rewrite
+  // renderToServerHtml/hydrate.ts use. Other `svelte/*` subpaths
+  // (`svelte/reactivity`, `svelte/store`, …) stay runtime-resolved: they are
+  // isomorphic across the browser/server condition for SSR (verified with a
+  // `SvelteMap` child), so they don't fork the rendered markup.
   const sveltePackageUrl = import.meta.resolve('svelte/package.json');
   const serverIndexUrl = new URL('./src/index-server.js', sveltePackageUrl).href;
   const serverInternalUrl = new URL('./src/internal/server/index.js', sveltePackageUrl).href;
@@ -130,31 +126,24 @@ async function renderWithConditions(
     )
     .replaceAll(/from\s*['"]svelte['"]/g, `from ${JSON.stringify(serverIndexUrl)}`);
 
-  const moduleName = `${conditions.includes('browser') ? 'client' : 'server'}-${Bun.hash(
-    componentPath,
-  ).toString(36)}.mjs`;
+  // Unique per-call filename + finally cleanup so parallel checks on the SAME
+  // component path never race the same module file (mirrors hydrate.ts).
+  const moduleName = `${conditions.includes('browser') ? 'client' : 'server'}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`;
   const modulePath = join(hydrationSafetyTempDir, moduleName);
   await Bun.write(modulePath, code);
 
   const { render } = (await import('svelte/server')) as typeof import('svelte/server');
-  const module = (await import(pathToFileURL(modulePath).href)) as { default: unknown };
 
   // Clear the happy-dom globals the surrounding test suite installs at module
-  // scope, so a component that branches on `typeof document`/`navigator` takes
-  // the server path during this server-only render (mirrors server-render.ts).
+  // scope, so a component that branches on `typeof document`/`typeof window`
+  // takes the server path during this server-only render (mirrors
+  // server-render.ts, which clears exactly these two).
   const originalDocument = globalThis.document;
   const originalWindow = globalThis.window;
-  const originalNavigator = globalThis.navigator;
   globalThis.document = undefined as unknown as Document;
   globalThis.window = undefined as unknown as Window & typeof globalThis;
-  // `navigator` is a getter-only global in some runtimes; delete defensively.
   try {
-    delete (globalThis as { navigator?: unknown }).navigator;
-  } catch {
-    // Non-configurable in this runtime — leave it; `hydrated`-gated reads still
-    // take the server path because `hydrated` is false during SSR.
-  }
-  try {
+    const module = (await import(pathToFileURL(modulePath).href)) as { default: unknown };
     // The SSR module's default export is a server render function whose shape
     // doesn't match the public `Component` type; `render` accepts it at runtime.
     // Route through `Component<Record<string, unknown>>` (not `never`) so the
@@ -163,12 +152,10 @@ async function renderWithConditions(
   } finally {
     globalThis.document = originalDocument;
     globalThis.window = originalWindow;
-    if (originalNavigator !== undefined) {
-      try {
-        (globalThis as { navigator?: unknown }).navigator = originalNavigator;
-      } catch {
-        // Restore best-effort.
-      }
+    try {
+      unlinkSync(modulePath);
+    } catch {
+      // Best-effort — a stray temp module never breaks a test.
     }
   }
 }
@@ -198,17 +185,8 @@ export type HydrationSafetyResult = {
  * will hydration-mismatch; gate the offending markup on a `hydrated` `$effect`
  * instead.
  *
- * Scope — what this catches and what it does NOT: it catches the build-flag
- * (esm-env `BROWSER`-style) divergence — the #11/ShareCard bug class. It does
- * NOT catch a component that gates on a *runtime* environment check
- * (`{#if typeof window !== 'undefined'}`, `typeof navigator`) that is not also
- * behind a `hydrated` guard: both renders clear those globals identically, so
- * such a divergence is invisible here and would be reported `buildFlagInvariant:
- * true` despite mismatching in production. A `buildFlagInvariant: true` result
- * means "render does not depend on the build flag", not "hydration-safe in every
- * respect". ShareCard passes precisely because its `navigator` read sits behind
- * `hydrated &&` — which is the correct fix and what this helper guards against
- * regressing.
+ * See {@link HydrationSafetyResult.buildFlagInvariant} for what a `true` result
+ * does and does not guarantee.
  *
  * @param componentPath Absolute path to the component's `.svelte` file.
  * @param props Props forwarded to BOTH server renders (must be identical so the
@@ -218,7 +196,36 @@ export async function checkBuildFlagHydrationSafety(
   componentPath: string,
   props: Record<string, unknown> = {},
 ): Promise<HydrationSafetyResult> {
+  await assertDiscriminatorWorks();
   const serverHtml = await renderWithConditions(componentPath, ['svelte'], props);
   const clientHtml = await renderWithConditions(componentPath, ['browser', 'svelte'], props);
   return { buildFlagInvariant: serverHtml === clientHtml, serverHtml, clientHtml };
+}
+
+/**
+ * Memoized fail-closed self-check: the whole helper rests on `Bun.build`'s
+ * `conditions` flipping esm-env's `BROWSER` between the two renders. If that ever
+ * stops working (an esm-env export-map change, a resolution-cache quirk), every
+ * `{#if BROWSER}` component would render identically both ways and be silently
+ * reported `buildFlagInvariant: true` — a false negative on the exact bug class
+ * this exists to catch. So before the first real check, render a sentinel that
+ * is KNOWN to diverge on `BROWSER` and assert it actually does. Memoized to one
+ * build pair per process so it doesn't double the cost of every call.
+ */
+let discriminatorVerified: Promise<void> | null = null;
+function assertDiscriminatorWorks(): Promise<void> {
+  discriminatorVerified ??= (async () => {
+    const sentinel = join(here, 'fixtures', 'hydration-probe-browser-flag.svelte');
+    const off = await renderWithConditions(sentinel, ['svelte'], {});
+    const on = await renderWithConditions(sentinel, ['browser', 'svelte'], {});
+    if (off === on) {
+      throw new Error(
+        'hydration-safety: the BROWSER build-flag discriminator is not working — the ' +
+          '`{#if BROWSER}` sentinel rendered identically under both build conditions. ' +
+          'Every check would be a false negative. Investigate esm-env resolution / Bun.build ' +
+          'conditions before trusting any `buildFlagInvariant` result.',
+      );
+    }
+  })();
+  return discriminatorVerified;
 }

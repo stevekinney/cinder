@@ -69,5 +69,9 @@ describe('checkBuildFlagHydrationSafety', () => {
     expect(result.buildFlagInvariant).toBe(true);
     expect(result.serverHtml).toContain('data-testid="child"');
     expect(result.clientHtml).toContain('data-testid="child"');
+    // The gated affordance is absent under BOTH conditions — same as the
+    // childless safe case; the child does not smuggle it into either render.
+    expect(result.serverHtml).not.toContain('data-testid="client-only"');
+    expect(result.clientHtml).not.toContain('data-testid="client-only"');
   });
 });
