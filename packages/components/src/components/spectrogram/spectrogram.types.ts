@@ -6,6 +6,8 @@ import type { ChartDataTableVisibility } from '../chart.types.ts';
  * A single time-frame of frequency-bin magnitudes.
  * `label` identifies the time point (e.g. '0 ms', '10 ms').
  * `bins` is an ordered array of frequency-bin magnitudes, one per column.
+ *
+ * @schemaObject
  */
 export type SpectrogramFrame = {
   /** Time-axis label for this frame, e.g. '0 ms' or 't=0'. */

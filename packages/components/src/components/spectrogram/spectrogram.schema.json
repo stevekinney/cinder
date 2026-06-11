@@ -8,6 +8,27 @@
     "description": {
       "type": "string"
     },
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Time-axis label for this frame, e.g. '0 ms' or 't=0'."
+          },
+          "bins": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Magnitude values per frequency bin. A consistent length across frames is\npreferred, but ragged frames are supported: the grid uses the maximum bin\ncount across all frames and renders any missing bins in shorter frames as\n\"missing\" cells. Non-finite values (NaN/Infinity) also render as missing."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["bins", "label"]
+      }
+    },
     "frequencyLabels": {
       "type": "array",
       "items": {
@@ -31,13 +52,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["label"],
-  "metadata": {
-    "unsupportedProps": [
-      {
-        "name": "frames",
-        "reason": "unknown-shape"
-      }
-    ]
-  }
+  "required": ["frames", "label"]
 }

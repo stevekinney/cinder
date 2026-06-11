@@ -2,6 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 import type { ChartDataTableVisibility } from '../chart.types.ts';
 
+/** @schemaObject */
 export type SpectrumBin = {
   /** Frequency label, e.g. '440 Hz' or '1 kHz'. */
   label: string;
