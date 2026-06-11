@@ -39,4 +39,23 @@ describe('buildPublishedManifest', () => {
 
     expect(files).toContain('src/styles/**/*.css.d.ts');
   });
+
+  it('includes src/styles/base-guard.ts so the `./styles/guard` svelte source ships', () => {
+    // Regression guard: the `./styles/guard` export's `svelte` condition points
+    // at `./src/styles/base-guard.ts`. The build emits only
+    // `dist/styles/base-guard.js`, so without this entry a Svelte-aware consumer
+    // resolving the source condition hits a dangling path. It is the only `.ts`
+    // under `src/styles/` that ships, so it is listed explicitly rather than via
+    // a `src/styles/**/*.ts` glob.
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+
+    expect(files).toContain('src/styles/base-guard.ts');
+  });
 });

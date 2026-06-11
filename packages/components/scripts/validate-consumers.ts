@@ -419,6 +419,11 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/src/styles/tokens.css.d.ts',
       'package/src/styles/foundation.css.d.ts',
       'package/src/styles/utilities.css.d.ts',
+      // The `./styles/guard` export's `svelte` condition points at
+      // `./src/styles/base-guard.ts`; ship the source so Svelte-aware
+      // consumers don't resolve a dangling path (build emits only
+      // `dist/styles/base-guard.js`).
+      'package/src/styles/base-guard.ts',
       'package/dist/index.d.ts',
       'package/dist/index.js',
       'package/dist/server/index.js',
