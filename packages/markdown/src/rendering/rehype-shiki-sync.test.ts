@@ -294,8 +294,20 @@ describe('rehype-shiki-sync', () => {
 
     it('does not cascade &#x26;amp; into &', () => {
       // &#x26;amp; is what Shiki emits when source code contains literal "&amp;".
-      // &amp; must be decoded before &#x26; so this stays as &amp;, not &.
+      // Single-pass prevents re-scanning: &#x26; → & but the resulting &amp; is not re-decoded.
       expect(decodeHtmlEntities('&#x26;amp;')).toBe('&amp;');
+    });
+
+    it('does not cascade &amp;#x26; into &', () => {
+      // &amp;#x26; represents literal "&#x26;" in source code.
+      // Single-pass: &amp; → & and #x26; is literal text, so the result is &#x26; not &.
+      expect(decodeHtmlEntities('&amp;#x26;')).toBe('&#x26;');
+    });
+
+    it('does not cascade &amp;#x26;lt; into <', () => {
+      // &amp;#x26;lt; represents literal "&#x26;lt;" in source code.
+      // Single-pass: &amp; → & leaves #x26;lt; as literal, result is &#x26;lt; not &lt; or <.
+      expect(decodeHtmlEntities('&amp;#x26;lt;')).toBe('&#x26;lt;');
     });
   });
 

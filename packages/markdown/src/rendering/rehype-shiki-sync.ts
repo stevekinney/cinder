@@ -260,29 +260,36 @@ function parseSpans(html: string): ElementContent[] {
   return children;
 }
 
+const HTML_ENTITY_PATTERN = /&(?:lt|gt|amp|quot|apos|#39|#x27|#x2F|#x3C|#x3E|#x22|#x26);/gi;
+
+const HTML_ENTITY_MAP: Record<string, string> = {
+  '&lt;': '<',
+  '&gt;': '>',
+  '&amp;': '&',
+  '&quot;': '"',
+  '&apos;': "'",
+  '&#39;': "'",
+  '&#x27;': "'",
+  '&#x2f;': '/',
+  '&#x3c;': '<',
+  '&#x3e;': '>',
+  '&#x22;': '"',
+  '&#x26;': '&',
+};
+
 /**
- * Decode HTML entities in text content.
+ * Decode HTML entities in text content using a single-pass replacement.
  *
- * Ampersand forms must be decoded LAST, with &amp; before &#x26;. Decoding
- * them earlier would cascade: &#x26;lt; → &lt; → < instead of &lt;. The
- * &amp; step must precede &#x26; so that &#x26;amp; → &#x26;amp; → &amp;
- * (correct), not &#x26;amp; → &amp; → & (loses the entity).
+ * Single-pass prevents cascade: `&#x26;amp;` → `&amp;` (not `&`) because
+ * the `&amp;` produced by decoding `&#x26;` is never re-scanned.
  *
  * @internal exported for unit testing only
  */
 export function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&#x3C;/gi, '<')
-    .replace(/&#x3E;/gi, '>')
-    .replace(/&#x22;/gi, '"')
-    .replace(/&#x27;/gi, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x2F;/gi, '/')
-    .replace(/&amp;/g, '&') // &amp; before &#x26; — prevents &#x26;amp; cascading to &
-    .replace(/&#x26;/gi, '&'); // hex ampersand last
+  return text.replace(
+    HTML_ENTITY_PATTERN,
+    (match) => HTML_ENTITY_MAP[match.toLowerCase()] ?? match,
+  );
 }
 
 /**
