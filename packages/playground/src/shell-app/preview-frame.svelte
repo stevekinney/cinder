@@ -194,7 +194,7 @@
        This also keeps the iframe's height stable when previewWidth narrows
        the wrapper. */
     overflow: hidden;
-    background: var(--cinder-bg);
+    background: var(--cinder-surface-raised);
     min-height: 0;
   }
 
