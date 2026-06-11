@@ -945,7 +945,13 @@
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-6);
-    min-height: 100%;
+    /* Pull to the body edges to cover the body's responsive padding, then
+       restore the same gutter as the page's own padding so content is inset
+       identically. This keeps body { background: --cinder-bg } intact for
+       the theme-parity tests while the visible surface is --cinder-surface-raised. */
+    margin: calc(-1 * clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6)));
+    padding: clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6));
+    min-height: 100vh;
     background: var(--cinder-surface-raised);
   }
 
