@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { afterEach, describe, expect, it } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,11 +16,22 @@ const componentsSource = join(componentsRoot, 'src');
 const realComponentsDirectory = join(componentsSource, 'components');
 const realAggregator = join(componentsSource, 'styles', 'components.css');
 
+// Track every temp tree so it's removed after each test — otherwise repeated
+// local + CI runs leak fixture directories into the system temp dir.
+const fixtureRoots: string[] = [];
+afterEach(() => {
+  while (fixtureRoots.length > 0) {
+    rmSync(fixtureRoots.pop()!, { recursive: true, force: true });
+  }
+});
+
 /**
  * Build a throwaway component tree on disk: a `components/` directory with one
  * `<name>/<name>.css` per entry, plus a `styles/components.css` aggregator that
  * imports the given names. Extra raw files can be dropped in per component to
- * model sub-component partials and JS-only imports.
+ * model sub-component partials, nested partials, and JS-only imports. The
+ * aggregator import lines are written verbatim, so a caller can pass a
+ * commented-out or `url(...)`-wrapped specifier to exercise the parser.
  */
 function makeFixture(options: {
   components: string[];
@@ -28,6 +39,7 @@ function makeFixture(options: {
   extraFiles?: Array<{ path: string; content: string }>;
 }): { componentsDirectory: string; aggregatorFile: string } {
   const root = mkdtempSync(join(tmpdir(), 'aggregator-gate-'));
+  fixtureRoots.push(root);
   const componentsDirectory = join(root, 'components');
   const stylesDirectory = join(root, 'styles');
   mkdirSync(stylesDirectory, { recursive: true });
@@ -92,6 +104,77 @@ describe('computeImportClosure', () => {
     // Nothing outside the relative graph leaked in.
     expect([...reachable].some((file) => file.includes('some-package'))).toBe(false);
   });
+
+  // The parser must NOT count a commented-out @import as coverage. A regex would
+  // treat `/* @import '…'; */` as real and let an unstyled component pass the
+  // gate — the exact false-pass this gate exists to prevent. postcss parses it
+  // as a comment node, so the closure never reaches it.
+  it('does NOT count a commented-out @import as coverage', () => {
+    const root = mkdtempSync(join(tmpdir(), 'aggregator-gate-'));
+    fixtureRoots.push(root);
+    const stylesDirectory = join(root, 'styles');
+    mkdirSync(stylesDirectory, { recursive: true });
+    const componentsDirectory = join(root, 'components');
+    mkdirSync(join(componentsDirectory, 'beta'), { recursive: true });
+    writeFileSync(join(componentsDirectory, 'beta', 'beta.css'), '.cinder-beta {}\n');
+    const aggregatorFile = join(stylesDirectory, 'components.css');
+    writeFileSync(aggregatorFile, `/* @import '../components/beta/beta.css'; */\n`);
+
+    const reachable = computeImportClosure(aggregatorFile);
+    expect(reachable.has(join(componentsDirectory, 'beta', 'beta.css'))).toBe(false);
+  });
+
+  it('follows the unquoted and quoted url(...) @import forms', () => {
+    const { componentsDirectory, aggregatorFile } = makeFixture({
+      components: ['alpha', 'beta', 'gamma'],
+      aggregatorImports: ['../components/alpha/alpha.css'],
+      extraFiles: [
+        {
+          path: 'alpha/alpha.css',
+          content:
+            `@import url(../beta/beta.css);\n` +
+            `@import url('../gamma/gamma.css');\n` +
+            `.cinder-alpha {}\n`,
+        },
+      ],
+    });
+
+    const reachable = computeImportClosure(aggregatorFile);
+    expect(reachable.has(join(componentsDirectory, 'beta/beta.css'))).toBe(true);
+    expect(reachable.has(join(componentsDirectory, 'gamma/gamma.css'))).toBe(true);
+  });
+
+  it('follows an @import with a trailing layer()/media clause', () => {
+    const { componentsDirectory, aggregatorFile } = makeFixture({
+      components: ['alpha', 'beta'],
+      aggregatorImports: ['../components/alpha/alpha.css'],
+      extraFiles: [
+        {
+          path: 'alpha/alpha.css',
+          content: `@import '../beta/beta.css' layer(cinder.components);\n.cinder-alpha {}\n`,
+        },
+      ],
+    });
+
+    const reachable = computeImportClosure(aggregatorFile);
+    expect(reachable.has(join(componentsDirectory, 'beta/beta.css'))).toBe(true);
+  });
+
+  it('terminates on an import cycle', () => {
+    const { componentsDirectory, aggregatorFile } = makeFixture({
+      components: ['alpha', 'beta'],
+      aggregatorImports: ['../components/alpha/alpha.css'],
+      extraFiles: [
+        // alpha -> beta -> alpha. The `reachable` set must break the cycle.
+        { path: 'alpha/alpha.css', content: `@import '../beta/beta.css';\n.cinder-alpha {}\n` },
+        { path: 'beta/beta.css', content: `@import '../alpha/alpha.css';\n.cinder-beta {}\n` },
+      ],
+    });
+
+    const reachable = computeImportClosure(aggregatorFile);
+    expect(reachable.has(join(componentsDirectory, 'alpha/alpha.css'))).toBe(true);
+    expect(reachable.has(join(componentsDirectory, 'beta/beta.css'))).toBe(true);
+  });
 });
 
 describe('checkAggregatorCompleteness', () => {
@@ -135,8 +218,10 @@ describe('checkAggregatorCompleteness', () => {
       ],
     });
 
+    // Exactly the unstyled file is flagged — and nothing else (e.g. alpha,
+    // which IS covered, must not appear).
     const violations = checkAggregatorCompleteness(componentsDirectory, aggregatorFile);
-    expect(violations.map((violation) => violation.path)).toContain('data-table/data-table.css');
+    expect(violations.map((violation) => violation.path)).toEqual(['data-table/data-table.css']);
   });
 
   it('treats a transitively-imported sub-component partial as covered', () => {
@@ -154,7 +239,36 @@ describe('checkAggregatorCompleteness', () => {
 
     // choice-grid-item.css is reachable via choice-grid.css — no violation.
     expect(checkAggregatorCompleteness(componentsDirectory, aggregatorFile)).toEqual([]);
-    void componentsDirectory;
+  });
+
+  it('flags a DEEPER nested partial that is not in the @import chain', () => {
+    const { componentsDirectory, aggregatorFile } = makeFixture({
+      components: ['alpha'],
+      aggregatorImports: ['../components/alpha/alpha.css'],
+      extraFiles: [
+        // A second, deeper CSS file under the component dir, NOT @imported by
+        // alpha.css — it would ship unstyled and must be caught (the `**/*.css`
+        // scan, not `*/*.css`, is what makes this visible).
+        { path: 'alpha/internal/extra.css', content: '.cinder-alpha-extra {}\n' },
+      ],
+    });
+
+    const violations = checkAggregatorCompleteness(componentsDirectory, aggregatorFile);
+    expect(violations.map((violation) => violation.path)).toEqual(['alpha/internal/extra.css']);
+  });
+
+  it('treats a second component CSS file as covered when the first @imports it', () => {
+    const { componentsDirectory, aggregatorFile } = makeFixture({
+      components: ['alpha'],
+      aggregatorImports: ['../components/alpha/alpha.css'],
+      extraFiles: [
+        // alpha.css pulls in a sibling partial in the same dir — covered.
+        { path: 'alpha/alpha.css', content: `@import './alpha-extra.css';\n.cinder-alpha {}\n` },
+        { path: 'alpha/alpha-extra.css', content: '.cinder-alpha-extra {}\n' },
+      ],
+    });
+
+    expect(checkAggregatorCompleteness(componentsDirectory, aggregatorFile)).toEqual([]);
   });
 });
 

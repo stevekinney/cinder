@@ -3,6 +3,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Glob } from 'bun';
+import { parse } from 'postcss';
 
 /**
  * Aggregator-completeness gate for `src/styles/components.css`.
@@ -53,31 +54,69 @@ export type AggregatorViolation = {
 };
 
 /**
+ * Extract the relative specifier from a postcss `@import` at-rule's params, or
+ * `undefined` if the import isn't a relative on-disk reference we should chase.
+ *
+ * postcss hands us the raw params after `@import ` — every valid CSS form:
+ *   `'./x.css'`  `"../x.css"`  `url(./x.css)`  `url('../x.css')`  `url("./x.css")`
+ * each optionally trailed by `layer(...)`, `supports(...)`, or a media query.
+ * We unwrap an optional `url(...)`, strip surrounding quotes, then keep only
+ * the first whitespace-delimited token (dropping any trailing layer/media), and
+ * accept it only if it's a relative path (`.`-prefixed). Bare/aliased/absolute
+ * specifiers don't resolve to a local component file on disk, so they're not
+ * part of the on-disk closure — see `aggregateImportContractViolations` for the
+ * separate check that flags them as unsupported in the aggregate stylesheet.
+ */
+function extractRelativeImportSpecifier(params: string): string | undefined {
+  let raw = params.trim();
+
+  const urlMatch = /^url\(\s*(.*?)\s*\)/i.exec(raw);
+  if (urlMatch?.[1] !== undefined) {
+    raw = urlMatch[1].trim();
+  } else {
+    // Non-url form: the specifier is the first token; drop trailing
+    // layer()/supports()/media-query clauses.
+    raw = raw.split(/\s+/)[0] ?? '';
+  }
+
+  // Strip a single pair of surrounding quotes, if present.
+  const quoted = /^(['"])(.*)\1$/.exec(raw);
+  if (quoted?.[2] !== undefined) {
+    raw = quoted[2];
+  }
+
+  return raw.startsWith('.') ? raw : undefined;
+}
+
+/**
  * Compute the set of absolute file paths reachable from `entryFile` by
- * following `@import` statements (CSS chain only). The entry file itself is
- * included. Missing targets are skipped rather than thrown — a dangling
- * `@import` is a different defect, governed by the build.
+ * following `@import` statements over the **CSS** import graph. The entry file
+ * itself is included. Missing targets are skipped rather than thrown — a
+ * dangling `@import` is a different defect, governed by the build.
+ *
+ * Uses a real CSS parser (postcss) rather than a regex so that commented-out
+ * imports (`/* @import '…'; *\/`) are NOT counted as coverage — a regex would
+ * treat them as real and let an unstyled component pass the gate. postcss parses
+ * them as `comment` nodes, never `atrule` nodes, so they're correctly ignored.
+ * Both quoted and `url(...)` import forms are handled via
+ * {@link extractRelativeImportSpecifier}.
  */
 export function computeImportClosure(entryFile: string): Set<string> {
   const reachable = new Set<string>();
   const stack: string[] = [resolve(entryFile)];
-  const importPattern = /@import\s+(?:url\()?['"]([^'"]+)['"]/g;
 
   while (stack.length > 0) {
-    const file = stack.pop()!;
-    if (reachable.has(file) || !existsSync(file)) continue;
+    const file = stack.pop();
+    if (file === undefined || reachable.has(file) || !existsSync(file)) continue;
     reachable.add(file);
 
-    const source = readFileSync(file, 'utf8');
-    for (const match of source.matchAll(importPattern)) {
-      const specifier = match[1];
-      // Only relative specifiers participate in the on-disk import graph.
-      // (The capture group is always present on a match, but narrow it
-      // explicitly to satisfy noUncheckedIndexedAccess.)
-      if (specifier !== undefined && specifier.startsWith('.')) {
+    const root = parse(readFileSync(file, 'utf8'), { from: file });
+    root.walkAtRules('import', (atRule) => {
+      const specifier = extractRelativeImportSpecifier(atRule.params);
+      if (specifier !== undefined) {
         stack.push(resolve(dirname(file), specifier));
       }
-    }
+    });
   }
 
   return reachable;
@@ -96,7 +135,10 @@ export function checkAggregatorCompleteness(
   const reachable = computeImportClosure(aggregatorFile);
   const excludedPaths = new Set(AGGREGATOR_EXCLUSIONS.map((exclusion) => exclusion.path));
 
-  const componentCssGlob = new Glob('*/*.css');
+  // `**/*.css` (not `*/*.css`) so a deeper partial like
+  // `<component>/internal/<name>.css` can't ship unstyled by hiding below the
+  // first directory level.
+  const componentCssGlob = new Glob('**/*.css');
   const componentCssFiles = [
     ...componentCssGlob.scanSync({ cwd: componentsDirectory, absolute: true }),
   ].toSorted();
@@ -121,7 +163,7 @@ export function checkAggregatorCompleteness(
   return violations;
 }
 
-async function main(): Promise<void> {
+function main(): void {
   const scriptDirectory = dirname(fileURLToPath(import.meta.url));
   const componentsSource = join(resolve(scriptDirectory, '..'), 'src');
   const componentsDirectory = join(componentsSource, 'components');
@@ -144,5 +186,5 @@ async function main(): Promise<void> {
 }
 
 if (import.meta.main) {
-  await main();
+  main();
 }
