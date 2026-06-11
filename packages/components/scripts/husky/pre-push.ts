@@ -123,14 +123,26 @@ type BatchOutcome = {
  * Run a batch of jobs through a small async pool, print any failures inline,
  * and return a {@link BatchOutcome} so the caller can render a digest and write
  * the full log.
+ *
+ * `maxConcurrency` caps the pool. The default (CPU-bound, up to 4) is right for
+ * lint/typecheck, which only read sources. The `test` phase must pass `1`: each
+ * package's `test` script runs inline `bun run --filter=<dep> build` steps that
+ * `rm -rf dist` and re-emit a shared dependency's `dist/` (e.g. `@cinder/markdown`,
+ * `@cinder/editor`). Run in parallel, two jobs rebuild the same `dist/` while a
+ * third job's bundler reads it mid-write, yielding non-deterministic
+ * "X is not declared in this file" errors. Serializing the test phase removes the
+ * shared-`dist/` write hazard.
  */
-async function runJobs(jobs: readonly Job[]): Promise<BatchOutcome> {
+async function runJobs(
+  jobs: readonly Job[],
+  maxConcurrency = Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4)),
+): Promise<BatchOutcome> {
   if (jobs.length === 0) return { ok: true, failures: [], output: '' };
   // Clamp to at least 1: if `navigator.hardwareConcurrency` is ever undefined,
   // `Math.min(undefined, 4)` is NaN, no workers would start, and every job would
   // be silently treated as passing — a false green. `?? 1` and `Math.max(1, …)`
   // prevent that.
-  const concurrency = Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4));
+  const concurrency = Math.max(1, maxConcurrency);
   const results: JobResult[] = [];
   let nextIndex = 0;
   const workers: Promise<void>[] = [];
@@ -431,7 +443,10 @@ async function runScoped(
 
     if (phaseJobs.length === 0) continue;
     info(`Running ${script} (${phaseJobs.map((job) => job.packageName).join(', ')})…`);
-    const phase = await runJobs(phaseJobs);
+    // The `test` phase runs serially (concurrency 1): test scripts rebuild shared
+    // dependency `dist/` dirs in place, so parallel jobs race each other's
+    // `rm -rf dist` + re-emit. Typecheck is read-only and stays parallel.
+    const phase = await runJobs(phaseJobs, script === 'test' ? 1 : undefined);
     fullOutput += phase.output;
     allFailures.push(...phase.failures);
     ok = phase.ok && ok;
