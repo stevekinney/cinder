@@ -165,11 +165,15 @@ export type HydrationSafetyResult = {
   /**
    * `true` when the SSR markup is identical under `BROWSER=false` and
    * `BROWSER=true` — i.e. the render does not depend on the esm-env build-flag
-   * split. This is NOT a blanket "hydration-safe" verdict: it says nothing about
-   * runtime environment checks (`{#if typeof window !== 'undefined'}`,
-   * `typeof navigator`) that aren't already behind a `hydrated` guard — both
-   * renders clear those globals identically, so such a divergence is invisible
-   * here. Read it as "invariant under the build flag", not "safe in general".
+   * split. This is NOT a blanket "hydration-safe" verdict. Both renders clear
+   * `document` and `window` (so a `{#if typeof window !== 'undefined'}` branch
+   * takes the server path in each), but `navigator` is intentionally left
+   * ambient. So a runtime capability check — `navigator.share`, `navigator.clipboard`
+   * — is outside this helper's guarantee unless it sits behind a `hydrated`
+   * guard: whether it renders depends on what the surrounding test environment
+   * exposes, not on the build-flag split. Read a `true` result as "invariant
+   * under the build flag", not "safe in general". (ShareCard is invariant
+   * precisely because its `navigator.share` read is behind `hydrated &&`.)
    */
   buildFlagInvariant: boolean;
   /** SSR markup with the `browser` condition OFF (`BROWSER=false`) — real server output. */
