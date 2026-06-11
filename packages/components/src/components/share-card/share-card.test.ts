@@ -248,6 +248,24 @@ describe('ShareCard native share', () => {
     else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
   });
 
+  test('default native-share button renders via a standalone {#if}, not array growth', () => {
+    // Regression guard for the template restructure. `canNativeShare` is gated on
+    // the post-hydration `hydrated` $effect, so it is false on first render and
+    // flips true once the effect fires (synchronously in this harness). The default
+    // native-share button is rendered by a standalone `{#if !actions &&
+    // canNativeShare}`, NOT by pushing into the reactive `resolvedActions` array:
+    // when it was pushed into that array, the keyed `{#each}` did not pick up the
+    // post-mount growth and the button never appeared. This asserts the button IS
+    // present after a default-surface render with navigator.share available — which
+    // only holds with the standalone-`{#if}` structure.
+    (navigator as { share?: unknown }).share = async () => {};
+    const { container } = render(ShareCard, { value: 'https://example.com/x' });
+    const shareButton = container.querySelector('[data-cinder-action="native-share"]');
+    expect(shareButton).not.toBeNull();
+    // The copy-link default is still present alongside it.
+    expect(container.querySelector('[data-cinder-action="copy-link"]')).not.toBeNull();
+  });
+
   test('renders a native share button and shares a URL value as url', async () => {
     let received: ShareData | undefined;
     (navigator as { share?: unknown }).share = async (data: ShareData) => {

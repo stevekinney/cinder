@@ -16,6 +16,7 @@
     NavigationItem,
     Pagination,
     Select,
+    ShareCard,
     Skeleton,
     Spinner,
     Textarea,
@@ -140,6 +141,14 @@
     <Tooltip text="Helpful info">
       {#snippet children()}<button type="button">hover me</button>{/snippet}
     </Tooltip>
+  </section>
+
+  <!-- ShareCard exercises the native-share SSR hydration guard: the native-share
+       button depends on `navigator.share`, so it must be ABSENT from the server
+       render and only appear after client hydration. validate-consumers.ts
+       asserts the root renders server-side but the native-share button does not. -->
+  <section aria-label="ShareCard">
+    <ShareCard value="https://example.com/share/fixture" title="Share this" />
   </section>
 
   <section aria-label="Accordion">

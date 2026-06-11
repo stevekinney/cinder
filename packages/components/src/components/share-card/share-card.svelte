@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { BROWSER } from 'esm-env';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
@@ -43,9 +42,22 @@
   let resetTimer: ReturnType<typeof setTimeout> | undefined;
   let announcement = $state('');
 
-  // Detect native share support. Only available in a browser with a secure origin.
+  // Hydration gate. The native-share button depends on `navigator.share`, which
+  // only exists in the browser — but gating it on a plain browser check would
+  // make the client's first render add a button the server never emitted,
+  // producing a hydration mismatch. `$effect` runs only on the client, AFTER
+  // hydration, so the server render and the initial client render both omit the
+  // button; it appears on the next tick once `hydrated` flips. Matches the
+  // toast-region / drawer hydration-gate convention.
+  let hydrated = $state(false);
+  $effect(() => {
+    hydrated = true;
+  });
+
+  // Detect native share support. Gated on `hydrated` (not a bare browser flag)
+  // so it is always `false` during SSR and the initial hydration render.
   const canNativeShare = $derived(
-    BROWSER && typeof navigator !== 'undefined' && typeof navigator.share === 'function',
+    hydrated && typeof navigator !== 'undefined' && typeof navigator.share === 'function',
   );
 
   let announceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -154,30 +166,26 @@
     clearTimer();
   });
 
-  // Build the default actions when no explicit actions are provided. The default
-  // surface always offers copy (the universal fallback); the native-share button
-  // is added only where `navigator.share` exists, so there is no redundant
-  // "Share" button that merely re-copies on unsupported platforms. A consumer who
-  // wants a share button that copies-when-unavailable can pass an explicit action
-  // with `useNativeShare: true` — `handleNativeShare` falls back to copy for it.
-  const resolvedActions = $derived.by((): ShareCardAction[] => {
-    if (actions) return actions;
-    const defaultActions: ShareCardAction[] = [
-      {
-        key: 'copy-link',
-        label: copyLinkLabel,
-        copyValue: value,
-      },
-    ];
-    if (canNativeShare) {
-      defaultActions.push({
-        key: 'native-share',
-        label: shareLabel,
-        useNativeShare: true,
-      });
-    }
-    return defaultActions;
-  });
+  // Build the action list. When the consumer passes explicit `actions`, use them
+  // verbatim. Otherwise the default surface is the copy-link button (the universal
+  // fallback). The default native-share button is NOT part of this array — it is
+  // rendered separately in the template behind `{#if !actions && canNativeShare}`.
+  //
+  // Why not push it into this array when `canNativeShare`: `canNativeShare` only
+  // flips to true after hydration (it is gated on the `hydrated` $effect).
+  // Observed behavior: when the native-share action was added to this reactive
+  // array post-hydration, the button did not appear on the client. Gating it as a
+  // standalone template `{#if}` (matching the drawer/sheet hydration convention)
+  // makes it render reliably once `canNativeShare` flips. See the unit test
+  // "default native-share button renders via a standalone {#if}, not array growth".
+  const defaultActions: ShareCardAction[] = $derived([
+    {
+      key: 'copy-link',
+      label: copyLinkLabel,
+      copyValue: value,
+    },
+  ]);
+  const resolvedActions = $derived(actions ?? defaultActions);
 </script>
 
 <div {...rest} class={classNames('cinder-share-card', customClassName)}>
@@ -206,125 +214,140 @@
   <div class="cinder-share-card__actions" role="group" aria-label="Share actions">
     {#each resolvedActions as action (action.key)}
       {#if action.key === 'native-share' || action.useNativeShare}
-        <!-- When native share is unavailable or fails, `handleNativeShare` falls
-             back to a clipboard copy keyed `share-fallback`. Reflect that copied
-             state on the share button so the visual matches the live-region
-             announcement instead of silently staying on the Share label. -->
-        {@const shareCopied = copiedKey === 'share-fallback'}
-        <button
-          type="button"
-          class="cinder-share-card__action"
-          data-cinder-action={action.key}
-          data-cinder-copied={shareCopied ? '' : undefined}
-          onclick={() => {
-            // Honour a consumer onClick (analytics/side-effects) on the native
-            // share action too, then run the share. `void` marks the floating
-            // promise as intentional (the handler is synchronous).
-            action.onClick?.();
-            void handleNativeShare();
-          }}
-          aria-label={shareCopied ? copiedLabel : action.label}
-        >
-          {#if shareCopied}
-            <!-- Copied state icon (after a fallback copy) -->
-            <span class="cinder-share-card__action-icon" aria-hidden="true">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="cinder-share-card__icon"
-              >
-                <polyline points="20,6 9,17 4,12" />
-              </svg>
-            </span>
-            {copiedLabel}
-          {:else}
-            <!-- Share icon -->
-            <span class="cinder-share-card__action-icon" aria-hidden="true">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="cinder-share-card__icon"
-              >
-                <circle cx="18" cy="5" r="3" />
-                <circle cx="6" cy="12" r="3" />
-                <circle cx="18" cy="19" r="3" />
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-              </svg>
-            </span>
-            {action.label}
-          {/if}
-        </button>
+        {@render shareButton(action)}
       {:else}
-        <button
-          type="button"
-          class="cinder-share-card__action"
-          data-cinder-action={action.key}
-          data-cinder-copied={copiedKey === action.key ? '' : undefined}
-          onclick={() => {
-            // onClick is a side-effect callback (e.g. analytics), NOT an
-            // override — run it AND still perform the copy when copyValue is
-            // present, matching the native-share button's behaviour. An empty
-            // string is a legitimate copyValue, so test for `undefined`, not
-            // truthiness. `void` marks the floating promise as intentional.
-            action.onClick?.();
-            if (action.copyValue !== undefined) {
-              void handleCopy(action.key, action.copyValue);
-            }
-          }}
-          aria-label={copiedKey === action.key ? copiedLabel : action.label}
-        >
-          {#if copiedKey === action.key}
-            <!-- Copied state icon -->
-            <span class="cinder-share-card__action-icon" aria-hidden="true">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="cinder-share-card__icon"
-              >
-                <polyline points="20,6 9,17 4,12" />
-              </svg>
-            </span>
-            {copiedLabel}
-          {:else}
-            <!-- Copy icon -->
-            <span class="cinder-share-card__action-icon" aria-hidden="true">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="cinder-share-card__icon"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            </span>
-            {action.label}
-          {/if}
-        </button>
+        {@render copyButton(action)}
       {/if}
     {/each}
+    <!-- The default native-share button is gated by a standalone `{#if}` rather
+         than pushed into `resolvedActions`, so it reconciles correctly when
+         `canNativeShare` flips from false to true after hydration. Only rendered
+         in the default surface (no explicit `actions`); a consumer-supplied
+         native-share action goes through the `{#each}` above. -->
+    {#if !actions && canNativeShare}
+      {@render shareButton({ key: 'native-share', label: shareLabel, useNativeShare: true })}
+    {/if}
   </div>
 </div>
+
+<!-- Native-share button. Reflects the `share-fallback` copied state so that when
+     `handleNativeShare` falls back to a clipboard copy (native share unavailable
+     or failed) the visual matches the live-region announcement instead of staying
+     on the Share label. -->
+{#snippet shareButton(action: ShareCardAction)}
+  {@const shareCopied = copiedKey === 'share-fallback'}
+  <button
+    type="button"
+    class="cinder-share-card__action"
+    data-cinder-action={action.key}
+    data-cinder-copied={shareCopied ? '' : undefined}
+    onclick={() => {
+      // Honour a consumer onClick (analytics/side-effects) on the native share
+      // action too, then run the share. `void` marks the floating promise as
+      // intentional (the handler is synchronous).
+      action.onClick?.();
+      void handleNativeShare();
+    }}
+    aria-label={shareCopied ? copiedLabel : action.label}
+  >
+    {#if shareCopied}
+      <!-- Copied state icon (after a fallback copy) -->
+      <span class="cinder-share-card__action-icon" aria-hidden="true">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="cinder-share-card__icon"
+        >
+          <polyline points="20,6 9,17 4,12" />
+        </svg>
+      </span>
+      {copiedLabel}
+    {:else}
+      <!-- Share icon -->
+      <span class="cinder-share-card__action-icon" aria-hidden="true">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="cinder-share-card__icon"
+        >
+          <circle cx="18" cy="5" r="3" />
+          <circle cx="6" cy="12" r="3" />
+          <circle cx="18" cy="19" r="3" />
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+        </svg>
+      </span>
+      {action.label}
+    {/if}
+  </button>
+{/snippet}
+
+<!-- Copy button. `onClick` is a side-effect callback (e.g. analytics), NOT an
+     override — it runs AND the copy still fires when `copyValue` is present. An
+     empty string is a legitimate copyValue, so test for `undefined`, not
+     truthiness. -->
+{#snippet copyButton(action: ShareCardAction)}
+  <button
+    type="button"
+    class="cinder-share-card__action"
+    data-cinder-action={action.key}
+    data-cinder-copied={copiedKey === action.key ? '' : undefined}
+    onclick={() => {
+      action.onClick?.();
+      if (action.copyValue !== undefined) {
+        void handleCopy(action.key, action.copyValue);
+      }
+    }}
+    aria-label={copiedKey === action.key ? copiedLabel : action.label}
+  >
+    {#if copiedKey === action.key}
+      <!-- Copied state icon -->
+      <span class="cinder-share-card__action-icon" aria-hidden="true">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="cinder-share-card__icon"
+        >
+          <polyline points="20,6 9,17 4,12" />
+        </svg>
+      </span>
+      {copiedLabel}
+    {:else}
+      <!-- Copy icon -->
+      <span class="cinder-share-card__action-icon" aria-hidden="true">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="cinder-share-card__icon"
+        >
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      </span>
+      {action.label}
+    {/if}
+  </button>
+{/snippet}
 
 <!-- Announce copy/share outcomes to assistive technology. -->
 <VisuallyHiddenLiveRegion message={announcement} />
