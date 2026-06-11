@@ -262,20 +262,24 @@ function parseSpans(html: string): ElementContent[] {
 
 /**
  * Decode HTML entities in text content.
+ *
+ * Ampersand forms (&amp; and &#x26;) must be decoded LAST. Decoding them
+ * earlier would cascade: &#x26;lt; → &lt; → < instead of &lt; (a literal
+ * less-than entity in source code).
  */
 function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&#x3C;/gi, '<')
     .replace(/&#x3E;/gi, '>')
-    .replace(/&#x26;/gi, '&')
     .replace(/&#x22;/gi, '"')
     .replace(/&#x27;/gi, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&#x2F;/g, '/');
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#x26;/gi, '&') // ampersand last — must not cascade into other entity decodes
+    .replace(/&amp;/g, '&');
 }
 
 /**

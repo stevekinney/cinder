@@ -81,13 +81,17 @@ function extractLanguageFromClass(element: Element): string | null {
 // Helper to decode HTML entities (mirrors internal decodeHtmlEntities)
 function decodeHtmlEntities(text: string): string {
   return text
+    .replace(/&#x3C;/gi, '<')
+    .replace(/&#x3E;/gi, '>')
+    .replace(/&#x22;/gi, '"')
+    .replace(/&#x27;/gi, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, '/');
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#x26;/gi, '&')
+    .replace(/&amp;/g, '&');
 }
 
 // Helper to collect all text from an element (handles nested spans from Shiki)
@@ -287,6 +291,30 @@ describe('rehype-shiki-sync', () => {
 
     it('handles empty string', () => {
       expect(decodeHtmlEntities('')).toBe('');
+    });
+
+    it('decodes &#x3C; to <', () => {
+      expect(decodeHtmlEntities('&#x3C;div&#x3E;')).toBe('<div>');
+    });
+
+    it('decodes &#x26; to &', () => {
+      expect(decodeHtmlEntities('foo&#x26;bar')).toBe('foo&bar');
+    });
+
+    it('decodes &#x22; to "', () => {
+      expect(decodeHtmlEntities('&#x22;hello&#x22;')).toBe('"hello"');
+    });
+
+    it('does not cascade &#x26;lt; into <', () => {
+      // &#x26;lt; represents the literal text "&lt;" — must stay as "&lt;", not become "<"
+      expect(decodeHtmlEntities('&#x26;lt;')).toBe('&lt;');
+    });
+
+    it('does not cascade &#x26;#x3C; into <', () => {
+      // &#x26;#x3C; represents the literal text "&#x3C;" in source code.
+      // Decoding &#x26; last means it becomes &#x3C; after all passes complete —
+      // the &#x3C; replace already ran (no match), so the result stays &#x3C;.
+      expect(decodeHtmlEntities('&#x26;#x3C;')).toBe('&#x3C;');
     });
   });
 
