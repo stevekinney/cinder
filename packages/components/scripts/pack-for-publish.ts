@@ -251,6 +251,19 @@ function buildPublishedManifest(
     '!src/highlighters/**/*.test.ts',
     '!src/highlighters/**/*.spec.ts',
     'src/styles/**/*.css',
+    // Type stubs for the reserved `./styles*` subpaths. The `types` condition
+    // in each export entry points at `./src/styles/<name>.css.d.ts`; without
+    // this glob those files are absent from the tarball and consumers get
+    // "Cannot find module or type declarations for side-effect import" under
+    // moduleResolution: bundler.
+    'src/styles/**/*.css.d.ts',
+    // The `./styles/guard` export carries a `svelte` condition pointing at
+    // `./src/styles/base-guard.ts` (the build only emits `dist/styles/base-guard.js`),
+    // so a Svelte-aware consumer resolving that source condition would hit a
+    // dangling path without this file. Listed explicitly rather than via a
+    // `src/styles/**/*.ts` glob to keep the publish surface narrow — this is the
+    // only `.ts` under `src/styles/` that needs to ship.
+    'src/styles/base-guard.ts',
     'components.json',
     'README.md',
     'LICENSE',
