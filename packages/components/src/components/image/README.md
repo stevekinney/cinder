@@ -26,10 +26,10 @@ Responsive image wrapper with aspect-ratio preservation, lazy loading, and fallb
 | `ratio`       | `string`                          | no       | —       | CSS aspect-ratio applied to the wrapper (e.g. `'16 / 9'`) so layout is stable while the image loads.                                                           |
 | `src`         | `string`                          | yes      | —       | Image source URL.                                                                                                                                              |
 | `width`       | `number`                          | no       | —       | Native pixel width.                                                                                                                                            |
-| `class`       | `(opaque)`                        | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                        |
-| `fallback`    | `(opaque)`                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                     |
-| `onerror`     | `(opaque)`                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                     |
-| `onload`      | `(opaque)`                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                     |
+| `class`       | `(opaque)`                        | no       | —       | Additional class names merged with `.cinder-image`. Not expressible in JSON Schema; see the component types for the signature.                                 |
+| `fallback`    | `(opaque)`                        | no       | —       | Rendered in place of the `<img>` when it fails to load. Not expressible in JSON Schema; see the component types for the signature.                             |
+| `onerror`     | `(opaque)`                        | no       | —       | Forwarded after internal state updates. Not expressible in JSON Schema; see the component types for the signature.                                             |
+| `onload`      | `(opaque)`                        | no       | —       | Forwarded after internal state updates. Not expressible in JSON Schema; see the component types for the signature.                                             |
 
 <!-- generated:props:end -->
 

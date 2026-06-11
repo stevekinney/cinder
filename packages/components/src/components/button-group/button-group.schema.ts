@@ -25,6 +25,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Buttons (or split-button compositions) to render inside the group.',
       },
     ],
   },

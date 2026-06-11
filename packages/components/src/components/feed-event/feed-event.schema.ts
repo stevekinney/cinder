@@ -29,14 +29,19 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description:
+          'Main event body — the description, links, and secondary metadata. Passed as\nthe default children snippet:\n\n```svelte\n<FeedEvent datetime="…" timestamp="2m ago">\n  <strong>{user.name}</strong> pushed 3 commits\n</FeedEvent>\n```',
       },
       {
         name: 'icon',
         reason: 'function-or-snippet',
+        description: 'Required for the icon variant. Type-enforced by the discriminated union.',
       },
       {
         name: 'timestampLabel',
         reason: 'function-or-snippet',
+        description:
+          'Rich visible time label, for the rare case where the label needs markup\n(e.g. an `<abbr>` or nested element). Takes precedence over `timestamp` when\nboth are supplied. Most consumers should use the `timestamp` string instead.',
       },
     ],
   },

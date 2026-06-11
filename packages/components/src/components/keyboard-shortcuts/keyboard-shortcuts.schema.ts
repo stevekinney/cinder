@@ -19,10 +19,13 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description: 'Intro content rendered above the groups.',
       },
       {
         name: 'groups',
         reason: 'unknown-shape',
+        required: true,
+        description: 'Groups of shortcuts to display.',
       },
     ],
   },

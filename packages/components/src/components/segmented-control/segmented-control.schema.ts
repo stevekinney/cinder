@@ -66,14 +66,18 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Child `<Segment>` elements.',
       },
       {
         name: 'onchange',
         reason: 'function-or-snippet',
+        description: 'Called when the selected value changes (single mode only).',
       },
       {
         name: 'value',
         reason: 'generic-type-parameter',
+        description: 'Currently selected value.',
       },
     ],
   },

@@ -29,7 +29,9 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Message body content."
       }
     ]
   }

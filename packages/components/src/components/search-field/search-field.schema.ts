@@ -44,18 +44,23 @@ const schema = {
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Additional class merged with `.cinder-search-field`.',
       },
       {
         name: 'onclear',
         reason: 'function-or-snippet',
+        description: 'Fires when the clear button is clicked.',
       },
       {
         name: 'oninput',
         reason: 'function-or-snippet',
+        description: 'Fires on every keystroke with the current value.',
       },
       {
         name: 'onsearch',
         reason: 'function-or-snippet',
+        description:
+          'Fires when the native `search` event triggers (Enter or programmatic dispatch).',
       },
     ],
   },

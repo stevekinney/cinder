@@ -23,6 +23,7 @@ const schema = {
       {
         name: 'menus',
         reason: 'unknown-shape',
+        required: true,
       },
     ],
   },

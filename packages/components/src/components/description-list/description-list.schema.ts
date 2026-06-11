@@ -19,10 +19,13 @@ const schema = {
       {
         name: 'actions',
         reason: 'function-or-snippet',
+        description:
+          'Optional snippet rendered once per row. Receives the full `DescriptionListItem` so\nconsumers can build disambiguated `aria-label` strings (e.g. `aria-label="Edit ${item.term}"`).\nAny interactive element in `actions` MUST set an unambiguous `aria-label`.',
       },
       {
         name: 'items',
         reason: 'unknown-shape',
+        required: true,
       },
     ],
   },

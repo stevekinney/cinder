@@ -49,15 +49,19 @@
     "unsupportedProps": [
       {
         "name": "filter",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Custom synchronous filter. Receives an option and the current input\nvalue; returns true to keep. Defaults to case-insensitive substring\nmatch on label."
       },
       {
         "name": "options",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "required": true,
+        "description": "Full set of options to filter. The sole inference source for T."
       },
       {
         "name": "value",
-        "reason": "generic-type-parameter"
+        "reason": "generic-type-parameter",
+        "description": "Currently selected value. Bindable. `''` when nothing is selected."
       }
     ]
   }

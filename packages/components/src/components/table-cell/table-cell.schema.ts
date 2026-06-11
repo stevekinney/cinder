@@ -24,6 +24,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description:
+          "Cell content. Optional so that empty `<td>` cells (used in spanning\ntable layouts) are a valid, non-throwing state. When omitted the cell\nrenders empty, which is valid HTML for a `<td>`.\n\n**Note for TypeScript consumers:** the Snippet type is never called externally\nby consuming code — Svelte's compiler handles invocation internally. Making\nthis optional is therefore safe as an API change: no external caller calls\n`props.children()` on a Svelte component's props.",
       },
     ],
   },

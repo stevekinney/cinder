@@ -76,6 +76,21 @@ const schema = {
   },
   additionalProperties: false,
   required: ['entries'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        description: 'Optional per-entry body content.',
+      },
+      {
+        name: 'marker',
+        reason: 'function-or-snippet',
+        description:
+          'Decorative per-entry marker content. Must not contain interactive descendants.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

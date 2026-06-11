@@ -46,6 +46,20 @@ const schema = {
   },
   additionalProperties: false,
   required: ['bins', 'label'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'empty',
+        reason: 'function-or-snippet',
+        description: 'Snippet rendered when there are no bins.',
+      },
+      {
+        name: 'loadingContent',
+        reason: 'function-or-snippet',
+        description: 'Snippet rendered while loading.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

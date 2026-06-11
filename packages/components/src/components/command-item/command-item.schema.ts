@@ -32,18 +32,23 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Main label content.',
       },
       {
         name: 'leading',
         reason: 'function-or-snippet',
+        description: 'Leading content (icon, avatar). Rendered with aria-hidden.',
       },
       {
         name: 'onselect',
         reason: 'function-or-snippet',
+        description: 'Invoked when the item is activated inside CommandPalette.',
       },
       {
         name: 'trailing',
         reason: 'function-or-snippet',
+        description: 'Trailing content (kbd hint, badge). Rendered with aria-hidden.',
       },
     ],
   },

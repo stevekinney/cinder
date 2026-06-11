@@ -14,10 +14,10 @@ snippet. The flat `@lostgradient/cinder/table-body` subpath remains exported for
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                                |
-| ---------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`   | no       | —       | Additional class names merged with `.cinder-table__body`.                                                                  |
-| `children` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop       | Type       | Required | Default | Description                                                                              |
+| ---------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------- |
+| `class`    | `string`   | no       | —       | Additional class names merged with `.cinder-table__body`.                                |
+| `children` | `(opaque)` | yes      | —       | Row children. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

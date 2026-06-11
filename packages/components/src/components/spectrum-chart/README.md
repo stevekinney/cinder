@@ -27,16 +27,18 @@ Responsive SVG frequency-bin bar chart for visualizing audio spectrum magnitude 
 
 <!-- generated:props:start -->
 
-| Prop                  | Type                                                | Required | Default | Description |
-| --------------------- | --------------------------------------------------- | -------- | ------- | ----------- |
-| `bins`                | { label: `string`; value: `number` }[]              | yes      | —       |             |
-| `class`               | `string`                                            | no       | —       |             |
-| `dataTableCaption`    | `string`                                            | no       | —       |             |
-| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |             |
-| `description`         | `string`                                            | no       | —       |             |
-| `height`              | `number`                                            | no       | —       |             |
-| `label`               | `string`                                            | yes      | —       |             |
-| `loading`             | `boolean`                                           | no       | —       |             |
+| Prop                  | Type                                                | Required | Default | Description                                                                                                         |
+| --------------------- | --------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| `bins`                | { label: `string`; value: `number` }[]              | yes      | —       |                                                                                                                     |
+| `class`               | `string`                                            | no       | —       |                                                                                                                     |
+| `dataTableCaption`    | `string`                                            | no       | —       |                                                                                                                     |
+| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |                                                                                                                     |
+| `description`         | `string`                                            | no       | —       |                                                                                                                     |
+| `height`              | `number`                                            | no       | —       |                                                                                                                     |
+| `label`               | `string`                                            | yes      | —       |                                                                                                                     |
+| `loading`             | `boolean`                                           | no       | —       |                                                                                                                     |
+| `empty`               | `(opaque)`                                          | no       | —       | Snippet rendered when there are no bins. Not expressible in JSON Schema; see the component types for the signature. |
+| `loadingContent`      | `(opaque)`                                          | no       | —       | Snippet rendered while loading. Not expressible in JSON Schema; see the component types for the signature.          |
 
 <!-- generated:props:end -->
 

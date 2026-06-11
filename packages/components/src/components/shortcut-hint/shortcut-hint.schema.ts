@@ -32,6 +32,7 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description: 'The action label rendered beside the keys.',
       },
     ],
   },

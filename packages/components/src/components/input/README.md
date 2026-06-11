@@ -30,7 +30,7 @@ Single-line text input with support for labels, addons, validation states, and h
 | `class`               | `(opaque)`                                                                                          | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 | `leading`             | `(opaque)`                                                                                          | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 | `trailing`            | `(opaque)`                                                                                          | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `value`               | `(opaque)`                                                                                          | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
+| `value`               | `(opaque)`                                                                                          | yes      | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 
 <!-- generated:props:end -->
 

@@ -74,10 +74,14 @@ const schema = {
       {
         name: 'autocomplete',
         reason: 'unknown-shape',
+        description:
+          "`autocomplete` value applied to the first segment. Defaults to\n`'one-time-code'` so iOS and Android can autofill SMS codes.",
       },
       {
         name: 'onchange',
         reason: 'function-or-snippet',
+        description:
+          'Fires only for user-initiated committed value changes (typing, paste,\nautofill, backspace). Never fires for external prop synchronization.',
       },
     ],
   },

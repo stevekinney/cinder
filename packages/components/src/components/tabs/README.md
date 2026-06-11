@@ -64,7 +64,7 @@ trailing badge alone to convey it.
 | `class`           | `string`                       | no       | —       | Additional class names merged with `.cinder-tabs`.                                                                                                                                                            |
 | `orientation`     | `"horizontal"` \| `"vertical"` | no       | —       | Layout orientation. Affects which arrow keys move between tabs.                                                                                                                                               |
 | `value`           | `string`                       | no       | —       | Bound active tab value.                                                                                                                                                                                       |
-| `children`        | `(opaque)`                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                    |
+| `children`        | `(opaque)`                     | yes      | —       | Tab and TabPanel children. Not expressible in JSON Schema; see the component types for the signature.                                                                                                         |
 
 <!-- generated:props:end -->
 

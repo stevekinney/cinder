@@ -29,23 +29,29 @@
     "unsupportedProps": [
       {
         "name": "empty",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Rendered when zero items are registered after filtering."
       },
       {
         "name": "footer",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Optional footer, e.g. for keybinding hints. Not part of the listbox."
       },
       {
         "name": "items",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Receives the current query so consumers can filter."
       },
       {
         "name": "onclose",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Fired after any close path routed through the palette close lifecycle."
       },
       {
         "name": "triggerRef",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Element to restore focus to on close. Falls back to `captureFocus()`."
       }
     ]
   }

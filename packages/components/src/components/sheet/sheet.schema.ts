@@ -35,18 +35,24 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Sheet body content. Required.',
       },
       {
         name: 'footer',
         reason: 'function-or-snippet',
+        description: 'Optional footer (e.g. action buttons).',
       },
       {
         name: 'header',
         reason: 'function-or-snippet',
+        description: 'Custom header. Falls back to a default header that renders `title`.',
       },
       {
         name: 'triggerRef',
         reason: 'unknown-shape',
+        description:
+          'Optional reference to the element that opened the sheet. When supplied,\nfocus returns to this element on close. When omitted, focus restores to\nthe element that held focus before the sheet opened.',
       },
     ],
   },

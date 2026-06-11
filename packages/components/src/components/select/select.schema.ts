@@ -37,14 +37,18 @@ const schema = {
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Extra class names merged with `.cinder-select-field`.',
       },
       {
         name: 'options',
         reason: 'unknown-shape',
+        required: true,
+        description: 'Options to render as `<option>` children. The sole inference source for T.',
       },
       {
         name: 'value',
         reason: 'generic-type-parameter',
+        description: 'Bound selected value. `undefined` when nothing is selected.',
       },
     ],
   },

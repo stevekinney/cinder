@@ -14,16 +14,16 @@ snippet. The flat `@lostgradient/cinder/side-navigation-group` subpath remains e
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                                    |
-| ---------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `disabled` | `boolean`  | no       | —       | When true, the disclosure button is disabled. Default: false.                                                                  |
-| `expanded` | `boolean`  | no       | —       | Whether the group is expanded. Bindable. Default: true.                                                                        |
-| `id`       | `string`   | no       | —       | Optional stable id for the root <li>. Trigger uses `${id}-trigger`, panel uses `${id}-panel`. If omitted, generated via useId. |
-| `label`    | `string`   | yes      | —       | Visible section header label.                                                                                                  |
-| `badge`    | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.     |
-| `children` | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.     |
-| `class`    | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                        |
-| `icon`     | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.     |
+| Prop       | Type       | Required | Default | Description                                                                                                                                                                  |
+| ---------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `disabled` | `boolean`  | no       | —       | When true, the disclosure button is disabled. Default: false.                                                                                                                |
+| `expanded` | `boolean`  | no       | —       | Whether the group is expanded. Bindable. Default: true.                                                                                                                      |
+| `id`       | `string`   | no       | —       | Optional stable id for the root <li>. Trigger uses `${id}-trigger`, panel uses `${id}-panel`. If omitted, generated via useId.                                               |
+| `label`    | `string`   | yes      | —       | Visible section header label.                                                                                                                                                |
+| `badge`    | `(opaque)` | no       | —       | Optional trailing badge rendered inside the header button after the label, before the chevron. Not expressible in JSON Schema; see the component types for the signature.    |
+| `children` | `(opaque)` | yes      | —       | Must be <li>-wrapped NavigationItems (or SideNavigationItems) rendered inside the disclosed <ul>. Not expressible in JSON Schema; see the component types for the signature. |
+| `class`    | `(opaque)` | no       | —       | Additional CSS class merged with `.cinder-side-navigation-group`. Not expressible in JSON Schema; see the component types for the signature.                                 |
+| `icon`     | `(opaque)` | no       | —       | Optional leading icon rendered inside the header button before the label. Not expressible in JSON Schema; see the component types for the signature.                         |
 
 <!-- generated:props:end -->
 

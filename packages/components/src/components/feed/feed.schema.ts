@@ -19,6 +19,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Feed events (typically `<FeedEvent>` children).',
       },
     ],
   },

@@ -16,11 +16,15 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Content rendered inside the root element. Required."
       },
       {
         "name": "onClickAway",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Called with the triggering PointerEvent (or MouseEvent/TouchEvent on\nbrowsers that do not support the Pointer Events API) when the user presses\na pointer device outside the root element."
       }
     ]
   }

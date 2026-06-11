@@ -30,14 +30,20 @@ const schema = {
       {
         name: 'actions',
         reason: 'function-or-snippet',
+        description:
+          'Optional trailing actions (buttons, menus). Rendered on the same row\n as the title at wide viewports.',
       },
       {
         name: 'label',
         reason: 'function-or-snippet',
+        description:
+          'Optional small uppercase "eyebrow" label. When present, the label is\n rendered as a `<p>` inside an `<hgroup>` that also contains the heading.\n\n The `<hgroup>` content model only permits `<p>` elements plus one\n heading element, so the snippet **must render phrasing content only** —\n plain text, `<span>`, `<strong>`, `<em>`, `<a>`, icons, etc. Do not\n render block elements (`<div>`, `<nav>`, `<button>` wrappers, additional\n headings) into this snippet; doing so produces invalid HTML inside\n `<hgroup>`.',
       },
       {
         name: 'tabs',
         reason: 'function-or-snippet',
+        description:
+          'Optional tablist. When both `actions` and `tabs` are present, `tabs`\n sits on a second row inside the shared root container.',
       },
     ],
   },

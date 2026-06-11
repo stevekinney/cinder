@@ -39,6 +39,16 @@ const schema = {
   },
   additionalProperties: false,
   required: ['cta', 'features', 'name', 'price'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'onselect',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Called when the CTA button is clicked.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

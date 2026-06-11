@@ -35,14 +35,17 @@ const schema = {
       {
         name: 'change',
         reason: 'unknown-shape',
+        description: 'Optional change indicator with direction and accessible wording.',
       },
       {
         name: 'icon',
         reason: 'function-or-snippet',
+        description: 'Optional leading icon snippet (decorative — wrapper is aria-hidden).',
       },
       {
         name: 'valueFormatOptions',
         reason: 'unknown-shape',
+        description: 'Intl.NumberFormat options applied only when `value` is a number.',
       },
     ],
   },

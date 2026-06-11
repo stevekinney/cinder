@@ -15,7 +15,9 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Feed events (typically `<FeedEvent>` children)."
       }
     ]
   }

@@ -49,30 +49,37 @@ const schema = {
       {
         name: 'onchange',
         reason: 'function-or-snippet',
+        description: 'Called when content changes.',
       },
       {
         name: 'oncommentcreate',
         reason: 'function-or-snippet',
+        description: 'Called when a comment is created in an existing thread.',
       },
       {
         name: 'oncommentdelete',
         reason: 'function-or-snippet',
+        description: 'Called when a comment is deleted.',
       },
       {
         name: 'oncommentupdate',
         reason: 'function-or-snippet',
+        description: 'Called when a comment is updated.',
       },
       {
         name: 'onthreadcreate',
         reason: 'function-or-snippet',
+        description: 'Called when user initiates thread creation.',
       },
       {
         name: 'onthreaddelete',
         reason: 'function-or-snippet',
+        description: 'Called when a thread is deleted.',
       },
       {
         name: 'threads',
         reason: 'unknown-shape',
+        description: 'Comment threads (two-way bindable).',
       },
     ],
   },

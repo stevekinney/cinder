@@ -45,7 +45,7 @@ on the list item.
 | `currentStep`    | `number`                       | yes      | —       | Zero-based index of the active step. Steps with index < currentStep are "completed". Pass `steps.length` to mark every step as complete (terminal "done" state). |
 | `label`          | `string`                       | no       | —       | Accessible name for the wrapping nav landmark. Defaults to 'Progress'.                                                                                           |
 | `orientation`    | `"horizontal"` \| `"vertical"` | no       | —       | Layout direction. Defaults to 'horizontal'.                                                                                                                      |
-| `steps`          | `(opaque)`                     | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                          |
+| `steps`          | `(opaque)`                     | yes      | —       | Ordered list of step entries from first to last. Not expressible in JSON Schema; see the component types for the signature.                                      |
 
 <!-- generated:props:end -->
 

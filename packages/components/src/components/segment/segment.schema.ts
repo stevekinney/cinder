@@ -24,18 +24,24 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: "The segment's label content.",
       },
       {
         name: 'leading',
         reason: 'function-or-snippet',
+        description: 'Optional decorative content rendered before the label, inside `aria-hidden`.',
       },
       {
         name: 'trailing',
         reason: 'function-or-snippet',
+        description: 'Optional decorative content rendered after the label, inside `aria-hidden`.',
       },
       {
         name: 'value',
         reason: 'unknown-shape',
+        required: true,
+        description: 'Value this segment represents. Must be unique within the parent control.',
       },
     ],
   },

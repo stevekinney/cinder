@@ -31,6 +31,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Stat children, typically one or more `<Stat>` components.',
       },
     ],
   },

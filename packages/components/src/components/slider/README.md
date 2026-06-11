@@ -31,7 +31,7 @@ Drag handle input for selecting a numeric value within a bounded range.
 | `defaultValue` | `(opaque)`                      | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 | `onchange`     | `(opaque)`                      | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 | `value`        | `(opaque)`                      | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                    |
-| `valueText`    | `(opaque)`                      | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `valueText`    | `(opaque)`                      | no       | —       | Formats the numeric value for `aria-valuetext`. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

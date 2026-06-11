@@ -46,14 +46,19 @@ const schema = {
       {
         name: 'colors',
         reason: 'unknown-shape',
+        required: true,
+        description: 'Palette to render.',
       },
       {
         name: 'indicator',
         reason: 'function-or-snippet',
+        description:
+          'Snippet that replaces the default check-icon indicator on the selected swatch.\nReceives the active swatch and the computed contrast color for the icon.',
       },
       {
         name: 'onchange',
         reason: 'function-or-snippet',
+        description: 'Fired when the selected swatch changes.',
       },
     ],
   },

@@ -30,7 +30,8 @@
     "unsupportedProps": [
       {
         "name": "onacknowledge",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       },
       {
         "name": "oncancel",

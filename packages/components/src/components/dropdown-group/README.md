@@ -26,12 +26,12 @@ Accessible group boundary that clusters related dropdown-item rows inside a drop
 
 <!-- generated:props:start -->
 
-| Prop         | Type       | Required | Default | Description                                                                                                                |
-| ------------ | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `ariaLabel`  | `string`   | no       | —       |                                                                                                                            |
-| `class`      | `string`   | no       | —       | Additional class names merged onto the group root.                                                                         |
-| `labelledBy` | `string`   | no       | —       |                                                                                                                            |
-| `children`   | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop         | Type       | Required | Default | Description                                                                                                              |
+| ------------ | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `ariaLabel`  | `string`   | no       | —       |                                                                                                                          |
+| `class`      | `string`   | no       | —       | Additional class names merged onto the group root.                                                                       |
+| `labelledBy` | `string`   | no       | —       |                                                                                                                          |
+| `children`   | `(opaque)` | no       | —       | DropdownLabel plus grouped DropdownItem rows. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

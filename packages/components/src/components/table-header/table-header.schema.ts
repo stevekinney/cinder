@@ -30,10 +30,14 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'TableRow children — typically a single header row.',
       },
       {
         name: 'onSelectAll',
         reason: 'function-or-snippet',
+        description:
+          'Called when the user activates the select-all checkbox. Required when `Table.selectable` is true.',
       },
     ],
   },

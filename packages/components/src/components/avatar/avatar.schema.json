@@ -28,7 +28,8 @@
     "unsupportedProps": [
       {
         "name": "class",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Additional class names merged with `.cinder-avatar`."
       }
     ]
   }

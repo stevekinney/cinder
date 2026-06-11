@@ -16,10 +16,11 @@ A themed container that publishes its tone to descendant components through Svel
 
 <!-- generated:props:start -->
 
-| Prop    | Type                                                      | Required | Default     | Description            |
-| ------- | --------------------------------------------------------- | -------- | ----------- | ---------------------- |
-| `class` | `string`                                                  | no       | —           | Additional CSS classes |
-| `tone`  | `"default"` \| `"raised"` \| `"inset"` \| `"transparent"` | no       | `"default"` | Surface tone.          |
+| Prop       | Type                                                      | Required | Default     | Description                                                                                                                |
+| ---------- | --------------------------------------------------------- | -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class`    | `string`                                                  | no       | —           | Additional CSS classes                                                                                                     |
+| `tone`     | `"default"` \| `"raised"` \| `"inset"` \| `"transparent"` | no       | `"default"` | Surface tone.                                                                                                              |
+| `children` | `(opaque)`                                                | no       | —           | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

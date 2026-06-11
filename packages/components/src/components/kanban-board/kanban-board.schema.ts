@@ -23,6 +23,7 @@ const schema = {
       {
         name: 'card',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'columnActions',
@@ -35,6 +36,7 @@ const schema = {
       {
         name: 'columns',
         reason: 'unknown-shape',
+        required: true,
       },
       {
         name: 'emptyColumn',
@@ -43,14 +45,17 @@ const schema = {
       {
         name: 'getCardKey',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'getCardLabel',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'onchange',
         reason: 'function-or-snippet',
+        required: true,
       },
     ],
   },

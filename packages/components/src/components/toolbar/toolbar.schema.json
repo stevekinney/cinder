@@ -12,5 +12,15 @@
       "description": "Additional class merged with `.cinder-toolbar`."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Controls rendered inside the toolbar."
+      }
+    ]
+  }
 }

@@ -35,6 +35,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Children (FormField instances or arbitrary content).',
       },
     ],
   },

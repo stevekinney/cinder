@@ -20,15 +20,19 @@
     "unsupportedProps": [
       {
         "name": "actions",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Optional trailing CTA region (e.g., \"Renew now\" button)."
       },
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Banner body content."
       },
       {
         "name": "onDismiss",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Called after the dismiss button is clicked. Use to persist state."
       }
     ]
   }

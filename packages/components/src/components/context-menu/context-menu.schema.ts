@@ -36,6 +36,7 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'onopenchange',

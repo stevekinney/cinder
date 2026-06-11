@@ -56,6 +56,20 @@ const schema = {
   },
   additionalProperties: false,
   required: ['frames', 'label'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'empty',
+        reason: 'function-or-snippet',
+        description: 'Snippet rendered when there are no frames.',
+      },
+      {
+        name: 'loadingContent',
+        reason: 'function-or-snippet',
+        description: 'Snippet rendered while loading.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

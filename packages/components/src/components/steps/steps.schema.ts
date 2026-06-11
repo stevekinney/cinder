@@ -34,6 +34,8 @@ const schema = {
       {
         name: 'steps',
         reason: 'unknown-shape',
+        required: true,
+        description: 'Ordered list of step entries from first to last.',
       },
     ],
   },

@@ -37,10 +37,13 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description:
+          'Optional content rendered above the scrim (e.g. a Spinner for a loading state).',
       },
       {
         name: 'onclick',
         reason: 'function-or-snippet',
+        description: 'Click handler — use this to wire click-to-close on the scrim.',
       },
     ],
   },

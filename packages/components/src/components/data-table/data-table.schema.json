@@ -28,15 +28,20 @@
     "unsupportedProps": [
       {
         "name": "columns",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "required": true,
+        "description": "Column descriptors defining the headers and cell rendering for each column."
       },
       {
         "name": "rows",
-        "reason": "generic-type-parameter"
+        "reason": "generic-type-parameter",
+        "required": true,
+        "description": "Row data. Each entry is read via `column.key` for each column."
       },
       {
         "name": "sort",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "description": "Bound sort state. When the user activates a sortable header cell, this prop\nis updated with the new `{ column, direction }`. The consumer is responsible\nfor reordering `rows` in response — DataTable does not sort internally.\n\nPass `undefined` initially when no column is sorted; the component will never\nwrite back `undefined` itself (sort always toggles to a column)."
       }
     ]
   }

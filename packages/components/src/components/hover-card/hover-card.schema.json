@@ -45,7 +45,8 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       },
       {
         "name": "onopenchange",
@@ -53,7 +54,8 @@
       },
       {
         "name": "trigger",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       },
       {
         "name": "triggerRef",

@@ -48,18 +48,22 @@ const schema = {
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Additional class names merged with `.cinder-image`.',
       },
       {
         name: 'fallback',
         reason: 'function-or-snippet',
+        description: 'Rendered in place of the `<img>` when it fails to load.',
       },
       {
         name: 'onerror',
         reason: 'function-or-snippet',
+        description: 'Forwarded after internal state updates.',
       },
       {
         name: 'onload',
         reason: 'function-or-snippet',
+        description: 'Forwarded after internal state updates.',
       },
     ],
   },

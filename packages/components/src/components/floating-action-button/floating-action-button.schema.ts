@@ -34,6 +34,16 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        description:
+          'The icon (or icon + label for extended variant). Always provide `aria-label` when\nthe FAB renders an icon without visible text — i.e. the `filled` variant.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

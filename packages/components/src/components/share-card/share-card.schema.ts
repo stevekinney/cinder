@@ -45,10 +45,13 @@ const schema = {
       {
         name: 'actions',
         reason: 'unknown-shape',
+        description:
+          'Explicit actions to show. When omitted, default copy + native-share actions render.',
       },
       {
         name: 'preview',
         reason: 'function-or-snippet',
+        description: 'Preview content slot rendered above the actions.',
       },
     ],
   },

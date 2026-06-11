@@ -210,9 +210,81 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     const { properties, metadata } = generateSchema('opaque-object', 'opaque-object');
     expect(properties['value']).toBeUndefined();
     expect(properties['values']).toBeUndefined();
+    // Unsupported entries now carry the prop's required-ness and authored JSDoc
+    // description so the generated README can document a prop the JSON schema
+    // can't express without falsely showing it as optional and undescribed.
     expect(metadata?.unsupportedProps).toEqual([
-      { name: 'value', reason: 'unknown-shape' },
-      { name: 'values', reason: 'unknown-shape' },
+      {
+        name: 'value',
+        reason: 'unknown-shape',
+        required: true,
+        description: 'Untagged object should not be widened to a permissive object schema.',
+      },
+      {
+        name: 'values',
+        reason: 'unknown-shape',
+        required: true,
+        description:
+          'Untagged object arrays should stay unsupported unless their item type is explicit.',
+      },
     ]);
+  });
+
+  test('allowlist-omitted function/snippet props are recorded in unsupportedProps, not dropped', () => {
+    const { properties, required, metadata } = generateSchema(
+      'allowlist-omits-callback',
+      'allowlist-omits-callback',
+    );
+
+    // The curated allowlist expresses only `label` in the schema proper.
+    expect(Object.keys(properties)).toEqual(['label']);
+    expect(required).toEqual(['label']);
+
+    // The omitted function/snippet props — part of the public API but absent
+    // from the allowlist — are surfaced in `unsupportedProps` (name-sorted) with
+    // faithful required-ness and authored descriptions: `footer` (snippet),
+    // `ondismiss` (optional callback), `onselect` (required callback).
+    expect(metadata?.unsupportedProps).toEqual([
+      {
+        name: 'footer',
+        reason: 'function-or-snippet',
+        description: 'Snippet rendered in the card footer.',
+      },
+      {
+        name: 'ondismiss',
+        reason: 'function-or-snippet',
+        description: 'Optional teardown callback.',
+      },
+      {
+        name: 'onselect',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Fired when the option is selected.',
+      },
+    ]);
+
+    // Negative cases — the scan records ONLY function/snippet props:
+    const recordedNames = (metadata?.unsupportedProps ?? []).map((entry) => entry.name);
+    // `badge` is EXPRESSIBLE (a number) and curated out of the allowlist on
+    // purpose — JSON Schema can represent it, so the author's omission stands.
+    // It must appear in NEITHER properties (allowlist omitted it) NOR
+    // unsupportedProps (the scan skips expressible props).
+    expect(Object.keys(properties)).not.toContain('badge');
+    expect(recordedNames).not.toContain('badge');
+    // Inherited svelte/elements handlers (onclick et al.) are never recorded.
+    expect(recordedNames).not.toContain('onclick');
+  });
+
+  test('the post-loop scan is gated to the allowlist path — a no-allowlist component is unchanged', () => {
+    // `local-shadow` exports only `LocalShadowProps` (no `LocalShadowSchemaProps`),
+    // so it travels the FALLBACK path and the post-loop allowlist scan must NOT
+    // run. Its only unsupported entry is the pre-existing `class` attribute
+    // (opaque shape, recorded by the main loop). The scan must not inject any
+    // `function-or-snippet` entry here — the fallback output is exactly the main
+    // loop's, untouched.
+    const { properties, metadata } = generateSchema('local-shadow', 'local-shadow');
+    expect(Object.keys(properties)).toContain('disabled');
+    const reasons = (metadata?.unsupportedProps ?? []).map((entry) => entry.reason);
+    expect(reasons).not.toContain('function-or-snippet');
   });
 });

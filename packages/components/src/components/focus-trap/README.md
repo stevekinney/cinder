@@ -19,13 +19,14 @@ Traps keyboard focus within a container and restores focus to the previously foc
 
 <!-- generated:props:start -->
 
-| Prop            | Type               | Required | Default | Description |
-| --------------- | ------------------ | -------- | ------- | ----------- |
-| `active`        | `boolean`          | no       | —       |             |
-| `class`         | `string`           | no       | —       |             |
-| `fallbackFocus` | `string` \| `null` | no       | —       |             |
-| `initialFocus`  | `string` \| `null` | no       | —       |             |
-| `restoreFocus`  | `boolean`          | no       | —       |             |
+| Prop            | Type               | Required | Default | Description                                                                                                                |
+| --------------- | ------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `active`        | `boolean`          | no       | —       |                                                                                                                            |
+| `class`         | `string`           | no       | —       |                                                                                                                            |
+| `fallbackFocus` | `string` \| `null` | no       | —       |                                                                                                                            |
+| `initialFocus`  | `string` \| `null` | no       | —       |                                                                                                                            |
+| `restoreFocus`  | `boolean`          | no       | —       |                                                                                                                            |
+| `children`      | `(opaque)`         | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

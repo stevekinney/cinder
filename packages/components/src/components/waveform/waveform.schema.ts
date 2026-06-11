@@ -37,6 +37,20 @@ const schema = {
   },
   additionalProperties: false,
   required: ['data', 'label'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'empty',
+        reason: 'function-or-snippet',
+        description: 'Snippet rendered when the chart has no data.',
+      },
+      {
+        name: 'loadingContent',
+        reason: 'function-or-snippet',
+        description: 'Snippet rendered while loading.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

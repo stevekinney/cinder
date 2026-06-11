@@ -31,6 +31,22 @@ const schema = {
   },
   additionalProperties: false,
   required: ['trigger'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Panel content shown when open.',
+      },
+      {
+        name: 'onToggle',
+        reason: 'function-or-snippet',
+        description:
+          'Fired on every successful toggle with the next open state. Not called while disabled.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

@@ -40,6 +40,7 @@ const schema = {
       {
         name: 'class',
         reason: 'unknown-shape',
+        description: 'Extra class names merged with `.cinder-checkbox`.',
       },
     ],
   },

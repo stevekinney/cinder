@@ -12,5 +12,13 @@
       "description": "Additional CSS classes"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

@@ -42,6 +42,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Control(s) rendered inside the field.',
       },
     ],
   },

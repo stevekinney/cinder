@@ -33,10 +33,13 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'onclick',
         reason: 'function-or-snippet',
+        description:
+          'Optional click handler called for the rendered `<a>` element. Useful for\nintercepting plain left-clicks for SPA navigation while letting modified\nclicks (cmd/ctrl/shift/alt or middle-click) fall through to native browser\nbehavior. Disabled-state preventDefault still applies.',
       },
     ],
   },

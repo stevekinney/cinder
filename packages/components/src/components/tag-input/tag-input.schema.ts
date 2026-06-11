@@ -133,10 +133,13 @@ const schema = {
       {
         name: 'autocomplete',
         reason: 'unknown-shape',
+        description: 'Autocomplete hint forwarded to the visible text input.',
       },
       {
         name: 'delimiter',
         reason: 'unknown-shape',
+        description:
+          'Key that commits the current input into a tag. Enter always commits separately.',
       },
       {
         name: 'onblur',

@@ -26,10 +26,11 @@ A named grouping of related controls that implements the WAI-ARIA toolbar patter
 
 <!-- generated:props:start -->
 
-| Prop          | Type                           | Required | Default        | Description                                                      |
-| ------------- | ------------------------------ | -------- | -------------- | ---------------------------------------------------------------- |
-| `class`       | `string`                       | no       | —              | Additional class merged with `.cinder-toolbar`.                  |
-| `orientation` | `"horizontal"` \| `"vertical"` | no       | `"horizontal"` | Layout direction for keyboard ownership and separator placement. |
+| Prop          | Type                           | Required | Default        | Description                                                                                                      |
+| ------------- | ------------------------------ | -------- | -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `class`       | `string`                       | no       | —              | Additional class merged with `.cinder-toolbar`.                                                                  |
+| `orientation` | `"horizontal"` \| `"vertical"` | no       | `"horizontal"` | Layout direction for keyboard ownership and separator placement.                                                 |
+| `children`    | `(opaque)`                     | yes      | —              | Controls rendered inside the toolbar. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

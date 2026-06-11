@@ -16,15 +16,15 @@ Groups related form fields under a heading with optional description and layout 
 
 <!-- generated:props:start -->
 
-| Prop           | Type                            | Required | Default | Description                                                                                                                |
-| -------------- | ------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `as`           | `"section"` \| `"fieldset"`     | no       | —       | Wrapper element. Default.                                                                                                  |
-| `class`        | `string`                        | no       | —       | Additional class merged with `.cinder-form-section`.                                                                       |
-| `columns`      | `2` \| `3` \| `4` \| `1`        | no       | —       | Column ceiling. Container queries pick the actual rendered count. Default 2.                                               |
-| `description`  | `string`                        | no       | —       | Optional descriptive paragraph rendered under the heading/legend.                                                          |
-| `heading`      | `string`                        | no       | —       | Heading text rendered as `<h{level}>`.                                                                                     |
-| `headingLevel` | `2` \| `3` \| `4` \| `5` \| `6` | no       | —       | Heading level. Default 2.                                                                                                  |
-| `children`     | `(opaque)`                      | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop           | Type                            | Required | Default | Description                                                                                                                     |
+| -------------- | ------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `as`           | `"section"` \| `"fieldset"`     | no       | —       | Wrapper element. Default.                                                                                                       |
+| `class`        | `string`                        | no       | —       | Additional class merged with `.cinder-form-section`.                                                                            |
+| `columns`      | `2` \| `3` \| `4` \| `1`        | no       | —       | Column ceiling. Container queries pick the actual rendered count. Default 2.                                                    |
+| `description`  | `string`                        | no       | —       | Optional descriptive paragraph rendered under the heading/legend.                                                               |
+| `heading`      | `string`                        | no       | —       | Heading text rendered as `<h{level}>`.                                                                                          |
+| `headingLevel` | `2` \| `3` \| `4` \| `5` \| `6` | no       | —       | Heading level. Default 2.                                                                                                       |
+| `children`     | `(opaque)`                      | yes      | —       | Children (FormField instances or arbitrary content). Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

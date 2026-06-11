@@ -23,6 +23,7 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
       },
       {
         name: 'keyboardStep',
@@ -39,6 +40,7 @@ const schema = {
       {
         name: 'panes',
         reason: 'unknown-shape',
+        required: true,
       },
       {
         name: 'snapThreshold',

@@ -49,26 +49,34 @@ const schema = {
       {
         name: 'anchor',
         reason: 'unknown-shape',
+        required: true,
+        description: 'Text field used as the caret-position anchor.',
       },
       {
         name: 'empty',
         reason: 'function-or-snippet',
+        description: 'Optional empty state rendered after item registration settles.',
       },
       {
         name: 'items',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'Render command items for the current query.',
       },
       {
         name: 'ondismiss',
         reason: 'function-or-snippet',
+        description: 'Invoked when Escape or outside pointerdown dismisses the menu.',
       },
       {
         name: 'onselect',
         reason: 'function-or-snippet',
+        description: 'Invoked when an enabled command is activated.',
       },
       {
         name: 'onstatechange',
         reason: 'function-or-snippet',
+        description: 'One-way state output for host-owned field ARIA.',
       },
     ],
   },

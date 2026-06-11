@@ -20,7 +20,8 @@
     "unsupportedProps": [
       {
         "name": "card",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       },
       {
         "name": "columnActions",
@@ -32,7 +33,8 @@
       },
       {
         "name": "columns",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "required": true
       },
       {
         "name": "emptyColumn",
@@ -40,15 +42,18 @@
       },
       {
         "name": "getCardKey",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       },
       {
         "name": "getCardLabel",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       },
       {
         "name": "onchange",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true
       }
     ]
   }

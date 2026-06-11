@@ -28,6 +28,8 @@ const schema = {
       {
         name: 'value',
         reason: 'unknown-shape',
+        required: true,
+        description: 'The value to render. Any JSON-serializable structure.',
       },
     ],
   },

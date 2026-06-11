@@ -20,11 +20,14 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Callout body content."
       },
       {
         "name": "icon",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Optional decorative icon rendered inside an `aria-hidden` wrapper.\n\nThe icon is a second visual channel alongside variant color — it\nhelps satisfy WCAG 1.4.1 (Use of Color) by ensuring the variant is\nconveyed by more than color alone. The accessible meaning still\nlives in `title` and/or `children`; the icon must not be the only\ncarrier of information."
       }
     ]
   }

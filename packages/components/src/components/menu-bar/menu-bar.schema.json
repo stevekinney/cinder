@@ -20,7 +20,8 @@
     "unsupportedProps": [
       {
         "name": "menus",
-        "reason": "unknown-shape"
+        "reason": "unknown-shape",
+        "required": true
       }
     ]
   }

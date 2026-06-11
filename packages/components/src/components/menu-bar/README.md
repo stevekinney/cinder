@@ -32,7 +32,7 @@ Command menubar for application chrome such as File, Edit, and View menus.
 | `id`         | `string`   | no       | —       |                                                                                                         |
 | `label`      | `string`   | no       | —       |                                                                                                         |
 | `labelledBy` | `string`   | no       | —       |                                                                                                         |
-| `menus`      | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `menus`      | `(opaque)` | yes      | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

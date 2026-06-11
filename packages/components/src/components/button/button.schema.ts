@@ -43,6 +43,26 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'leadingIcon',
+        reason: 'function-or-snippet',
+        description:
+          'DECORATIVE icon rendered before the label/children. Always wrapped in aria-hidden.\n If the icon conveys meaning, supply accessible text via `label`/`aria-label` instead.',
+      },
+      {
+        name: 'trailingIcon',
+        reason: 'function-or-snippet',
+        description:
+          'DECORATIVE icon rendered after the label/children. Always wrapped in aria-hidden.\n Same accessible-name guidance as `leadingIcon`.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

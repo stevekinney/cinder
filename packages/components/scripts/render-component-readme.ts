@@ -55,11 +55,9 @@ function replaceRegion(text: string, region: Region, body: string): string {
 function renderPropsTable(schema: ComponentSchemaOutput): string {
   const propertyEntries = Object.entries(schema.properties);
   const requiredSet = new Set(schema.required ?? []);
-  const unsupported = new Map(
-    (schema.metadata?.unsupportedProps ?? []).map((entry) => [entry.name, entry.reason]),
-  );
+  const unsupported = schema.metadata?.unsupportedProps ?? [];
 
-  if (propertyEntries.length === 0 && unsupported.size === 0) {
+  if (propertyEntries.length === 0 && unsupported.length === 0) {
     return 'This component does not declare any props.';
   }
 
@@ -75,21 +73,37 @@ function renderPropsTable(schema: ComponentSchemaOutput): string {
     rows.push(`| \`${name}\` | ${type} | ${required} | ${def} | ${description} |`);
   }
 
-  for (const [name, reason] of [...unsupported.entries()].toSorted(([a], [b]) =>
-    a.localeCompare(b),
-  )) {
-    rows.push(`| \`${name}\` | \`(opaque)\` | no | — | ${describeUnsupportedReason(reason)} |`);
+  for (const entry of [...unsupported].toSorted((a, b) => a.name.localeCompare(b.name))) {
+    const required = entry.required ? 'yes' : 'no';
+    const authored = (entry.description ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+    // When the prop has an authored JSDoc description, that carries the meaning
+    // and we append only a terse schema caveat — repeating the full sentence on
+    // every row reads as machine noise. When there's no authored description, the
+    // full reason sentence is the row's only explanation, so use it in full.
+    const description = authored
+      ? `${authored} ${SCHEMA_CAVEAT}`
+      : describeUnsupportedReason(entry.reason);
+    rows.push(`| \`${entry.name}\` | \`(opaque)\` | ${required} | — | ${description} |`);
   }
 
   return rows.join('\n');
 }
 
 /**
- * Maps an `unsupportedProps` reason token to reader-facing prose for the props
- * table. The reason is a machine code from the schema generator (e.g.
- * `function-or-snippet`); rendering it verbatim leaks an implementation token
- * into the docs, so each token gets a real description. Unknown tokens fall
- * back to a generic sentence rather than emitting the raw code.
+ * Terse trailing clause appended after an authored JSDoc description on an
+ * unsupported-prop row. Keeps the "why isn't this in the schema" signal without
+ * repeating a full sentence the reader has already absorbed from the prop's own
+ * documentation.
+ */
+const SCHEMA_CAVEAT = 'Not expressible in JSON Schema; see the component types for the signature.';
+
+/**
+ * Maps an `unsupportedProps` reason token to a full reader-facing sentence for
+ * the props table, used when the prop has no authored JSDoc description. The
+ * reason is a machine code from the schema generator (e.g. `function-or-snippet`);
+ * rendering it verbatim leaks an implementation token into the docs, so each
+ * token gets a real sentence. Unknown tokens fall back to a generic one rather
+ * than emitting the raw code.
  */
 function describeUnsupportedReason(reason: string): string {
   const descriptions: Record<string, string> = {

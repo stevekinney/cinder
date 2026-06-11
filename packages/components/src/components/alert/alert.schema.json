@@ -17,5 +17,22 @@
       "description": "Custom class merged with `.cinder-alert`."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet",
+        "required": true
+      },
+      {
+        "name": "icon",
+        "reason": "function-or-snippet"
+      },
+      {
+        "name": "onDismiss",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
 }

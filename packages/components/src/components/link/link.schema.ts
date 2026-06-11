@@ -56,10 +56,14 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'The link text or composed content. Required.',
       },
       {
         name: 'target',
         reason: 'unknown-shape',
+        description:
+          'Forwarded to the rendered `<a>`. `external` supplies `"_blank"` only when no target is given.',
       },
     ],
   },

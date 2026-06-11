@@ -33,10 +33,14 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        required: true,
+        description: 'TableHeader, TableBody, etc.',
       },
       {
         name: 'sort',
         reason: 'unknown-shape',
+        description:
+          'Bound sort state. When the user activates a sortable header, this prop\nis updated to reflect the new column / direction.\n\nPass `undefined` initially when no column is sorted; the component will\nnever write back `undefined` itself (sort always toggles to a column).',
       },
     ],
   },

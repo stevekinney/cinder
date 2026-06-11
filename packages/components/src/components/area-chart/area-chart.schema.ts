@@ -116,6 +116,18 @@ const schema = {
   },
   additionalProperties: false,
   required: ['label', 'series'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'empty',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'loadingContent',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

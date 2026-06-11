@@ -38,10 +38,12 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description: 'Default content (idle state).',
       },
       {
         name: 'confirmation',
         reason: 'function-or-snippet',
+        description: 'Content rendered while in the "copied" state.',
       },
     ],
   },
