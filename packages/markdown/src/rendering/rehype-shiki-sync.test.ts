@@ -287,8 +287,8 @@ describe('rehype-shiki-sync', () => {
 
     it('does not cascade &#x26;#x3C; into <', () => {
       // &#x26;#x3C; represents the literal text "&#x3C;" in source code.
-      // Because &#x26; is decoded last, the earlier &#x3C; pass already ran
-      // and did not match, so the result stays &#x3C; (not <).
+      // Single-pass: &#x26; → & in one match, leaving #x3C; as unmatched literal text,
+      // so the result is &#x3C; (not <).
       expect(decodeHtmlEntities('&#x26;#x3C;')).toBe('&#x3C;');
     });
 
