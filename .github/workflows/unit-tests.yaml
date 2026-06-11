@@ -140,6 +140,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Unconditional whole-repo invariant: every component CSS partial must be
+      # reachable from the aggregate styles/components.css @import chain, or the
+      # component ships UNSTYLED to `/styles` consumers. Runs regardless of scope
+      # because the gap can be introduced by a CSS-file change while the checker's
+      # own test file is unchanged (so `test:changed` would miss it). Sub-second.
+      - name: Check styles aggregator completeness
+        run: bun run --filter=@lostgradient/cinder aggregator:check
+
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and
         # their dependents. Sibling @cinder/* package suites are intentionally
