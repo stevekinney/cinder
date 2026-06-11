@@ -42,6 +42,16 @@ const PIXEL_TOLERANCE = 0.5;
 const TRIGGER_SELECTOR = '.cinder-side-navigation-group__trigger';
 const ACTIVE_ITEM_SELECTOR = ".cinder-navigation-item[data-variant='vertical'][data-active='true']";
 
+// The snapshot page renders EVERY example for the component, each into its own
+// `#example-mount-<scenario>` container. The `basic` example owns the "Projects"
+// group and the active "Phoenix" item this suite measures; the `docs-sidebar`
+// example ALSO renders an active item ("Introduction"). A page-wide `.first()`
+// would therefore mispair the "Projects" trigger against docs-sidebar's active
+// item — and which active item is first in the DOM varies with render order
+// under load. Scope every query to the `basic` example container so the
+// measurements always come from the same example.
+const BASIC_EXAMPLE = '#example-mount-basic';
+
 /**
  * Resolve an authored CSS token (e.g. `var(--cinder-ring-color)`'s value) to a
  * browser-computed color string by painting it onto a probe element. Both sides
@@ -115,8 +125,13 @@ test.describe('SideNavigation — grouped focus ring is inset and unclipped', ()
   test('group trigger: keyboard focus paints a complete inset ring with no overhang or neighbor bleed', async ({
     page,
   }) => {
+    // Scope to the `basic` example so the "Projects" trigger and the active
+    // "Phoenix" item are always measured from the SAME example (see
+    // BASIC_EXAMPLE note).
+    const example = page.locator(BASIC_EXAMPLE);
+
     // The "Projects" group is the trigger that owns the active "Phoenix" item.
-    const trigger = page.locator(TRIGGER_SELECTOR, { hasText: 'Projects' }).first();
+    const trigger = example.locator(TRIGGER_SELECTOR, { hasText: 'Projects' }).first();
     await expect(trigger).toBeVisible();
 
     // Real keyboard navigation — programmatic .focus() does NOT engage
@@ -128,13 +143,24 @@ test.describe('SideNavigation — grouped focus ring is inset and unclipped', ()
     const ringColor = await resolveTokenColor(page, '--cinder-ring-color');
 
     // The SideNavigation root is the container the trigger is full-bleed against.
-    const nav = page.locator('.cinder-side-navigation').first();
+    const nav = example.locator('.cinder-side-navigation').first();
     const navBox = await nav.boundingBox();
     expect(navBox).not.toBeNull();
 
-    const measurement = await trigger.evaluate((element) => {
+    // Read the trigger box AND the active item's top in a SINGLE evaluate. The
+    // bleed check below compares active.top against trigger.bottom; sampling them
+    // in two separate evaluate() calls means two CDP round-trips, each snapshotting
+    // whatever scroll/layout state the page is in at that instant. Keyboard focus
+    // can scroll the nav between the two trips, shifting the coordinate frame so
+    // the two rects no longer share an origin and the comparison reads a phantom
+    // ~6px offset. One evaluate = one layout frame = scroll-stable comparison.
+    // (Do NOT re-split these reads — that reintroduces the frame-shift flake.)
+    const measurement = await trigger.evaluate((element, activeSelector) => {
       const styles = getComputedStyle(element as HTMLElement);
       const rect = element.getBoundingClientRect();
+      const activeItem = (element as HTMLElement)
+        .closest('.cinder-side-navigation')
+        ?.querySelector(activeSelector);
       return {
         matchesFocusVisible: element.matches(':focus-visible'),
         boxShadow: styles.boxShadow,
@@ -142,8 +168,9 @@ test.describe('SideNavigation — grouped focus ring is inset and unclipped', ()
         bottom: rect.bottom,
         left: rect.left,
         top: rect.top,
+        activeTop: activeItem ? activeItem.getBoundingClientRect().top : null,
       };
-    });
+    }, ACTIVE_ITEM_SELECTOR);
 
     // (a) Real keyboard focus engaged :focus-visible.
     expect(measurement.matchesFocusVisible).toBe(true);
@@ -175,17 +202,21 @@ test.describe('SideNavigation — grouped focus ring is inset and unclipped', ()
     // An inset ring is bounded by trigger.bottom, so it cannot reach into the
     // active row. Assert the active item's top is at/below the trigger bottom
     // (they are adjacent) — the inset ring lives entirely above that boundary.
-    const activeTop = await page
-      .locator(ACTIVE_ITEM_SELECTOR)
-      .first()
-      .evaluate((element) => element.getBoundingClientRect().top);
-    expect(activeTop).toBeGreaterThanOrEqual(measurement.bottom - PIXEL_TOLERANCE);
+    // `activeTop` was sampled in the same evaluate as `bottom`, so the two rects
+    // share a layout frame and the comparison is scroll-stable.
+    expect(
+      measurement.activeTop,
+      'basic example should contain the active item below the trigger',
+    ).not.toBeNull();
+    expect(measurement.activeTop!).toBeGreaterThanOrEqual(measurement.bottom - PIXEL_TOLERANCE);
   });
 
   test('active item: keyboard focus shows the inset ring AND the active background + accent bar together', async ({
     page,
   }) => {
-    const active = page.locator(ACTIVE_ITEM_SELECTOR).first();
+    // Scope to the `basic` example: `docs-sidebar` also renders an active item,
+    // so a page-wide `.first()` could resolve the wrong example's row.
+    const active = page.locator(BASIC_EXAMPLE).locator(ACTIVE_ITEM_SELECTOR).first();
     await expect(active).toBeVisible();
     await expect(active).toHaveText('Phoenix');
 

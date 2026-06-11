@@ -10,13 +10,10 @@ export type TableCellProps = Omit<HTMLTdAttributes, 'class' | 'align' | 'scope'>
    * sets `scope="row"` itself (so `scope` is not part of the prop surface).
    * Defaults to `'td'` so existing consumers are unaffected.
    *
-   * The attribute surface is typed against `<td>` for both modes — `<td>` and
-   * `<th>` share `HTMLTableCellElement`, so this covers the common attributes.
-   * The `<th>`-only attributes (`colspan`, `rowspan`, `headers`, `abbr`) are
-   * not surfaced here; a discriminated `td`/`th` union was tried but produced a
-   * union TypeScript reports as "too complex to represent" against the full
-   * element attribute interfaces. Use the compositional Table family directly
-   * if a row-header cell needs those `<th>`-only attributes.
+   * The attribute surface is `HTMLTdAttributes` for both modes — `<td>` and
+   * `<th>` share `HTMLTableCellElement`, so `colspan`, `rowspan`, `headers`, and
+   * `abbr` are all forwarded regardless of `as`. Only `scope` is removed from the
+   * prop surface, because the component owns it (`scope="row"` when `as='th'`).
    */
   as?: 'td' | 'th';
   /** Additional class names merged with `.cinder-table__cell`. */

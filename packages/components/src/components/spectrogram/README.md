@@ -27,17 +27,17 @@ Responsive SVG time × frequency heatmap for visualizing audio spectrogram data.
 
 <!-- generated:props:start -->
 
-| Prop                  | Type                                                | Required | Default | Description                                                                                             |
-| --------------------- | --------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| `class`               | `string`                                            | no       | —       |                                                                                                         |
-| `dataTableCaption`    | `string`                                            | no       | —       |                                                                                                         |
-| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |                                                                                                         |
-| `description`         | `string`                                            | no       | —       |                                                                                                         |
-| `frequencyLabels`     | `string`[]                                          | no       | —       |                                                                                                         |
-| `height`              | `number`                                            | no       | —       |                                                                                                         |
-| `label`               | `string`                                            | yes      | —       |                                                                                                         |
-| `loading`             | `boolean`                                           | no       | —       |                                                                                                         |
-| `frames`              | `(opaque)`                                          | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop                  | Type                                                | Required | Default | Description |
+| --------------------- | --------------------------------------------------- | -------- | ------- | ----------- |
+| `class`               | `string`                                            | no       | —       |             |
+| `dataTableCaption`    | `string`                                            | no       | —       |             |
+| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |             |
+| `description`         | `string`                                            | no       | —       |             |
+| `frames`              | { bins: `number`[]; label: `string` }[]             | yes      | —       |             |
+| `frequencyLabels`     | `string`[]                                          | no       | —       |             |
+| `height`              | `number`                                            | no       | —       |             |
+| `label`               | `string`                                            | yes      | —       |             |
+| `loading`             | `boolean`                                           | no       | —       |             |
 
 <!-- generated:props:end -->
 

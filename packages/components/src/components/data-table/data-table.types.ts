@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from 'svelte/elements';
+
 import type { TableDensity, TableSort } from '../table/table.types.ts';
 
 /**
@@ -52,7 +54,10 @@ export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
  *
  * @template Row - The row record type. Defaults to `DataTableRow`.
  */
-export type DataTableProps<Row extends DataTableRow = DataTableRow> = {
+export type DataTableProps<Row extends DataTableRow = DataTableRow> = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'class'
+> & {
   /** Column descriptors defining the headers and cell rendering for each column. */
   columns: DataTableColumn<Row>[];
   /** Row data. Each entry is read via `column.key` for each column. */

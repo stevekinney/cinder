@@ -35,6 +35,7 @@
     density = 'comfortable',
     scrollable = false,
     class: className,
+    ...rest
   }: DataTableProps<Row> = $props();
 
   /**
@@ -96,11 +97,11 @@
 {/snippet}
 
 {#if scrollable}
-  <div class={classNames('cinder-data-table', 'cinder-table-scroll', className)}>
+  <div {...rest} class={classNames('cinder-data-table', 'cinder-table-scroll', className)}>
     {@render table()}
   </div>
 {:else}
-  <div class={classNames('cinder-data-table', className)}>
+  <div {...rest} class={classNames('cinder-data-table', className)}>
     {@render table()}
   </div>
 {/if}

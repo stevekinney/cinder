@@ -27,16 +27,16 @@ Responsive SVG frequency-bin bar chart for visualizing audio spectrum magnitude 
 
 <!-- generated:props:start -->
 
-| Prop                  | Type                                                | Required | Default | Description                                                                                             |
-| --------------------- | --------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| `class`               | `string`                                            | no       | —       |                                                                                                         |
-| `dataTableCaption`    | `string`                                            | no       | —       |                                                                                                         |
-| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |                                                                                                         |
-| `description`         | `string`                                            | no       | —       |                                                                                                         |
-| `height`              | `number`                                            | no       | —       |                                                                                                         |
-| `label`               | `string`                                            | yes      | —       |                                                                                                         |
-| `loading`             | `boolean`                                           | no       | —       |                                                                                                         |
-| `bins`                | `(opaque)`                                          | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop                  | Type                                                | Required | Default | Description |
+| --------------------- | --------------------------------------------------- | -------- | ------- | ----------- |
+| `bins`                | { label: `string`; value: `number` }[]              | yes      | —       |             |
+| `class`               | `string`                                            | no       | —       |             |
+| `dataTableCaption`    | `string`                                            | no       | —       |             |
+| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |             |
+| `description`         | `string`                                            | no       | —       |             |
+| `height`              | `number`                                            | no       | —       |             |
+| `label`               | `string`                                            | yes      | —       |             |
+| `loading`             | `boolean`                                           | no       | —       |             |
 
 <!-- generated:props:end -->
 

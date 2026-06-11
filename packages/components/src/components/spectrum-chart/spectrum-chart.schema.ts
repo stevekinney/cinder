@@ -10,6 +10,24 @@ const schema = {
     description: {
       type: 'string',
     },
+    bins: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          label: {
+            type: 'string',
+            description: "Frequency label, e.g. '440 Hz' or '1 kHz'.",
+          },
+          value: {
+            type: 'number',
+            description: 'Magnitude or power for this bin. Non-negative.',
+          },
+        },
+        additionalProperties: false,
+        required: ['label', 'value'],
+      },
+    },
     height: {
       type: 'number',
     },
@@ -27,15 +45,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['label'],
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'bins',
-        reason: 'unknown-shape',
-      },
-    ],
-  },
+  required: ['bins', 'label'],
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

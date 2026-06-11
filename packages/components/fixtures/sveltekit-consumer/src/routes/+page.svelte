@@ -16,6 +16,7 @@
     NavigationItem,
     Pagination,
     Select,
+    ShareCard,
     Skeleton,
     Spinner,
     Textarea,
@@ -140,6 +141,17 @@
     <Tooltip text="Helpful info">
       {#snippet children()}<button type="button">hover me</button>{/snippet}
     </Tooltip>
+  </section>
+
+  <!-- ShareCard exercises the SSR-leak guard in validate-consumers.ts: the
+       native-share button depends on `navigator.share` and is hydration-gated, so
+       it must not leak into the server render. The script asserts the ShareCard
+       root SSRs but the native-share button does NOT appear in the SSR HTML. (This
+       is an SSR-leak check only — it does not exercise client hydration, so it does
+       not catch the bare-browser-flag vs `hydrated`-gate hydration mismatch; see
+       the note in validate-consumers.ts.) -->
+  <section aria-label="ShareCard">
+    <ShareCard value="https://example.com/share/fixture" title="Share this" />
   </section>
 
   <section aria-label="Accordion">
