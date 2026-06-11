@@ -90,6 +90,11 @@ export function isTestFile(repoRelativePath: string): boolean {
 export const UNMODELLABLE_IMPORT_ALLOWLIST: ReadonlySet<string> = new Set([
   'packages/components/src/test/hydrate.ts',
   'packages/components/src/test/server-render.ts',
+  // Dynamic-imports the temp SSR modules it builds at runtime (a computed
+  // `import(pathToFileURL(modulePath))`), same as hydrate.ts/server-render.ts.
+  // The imported module is a generated build artifact, never a tracked source
+  // component, so it cannot create a component→component edge the scoper misses.
+  'packages/components/src/test/hydration-safety.ts',
 ]);
 
 // ---------------------------------------------------------------------------
