@@ -124,14 +124,8 @@ type BatchOutcome = {
  * and return a {@link BatchOutcome} so the caller can render a digest and write
  * the full log.
  *
- * `maxConcurrency` caps the pool. The default (CPU-bound, up to 4) is right for
- * lint/typecheck, which only read sources. The `test` phase must pass `1`: each
- * package's `test` script runs inline `bun run --filter=<dep> build` steps that
- * `rm -rf dist` and re-emit a shared dependency's `dist/` (e.g. `@cinder/markdown`,
- * `@cinder/editor`). Run in parallel, two jobs rebuild the same `dist/` while a
- * third job's bundler reads it mid-write, yielding non-deterministic
- * "X is not declared in this file" errors. Serializing the test phase removes the
- * shared-`dist/` write hazard.
+ * `maxConcurrency` caps the pool; the default is CPU-bound (up to 4). The test
+ * phase passes `1` to serialize — see the call site in `runScoped` for why.
  */
 async function runJobs(
   jobs: readonly Job[],
@@ -242,6 +236,11 @@ async function runFull(): Promise<boolean> {
     // The full-suite path can produce very large output. Stream it directly so
     // Bun never keeps the hook alive waiting on captured pipe readers after the
     // command has exited.
+    // NOTE: the root `test` script is `bun run --filter='*' test`, which runs
+    // every package's tests concurrently — so the same shared-`dist/` rebuild
+    // race the scoped path serializes around (see `runScoped`) can still occur
+    // here. The atomic-build-output follow-up is the real fix; this path is
+    // taken only on root-config escalation / fail-safe, not routine pushes.
     const result = await runHookCommand('bun', ['run', script], {
       cwd: REPO_ROOT,
       stderr: 'inherit',
@@ -443,9 +442,13 @@ async function runScoped(
 
     if (phaseJobs.length === 0) continue;
     info(`Running ${script} (${phaseJobs.map((job) => job.packageName).join(', ')})…`);
-    // The `test` phase runs serially (concurrency 1): test scripts rebuild shared
-    // dependency `dist/` dirs in place, so parallel jobs race each other's
-    // `rm -rf dist` + re-emit. Typecheck is read-only and stays parallel.
+    // The `test` phase runs serially (concurrency 1). Each package's `test`
+    // script runs inline `bun run --filter=<dep> build` steps that `rm -rf dist`
+    // and re-emit shared dependency `dist/` dirs (e.g. `@cinder/markdown`,
+    // `@cinder/editor`). Run in parallel, two jobs race those writes while a
+    // third job's bundler reads the dist mid-write, yielding non-deterministic
+    // `error: "<name>" is not declared in this file`. Lint (oxlint) and typecheck
+    // (`tsc --noEmit`) are read-only, so they stay parallel.
     const phase = await runJobs(phaseJobs, script === 'test' ? 1 : undefined);
     fullOutput += phase.output;
     allFailures.push(...phase.failures);
