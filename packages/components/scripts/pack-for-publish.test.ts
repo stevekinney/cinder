@@ -21,4 +21,22 @@ describe('buildPublishedManifest', () => {
       files.indexOf('src/components/**/*.svelte'),
     );
   });
+
+  it('includes src/styles/**/*.css.d.ts so reserved styles type stubs are published', () => {
+    // Regression guard: the `types` condition on every `./styles*` export
+    // points at `./src/styles/<name>.css.d.ts`. Without this glob those files
+    // are absent from the tarball and consumers see
+    // "Cannot find module or type declarations for side-effect import" under
+    // moduleResolution: bundler.
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+
+    expect(files).toContain('src/styles/**/*.css.d.ts');
+  });
 });

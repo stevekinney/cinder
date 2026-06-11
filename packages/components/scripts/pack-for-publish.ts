@@ -251,6 +251,12 @@ function buildPublishedManifest(
     '!src/highlighters/**/*.test.ts',
     '!src/highlighters/**/*.spec.ts',
     'src/styles/**/*.css',
+    // Type stubs for the reserved `./styles*` subpaths. The `types` condition
+    // in each export entry points at `./src/styles/<name>.css.d.ts`; without
+    // this glob those files are absent from the tarball and consumers get
+    // "Cannot find module or type declarations for side-effect import" under
+    // moduleResolution: bundler.
+    'src/styles/**/*.css.d.ts',
     'components.json',
     'README.md',
     'LICENSE',

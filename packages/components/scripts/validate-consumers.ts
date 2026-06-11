@@ -404,11 +404,21 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/package.json',
       'package/src/index.ts',
       'package/src/styles/index.css',
+      'package/src/styles/all.css',
       'package/src/styles/tokens.css',
       'package/src/styles/tokens-base.css',
       'package/src/styles/foundation.css',
       'package/src/styles/components.css',
       'package/src/styles/utilities.css',
+      // Type stubs for every reserved `./styles*` subpath. The `types`
+      // condition in package.json#exports points at these files; if they are
+      // absent consumers see "Cannot find module or type declarations for
+      // side-effect import" under moduleResolution: bundler.
+      'package/src/styles/index.css.d.ts',
+      'package/src/styles/all.css.d.ts',
+      'package/src/styles/tokens.css.d.ts',
+      'package/src/styles/foundation.css.d.ts',
+      'package/src/styles/utilities.css.d.ts',
       'package/dist/index.d.ts',
       'package/dist/index.js',
       'package/dist/server/index.js',
