@@ -256,6 +256,8 @@ describe('DataTable — rest props', () => {
     const wrapper = container.querySelector('.cinder-data-table');
     expect(wrapper?.getAttribute('id')).toBe('contributors');
     expect(wrapper?.getAttribute('data-testid')).toBe('roster');
+    // The component's own class survives alongside the forwarded attributes.
+    expect(wrapper?.classList.contains('cinder-data-table')).toBe(true);
   });
 
   test('forwards arbitrary HTML attributes to the scrollable wrapper <div>', () => {

@@ -143,10 +143,13 @@
     </Tooltip>
   </section>
 
-  <!-- ShareCard exercises the native-share SSR hydration guard: the native-share
-       button depends on `navigator.share`, so it must be ABSENT from the server
-       render and only appear after client hydration. validate-consumers.ts
-       asserts the root renders server-side but the native-share button does not. -->
+  <!-- ShareCard exercises the SSR-leak guard in validate-consumers.ts: the
+       native-share button depends on `navigator.share` and is hydration-gated, so
+       it must not leak into the server render. The script asserts the ShareCard
+       root SSRs but the native-share button does NOT appear in the SSR HTML. (This
+       is an SSR-leak check only — it does not exercise client hydration, so it does
+       not catch the bare-browser-flag vs `hydrated`-gate hydration mismatch; see
+       the note in validate-consumers.ts.) -->
   <section aria-label="ShareCard">
     <ShareCard value="https://example.com/share/fixture" title="Share this" />
   </section>

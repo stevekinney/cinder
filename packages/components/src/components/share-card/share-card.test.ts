@@ -248,16 +248,19 @@ describe('ShareCard native share', () => {
     else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
   });
 
-  test('default native-share button renders via a standalone {#if}, not array growth', () => {
+  test('renders the default native-share button after client mount when navigator.share exists', () => {
     // Regression guard for the template restructure. `canNativeShare` is gated on
-    // the post-hydration `hydrated` $effect, so it is false on first render and
-    // flips true once the effect fires (synchronously in this harness). The default
+    // the post-hydration `hydrated` $effect (false on first render, flips true once
+    // the effect fires — synchronously in this happy-dom harness). The default
     // native-share button is rendered by a standalone `{#if !actions &&
-    // canNativeShare}`, NOT by pushing into the reactive `resolvedActions` array:
-    // when it was pushed into that array, the keyed `{#each}` did not pick up the
-    // post-mount growth and the button never appeared. This asserts the button IS
-    // present after a default-surface render with navigator.share available — which
-    // only holds with the standalone-`{#if}` structure.
+    // canNativeShare}`, NOT by pushing into the reactive `resolvedActions` array.
+    //
+    // Falsification (verified during development): reverting to the array-push
+    // approach — where the native-share action is appended to `resolvedActions`
+    // once `canNativeShare` flips — makes this assertion FAIL. The keyed `{#each}`
+    // does not pick up the post-mount array growth, so the button never appears.
+    // This test therefore guards the standalone-`{#if}` structure, not just that
+    // the button eventually renders.
     (navigator as { share?: unknown }).share = async () => {};
     const { container } = render(ShareCard, { value: 'https://example.com/x' });
     const shareButton = container.querySelector('[data-cinder-action="native-share"]');

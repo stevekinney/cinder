@@ -166,18 +166,13 @@
     clearTimer();
   });
 
-  // Build the action list. When the consumer passes explicit `actions`, use them
-  // verbatim. Otherwise the default surface is the copy-link button (the universal
-  // fallback). The default native-share button is NOT part of this array — it is
-  // rendered separately in the template behind `{#if !actions && canNativeShare}`.
-  //
-  // Why not push it into this array when `canNativeShare`: `canNativeShare` only
-  // flips to true after hydration (it is gated on the `hydrated` $effect).
-  // Observed behavior: when the native-share action was added to this reactive
-  // array post-hydration, the button did not appear on the client. Gating it as a
-  // standalone template `{#if}` (matching the drawer/sheet hydration convention)
-  // makes it render reliably once `canNativeShare` flips. See the unit test
-  // "default native-share button renders via a standalone {#if}, not array growth".
+  // The action list: explicit `actions` verbatim, else the copy-link default.
+  // The default native-share button is NOT in this array — it is rendered by a
+  // standalone `{#if !actions && canNativeShare}` in the template. `canNativeShare`
+  // only flips true after hydration (it is gated on the `hydrated` $effect), and
+  // when the native-share action was instead appended to this reactive array
+  // post-hydration, the keyed `{#each}` did not render it. The standalone `{#if}`
+  // (matching the drawer/sheet hydration convention) renders reliably on the flip.
   const defaultActions: ShareCardAction[] = $derived([
     {
       key: 'copy-link',

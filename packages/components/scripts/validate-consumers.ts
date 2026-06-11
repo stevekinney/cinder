@@ -804,19 +804,34 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       'cinder-toggle',
     ];
 
-    // Lazy-mount: popup element must be ABSENT in default-closed SSR HTML.
+    // Strings that must be ABSENT from the `/` route's SSR HTML, each with the
+    // reason it is forbidden (so a future false positive is not misdiagnosed).
     //
-    // ShareCard's native-share button is hydration-gated (it depends on
-    // `navigator.share`, gated behind a `hydrated` $effect) and so must not appear
-    // in the server render. This assertion catches an *always-render* regression:
-    // if the button were rendered unconditionally (e.g. pushed into the rendered
-    // action list without a client-only gate) it would leak into SSR and trip
-    // here. It does NOT catch the flag-CHOICE regression (gating on a bare browser
-    // flag vs `hydrated`): `esm-env`'s `BROWSER` is false in the server build, so
-    // both gates produce identical SSR HTML — the difference is observable only in
-    // a real client hydration pass, which `fetch()` here does not perform. That
-    // residual is tracked as a shared hydration-mismatch harness task.
-    const LAZY_ABSENT_STRINGS = ['<dialog', 'role="menu"', 'data-cinder-action="native-share"'];
+    // The ShareCard native-share entry catches an *always-render* regression: the
+    // button is hydration-gated (depends on `navigator.share`, gated behind a
+    // `hydrated` $effect), so if it were rendered unconditionally (e.g. pushed into
+    // the rendered action list without a client-only gate) it would leak into SSR
+    // and trip here. It does NOT catch the flag-CHOICE regression (gating on a bare
+    // browser flag vs `hydrated`): `esm-env`'s `BROWSER` is false in the server
+    // build, so both gates produce identical SSR HTML — the difference is
+    // observable only in a real client hydration pass, which `fetch()` here does
+    // not perform. That residual is tracked as a shared hydration-mismatch harness
+    // task.
+    const SSR_ABSENT_STRINGS = [
+      {
+        string: '<dialog',
+        reason: 'lazy-mount overlay (Modal) must not render in default-closed SSR',
+      },
+      {
+        string: 'role="menu"',
+        reason: 'lazy-mount menu (Dropdown) must not render in default-closed SSR',
+      },
+      {
+        string: 'data-cinder-action="native-share"',
+        reason:
+          "ShareCard's native-share button is hydration-gated and must not be rendered unconditionally into SSR",
+      },
+    ];
 
     const httpPort = await pickEphemeralPort();
     const fixtureServer = Bun.spawn([nodeBinaryPath, 'build/index.js'], {
@@ -844,22 +859,20 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
           fail(`fixture HTML (/) does not contain class "${cls}"`);
         }
       }
-      for (const absent of LAZY_ABSENT_STRINGS) {
+      for (const { string: absent, reason } of SSR_ABSENT_STRINGS) {
         if (body.includes(absent)) {
-          fail(
-            `fixture HTML (/) should not contain "${absent}" for lazy-mount components in closed state`,
-          );
+          fail(`fixture HTML (/) should not contain "${absent}": ${reason}`);
         }
       }
 
       // ShareCard SSR contract (only on `/`, where it is mounted). Pairs with the
-      // `data-cinder-action="native-share"` entry in LAZY_ABSENT_STRINGS: the root
+      // `data-cinder-action="native-share"` entry in SSR_ABSENT_STRINGS: the root
       // MUST render server-side (proving the component SSRs at all), while the
       // native-share button MUST NOT (proving it is not rendered unconditionally).
       // Asserting both on the same SSR body is what makes the absence meaningful —
       // without the presence check, a component that failed to render entirely
       // would also pass the absence check. This is an SSR-leak guard, not a
-      // hydration-mismatch guard (see the LAZY_ABSENT_STRINGS note above).
+      // hydration-mismatch guard (see the SSR_ABSENT_STRINGS note above).
       if (!body.includes('cinder-share-card')) {
         fail(`fixture HTML (/) does not contain class "cinder-share-card" (ShareCard did not SSR)`);
       }
