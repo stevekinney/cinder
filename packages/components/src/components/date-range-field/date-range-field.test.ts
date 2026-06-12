@@ -89,6 +89,28 @@ describe('DateRangeField', () => {
       expect(inclusiveDays).toBe(7);
     });
 
+    test('built-in Yesterday & today preset covers two inclusive calendar dates', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+      const yesterdayToday = getPresetButtons(container).find(
+        (button) => button.textContent?.trim() === 'Yesterday & today',
+      );
+      if (!yesterdayToday) throw new Error('Yesterday & today preset not found');
+
+      await fireEvent.click(yesterdayToday);
+
+      const [startYear, startMonth, startDay] = changes[0]!.start!.split('-').map(Number);
+      const [endYear, endMonth, endDay] = changes[0]!.end!.split('-').map(Number);
+      const start = new Date(startYear!, startMonth! - 1, startDay);
+      const end = new Date(endYear!, endMonth! - 1, endDay);
+      const inclusiveDays = (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000) + 1;
+
+      expect(inclusiveDays).toBe(2);
+    });
+
     test('hides preset buttons when hidePresets is true', () => {
       const { container } = render(DateRangeField, { id: 'drf', hidePresets: true });
       const presets = container.querySelector('.cinder-date-range-field__presets');

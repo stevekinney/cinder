@@ -71,7 +71,8 @@
       label: 'Yesterday & today',
       resolve: () => {
         const now = new Date();
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
         return { start: toISODate(yesterday), end: toISODate(now) };
       },
     },

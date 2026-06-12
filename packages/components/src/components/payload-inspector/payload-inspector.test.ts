@@ -367,6 +367,14 @@ describe('PayloadInspector', () => {
       expect(copyButtons.length).toBeGreaterThanOrEqual(2);
     });
 
+    test('does not render copy buttons for an unserializable payload', () => {
+      const circular: Record<string, unknown> = { name: 'cycle' };
+      circular['self'] = circular;
+      const { container } = renderInspector({ value: circular });
+      const copyButtons = container.querySelectorAll('.cinder-copy-button');
+      expect(copyButtons).toHaveLength(0);
+    });
+
     test('custom parse function is applied for string values', () => {
       const customParse = (_raw: string) => ({ parsed: true });
       const { container } = renderInspector({

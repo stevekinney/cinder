@@ -267,7 +267,7 @@
       {#if truncated}
         <Badge variant="warning" size="xs">Truncated</Badge>
       {/if}
-      {#if !isEmpty && parseResult.ok}
+      {#if !isEmpty && parseResult.ok && !unserializable}
         <CopyButton
           value={copyFormattedText}
           label="Copy formatted"
