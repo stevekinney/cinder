@@ -1,0 +1,173 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  .cinder-payload-inspector {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-0);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    overflow: hidden;
+    background: var(--cinder-surface);
+    font-size: var(--cinder-text-sm);
+  }
+
+  /* ----------------------------------------
+   * Header bar
+   * ---------------------------------------- */
+
+  .cinder-payload-inspector__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    background: var(--cinder-surface-raised);
+    border-bottom: 1px solid var(--cinder-border-muted);
+    flex-wrap: wrap;
+  }
+
+  .cinder-payload-inspector__label {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .cinder-payload-inspector__header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    flex-wrap: wrap;
+  }
+
+  .cinder-payload-inspector__size {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ----------------------------------------
+   * Tab list within inspector
+   * ---------------------------------------- */
+
+  .cinder-payload-inspector__tabs {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-block-size: 0;
+  }
+
+  /* ----------------------------------------
+   * Panel content areas
+   * ---------------------------------------- */
+
+  .cinder-payload-inspector__panel {
+    padding: var(--cinder-space-4);
+    overflow: auto;
+  }
+
+  .cinder-payload-inspector__panel--code {
+    padding: var(--cinder-space-0);
+  }
+
+  /* ----------------------------------------
+   * Raw view (CodeBlock wrapper)
+   * ---------------------------------------- */
+
+  .cinder-payload-inspector__raw {
+    /* Remove the built-in CodeBlock rounded corners so the block sits flush
+       inside the panel. Border radius is handled by the outer inspector. */
+    border-radius: 0;
+  }
+
+  /* ----------------------------------------
+   * Summary view
+   * ---------------------------------------- */
+
+  .cinder-payload-inspector__summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-4);
+  }
+
+  .cinder-payload-inspector__summary-badges {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    flex-wrap: wrap;
+  }
+
+  .cinder-payload-inspector__summary-value {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-payload-inspector__summary-value-label {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .cinder-payload-inspector__primitive {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+    background: var(--cinder-surface-raised);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border-radius: var(--cinder-radius-sm);
+    border: 1px solid var(--cinder-border-muted);
+    word-break: break-all;
+  }
+
+  /* ----------------------------------------
+   * Notices and placeholders
+   * ---------------------------------------- */
+
+  .cinder-payload-inspector__notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-3);
+    background: var(--cinder-surface-raised);
+    border-radius: var(--cinder-radius-sm);
+    border: 1px solid var(--cinder-border-muted);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-payload-inspector__notice--warning {
+    background: var(--cinder-feedback-warning-surface);
+    border-color: var(--cinder-feedback-warning-border);
+    color: var(--cinder-feedback-warning-text);
+  }
+
+  .cinder-payload-inspector__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--cinder-space-8) var(--cinder-space-4);
+    color: var(--cinder-text-disabled);
+    font-size: var(--cinder-text-sm);
+    font-style: italic;
+  }
+
+  /* ----------------------------------------
+   * Focus ring on focusable elements we own
+   * ---------------------------------------- */
+
+  .cinder-payload-inspector:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-payload-inspector:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+}

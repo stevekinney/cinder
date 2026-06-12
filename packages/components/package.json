@@ -1103,6 +1103,31 @@
       "import": "./src/components/data-table/data-table.examples.json",
       "default": "./src/components/data-table/data-table.examples.json"
     },
+    "./date-range-field": {
+      "types": "./dist/components/date-range-field/index.d.ts",
+      "svelte": "./src/components/date-range-field/index.ts",
+      "node": "./dist/server/components/date-range-field/index.js",
+      "default": "./dist/components/date-range-field/index.js"
+    },
+    "./date-range-field/schema": {
+      "types": "./dist/components/date-range-field/date-range-field.schema.d.ts",
+      "svelte": "./src/components/date-range-field/date-range-field.schema.ts",
+      "node": "./dist/server/components/date-range-field/date-range-field.schema.js",
+      "default": "./dist/components/date-range-field/date-range-field.schema.js"
+    },
+    "./date-range-field/variables": {
+      "types": "./dist/components/date-range-field/date-range-field.variables.d.ts",
+      "svelte": "./src/components/date-range-field/date-range-field.variables.ts",
+      "node": "./dist/server/components/date-range-field/date-range-field.variables.js",
+      "default": "./dist/components/date-range-field/date-range-field.variables.js"
+    },
+    "./date-range-field/styles": {
+      "default": "./dist/components/date-range-field/date-range-field.css"
+    },
+    "./date-range-field/examples": {
+      "import": "./src/components/date-range-field/date-range-field.examples.json",
+      "default": "./src/components/date-range-field/date-range-field.examples.json"
+    },
     "./description-list": {
       "types": "./dist/components/description-list/index.d.ts",
       "svelte": "./src/components/description-list/index.ts",
@@ -1383,6 +1408,56 @@
       "import": "./src/components/empty-state/empty-state.examples.json",
       "default": "./src/components/empty-state/empty-state.examples.json"
     },
+    "./event-stream-viewer": {
+      "types": "./dist/components/event-stream-viewer/index.d.ts",
+      "svelte": "./src/components/event-stream-viewer/index.ts",
+      "node": "./dist/server/components/event-stream-viewer/index.js",
+      "default": "./dist/components/event-stream-viewer/index.js"
+    },
+    "./event-stream-viewer/schema": {
+      "types": "./dist/components/event-stream-viewer/event-stream-viewer.schema.d.ts",
+      "svelte": "./src/components/event-stream-viewer/event-stream-viewer.schema.ts",
+      "node": "./dist/server/components/event-stream-viewer/event-stream-viewer.schema.js",
+      "default": "./dist/components/event-stream-viewer/event-stream-viewer.schema.js"
+    },
+    "./event-stream-viewer/variables": {
+      "types": "./dist/components/event-stream-viewer/event-stream-viewer.variables.d.ts",
+      "svelte": "./src/components/event-stream-viewer/event-stream-viewer.variables.ts",
+      "node": "./dist/server/components/event-stream-viewer/event-stream-viewer.variables.js",
+      "default": "./dist/components/event-stream-viewer/event-stream-viewer.variables.js"
+    },
+    "./event-stream-viewer/styles": {
+      "default": "./dist/components/event-stream-viewer/event-stream-viewer.css"
+    },
+    "./event-stream-viewer/examples": {
+      "import": "./src/components/event-stream-viewer/event-stream-viewer.examples.json",
+      "default": "./src/components/event-stream-viewer/event-stream-viewer.examples.json"
+    },
+    "./faceted-filter-bar": {
+      "types": "./dist/components/faceted-filter-bar/index.d.ts",
+      "svelte": "./src/components/faceted-filter-bar/index.ts",
+      "node": "./dist/server/components/faceted-filter-bar/index.js",
+      "default": "./dist/components/faceted-filter-bar/index.js"
+    },
+    "./faceted-filter-bar/schema": {
+      "types": "./dist/components/faceted-filter-bar/faceted-filter-bar.schema.d.ts",
+      "svelte": "./src/components/faceted-filter-bar/faceted-filter-bar.schema.ts",
+      "node": "./dist/server/components/faceted-filter-bar/faceted-filter-bar.schema.js",
+      "default": "./dist/components/faceted-filter-bar/faceted-filter-bar.schema.js"
+    },
+    "./faceted-filter-bar/variables": {
+      "types": "./dist/components/faceted-filter-bar/faceted-filter-bar.variables.d.ts",
+      "svelte": "./src/components/faceted-filter-bar/faceted-filter-bar.variables.ts",
+      "node": "./dist/server/components/faceted-filter-bar/faceted-filter-bar.variables.js",
+      "default": "./dist/components/faceted-filter-bar/faceted-filter-bar.variables.js"
+    },
+    "./faceted-filter-bar/styles": {
+      "default": "./dist/components/faceted-filter-bar/faceted-filter-bar.css"
+    },
+    "./faceted-filter-bar/examples": {
+      "import": "./src/components/faceted-filter-bar/faceted-filter-bar.examples.json",
+      "default": "./src/components/faceted-filter-bar/faceted-filter-bar.examples.json"
+    },
     "./feed": {
       "types": "./dist/components/feed/index.d.ts",
       "svelte": "./src/components/feed/index.ts",
@@ -1662,6 +1737,31 @@
       "import": "./src/components/input/input.constraints.json",
       "default": "./src/components/input/input.constraints.json"
     },
+    "./invocation-rule-builder": {
+      "types": "./dist/components/invocation-rule-builder/index.d.ts",
+      "svelte": "./src/components/invocation-rule-builder/index.ts",
+      "node": "./dist/server/components/invocation-rule-builder/index.js",
+      "default": "./dist/components/invocation-rule-builder/index.js"
+    },
+    "./invocation-rule-builder/schema": {
+      "types": "./dist/components/invocation-rule-builder/invocation-rule-builder.schema.d.ts",
+      "svelte": "./src/components/invocation-rule-builder/invocation-rule-builder.schema.ts",
+      "node": "./dist/server/components/invocation-rule-builder/invocation-rule-builder.schema.js",
+      "default": "./dist/components/invocation-rule-builder/invocation-rule-builder.schema.js"
+    },
+    "./invocation-rule-builder/variables": {
+      "types": "./dist/components/invocation-rule-builder/invocation-rule-builder.variables.d.ts",
+      "svelte": "./src/components/invocation-rule-builder/invocation-rule-builder.variables.ts",
+      "node": "./dist/server/components/invocation-rule-builder/invocation-rule-builder.variables.js",
+      "default": "./dist/components/invocation-rule-builder/invocation-rule-builder.variables.js"
+    },
+    "./invocation-rule-builder/styles": {
+      "default": "./dist/components/invocation-rule-builder/invocation-rule-builder.css"
+    },
+    "./invocation-rule-builder/examples": {
+      "import": "./src/components/invocation-rule-builder/invocation-rule-builder.examples.json",
+      "default": "./src/components/invocation-rule-builder/invocation-rule-builder.examples.json"
+    },
     "./json-schema-editor": {
       "types": "./dist/components/json-schema-editor/index.d.ts",
       "svelte": "./src/components/json-schema-editor/index.ts",
@@ -1707,6 +1807,10 @@
     },
     "./json-viewer/styles": {
       "default": "./dist/components/json-viewer/json-viewer.css"
+    },
+    "./json-viewer/examples": {
+      "import": "./src/components/json-viewer/json-viewer.examples.json",
+      "default": "./src/components/json-viewer/json-viewer.examples.json"
     },
     "./kanban-board": {
       "types": "./dist/components/kanban-board/index.d.ts",
@@ -2122,6 +2226,31 @@
       "import": "./src/components/pagination/pagination.examples.json",
       "default": "./src/components/pagination/pagination.examples.json"
     },
+    "./payload-inspector": {
+      "types": "./dist/components/payload-inspector/index.d.ts",
+      "svelte": "./src/components/payload-inspector/index.ts",
+      "node": "./dist/server/components/payload-inspector/index.js",
+      "default": "./dist/components/payload-inspector/index.js"
+    },
+    "./payload-inspector/schema": {
+      "types": "./dist/components/payload-inspector/payload-inspector.schema.d.ts",
+      "svelte": "./src/components/payload-inspector/payload-inspector.schema.ts",
+      "node": "./dist/server/components/payload-inspector/payload-inspector.schema.js",
+      "default": "./dist/components/payload-inspector/payload-inspector.schema.js"
+    },
+    "./payload-inspector/variables": {
+      "types": "./dist/components/payload-inspector/payload-inspector.variables.d.ts",
+      "svelte": "./src/components/payload-inspector/payload-inspector.variables.ts",
+      "node": "./dist/server/components/payload-inspector/payload-inspector.variables.js",
+      "default": "./dist/components/payload-inspector/payload-inspector.variables.js"
+    },
+    "./payload-inspector/styles": {
+      "default": "./dist/components/payload-inspector/payload-inspector.css"
+    },
+    "./payload-inspector/examples": {
+      "import": "./src/components/payload-inspector/payload-inspector.examples.json",
+      "default": "./src/components/payload-inspector/payload-inspector.examples.json"
+    },
     "./phone-input": {
       "types": "./dist/components/phone-input/index.d.ts",
       "svelte": "./src/components/phone-input/index.ts",
@@ -2369,6 +2498,31 @@
       "import": "./src/components/review-editor/review-editor.examples.json",
       "default": "./src/components/review-editor/review-editor.examples.json"
     },
+    "./run-step-timeline": {
+      "types": "./dist/components/run-step-timeline/index.d.ts",
+      "svelte": "./src/components/run-step-timeline/index.ts",
+      "node": "./dist/server/components/run-step-timeline/index.js",
+      "default": "./dist/components/run-step-timeline/index.js"
+    },
+    "./run-step-timeline/schema": {
+      "types": "./dist/components/run-step-timeline/run-step-timeline.schema.d.ts",
+      "svelte": "./src/components/run-step-timeline/run-step-timeline.schema.ts",
+      "node": "./dist/server/components/run-step-timeline/run-step-timeline.schema.js",
+      "default": "./dist/components/run-step-timeline/run-step-timeline.schema.js"
+    },
+    "./run-step-timeline/variables": {
+      "types": "./dist/components/run-step-timeline/run-step-timeline.variables.d.ts",
+      "svelte": "./src/components/run-step-timeline/run-step-timeline.variables.ts",
+      "node": "./dist/server/components/run-step-timeline/run-step-timeline.variables.js",
+      "default": "./dist/components/run-step-timeline/run-step-timeline.variables.js"
+    },
+    "./run-step-timeline/styles": {
+      "default": "./dist/components/run-step-timeline/run-step-timeline.css"
+    },
+    "./run-step-timeline/examples": {
+      "import": "./src/components/run-step-timeline/run-step-timeline.examples.json",
+      "default": "./src/components/run-step-timeline/run-step-timeline.examples.json"
+    },
     "./scroll-area": {
       "types": "./dist/components/scroll-area/index.d.ts",
       "svelte": "./src/components/scroll-area/index.ts",
@@ -2418,6 +2572,31 @@
     "./search-field/examples": {
       "import": "./src/components/search-field/search-field.examples.json",
       "default": "./src/components/search-field/search-field.examples.json"
+    },
+    "./secret-value-field": {
+      "types": "./dist/components/secret-value-field/index.d.ts",
+      "svelte": "./src/components/secret-value-field/index.ts",
+      "node": "./dist/server/components/secret-value-field/index.js",
+      "default": "./dist/components/secret-value-field/index.js"
+    },
+    "./secret-value-field/schema": {
+      "types": "./dist/components/secret-value-field/secret-value-field.schema.d.ts",
+      "svelte": "./src/components/secret-value-field/secret-value-field.schema.ts",
+      "node": "./dist/server/components/secret-value-field/secret-value-field.schema.js",
+      "default": "./dist/components/secret-value-field/secret-value-field.schema.js"
+    },
+    "./secret-value-field/variables": {
+      "types": "./dist/components/secret-value-field/secret-value-field.variables.d.ts",
+      "svelte": "./src/components/secret-value-field/secret-value-field.variables.ts",
+      "node": "./dist/server/components/secret-value-field/secret-value-field.variables.js",
+      "default": "./dist/components/secret-value-field/secret-value-field.variables.js"
+    },
+    "./secret-value-field/styles": {
+      "default": "./dist/components/secret-value-field/secret-value-field.css"
+    },
+    "./secret-value-field/examples": {
+      "import": "./src/components/secret-value-field/secret-value-field.examples.json",
+      "default": "./src/components/secret-value-field/secret-value-field.examples.json"
     },
     "./section-heading": {
       "types": "./dist/components/section-heading/index.d.ts",

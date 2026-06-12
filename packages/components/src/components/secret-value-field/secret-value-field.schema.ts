@@ -1,0 +1,64 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    prefix: {
+      type: 'string',
+      description:
+        'Visible prefix shown before the masked region (e.g. "example_live_"). Does not contain the secret.',
+    },
+    value: {
+      type: 'string',
+      description:
+        'The secret value to copy. Never rendered in attributes or visible text post-copy. Required.',
+    },
+    suffix: {
+      type: 'string',
+      description:
+        'Visible suffix shown after the masked region (e.g. last 4 chars "a3f9"). Does not contain the secret.',
+    },
+    label: {
+      type: 'string',
+      description:
+        'Accessible label for the field and copy button region. Defaults to "Secret value".',
+    },
+    allowReveal: {
+      type: 'boolean',
+      description:
+        'When true, allows the user to reveal/hide the full secret. Opt-in; false by default for security.',
+    },
+    initiallyRevealed: {
+      type: 'boolean',
+      description:
+        'Shows the full unmasked value on initial render. This is an explicit\none-time reveal for the "secret was just created, copy it now" flow and is\nINDEPENDENT of `allowReveal`: it does not add a reveal/hide toggle, it just\nstarts unmasked. Only set this when the surrounding UI makes the one-time\nexposure intentional (e.g. a "copy your new key" panel).',
+    },
+    confirmDuration: {
+      type: 'number',
+      description: 'Duration in milliseconds to show the copy confirmation state. Default 1500.',
+    },
+    copiedLabel: {
+      type: 'string',
+      description: 'Accessible label announced after a successful copy. Defaults to "Copied".',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional CSS classes applied to the root element.',
+    },
+  },
+  additionalProperties: false,
+  required: ['value'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'warning',
+        reason: 'function-or-snippet',
+        description:
+          'Optional advisory content rendered below the field (e.g. "Copy this now; it will not be shown again").',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

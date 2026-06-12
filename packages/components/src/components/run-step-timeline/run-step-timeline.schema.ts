@@ -1,0 +1,104 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    steps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable identity; used as the keyed list identity.',
+          },
+          label: {
+            type: 'string',
+            description: 'Display label for this step.',
+          },
+          status: {
+            enum: ['pending', 'running', 'succeeded', 'failed', 'cancelled', 'skipped', 'retrying'],
+            description: 'Generic execution state.',
+          },
+          startTime: {
+            type: 'string',
+            description:
+              'ISO datetime string for when this step started.\nAbsent for pending steps.',
+          },
+          endTime: {
+            type: 'string',
+            description:
+              'ISO datetime string for when this step ended.\nAbsent for pending and running steps.',
+          },
+          duration: {
+            type: 'string',
+            description:
+              'Human-readable duration string, e.g. "1m 23s".\nAbsent for pending steps.',
+          },
+          attemptCount: {
+            type: 'number',
+            description:
+              'Number of attempts made so far, including any retries.\nDisplayed when greater than 1.',
+          },
+          progress: {
+            type: 'number',
+            description:
+              'Optional determinate progress value between 0 and `progressMax`.\nWhen supplied, a Progress bar is rendered for the step.',
+          },
+          progressMax: {
+            type: 'number',
+            description: 'Maximum value for the progress bar. Defaults to 100.',
+          },
+          details: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: {
+                  type: 'string',
+                  description: 'Unique id for this detail panel. Used as the Collapsible idBase.',
+                },
+                label: {
+                  type: 'string',
+                  description: 'Trigger label rendered on the Collapsible header.',
+                },
+                content: {
+                  type: 'string',
+                  description: 'Pre-formatted content shown inside the panel.',
+                },
+              },
+              additionalProperties: false,
+              required: ['content', 'id', 'label'],
+            },
+            description: 'Expandable detail panels (logs, payloads, errors) shown inline.',
+          },
+        },
+        additionalProperties: false,
+        required: ['id', 'label', 'status'],
+      },
+      description: 'Ordered list of steps to render.',
+    },
+    label: {
+      type: 'string',
+      description: 'Accessible label for the timeline list.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional CSS classes applied to the root element.',
+    },
+  },
+  additionalProperties: false,
+  required: ['steps'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        description: 'Optional per-step body content rendered after the step metadata.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

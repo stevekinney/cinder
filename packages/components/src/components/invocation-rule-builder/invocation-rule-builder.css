@@ -1,0 +1,276 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  .cinder-invocation-rule-builder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-4);
+  }
+
+  /* ---- Rule card ---- */
+
+  .cinder-invocation-rule-builder__rule {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-4);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+    box-shadow: var(--cinder-shadow-xs);
+  }
+
+  /* Rule header row: label + move/remove controls */
+  .cinder-invocation-rule-builder__rule-header {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-invocation-rule-builder__rule-label {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+    overflow-wrap: anywhere;
+  }
+
+  .cinder-invocation-rule-builder__rule-controls {
+    display: inline-flex;
+    gap: var(--cinder-space-1);
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* ---- Section headings ("Conditions", "Actions") ---- */
+
+  .cinder-invocation-rule-builder__section-heading {
+    display: block;
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-semibold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--cinder-text-muted);
+    margin-block-end: var(--cinder-space-2);
+  }
+
+  /* ---- Condition rows ---- */
+
+  .cinder-invocation-rule-builder__conditions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-invocation-rule-builder__condition {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    flex-wrap: wrap;
+  }
+
+  .cinder-invocation-rule-builder__condition-select {
+    flex: 1 1 8rem;
+    min-inline-size: 6rem;
+    block-size: var(--cinder-control-height-sm, 2rem);
+    padding-inline: var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    font-family: inherit;
+    cursor: pointer;
+    appearance: none;
+  }
+
+  .cinder-invocation-rule-builder__condition-select:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-invocation-rule-builder__condition-select:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  .cinder-invocation-rule-builder__condition-value {
+    flex: 2 1 10rem;
+    min-inline-size: 6rem;
+    block-size: var(--cinder-control-height-sm, 2rem);
+    padding-inline: var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    font-family: inherit;
+  }
+
+  .cinder-invocation-rule-builder__condition-value:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-invocation-rule-builder__condition-value:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  /* ---- Action rows ---- */
+
+  .cinder-invocation-rule-builder__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-invocation-rule-builder__action {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-invocation-rule-builder__action-select {
+    flex: 1 1 auto;
+    block-size: var(--cinder-control-height-sm, 2rem);
+    padding-inline: var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    font-family: inherit;
+    cursor: pointer;
+    appearance: none;
+  }
+
+  .cinder-invocation-rule-builder__action-select:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-invocation-rule-builder__action-select:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  /* ---- Icon buttons (remove, move up, move down) ---- */
+
+  .cinder-invocation-rule-builder__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    padding: 0;
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface);
+    color: var(--cinder-text-muted);
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .cinder-invocation-rule-builder__icon-btn:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-invocation-rule-builder__icon-btn:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  @media (hover: hover) {
+    .cinder-invocation-rule-builder__icon-btn:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+      border-color: var(--cinder-border);
+    }
+  }
+
+  .cinder-invocation-rule-builder__icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ---- Add buttons ---- */
+
+  .cinder-invocation-rule-builder__add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    padding-block: var(--cinder-space-1);
+    padding-inline: var(--cinder-space-2);
+    border: 1px dashed var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-sm);
+    background: transparent;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    font-family: inherit;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+
+  .cinder-invocation-rule-builder__add-btn:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-invocation-rule-builder__add-btn:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  @media (hover: hover) {
+    .cinder-invocation-rule-builder__add-btn:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+      border-color: var(--cinder-border);
+    }
+  }
+
+  /* ---- Top-level add-rule button ---- */
+
+  .cinder-invocation-rule-builder__add-rule-btn {
+    align-self: flex-start;
+  }
+
+  /* ---- Summary / readonly mode ---- */
+
+  .cinder-invocation-rule-builder__summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-invocation-rule-builder__summary-row {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+  }
+
+  .cinder-invocation-rule-builder__empty {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-muted);
+    font-style: italic;
+  }
+
+  /* ---- Live region (always in DOM, visibility toggled via CSS) ---- */
+
+  .cinder-invocation-rule-builder__announcer {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
