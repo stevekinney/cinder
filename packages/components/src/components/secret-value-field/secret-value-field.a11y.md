@@ -36,4 +36,4 @@ Clicking the copy button copies the value to the clipboard. Clicking the reveal 
 - The reveal toggle is **only present** when the consumer explicitly sets `allowReveal={true}`. It is never auto-enabled.
 - The component does not manage focus trap or dialog behavior — it is designed for inline use in settings tables and cards.
 - `initiallyRevealed` affects only the initial render; it does not prevent the user from re-hiding the value if `allowReveal` is also set.
-- No `aria-describedby` slot for "copy now; it will not be shown again" warnings. Consumers should render advisory text adjacent to the component and associate it externally if needed — the component intentionally avoids assuming a warning layout.
+- The `warning` snippet renders visible advisory content adjacent to the value row, but it is not automatically wired with `aria-describedby`. Consumers that need an advisory to be announced as part of the field description should associate that text externally; the component intentionally avoids assuming a warning layout.

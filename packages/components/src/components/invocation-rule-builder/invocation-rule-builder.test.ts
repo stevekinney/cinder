@@ -174,6 +174,17 @@ describe('InvocationRuleBuilder', () => {
       expect(container.querySelectorAll('.cinder-invocation-rule-builder__action').length).toBe(1);
     });
 
+    test('renders editable condition and action collections as labeled lists', () => {
+      const { container } = renderBuilder([makeRule()]);
+      const conditions = container.querySelector('.cinder-invocation-rule-builder__conditions');
+      const actions = container.querySelector('.cinder-invocation-rule-builder__actions');
+
+      expect(conditions?.getAttribute('role')).toBe('list');
+      expect(actions?.getAttribute('role')).toBe('list');
+      expect(conditions?.querySelectorAll('[role="listitem"]').length).toBe(1);
+      expect(actions?.querySelectorAll('[role="listitem"]').length).toBe(1);
+    });
+
     test('condition field select reflects the current field value from props', () => {
       // Verifies that <select value={condition.field}> correctly pre-selects the option
       // matching the incoming prop — not just that options are rendered.
@@ -507,7 +518,7 @@ describe('InvocationRuleBuilder', () => {
       expect(labelId).toBeTruthy();
       const labelEl = container.querySelector(`#${labelId}`);
       expect(labelEl?.textContent?.trim()).toBe('Conditions');
-      expect(conditionsList?.getAttribute('role')).toBeNull();
+      expect(conditionsList?.getAttribute('role')).toBe('list');
     });
 
     test('actions list has accessible label via aria-labelledby', () => {
@@ -517,7 +528,7 @@ describe('InvocationRuleBuilder', () => {
       expect(labelId).toBeTruthy();
       const labelEl = container.querySelector(`#${labelId}`);
       expect(labelEl?.textContent?.trim()).toBe('Actions');
-      expect(actionsList?.getAttribute('role')).toBeNull();
+      expect(actionsList?.getAttribute('role')).toBe('list');
     });
 
     /**

@@ -350,10 +350,11 @@
         {:else}
           <div
             class="cinder-invocation-rule-builder__conditions"
+            role="list"
             aria-labelledby={`${baseId}-rule-${ruleIndex}-conditions-label`}
           >
             {#each rule.conditions as condition, conditionIndex (condition.id)}
-              <div class="cinder-invocation-rule-builder__condition">
+              <div class="cinder-invocation-rule-builder__condition" role="listitem">
                 <select
                   class="cinder-invocation-rule-builder__condition-select"
                   aria-label={`Field for condition ${conditionIndex + 1} of ${rule.label}`}
@@ -421,17 +422,17 @@
                 </button>
               </div>
             {/each}
-
-            <button
-              type="button"
-              class="cinder-invocation-rule-builder__add-btn"
-              aria-label={`${addConditionLabel} to ${rule.label}`}
-              data-irb-add-condition
-              onclick={() => handleAddCondition(rule.id)}
-            >
-              + {addConditionLabel}
-            </button>
           </div>
+
+          <button
+            type="button"
+            class="cinder-invocation-rule-builder__add-btn"
+            aria-label={`${addConditionLabel} to ${rule.label}`}
+            data-irb-add-condition
+            onclick={() => handleAddCondition(rule.id)}
+          >
+            + {addConditionLabel}
+          </button>
         {/if}
       </div>
 
@@ -462,10 +463,11 @@
         {:else}
           <div
             class="cinder-invocation-rule-builder__actions"
+            role="list"
             aria-labelledby={`${baseId}-rule-${ruleIndex}-actions-label`}
           >
             {#each rule.actions as action, actionIndex (action.id)}
-              <div class="cinder-invocation-rule-builder__action">
+              <div class="cinder-invocation-rule-builder__action" role="listitem">
                 <select
                   class="cinder-invocation-rule-builder__action-select"
                   aria-label={`Action ${actionIndex + 1} target for ${rule.label}`}
@@ -500,17 +502,17 @@
                 </button>
               </div>
             {/each}
-
-            <button
-              type="button"
-              class="cinder-invocation-rule-builder__add-btn"
-              aria-label={`${addActionLabel} to ${rule.label}`}
-              data-irb-add-action
-              onclick={() => handleAddAction(rule.id)}
-            >
-              + {addActionLabel}
-            </button>
           </div>
+
+          <button
+            type="button"
+            class="cinder-invocation-rule-builder__add-btn"
+            aria-label={`${addActionLabel} to ${rule.label}`}
+            data-irb-add-action
+            onclick={() => handleAddAction(rule.id)}
+          >
+            + {addActionLabel}
+          </button>
         {/if}
       </div>
     </div>

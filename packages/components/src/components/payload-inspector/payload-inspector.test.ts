@@ -198,6 +198,14 @@ describe('PayloadInspector', () => {
       );
       expect(code?.textContent).toContain('{ invalid json');
     });
+
+    test('shows only Copy raw for invalid JSON strings', () => {
+      const { container } = renderInspector({ value: '{ invalid json' });
+      const copyFormatted = container.querySelector('[aria-label="Copy formatted"]');
+      const copyRaw = container.querySelector('[aria-label="Copy raw"]');
+      expect(copyFormatted).toBeNull();
+      expect(copyRaw).not.toBeNull();
+    });
   });
 
   // ---------------------------------------------------------------------------

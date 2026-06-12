@@ -57,7 +57,7 @@ const schema = {
               properties: {
                 id: {
                   type: 'string',
-                  description: 'Unique id for this detail panel. Used as the Collapsible idBase.',
+                  description: 'Stable identity for this detail panel.',
                 },
                 label: {
                   type: 'string',

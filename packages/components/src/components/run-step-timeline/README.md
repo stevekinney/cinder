@@ -134,7 +134,7 @@ details      RunStepDetail[]  optional  Expandable inline panels for logs, paylo
 ### RunStepDetail shape
 
 ```
-id       string  required  Unique id used as the Collapsible idBase.
+id       string  required  Stable identity for this detail panel.
 label    string  required  Trigger label on the Collapsible header.
 content  string  required  Pre-formatted content shown inside the panel.
 ```

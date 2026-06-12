@@ -235,6 +235,9 @@
     }
   });
 
+  const canCopyFormatted = $derived(!isEmpty && parseResult.ok && !unserializable);
+  const canCopyRaw = $derived(!isEmpty && (typeof value === 'string' || canCopyFormatted));
+
   // --------------------------------------------------------------------------
   // Helper: badge variant for the type tag.
   // --------------------------------------------------------------------------
@@ -267,13 +270,15 @@
       {#if truncated}
         <Badge variant="warning" size="xs">Truncated</Badge>
       {/if}
-      {#if !isEmpty && parseResult.ok && !unserializable}
+      {#if canCopyFormatted}
         <CopyButton
           value={copyFormattedText}
           label="Copy formatted"
           copiedLabel="Formatted copied"
           iconOnly
         />
+      {/if}
+      {#if canCopyRaw}
         <CopyButton value={copyRawText} label="Copy raw" copiedLabel="Raw copied" iconOnly />
       {/if}
     </div>

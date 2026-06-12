@@ -219,6 +219,11 @@
     align-self: flex-start;
   }
 
+  .cinder-invocation-rule-builder__conditions + .cinder-invocation-rule-builder__add-btn,
+  .cinder-invocation-rule-builder__actions + .cinder-invocation-rule-builder__add-btn {
+    margin-block-start: var(--cinder-space-2);
+  }
+
   .cinder-invocation-rule-builder__add-btn:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);

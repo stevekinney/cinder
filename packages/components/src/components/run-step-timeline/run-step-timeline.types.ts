@@ -30,7 +30,7 @@ export type RunStepStatus =
  * Rendered inside a Collapsible panel.
  */
 export type RunStepDetail = {
-  /** Unique id for this detail panel. Used as the Collapsible idBase. */
+  /** Stable identity for this detail panel. */
   id: string;
   /** Trigger label rendered on the Collapsible header. */
   label: string;

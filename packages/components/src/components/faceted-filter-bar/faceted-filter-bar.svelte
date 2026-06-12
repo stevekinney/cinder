@@ -161,9 +161,9 @@
     {/each}
   </div>
 
-  <!-- Applied filters row: chips + clear all -->
+  <!-- Active controls row: chips + clear all -->
   {#if hasAppliedFilters}
-    <div class="cinder-faceted-filter-bar__chips" aria-label="Applied filters">
+    <div class="cinder-faceted-filter-bar__chips" aria-label="Active filter controls">
       {#each appliedFilters as filter (filter.key)}
         <Chip
           mode="removable"

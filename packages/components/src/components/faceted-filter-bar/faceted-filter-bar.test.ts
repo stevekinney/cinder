@@ -311,12 +311,12 @@ describe('FacetedFilterBar accessibility', () => {
     expect(liveRegion?.textContent).toContain('2 active filters');
   });
 
-  test('chips row has accessible label for screen readers', () => {
+  test('active controls row has accessible label for screen readers', () => {
     const { container } = render(FacetedFilterBar, {
       appliedFilters: [{ key: 'status', value: 'running', label: 'Status' }],
     });
     const chipsRow = container.querySelector('.cinder-faceted-filter-bar__chips');
-    expect(chipsRow?.getAttribute('aria-label')).toBe('Applied filters');
+    expect(chipsRow?.getAttribute('aria-label')).toBe('Active filter controls');
   });
 
   test('search field renders with type="search" for semantic meaning', () => {
