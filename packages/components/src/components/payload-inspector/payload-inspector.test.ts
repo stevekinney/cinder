@@ -402,6 +402,16 @@ describe('PayloadInspector', () => {
       expect(section?.getAttribute('aria-label')).toBe('My inspector');
     });
 
+    test('label prop remains authoritative over consumer aria-label', () => {
+      const { container } = renderInspector({
+        value: { key: 'val' },
+        label: 'Visible inspector',
+        'aria-label': 'Consumer inspector',
+      } as never);
+      const section = container.querySelector('section.cinder-payload-inspector');
+      expect(section?.getAttribute('aria-label')).toBe('Visible inspector');
+    });
+
     test('tab list has label "Inspector views"', () => {
       const { container } = renderInspector({ value: {} });
       const tabList = container.querySelector('[role="tablist"]');

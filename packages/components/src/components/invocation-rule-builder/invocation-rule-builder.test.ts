@@ -95,6 +95,19 @@ describe('InvocationRuleBuilder', () => {
       expect(section?.getAttribute('aria-label')).toBe('Invocation rules');
     });
 
+    test('allows consumer aria-label when label prop is omitted', () => {
+      const { container } = renderBuilder([], { 'aria-label': 'External rules' } as never);
+      const section = container.querySelector('.cinder-invocation-rule-builder');
+      expect(section?.getAttribute('aria-label')).toBe('External rules');
+    });
+
+    test('allows consumer aria-labelledby to name the region', () => {
+      const { container } = renderBuilder([], { 'aria-labelledby': 'rules-heading' } as never);
+      const section = container.querySelector('.cinder-invocation-rule-builder');
+      expect(section?.getAttribute('aria-labelledby')).toBe('rules-heading');
+      expect(section?.getAttribute('aria-label')).toBeNull();
+    });
+
     test('renders add-rule button in editable mode', () => {
       const { container } = renderBuilder();
       expect(container.querySelector('[data-irb-add-rule]')).not.toBeNull();

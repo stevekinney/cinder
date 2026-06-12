@@ -80,8 +80,9 @@
       label: 'Last 7 days',
       resolve: () => {
         const now = new Date();
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return { start: toISODate(weekAgo), end: toISODate(now) };
+        const sixDaysAgo = new Date(now);
+        sixDaysAgo.setDate(now.getDate() - 6);
+        return { start: toISODate(sixDaysAgo), end: toISODate(now) };
       },
     },
   ];
@@ -150,10 +151,10 @@
 </script>
 
 <div
+  {...rest}
   class={classNames('cinder-date-range-field', className)}
   role="group"
   aria-labelledby={legendId}
-  {...rest}
 >
   {#if label}
     <p id={legendId} class="cinder-date-range-field__legend" data-disabled={disabled || undefined}>

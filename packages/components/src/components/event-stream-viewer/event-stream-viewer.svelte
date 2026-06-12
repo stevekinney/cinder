@@ -63,8 +63,10 @@
 
   const isEmpty = $derived(!loading && events.length === 0);
 
-  // Track event count change for follow-latest auto-scroll
+  // Track event count and tail identity so fixed-size retained streams still
+  // auto-scroll when they drop the oldest event and append a new tail event.
   const eventCount = $derived(events.length);
+  const latestEvent = $derived(events.at(-1));
 
   function toggleDetails(id: string) {
     const next = new Set(expandedIds);
@@ -134,7 +136,8 @@
   $effect(() => {
     // Access eventCount to subscribe to changes
     const count = eventCount;
-    if (followLatest && count > 0 && scrollContainerEl) {
+    const tail = latestEvent;
+    if (followLatest && count > 0 && tail && scrollContainerEl) {
       scrollToBottom(scrollContainerEl);
     }
   });

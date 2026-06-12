@@ -10,12 +10,19 @@
 
   let range: DateRangeValue = $state({ start: undefined, end: undefined });
 
+  function formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   const presets: DateRangeDatePreset[] = [
     {
       id: 'today',
       label: 'Today',
       resolve: () => {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = formatLocalDate(new Date());
         return { start: today, end: today };
       },
     },
@@ -28,8 +35,8 @@
         const monday = new Date(now);
         monday.setDate(now.getDate() - ((day + 6) % 7));
         return {
-          start: monday.toISOString().slice(0, 10),
-          end: now.toISOString().slice(0, 10),
+          start: formatLocalDate(monday),
+          end: formatLocalDate(now),
         };
       },
     },
@@ -39,7 +46,7 @@
       resolve: () => {
         const now = new Date();
         const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        return { start, end: now.toISOString().slice(0, 10) };
+        return { start, end: formatLocalDate(now) };
       },
     },
     {
@@ -50,8 +57,8 @@
         const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
         const start = new Date(now.getFullYear(), quarterStartMonth, 1);
         return {
-          start: start.toISOString().slice(0, 10),
-          end: now.toISOString().slice(0, 10),
+          start: formatLocalDate(start),
+          end: formatLocalDate(now),
         };
       },
     },

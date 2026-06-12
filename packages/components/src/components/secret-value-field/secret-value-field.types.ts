@@ -12,7 +12,7 @@ export type SecretValueFieldProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'
   /** The secret value to copy. Never rendered in attributes or visible text post-copy. Required. */
   value: string;
 
-  /** Visible prefix shown before the masked region (e.g. "example_live_"). Does not contain the secret. */
+  /** Visible prefix shown before the masked region (e.g. `example_live_`). Does not contain the secret. */
   prefix?: string;
 
   /** Visible suffix shown after the masked region (e.g. last 4 chars "a3f9"). Does not contain the secret. */

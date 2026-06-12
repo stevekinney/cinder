@@ -56,6 +56,16 @@ describe('FacetedFilterBar structure', () => {
     expect(root?.getAttribute('aria-label')).toBe('Workflow filters');
   });
 
+  test('root landmark role cannot be overridden by rest attributes', () => {
+    const { container } = render(FacetedFilterBar, {
+      role: 'presentation',
+      'aria-label': 'Workflow filters',
+    } as never);
+    const root = container.querySelector('.cinder-faceted-filter-bar');
+    expect(root?.getAttribute('role')).toBe('search');
+    expect(root?.getAttribute('aria-label')).toBe('Workflow filters');
+  });
+
   test('merges a custom class alongside cinder-faceted-filter-bar', () => {
     const { container } = render(FacetedFilterBar, { class: 'custom-class' });
     const root = container.querySelector('.cinder-faceted-filter-bar');

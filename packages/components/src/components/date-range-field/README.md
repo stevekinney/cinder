@@ -37,12 +37,19 @@ Controlled start/end date range picker with preset shortcuts and validation feed
 
   let range: DateRangeValue = $state({ start: undefined, end: undefined });
 
+  function formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   const presets: DateRangeDatePreset[] = [
     {
       id: 'today',
       label: 'Today',
       resolve: () => {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = formatLocalDate(new Date());
         return { start: today, end: today };
       },
     },
@@ -52,7 +59,7 @@ Controlled start/end date range picker with preset shortcuts and validation feed
       resolve: () => {
         const now = new Date();
         const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        const end = now.toISOString().slice(0, 10);
+        const end = formatLocalDate(now);
         return { start, end };
       },
     },

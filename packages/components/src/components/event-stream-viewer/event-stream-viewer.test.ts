@@ -492,6 +492,26 @@ describe('EventStreamViewer', () => {
       const root = container.querySelector('.cinder-event-stream-viewer');
       expect(root?.hasAttribute('data-cinder-paused')).toBe(false);
     });
+
+    test('scrolls when a fixed-size stream replaces the tail event', async () => {
+      const firstEvent = { ...baseEvent, id: 'event-1', summary: 'First event' };
+      const secondEvent = { ...baseEvent, id: 'event-2', summary: 'Second event' };
+      const thirdEvent = { ...baseEvent, id: 'event-3', summary: 'Third event' };
+      const { container, rerender } = render(EventStreamViewer, {
+        props: { events: [firstEvent, secondEvent], followLatest: true },
+      });
+      const viewport = container.querySelector<HTMLElement>(
+        '.cinder-event-stream-viewer__viewport',
+      );
+      if (!viewport) throw new Error('No event viewport found');
+
+      Object.defineProperty(viewport, 'scrollHeight', { configurable: true, value: 400 });
+      viewport.scrollTop = 0;
+
+      await rerender({ events: [secondEvent, thirdEvent], followLatest: true });
+
+      expect(viewport.scrollTop).toBe(400);
+    });
   });
 
   describe('accessibility', () => {

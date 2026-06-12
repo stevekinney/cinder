@@ -10,6 +10,13 @@
 
   let range: DateRangeValue = $state({ start: undefined, end: undefined });
 
+  function formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   const presets: DateRangeDatePreset[] = [
     {
       id: 'today',
@@ -17,8 +24,8 @@
       resolve: () => {
         const now = new Date();
         return {
-          start: now.toISOString().slice(0, 10),
-          end: now.toISOString().slice(0, 10),
+          start: formatLocalDate(now),
+          end: formatLocalDate(now),
         };
       },
     },
@@ -29,8 +36,8 @@
         const now = new Date();
         const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         return {
-          start: yesterday.toISOString().slice(0, 10),
-          end: now.toISOString().slice(0, 10),
+          start: formatLocalDate(yesterday),
+          end: formatLocalDate(now),
         };
       },
     },
@@ -39,10 +46,11 @@
       label: 'Last 7 days',
       resolve: () => {
         const now = new Date();
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const sixDaysAgo = new Date(now);
+        sixDaysAgo.setDate(now.getDate() - 6);
         return {
-          start: weekAgo.toISOString().slice(0, 10),
-          end: now.toISOString().slice(0, 10),
+          start: formatLocalDate(sixDaysAgo),
+          end: formatLocalDate(now),
         };
       },
     },
@@ -53,8 +61,8 @@
         const now = new Date();
         const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         return {
-          start: monthAgo.toISOString().slice(0, 10),
-          end: now.toISOString().slice(0, 10),
+          start: formatLocalDate(monthAgo),
+          end: formatLocalDate(now),
         };
       },
     },

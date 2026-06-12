@@ -53,10 +53,6 @@ Applied filters are displayed as removable chips. A visually-hidden live region 
       return;
     }
     const facet = facets.find((f) => f.key === key);
-    const label =
-      facet?.type === 'select'
-        ? (facet.options.find((o) => o.value === value)?.label ?? value)
-        : value;
     appliedFilters = [
       ...appliedFilters.filter((f) => f.key !== key),
       { key, value, label: facet?.label ?? key },

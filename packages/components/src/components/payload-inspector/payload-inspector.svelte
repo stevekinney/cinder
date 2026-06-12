@@ -254,7 +254,7 @@
   // --------------------------------------------------------------------------
 </script>
 
-<section class={classNames('cinder-payload-inspector', className)} aria-label={label} {...rest}>
+<section {...rest} class={classNames('cinder-payload-inspector', className)} aria-label={label}>
   <!-- Header bar: label, size, copy actions -->
   <div class="cinder-payload-inspector__header">
     <span class="cinder-payload-inspector__label">{label}</span>

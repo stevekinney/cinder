@@ -43,10 +43,15 @@
     addActionLabel = 'Add action',
     label,
     class: className,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledby,
     ...rest
   }: InvocationRuleBuilderProps = $props();
 
   const baseId = $props.id();
+  const sectionAriaLabel = $derived(
+    ariaLabelledby ? undefined : (ariaLabel ?? label ?? 'Invocation rules'),
+  );
 
   /** Announcement text for the live region. */
   let announcement = $state('');
@@ -268,7 +273,8 @@
 <section
   {...rest}
   class={classNames('cinder-invocation-rule-builder', className)}
-  aria-label={label ?? 'Invocation rules'}
+  aria-label={sectionAriaLabel}
+  aria-labelledby={ariaLabelledby}
   data-irb-region={baseId}
 >
   {#each rules as rule, ruleIndex (rule.id)}

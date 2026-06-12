@@ -12,5 +12,5 @@
   value="example_live_a1b2c3d4e5f6g7h8i9j0k1l2"
   label="API Key"
   prefix="example_live_"
-  suffix="l2m3"
+  suffix="k1l2"
 />

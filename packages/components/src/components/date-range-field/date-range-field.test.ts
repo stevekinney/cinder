@@ -67,6 +67,28 @@ describe('DateRangeField', () => {
       expect(buttons.length).toBeGreaterThan(0);
     });
 
+    test('built-in Last 7 days preset covers seven inclusive calendar dates', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+      const lastSevenDays = getPresetButtons(container).find(
+        (button) => button.textContent?.trim() === 'Last 7 days',
+      );
+      if (!lastSevenDays) throw new Error('Last 7 days preset not found');
+
+      await fireEvent.click(lastSevenDays);
+
+      const [startYear, startMonth, startDay] = changes[0]!.start!.split('-').map(Number);
+      const [endYear, endMonth, endDay] = changes[0]!.end!.split('-').map(Number);
+      const start = new Date(startYear!, startMonth! - 1, startDay);
+      const end = new Date(endYear!, endMonth! - 1, endDay);
+      const inclusiveDays = (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000) + 1;
+
+      expect(inclusiveDays).toBe(7);
+    });
+
     test('hides preset buttons when hidePresets is true', () => {
       const { container } = render(DateRangeField, { id: 'drf', hidePresets: true });
       const presets = container.querySelector('.cinder-date-range-field__presets');
@@ -377,6 +399,19 @@ describe('DateRangeField', () => {
 
     test('root has role="group" and aria-labelledby pointing to the legend when label is provided', () => {
       const { container } = render(DateRangeField, { id: 'drf', label: 'Time window' });
+      const root = container.querySelector('.cinder-date-range-field');
+      const legend = container.querySelector('.cinder-date-range-field__legend');
+      expect(root?.getAttribute('role')).toBe('group');
+      expect(root?.getAttribute('aria-labelledby')).toBe(legend?.getAttribute('id'));
+    });
+
+    test('root accessibility semantics cannot be overridden by rest attributes', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        label: 'Time window',
+        role: 'presentation',
+        'aria-labelledby': 'consumer-label',
+      } as never);
       const root = container.querySelector('.cinder-date-range-field');
       const legend = container.querySelector('.cinder-date-range-field__legend');
       expect(root?.getAttribute('role')).toBe('group');

@@ -102,11 +102,11 @@
 </script>
 
 <div
+  {...rest}
   class={classNames('cinder-faceted-filter-bar', className)}
   role="search"
   aria-label={ariaLabel}
   data-disabled={disabled ? '' : undefined}
-  {...rest}
 >
   <!-- Controls row: search field + facet selects -->
   <div class="cinder-faceted-filter-bar__controls">
@@ -164,7 +164,7 @@
   <!-- Applied filters row: chips + clear all -->
   {#if hasAppliedFilters}
     <div class="cinder-faceted-filter-bar__chips" aria-label="Applied filters">
-      {#each appliedFilters as filter, filterIndex (`${filter.key}:${filter.value}:${filterIndex}`)}
+      {#each appliedFilters as filter (filter.key)}
         <Chip
           mode="removable"
           label={`${filter.label}: ${filter.value}`}
