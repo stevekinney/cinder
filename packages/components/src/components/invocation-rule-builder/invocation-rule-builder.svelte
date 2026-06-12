@@ -327,7 +327,6 @@
         {#if readonly}
           <div
             class="cinder-invocation-rule-builder__summary"
-            role="list"
             aria-label={`Conditions for ${rule.label}`}
           >
             {#if rule.conditions.length === 0}
@@ -336,7 +335,7 @@
               </p>
             {:else}
               {#each rule.conditions as condition (condition.id)}
-                <div class="cinder-invocation-rule-builder__summary-row" role="listitem">
+                <div class="cinder-invocation-rule-builder__summary-row">
                   {conditionSummary(condition)}
                 </div>
               {/each}
@@ -345,11 +344,10 @@
         {:else}
           <div
             class="cinder-invocation-rule-builder__conditions"
-            role="list"
             aria-labelledby={`${baseId}-rule-${ruleIndex}-conditions-label`}
           >
             {#each rule.conditions as condition, conditionIndex (condition.id)}
-              <div class="cinder-invocation-rule-builder__condition" role="listitem">
+              <div class="cinder-invocation-rule-builder__condition">
                 <select
                   class="cinder-invocation-rule-builder__condition-select"
                   aria-label={`Field for condition ${conditionIndex + 1} of ${rule.label}`}
@@ -443,14 +441,13 @@
         {#if readonly}
           <div
             class="cinder-invocation-rule-builder__summary"
-            role="list"
             aria-label={`Actions for ${rule.label}`}
           >
             {#if rule.actions.length === 0}
               <p class="cinder-invocation-rule-builder__empty">No actions configured.</p>
             {:else}
               {#each rule.actions as action (action.id)}
-                <div class="cinder-invocation-rule-builder__summary-row" role="listitem">
+                <div class="cinder-invocation-rule-builder__summary-row">
                   {actionSummary(action)}
                 </div>
               {/each}
@@ -459,11 +456,10 @@
         {:else}
           <div
             class="cinder-invocation-rule-builder__actions"
-            role="list"
             aria-labelledby={`${baseId}-rule-${ruleIndex}-actions-label`}
           >
             {#each rule.actions as action, actionIndex (action.id)}
-              <div class="cinder-invocation-rule-builder__action" role="listitem">
+              <div class="cinder-invocation-rule-builder__action">
                 <select
                   class="cinder-invocation-rule-builder__action-select"
                   aria-label={`Action ${actionIndex + 1} target for ${rule.label}`}

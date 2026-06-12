@@ -24,7 +24,6 @@
 <script lang="ts">
   import type { EventStreamViewerProps, StreamEvent } from './event-stream-viewer.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { copyToClipboard } from '../../utilities/clipboard.ts';
   import ConnectionIndicator from '../connection-indicator/connection-indicator.svelte';
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
@@ -93,13 +92,10 @@
     return parts.join(' ');
   }
 
-  async function handleCopyVisible() {
+  function handleCopyVisible() {
     const text = events.map(formatEventAsText).join('\n');
-    if (oncopyvisible) {
-      oncopyvisible(text);
-    } else {
-      await copyToClipboard(text);
-    }
+    if (!oncopyvisible) return;
+    oncopyvisible(text);
     liveMessage = `${events.length} event${events.length !== 1 ? 's' : ''} copied to clipboard`;
     setTimeout(() => {
       liveMessage = '';
@@ -178,7 +174,7 @@
           oninput={(e) => onfilter?.((e.currentTarget as HTMLInputElement).value)}
         />
       {/if}
-      {#if oncopyvisible !== undefined || events.length > 0}
+      {#if oncopyvisible !== undefined}
         <button
           type="button"
           class="cinder-event-stream-viewer__copy-all-button"
@@ -207,14 +203,12 @@
     class="cinder-event-stream-viewer__viewport"
     role="log"
     aria-label={label}
-    aria-live="polite"
-    aria-atomic="false"
     onscroll={handleScroll}
     bind:this={scrollContainerEl}
     tabindex={0}
   >
     {#if loading}
-      <div class="cinder-event-stream-viewer__loading" aria-label="Loading events">
+      <div class="cinder-event-stream-viewer__loading" role="status" aria-label="Loading events">
         <div class="cinder-event-stream-viewer__skeleton" aria-hidden="true"></div>
         <div class="cinder-event-stream-viewer__skeleton" aria-hidden="true"></div>
         <div class="cinder-event-stream-viewer__skeleton" aria-hidden="true"></div>
@@ -263,7 +257,7 @@
                     type="button"
                     class="cinder-event-stream-viewer__details-toggle"
                     aria-expanded={isExpanded}
-                    aria-controls={detailsId}
+                    aria-controls={isExpanded ? detailsId : undefined}
                     onclick={() => toggleDetails(event.id)}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}

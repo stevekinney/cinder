@@ -7,7 +7,7 @@ const schema = {
     prefix: {
       type: 'string',
       description:
-        'Visible prefix shown before the masked region (e.g. "example_live_"). Does not contain the secret.',
+        'Visible prefix shown before the masked region (e.g. `example_live_`). Does not contain the secret.',
     },
     value: {
       type: 'string',

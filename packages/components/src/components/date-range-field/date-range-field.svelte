@@ -101,9 +101,15 @@
   const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Active preset tracking: which preset (if any) matches the current value.
+  // Active preset tracking: which preset (if any) matches the current controlled value.
   // ──────────────────────────────────────────────────────────────────────────
-  let activePresetId = $state<string | undefined>(undefined);
+  const activePresetId = $derived.by(() => {
+    const match = resolvedPresets.find((preset) => {
+      const resolved = preset.resolve();
+      return resolved.start === value.start && resolved.end === value.end;
+    });
+    return match?.id;
+  });
 
   // ──────────────────────────────────────────────────────────────────────────
   // Utilities
@@ -121,7 +127,6 @@
   function handlePresetClick(preset: DateRangeDatePreset) {
     if (disabled) return;
     const next = preset.resolve();
-    activePresetId = preset.id;
     value = next;
     onchange?.(next);
   }
@@ -129,7 +134,6 @@
   function handleStartChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const next: DateRangeValue = { start: target.value || undefined, end: value.end };
-    activePresetId = undefined;
     value = next;
     onchange?.(next);
   }
@@ -137,7 +141,6 @@
   function handleEndChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const next: DateRangeValue = { start: value.start, end: target.value || undefined };
-    activePresetId = undefined;
     value = next;
     onchange?.(next);
   }

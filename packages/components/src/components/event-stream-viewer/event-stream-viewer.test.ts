@@ -228,14 +228,15 @@ describe('EventStreamViewer', () => {
       expect(container.querySelector('.cinder-event-stream-viewer__event-details')).toBeNull();
     });
 
-    test('details panel has an id matching the toggle aria-controls', async () => {
+    test('details toggle only controls an existing expanded panel', async () => {
       const { container } = render(EventStreamViewer, { props: { events: [errorEvent] } });
       const toggle = container.querySelector<HTMLButtonElement>(
         '.cinder-event-stream-viewer__details-toggle',
       );
+      expect(toggle?.hasAttribute('aria-controls')).toBe(false);
+      await fireEvent.click(toggle!);
       const controls = toggle?.getAttribute('aria-controls');
       expect(controls).toBeTruthy();
-      await fireEvent.click(toggle!);
       const panel = container.querySelector(`#${controls}`);
       expect(panel).not.toBeNull();
     });
@@ -253,11 +254,11 @@ describe('EventStreamViewer', () => {
       const toggle = container.querySelector<HTMLButtonElement>(
         '.cinder-event-stream-viewer__details-toggle',
       );
+      await fireEvent.click(toggle!);
       const controls = toggle?.getAttribute('aria-controls') ?? '';
       // The raw, unsafe id must not appear in the DOM id.
       expect(controls).not.toContain('evt with spaces');
       expect(controls).not.toContain(' ');
-      await fireEvent.click(toggle!);
       // aria-controls still resolves to a real panel (use an attribute selector
       // because the namespaced id is safe but not necessarily a valid CSS ident
       // for `#...` selectors).
@@ -265,19 +266,23 @@ describe('EventStreamViewer', () => {
       expect(panel).not.toBeNull();
     });
 
-    test('two viewers with the same event id produce distinct details panel ids', () => {
+    test('two viewers with the same event id produce distinct details panel ids', async () => {
       // Regression: composed viewers used to collide because the DOM id embedded
       // the (possibly shared) event id. Each instance's $props.id() namespace
       // must keep their aria-controls / panel ids distinct.
       const shared = { ...errorEvent, id: 'logs' };
       const first = render(EventStreamViewer, { props: { events: [shared] } });
       const second = render(EventStreamViewer, { props: { events: [shared] } });
-      const firstControls = first.container
-        .querySelector('.cinder-event-stream-viewer__details-toggle')
-        ?.getAttribute('aria-controls');
-      const secondControls = second.container
-        .querySelector('.cinder-event-stream-viewer__details-toggle')
-        ?.getAttribute('aria-controls');
+      const firstToggle = first.container.querySelector<HTMLButtonElement>(
+        '.cinder-event-stream-viewer__details-toggle',
+      );
+      const secondToggle = second.container.querySelector<HTMLButtonElement>(
+        '.cinder-event-stream-viewer__details-toggle',
+      );
+      await fireEvent.click(firstToggle!);
+      await fireEvent.click(secondToggle!);
+      const firstControls = firstToggle?.getAttribute('aria-controls');
+      const secondControls = secondToggle?.getAttribute('aria-controls');
       expect(firstControls).toBeTruthy();
       expect(secondControls).toBeTruthy();
       expect(firstControls).not.toBe(secondControls);
@@ -398,6 +403,14 @@ describe('EventStreamViewer', () => {
       expect(btn).not.toBeNull();
     });
 
+    test('does not render copy-visible button when oncopyvisible is omitted', () => {
+      const { container } = render(EventStreamViewer, {
+        props: { events: [baseEvent] },
+      });
+      const btn = container.querySelector('.cinder-event-stream-viewer__copy-all-button');
+      expect(btn).toBeNull();
+    });
+
     test('copy-visible button is disabled when events array is empty', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: [], oncopyvisible: () => {} },
@@ -466,11 +479,11 @@ describe('EventStreamViewer', () => {
   });
 
   describe('accessibility', () => {
-    test('log region has aria-live="polite" and aria-atomic="false"', () => {
+    test('log region relies on role="log" implicit live semantics', () => {
       const { container } = render(EventStreamViewer, { props: { events: [] } });
       const log = container.querySelector('[role="log"]');
-      expect(log?.getAttribute('aria-live')).toBe('polite');
-      expect(log?.getAttribute('aria-atomic')).toBe('false');
+      expect(log?.getAttribute('aria-live')).toBeNull();
+      expect(log?.getAttribute('aria-atomic')).toBeNull();
     });
 
     test('log region is keyboard focusable (tabindex=0)', () => {
@@ -533,10 +546,14 @@ describe('EventStreamViewer', () => {
       expect(liveRegion?.getAttribute('aria-atomic')).toBe('true');
     });
 
-    test('details toggle has aria-expanded and aria-controls', () => {
+    test('details toggle has aria-expanded and controls only when expanded', async () => {
       const { container } = render(EventStreamViewer, { props: { events: [errorEvent] } });
-      const toggle = container.querySelector('.cinder-event-stream-viewer__details-toggle');
+      const toggle = container.querySelector<HTMLButtonElement>(
+        '.cinder-event-stream-viewer__details-toggle',
+      );
       expect(toggle?.getAttribute('aria-expanded')).not.toBeNull();
+      expect(toggle?.getAttribute('aria-controls')).toBeNull();
+      await fireEvent.click(toggle!);
       expect(toggle?.getAttribute('aria-controls')).not.toBeNull();
     });
   });

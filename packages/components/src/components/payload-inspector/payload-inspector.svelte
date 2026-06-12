@@ -260,7 +260,7 @@
     <span class="cinder-payload-inspector__label">{label}</span>
     <div class="cinder-payload-inspector__header-actions">
       {#if sizeResult.ok}
-        <span class="cinder-payload-inspector__size" aria-label="{byteLabel} payload size">
+        <span class="cinder-payload-inspector__size" aria-label={`${byteLabel} payload size`}>
           {byteLabel}
         </span>
       {/if}

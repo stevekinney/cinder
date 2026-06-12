@@ -494,6 +494,7 @@ describe('InvocationRuleBuilder', () => {
       expect(labelId).toBeTruthy();
       const labelEl = container.querySelector(`#${labelId}`);
       expect(labelEl?.textContent?.trim()).toBe('Conditions');
+      expect(conditionsList?.getAttribute('role')).toBeNull();
     });
 
     test('actions list has accessible label via aria-labelledby', () => {
@@ -503,6 +504,7 @@ describe('InvocationRuleBuilder', () => {
       expect(labelId).toBeTruthy();
       const labelEl = container.querySelector(`#${labelId}`);
       expect(labelEl?.textContent?.trim()).toBe('Actions');
+      expect(actionsList?.getAttribute('role')).toBeNull();
     });
 
     /**

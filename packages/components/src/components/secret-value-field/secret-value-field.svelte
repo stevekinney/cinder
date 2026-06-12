@@ -76,7 +76,8 @@
   Security contract:
   - The `value` prop is NEVER placed in title, aria-label, data-*, or any passive attribute.
   - The masked display uses a fixed bullet string; the real value only appears in the
-    visible text when the user explicitly requests reveal AND allowReveal is true.
+    visible text when `initiallyRevealed` is true or when the user explicitly requests
+    reveal AND `allowReveal` is true.
   - After a successful copy, no visible text exposes the value — only the live-region
     announcement ("Copied") fires, and that text never contains the secret.
   - The copy button aria-label names the field, not the value.

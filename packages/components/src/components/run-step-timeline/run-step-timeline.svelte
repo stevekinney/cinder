@@ -188,7 +188,7 @@
                 value={step.progress ?? 0}
                 max={step.progressMax ?? 100}
                 size="sm"
-                ariaLabel="{step.label} progress"
+                ariaLabel={`${step.label} progress`}
               />
             </div>
           {/if}

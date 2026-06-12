@@ -176,6 +176,46 @@ describe('DateRangeField', () => {
       });
     });
 
+    test('marks a preset pressed when the controlled value matches it', () => {
+      const preset = {
+        id: 'last-7d',
+        label: 'Last 7 days',
+        resolve: () => ({ start: '2026-05-31', end: '2026-06-07' }),
+      };
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        presets: [preset],
+        value: { start: '2026-05-31', end: '2026-06-07' },
+      });
+
+      const btn = getPresetButtons(container)[0];
+      if (!btn) throw new Error('No preset button found');
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('clears preset pressed state when the controlled value no longer matches it', async () => {
+      const preset = {
+        id: 'last-7d',
+        label: 'Last 7 days',
+        resolve: () => ({ start: '2026-05-31', end: '2026-06-07' }),
+      };
+      const { container, rerender } = render(DateRangeField, {
+        id: 'drf',
+        presets: [preset],
+        value: { start: '2026-05-31', end: '2026-06-07' },
+      });
+      const btn = getPresetButtons(container)[0];
+      if (!btn) throw new Error('No preset button found');
+
+      await rerender({
+        id: 'drf',
+        presets: [preset],
+        value: { start: '2026-06-01', end: '2026-06-07' },
+      });
+
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+    });
+
     test('manually changing start input calls onchange and clears active preset', async () => {
       const changes: DateRangeValue[] = [];
       const preset = {
