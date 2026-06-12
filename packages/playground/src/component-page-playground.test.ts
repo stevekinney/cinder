@@ -1,0 +1,155 @@
+import { describe, expect, test } from 'bun:test';
+
+import { buildPlaygroundModel, buildSnippet } from './component-page-playground.ts';
+import type { ComponentManifest, PropManifest } from './types.ts';
+
+function manifest(props: PropManifest[]): ComponentManifest {
+  return { name: 'Demo', kebabName: 'demo', file: 'demo.svelte', importPath: 'demo', props };
+}
+
+describe('buildPlaygroundModel', () => {
+  test('classifies boolean/select/text/number props into controls', () => {
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'flag',
+          control: { kind: 'boolean' },
+          bindable: false,
+          optional: true,
+          defaultValue: true,
+        },
+        {
+          name: 'variant',
+          control: { kind: 'select', options: ['a', 'b'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'b',
+        },
+        {
+          name: 'title',
+          control: { kind: 'text' },
+          bindable: false,
+          optional: true,
+          defaultValue: 'hi',
+        },
+        {
+          name: 'count',
+          control: { kind: 'number' },
+          bindable: false,
+          optional: true,
+          defaultValue: 3,
+        },
+      ]),
+    );
+    expect(model.controls).toEqual([
+      { name: 'flag', kind: 'boolean', value: true },
+      { name: 'variant', kind: 'select', options: ['a', 'b'], value: 'b' },
+      { name: 'title', kind: 'text', value: 'hi' },
+      { name: 'count', kind: 'number', value: 3 },
+    ]);
+    expect(model.skipped).toEqual([]);
+    expect(model.hasUnsatisfiedRequired).toBe(false);
+  });
+
+  test('skips snippet/unknown props and lists them', () => {
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'flag',
+          control: { kind: 'boolean' },
+          bindable: false,
+          optional: true,
+          defaultValue: false,
+        },
+        { name: 'body', control: { kind: 'snippet' }, bindable: false, optional: true },
+        {
+          name: 'raw',
+          control: { kind: 'unknown', rawType: 'Foo' },
+          bindable: false,
+          optional: true,
+        },
+      ]),
+    );
+    expect(model.controls.map((control) => control.name)).toEqual(['flag']);
+    expect(model.skipped).toEqual(['body', 'raw']);
+  });
+
+  test('a required snippet (e.g. children) does NOT suppress the playground', () => {
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'multiple',
+          control: { kind: 'boolean' },
+          bindable: false,
+          optional: true,
+          defaultValue: false,
+        },
+        { name: 'children', control: { kind: 'snippet' }, bindable: false, optional: false },
+      ]),
+    );
+    expect(model.hasUnsatisfiedRequired).toBe(false);
+    expect(model.controls.map((control) => control.name)).toEqual(['multiple']);
+    expect(model.skipped).toEqual(['children']);
+  });
+
+  test('a required non-snippet prop with no default suppresses the generated preview', () => {
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'variant',
+          control: { kind: 'select', options: ['x'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'x',
+        },
+        {
+          name: 'value',
+          control: { kind: 'unknown', rawType: 'T' },
+          bindable: false,
+          optional: false,
+        },
+      ]),
+    );
+    expect(model.hasUnsatisfiedRequired).toBe(true);
+    expect(model.skipped).toContain('value');
+  });
+});
+
+describe('buildSnippet', () => {
+  const controls = buildPlaygroundModel(
+    manifest([
+      {
+        name: 'multiple',
+        control: { kind: 'boolean' },
+        bindable: false,
+        optional: true,
+        defaultValue: false,
+      },
+      {
+        name: 'size',
+        control: { kind: 'select', options: ['sm', 'md'] },
+        bindable: false,
+        optional: true,
+        defaultValue: 'md',
+      },
+    ]),
+  ).controls;
+
+  test('omits a false boolean and renders self-closing when no attributes', () => {
+    expect(buildSnippet('Accordion', controls, { multiple: false, size: '' })).toBe(
+      '<Accordion />',
+    );
+  });
+
+  test('renders a true boolean as a bare attribute', () => {
+    expect(buildSnippet('Accordion', controls, { multiple: true, size: '' })).toBe(
+      '<Accordion multiple />',
+    );
+  });
+
+  test('renders string attributes and stacks multiple onto separate lines', () => {
+    expect(buildSnippet('Accordion', controls, { multiple: true, size: 'sm' })).toBe(
+      '<Accordion\n  multiple\n  size="sm"\n/>',
+    );
+  });
+});
