@@ -1,6 +1,5 @@
+import { isA11yMetadata, isAvoidWhenArray } from './component-documentation-guards.ts';
 import type {
-  A11yMetadata,
-  AvoidWhenEntry,
   ComponentDocumentationPayload,
   DocumentationComponentSummary,
   DocumentationReadme,
@@ -18,41 +17,6 @@ function readProperty(value: object, key: string): unknown {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
-}
-
-function isAvoidWhenArray(value: unknown): value is AvoidWhenEntry[] {
-  return (
-    Array.isArray(value) &&
-    value.every((entry) => {
-      if (!isObject(entry)) return false;
-      const alternative = readProperty(entry, 'alternative');
-      return (
-        typeof readProperty(entry, 'reason') === 'string' &&
-        (alternative === undefined || typeof alternative === 'string')
-      );
-    })
-  );
-}
-
-function isA11yMetadata(value: unknown): value is A11yMetadata {
-  if (!isObject(value)) return false;
-  const pattern = readProperty(value, 'pattern');
-  const keyboard = readProperty(value, 'keyboard');
-  const notes = readProperty(value, 'notes');
-  const keyboardOk =
-    keyboard === undefined ||
-    (Array.isArray(keyboard) &&
-      keyboard.every(
-        (entry) =>
-          isObject(entry) &&
-          typeof readProperty(entry, 'keys') === 'string' &&
-          typeof readProperty(entry, 'action') === 'string',
-      ));
-  return (
-    (pattern === undefined || typeof pattern === 'string') &&
-    keyboardOk &&
-    (notes === undefined || isStringArray(notes))
-  );
 }
 
 export function isJsonValue(value: unknown): value is JsonValue {

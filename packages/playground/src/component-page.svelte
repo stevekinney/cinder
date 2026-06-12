@@ -430,6 +430,9 @@
 
   // Turn a kebab-case component id into sentence-case display text, e.g.
   // `segmented-control` → `Segmented control`. The href keeps the raw id.
+  // Callers pass an `avoidWhen.alternative`, which the manifest generator
+  // validates as a non-empty kebab id, so the empty-string case can't arrive
+  // from real data (it returns `''` harmlessly if it ever does).
   function humanizeId(id: string): string {
     const spaced = id.replace(/-/g, ' ');
     return spaced.charAt(0).toUpperCase() + spaced.slice(1);
@@ -652,7 +655,7 @@
                       Use when
                     </div>
                     <ul class="dx-guide__list dx-guide__list--use">
-                      {#each component.useWhen as item (item)}
+                      {#each component.useWhen as item, index (index)}
                         <li>
                           <Check size={15} strokeWidth={1.5} aria-hidden="true" />
                           <span>{item}</span>
@@ -670,7 +673,7 @@
                       Avoid when
                     </div>
                     <ul class="dx-guide__list dx-guide__list--avoid">
-                      {#each component.avoidWhen as item (`${item.reason} ${item.alternative ?? ''}`)}
+                      {#each component.avoidWhen as item, index (index)}
                         <li>
                           <X size={15} strokeWidth={1.5} aria-hidden="true" />
                           <span>
@@ -976,7 +979,7 @@
               <div class="dx-a11y">
                 {#if a11y.keyboard !== undefined && a11y.keyboard.length > 0}
                   <div class="dx-keys">
-                    {#each a11y.keyboard as shortcut (shortcut.keys)}
+                    {#each a11y.keyboard as shortcut, index (index)}
                       <div class="dx-keys__row">
                         <div><Kbd label={shortcut.keys} /></div>
                         <div class="dx-keys__action">{shortcut.action}</div>
@@ -986,7 +989,7 @@
                 {/if}
                 {#if a11y.notes !== undefined && a11y.notes.length > 0}
                   <div class="dx-notes">
-                    {#each a11y.notes as note (note)}
+                    {#each a11y.notes as note, index (index)}
                       <div class="dx-note">
                         <ShieldCheck size={15} strokeWidth={1.5} aria-hidden="true" />
                         <span>{note}</span>
@@ -1646,7 +1649,7 @@
        taller than the viewport, so lower controls stay reachable. The radius
        clips the inner rows. */
     overflow-y: auto;
-    max-height: calc(100vh - var(--dx-topbar-h) - 3rem);
+    max-height: calc(100dvh - var(--dx-topbar-h) - 3rem);
     position: sticky;
     top: calc(var(--dx-topbar-h) + 1.5rem);
   }

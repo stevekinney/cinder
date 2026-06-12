@@ -2,6 +2,7 @@ import { dirname, join } from 'node:path';
 
 import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
 
+import { isA11yMetadata, isAvoidWhenArray } from './component-documentation-guards.ts';
 import type {
   A11yMetadata,
   AvoidWhenEntry,
@@ -9,7 +10,6 @@ import type {
   DocumentationComponentSummary,
   DocumentationReadme,
   JsonValue,
-  KeyboardShortcut,
 } from './component-documentation-types.ts';
 import type { ComponentManifest } from './types.ts';
 
@@ -84,37 +84,6 @@ function isJsonValue(value: unknown): value is JsonValue {
   if (Array.isArray(value)) return value.every(isJsonValue);
   if (!isObject(value)) return false;
   return Object.values(value).every(isJsonValue);
-}
-
-function isAvoidWhenEntry(value: unknown): value is AvoidWhenEntry {
-  if (!isObject(value)) return false;
-  const alternative = value['alternative'];
-  return (
-    typeof value['reason'] === 'string' &&
-    (alternative === undefined || typeof alternative === 'string')
-  );
-}
-
-function isAvoidWhenArray(value: unknown): value is AvoidWhenEntry[] {
-  return Array.isArray(value) && value.every(isAvoidWhenEntry);
-}
-
-function isKeyboardShortcut(value: unknown): value is KeyboardShortcut {
-  return (
-    isObject(value) && typeof value['keys'] === 'string' && typeof value['action'] === 'string'
-  );
-}
-
-function isA11yMetadata(value: unknown): value is A11yMetadata {
-  if (!isObject(value)) return false;
-  const pattern = value['pattern'];
-  const keyboard = value['keyboard'];
-  const notes = value['notes'];
-  return (
-    (pattern === undefined || typeof pattern === 'string') &&
-    (keyboard === undefined || (Array.isArray(keyboard) && keyboard.every(isKeyboardShortcut))) &&
-    (notes === undefined || isStringArray(notes))
-  );
 }
 
 function isArtifactSpecifiers(value: unknown): value is PackageComponentEntry['artifacts'] {
