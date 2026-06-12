@@ -15,6 +15,22 @@ const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components');
 const COMPONENTS_SOURCE_ROOT = join(COMPONENTS_ROOT, 'src', 'components');
 const COMPONENTS_MANIFEST_PATH = join(COMPONENTS_ROOT, 'components.json');
 
+type AvoidWhenEntry = {
+  reason: string;
+  alternative?: string;
+};
+
+type KeyboardShortcut = {
+  keys: string;
+  action: string;
+};
+
+type A11yMetadata = {
+  pattern?: string;
+  keyboard?: KeyboardShortcut[];
+  notes?: string[];
+};
+
 type PackageComponentEntry = {
   name: string;
   id: string;
@@ -25,7 +41,7 @@ type PackageComponentEntry = {
   purpose: string;
   tags: string[];
   useWhen: string[];
-  avoidWhen: string[];
+  avoidWhen: AvoidWhenEntry[];
   related: string[];
   hasConstraints: boolean;
   hasExamples: boolean;
@@ -35,9 +51,11 @@ type PackageComponentEntry = {
     examples?: string;
     constraints?: string;
   };
+  a11y?: A11yMetadata;
 };
 
 type PackageManifest = {
+  package: { version: string };
   components: PackageComponentEntry[];
   categories: Record<string, { label: string; description: string }>;
   statusLevels: Record<string, string>;
@@ -81,6 +99,37 @@ function isJsonValue(value: unknown): value is JsonValue {
   return Object.values(value).every(isJsonValue);
 }
 
+function isAvoidWhenEntry(value: unknown): value is AvoidWhenEntry {
+  if (!isObject(value)) return false;
+  const alternative = value['alternative'];
+  return (
+    typeof value['reason'] === 'string' &&
+    (alternative === undefined || typeof alternative === 'string')
+  );
+}
+
+function isAvoidWhenArray(value: unknown): value is AvoidWhenEntry[] {
+  return Array.isArray(value) && value.every(isAvoidWhenEntry);
+}
+
+function isKeyboardShortcut(value: unknown): value is KeyboardShortcut {
+  return (
+    isObject(value) && typeof value['keys'] === 'string' && typeof value['action'] === 'string'
+  );
+}
+
+function isA11yMetadata(value: unknown): value is A11yMetadata {
+  if (!isObject(value)) return false;
+  const pattern = value['pattern'];
+  const keyboard = value['keyboard'];
+  const notes = value['notes'];
+  return (
+    (pattern === undefined || typeof pattern === 'string') &&
+    (keyboard === undefined || (Array.isArray(keyboard) && keyboard.every(isKeyboardShortcut))) &&
+    (notes === undefined || isStringArray(notes))
+  );
+}
+
 function isArtifactSpecifiers(value: unknown): value is PackageComponentEntry['artifacts'] {
   if (!isObject(value)) return false;
   const examples = value['examples'];
@@ -105,11 +154,12 @@ function isPackageComponentEntry(value: unknown): value is PackageComponentEntry
     typeof value['purpose'] === 'string' &&
     isStringArray(value['tags']) &&
     isStringArray(value['useWhen']) &&
-    isStringArray(value['avoidWhen']) &&
+    isAvoidWhenArray(value['avoidWhen']) &&
     isStringArray(value['related']) &&
     typeof value['hasConstraints'] === 'boolean' &&
     typeof value['hasExamples'] === 'boolean' &&
-    isArtifactSpecifiers(value['artifacts'])
+    isArtifactSpecifiers(value['artifacts']) &&
+    (value['a11y'] === undefined || isA11yMetadata(value['a11y']))
   );
 }
 
@@ -127,10 +177,15 @@ function isStatusMap(value: unknown): value is PackageManifest['statusLevels'] {
   return isObject(value) && Object.values(value).every((entry) => typeof entry === 'string');
 }
 
+function isPackageMetadata(value: unknown): value is PackageManifest['package'] {
+  return isObject(value) && typeof value['version'] === 'string';
+}
+
 function isPackageManifest(value: unknown): value is PackageManifest {
   if (!isObject(value)) return false;
   const components = value['components'];
   return (
+    isPackageMetadata(value['package']) &&
     Array.isArray(components) &&
     components.every(isPackageComponentEntry) &&
     isCategoryMap(value['categories']) &&
@@ -268,6 +323,10 @@ function toComponentSummary(
     hasConstraints: entry.hasConstraints,
     hasExamples: entry.hasExamples,
     artifacts: entry.artifacts,
+    // Library-level version (no per-component version exists). The spec card
+    // renders it; it is the version that ships this component.
+    packageVersion: packageManifest.package.version,
+    ...(entry.a11y !== undefined ? { a11y: entry.a11y } : {}),
   };
 }
 
@@ -332,6 +391,7 @@ export async function buildComponentDocumentation(
     hasConstraints: entry.hasConstraints,
     hasExamples: entry.hasExamples,
     artifacts: entry.artifacts,
+    ...(entry.a11y !== undefined ? { a11y: entry.a11y } : {}),
   };
 
   return {

@@ -10,6 +10,28 @@ export type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
+/**
+ * One "avoid when" guidance entry: a reason not to use the component plus an
+ * optional kebab-case id of the component to reach for instead.
+ */
+export type AvoidWhenEntry = {
+  reason: string;
+  alternative?: string;
+};
+
+/** One keyboard interaction: a key (or chord) and what it does. */
+export type KeyboardShortcut = {
+  keys: string;
+  action: string;
+};
+
+/** Accessibility metadata, present only when a11y tags were authored. */
+export type A11yMetadata = {
+  pattern?: string;
+  keyboard?: KeyboardShortcut[];
+  notes?: string[];
+};
+
 export type DocumentationComponentSummary = {
   id: string;
   name: string;
@@ -23,7 +45,7 @@ export type DocumentationComponentSummary = {
   purpose: string;
   tags: string[];
   useWhen: string[];
-  avoidWhen: string[];
+  avoidWhen: AvoidWhenEntry[];
   related: string[];
   hasConstraints: boolean;
   hasExamples: boolean;
@@ -33,6 +55,10 @@ export type DocumentationComponentSummary = {
     constraints?: string;
     examples?: string;
   };
+  /** Library-level package version (no per-component version exists). */
+  packageVersion: string;
+  /** Accessibility metadata, present only when a11y tags were authored. */
+  a11y?: A11yMetadata;
 };
 
 export type DocumentationReadme = {

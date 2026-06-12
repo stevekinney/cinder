@@ -42,13 +42,18 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     purpose: 'Primary interactive control for triggering actions or navigating via href.',
     tags: ['action', 'cta'],
     useWhen: ['Triggering a form submit.', 'Navigating with a button appearance.'],
-    avoidWhen: ['Toggling on/off state — use Toggle instead.'],
+    avoidWhen: [{ reason: 'Toggling on/off state.', alternative: 'toggle' }],
     related: ['button-group', 'copy-button'],
     hasConstraints: false,
     hasExamples: false,
     artifacts: {
       schema: '@lostgradient/cinder/button/schema',
       variables: '@lostgradient/cinder/button/variables',
+    },
+    a11y: {
+      pattern: 'WAI-ARIA Button',
+      keyboard: [{ keys: 'Enter / Space', action: 'Activates the button.' }],
+      notes: ['Uses a native button element so the role and state are announced.'],
     },
   },
   {
@@ -61,7 +66,7 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     purpose: 'Full-screen dialog that blocks interaction with the page until dismissed.',
     tags: ['dialog', 'overlay'],
     useWhen: ['Requiring user acknowledgment before proceeding.'],
-    avoidWhen: ['Showing brief transient feedback — use Toast instead.'],
+    avoidWhen: [{ reason: 'Showing brief transient feedback.' }],
     related: ['drawer', 'sheet'],
     hasConstraints: true,
     hasExamples: true,
@@ -82,7 +87,7 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     purpose: 'Visual indicator for real-time connection status (connected, degraded, offline).',
     tags: ['status', 'realtime'],
     useWhen: ['Showing WebSocket connection health in a dashboard header.'],
-    avoidWhen: ['General status — use StatusDot instead.'],
+    avoidWhen: [{ reason: 'General status display.', alternative: 'status-dot' }],
     related: ['status-dot'],
     hasConstraints: false,
     hasExamples: false,
@@ -229,6 +234,67 @@ describe('manifest schema', () => {
       {
         ...SYNTHETIC_COMPONENTS[0]!,
         purpose: 'A'.repeat(201),
+      },
+    ];
+    const valid = validateManifest(manifest);
+    expect(valid).toBe(false);
+  });
+
+  it('accepts an avoidWhen entry with a kebab alternative and one without', () => {
+    const manifest = buildSyntheticManifest();
+    manifest.components = [
+      {
+        ...SYNTHETIC_COMPONENTS[0]!,
+        avoidWhen: [
+          { reason: 'Reason with alt.', alternative: 'segmented-control' },
+          { reason: 'Reason without alt.' },
+        ],
+      },
+    ];
+    const valid = validateManifest(manifest);
+    expect(valid).toBe(true);
+  });
+
+  it('rejects an avoidWhen entry missing the required "reason" field', () => {
+    const manifest = buildSyntheticManifest();
+    manifest.components = [
+      {
+        ...SYNTHETIC_COMPONENTS[0]!,
+        // @ts-expect-error — intentionally missing required reason
+        avoidWhen: [{ alternative: 'toggle' }],
+      },
+    ];
+    const valid = validateManifest(manifest);
+    expect(valid).toBe(false);
+  });
+
+  it('rejects an avoidWhen alternative that is not kebab-case', () => {
+    const manifest = buildSyntheticManifest();
+    manifest.components = [
+      {
+        ...SYNTHETIC_COMPONENTS[0]!,
+        avoidWhen: [{ reason: 'A reason.', alternative: 'SegmentedControl' }],
+      },
+    ];
+    const valid = validateManifest(manifest);
+    expect(valid).toBe(false);
+  });
+
+  it('accepts a component with no a11y block (a11y is optional)', () => {
+    const manifest = buildSyntheticManifest();
+    const indicator = manifest.components.find((c) => c.id === 'connection-indicator');
+    expect(indicator?.a11y).toBeUndefined();
+    const valid = validateManifest(manifest);
+    expect(valid).toBe(true);
+  });
+
+  it('rejects an a11y keyboard entry missing the required "action" field', () => {
+    const manifest = buildSyntheticManifest();
+    manifest.components = [
+      {
+        ...SYNTHETIC_COMPONENTS[0]!,
+        // @ts-expect-error — intentionally missing required action
+        a11y: { keyboard: [{ keys: 'Enter' }] },
       },
     ];
     const valid = validateManifest(manifest);

@@ -18,6 +18,41 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
+function isAvoidWhenArray(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((entry) => {
+      if (!isObject(entry)) return false;
+      const alternative = readProperty(entry, 'alternative');
+      return (
+        typeof readProperty(entry, 'reason') === 'string' &&
+        (alternative === undefined || typeof alternative === 'string')
+      );
+    })
+  );
+}
+
+function isA11yMetadata(value: unknown): boolean {
+  if (!isObject(value)) return false;
+  const pattern = readProperty(value, 'pattern');
+  const keyboard = readProperty(value, 'keyboard');
+  const notes = readProperty(value, 'notes');
+  const keyboardOk =
+    keyboard === undefined ||
+    (Array.isArray(keyboard) &&
+      keyboard.every(
+        (entry) =>
+          isObject(entry) &&
+          typeof readProperty(entry, 'keys') === 'string' &&
+          typeof readProperty(entry, 'action') === 'string',
+      ));
+  return (
+    (pattern === undefined || typeof pattern === 'string') &&
+    keyboardOk &&
+    (notes === undefined || isStringArray(notes))
+  );
+}
+
 export function isJsonValue(value: unknown): value is JsonValue {
   if (
     value === null ||
@@ -59,11 +94,13 @@ function isDocumentationComponentSummary(value: unknown): value is Documentation
     typeof readProperty(value, 'purpose') === 'string' &&
     isStringArray(readProperty(value, 'tags')) &&
     isStringArray(readProperty(value, 'useWhen')) &&
-    isStringArray(readProperty(value, 'avoidWhen')) &&
+    isAvoidWhenArray(readProperty(value, 'avoidWhen')) &&
     isStringArray(readProperty(value, 'related')) &&
     typeof readProperty(value, 'hasConstraints') === 'boolean' &&
     typeof readProperty(value, 'hasExamples') === 'boolean' &&
-    isArtifactSpecifiers(readProperty(value, 'artifacts'))
+    isArtifactSpecifiers(readProperty(value, 'artifacts')) &&
+    typeof readProperty(value, 'packageVersion') === 'string' &&
+    (readProperty(value, 'a11y') === undefined || isA11yMetadata(readProperty(value, 'a11y')))
   );
 }
 

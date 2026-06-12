@@ -24,6 +24,53 @@ export type { CategoryId, StatusLevel };
 // Public types
 // ---------------------------------------------------------------------------
 
+/** Maximum length of an `@avoidWhen` reason (matches the old flat-string budget). */
+export const AVOID_WHEN_REASON_MAX_LENGTH = 140;
+/** Maximum length of an `@avoidWhen` `alternative` component id. */
+export const AVOID_WHEN_ALTERNATIVE_MAX_LENGTH = 64;
+/** Maximum length of an `@useWhen` entry. */
+export const USE_WHEN_MAX_LENGTH = 140;
+/** Maximum length of an `@a11yPattern` name. */
+export const A11Y_PATTERN_MAX_LENGTH = 80;
+/** Maximum length of the keys / action half of a `@keyboardShortcut`. */
+export const KEYBOARD_SHORTCUT_HALF_MAX_LENGTH = 120;
+/** Maximum length of an `@a11yNote` entry. */
+export const A11Y_NOTE_MAX_LENGTH = 280;
+
+/**
+ * One "avoid when" guidance entry: a reason not to use the component, plus an
+ * optional kebab-case id of the component to reach for instead. Authored as
+ * `@avoidWhen <reason> | <kebab-id>` (the alternative is optional).
+ */
+export type AvoidWhenEntry = {
+  /** Why not to use this component in this situation. 1–140 characters. */
+  reason: string;
+  /** Kebab-case id of the component to use instead, when one applies. */
+  alternative?: string;
+};
+
+/** One keyboard interaction: a key (or chord) and what it does. */
+export type KeyboardShortcut = {
+  /** Key or chord, e.g. `Enter / Space` or `Shift + Tab`. */
+  keys: string;
+  /** What the key does. */
+  action: string;
+};
+
+/**
+ * Accessibility metadata for a component, assembled from the optional
+ * `@a11yPattern` / `@keyboardShortcut` / `@a11yNote` tags. Absent entirely when
+ * none of those tags are present, so the field is always optional downstream.
+ */
+export type A11yMetadata = {
+  /** WAI-ARIA pattern name this component implements, e.g. `WAI-ARIA Accordion`. */
+  pattern?: string;
+  /** Keyboard interactions, in author order. */
+  keyboard?: KeyboardShortcut[];
+  /** Free-form accessibility notes, in author order. */
+  notes?: string[];
+};
+
 /** Validated metadata for one component, ready for the manifest generator. */
 export type ComponentMetadata = {
   /** Kebab-case directory name — the canonical component identifier. */
@@ -40,10 +87,12 @@ export type ComponentMetadata = {
   tags: string[];
   /** Guidance on when to reach for this component (zero or more, each ≤ 140 chars). */
   useWhen: string[];
-  /** Guidance on when NOT to use this component (zero or more, each ≤ 140 chars). */
-  avoidWhen: string[];
+  /** Guidance on when NOT to use this component (zero or more entries). */
+  avoidWhen: AvoidWhenEntry[];
   /** Kebab-case ids of related components (zero or more). */
   related: string[];
+  /** Accessibility metadata, present only when a11y tags were authored. */
+  a11y?: A11yMetadata;
 };
 
 /** A structured extraction failure for one component. */
@@ -88,6 +137,22 @@ function extractModuleScriptContent(source: string): string | null {
   }
   if (matches.length !== 1) return null;
   return matches[0]!;
+}
+
+/**
+ * Split a tag value on its FIRST pipe separator, tolerating optional whitespace
+ * around the pipe (the JSDoc line parser trims trailing whitespace, so an
+ * authored ` | ` arrives as ` |` when it ends the line). Returns the trimmed
+ * text before the pipe and the trimmed text after it, or `after: null` when no
+ * pipe is present.
+ */
+function splitOnFirstPipe(value: string): { before: string; after: string | null } {
+  const match = /\s*\|\s*/.exec(value);
+  if (match === null) return { before: value.trim(), after: null };
+  return {
+    before: value.slice(0, match.index).trim(),
+    after: value.slice(match.index + match[0].length).trim(),
+  };
 }
 
 type ParsedTag = { name: string; value: string };
@@ -221,6 +286,9 @@ export function extractFromSource(
   const useWhenValues: string[] = [];
   const avoidWhenValues: string[] = [];
   const relatedValues: string[] = [];
+  const a11yPatternValues: string[] = [];
+  const keyboardShortcutValues: string[] = [];
+  const a11yNoteValues: string[] = [];
 
   for (const { name, value } of tags) {
     switch (name) {
@@ -247,6 +315,15 @@ export function extractFromSource(
       case 'related':
         relatedValues.push(value);
         break;
+      case 'a11yPattern':
+        a11yPatternValues.push(value);
+        break;
+      case 'keyboardShortcut':
+        keyboardShortcutValues.push(value);
+        break;
+      case 'a11yNote':
+        a11yNoteValues.push(value);
+        break;
       default:
         break; // silently ignored for forward-compat
     }
@@ -256,6 +333,7 @@ export function extractFromSource(
   if (categoryValues.length > 1) return fail('duplicate @category tag');
   if (statusValues.length > 1) return fail('duplicate @status tag');
   if (purposeValues.length > 1) return fail('duplicate @purpose tag');
+  if (a11yPatternValues.length > 1) return fail('duplicate @a11yPattern tag');
 
   // Step 5 — Require all three mandatory tags.
   const missing: string[] = [];
@@ -293,20 +371,47 @@ export function extractFromSource(
     );
   }
 
-  // Step 8 — Validate @useWhen / @avoidWhen length.
+  // Step 8 — Validate @useWhen length and parse @avoidWhen into structured entries.
   for (const entry of useWhenValues) {
-    if (entry.length > 140) {
+    if (entry.length > USE_WHEN_MAX_LENGTH) {
       return fail(
-        `@useWhen entry exceeds 140 characters (got ${entry.length}): "${entry.slice(0, 40)}…"`,
+        `@useWhen entry exceeds ${USE_WHEN_MAX_LENGTH} characters (got ${entry.length}): "${entry.slice(0, 40)}…"`,
       );
     }
   }
-  for (const entry of avoidWhenValues) {
-    if (entry.length > 140) {
+
+  // `@avoidWhen <reason> | <kebab-id>`: split on the FIRST pipe (with optional
+  // surrounding whitespace) only. The left side is the reason; the optional
+  // right side is a kebab-case component id linking to the recommended
+  // alternative. Lines without a pipe are reason-only.
+  const avoidWhen: AvoidWhenEntry[] = [];
+  for (const rawEntry of avoidWhenValues) {
+    const { before: reason, after: alternativeRaw } = splitOnFirstPipe(rawEntry);
+    if (reason.length === 0) return fail('@avoidWhen reason must be non-empty');
+    if (reason.length > AVOID_WHEN_REASON_MAX_LENGTH) {
       return fail(
-        `@avoidWhen entry exceeds 140 characters (got ${entry.length}): "${entry.slice(0, 40)}…"`,
+        `@avoidWhen reason exceeds ${AVOID_WHEN_REASON_MAX_LENGTH} characters (got ${reason.length}): "${reason.slice(0, 40)}…"`,
       );
     }
+    if (alternativeRaw === null) {
+      avoidWhen.push({ reason });
+      continue;
+    }
+    const alternative = alternativeRaw;
+    if (alternative.length === 0) {
+      return fail(`@avoidWhen alternative is empty for reason "${reason.slice(0, 40)}…"`);
+    }
+    if (alternative.length > AVOID_WHEN_ALTERNATIVE_MAX_LENGTH) {
+      return fail(
+        `@avoidWhen alternative exceeds ${AVOID_WHEN_ALTERNATIVE_MAX_LENGTH} characters (got ${alternative.length}): "${alternative}"`,
+      );
+    }
+    if (!/^[a-z][a-z0-9-]*$/.test(alternative)) {
+      return fail(
+        `@avoidWhen alternative '${alternative}' must be a kebab-case component id (^[a-z][a-z0-9-]*$)`,
+      );
+    }
+    avoidWhen.push({ reason, alternative });
   }
 
   // Step 9 — Parse @related and reject PascalCase.
@@ -322,6 +427,16 @@ export function extractFromSource(
     }
   }
 
+  // Step 10 — Parse optional a11y tags.
+  const a11yResult = parseA11yMetadata(
+    a11yPatternValues[0],
+    keyboardShortcutValues,
+    a11yNoteValues,
+    fail,
+  );
+  if (!a11yResult.ok) return a11yResult.error;
+  const a11y = a11yResult.value;
+
   return {
     ok: true,
     metadata: {
@@ -332,8 +447,99 @@ export function extractFromSource(
       purpose: purposeRaw,
       tags: tagValues,
       useWhen: useWhenValues,
-      avoidWhen: avoidWhenValues,
+      avoidWhen,
       related,
+      ...(a11y !== undefined ? { a11y } : {}),
+    },
+  };
+}
+
+/**
+ * Parse the optional a11y tags into an {@link A11yMetadata} object, or
+ * `undefined` when none were authored. `@keyboardShortcut` requires a ` | `
+ * separator with non-empty halves; `@a11yNote` and `@a11yPattern` reject empty
+ * values. Returns the failure `ExtractResult` directly on any violation so the
+ * caller can short-circuit.
+ */
+function parseA11yMetadata(
+  patternRaw: string | undefined,
+  keyboardRaw: string[],
+  notesRaw: string[],
+  fail: (reason: string) => ExtractResult,
+): { ok: true; value: A11yMetadata | undefined } | { ok: false; error: ExtractResult } {
+  let pattern: string | undefined;
+  if (patternRaw !== undefined) {
+    const trimmed = patternRaw.trim();
+    if (trimmed.length === 0) return { ok: false, error: fail('@a11yPattern must be non-empty') };
+    if (trimmed.length > A11Y_PATTERN_MAX_LENGTH) {
+      return {
+        ok: false,
+        error: fail(
+          `@a11yPattern exceeds ${A11Y_PATTERN_MAX_LENGTH} characters (got ${trimmed.length})`,
+        ),
+      };
+    }
+    pattern = trimmed;
+  }
+
+  const keyboard: KeyboardShortcut[] = [];
+  for (const rawShortcut of keyboardRaw) {
+    const { before: keys, after: action } = splitOnFirstPipe(rawShortcut);
+    if (action === null) {
+      return {
+        ok: false,
+        error: fail(
+          `@keyboardShortcut is missing the '|' separator (format: <keys> | <action>): "${rawShortcut.slice(0, 40)}…"`,
+        ),
+      };
+    }
+    if (keys.length === 0 || action.length === 0) {
+      return {
+        ok: false,
+        error: fail(`@keyboardShortcut keys and action must both be non-empty: "${rawShortcut}"`),
+      };
+    }
+    if (keys.length > KEYBOARD_SHORTCUT_HALF_MAX_LENGTH) {
+      return {
+        ok: false,
+        error: fail(
+          `@keyboardShortcut keys exceed ${KEYBOARD_SHORTCUT_HALF_MAX_LENGTH} characters`,
+        ),
+      };
+    }
+    if (action.length > KEYBOARD_SHORTCUT_HALF_MAX_LENGTH) {
+      return {
+        ok: false,
+        error: fail(
+          `@keyboardShortcut action exceeds ${KEYBOARD_SHORTCUT_HALF_MAX_LENGTH} characters`,
+        ),
+      };
+    }
+    keyboard.push({ keys, action });
+  }
+
+  const notes: string[] = [];
+  for (const rawNote of notesRaw) {
+    const trimmed = rawNote.trim();
+    if (trimmed.length === 0) return { ok: false, error: fail('@a11yNote must be non-empty') };
+    if (trimmed.length > A11Y_NOTE_MAX_LENGTH) {
+      return {
+        ok: false,
+        error: fail(`@a11yNote exceeds ${A11Y_NOTE_MAX_LENGTH} characters (got ${trimmed.length})`),
+      };
+    }
+    notes.push(trimmed);
+  }
+
+  if (pattern === undefined && keyboard.length === 0 && notes.length === 0) {
+    return { ok: true, value: undefined };
+  }
+  return {
+    ok: true,
+    value: {
+      ...(pattern !== undefined ? { pattern } : {}),
+      ...(keyboard.length > 0 ? { keyboard } : {}),
+      ...(notes.length > 0 ? { notes } : {}),
     },
   };
 }

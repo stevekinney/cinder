@@ -8,9 +8,16 @@
    * @tag collapsible
    * @useWhen Progressively disclosing several sections of content that share a parent heading.
    * @useWhen Letting the consumer expand one or multiple panels at once via the multiple prop.
-   * @avoidWhen Switching between mutually exclusive views of the same region — use tabs instead.
-   * @avoidWhen Hiding a single optional region — use a plain disclosure or details element.
+   * @avoidWhen Switching between mutually exclusive views of the same region. | tabs
+   * @avoidWhen Hiding a single optional region — reach for a plain disclosure instead. | collapsible
    * @related accordion-item, tabs, tree
+   * @a11yPattern WAI-ARIA Accordion
+   * @keyboardShortcut Tab | Moves focus to the next focusable element (accordion header buttons are in the natural tab order).
+   * @keyboardShortcut Shift + Tab | Moves focus to the previous focusable element.
+   * @keyboardShortcut Enter / Space | When focus is on a header button, toggles the associated panel open or closed.
+   * @a11yNote Each trigger is a native button exposing aria-expanded and aria-controls, so screen readers announce open/closed state.
+   * @a11yNote Panels intentionally omit role="region" to keep the page's landmark list clean.
+   * @a11yNote Disabled items set the native disabled attribute on their trigger, removing them from the tab order.
    */
   export type { AccordionContext, AccordionProps } from './accordion.types.ts';
 </script>

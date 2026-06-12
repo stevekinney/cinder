@@ -78,8 +78,14 @@
         "Letting the consumer expand one or multiple panels at once via the multiple prop."
       ],
       "avoidWhen": [
-        "Switching between mutually exclusive views of the same region — use tabs instead.",
-        "Hiding a single optional region — use a plain disclosure or details element."
+        {
+          "reason": "Switching between mutually exclusive views of the same region.",
+          "alternative": "tabs"
+        },
+        {
+          "reason": "Hiding a single optional region — reach for a plain disclosure instead.",
+          "alternative": "collapsible"
+        }
       ],
       "related": ["accordion-item", "tabs", "tree"],
       "hasConstraints": false,
@@ -88,6 +94,28 @@
         "schema": "@lostgradient/cinder/accordion/schema",
         "variables": "@lostgradient/cinder/accordion/variables",
         "examples": "@lostgradient/cinder/accordion/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Accordion",
+        "keyboard": [
+          {
+            "keys": "Tab",
+            "action": "Moves focus to the next focusable element (accordion header buttons are in the natural tab order)."
+          },
+          {
+            "keys": "Shift + Tab",
+            "action": "Moves focus to the previous focusable element."
+          },
+          {
+            "keys": "Enter / Space",
+            "action": "When focus is on a header button, toggles the associated panel open or closed."
+          }
+        ],
+        "notes": [
+          "Each trigger is a native button exposing aria-expanded and aria-controls, so screen readers announce open/closed state.",
+          "Panels intentionally omit role=\"region\" to keep the page's landmark list clean.",
+          "Disabled items set the native disabled attribute on their trigger, removing them from the tab order."
+        ]
       }
     },
     {
@@ -104,7 +132,9 @@
         "Disabling a single section while leaving siblings interactive via the disabled prop."
       ],
       "avoidWhen": [
-        "Standing alone outside an accordion — it requires the accordion context to function."
+        {
+          "reason": "Standing alone outside an accordion — it requires the accordion context to function."
+        }
       ],
       "related": ["accordion"],
       "hasConstraints": false,
@@ -128,8 +158,12 @@
         "Calling out a transient condition the user must notice immediately within a specific region."
       ],
       "avoidWhen": [
-        "Communicating a page- or app-wide notice that persists across views — use a banner instead.",
-        "Providing supplemental commentary or guidance inline with content — use a callout instead."
+        {
+          "reason": "Communicating a page- or app-wide notice that persists across views — use a banner instead."
+        },
+        {
+          "reason": "Providing supplemental commentary or guidance inline with content — use a callout instead."
+        }
       ],
       "related": ["banner", "callout", "toast-region"],
       "hasConstraints": false,
@@ -154,8 +188,12 @@
         "Presenting a destructive or high-risk message that needs an explicit OK action."
       ],
       "avoidWhen": [
-        "Asking a reversible yes/no question — use confirm-dialog.",
-        "Collecting rich form input — compose modal instead."
+        {
+          "reason": "Asking a reversible yes/no question — use confirm-dialog."
+        },
+        {
+          "reason": "Collecting rich form input — compose modal instead."
+        }
       ],
       "related": ["modal", "confirm-dialog", "drawer"],
       "hasConstraints": false,
@@ -180,8 +218,12 @@
         "Comparing cumulative or stacked contribution over an ordered domain."
       ],
       "avoidWhen": [
-        "Exact point comparison matters more than area magnitude — use line-chart instead.",
-        "Comparing discrete category totals — use bar-chart instead."
+        {
+          "reason": "Exact point comparison matters more than area magnitude — use line-chart instead."
+        },
+        {
+          "reason": "Comparing discrete category totals — use bar-chart instead."
+        }
       ],
       "related": ["line-chart", "bar-chart", "table", "stat"],
       "hasConstraints": false,
@@ -206,8 +248,12 @@
         "You need a generic ratio wrapper for iframe, video, canvas, or custom content rather than an image-specific primitive."
       ],
       "avoidWhen": [
-        "The child already owns its sizing contract and should determine its own height naturally.",
-        "Supporting legacy browsers that lack native aspect-ratio support."
+        {
+          "reason": "The child already owns its sizing contract and should determine its own height naturally."
+        },
+        {
+          "reason": "Supporting legacy browsers that lack native aspect-ratio support."
+        }
       ],
       "related": ["image", "card"],
       "hasConstraints": false,
@@ -232,7 +278,9 @@
         "Keeping the user's text as the committed value while suggestions remain optional hints."
       ],
       "avoidWhen": [
-        "Requiring the final value to come from a fixed option list — use combobox instead."
+        {
+          "reason": "Requiring the final value to come from a fixed option list — use combobox instead."
+        }
       ],
       "related": ["combobox", "search-field", "popover"],
       "hasConstraints": false,
@@ -256,7 +304,11 @@
         "Representing a person or account next to their name or activity.",
         "Displaying initials when no avatar image is available."
       ],
-      "avoidWhen": ["Showing a small status or count indicator — use badge or status-dot instead."],
+      "avoidWhen": [
+        {
+          "reason": "Showing a small status or count indicator — use badge or status-dot instead."
+        }
+      ],
       "related": ["badge", "status-dot", "image"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -280,8 +332,12 @@
         "Summarizing a bounded set of people with a visible overflow count."
       ],
       "avoidWhen": [
-        "Rendering a single person — use avatar instead.",
-        "Showing status, counts, or metadata labels unrelated to people — use badge, chip, or status-dot instead."
+        {
+          "reason": "Rendering a single person — use avatar instead."
+        },
+        {
+          "reason": "Showing status, counts, or metadata labels unrelated to people — use badge, chip, or status-dot instead."
+        }
       ],
       "related": ["avatar", "badge", "tooltip", "status-dot"],
       "hasConstraints": false,
@@ -306,9 +362,15 @@
         "Building a loading state that dims the full viewport while an async operation runs."
       ],
       "avoidWhen": [
-        "Interrupting the user for a decision — use modal or alert-dialog which manage focus and Escape automatically.",
-        "Showing a side panel — use drawer instead.",
-        "Showing structured content in a dialog — use modal, drawer, or sheet, which render their own native `<dialog>::backdrop` scrim."
+        {
+          "reason": "Interrupting the user for a decision — use modal or alert-dialog which manage focus and Escape automatically."
+        },
+        {
+          "reason": "Showing a side panel — use drawer instead."
+        },
+        {
+          "reason": "Showing structured content in a dialog — use modal, drawer, or sheet, which render their own native `<dialog>::backdrop` scrim."
+        }
       ],
       "related": ["modal", "drawer", "sheet"],
       "hasConstraints": false,
@@ -333,8 +395,12 @@
         "Displaying a numeric count next to an icon or title."
       ],
       "avoidWhen": [
-        "The label must be interactive or removable — use chip instead.",
-        "Showing only a colored dot for presence — use status-dot instead."
+        {
+          "reason": "The label must be interactive or removable — use chip instead."
+        },
+        {
+          "reason": "Showing only a colored dot for presence — use status-dot instead."
+        }
       ],
       "related": ["chip", "status-dot"],
       "hasConstraints": false,
@@ -359,8 +425,12 @@
         "Pinning a non-urgent message above page content that should remain readable until acknowledged."
       ],
       "avoidWhen": [
-        "Announcing an urgent, time-sensitive message — use alert so assistive tech reads it immediately.",
-        "Highlighting an inline aside next to related prose — use callout instead."
+        {
+          "reason": "Announcing an urgent, time-sensitive message — use alert so assistive tech reads it immediately."
+        },
+        {
+          "reason": "Highlighting an inline aside next to related prose — use callout instead."
+        }
       ],
       "related": ["alert", "callout", "toast-region"],
       "hasConstraints": false,
@@ -384,8 +454,12 @@
         "Showing stacked contribution across known categories."
       ],
       "avoidWhen": [
-        "Showing a continuous ordered trend — use line-chart instead.",
-        "Showing magnitude under a trend — use area-chart instead."
+        {
+          "reason": "Showing a continuous ordered trend — use line-chart instead."
+        },
+        {
+          "reason": "Showing magnitude under a trend — use area-chart instead."
+        }
       ],
       "related": ["line-chart", "area-chart", "table", "stat"],
       "hasConstraints": false,
@@ -410,8 +484,12 @@
         "Letting the user jump back to any ancestor view in one click."
       ],
       "avoidWhen": [
-        "Switching between sibling sections at the same level — use navigation-bar or tabs.",
-        "Showing an ordered task progression — use steps instead."
+        {
+          "reason": "Switching between sibling sections at the same level — use navigation-bar or tabs."
+        },
+        {
+          "reason": "Showing an ordered task progression — use steps instead."
+        }
       ],
       "related": ["navigation-bar", "side-navigation", "steps"],
       "hasConstraints": false,
@@ -436,8 +514,12 @@
         "Rendering a link that should look and behave like a button by passing href."
       ],
       "avoidWhen": [
-        "Toggling a binary on or off state — use toggle instead.",
-        "Selecting one of a small fixed set of options — use segmented-control instead."
+        {
+          "reason": "Toggling a binary on or off state — use toggle instead."
+        },
+        {
+          "reason": "Selecting one of a small fixed set of options — use segmented-control instead."
+        }
       ],
       "related": ["button-group", "copy-button"],
       "hasConstraints": true,
@@ -463,8 +545,12 @@
         "Visually joining multiple buttons into a single segmented bar without implying selection."
       ],
       "avoidWhen": [
-        "Selecting exactly one option from a fixed set — use segmented-control instead.",
-        "Rendering a single button — use button on its own."
+        {
+          "reason": "Selecting exactly one option from a fixed set — use segmented-control instead."
+        },
+        {
+          "reason": "Rendering a single button — use button on its own."
+        }
       ],
       "related": ["button", "segmented-control"],
       "hasConstraints": false,
@@ -489,8 +575,12 @@
         "Calling out a tip, note, or caveat that belongs next to the content it qualifies."
       ],
       "avoidWhen": [
-        "Announcing a transient or urgent status — use alert or banner instead.",
-        "Communicating a page-wide system message — use banner so it reads as a landmark region."
+        {
+          "reason": "Announcing a transient or urgent status — use alert or banner instead."
+        },
+        {
+          "reason": "Communicating a page-wide system message — use banner so it reads as a landmark region."
+        }
       ],
       "related": ["alert", "banner"],
       "hasConstraints": false,
@@ -514,8 +604,12 @@
         "Communicating that a feature is unsupported in the current browser with a clear fallback path."
       ],
       "avoidWhen": [
-        "Performing the actual feature detection or permission request — wire that in userland.",
-        "Storing permission state — CapabilityGate is a pure presentation component."
+        {
+          "reason": "Performing the actual feature detection or permission request — wire that in userland."
+        },
+        {
+          "reason": "Storing permission state — CapabilityGate is a pure presentation component."
+        }
       ],
       "related": ["alert", "banner", "callout", "modal"],
       "hasConstraints": false,
@@ -540,8 +634,12 @@
         "Composing a list of comparable items where each needs its own framed region."
       ],
       "avoidWhen": [
-        "Rendering a bare visual surface without slotted regions — use surface instead.",
-        "Presenting a single key metric — use stat or stat-group instead."
+        {
+          "reason": "Rendering a bare visual surface without slotted regions — use surface instead."
+        },
+        {
+          "reason": "Presenting a single key metric — use stat or stat-group instead."
+        }
       ],
       "related": ["surface", "stat", "stacked-list-item", "section-heading"],
       "hasConstraints": false,
@@ -566,8 +664,12 @@
         "Building an AI assistant or support thread where conversation state is modeled as a transcript of role-tagged messages."
       ],
       "avoidWhen": [
-        "Rendering a one-off message list — compose lighter primitives directly instead of pulling the full suite.",
-        "The transcript is read-only and needs no composer — a simple list of message bubbles is a better fit."
+        {
+          "reason": "Rendering a one-off message list — compose lighter primitives directly instead of pulling the full suite."
+        },
+        {
+          "reason": "The transcript is read-only and needs no composer — a simple list of message bubbles is a better fit."
+        }
       ],
       "related": ["markdown-editor"],
       "hasConstraints": false,
@@ -592,8 +694,12 @@
         "Representing a parent state that aggregates child selections via indeterminate."
       ],
       "avoidWhen": [
-        "Flipping a single setting on or off with immediate effect — use toggle instead.",
-        "Picking exactly one option from a small fixed set — use RadioGroup or segmented-control instead."
+        {
+          "reason": "Flipping a single setting on or off with immediate effect — use toggle instead."
+        },
+        {
+          "reason": "Picking exactly one option from a small fixed set — use RadioGroup or segmented-control instead."
+        }
       ],
       "related": ["checkbox-group", "radio-group", "toggle", "segmented-control"],
       "hasConstraints": false,
@@ -617,7 +723,11 @@
         "Presenting several unrelated checkboxes that share a common heading or validation message.",
         "Cascading a disabled state to every child checkbox via native fieldset propagation."
       ],
-      "avoidWhen": ["Picking exactly one option from a fixed set — use radio-group instead."],
+      "avoidWhen": [
+        {
+          "reason": "Picking exactly one option from a fixed set — use radio-group instead."
+        }
+      ],
       "related": ["checkbox", "radio-group", "form-field"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -640,8 +750,12 @@
         "Offering a small toggleable option inside a group of choices."
       ],
       "avoidWhen": [
-        "Showing a numeric count, short status, or compact category annotation next to another element — use badge instead.",
-        "Picking one of a small fixed set — use segmented-control instead."
+        {
+          "reason": "Showing a numeric count, short status, or compact category annotation next to another element — use badge instead."
+        },
+        {
+          "reason": "Picking one of a small fixed set — use segmented-control instead."
+        }
       ],
       "related": ["badge", "status-dot"],
       "hasConstraints": false,
@@ -666,8 +780,12 @@
         "Building a touch-friendly selector grid with stable cell dimensions that must not shift when feedback states are applied."
       ],
       "avoidWhen": [
-        "Selecting from a long dynamic list — use combobox or select instead.",
-        "Choosing one of two to five short values in a compact inline context — use segmented-control instead."
+        {
+          "reason": "Selecting from a long dynamic list — use combobox or select instead."
+        },
+        {
+          "reason": "Choosing one of two to five short values in a compact inline context — use segmented-control instead."
+        }
       ],
       "related": ["choice-grid-item", "segmented-control", "radio-group", "checkbox-group"],
       "hasConstraints": false,
@@ -688,7 +806,11 @@
       "purpose": "Selectable answer tile used inside a ChoiceGrid; carries selected, disabled, correct, incorrect, and pending states without shifting cell dimensions.",
       "tags": ["form", "selection", "quiz"],
       "useWhen": ["Composing individual answer choices inside a ChoiceGrid parent."],
-      "avoidWhen": ["Used outside a ChoiceGrid — this leaf requires the parent context."],
+      "avoidWhen": [
+        {
+          "reason": "Used outside a ChoiceGrid — this leaf requires the parent context."
+        }
+      ],
       "related": ["choice-grid"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -709,7 +831,11 @@
       "useWhen": [
         "Building a custom inline-edit field, custom dropdown, or any overlay that should close on outside interaction."
       ],
-      "avoidWhen": ["Using Popover, Dropdown, or Modal — those handle click-away internally."],
+      "avoidWhen": [
+        {
+          "reason": "Using Popover, Dropdown, or Modal — those handle click-away internally."
+        }
+      ],
       "related": ["focus-trap", "popover", "portal"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -733,8 +859,12 @@
         "Letting the reader copy a snippet to the clipboard via the copyable prop."
       ],
       "avoidWhen": [
-        "Annotating a single inline keystroke or shortcut — use kbd instead.",
-        "Rendering rich prose that happens to include code — embed it in markdown instead."
+        {
+          "reason": "Annotating a single inline keystroke or shortcut — use kbd instead."
+        },
+        {
+          "reason": "Rendering rich prose that happens to include code — embed it in markdown instead."
+        }
       ],
       "related": ["kbd", "copy-button"],
       "hasConstraints": false,
@@ -759,7 +889,9 @@
         "You need controlled or uncontrolled show/hide with an accessible toggle."
       ],
       "avoidWhen": [
-        "Coordinating multiple sections where opening one may close others — use accordion."
+        {
+          "reason": "Coordinating multiple sections where opening one may close others — use accordion."
+        }
       ],
       "related": ["accordion", "accordion-item"],
       "hasConstraints": false,
@@ -784,8 +916,12 @@
         "Pairing with color-picker for combined visual selection and text-based entry."
       ],
       "avoidWhen": [
-        "Letting users graze visually across a color space — use color-picker instead.",
-        "Constraining selection to a fixed brand palette — use color-swatch-picker instead."
+        {
+          "reason": "Letting users graze visually across a color space — use color-picker instead."
+        },
+        {
+          "reason": "Constraining selection to a fixed brand palette — use color-swatch-picker instead."
+        }
       ],
       "related": ["color-picker", "color-swatch-picker", "input", "form-field"],
       "hasConstraints": false,
@@ -810,7 +946,9 @@
         "Composing a custom color with a fallback palette of preset swatches."
       ],
       "avoidWhen": [
-        "Constraining selection to a fixed brand palette — use color-swatch-picker instead."
+        {
+          "reason": "Constraining selection to a fixed brand palette — use color-swatch-picker instead."
+        }
       ],
       "related": ["color-swatch-picker", "input"],
       "hasConstraints": false,
@@ -835,7 +973,9 @@
         "Pairing with color-picker as a shortcut for common values."
       ],
       "avoidWhen": [
-        "Letting users author arbitrary colors across the spectrum — use color-picker instead."
+        {
+          "reason": "Letting users author arbitrary colors across the spectrum — use color-picker instead."
+        }
       ],
       "related": ["color-picker"],
       "hasConstraints": false,
@@ -859,8 +999,12 @@
         "Letting users narrow options by substring while still requiring a constrained selection."
       ],
       "avoidWhen": [
-        "Picking from a short fixed list with no need to filter — use select instead.",
-        "Querying remote data or accepting free-text submissions — use search-field instead."
+        {
+          "reason": "Picking from a short fixed list with no need to filter — use select instead."
+        },
+        {
+          "reason": "Querying remote data or accepting free-text submissions — use search-field instead."
+        }
       ],
       "related": ["select", "search-field", "dropdown"],
       "hasConstraints": false,
@@ -885,8 +1029,12 @@
         "Composing a custom palette layout via children rather than the items prop."
       ],
       "avoidWhen": [
-        "Used outside a command-palette or command-menu ancestor — the component throws at construction.",
-        "Rendering a generic dropdown choice — use dropdown-item instead."
+        {
+          "reason": "Used outside a command-palette or command-menu ancestor — the component throws at construction."
+        },
+        {
+          "reason": "Rendering a generic dropdown choice — use dropdown-item instead."
+        }
       ],
       "related": ["command-palette", "command-menu", "dropdown-item"],
       "hasConstraints": false,
@@ -910,8 +1058,12 @@
         "Building slash-command insertion flows where the host owns text replacement."
       ],
       "avoidWhen": [
-        "Exposing a global app launcher — use command-palette instead.",
-        "Selecting from a static form option list — use combobox instead."
+        {
+          "reason": "Exposing a global app launcher — use command-palette instead."
+        },
+        {
+          "reason": "Selecting from a static form option list — use combobox instead."
+        }
       ],
       "related": ["command-palette", "command-item", "popover", "combobox"],
       "hasConstraints": false,
@@ -936,8 +1088,12 @@
         "Letting users search across heterogeneous results such as commands, pages, and records in one input."
       ],
       "avoidWhen": [
-        "Picking a single value bound to a form field — use combobox instead.",
-        "Showing a contextual action menu attached to a trigger — use dropdown instead."
+        {
+          "reason": "Picking a single value bound to a form field — use combobox instead."
+        },
+        {
+          "reason": "Showing a contextual action menu attached to a trigger — use dropdown instead."
+        }
       ],
       "related": ["combobox", "dropdown", "command-item"],
       "hasConstraints": false,
@@ -962,8 +1118,12 @@
         "Asking the user to confirm a discrete decision with two clear outcomes."
       ],
       "avoidWhen": [
-        "Collecting structured input or multiple fields — compose a modal with form controls instead.",
-        "Announcing a non-blocking result — use toast-region or banner."
+        {
+          "reason": "Collecting structured input or multiple fields — compose a modal with form controls instead."
+        },
+        {
+          "reason": "Announcing a non-blocking result — use toast-region or banner."
+        }
       ],
       "related": ["modal", "drawer", "sheet"],
       "hasConstraints": false,
@@ -988,7 +1148,9 @@
         "Giving operators an at-a-glance health signal for a long-lived transport."
       ],
       "avoidWhen": [
-        "Communicating generic semantic state with no realtime connection backing it — status-dot is the lower-level primitive."
+        {
+          "reason": "Communicating generic semantic state with no realtime connection backing it — status-dot is the lower-level primitive."
+        }
       ],
       "related": ["status-dot", "spinner"],
       "hasConstraints": false,
@@ -1012,7 +1174,9 @@
         "Constraining a section of a page to a named content width without app-shell chrome."
       ],
       "avoidWhen": [
-        "Building an app shell with header, breadcrumbs, or action regions — write a hand-rolled page scaffold directly."
+        {
+          "reason": "Building an app shell with header, breadcrumbs, or action regions — write a hand-rolled page scaffold directly."
+        }
       ],
       "related": ["aspect-ratio"],
       "hasConstraints": false,
@@ -1037,8 +1201,12 @@
         "Opening a menu from a pointer location instead of a visible dropdown trigger."
       ],
       "avoidWhen": [
-        "The menu should open from a button — use dropdown.",
-        "Showing arbitrary rich content rather than menu actions — use popover."
+        {
+          "reason": "The menu should open from a button — use dropdown."
+        },
+        {
+          "reason": "Showing arbitrary rich content rather than menu actions — use popover."
+        }
       ],
       "related": ["dropdown", "dropdown-menu", "dropdown-item"],
       "hasConstraints": false,
@@ -1063,8 +1231,12 @@
         "Pairing pointer-positioned menu behavior with dropdown menu items."
       ],
       "avoidWhen": [
-        "Used outside context-menu — it requires the ContextMenu provider.",
-        "Opening a normal click menu from a visible button — use dropdown-trigger."
+        {
+          "reason": "Used outside context-menu — it requires the ContextMenu provider."
+        },
+        {
+          "reason": "Opening a normal click menu from a visible button — use dropdown-trigger."
+        }
       ],
       "related": ["context-menu", "dropdown-trigger"],
       "hasConstraints": false,
@@ -1088,8 +1260,12 @@
         "Pairing with code-block so readers can grab the rendered source."
       ],
       "avoidWhen": [
-        "Triggering a generic non-clipboard action — use button instead.",
-        "Copying long-form rich content that needs format preservation — handle clipboard logic directly."
+        {
+          "reason": "Triggering a generic non-clipboard action — use button instead."
+        },
+        {
+          "reason": "Copying long-form rich content that needs format preservation — handle clipboard logic directly."
+        }
       ],
       "related": ["button", "code-block"],
       "hasConstraints": false,
@@ -1115,8 +1291,12 @@
         "Showing a dedicated empty state when the collection has no items."
       ],
       "avoidWhen": [
-        "Presenting key-value metadata for a single entity — use description-list instead.",
-        "Rendering tabular data with rows and columns — use table instead."
+        {
+          "reason": "Presenting key-value metadata for a single entity — use description-list instead."
+        },
+        {
+          "reason": "Rendering tabular data with rows and columns — use table instead."
+        }
       ],
       "related": ["stacked-list-item", "description-list", "table"],
       "hasConstraints": false,
@@ -1141,8 +1321,12 @@
         "You want correct scope=col / scope=row semantics and aria-sort wiring without writing Table.Header / Table.Body manually."
       ],
       "avoidWhen": [
-        "You need custom cell rendering, interactive cells, nested components, or column spanning — use the compositional Table family directly.",
-        "You need row selection — DataTable does not expose a selection prop; use Table with selectable instead."
+        {
+          "reason": "You need custom cell rendering, interactive cells, nested components, or column spanning — use the compositional Table family directly."
+        },
+        {
+          "reason": "You need row selection — DataTable does not expose a selection prop; use Table with selectable instead."
+        }
       ],
       "related": [
         "table",
@@ -1174,7 +1358,9 @@
         "Switching between stacked and inline term layouts via the variant prop."
       ],
       "avoidWhen": [
-        "Iterating over a homogenous collection of records — use data-list or table instead."
+        {
+          "reason": "Iterating over a homogenous collection of records — use data-list or table instead."
+        }
       ],
       "related": ["data-list", "table"],
       "hasConstraints": false,
@@ -1199,8 +1385,12 @@
         "Annotating a list of files or pull requests with line-change counts as part of the diff-viewer suite."
       ],
       "avoidWhen": [
-        "Rendering the actual hunked diff content — pair with diff-viewer for the full document comparison.",
-        "Generic numeric badges that have nothing to do with diffs — reach for stat or badge instead."
+        {
+          "reason": "Rendering the actual hunked diff content — pair with diff-viewer for the full document comparison."
+        },
+        {
+          "reason": "Generic numeric badges that have nothing to do with diffs — reach for stat or badge instead."
+        }
       ],
       "related": ["diff-viewer"],
       "hasConstraints": false,
@@ -1225,8 +1415,12 @@
         "Building a review workflow that needs hunked, line-anchored Markdown diffs out of the box as a heavyweight suite."
       ],
       "avoidWhen": [
-        "Showing only a counts summary — use diff-statistics on its own for a lightweight presentation.",
-        "Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering."
+        {
+          "reason": "Showing only a counts summary — use diff-statistics on its own for a lightweight presentation."
+        },
+        {
+          "reason": "Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering."
+        }
       ],
       "related": ["diff-statistics", "code-block"],
       "hasConstraints": false,
@@ -1251,8 +1445,12 @@
         "Splitting a row of inline controls (e.g. a button-group toolbar) with a vertical rule."
       ],
       "avoidWhen": [
-        "The split between sections deserves a heading — use section-heading instead.",
-        "Wrapping the entire viewport edge — use surface or page-layout instead."
+        {
+          "reason": "The split between sections deserves a heading — use section-heading instead."
+        },
+        {
+          "reason": "Wrapping the entire viewport edge — use surface or page-layout instead."
+        }
       ],
       "related": ["surface", "section-heading"],
       "hasConstraints": false,
@@ -1277,8 +1475,12 @@
         "Presenting long-form content that benefits from a side panel without leaving the current view."
       ],
       "avoidWhen": [
-        "Interrupting the user for a focused decision — use modal so the surface is centered and task-scoped.",
-        "Anchoring a small surface to a trigger — use popover or sheet instead."
+        {
+          "reason": "Interrupting the user for a focused decision — use modal so the surface is centered and task-scoped."
+        },
+        {
+          "reason": "Anchoring a small surface to a trigger — use popover or sheet instead."
+        }
       ],
       "related": ["modal", "sheet", "popover"],
       "hasConstraints": false,
@@ -1303,8 +1505,12 @@
         "Building a custom dropdown layout from dropdown-trigger, dropdown-menu, dropdown-item, dropdown-label, and dropdown-separator parts."
       ],
       "avoidWhen": [
-        "Selecting a value from a list of options — use select or combobox instead.",
-        "Showing supplementary content rather than a menu of choices — use popover."
+        {
+          "reason": "Selecting a value from a list of options — use select or combobox instead."
+        },
+        {
+          "reason": "Showing supplementary content rather than a menu of choices — use popover."
+        }
       ],
       "related": [
         "dropdown-trigger",
@@ -1335,8 +1541,12 @@
         "Pairing dropdown-label with a role='group' container inside dropdown-menu."
       ],
       "avoidWhen": [
-        "Rendering a clickable row — use dropdown-item.",
-        "Separating sections without a group label — use dropdown-separator."
+        {
+          "reason": "Rendering a clickable row — use dropdown-item."
+        },
+        {
+          "reason": "Separating sections without a group label — use dropdown-separator."
+        }
       ],
       "related": [
         "dropdown",
@@ -1366,8 +1576,12 @@
         "Composing menu rows that should close the parent dropdown after selection unless closeOnSelect is disabled."
       ],
       "avoidWhen": [
-        "Used outside a dropdown context — it requires the dropdown provider and will throw otherwise.",
-        "Grouping a static heading row above menu items — use dropdown-label."
+        {
+          "reason": "Used outside a dropdown context — it requires the dropdown provider and will throw otherwise."
+        },
+        {
+          "reason": "Grouping a static heading row above menu items — use dropdown-label."
+        }
       ],
       "related": ["dropdown", "dropdown-menu", "dropdown-label", "dropdown-separator"],
       "hasConstraints": false,
@@ -1391,8 +1605,12 @@
         "Providing a visual section title above a cluster of dropdown-item rows."
       ],
       "avoidWhen": [
-        "Rendering a selectable row — use dropdown-item.",
-        "Visually dividing groups without a heading — use dropdown-separator."
+        {
+          "reason": "Rendering a selectable row — use dropdown-item."
+        },
+        {
+          "reason": "Visually dividing groups without a heading — use dropdown-separator."
+        }
       ],
       "related": ["dropdown", "dropdown-menu", "dropdown-item", "dropdown-separator"],
       "hasConstraints": false,
@@ -1416,8 +1634,12 @@
         "Composing a dropdown's body from dropdown-item, dropdown-label, and dropdown-separator children."
       ],
       "avoidWhen": [
-        "Used outside a dropdown context — it requires the dropdown provider and will throw otherwise.",
-        "Showing arbitrary non-menu content — use popover."
+        {
+          "reason": "Used outside a dropdown context — it requires the dropdown provider and will throw otherwise."
+        },
+        {
+          "reason": "Showing arbitrary non-menu content — use popover."
+        }
       ],
       "related": [
         "dropdown",
@@ -1447,8 +1669,12 @@
         "Marking a boundary between primary actions and destructive or secondary actions in a menu."
       ],
       "avoidWhen": [
-        "Labeling a section of items — use dropdown-label so the group has an accessible heading.",
-        "Rendering an interactive row — use dropdown-item."
+        {
+          "reason": "Labeling a section of items — use dropdown-label so the group has an accessible heading."
+        },
+        {
+          "reason": "Rendering an interactive row — use dropdown-item."
+        }
       ],
       "related": ["dropdown", "dropdown-menu", "dropdown-label", "dropdown-item"],
       "hasConstraints": false,
@@ -1471,7 +1697,11 @@
         "Opening a dropdown-menu from a button styled to match cinder's form controls.",
         "Pairing with dropdown to expose a custom menu from a labelled affordance."
       ],
-      "avoidWhen": ["Triggering a discrete action with no menu — use button instead."],
+      "avoidWhen": [
+        {
+          "reason": "Triggering a discrete action with no menu — use button instead."
+        }
+      ],
       "related": ["dropdown", "dropdown-menu"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -1494,8 +1724,12 @@
         "Replacing a primary content region after a filter or search returns no results."
       ],
       "avoidWhen": [
-        "Indicating that data is still loading — use skeleton or spinner instead.",
-        "Reporting a transient error — use alert, banner, or toast-region."
+        {
+          "reason": "Indicating that data is still loading — use skeleton or spinner instead."
+        },
+        {
+          "reason": "Reporting a transient error — use alert, banner, or toast-region."
+        }
       ],
       "related": ["skeleton", "spinner"],
       "hasConstraints": false,
@@ -1519,7 +1753,11 @@
         "Rendering an activity log, audit trail, or notification timeline.",
         "Announcing newly appended entries to assistive technology via the live prop."
       ],
-      "avoidWhen": ["Displaying a one-off transient notice — use toast-region or banner instead."],
+      "avoidWhen": [
+        {
+          "reason": "Displaying a one-off transient notice — use toast-region or banner instead."
+        }
+      ],
       "related": ["feed-event"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -1543,7 +1781,9 @@
         "Switching between an icon-led and a connector-led visual treatment via the variant prop."
       ],
       "avoidWhen": [
-        "Standing alone outside a feed — it expects the feed list semantics around it."
+        {
+          "reason": "Standing alone outside a feed — it expects the feed list semantics around it."
+        }
       ],
       "related": ["feed"],
       "hasConstraints": false,
@@ -1566,7 +1806,11 @@
         "Collecting one or more files while keeping the native picker available for keyboard and assistive-technology users.",
         "Showing per-file upload progress or rejection errors below a prominent dropzone surface."
       ],
-      "avoidWhen": ["You only need a hidden native file input with no custom UI."],
+      "avoidWhen": [
+        {
+          "reason": "You only need a hidden native file input with no custom UI."
+        }
+      ],
       "related": ["form-field", "progress", "input"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -1586,8 +1830,12 @@
       "tags": ["action", "button"],
       "useWhen": ["One action dominates the page purpose (compose, add, create)."],
       "avoidWhen": [
-        "Multiple equally-important actions exist — use a toolbar or button group.",
-        "You need it pinned to the viewport — it doesn't position itself; wrap it in your own fixed/sticky container."
+        {
+          "reason": "Multiple equally-important actions exist — use a toolbar or button group."
+        },
+        {
+          "reason": "You need it pinned to the viewport — it doesn't position itself; wrap it in your own fixed/sticky container."
+        }
       ],
       "related": ["button", "toolbar"],
       "hasConstraints": false,
@@ -1611,7 +1859,11 @@
         "Building non-native overlays or popovers that need contained keyboard focus.",
         "Reusing the same focus-management behavior across custom floating surfaces."
       ],
-      "avoidWhen": ["The surface already uses native dialog focus trapping."],
+      "avoidWhen": [
+        {
+          "reason": "The surface already uses native dialog focus trapping."
+        }
+      ],
       "related": ["modal", "drawer", "sheet", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -1635,7 +1887,9 @@
         "Forwarding shared required, disabled, and error state to an opted-in child control."
       ],
       "avoidWhen": [
-        "Grouping multiple related controls under one heading — use form-section instead."
+        {
+          "reason": "Grouping multiple related controls under one heading — use form-section instead."
+        }
       ],
       "related": ["form-section", "label", "input"],
       "hasConstraints": false,
@@ -1659,7 +1913,11 @@
         "Splitting a long form into labelled segments such as \"Account\" or \"Billing\".",
         "Rendering a fieldset with a legend for a set of tightly related inputs."
       ],
-      "avoidWhen": ["Wrapping a single control with its label and error — use form-field instead."],
+      "avoidWhen": [
+        {
+          "reason": "Wrapping a single control with its label and error — use form-field instead."
+        }
+      ],
       "related": ["form-field", "section-heading"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -1683,8 +1941,12 @@
         "Constraining tile minimum widths per breakpoint via the minColumnWidth prop."
       ],
       "avoidWhen": [
-        "Comparing rows of structured data — use table instead.",
-        "Stacking dense list rows vertically — use stacked-list-item instead."
+        {
+          "reason": "Comparing rows of structured data — use table instead."
+        },
+        {
+          "reason": "Stacking dense list rows vertically — use stacked-list-item instead."
+        }
       ],
       "related": ["grid-list-item", "table"],
       "hasConstraints": false,
@@ -1708,7 +1970,11 @@
         "Rendering a single card cell inside a grid-list parent.",
         "Turning the tile into an anchor by passing href."
       ],
-      "avoidWhen": ["Standing alone outside a grid-list — it inherits the grid layout context."],
+      "avoidWhen": [
+        {
+          "reason": "Standing alone outside a grid-list — it inherits the grid layout context."
+        }
+      ],
       "related": ["grid-list"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -1731,8 +1997,12 @@
         "Revealing supplementary preview content on pointer hover or keyboard focus without moving focus."
       ],
       "avoidWhen": [
-        "The floating content contains focusable controls — use popover.",
-        "The trigger needs a short accessible description — use tooltip."
+        {
+          "reason": "The floating content contains focusable controls — use popover."
+        },
+        {
+          "reason": "The trigger needs a short accessible description — use tooltip."
+        }
       ],
       "related": ["tooltip", "popover"],
       "hasConstraints": false,
@@ -1757,8 +2027,12 @@
         "Supplying a placeholder while loading and a fallback when the source errors."
       ],
       "avoidWhen": [
-        "Representing a person or account — use avatar instead.",
-        "Rendering a decorative icon — use an icon component instead."
+        {
+          "reason": "Representing a person or account — use avatar instead."
+        },
+        {
+          "reason": "Rendering a decorative icon — use an icon component instead."
+        }
       ],
       "related": ["avatar"],
       "hasConstraints": false,
@@ -1782,8 +2056,12 @@
         "Composing inside a form-field with leading or trailing adornments."
       ],
       "avoidWhen": [
-        "Collecting multi-line prose — use textarea instead.",
-        "Collecting a numeric value with stepping controls — use number-input instead."
+        {
+          "reason": "Collecting multi-line prose — use textarea instead."
+        },
+        {
+          "reason": "Collecting a numeric value with stepping controls — use number-input instead."
+        }
       ],
       "related": ["textarea", "number-input", "search-field", "form-field"],
       "hasConstraints": true,
@@ -1809,7 +2087,9 @@
         "Reviewing schema changes against a baseline via the built-in diff view."
       ],
       "avoidWhen": [
-        "Editing arbitrary free-form JSON with no schema semantics — use a plain code editor instead."
+        {
+          "reason": "Editing arbitrary free-form JSON with no schema semantics — use a plain code editor instead."
+        }
       ],
       "related": ["markdown-editor", "review-editor"],
       "hasConstraints": false,
@@ -1834,8 +2114,12 @@
         "Rendering a JSON-serializable value with predictable initial-collapse behavior and no virtualization needs."
       ],
       "avoidWhen": [
-        "The payload is large enough to need search, filter, or virtualization — compose a custom viewer instead.",
-        "Showing arbitrary source code rather than a JSON value — code-block is the right surface for that."
+        {
+          "reason": "The payload is large enough to need search, filter, or virtualization — compose a custom viewer instead."
+        },
+        {
+          "reason": "Showing arbitrary source code rather than a JSON value — code-block is the right surface for that."
+        }
       ],
       "related": ["code-block", "tree"],
       "hasConstraints": false,
@@ -1859,8 +2143,12 @@
         "Consumers own card rendering and need cinder to manage reorder affordances and change metadata."
       ],
       "avoidWhen": [
-        "Showing a single ordered list — use sortable-list instead.",
-        "Sorting by computed fields rather than direct manual placement."
+        {
+          "reason": "Showing a single ordered list — use sortable-list instead."
+        },
+        {
+          "reason": "Sorting by computed fields rather than direct manual placement."
+        }
       ],
       "related": ["sortable-list", "grid-list", "data-list"],
       "hasConstraints": false,
@@ -1884,7 +2172,11 @@
         "Calling out a keyboard shortcut inline within prose or a tooltip.",
         "Composing chorded shortcuts by rendering multiple kbd elements side by side."
       ],
-      "avoidWhen": ["Displaying a block of source code — use code-block instead."],
+      "avoidWhen": [
+        {
+          "reason": "Displaying a block of source code — use code-block instead."
+        }
+      ],
       "related": ["code-block"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -1907,7 +2199,11 @@
         "Displaying a reference panel of keyboard shortcuts grouped by feature area.",
         "Embedding a shortcut table inside a modal, sheet, popover, or help page."
       ],
-      "avoidWhen": ["Showing a single inline shortcut hint — use shortcut-hint instead."],
+      "avoidWhen": [
+        {
+          "reason": "Showing a single inline shortcut hint — use shortcut-hint instead."
+        }
+      ],
       "related": ["kbd", "shortcut-hint", "modal", "sheet", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -1931,7 +2227,9 @@
         "Matching the disabled or required visual treatment of cinder inputs on a custom control."
       ],
       "avoidWhen": [
-        "Labelling a built-in input that already renders its own label prop — pass label instead."
+        {
+          "reason": "Labelling a built-in input that already renders its own label prop — pass label instead."
+        }
       ],
       "related": ["form-field", "input", "checkbox", "radio-group"],
       "hasConstraints": false,
@@ -1955,8 +2253,12 @@
         "Comparing several metric series on the same numeric axis."
       ],
       "avoidWhen": [
-        "Comparing discrete category totals — use bar-chart instead.",
-        "Showing cumulative filled trends — use area-chart instead."
+        {
+          "reason": "Comparing discrete category totals — use bar-chart instead."
+        },
+        {
+          "reason": "Showing cumulative filled trends — use area-chart instead."
+        }
       ],
       "related": ["area-chart", "bar-chart", "table", "stat"],
       "hasConstraints": false,
@@ -1977,7 +2279,11 @@
       "purpose": "Inline text link with consistent focus ring and underline behavior.",
       "tags": ["typography", "link"],
       "useWhen": ["Embedding a navigable link inside body text or prose content."],
-      "avoidWhen": ["Navigating between pages in a sidebar or nav bar — use NavigationItem."],
+      "avoidWhen": [
+        {
+          "reason": "Navigating between pages in a sidebar or nav bar — use NavigationItem."
+        }
+      ],
       "related": ["navigation-item", "button", "breadcrumbs"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -2000,7 +2306,9 @@
         "Streaming results into a long list and you want the next page to load as the user approaches the end."
       ],
       "avoidWhen": [
-        "The dataset is bounded and benefits from discrete jumps — use `Pagination` instead."
+        {
+          "reason": "The dataset is bounded and benefits from discrete jumps — use `Pagination` instead."
+        }
       ],
       "related": ["pagination"],
       "hasConstraints": false,
@@ -2025,8 +2333,12 @@
         "Building writing surfaces that need an editor handle for programmatic mark or block manipulation as part of the heavyweight suite."
       ],
       "avoidWhen": [
-        "Authoring a simple plain-text note — a textarea is dramatically lighter than the Milkdown bundle.",
-        "The surface needs inline review threads on top of the editor — use review-editor for that composition."
+        {
+          "reason": "Authoring a simple plain-text note — a textarea is dramatically lighter than the Milkdown bundle."
+        },
+        {
+          "reason": "The surface needs inline review threads on top of the editor — use review-editor for that composition."
+        }
       ],
       "related": ["review-editor", "code-block"],
       "hasConstraints": false,
@@ -2051,8 +2363,12 @@
         "Rendering a confusion matrix where rows are actual classes and columns are predicted classes."
       ],
       "avoidWhen": [
-        "Showing a continuous trend over time — use line-chart instead.",
-        "Comparing discrete category totals — use bar-chart instead."
+        {
+          "reason": "Showing a continuous trend over time — use line-chart instead."
+        },
+        {
+          "reason": "Comparing discrete category totals — use bar-chart instead."
+        }
       ],
       "related": ["bar-chart", "line-chart", "area-chart"],
       "hasConstraints": false,
@@ -2077,8 +2393,12 @@
         "Rendering media controls inside a toolbar or standalone on a card."
       ],
       "avoidWhen": [
-        "You need waveform visualization or Web Audio integration — wire that separately.",
-        "You need a full media player UI with seek scrubbing — use a dedicated player component."
+        {
+          "reason": "You need waveform visualization or Web Audio integration — wire that separately."
+        },
+        {
+          "reason": "You need a full media player UI with seek scrubbing — use a dedicated player component."
+        }
       ],
       "related": ["button", "toolbar", "progress", "tooltip"],
       "hasConstraints": false,
@@ -2103,8 +2423,12 @@
         "Exposing top-level application menus that need arrow-key traversal and optional submenus."
       ],
       "avoidWhen": [
-        "Linking between routes or sections — use navigation-bar or side-navigation instead.",
-        "Showing one standalone trigger with a menu — use dropdown, dropdown-menu, and dropdown-item directly."
+        {
+          "reason": "Linking between routes or sections — use navigation-bar or side-navigation instead."
+        },
+        {
+          "reason": "Showing one standalone trigger with a menu — use dropdown, dropdown-menu, and dropdown-item directly."
+        }
       ],
       "related": ["navigation-bar", "dropdown", "dropdown-menu", "dropdown-item"],
       "hasConstraints": false,
@@ -2129,8 +2453,12 @@
         "Rendering AI agent runs, support threads, or audit logs where each entry has a speaker and a body."
       ],
       "avoidWhen": [
-        "Building a complete conversation surface with composer and scroll affordances — reach for the chat suite instead.",
-        "Communicating a single non-conversational notice — callout is more appropriate."
+        {
+          "reason": "Building a complete conversation surface with composer and scroll affordances — reach for the chat suite instead."
+        },
+        {
+          "reason": "Communicating a single non-conversational notice — callout is more appropriate."
+        }
       ],
       "related": ["chat", "callout"],
       "hasConstraints": false,
@@ -2155,10 +2483,18 @@
         "Collecting structured input (forms, multi-field workflows) inside an overlay."
       ],
       "avoidWhen": [
-        "Only a two-action confirm/cancel prompt is needed — use confirm-dialog instead.",
-        "An urgent blocking acknowledgement is needed — use alert-dialog instead.",
-        "Showing side-anchored navigation or settings — use a drawer instead.",
-        "Presenting a small contextual surface anchored to a trigger — use a popover or sheet instead."
+        {
+          "reason": "Only a two-action confirm/cancel prompt is needed — use confirm-dialog instead."
+        },
+        {
+          "reason": "An urgent blocking acknowledgement is needed — use alert-dialog instead."
+        },
+        {
+          "reason": "Showing side-anchored navigation or settings — use a drawer instead."
+        },
+        {
+          "reason": "Presenting a small contextual surface anchored to a trigger — use a popover or sheet instead."
+        }
       ],
       "related": ["confirm-dialog", "alert-dialog", "drawer", "sheet", "popover"],
       "hasConstraints": true,
@@ -2184,8 +2520,12 @@
         "Providing a responsive nav that collapses items behind a menu toggle below a breakpoint."
       ],
       "avoidWhen": [
-        "Showing the ancestor trail of the current page — use breadcrumbs instead.",
-        "Building a tall, dense sidebar of grouped sections — use side-navigation instead."
+        {
+          "reason": "Showing the ancestor trail of the current page — use breadcrumbs instead."
+        },
+        {
+          "reason": "Building a tall, dense sidebar of grouped sections — use side-navigation instead."
+        }
       ],
       "related": ["navigation-item", "breadcrumbs", "side-navigation"],
       "hasConstraints": false,
@@ -2210,8 +2550,12 @@
         "Switching the active view or section while signalling current location via aria-current."
       ],
       "avoidWhen": [
-        "Showing a hierarchical trail of ancestors — use breadcrumbs instead.",
-        "Triggering a generic action unrelated to navigation — use button instead."
+        {
+          "reason": "Showing a hierarchical trail of ancestors — use breadcrumbs instead."
+        },
+        {
+          "reason": "Triggering a generic action unrelated to navigation — use button instead."
+        }
       ],
       "related": ["navigation-bar", "side-navigation-item", "breadcrumbs", "tab"],
       "hasConstraints": false,
@@ -2235,8 +2579,12 @@
         "Needing locale-aware display formatting on top of a native number input."
       ],
       "avoidWhen": [
-        "Selecting a value within a continuous range visually — use slider instead.",
-        "Collecting free-form text or non-numeric content — use input instead."
+        {
+          "reason": "Selecting a value within a continuous range visually — use slider instead."
+        },
+        {
+          "reason": "Collecting free-form text or non-numeric content — use input instead."
+        }
       ],
       "related": ["input", "slider"],
       "hasConstraints": false,
@@ -2260,8 +2608,12 @@
         "Showing the current page in context of the total page count."
       ],
       "avoidWhen": [
-        "Switching between named sibling views — use tabs instead.",
-        "Streaming results as the user scrolls — wire up infinite scroll directly."
+        {
+          "reason": "Switching between named sibling views — use tabs instead."
+        },
+        {
+          "reason": "Streaming results as the user scrolls — wire up infinite scroll directly."
+        }
       ],
       "related": ["tabs"],
       "hasConstraints": false,
@@ -2286,8 +2638,12 @@
         "Letting the user pick a calling country and a national number side-by-side."
       ],
       "avoidWhen": [
-        "Collecting a free-form local number with no country context — use input type=\"tel\" instead.",
-        "Collecting an SMS verification code — use pin-input instead."
+        {
+          "reason": "Collecting a free-form local number with no country context — use input type=\"tel\" instead."
+        },
+        {
+          "reason": "Collecting an SMS verification code — use pin-input instead."
+        }
       ],
       "related": ["input", "pin-input", "form-field"],
       "hasConstraints": false,
@@ -2312,8 +2668,12 @@
         "Letting the browser autofill a one-time-code into a visually segmented control."
       ],
       "avoidWhen": [
-        "Collecting a free-form string of any length — use input instead.",
-        "Collecting a numeric value that participates in arithmetic — use number-input instead."
+        {
+          "reason": "Collecting a free-form string of any length — use input instead."
+        },
+        {
+          "reason": "Collecting a numeric value that participates in arithmetic — use number-input instead."
+        }
       ],
       "related": ["input", "number-input", "form-field"],
       "hasConstraints": false,
@@ -2338,8 +2698,12 @@
         "Presenting non-blocking supplementary controls that should dismiss on outside click or Escape."
       ],
       "avoidWhen": [
-        "Showing a short descriptive hint on hover or focus — use tooltip instead.",
-        "Interrupting the user for a focused task — use modal, drawer, or sheet so the surface is modal."
+        {
+          "reason": "Showing a short descriptive hint on hover or focus — use tooltip instead."
+        },
+        {
+          "reason": "Interrupting the user for a focused task — use modal, drawer, or sheet so the surface is modal."
+        }
       ],
       "related": ["modal", "drawer", "sheet", "tooltip"],
       "hasConstraints": false,
@@ -2364,7 +2728,9 @@
         "Building a custom anchored or modal primitive that needs to append content into document.body or a named host."
       ],
       "avoidWhen": [
-        "The content should stay in normal document flow or inherit layout from its original parent."
+        {
+          "reason": "The content should stay in normal document flow or inherit layout from its original parent."
+        }
       ],
       "related": ["popover", "modal", "drawer", "sheet"],
       "hasConstraints": false,
@@ -2389,8 +2755,12 @@
         "Highlighting one tier as selected or recommended in a pricing comparison."
       ],
       "avoidWhen": [
-        "Showing generic grouped content without a distinct price or CTA — use card instead.",
-        "Displaying a single key metric in isolation — use stat or stat-group instead."
+        {
+          "reason": "Showing generic grouped content without a distinct price or CTA — use card instead."
+        },
+        {
+          "reason": "Displaying a single key metric in isolation — use stat or stat-group instead."
+        }
       ],
       "related": ["card", "button", "stat", "stat-group"],
       "hasConstraints": false,
@@ -2415,8 +2785,12 @@
         "Showing an indeterminate work indicator when the task duration is unknown but the surface needs a progressbar role."
       ],
       "avoidWhen": [
-        "Showing a small inline busy state next to a control — use spinner.",
-        "Reserving placeholder space for incoming content — use skeleton."
+        {
+          "reason": "Showing a small inline busy state next to a control — use spinner."
+        },
+        {
+          "reason": "Reserving placeholder space for incoming content — use skeleton."
+        }
       ],
       "related": ["spinner", "skeleton"],
       "hasConstraints": false,
@@ -2440,7 +2814,11 @@
         "Picking exactly one option from a small fixed set where every choice should stay visible.",
         "Sharing a single error and description across a set of related radios."
       ],
-      "avoidWhen": ["Selecting zero or more independent options — use checkbox-group instead."],
+      "avoidWhen": [
+        {
+          "reason": "Selecting zero or more independent options — use checkbox-group instead."
+        }
+      ],
       "related": ["checkbox-group"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -2464,8 +2842,12 @@
         "Displaying an existing rating in readonly mode alongside a count or average."
       ],
       "avoidWhen": [
-        "Picking a value from a numeric continuum — use slider instead.",
-        "Capturing a binary preference — use toggle or checkbox."
+        {
+          "reason": "Picking a value from a numeric continuum — use slider instead."
+        },
+        {
+          "reason": "Capturing a binary preference — use toggle or checkbox."
+        }
       ],
       "related": ["slider", "segmented-control", "radio-group", "form-field"],
       "hasConstraints": false,
@@ -2490,8 +2872,12 @@
         "Persisting a multi-pane workspace layout without coupling the component to localStorage."
       ],
       "avoidWhen": [
-        "You only need a static two-column or stack layout with no interactive resizing.",
-        "Content should wrap naturally instead of claiming a fixed share of a measured container."
+        {
+          "reason": "You only need a static two-column or stack layout with no interactive resizing."
+        },
+        {
+          "reason": "Content should wrap naturally instead of claiming a fixed share of a measured container."
+        }
       ],
       "related": ["divider", "scroll-area"],
       "hasConstraints": false,
@@ -2516,8 +2902,12 @@
         "Threading reviewer commentary against specific selections inside a long-form document."
       ],
       "avoidWhen": [
-        "Plain authoring with no review threads — markdown-editor is the lighter primitive.",
-        "Reviewing diffs between two documents rather than annotating one — use diff-viewer instead."
+        {
+          "reason": "Plain authoring with no review threads — markdown-editor is the lighter primitive."
+        },
+        {
+          "reason": "Reviewing diffs between two documents rather than annotating one — use diff-viewer instead."
+        }
       ],
       "related": ["markdown-editor"],
       "hasConstraints": false,
@@ -2542,8 +2932,12 @@
         "Preserving keyboard scrollability for overflow content in a card or surface."
       ],
       "avoidWhen": [
-        "Wrapping the entire page — let the document scroll natively.",
-        "Hiding overflow without scrollbars — use plain CSS overflow utilities instead."
+        {
+          "reason": "Wrapping the entire page — let the document scroll natively."
+        },
+        {
+          "reason": "Hiding overflow without scrollbars — use plain CSS overflow utilities instead."
+        }
       ],
       "related": ["surface"],
       "hasConstraints": false,
@@ -2567,7 +2961,11 @@
         "Capturing a free-text query that filters or queries a larger dataset.",
         "Surfacing a global search affordance with a visible keyboard shortcut."
       ],
-      "avoidWhen": ["Selecting from a constrained list of known options — use combobox instead."],
+      "avoidWhen": [
+        {
+          "reason": "Selecting from a constrained list of known options — use combobox instead."
+        }
+      ],
       "related": ["input", "combobox"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -2591,8 +2989,12 @@
         "Pairing a section title with inline actions or a tab row beneath the heading."
       ],
       "avoidWhen": [
-        "Labelling a single form control or field — use label instead.",
-        "Rendering a page-wide header with primary navigation — use a hand-rolled page scaffold with a heading element."
+        {
+          "reason": "Labelling a single form control or field — use label instead."
+        },
+        {
+          "reason": "Rendering a page-wide header with primary navigation — use a hand-rolled page scaffold with a heading element."
+        }
       ],
       "related": ["card", "tab-list"],
       "hasConstraints": false,
@@ -2617,8 +3019,12 @@
         "Mixing disabled and enabled segments inside a single radiogroup/tablist where each segment carries its own metadata."
       ],
       "avoidWhen": [
-        "Building a standalone toggle button — use Button or Toggle instead.",
-        "Selecting one option from a long list — use Select or Combobox instead."
+        {
+          "reason": "Building a standalone toggle button — use Button or Toggle instead."
+        },
+        {
+          "reason": "Selecting one option from a long list — use Select or Combobox instead."
+        }
       ],
       "related": ["segmented-control", "button", "toggle"],
       "hasConstraints": false,
@@ -2642,8 +3048,12 @@
         "Picking a view filter where seeing every option beats hiding them inside a toggle or tabs control."
       ],
       "avoidWhen": [
-        "Toggling a single binary on or off — use toggle or checkbox instead.",
-        "Switching between panels of associated content — use tabs instead."
+        {
+          "reason": "Toggling a single binary on or off — use toggle or checkbox instead."
+        },
+        {
+          "reason": "Switching between panels of associated content — use tabs instead."
+        }
       ],
       "related": ["toggle", "checkbox", "tabs", "button-group"],
       "hasConstraints": false,
@@ -2668,8 +3078,12 @@
         "Composing inside a form with built-in label and aria-describedby plumbing."
       ],
       "avoidWhen": [
-        "Filtering a long list by typing — use combobox instead.",
-        "Building a custom-styled menu trigger — use dropdown instead."
+        {
+          "reason": "Filtering a long list by typing — use combobox instead."
+        },
+        {
+          "reason": "Building a custom-styled menu trigger — use dropdown instead."
+        }
       ],
       "related": ["combobox", "dropdown", "radio-group"],
       "hasConstraints": false,
@@ -2694,8 +3108,12 @@
         "Surfacing selection-scoped actions such as quote, share, or comment near the user's pointer."
       ],
       "avoidWhen": [
-        "Anchoring generic non-selection content to a trigger — use popover.",
-        "Building a general-purpose floating toolbar unrelated to text selection — compose a popover with custom controls."
+        {
+          "reason": "Anchoring generic non-selection content to a trigger — use popover."
+        },
+        {
+          "reason": "Building a general-purpose floating toolbar unrelated to text selection — compose a popover with custom controls."
+        }
       ],
       "related": ["popover"],
       "hasConstraints": false,
@@ -2720,8 +3138,12 @@
         "Presenting a result, invite link, or exported report link with sharing affordances."
       ],
       "avoidWhen": [
-        "Generating the share text or images — compose ShareCard with your own copy generation logic.",
-        "Posting directly to social media or analytics — wire those externally."
+        {
+          "reason": "Generating the share text or images — compose ShareCard with your own copy generation logic."
+        },
+        {
+          "reason": "Posting directly to social media or analytics — wire those externally."
+        }
       ],
       "related": ["copy-button", "card", "button"],
       "hasConstraints": false,
@@ -2746,8 +3168,12 @@
         "Showing a contextual surface that should feel anchored to the screen edge rather than centered like a modal."
       ],
       "avoidWhen": [
-        "Interrupting the user with a centered task or confirmation — use modal instead.",
-        "Showing supplementary side navigation or filters — use drawer or popover."
+        {
+          "reason": "Interrupting the user with a centered task or confirmation — use modal instead."
+        },
+        {
+          "reason": "Showing supplementary side navigation or filters — use drawer or popover."
+        }
       ],
       "related": ["modal", "drawer", "popover"],
       "hasConstraints": false,
@@ -2771,7 +3197,11 @@
         "Showing a keyboard shortcut inline beside a label in a toolbar button, menu item, or tooltip.",
         "Pairing with command-palette items to surface available shortcuts."
       ],
-      "avoidWhen": ["Displaying a full shortcut reference table — use keyboard-shortcuts instead."],
+      "avoidWhen": [
+        {
+          "reason": "Displaying a full shortcut reference table — use keyboard-shortcuts instead."
+        }
+      ],
       "related": ["kbd", "keyboard-shortcuts", "tooltip"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -2795,8 +3225,12 @@
         "Pairing with sidebar so the column collapses responsively on narrow viewports."
       ],
       "avoidWhen": [
-        "Anchoring primary navigation across the top of the page — use navigation-bar instead.",
-        "Rendering a single flat horizontal nav row — use navigation-bar instead."
+        {
+          "reason": "Anchoring primary navigation across the top of the page — use navigation-bar instead."
+        },
+        {
+          "reason": "Rendering a single flat horizontal nav row — use navigation-bar instead."
+        }
       ],
       "related": ["side-navigation-item", "side-navigation-group", "navigation-bar", "sidebar"],
       "hasConstraints": false,
@@ -2821,8 +3255,12 @@
         "Letting users collapse rarely used groups to reduce visual noise in the sidebar."
       ],
       "avoidWhen": [
-        "Used outside a side-navigation ancestor — it expects that landmark for context.",
-        "Hosting a single flat list with no grouping — place side-navigation-item entries directly."
+        {
+          "reason": "Used outside a side-navigation ancestor — it expects that landmark for context."
+        },
+        {
+          "reason": "Hosting a single flat list with no grouping — place side-navigation-item entries directly."
+        }
       ],
       "related": ["side-navigation", "side-navigation-item"],
       "hasConstraints": false,
@@ -2846,8 +3284,12 @@
         "Keeping list semantics correct so screen readers announce sidebar entry counts."
       ],
       "avoidWhen": [
-        "Placing entries in a horizontal navigation-bar — use navigation-item directly.",
-        "Rendering outside a side-navigation list — use navigation-item without the list wrapper."
+        {
+          "reason": "Placing entries in a horizontal navigation-bar — use navigation-item directly."
+        },
+        {
+          "reason": "Rendering outside a side-navigation list — use navigation-item without the list wrapper."
+        }
       ],
       "related": ["side-navigation", "side-navigation-group", "navigation-item"],
       "hasConstraints": false,
@@ -2871,8 +3313,12 @@
         "Sharing collapsed state between a side-navigation column and the rest of the app shell via context."
       ],
       "avoidWhen": [
-        "Building the page body itself rather than the surrounding shell — use a hand-rolled page scaffold instead.",
-        "Rendering navigation entries directly — place side-navigation inside the sidebar column."
+        {
+          "reason": "Building the page body itself rather than the surrounding shell — use a hand-rolled page scaffold instead."
+        },
+        {
+          "reason": "Rendering navigation entries directly — place side-navigation inside the sidebar column."
+        }
       ],
       "related": ["side-navigation", "drawer"],
       "hasConstraints": false,
@@ -2897,8 +3343,12 @@
         "Indicating progressive load of cards, rows, or media tiles where the final shape is known."
       ],
       "avoidWhen": [
-        "Indicating indeterminate background work without a known target shape — use spinner.",
-        "Communicating that a view has no data at all — use empty-state."
+        {
+          "reason": "Indicating indeterminate background work without a known target shape — use spinner."
+        },
+        {
+          "reason": "Communicating that a view has no data at all — use empty-state."
+        }
       ],
       "related": ["spinner", "empty-state", "progress"],
       "hasConstraints": false,
@@ -2923,8 +3373,12 @@
         "Meeting WCAG 2.4.1 (Bypass Blocks) without adding visible chrome to the layout."
       ],
       "avoidWhen": [
-        "The page has no repeated navigation block — a skip link adds no value on single-panel layouts.",
-        "The target region already receives focus naturally without intervention."
+        {
+          "reason": "The page has no repeated navigation block — a skip link adds no value on single-panel layouts."
+        },
+        {
+          "reason": "The target region already receives focus naturally without intervention."
+        }
       ],
       "related": ["visually-hidden"],
       "hasConstraints": false,
@@ -2949,8 +3403,12 @@
         "Selecting a low and high bound together via the range mode."
       ],
       "avoidWhen": [
-        "Entering a precise numeric value typed by the user — use number-input instead.",
-        "Displaying read-only completion — use progress instead."
+        {
+          "reason": "Entering a precise numeric value typed by the user — use number-input instead."
+        },
+        {
+          "reason": "Displaying read-only completion — use progress instead."
+        }
       ],
       "related": ["number-input", "progress"],
       "hasConstraints": false,
@@ -2975,8 +3433,12 @@
         "Surfacing live region announcements during a reorder for accessible feedback."
       ],
       "avoidWhen": [
-        "Showing a read-only list with no reorder affordance — use grid-list instead.",
-        "Sorting by a column or computed key — sort the source array and rerender."
+        {
+          "reason": "Showing a read-only list with no reorder affordance — use grid-list instead."
+        },
+        {
+          "reason": "Sorting by a column or computed key — sort the source array and rerender."
+        }
       ],
       "related": ["grid-list"],
       "hasConstraints": false,
@@ -3000,9 +3462,15 @@
         "Displaying pre-computed spectrogram frames from an FFT or short-time Fourier transform."
       ],
       "avoidWhen": [
-        "Only a single spectrum snapshot is needed — use spectrum-chart instead.",
-        "Real-time live audio spectrogram is needed — feed frames as props yourself.",
-        "A categorical × categorical heatmap without a time axis is needed — use matrix-chart instead."
+        {
+          "reason": "Only a single spectrum snapshot is needed — use spectrum-chart instead."
+        },
+        {
+          "reason": "Real-time live audio spectrogram is needed — feed frames as props yourself."
+        },
+        {
+          "reason": "A categorical × categorical heatmap without a time axis is needed — use matrix-chart instead."
+        }
       ],
       "related": ["spectrum-chart", "waveform", "matrix-chart"],
       "hasConstraints": false,
@@ -3027,9 +3495,15 @@
         "Showing a static frequency response or spectrum snapshot with labelled frequency bins."
       ],
       "avoidWhen": [
-        "Real-time live audio spectrum is needed — feed live AnalyserNode data as props yourself.",
-        "A full time × frequency heatmap is needed — use spectrogram instead.",
-        "General categorical bar comparison — use bar-chart instead."
+        {
+          "reason": "Real-time live audio spectrum is needed — feed live AnalyserNode data as props yourself."
+        },
+        {
+          "reason": "A full time × frequency heatmap is needed — use spectrogram instead."
+        },
+        {
+          "reason": "General categorical bar comparison — use bar-chart instead."
+        }
       ],
       "related": ["waveform", "spectrogram", "bar-chart"],
       "hasConstraints": false,
@@ -3054,8 +3528,12 @@
         "Indicating inline busy state next to a control while a request resolves."
       ],
       "avoidWhen": [
-        "Reserving layout space for content with a known final shape — use skeleton.",
-        "Reporting determinate progress with a measurable percentage — use progress."
+        {
+          "reason": "Reserving layout space for content with a known final shape — use skeleton."
+        },
+        {
+          "reason": "Reporting determinate progress with a measurable percentage — use progress."
+        }
       ],
       "related": ["skeleton", "progress"],
       "hasConstraints": false,
@@ -3080,8 +3558,12 @@
         "Linking each row to a detail view by passing href."
       ],
       "avoidWhen": [
-        "Comparing tabular data across columns — use table instead.",
-        "Rendering cards in a responsive grid — use grid-list instead."
+        {
+          "reason": "Comparing tabular data across columns — use table instead."
+        },
+        {
+          "reason": "Rendering cards in a responsive grid — use grid-list instead."
+        }
       ],
       "related": ["grid-list-item", "table-row", "avatar"],
       "hasConstraints": false,
@@ -3105,8 +3587,12 @@
         "Composing a dashboard tile alongside other Stat instances inside stat-group."
       ],
       "avoidWhen": [
-        "Conveying status with a short label or icon — use badge instead.",
-        "Showing tabular numeric breakdowns — use table or data-list instead."
+        {
+          "reason": "Conveying status with a short label or icon — use badge instead."
+        },
+        {
+          "reason": "Showing tabular numeric breakdowns — use table or data-list instead."
+        }
       ],
       "related": ["stat-group", "badge"],
       "hasConstraints": false,
@@ -3130,8 +3616,12 @@
         "Giving a cluster of stat entries a single accessible group label."
       ],
       "avoidWhen": [
-        "Rendering exactly one metric — use stat on its own.",
-        "Building a freeform card grid unrelated to numeric metrics — compose surface or grid-list directly."
+        {
+          "reason": "Rendering exactly one metric — use stat on its own."
+        },
+        {
+          "reason": "Building a freeform card grid unrelated to numeric metrics — compose surface or grid-list directly."
+        }
       ],
       "related": ["stat"],
       "hasConstraints": false,
@@ -3156,8 +3646,12 @@
         "Communicating status compactly when many indicators appear together without triggering live-region announcements."
       ],
       "avoidWhen": [
-        "Counting items or showing a numeric value — use badge instead.",
-        "Announcing a transient status change — use toast-region or alert so assistive tech reads it."
+        {
+          "reason": "Counting items or showing a numeric value — use badge instead."
+        },
+        {
+          "reason": "Announcing a transient status change — use toast-region or alert so assistive tech reads it."
+        }
       ],
       "related": ["badge"],
       "hasConstraints": false,
@@ -3182,8 +3676,12 @@
         "Showing how far the user has advanced through a known number of stages."
       ],
       "avoidWhen": [
-        "Switching between independent peer views with no order — use tabs instead.",
-        "Showing ancestor hierarchy of the current page — use breadcrumbs instead."
+        {
+          "reason": "Switching between independent peer views with no order — use tabs instead."
+        },
+        {
+          "reason": "Showing ancestor hierarchy of the current page — use breadcrumbs instead."
+        }
       ],
       "related": ["tabs", "breadcrumbs", "pagination"],
       "hasConstraints": false,
@@ -3208,8 +3706,12 @@
         "Annotating a plan name, customer row, or invoice line with its current payment lifecycle state."
       ],
       "avoidWhen": [
-        "The subscription state is not one of the six recognized values — use Badge directly with a custom label instead.",
-        "You need an interactive control that lets users change the state — use a Button or Select."
+        {
+          "reason": "The subscription state is not one of the six recognized values — use Badge directly with a custom label instead."
+        },
+        {
+          "reason": "You need an interactive control that lets users change the state — use a Button or Select."
+        }
       ],
       "related": ["badge", "status-dot", "chip"],
       "hasConstraints": false,
@@ -3234,8 +3736,12 @@
         "Letting nested components adapt their styling based on the surrounding surface tone."
       ],
       "avoidWhen": [
-        "Building a self-contained content card with padding and elevation — use card instead.",
-        "Standing up a full page scaffold with header and actions — use a hand-rolled page scaffold instead."
+        {
+          "reason": "Building a self-contained content card with padding and elevation — use card instead."
+        },
+        {
+          "reason": "Standing up a full page scaffold with header and actions — use a hand-rolled page scaffold instead."
+        }
       ],
       "related": ["card"],
       "hasConstraints": false,
@@ -3260,8 +3766,12 @@
         "Pairing one-to-one with a tab-panel that shares the same value to wire aria-controls."
       ],
       "avoidWhen": [
-        "Used outside a tabs ancestor — the component throws at construction.",
-        "Rendering a generic action button — use button instead."
+        {
+          "reason": "Used outside a tabs ancestor — the component throws at construction."
+        },
+        {
+          "reason": "Rendering a generic action button — use button instead."
+        }
       ],
       "related": ["tabs", "tab-list", "tab-panel"],
       "hasConstraints": false,
@@ -3285,8 +3795,12 @@
         "Providing the accessible label or labelledby reference for the tablist landmark."
       ],
       "avoidWhen": [
-        "Used outside a tabs ancestor — the component throws at construction.",
-        "Rendering tab-panel content — keep panels as siblings outside the tab-list."
+        {
+          "reason": "Used outside a tabs ancestor — the component throws at construction."
+        },
+        {
+          "reason": "Rendering tab-panel content — keep panels as siblings outside the tab-list."
+        }
       ],
       "related": ["tabs", "tab", "tab-panel"],
       "hasConstraints": false,
@@ -3310,8 +3824,12 @@
         "Letting the tabs context drive aria-labelledby and visibility automatically from the shared value."
       ],
       "avoidWhen": [
-        "Used outside a tabs ancestor — the component throws at construction.",
-        "Rendering the tab trigger itself — use tab inside a tab-list."
+        {
+          "reason": "Used outside a tabs ancestor — the component throws at construction."
+        },
+        {
+          "reason": "Rendering the tab trigger itself — use tab inside a tab-list."
+        }
       ],
       "related": ["tabs", "tab", "tab-list"],
       "hasConstraints": false,
@@ -3335,8 +3853,12 @@
         "Coordinating column sort state across header cells via the sort prop."
       ],
       "avoidWhen": [
-        "Rendering a responsive card grid — use grid-list instead.",
-        "Listing key-value attributes of one entity — use description-list instead."
+        {
+          "reason": "Rendering a responsive card grid — use grid-list instead."
+        },
+        {
+          "reason": "Listing key-value attributes of one entity — use description-list instead."
+        }
       ],
       "related": ["table-header", "table-body", "table-row", "table-cell", "table-header-cell"],
       "hasConstraints": false,
@@ -3357,7 +3879,11 @@
       "purpose": "Body section of a table that groups data rows and establishes the body section context for nested rows.",
       "tags": ["table", "section"],
       "useWhen": ["Wrapping the data rows of a table to distinguish them from header rows."],
-      "avoidWhen": ["Wrapping header rows — use table-header instead."],
+      "avoidWhen": [
+        {
+          "reason": "Wrapping header rows — use table-header instead."
+        }
+      ],
       "related": ["table", "table-row"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -3379,7 +3905,11 @@
         "Rendering a single value inside a body row of a table.",
         "Aligning numeric or trailing-action columns via the align prop."
       ],
-      "avoidWhen": ["Rendering a column header — use table-header-cell instead."],
+      "avoidWhen": [
+        {
+          "reason": "Rendering a column header — use table-header-cell instead."
+        }
+      ],
       "related": ["table-row", "table-header-cell"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -3398,7 +3928,11 @@
       "purpose": "Header section of a table that groups column-header rows and exposes selection state to its descendants.",
       "tags": ["table", "section"],
       "useWhen": ["Wrapping the column-header row that labels each column of a table."],
-      "avoidWhen": ["Wrapping body data rows — use table-body instead."],
+      "avoidWhen": [
+        {
+          "reason": "Wrapping body data rows — use table-body instead."
+        }
+      ],
       "related": ["table", "table-header-cell"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -3420,7 +3954,11 @@
         "Labeling a column inside a table-header row.",
         "Making a column user-sortable by setting the sortable prop and supplying a column identifier."
       ],
-      "avoidWhen": ["Rendering a body data cell — use table-cell instead."],
+      "avoidWhen": [
+        {
+          "reason": "Rendering a body data cell — use table-cell instead."
+        }
+      ],
       "related": ["table-header", "table-cell"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -3442,7 +3980,11 @@
         "Grouping table-cell or table-header-cell children into a single horizontal record.",
         "Wiring per-row selection by passing the selection prop in a selectable table."
       ],
-      "avoidWhen": ["Standing alone outside a table — it requires the table section context."],
+      "avoidWhen": [
+        {
+          "reason": "Standing alone outside a table — it requires the table section context."
+        }
+      ],
       "related": ["table-body", "table-cell"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -3465,8 +4007,12 @@
         "Building the WAI-ARIA tabs pattern with shared keyboard navigation and activation rules."
       ],
       "avoidWhen": [
-        "Picking one of two to five short values inline — use segmented-control instead.",
-        "Showing ordered progress through a wizard — use steps instead."
+        {
+          "reason": "Picking one of two to five short values inline — use segmented-control instead."
+        },
+        {
+          "reason": "Showing ordered progress through a wizard — use steps instead."
+        }
       ],
       "related": ["tab", "tab-list", "tab-panel", "segmented-control"],
       "hasConstraints": false,
@@ -3491,8 +4037,12 @@
         "Letting users review and remove committed values inline before submitting a form."
       ],
       "avoidWhen": [
-        "Users must choose from a fixed option list — use combobox instead.",
-        "The value is a single free-form string rather than a list — use input instead."
+        {
+          "reason": "Users must choose from a fixed option list — use combobox instead."
+        },
+        {
+          "reason": "The value is a single free-form string rather than a list — use input instead."
+        }
       ],
       "related": ["combobox", "chip", "form-field", "input"],
       "hasConstraints": false,
@@ -3516,7 +4066,11 @@
         "Collecting multi-line prose such as comments, descriptions, or messages.",
         "Surfacing a remaining-character counter as the user types against a maxlength."
       ],
-      "avoidWhen": ["Collecting a single short line of text — use input instead."],
+      "avoidWhen": [
+        {
+          "reason": "Collecting a single short line of text — use input instead."
+        }
+      ],
       "related": ["input", "markdown-editor"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -3540,8 +4094,12 @@
         "Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks."
       ],
       "avoidWhen": [
-        "Surfacing a real-time social or activity stream — feed is the higher-affordance composition.",
-        "Guiding users through a numbered procedural flow — steps conveys progress more clearly."
+        {
+          "reason": "Surfacing a real-time social or activity stream — feed is the higher-affordance composition."
+        },
+        {
+          "reason": "Guiding users through a numbered procedural flow — steps conveys progress more clearly."
+        }
       ],
       "related": ["timeline-item", "feed", "steps"],
       "hasConstraints": false,
@@ -3566,7 +4124,9 @@
         "Coloring decorative markers by tone (info, success, warning, error) while keeping the meaningful status in title or content."
       ],
       "avoidWhen": [
-        "The entry lives in a social activity stream rather than a workflow rail — feed-event fits better."
+        {
+          "reason": "The entry lives in a social activity stream rather than a workflow rail — feed-event fits better."
+        }
       ],
       "related": ["timeline", "feed-event"],
       "hasConstraints": false,
@@ -3590,8 +4150,12 @@
         "Announcing the outcome of a background action that the user does not need to acknowledge."
       ],
       "avoidWhen": [
-        "Communicating a persistent page-level message — use banner so it stays until dismissed.",
-        "Reporting an urgent error that must remain on screen — use alert."
+        {
+          "reason": "Communicating a persistent page-level message — use banner so it stays until dismissed."
+        },
+        {
+          "reason": "Reporting an urgent error that must remain on screen — use alert."
+        }
       ],
       "related": ["alert", "banner"],
       "hasConstraints": false,
@@ -3615,8 +4179,12 @@
         "Flipping a single setting on or off with immediate effect such as notifications or dark mode."
       ],
       "avoidWhen": [
-        "Picking one option from a small fixed set — use segmented-control instead.",
-        "Collecting a deferred boolean (agreement, opt-in) in a Submit-style form — a switch implies immediate effect; use checkbox instead."
+        {
+          "reason": "Picking one option from a small fixed set — use segmented-control instead."
+        },
+        {
+          "reason": "Collecting a deferred boolean (agreement, opt-in) in a Submit-style form — a switch implies immediate effect; use checkbox instead."
+        }
       ],
       "related": ["checkbox", "segmented-control"],
       "hasConstraints": false,
@@ -3641,7 +4209,9 @@
         "Wrapping existing cinder controls such as Button, SegmentedControl, and NumberInput without adding toolbar-specific child APIs."
       ],
       "avoidWhen": [
-        "Building a static flex row of controls that should remain in ordinary Tab order — use inline, cluster, or button-group instead."
+        {
+          "reason": "Building a static flex row of controls that should remain in ordinary Tab order — use inline, cluster, or button-group instead."
+        }
       ],
       "related": ["button-group", "segmented-control", "number-input"],
       "hasConstraints": false,
@@ -3666,8 +4236,12 @@
         "Supplementing a control with a hint that should appear on hover or keyboard focus and dismiss on Escape."
       ],
       "avoidWhen": [
-        "Hosting interactive content or focusable controls — use popover instead, since tooltip content is not reachable.",
-        "Communicating the only accessible name for a control — use aria-label or visible text rather than tooltip text."
+        {
+          "reason": "Hosting interactive content or focusable controls — use popover instead, since tooltip content is not reachable."
+        },
+        {
+          "reason": "Communicating the only accessible name for a control — use aria-label or visible text rather than tooltip text."
+        }
       ],
       "related": ["popover"],
       "hasConstraints": false,
@@ -3692,8 +4266,12 @@
         "Coordinating single- or multi-select state across all descendant tree-items via the selectionMode prop."
       ],
       "avoidWhen": [
-        "Disclosing flat sibling sections — use accordion instead.",
-        "Switching between sibling views of the same region — use tabs instead."
+        {
+          "reason": "Disclosing flat sibling sections — use accordion instead."
+        },
+        {
+          "reason": "Switching between sibling views of the same region — use tabs instead."
+        }
       ],
       "related": ["tree-item", "accordion"],
       "hasConstraints": false,
@@ -3717,7 +4295,11 @@
         "Rendering a single branch or leaf inside a tree parent.",
         "Nesting further tree-items as children to form a hierarchy."
       ],
-      "avoidWhen": ["Standing alone outside a tree — it requires the tree context and registry."],
+      "avoidWhen": [
+        {
+          "reason": "Standing alone outside a tree — it requires the tree context and registry."
+        }
+      ],
       "related": ["tree"],
       "hasConstraints": false,
       "hasExamples": false,
@@ -3738,7 +4320,11 @@
       "useWhen": [
         "Applying a named typographic style (heading, body, caption) with semantic HTML."
       ],
-      "avoidWhen": ["Rendering inline text inside a paragraph — use a plain <span> with CSS."],
+      "avoidWhen": [
+        {
+          "reason": "Rendering inline text inside a paragraph — use a plain <span> with CSS."
+        }
+      ],
       "related": ["label", "kbd"],
       "hasConstraints": false,
       "hasExamples": true,
@@ -3762,8 +4348,12 @@
         "Implementing a skip-to-content link that appears on keyboard focus."
       ],
       "avoidWhen": [
-        "Hiding content from everyone — use the hidden attribute or display none instead.",
-        "Labelling a form control where a visible label is acceptable — use label directly."
+        {
+          "reason": "Hiding content from everyone — use the hidden attribute or display none instead."
+        },
+        {
+          "reason": "Labelling a form control where a visible label is acceptable — use label directly."
+        }
       ],
       "related": ["label"],
       "hasConstraints": false,
@@ -3788,8 +4378,12 @@
         "Showing an audio waveform thumbnail or preview with mocked or pre-computed sample data."
       ],
       "avoidWhen": [
-        "Real-time live audio capture is needed — wire AudioContext / AnalyserNode yourself and feed samples as props.",
-        "Frequency-domain data — use spectrum-chart or spectrogram instead."
+        {
+          "reason": "Real-time live audio capture is needed — wire AudioContext / AnalyserNode yourself and feed samples as props."
+        },
+        {
+          "reason": "Frequency-domain data — use spectrum-chart or spectrogram instead."
+        }
       ],
       "related": ["spectrum-chart", "spectrogram", "bar-chart", "line-chart"],
       "hasConstraints": false,
