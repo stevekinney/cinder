@@ -36,7 +36,7 @@ Log / live region pattern. The scrollable event list uses `role="log"` (an impli
 
 ## Mouse / pointer
 
-Hovering over an event row reveals the per-event Copy button (shown via CSS opacity transition). Clicking Copy writes the formatted event text to the clipboard. Clicking a details toggle expands or collapses the JsonViewer panel for that event. Clicking "Resume following" re-enables auto-scroll to the bottom. Clicking "Copy visible" calls the `oncopyvisible` callback or copies all visible event text directly.
+Hovering over an event row reveals the per-event Copy button (shown via CSS opacity transition). Clicking Copy writes the formatted event text to the clipboard. Clicking a details toggle expands or collapses the JsonViewer panel for that event. Clicking "Resume following" re-enables auto-scroll to the bottom. Clicking "Copy visible" calls the `oncopyvisible` callback with all visible event text.
 
 ## Hard scope caps
 

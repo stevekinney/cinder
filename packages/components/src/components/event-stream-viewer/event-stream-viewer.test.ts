@@ -437,6 +437,22 @@ describe('EventStreamViewer', () => {
       await fireEvent.click(btn!);
       expect(received).toContain('Activity completed successfully');
     });
+
+    test('copy-visible announcement does not claim clipboard success', async () => {
+      const { container } = render(EventStreamViewer, {
+        props: {
+          events: [baseEvent],
+          oncopyvisible: () => {},
+        },
+      });
+      const btn = container.querySelector<HTMLButtonElement>(
+        '.cinder-event-stream-viewer__copy-all-button',
+      );
+      await fireEvent.click(btn!);
+      const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
+      expect(liveRegion?.textContent).toBe('1 event sent to copy handler');
+      expect(liveRegion?.textContent).not.toContain('clipboard');
+    });
   });
 
   describe('follow-latest', () => {

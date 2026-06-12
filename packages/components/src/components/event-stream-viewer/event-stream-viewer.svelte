@@ -96,7 +96,7 @@
     const text = events.map(formatEventAsText).join('\n');
     if (!oncopyvisible) return;
     oncopyvisible(text);
-    liveMessage = `${events.length} event${events.length !== 1 ? 's' : ''} copied to clipboard`;
+    liveMessage = `${events.length} event${events.length !== 1 ? 's' : ''} sent to copy handler`;
     setTimeout(() => {
       liveMessage = '';
     }, 2000);
