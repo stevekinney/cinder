@@ -14,7 +14,11 @@ import Ajv from 'ajv/dist/2020.js';
 import { beforeAll, describe, expect, it } from 'bun:test';
 
 import type { Manifest, ManifestComponent } from './generate-manifest.ts';
-import { formatExtractionErrorMessage } from './generate-manifest.ts';
+import {
+  findDanglingAlternatives,
+  formatDanglingAlternativeMessage,
+  formatExtractionErrorMessage,
+} from './generate-manifest.ts';
 
 // ---------------------------------------------------------------------------
 // Schema loader helper
@@ -405,5 +409,42 @@ describe('buildManifest() error formatting', () => {
     expect(message).toContain('comp-9');
     expect(message).not.toContain('comp-10');
     expect(message).toMatch(/… and 4 more errors \(14 total\)/);
+  });
+});
+
+describe('findDanglingAlternatives — avoidWhen referential integrity', () => {
+  it('returns nothing when every alternative resolves to a known component id', () => {
+    const components = [
+      {
+        id: 'accordion',
+        avoidWhen: [{ reason: 'Mutually exclusive views.', alternative: 'tabs' }],
+      },
+      { id: 'tabs', avoidWhen: [] },
+    ];
+    expect(findDanglingAlternatives(components)).toEqual([]);
+  });
+
+  it('flags an alternative that is not a known component id', () => {
+    const components = [
+      { id: 'accordion', avoidWhen: [{ reason: 'A reason.', alternative: 'does-not-exist' }] },
+      { id: 'tabs', avoidWhen: [{ reason: 'Another reason.' }] },
+    ];
+    expect(findDanglingAlternatives(components)).toEqual([
+      { componentId: 'accordion', alternative: 'does-not-exist' },
+    ]);
+  });
+
+  it('ignores entries with no alternative', () => {
+    const components = [{ id: 'accordion', avoidWhen: [{ reason: 'Reason only.' }] }];
+    expect(findDanglingAlternatives(components)).toEqual([]);
+  });
+
+  it('formats a readable failure message naming the component and bad id', () => {
+    const message = formatDanglingAlternativeMessage([
+      { componentId: 'accordion', alternative: 'does-not-exist' },
+    ]);
+    expect(message).toContain('accordion');
+    expect(message).toContain('does-not-exist');
+    expect(message).toContain('do not match any component id');
   });
 });

@@ -4,7 +4,7 @@
   let {
     trigger = '',
     children,
-    open = false,
+    open = $bindable(false),
     onToggle,
   }: {
     trigger?: string;

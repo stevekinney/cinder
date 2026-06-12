@@ -33,7 +33,10 @@
     type SourceErrorDetail,
   } from './example-error.ts';
   import { fetchComponentDocumentation } from './component-documentation-reference.ts';
-  import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
+  import type {
+    ComponentDocumentationPayload,
+    JsonValue,
+  } from './component-documentation-types.ts';
   import { splitUnionType, toPropReferenceRows } from './manifest-reference.ts';
   import { computeActiveSection, type SectionOffset } from './component-page-scroll-spy.ts';
   import {
@@ -263,7 +266,6 @@
 
   // --- Import line copy --------------------------------------------------
   let importCopied = $state(false);
-  let importCopyTimer: ReturnType<typeof setTimeout> | undefined;
   const importStatement = $derived(
     documentation === null
       ? ''
@@ -275,14 +277,21 @@
     try {
       await navigator.clipboard.writeText(importStatement);
       importCopied = true;
-      clearTimeout(importCopyTimer);
-      importCopyTimer = setTimeout(() => {
-        importCopied = false;
-      }, 1500);
     } catch {
       // Clipboard unavailable — copying is a convenience, never load-bearing.
     }
   }
+
+  // Reset the "copied" flag after a beat. Driving the timer through an $effect
+  // ties it to the component lifecycle, so a teardown mid-flight cancels it
+  // instead of writing to torn-down state.
+  $effect(() => {
+    if (!importCopied) return;
+    const timer = setTimeout(() => {
+      importCopied = false;
+    }, 1500);
+    return () => clearTimeout(timer);
+  });
 
   // --- Playground controls ----------------------------------------------
   const playgroundModel = $derived(
@@ -343,7 +352,17 @@
     }));
   });
 
+  // Section id → display number, derived once so each section header reads its
+  // own number with an O(1) lookup instead of re-scanning `sections` by id.
+  const sectionNumber = $derived(new Map(sections.map((section) => [section.id, section.num])));
+
   let activeSection = $state('overview');
+
+  function prefersReducedMotion(): boolean {
+    return (
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }
 
   function goToSection(id: string): (event: MouseEvent) => void {
     return (event: MouseEvent) => {
@@ -351,7 +370,9 @@
       const element = document.getElementById(id);
       if (element === null) return;
       const top = element.getBoundingClientRect().top + window.scrollY - (TOP_BAR_HEIGHT + 24);
-      window.scrollTo({ top, behavior: 'smooth' });
+      // `behavior: 'smooth'` is JS-driven, so the CSS reduced-motion rule does
+      // not gate it — honor the preference explicitly with an instant jump.
+      window.scrollTo({ top, behavior: prefersReducedMotion() ? 'instant' : 'smooth' });
     };
   }
 
@@ -361,9 +382,11 @@
     const ids = sections.map((section) => section.id);
     if (ids.length === 0) return;
     let ticking = false;
+    let rafHandle: ReturnType<typeof requestAnimationFrame> | undefined;
 
     const compute = (): void => {
       ticking = false;
+      rafHandle = undefined;
       const offsets: SectionOffset[] = [];
       for (const id of ids) {
         const element = document.getElementById(id);
@@ -383,23 +406,33 @@
     const onScroll = (): void => {
       if (ticking) return;
       ticking = true;
-      requestAnimationFrame(compute);
+      rafHandle = requestAnimationFrame(compute);
     };
 
     compute();
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    window.addEventListener('resize', onScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
+      // Cancel any frame still queued so a stale `compute` from this (now
+      // torn-down) effect run can't write `activeSection` after re-run.
+      if (rafHandle !== undefined) cancelAnimationFrame(rafHandle);
     };
   });
 
   // --- Raw artifacts (lazy, sticky-open) --------------------------------
   let hasOpenedRawArtifacts = $state(false);
 
-  function jsonBlock(value: unknown): string {
+  function jsonBlock(value: JsonValue | null): string {
     return JSON.stringify(value, null, 2);
+  }
+
+  // Turn a kebab-case component id into sentence-case display text, e.g.
+  // `segmented-control` → `Segmented control`. The href keeps the raw id.
+  function humanizeId(id: string): string {
+    const spaced = id.replace(/-/g, ' ');
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
   }
 </script>
 
@@ -542,7 +575,7 @@
                   class="dx-toc__link"
                   href="#{section.id}"
                   data-active={activeSection === section.id ? '' : undefined}
-                  aria-current={activeSection === section.id ? 'true' : undefined}
+                  aria-current={activeSection === section.id ? 'location' : undefined}
                   onclick={goToSection(section.id)}
                 >
                   <span class="dx-toc__num">{section.num}</span>
@@ -605,9 +638,7 @@
           {#if component.useWhen.length > 0 || component.avoidWhen.length > 0}
             <section id="guidance" class="dx-section">
               <div class="dx-section__head">
-                <span class="dx-section__num"
-                  >{sections.find((s) => s.id === 'guidance')?.num ?? ''}</span
-                >
+                <span class="dx-section__num">{sectionNumber.get('guidance') ?? ''}</span>
                 <h2 class="dx-section__title">When to use</h2>
                 <span class="dx-section__rule" aria-hidden="true"></span>
               </div>
@@ -639,14 +670,14 @@
                       Avoid when
                     </div>
                     <ul class="dx-guide__list dx-guide__list--avoid">
-                      {#each component.avoidWhen as item (item.reason)}
+                      {#each component.avoidWhen as item (`${item.reason} ${item.alternative ?? ''}`)}
                         <li>
                           <X size={15} strokeWidth={1.5} aria-hidden="true" />
                           <span>
                             {item.reason}
                             {#if item.alternative !== undefined}
                               <a class="dx-guide__alt" href="/c/{item.alternative}" target="_top">
-                                Use {item.alternative} instead
+                                Use {humanizeId(item.alternative)} instead
                               </a>
                             {/if}
                           </span>
@@ -663,9 +694,7 @@
           {#if showGeneratedPlayground}
             <section id="playground" class="dx-section">
               <div class="dx-section__head">
-                <span class="dx-section__num"
-                  >{sections.find((s) => s.id === 'playground')?.num ?? ''}</span
-                >
+                <span class="dx-section__num">{sectionNumber.get('playground') ?? ''}</span>
                 <h2 class="dx-section__title">Playground</h2>
                 <span class="dx-section__rule" aria-hidden="true"></span>
               </div>
@@ -752,9 +781,7 @@
           {#if examples.length > 0}
             <section id="examples" class="dx-section">
               <div class="dx-section__head">
-                <span class="dx-section__num"
-                  >{sections.find((s) => s.id === 'examples')?.num ?? ''}</span
-                >
+                <span class="dx-section__num">{sectionNumber.get('examples') ?? ''}</span>
                 <h2 class="dx-section__title">Examples</h2>
                 <span class="dx-section__rule" aria-hidden="true"></span>
               </div>
@@ -847,9 +874,7 @@
           {#if propRows.length > 0}
             <section id="props" class="dx-section props-section">
               <div class="dx-section__head">
-                <span class="dx-section__num"
-                  >{sections.find((s) => s.id === 'props')?.num ?? ''}</span
-                >
+                <span class="dx-section__num">{sectionNumber.get('props') ?? ''}</span>
                 <h2 class="dx-section__title">Props</h2>
                 <span class="dx-section__rule" aria-hidden="true"></span>
               </div>
@@ -934,9 +959,7 @@
             {@const a11y = component.a11y}
             <section id="accessibility" class="dx-section">
               <div class="dx-section__head">
-                <span class="dx-section__num"
-                  >{sections.find((s) => s.id === 'accessibility')?.num ?? ''}</span
-                >
+                <span class="dx-section__num">{sectionNumber.get('accessibility') ?? ''}</span>
                 <h2 class="dx-section__title">Accessibility</h2>
                 <span class="dx-section__rule" aria-hidden="true"></span>
               </div>
@@ -979,9 +1002,7 @@
           {#if component.related.length > 0}
             <section id="related" class="dx-section">
               <div class="dx-section__head">
-                <span class="dx-section__num"
-                  >{sections.find((s) => s.id === 'related')?.num ?? ''}</span
-                >
+                <span class="dx-section__num">{sectionNumber.get('related') ?? ''}</span>
                 <h2 class="dx-section__title">Related</h2>
                 <span class="dx-section__rule" aria-hidden="true"></span>
               </div>
@@ -1589,6 +1610,11 @@
   .dx-guide__alt:hover {
     text-decoration: underline;
   }
+  .dx-guide__alt:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+    border-radius: var(--cinder-radius-sm);
+  }
 
   /* ===== Playground ===== */
   .dx-play__intro {
@@ -1616,7 +1642,11 @@
     border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
     box-shadow: var(--cinder-shadow-sm);
-    overflow: hidden;
+    /* Scroll the controls when a many-prop component makes the sticky panel
+       taller than the viewport, so lower controls stay reachable. The radius
+       clips the inner rows. */
+    overflow-y: auto;
+    max-height: calc(100vh - var(--dx-topbar-h) - 3rem);
     position: sticky;
     top: calc(var(--dx-topbar-h) + 1.5rem);
   }
@@ -1798,7 +1828,7 @@
     font-size: var(--cinder-text-2xs);
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    padding: 1px 6px;
+    padding: var(--cinder-space-0-5, 0.125rem) var(--cinder-space-1-5, 0.375rem);
     border-radius: var(--cinder-radius-sm);
     margin-inline-start: var(--cinder-space-1);
   }
@@ -2030,6 +2060,7 @@
     .dx-toc__list {
       flex-direction: row;
       overflow-x: auto;
+      overscroll-behavior-x: contain;
       gap: var(--cinder-space-1);
       scrollbar-width: none;
     }
@@ -2052,6 +2083,10 @@
     .dx-play__controls {
       position: static;
       order: -1;
+      /* No longer sticky here, so drop the viewport height cap — the stacked
+         panel should grow with its content. */
+      max-height: none;
+      overflow: visible;
     }
     .dx-a11y {
       grid-template-columns: minmax(0, 1fr);
@@ -2069,6 +2104,24 @@
     .dx * {
       transition-duration: 0.01ms !important;
       animation-duration: 0.01ms !important;
+    }
+    /* The hover lift is a position change, not a transition, so zeroing
+       durations doesn't stop the instantaneous jump — suppress it outright. */
+    .dx-rel:hover,
+    .dx-rel:hover :global(.dx-rel__arrow) {
+      transform: none;
+    }
+  }
+  /* Forced-colors (Windows High Contrast): box-shadow focus rings are
+     suppressed by the browser, so the inset/offset rings on every interactive
+     element vanish. Restore a system-color outline so focus stays visible. */
+  @media (forced-colors: active) {
+    .dx :is(button, a, [tabindex]):focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+    .dx-topbar {
+      border-block-end: 1px solid ButtonText;
     }
   }
 </style>

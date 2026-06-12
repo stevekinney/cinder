@@ -3,10 +3,13 @@ import { dirname, join } from 'node:path';
 import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
 
 import type {
+  A11yMetadata,
+  AvoidWhenEntry,
   ComponentDocumentationPayload,
   DocumentationComponentSummary,
   DocumentationReadme,
   JsonValue,
+  KeyboardShortcut,
 } from './component-documentation-types.ts';
 import type { ComponentManifest } from './types.ts';
 
@@ -14,22 +17,6 @@ const PLAYGROUND_ROOT = dirname(import.meta.dirname);
 const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components');
 const COMPONENTS_SOURCE_ROOT = join(COMPONENTS_ROOT, 'src', 'components');
 const COMPONENTS_MANIFEST_PATH = join(COMPONENTS_ROOT, 'components.json');
-
-type AvoidWhenEntry = {
-  reason: string;
-  alternative?: string;
-};
-
-type KeyboardShortcut = {
-  keys: string;
-  action: string;
-};
-
-type A11yMetadata = {
-  pattern?: string;
-  keyboard?: KeyboardShortcut[];
-  notes?: string[];
-};
 
 type PackageComponentEntry = {
   name: string;

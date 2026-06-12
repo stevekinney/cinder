@@ -24,18 +24,21 @@ export type { CategoryId, StatusLevel };
 // Public types
 // ---------------------------------------------------------------------------
 
+// Length caps for the free-text metadata fields. Kept internal (not exported):
+// the manifest JSON schema is the published contract and pins the same numbers
+// independently — these only shape the generator's error messages.
 /** Maximum length of an `@avoidWhen` reason (matches the old flat-string budget). */
-export const AVOID_WHEN_REASON_MAX_LENGTH = 140;
+const AVOID_WHEN_REASON_MAX_LENGTH = 140;
 /** Maximum length of an `@avoidWhen` `alternative` component id. */
-export const AVOID_WHEN_ALTERNATIVE_MAX_LENGTH = 64;
+const AVOID_WHEN_ALTERNATIVE_MAX_LENGTH = 64;
 /** Maximum length of an `@useWhen` entry. */
-export const USE_WHEN_MAX_LENGTH = 140;
+const USE_WHEN_MAX_LENGTH = 140;
 /** Maximum length of an `@a11yPattern` name. */
-export const A11Y_PATTERN_MAX_LENGTH = 80;
+const A11Y_PATTERN_MAX_LENGTH = 80;
 /** Maximum length of the keys / action half of a `@keyboardShortcut`. */
-export const KEYBOARD_SHORTCUT_HALF_MAX_LENGTH = 120;
+const KEYBOARD_SHORTCUT_HALF_MAX_LENGTH = 120;
 /** Maximum length of an `@a11yNote` entry. */
-export const A11Y_NOTE_MAX_LENGTH = 280;
+const A11Y_NOTE_MAX_LENGTH = 280;
 
 /**
  * One "avoid when" guidance entry: a reason not to use the component, plus an
@@ -432,9 +435,8 @@ export function extractFromSource(
     a11yPatternValues[0],
     keyboardShortcutValues,
     a11yNoteValues,
-    fail,
   );
-  if (!a11yResult.ok) return a11yResult.error;
+  if ('error' in a11yResult) return fail(a11yResult.error);
   const a11y = a11yResult.value;
 
   return {
@@ -456,27 +458,23 @@ export function extractFromSource(
 
 /**
  * Parse the optional a11y tags into an {@link A11yMetadata} object, or
- * `undefined` when none were authored. `@keyboardShortcut` requires a ` | `
+ * `undefined` when none were authored. `@keyboardShortcut` requires a `|`
  * separator with non-empty halves; `@a11yNote` and `@a11yPattern` reject empty
- * values. Returns the failure `ExtractResult` directly on any violation so the
- * caller can short-circuit.
+ * values. Returns `{ value }` on success or `{ error }` (the human-readable
+ * reason) on any violation, so the caller maps it onto its own failure shape.
  */
 function parseA11yMetadata(
   patternRaw: string | undefined,
   keyboardRaw: string[],
   notesRaw: string[],
-  fail: (reason: string) => ExtractResult,
-): { ok: true; value: A11yMetadata | undefined } | { ok: false; error: ExtractResult } {
+): { value: A11yMetadata | undefined } | { error: string } {
   let pattern: string | undefined;
   if (patternRaw !== undefined) {
     const trimmed = patternRaw.trim();
-    if (trimmed.length === 0) return { ok: false, error: fail('@a11yPattern must be non-empty') };
+    if (trimmed.length === 0) return { error: '@a11yPattern must be non-empty' };
     if (trimmed.length > A11Y_PATTERN_MAX_LENGTH) {
       return {
-        ok: false,
-        error: fail(
-          `@a11yPattern exceeds ${A11Y_PATTERN_MAX_LENGTH} characters (got ${trimmed.length})`,
-        ),
+        error: `@a11yPattern exceeds ${A11Y_PATTERN_MAX_LENGTH} characters (got ${trimmed.length})`,
       };
     }
     pattern = trimmed;
@@ -487,32 +485,22 @@ function parseA11yMetadata(
     const { before: keys, after: action } = splitOnFirstPipe(rawShortcut);
     if (action === null) {
       return {
-        ok: false,
-        error: fail(
-          `@keyboardShortcut is missing the '|' separator (format: <keys> | <action>): "${rawShortcut.slice(0, 40)}…"`,
-        ),
+        error: `@keyboardShortcut is missing the '|' separator (format: <keys> | <action>): "${rawShortcut.slice(0, 40)}…"`,
       };
     }
     if (keys.length === 0 || action.length === 0) {
       return {
-        ok: false,
-        error: fail(`@keyboardShortcut keys and action must both be non-empty: "${rawShortcut}"`),
+        error: `@keyboardShortcut keys and action must both be non-empty: "${rawShortcut}"`,
       };
     }
     if (keys.length > KEYBOARD_SHORTCUT_HALF_MAX_LENGTH) {
       return {
-        ok: false,
-        error: fail(
-          `@keyboardShortcut keys exceed ${KEYBOARD_SHORTCUT_HALF_MAX_LENGTH} characters`,
-        ),
+        error: `@keyboardShortcut keys exceed ${KEYBOARD_SHORTCUT_HALF_MAX_LENGTH} characters`,
       };
     }
     if (action.length > KEYBOARD_SHORTCUT_HALF_MAX_LENGTH) {
       return {
-        ok: false,
-        error: fail(
-          `@keyboardShortcut action exceeds ${KEYBOARD_SHORTCUT_HALF_MAX_LENGTH} characters`,
-        ),
+        error: `@keyboardShortcut action exceeds ${KEYBOARD_SHORTCUT_HALF_MAX_LENGTH} characters`,
       };
     }
     keyboard.push({ keys, action });
@@ -521,21 +509,19 @@ function parseA11yMetadata(
   const notes: string[] = [];
   for (const rawNote of notesRaw) {
     const trimmed = rawNote.trim();
-    if (trimmed.length === 0) return { ok: false, error: fail('@a11yNote must be non-empty') };
+    if (trimmed.length === 0) return { error: '@a11yNote must be non-empty' };
     if (trimmed.length > A11Y_NOTE_MAX_LENGTH) {
       return {
-        ok: false,
-        error: fail(`@a11yNote exceeds ${A11Y_NOTE_MAX_LENGTH} characters (got ${trimmed.length})`),
+        error: `@a11yNote exceeds ${A11Y_NOTE_MAX_LENGTH} characters (got ${trimmed.length})`,
       };
     }
     notes.push(trimmed);
   }
 
   if (pattern === undefined && keyboard.length === 0 && notes.length === 0) {
-    return { ok: true, value: undefined };
+    return { value: undefined };
   }
   return {
-    ok: true,
     value: {
       ...(pattern !== undefined ? { pattern } : {}),
       ...(keyboard.length > 0 ? { keyboard } : {}),

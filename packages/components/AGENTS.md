@@ -402,7 +402,17 @@ examples, and the discriminated-union props pattern).
   component references an id not in this file.
 - **Per-component free text** — the JSDoc header on the component's module
   block. `@purpose`, `@tag`, `@useWhen`, `@avoidWhen`, `@related`,
-  `@category`, `@status`.
+  `@category`, `@status`, and the optional accessibility tags `@a11yPattern`,
+  `@keyboardShortcut`, `@a11yNote`.
+
+`@avoidWhen` takes `<reason> | <kebab-id>`: the text before the first `|` is the
+reason; the optional kebab-case id after it is the component to reach for
+instead (rendered as a link, validated to be a real component id at generate
+time). Omit the `| <id>` half when there is no single alternative.
+
+`@keyboardShortcut` takes `<keys> | <action>` (the `|` is required). `@a11yPattern`
+is a single WAI-ARIA pattern name; `@a11yNote` is repeatable free text. All
+three a11y tags are optional — omit them entirely for components with nothing to say.
 
 Convention shown for Button:
 
@@ -417,9 +427,12 @@ Convention shown for Button:
    * @tag cta
    * @useWhen Triggering an action (submit, save, delete).
    * @useWhen Anchor that should look like a button (pass href).
-   * @avoidWhen Toggling on/off state — use Toggle.
-   * @avoidWhen Selecting from a fixed set — use SegmentedControl.
+   * @avoidWhen Toggling a binary on/off state. | toggle
+   * @avoidWhen Selecting from a fixed set of mutually exclusive options. | segmented-control
    * @related button-group, copy-button
+   * @a11yPattern WAI-ARIA Button
+   * @keyboardShortcut Enter / Space | Activates the button.
+   * @a11yNote Uses a native button element so the role and pressed state are announced.
    */
 </script>
 ```

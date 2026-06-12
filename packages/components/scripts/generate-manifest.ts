@@ -214,6 +214,40 @@ export function formatExtractionErrorMessage(
   return `Cannot build manifest — ${errors.length} component${errors.length === 1 ? '' : 's'} have extraction errors:\n${lines.join('\n')}\n${tail}\n\nFix all @cinder metadata annotations before generating the manifest.`;
 }
 
+/** One dangling `avoidWhen.alternative`: the owning component and the bad id. */
+export type DanglingAlternative = { componentId: string; alternative: string };
+
+/**
+ * Find every `avoidWhen.alternative` that does not resolve to a real component
+ * id in the set. The page renders an alternative as a `/c/<id>` link, so a
+ * dangling id would ship a dead link — the generator fails on any hit.
+ *
+ * Exported (like {@link formatExtractionErrorMessage}) so the referential-
+ * integrity check is unit-testable without reading the filesystem.
+ */
+export function findDanglingAlternatives(
+  components: ReadonlyArray<Pick<ManifestComponent, 'id' | 'avoidWhen'>>,
+): DanglingAlternative[] {
+  const componentIds = new Set(components.map((entry) => entry.id));
+  const dangling: DanglingAlternative[] = [];
+  for (const entry of components) {
+    for (const guidance of entry.avoidWhen) {
+      if (guidance.alternative !== undefined && !componentIds.has(guidance.alternative)) {
+        dangling.push({ componentId: entry.id, alternative: guidance.alternative });
+      }
+    }
+  }
+  return dangling;
+}
+
+/** Format the dangling-alternative failure message thrown by `buildManifest`. */
+export function formatDanglingAlternativeMessage(dangling: DanglingAlternative[]): string {
+  const lines = dangling.map(
+    (d) => `  [${d.componentId}] avoidWhen alternative '${d.alternative}'`,
+  );
+  return `Cannot build manifest — ${dangling.length} @avoidWhen alternative(s) do not match any component id:\n${lines.join('\n')}\n\nUse the kebab-case id of an existing component, or drop the ' | <id>' suffix.`;
+}
+
 export async function buildManifest(): Promise<Manifest> {
   // 1. Extract metadata from every component's .svelte file.
   const { metadata, errors } = await extractAllComponentMetadata();
@@ -281,21 +315,9 @@ export async function buildManifest(): Promise<Manifest> {
   // 4a. Cross-check every `avoidWhen.alternative` resolves to a real component
   //     id. The page renders the alternative as a `/c/<id>` link, so a dangling
   //     id would ship a dead link — fail generation instead.
-  const componentIds = new Set(componentEntries.map((entry) => entry.id));
-  const danglingAlternatives: string[] = [];
-  for (const entry of componentEntries) {
-    for (const guidance of entry.avoidWhen) {
-      if (guidance.alternative !== undefined && !componentIds.has(guidance.alternative)) {
-        danglingAlternatives.push(
-          `  [${entry.id}] avoidWhen alternative '${guidance.alternative}'`,
-        );
-      }
-    }
-  }
+  const danglingAlternatives = findDanglingAlternatives(componentEntries);
   if (danglingAlternatives.length > 0) {
-    throw new Error(
-      `Cannot build manifest — ${danglingAlternatives.length} @avoidWhen alternative(s) do not match any component id:\n${danglingAlternatives.join('\n')}\n\nUse the kebab-case id of an existing component, or drop the ' | <id>' suffix.`,
-    );
+    throw new Error(formatDanglingAlternativeMessage(danglingAlternatives));
   }
 
   // 5. Assemble the manifest.

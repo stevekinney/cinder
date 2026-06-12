@@ -1,4 +1,6 @@
 import type {
+  A11yMetadata,
+  AvoidWhenEntry,
   ComponentDocumentationPayload,
   DocumentationComponentSummary,
   DocumentationReadme,
@@ -18,7 +20,7 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
-function isAvoidWhenArray(value: unknown): boolean {
+function isAvoidWhenArray(value: unknown): value is AvoidWhenEntry[] {
   return (
     Array.isArray(value) &&
     value.every((entry) => {
@@ -32,7 +34,7 @@ function isAvoidWhenArray(value: unknown): boolean {
   );
 }
 
-function isA11yMetadata(value: unknown): boolean {
+function isA11yMetadata(value: unknown): value is A11yMetadata {
   if (!isObject(value)) return false;
   const pattern = readProperty(value, 'pattern');
   const keyboard = readProperty(value, 'keyboard');

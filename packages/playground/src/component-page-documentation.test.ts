@@ -191,8 +191,9 @@ describe('component-page single-scroll layout', () => {
 
     expect(screen.getByText('Triggering a fixture action.')).toBeTruthy();
     expect(screen.getByText('Selecting from a fixed set.')).toBeTruthy();
-    // The avoidWhen alternative links to that component's page.
-    const altLink = screen.getByRole('link', { name: /segmented-control/ });
+    // The avoidWhen alternative links to that component's page. The link text is
+    // the humanized id ("Segmented control"); the href keeps the kebab id.
+    const altLink = screen.getByRole('link', { name: /Segmented control/ });
     expect(altLink.getAttribute('href')).toBe('/c/segmented-control');
 
     unmount();
@@ -272,6 +273,24 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('omits the Guidance section when useWhen and avoidWhen are both empty', async () => {
+    const noGuidance = baseFixture();
+    noGuidance.component.useWhen = [];
+    noGuidance.component.avoidWhen = [];
+    installDocumentationFetch(noGuidance);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    expect(document.getElementById('guidance')).toBeNull();
+
+    const nav = screen.getByRole('navigation', { name: 'On this page' });
+    const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
+    expect(labels.some((label) => label.includes('When to use'))).toBe(false);
+
+    unmount();
+    await tick();
+  });
+
   test('shows the Playground with a control derived from a select prop', async () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -280,6 +299,32 @@ describe('component-page single-scroll layout', () => {
     expect(document.getElementById('playground')).toBeTruthy();
     const select = await screen.findByLabelText('variant');
     expect(select.tagName).toBe('SELECT');
+
+    unmount();
+    await tick();
+  });
+
+  test('omits the Playground when a required non-snippet prop has no default', async () => {
+    const required = baseFixture();
+    // A required `unknown` prop with no default can't be synthesized, so the
+    // generated playground is suppressed entirely (and dropped from the TOC).
+    required.propsManifest.props = [
+      {
+        name: 'value',
+        control: { kind: 'unknown', rawType: 'CustomValue' },
+        bindable: false,
+        optional: false,
+      },
+    ];
+    installDocumentationFetch(required);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    expect(document.getElementById('playground')).toBeNull();
+
+    const nav = screen.getByRole('navigation', { name: 'On this page' });
+    const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
+    expect(labels.some((label) => label.includes('Playground'))).toBe(false);
 
     unmount();
     await tick();

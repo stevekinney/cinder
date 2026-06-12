@@ -10,12 +10,17 @@
  */
 import type { ComponentManifest, PropManifest } from './types.ts';
 
+/** Fields common to every {@link PlaygroundControl}, regardless of kind. */
+type PlaygroundControlBase = { name: string; description?: string };
+
 /** A single adjustable control derived from a supported prop shape. */
-export type PlaygroundControl =
-  | { name: string; description?: string; kind: 'boolean'; value: boolean }
-  | { name: string; description?: string; kind: 'text'; value: string }
-  | { name: string; description?: string; kind: 'number'; value: number }
-  | { name: string; description?: string; kind: 'select'; value: string; options: string[] };
+export type PlaygroundControl = PlaygroundControlBase &
+  (
+    | { kind: 'boolean'; value: boolean }
+    | { kind: 'text'; value: string }
+    | { kind: 'number'; value: number }
+    | { kind: 'select'; value: string; options: string[] }
+  );
 
 /** The current value of one control, keyed by prop name. */
 export type PlaygroundValue = boolean | string | number;

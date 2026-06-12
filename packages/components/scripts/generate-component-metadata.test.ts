@@ -827,6 +827,15 @@ ${lines.map((line) => ` * ${line}`).join('\n')}
     if (result.ok) throw new Error('expected error');
     expect(result.error.reason).toContain('@a11yNote must be non-empty');
   });
+
+  it('rejects a whitespace-only @a11yPattern', () => {
+    // The JSDoc line parser trims trailing whitespace, so `@a11yPattern   `
+    // arrives as an empty value — the non-empty guard must still reject it.
+    const result = extractA11y(['@a11yPattern    ']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('@a11yPattern must be non-empty');
+  });
 });
 
 // ---------------------------------------------------------------------------

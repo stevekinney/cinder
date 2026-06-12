@@ -113,6 +113,25 @@ describe('buildPlaygroundModel', () => {
     expect(model.hasUnsatisfiedRequired).toBe(true);
     expect(model.skipped).toContain('value');
   });
+
+  test('a select with no defaultValue seeds its value to the first option', () => {
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'variant',
+          control: { kind: 'select', options: ['primary', 'secondary'] },
+          bindable: false,
+          optional: true,
+        },
+      ]),
+    );
+    expect(model.controls[0]).toEqual({
+      name: 'variant',
+      kind: 'select',
+      options: ['primary', 'secondary'],
+      value: 'primary',
+    });
+  });
 });
 
 describe('buildSnippet', () => {
@@ -151,5 +170,20 @@ describe('buildSnippet', () => {
     expect(buildSnippet('Accordion', controls, { multiple: true, size: 'sm' })).toBe(
       '<Accordion\n  multiple\n  size="sm"\n/>',
     );
+  });
+
+  test('renders a number control as an unquoted expression attribute', () => {
+    const numberControls = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'count',
+          control: { kind: 'number' },
+          bindable: false,
+          optional: true,
+          defaultValue: 0,
+        },
+      ]),
+    ).controls;
+    expect(buildSnippet('Comp', numberControls, { count: 42 })).toBe('<Comp count={42} />');
   });
 });
