@@ -22,7 +22,13 @@ describe('buildComponentDocumentation', () => {
 
     expect(payload.component.id).toBe('button');
     expect(payload.component.purpose).toContain('Primary interactive control');
-    expect(payload.readme.html).toContain('<h1>Button</h1>');
+    // The Overview README drops the leading `# Button` title (the hero shows it)
+    // and the generated reference sections (Props table, CSS Variables,
+    // Subcomponents) — those render in the page's own dedicated sections — so
+    // only the hand-written prose remains.
+    expect(payload.readme.html).not.toContain('<h1>Button</h1>');
+    expect(payload.readme.html).toContain('<h2>Usage</h2>');
+    expect(payload.readme.html).not.toContain('<h2>Props</h2>');
     expect(payload.readme.html).toContain('class="shiki');
     expect(payload.readme.hadUnsafeContent).toBe(false);
     expect(payload.schema).toBeDefined();

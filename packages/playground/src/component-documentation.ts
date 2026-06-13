@@ -245,8 +245,32 @@ function normalizeReadmeMarkdownForRendering(markdown: string): string {
   );
 }
 
+// A generated reference section in the README: its `##`/`###` heading plus the
+// generated region that follows it. The docs page presents this data in its own
+// dedicated sections (Props table, etc.), so rendering it again inside the
+// Overview prose would duplicate it. Matches the heading line through the end of
+// the `<!-- generated:…:end -->` marker (and any blank line after).
+const generatedSectionWithHeadingPattern =
+  /^#{2,3} [^\n]*\n+<!-- generated:(props|variables|subcomponents):start -->[\s\S]*?<!-- generated:\1:end -->\n*/gm;
+
+// The leading top-level `# <Name>` heading duplicates the hero title on the page,
+// so it is dropped from the Overview render.
+const leadingTitlePattern = /^#\s+[^\n]*\n+/;
+
+/**
+ * Trim the README markdown for the page's **Overview** section: drop the leading
+ * `# <Name>` title (the hero already shows it) and the generated reference
+ * sections (`## Props` table, `## CSS Variables`, `## Subcomponents`) whose data
+ * the page renders in its own dedicated sections. The hand-written prose
+ * (Usage, comparisons, etc.) is what remains.
+ */
+function trimReadmeForOverview(markdown: string): string {
+  return markdown.replace(leadingTitlePattern, '').replace(generatedSectionWithHeadingPattern, '');
+}
+
 export function renderReadmeDocumentation(rawMarkdown: string): DocumentationReadme {
-  const rendered = renderMarkdown(normalizeReadmeMarkdownForRendering(rawMarkdown));
+  const trimmed = trimReadmeForOverview(rawMarkdown);
+  const rendered = renderMarkdown(normalizeReadmeMarkdownForRendering(trimmed));
   return {
     rawMarkdown: rendered.rawMarkdown,
     html: rendered.html,
