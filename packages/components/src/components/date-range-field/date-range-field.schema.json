@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier used to generate accessible IDs for labels and error\nregions. Optional — a stable id is generated via `$props.id()` when omitted."
+    },
+    "label": {
+      "type": "string",
+      "description": "Visible legend rendered above the start/end inputs."
+    },
+    "startLabel": {
+      "type": "string",
+      "description": "Accessible label for the start date input. Defaults to \"Start date\"."
+    },
+    "endLabel": {
+      "type": "string",
+      "description": "Accessible label for the end date input. Defaults to \"End date\"."
+    },
+    "hidePresets": {
+      "type": "boolean",
+      "description": "When true, hides the preset buttons and shows only the date inputs."
+    },
+    "description": {
+      "type": "string",
+      "description": "Helper text displayed below the field; wired via aria-describedby."
+    },
+    "error": {
+      "type": "string",
+      "description": "Validation error message. When provided, marks both inputs as aria-invalid=\"true\"\nand renders the message in a live region."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Disables the entire field including presets and date inputs."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional CSS classes applied to the root element."
+    }
+  },
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "onchange",
+        "reason": "function-or-snippet",
+        "description": "Called when the user changes the date range (preset or manual input)."
+      },
+      {
+        "name": "presets",
+        "reason": "unknown-shape",
+        "description": "Consumer-defined preset options shown above the date inputs.\nEach preset has a label and a resolve() function that returns a DateRangeValue.\nDefaults to today, yesterday-today, last-7d built-ins when omitted."
+      },
+      {
+        "name": "value",
+        "reason": "unknown-shape",
+        "description": "Current date range value. Bindable. Both fields start undefined when unset."
+      }
+    ]
+  }
+}

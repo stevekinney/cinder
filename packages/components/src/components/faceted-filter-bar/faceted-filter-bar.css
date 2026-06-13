@@ -1,0 +1,121 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  /* ========================================
+   * FACETED FILTER BAR
+   * ======================================== */
+
+  .cinder-faceted-filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
+
+  /* Controls row: search + facet selects in a flex row */
+  .cinder-faceted-filter-bar__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-faceted-filter-bar__search {
+    flex: 1 1 14rem;
+    min-inline-size: min(14rem, 100%);
+  }
+
+  /* Facet wrapper: positions the select + chevron overlay */
+  .cinder-faceted-filter-bar__facet {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* Native select styled to match cinder input frame */
+  .cinder-faceted-filter-bar__select {
+    appearance: none;
+    padding-block: var(--cinder-space-2);
+    padding-inline-start: var(--cinder-space-3);
+    padding-inline-end: var(--cinder-space-8);
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    color: var(--cinder-text);
+    font: inherit;
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
+    block-size: var(--cinder-control-height-sm, 2rem);
+    cursor: pointer;
+    transition:
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  @media (hover: hover) {
+    .cinder-faceted-filter-bar__select:hover:not(:disabled) {
+      border-color: var(--cinder-border-strong);
+    }
+  }
+
+  .cinder-faceted-filter-bar__select:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-faceted-filter-bar__select:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  .cinder-faceted-filter-bar__select:disabled {
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
+
+  /* Decorative chevron overlaid on the select */
+  .cinder-faceted-filter-bar__select-chevron {
+    pointer-events: none;
+    position: absolute;
+    inset-inline-end: var(--cinder-space-3);
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+    inline-size: 0.75rem;
+    block-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-faceted-filter-bar__select-chevron::after {
+    content: '';
+    display: block;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-inline-end: 1.5px solid currentcolor;
+    border-block-end: 1.5px solid currentcolor;
+    transform: rotate(45deg) translateY(-25%);
+  }
+
+  /* Applied-filters chip row */
+  .cinder-faceted-filter-bar__chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  /* Disabled state on the root affects the controls row visually */
+  .cinder-faceted-filter-bar[data-disabled] .cinder-faceted-filter-bar__select {
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
+}

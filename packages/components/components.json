@@ -1161,6 +1161,32 @@
       }
     },
     {
+      "name": "DateRangeField",
+      "id": "date-range-field",
+      "import": "@lostgradient/cinder/date-range-field",
+      "exportName": "DateRangeField",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Controlled start/end date range picker with preset shortcuts and validation feedback for time-window filtering.",
+      "tags": ["form", "date", "filter"],
+      "useWhen": [
+        "Filtering a list or dashboard by a start and end date (e.g. created between, updated between).",
+        "Offering common presets (last 7 days, last 24 hours) alongside a manual date range."
+      ],
+      "avoidWhen": [
+        "A single date is sufficient — use a plain date input instead.",
+        "Date-time precision (hours/minutes/timezone) is required — this v1 is date-only."
+      ],
+      "related": ["input", "form-field", "chip", "segmented-control"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/date-range-field/schema",
+        "variables": "@lostgradient/cinder/date-range-field/variables",
+        "examples": "@lostgradient/cinder/date-range-field/examples"
+      }
+    },
+    {
       "name": "DescriptionList",
       "id": "description-list",
       "import": "@lostgradient/cinder/description-list",
@@ -1507,6 +1533,58 @@
       }
     },
     {
+      "name": "EventStreamViewer",
+      "id": "event-stream-viewer",
+      "import": "@lostgradient/cinder/event-stream-viewer",
+      "exportName": "EventStreamViewer",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Dense append-only log of timestamped events with follow-latest scrolling, severity tones, expandable JSON details, and copy actions.",
+      "tags": ["log", "stream", "events"],
+      "useWhen": [
+        "Displaying real-time or historical operational events such as workflow steps, job logs, or webhook traces.",
+        "Showing an append-only diagnostic stream with filtering, copy, and structured detail expansion."
+      ],
+      "avoidWhen": [
+        "Showing a social activity feed or notification timeline — use feed instead.",
+        "Rendering paginated historical records with sorting — use data-table instead."
+      ],
+      "related": ["feed", "timeline", "json-viewer", "connection-indicator", "copy-button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/event-stream-viewer/schema",
+        "variables": "@lostgradient/cinder/event-stream-viewer/variables",
+        "examples": "@lostgradient/cinder/event-stream-viewer/examples"
+      }
+    },
+    {
+      "name": "FacetedFilterBar",
+      "id": "faceted-filter-bar",
+      "import": "@lostgradient/cinder/faceted-filter-bar",
+      "exportName": "FacetedFilterBar",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Composed filtering toolbar with search, select facets, applied-filter chips, and clear-all for dense operational list views.",
+      "tags": ["form", "filter"],
+      "useWhen": [
+        "Filtering a list or table by multiple dimensions such as status, category, and queue simultaneously.",
+        "Showing applied filters as removable chips so users can see and undo active constraints."
+      ],
+      "avoidWhen": [
+        "A single search field or one select is sufficient — compose SearchField or Select directly.",
+        "Filtering navigates to a new page — the bar owns no routing or persistence."
+      ],
+      "related": ["search-field", "chip", "select", "toolbar"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/faceted-filter-bar/schema",
+        "variables": "@lostgradient/cinder/faceted-filter-bar/variables",
+        "examples": "@lostgradient/cinder/faceted-filter-bar/examples"
+      }
+    },
+    {
       "name": "Feed",
       "id": "feed",
       "import": "@lostgradient/cinder/feed",
@@ -1796,6 +1874,30 @@
       }
     },
     {
+      "name": "InvocationRuleBuilder",
+      "id": "invocation-rule-builder",
+      "import": "@lostgradient/cinder/invocation-rule-builder",
+      "exportName": "InvocationRuleBuilder",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Render and edit conditional automation rules composed of conditions and actions.",
+      "tags": ["automation", "rules"],
+      "useWhen": [
+        "Building a UI for configuring which agents or services run based on event conditions."
+      ],
+      "avoidWhen": [
+        "You need to execute, validate, or persist rules — cinder owns none of that logic."
+      ],
+      "related": ["capability-gate", "steps", "review-editor"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/invocation-rule-builder/schema",
+        "variables": "@lostgradient/cinder/invocation-rule-builder/variables",
+        "examples": "@lostgradient/cinder/invocation-rule-builder/examples"
+      }
+    },
+    {
       "name": "JsonSchemaEditor",
       "id": "json-schema-editor",
       "import": "@lostgradient/cinder/json-schema-editor",
@@ -1839,10 +1941,11 @@
       ],
       "related": ["code-block", "tree"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/json-viewer/schema",
-        "variables": "@lostgradient/cinder/json-viewer/variables"
+        "variables": "@lostgradient/cinder/json-viewer/variables",
+        "examples": "@lostgradient/cinder/json-viewer/examples"
       }
     },
     {
@@ -2273,6 +2376,32 @@
       }
     },
     {
+      "name": "PayloadInspector",
+      "id": "payload-inspector",
+      "import": "@lostgradient/cinder/payload-inspector",
+      "exportName": "PayloadInspector",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Composed inspector for structured payloads with summary, tree, and raw views, copy actions, and size/truncation status.",
+      "tags": ["json", "inspector", "payload"],
+      "useWhen": [
+        "Inspecting workflow inputs, signal payloads, activity results, or API response bodies in a dashboard.",
+        "Displaying a structured payload with metadata like content type, source, and timestamp."
+      ],
+      "avoidWhen": [
+        "Rendering a raw code block only — use code-block directly instead.",
+        "Needing search, filtering, or virtualization over large collections — compose a custom viewer."
+      ],
+      "related": ["json-viewer", "code-block", "description-list", "copy-button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/payload-inspector/schema",
+        "variables": "@lostgradient/cinder/payload-inspector/variables",
+        "examples": "@lostgradient/cinder/payload-inspector/examples"
+      }
+    },
+    {
       "name": "PhoneInput",
       "id": "phone-input",
       "import": "@lostgradient/cinder/phone-input",
@@ -2529,6 +2658,32 @@
       }
     },
     {
+      "name": "RunStepTimeline",
+      "id": "run-step-timeline",
+      "import": "@lostgradient/cinder/run-step-timeline",
+      "exportName": "RunStepTimeline",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Ordered step-by-step execution rail that visualizes async run state with per-step status, durations, retries, optional progress, and expandable detail panels.",
+      "tags": ["timeline", "progress", "execution"],
+      "useWhen": [
+        "Displaying the live or completed state of a multi-step async operation: CI jobs, workflow runs, import pipelines, or deployments.",
+        "Showing a sequence where one step is currently active and prior steps have streamed in over time."
+      ],
+      "avoidWhen": [
+        "Guiding users through an interactive wizard where they choose what to do next — use steps instead.",
+        "Showing a flat timestamp-first event log without structured step state — use timeline instead."
+      ],
+      "related": ["timeline", "steps", "status-dot", "progress", "badge", "collapsible"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/run-step-timeline/schema",
+        "variables": "@lostgradient/cinder/run-step-timeline/variables",
+        "examples": "@lostgradient/cinder/run-step-timeline/examples"
+      }
+    },
+    {
       "name": "ScrollArea",
       "id": "scroll-area",
       "import": "@lostgradient/cinder/scroll-area",
@@ -2575,6 +2730,32 @@
         "schema": "@lostgradient/cinder/search-field/schema",
         "variables": "@lostgradient/cinder/search-field/variables",
         "examples": "@lostgradient/cinder/search-field/examples"
+      }
+    },
+    {
+      "name": "SecretValueField",
+      "id": "secret-value-field",
+      "import": "@lostgradient/cinder/secret-value-field",
+      "exportName": "SecretValueField",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Displays a masked secret (API key, token, webhook secret) with copy action and optional reveal toggle.",
+      "tags": ["clipboard", "security"],
+      "useWhen": [
+        "Showing a newly-created API key or token that the user must copy before it is gone.",
+        "Displaying an existing masked key in a settings table where the full value should stay hidden."
+      ],
+      "avoidWhen": [
+        "The value is not sensitive and can be shown as plain text — use a code or input component.",
+        "You need inline editing of the secret value — use a password input instead."
+      ],
+      "related": ["copy-button", "input", "badge"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/secret-value-field/schema",
+        "variables": "@lostgradient/cinder/secret-value-field/variables",
+        "examples": "@lostgradient/cinder/secret-value-field/examples"
       }
     },
     {

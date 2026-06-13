@@ -1,0 +1,469 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  /* ========================================
+   * EVENT STREAM VIEWER
+   * Dense append-only operational log with
+   * follow-latest scrolling and severity tones.
+   * ======================================== */
+
+  .cinder-event-stream-viewer {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface);
+    overflow: hidden;
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+  }
+
+  /* ----------------------------------------
+   * Toolbar
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface-inset);
+    flex-shrink: 0;
+  }
+
+  .cinder-event-stream-viewer__toolbar-start,
+  .cinder-event-stream-viewer__toolbar-end {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-event-stream-viewer__resume-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-xs);
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  @media (hover: hover) {
+    .cinder-event-stream-viewer__resume-button:hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  .cinder-event-stream-viewer__resume-button:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-event-stream-viewer__resume-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  .cinder-event-stream-viewer__filter-input {
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-xs);
+    font-family: inherit;
+    inline-size: 14rem;
+  }
+
+  .cinder-event-stream-viewer__filter-input:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-event-stream-viewer__filter-input:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  .cinder-event-stream-viewer__copy-all-button {
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-xs);
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  @media (hover: hover) {
+    .cinder-event-stream-viewer__copy-all-button:hover:not(:disabled) {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  .cinder-event-stream-viewer__copy-all-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .cinder-event-stream-viewer__copy-all-button:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-event-stream-viewer__copy-all-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  /* ----------------------------------------
+   * Truncation notice
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer__truncation-notice {
+    padding: var(--cinder-space-1) var(--cinder-space-3);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-warning);
+    font-size: var(--cinder-text-xs);
+    font-family: var(--cinder-font-sans);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    flex-shrink: 0;
+  }
+
+  /* ----------------------------------------
+   * Scroll viewport / log region
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer__viewport {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-block-size: 0;
+    /* Default height — consumer overrides with inline style or class */
+    max-block-size: 32rem;
+    outline: none;
+  }
+
+  .cinder-event-stream-viewer__viewport:focus-visible {
+    box-shadow: inset var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-event-stream-viewer__viewport:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: -2px;
+    }
+  }
+
+  /* ----------------------------------------
+   * Loading skeleton
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer__loading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-3);
+  }
+
+  .cinder-event-stream-viewer__skeleton {
+    block-size: 1.25rem;
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-inset);
+    animation: cinder-event-stream-viewer-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  .cinder-event-stream-viewer__skeleton:nth-child(2) {
+    inline-size: 80%;
+  }
+
+  .cinder-event-stream-viewer__skeleton:nth-child(3) {
+    inline-size: 60%;
+  }
+
+  @keyframes cinder-event-stream-viewer-skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-event-stream-viewer__skeleton {
+      animation: none;
+    }
+  }
+
+  /* ----------------------------------------
+   * Empty state
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--cinder-space-8) var(--cinder-space-4);
+  }
+
+  .cinder-event-stream-viewer__empty-message {
+    margin: 0;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    font-family: var(--cinder-font-sans);
+  }
+
+  /* ----------------------------------------
+   * Event list
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer__list {
+    list-style: none;
+    margin: 0;
+    padding: var(--cinder-space-1) 0;
+  }
+
+  /* ----------------------------------------
+   * Individual event entry
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer__event {
+    --cinder-event-stream-viewer-severity-color: var(--cinder-text-muted);
+
+    display: grid;
+    grid-template-columns: 3px 1fr auto;
+    gap: 0 var(--cinder-space-2);
+    padding: var(--cinder-space-1) var(--cinder-space-3) var(--cinder-space-1) 0;
+    border-block-end: 1px solid var(--cinder-border-muted);
+  }
+
+  .cinder-event-stream-viewer__event:last-child {
+    border-block-end: none;
+  }
+
+  @media (hover: hover) {
+    .cinder-event-stream-viewer__event:hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  .cinder-event-stream-viewer__event:hover .cinder-event-stream-viewer__event-actions {
+    opacity: 1;
+  }
+
+  /* Severity bar */
+  .cinder-event-stream-viewer__event-bar {
+    align-self: stretch;
+    background: var(--cinder-event-stream-viewer-severity-color);
+    border-radius: 0 var(--cinder-radius-sm) var(--cinder-radius-sm) 0;
+    flex-shrink: 0;
+  }
+
+  /* Severity color mapping */
+  .cinder-event-stream-viewer__event[data-cinder-severity='debug'] {
+    --cinder-event-stream-viewer-severity-color: var(--cinder-text-subtle);
+  }
+
+  .cinder-event-stream-viewer__event[data-cinder-severity='info'] {
+    --cinder-event-stream-viewer-severity-color: var(--cinder-info);
+  }
+
+  .cinder-event-stream-viewer__event[data-cinder-severity='success'] {
+    --cinder-event-stream-viewer-severity-color: var(--cinder-success);
+  }
+
+  .cinder-event-stream-viewer__event[data-cinder-severity='warning'] {
+    --cinder-event-stream-viewer-severity-color: var(--cinder-warning);
+  }
+
+  .cinder-event-stream-viewer__event[data-cinder-severity='error'] {
+    --cinder-event-stream-viewer-severity-color: var(--cinder-danger);
+  }
+
+  /* Event body */
+  .cinder-event-stream-viewer__event-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-0-5);
+    min-inline-size: 0;
+    padding-block: var(--cinder-space-1);
+  }
+
+  /* Meta row: timestamp, severity badge, source */
+  .cinder-event-stream-viewer__event-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    flex-wrap: wrap;
+  }
+
+  .cinder-event-stream-viewer__event-time {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .cinder-event-stream-viewer__event-severity {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-event-stream-viewer-severity-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+
+  .cinder-event-stream-viewer__event-source {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+    background: var(--cinder-surface-inset);
+    padding: 0 var(--cinder-space-1);
+    border-radius: var(--cinder-radius-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-inline-size: 16rem;
+  }
+
+  /* Summary text */
+  .cinder-event-stream-viewer__event-summary {
+    margin: 0;
+    color: var(--cinder-text);
+    line-height: var(--cinder-leading-normal);
+    overflow-wrap: break-word;
+  }
+
+  /* Details expand/collapse */
+  .cinder-event-stream-viewer__event-details-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-event-stream-viewer__details-toggle {
+    align-self: flex-start;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--cinder-accent-text);
+    font-size: var(--cinder-text-xs);
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  @media (hover: hover) {
+    .cinder-event-stream-viewer__details-toggle:hover {
+      color: var(--cinder-accent-text-hover);
+    }
+  }
+
+  .cinder-event-stream-viewer__details-toggle:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-event-stream-viewer__details-toggle:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  .cinder-event-stream-viewer__event-details {
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    padding: var(--cinder-space-2);
+    background: var(--cinder-surface-inset);
+    overflow-x: auto;
+  }
+
+  /* Per-event action buttons */
+  .cinder-event-stream-viewer__event-actions {
+    display: flex;
+    align-items: flex-start;
+    padding-block-start: var(--cinder-space-1);
+    opacity: 0;
+    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  /* Reveal the per-event actions when a keyboard user focuses a control inside
+   * them — otherwise the copy button is tabbable while its parent is opacity:0,
+   * leaving keyboard users on an invisible control. */
+  .cinder-event-stream-viewer__event-actions:focus-within {
+    opacity: 1;
+  }
+
+  .cinder-event-stream-viewer__copy-event-button {
+    padding: var(--cinder-space-0-5) var(--cinder-space-1-5);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard);
+    white-space: nowrap;
+  }
+
+  @media (hover: hover) {
+    .cinder-event-stream-viewer__copy-event-button:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
+  }
+
+  .cinder-event-stream-viewer__copy-event-button:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+    opacity: 1;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-event-stream-viewer__copy-event-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  /* ----------------------------------------
+   * Live region (visually hidden always-in-DOM)
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer__live-region {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ----------------------------------------
+   * Paused state indicator on root
+   * -------------------------------------- */
+
+  .cinder-event-stream-viewer[data-cinder-paused] .cinder-event-stream-viewer__viewport {
+    /* Subtle visual hint: slightly dimmed when paused */
+    opacity: 0.95;
+  }
+}

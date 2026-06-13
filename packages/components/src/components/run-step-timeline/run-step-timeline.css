@@ -1,0 +1,215 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  /* ========================================
+   * RUN-STEP-TIMELINE
+   * Ordered async execution rail with per-step status, metadata,
+   * optional progress, and expandable detail panels.
+   * ======================================== */
+
+  .cinder-run-step-timeline {
+    --_cinder-rst-rail-size: 1.5rem;
+    --_cinder-rst-marker-size: 0.875rem;
+    --_cinder-rst-rail-center: 0.6875rem;
+
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+
+  /* ----------------------------------------
+   * List item
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__item {
+    position: relative;
+    padding-bottom: var(--cinder-space-4);
+  }
+
+  .cinder-run-step-timeline__item:last-child {
+    padding-bottom: 0;
+  }
+
+  /* Connector rail line between items */
+  .cinder-run-step-timeline__item::before {
+    content: '';
+    position: absolute;
+    left: var(--_cinder-rst-rail-center);
+    top: 1rem;
+    bottom: 0;
+    width: 1px;
+    background: var(--cinder-border-muted);
+  }
+
+  .cinder-run-step-timeline__item[data-cinder-connector-after='hidden']::before {
+    display: none;
+  }
+
+  /* ----------------------------------------
+   * Event layout: marker column + content column
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__event {
+    display: grid;
+    grid-template-columns: var(--_cinder-rst-rail-size) 1fr;
+    gap: var(--cinder-space-3);
+    align-items: start;
+  }
+
+  /* ----------------------------------------
+   * Marker: StatusDot on the rail
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__marker {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--_cinder-rst-rail-size);
+    padding-top: var(--cinder-space-1);
+  }
+
+  /* ----------------------------------------
+   * Content column
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    min-width: 0;
+  }
+
+  /* ----------------------------------------
+   * Header: step label + status badge
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-run-step-timeline__label {
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text);
+    flex-shrink: 0;
+  }
+
+  /* Running step: label highlighted */
+  .cinder-run-step-timeline__item[data-cinder-status='running'] .cinder-run-step-timeline__label,
+  .cinder-run-step-timeline__item[data-cinder-status='retrying'] .cinder-run-step-timeline__label {
+    color: var(--cinder-text);
+    font-weight: var(--cinder-font-semibold);
+  }
+
+  /* Pending step: label muted */
+  .cinder-run-step-timeline__item[data-cinder-status='pending'] .cinder-run-step-timeline__label,
+  .cinder-run-step-timeline__item[data-cinder-status='skipped'] .cinder-run-step-timeline__label,
+  .cinder-run-step-timeline__item[data-cinder-status='cancelled'] .cinder-run-step-timeline__label {
+    color: var(--cinder-text-muted);
+  }
+
+  /* ----------------------------------------
+   * Progress bar wrapper
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__progress {
+    width: 100%;
+    max-width: 24rem;
+  }
+
+  /* ----------------------------------------
+   * Metadata: start/end/duration/attempts
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__meta {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-1) var(--cinder-space-4);
+  }
+
+  .cinder-run-step-timeline__meta-row {
+    display: flex;
+    gap: var(--cinder-space-1);
+    align-items: baseline;
+  }
+
+  .cinder-run-step-timeline__meta-term {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+    font-weight: var(--cinder-font-medium);
+  }
+
+  .cinder-run-step-timeline__meta-term::after {
+    content: ':';
+  }
+
+  .cinder-run-step-timeline__meta-definition {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ----------------------------------------
+   * Expandable detail panels
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+    border-inline-start: 2px solid var(--cinder-border-muted);
+    padding-inline-start: var(--cinder-space-3);
+    margin-top: var(--cinder-space-1);
+  }
+
+  .cinder-run-step-timeline__detail-content {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    background: var(--cinder-surface-sunken);
+    border-radius: var(--cinder-radius-sm);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    overflow-x: auto;
+  }
+
+  /* ----------------------------------------
+   * Per-step body slot
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__body {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-muted);
+  }
+
+  /* ----------------------------------------
+   * Focus ring (not applicable to the root list, but included for
+   * completeness if the component is ever given an interactive element)
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-run-step-timeline:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+
+    /* Ensure connector lines are visible in high-contrast mode */
+    .cinder-run-step-timeline__item::before {
+      background: ButtonText;
+    }
+  }
+}

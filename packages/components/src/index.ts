@@ -198,6 +198,13 @@ export type {
   DataTableRow,
 } from './components/data-table/index.ts';
 
+export { default as DateRangeField } from './components/date-range-field/index.ts';
+export type {
+  DateRangeDatePreset,
+  DateRangeFieldProps,
+  DateRangeValue,
+} from './components/date-range-field/index.ts';
+
 export { default as DescriptionList } from './components/description-list/index.ts';
 export type {
   DescriptionListItem,
@@ -257,6 +264,24 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger/index.t
 
 export { default as EmptyState } from './components/empty-state/index.ts';
 export type { EmptyStateProps } from './components/empty-state/index.ts';
+
+export { default as EventStreamViewer } from './components/event-stream-viewer/index.ts';
+export type {
+  EventSeverity,
+  EventStreamState,
+  EventStreamViewerProps,
+  StreamEvent,
+} from './components/event-stream-viewer/index.ts';
+
+export { default as FacetedFilterBar } from './components/faceted-filter-bar/index.ts';
+export type {
+  AppliedFilter,
+  CustomFacet,
+  FacetDefinition,
+  FacetOption,
+  FacetedFilterBarProps,
+  SelectFacet,
+} from './components/faceted-filter-bar/index.ts';
 
 export { default as FeedEvent } from './components/feed-event/index.ts';
 export type { FeedEventProps, FeedEventVariant } from './components/feed-event/index.ts';
@@ -322,6 +347,16 @@ export type {
   JsonSchemaValidationStatus,
   JsonSchemaValue,
 } from './components/json-schema-editor/index.ts';
+
+export { default as InvocationRuleBuilder } from './components/invocation-rule-builder/index.ts';
+export type {
+  InvocationRule,
+  InvocationRuleAction,
+  InvocationRuleBuilderProps,
+  InvocationRuleChange,
+  InvocationRuleCondition,
+  InvocationRuleOption,
+} from './components/invocation-rule-builder/index.ts';
 
 export { default as JsonViewer } from './components/json-viewer/index.ts';
 export type { JsonViewerProps } from './components/json-viewer/index.ts';
@@ -420,6 +455,13 @@ export type { NumberInputProps } from './components/number-input/index.ts';
 export { default as Pagination } from './components/pagination/index.ts';
 export type { PaginationProps } from './components/pagination/index.ts';
 
+export { default as PayloadInspector } from './components/payload-inspector/index.ts';
+export type {
+  PayloadInspectorMeta,
+  PayloadInspectorProps,
+  PayloadInspectorView,
+} from './components/payload-inspector/index.ts';
+
 export { default as PhoneInput } from './components/phone-input/index.ts';
 export type {
   PhoneInputChange,
@@ -452,6 +494,14 @@ export type {
 
 export { default as Rating } from './components/rating/index.ts';
 export type { RatingPrecision, RatingProps } from './components/rating/index.ts';
+
+export { default as RunStepTimeline } from './components/run-step-timeline/index.ts';
+export type {
+  RunStep,
+  RunStepDetail,
+  RunStepStatus,
+  RunStepTimelineProps,
+} from './components/run-step-timeline/index.ts';
 
 export { default as ResizablePanels } from './components/resizable-panels/index.ts';
 export type {
@@ -501,6 +551,9 @@ export type {
 } from './components/scroll-area/index.ts';
 export { default as SearchField } from './components/search-field/index.ts';
 export type { SearchFieldProps } from './components/search-field/index.ts';
+
+export { default as SecretValueField } from './components/secret-value-field/index.ts';
+export type { SecretValueFieldProps } from './components/secret-value-field/index.ts';
 
 export { default as SectionHeading } from './components/section-heading/index.ts';
 export type {
