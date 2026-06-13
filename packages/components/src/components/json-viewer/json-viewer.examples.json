@@ -1,0 +1,37 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "json-viewer",
+  "import": "@lostgradient/cinder/json-viewer",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Shallow object",
+      "description": "A flat JSON object with mixed scalar values. The default initialDepth of 1 keeps the top-level keys expanded while deeper nodes start collapsed — useful for at-a-glance inspection.",
+      "code": "<script lang=\"ts\">\n  import { JsonViewer } from '@lostgradient/cinder/json-viewer';\n\n  const payload = {\n    id: 'wf_3c4fce',\n    status: 'completed',\n    exitCode: 0,\n    durationMs: 1423,\n    startedAt: '2025-05-12T15:30:00Z',\n    finishedAt: '2025-05-12T15:30:01.423Z',\n    retryCount: 0,\n    triggeredBy: 'schedule',\n  };\n</script>\n\n<JsonViewer value={payload} />\n"
+    },
+    {
+      "id": "nested",
+      "title": "Nested object and array",
+      "description": "Deeply nested objects and arrays with initialDepth={2} so the second level starts expanded. Toggle nodes to drill into child collections — each branch remembers its collapsed state independently.",
+      "code": "<script lang=\"ts\">\n  import { JsonViewer } from '@lostgradient/cinder/json-viewer';\n\n  const payload = {\n    workflow: {\n      id: 'wf_3c4fce',\n      name: 'Nightly ETL',\n      steps: [\n        { name: 'extract', status: 'completed', durationMs: 312 },\n        { name: 'transform', status: 'completed', durationMs: 874 },\n        { name: 'load', status: 'completed', durationMs: 237 },\n      ],\n    },\n    metadata: {\n      triggeredBy: 'schedule',\n      region: 'us-east-1',\n      tags: ['etl', 'nightly', 'production'],\n    },\n    result: {\n      rowsProcessed: 84201,\n      rowsSkipped: 3,\n      errors: [],\n    },\n  };\n</script>\n\n<JsonViewer value={payload} initialDepth={2} />\n"
+    },
+    {
+      "id": "oversized",
+      "title": "Oversized payload fallback",
+      "description": "When the serialized payload exceeds maxBytes, JsonViewer renders a fallback instead of attempting the tree. Here maxBytes={256} triggers the cap on a ~500-byte object. Use the copy or download action in the host surface to inspect the raw JSON.",
+      "code": "<script lang=\"ts\">\n  import { JsonViewer } from '@lostgradient/cinder/json-viewer';\n\n  const payload = {\n    id: 'act_9f2a1b',\n    type: 'ActivityCompleted',\n    namespace: 'default',\n    workflowId: 'wf_3c4fce',\n    runId: 'run_7d8e2c',\n    activityId: 'act_9f2a1b',\n    activityType: 'ProcessBatch',\n    result: { rowsProcessed: 84201, rowsSkipped: 3, errors: [] },\n    scheduledAt: '2025-05-12T15:30:00Z',\n    startedAt: '2025-05-12T15:30:00.312Z',\n    completedAt: '2025-05-12T15:30:01.186Z',\n    workerIdentity: 'worker@node-42.us-east-1',\n  };\n</script>\n\n<JsonViewer value={payload} maxBytes={256} />\n"
+    },
+    {
+      "id": "payload-inspector",
+      "title": "Payload inspector with copy",
+      "description": "Pairing JsonViewer with CopyButton creates an operational payload inspector. A metadata header names the source event; CopyButton copies the raw JSON to the clipboard so engineers can paste into other tools. This pattern suits fault-detail and activity-result surfaces in operator UIs.",
+      "code": "<script lang=\"ts\">\n  import { CopyButton } from '@lostgradient/cinder/copy-button';\n  import { JsonViewer } from '@lostgradient/cinder/json-viewer';\n\n  const eventType = 'ActivityFailed';\n  const payload = {\n    activityType: 'ProcessBatch',\n    activityId: 'act_9f2a1b',\n    workflowId: 'wf_3c4fce',\n    runId: 'run_7d8e2c',\n    failure: {\n      message: 'connection refused',\n      cause: 'redis://cache.internal:6379 unreachable after 3 retries',\n      applicationFailureInfo: {\n        type: 'NetworkError',\n        nonRetryable: false,\n      },\n    },\n    attempt: 2,\n    scheduledAt: '2025-05-12T15:30:42Z',\n    startedAt: '2025-05-12T15:30:42.811Z',\n  };\n\n  const rawJson = $derived(JSON.stringify(payload, null, 2));\n</script>\n\n<div\n  style=\"border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-md); overflow: hidden;\"\n>\n  <div\n    style=\"display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background-color: var(--cinder-surface-raised); border-bottom: 1px solid var(--cinder-border);\"\n  >\n    <span style=\"font-size: 0.75rem; font-weight: 600; color: var(--cinder-text-subtle);\"\n      >{eventType}</span\n    >\n    <CopyButton value={rawJson} label=\"Copy raw JSON\" iconOnly />\n  </div>\n  <div style=\"padding: 0.75rem;\">\n    <JsonViewer value={payload} initialDepth={2} />\n  </div>\n</div>\n"
+    },
+    {
+      "id": "primitives",
+      "title": "Primitive and null values",
+      "description": "Each JSON primitive type — string, number, boolean, and null — rendered inline with type-specific color coding. Useful for verifying that scalar fields survive serialization round-trips.",
+      "code": "<script lang=\"ts\">\n  import { JsonViewer } from '@lostgradient/cinder/json-viewer';\n\n  const payload = {\n    label: 'activity-result',\n    count: 42,\n    ratio: 0.9375,\n    active: true,\n    deprecated: false,\n    errorMessage: null,\n    emptyString: '',\n    negativeOffset: -7,\n  };\n</script>\n\n<JsonViewer value={payload} />\n"
+    }
+  ]
+}

@@ -204,7 +204,7 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
-  it('keeps the sidebar at or below the 97-entry product gate', async () => {
+  it('keeps the sidebar at or below the 117-entry product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
@@ -233,8 +233,15 @@ describe('discoverSidebarComponents', () => {
     // pricing-card, and subscription-badge — landing the sidebar at 109,
     // measured empirically via discoverSidebarComponents(). (#337/#338 ship as
     // examples on existing families and do not add sidebar entries.)
+    // The operational-components wave (#352, #354-360) lands the sidebar at 117,
+    // measured empirically via discoverSidebarComponents(). It adds eight entries:
+    // seven new families — faceted-filter-bar, event-stream-viewer,
+    // payload-inspector, date-range-field, run-step-timeline, secret-value-field,
+    // and invocation-rule-builder — plus json-viewer, which was absent from the
+    // sidebar on main (it had no examples) and newly appears because #358 adds its
+    // first examples. So 109 (prior) + 7 new + 1 newly-surfaced json-viewer = 117.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(109);
+    expect(sidebar.length).toBeLessThanOrEqual(117);
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

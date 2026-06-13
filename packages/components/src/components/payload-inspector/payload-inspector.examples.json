@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "payload-inspector",
+  "import": "@lostgradient/cinder/payload-inspector",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic payload inspector",
+      "description": "Inspect a structured object payload with summary metadata, interactive tree, and raw JSON views.",
+      "code": "<script lang=\"ts\">\n  import { PayloadInspector } from '@lostgradient/cinder/payload-inspector';\n\n  const payload = {\n    userId: 'u_8f2a3b',\n    action: 'checkout',\n    cart: {\n      items: [\n        { id: 'p_001', name: 'Widget', qty: 2, price: 19.99 },\n        { id: 'p_002', name: 'Gadget', qty: 1, price: 49.95 },\n      ],\n      total: 89.93,\n    },\n    timestamp: '2026-06-11T14:22:00Z',\n    flags: { guestCheckout: false, promoApplied: true },\n  };\n</script>\n\n<PayloadInspector\n  value={payload}\n  meta={{\n    contentType: 'application/json',\n    source: 'checkout-workflow',\n    timestamp: '2026-06-11T14:22:00Z',\n  }}\n/>\n"
+    },
+    {
+      "id": "edge-cases",
+      "title": "Edge cases",
+      "description": "Demonstrates null, invalid JSON, and empty payload states in the inspector.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { PayloadInspector } from '@lostgradient/cinder/payload-inspector';\n\n  type Scenario = 'empty' | 'null' | 'invalid-json' | 'truncated' | 'primitive';\n\n  let scenario = $state<Scenario>('empty');\n\n  const scenarios: Record<Scenario, { value?: unknown; truncated?: boolean; label: string }> = {\n    empty: { value: undefined, label: 'No payload' },\n    null: { value: null, label: 'Null value' },\n    'invalid-json': { value: '{ not valid json at all', label: 'Invalid JSON string' },\n    truncated: { value: { partial: 'data', more: '...' }, truncated: true, label: 'Truncated' },\n    primitive: { value: 42, label: 'Number primitive' },\n  };\n\n  const current = $derived(scenarios[scenario]);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem;\">\n  <div style=\"display: flex; gap: 0.5rem; flex-wrap: wrap;\">\n    {#each Object.keys(scenarios) as key (key)}\n      <Button\n        variant={scenario === key ? 'primary' : 'secondary'}\n        size=\"sm\"\n        onclick={() => (scenario = key as Scenario)}\n      >\n        {scenarios[key as Scenario].label}\n      </Button>\n    {/each}\n  </div>\n\n  <PayloadInspector\n    value={current.value}\n    truncated={current.truncated ?? false}\n    meta={{ source: 'edge-case-demo' }}\n  />\n</div>\n"
+    },
+    {
+      "id": "signal-payload",
+      "title": "Signal payload",
+      "description": "Inspect a workflow signal payload — a common pattern in activity result dashboards.",
+      "code": "<script lang=\"ts\">\n  import { PayloadInspector } from '@lostgradient/cinder/payload-inspector';\n\n  const signalPayload = {\n    signalName: 'PaymentConfirmed',\n    data: {\n      transactionId: 'txn_5e8b2a',\n      amount: 89.93,\n      currency: 'USD',\n      provider: 'stripe',\n      confirmedAt: '2026-06-11T14:23:01Z',\n      metadata: {\n        statementDescriptor: 'ACME STORE',\n        riskScore: 0.12,\n      },\n    },\n    sentAt: '2026-06-11T14:23:01.543Z',\n    correlationId: 'ord_9c4e1f',\n  };\n</script>\n\n<PayloadInspector\n  value={signalPayload}\n  meta={{\n    contentType: 'application/json',\n    source: 'payment-service',\n    timestamp: '2026-06-11T14:23:01Z',\n  }}\n/>\n"
+    },
+    {
+      "id": "workflow-input",
+      "title": "Workflow input",
+      "description": "Inspecting a workflow launch payload with signal input, retry policy, and schedule metadata.",
+      "code": "<script lang=\"ts\">\n  import { PayloadInspector } from '@lostgradient/cinder/payload-inspector';\n\n  const workflowInput = {\n    workflowType: 'OrderFulfillment',\n    input: {\n      orderId: 'ord_9c4e1f',\n      customerId: 'cust_221a',\n      priority: 'express',\n      items: ['sku-100', 'sku-201', 'sku-303'],\n      shipTo: {\n        name: 'Alex Rivera',\n        address: '42 Elm St',\n        city: 'Springfield',\n        zip: '12345',\n      },\n    },\n    retryPolicy: {\n      maximumAttempts: 3,\n      initialInterval: '1s',\n      maximumInterval: '30s',\n      backoffCoefficient: 2,\n    },\n    searchAttributes: {\n      OrderStatus: 'pending',\n      CustomerId: 'cust_221a',\n    },\n  };\n</script>\n\n<PayloadInspector\n  value={workflowInput}\n  meta={{\n    contentType: 'application/json',\n    source: 'order-service',\n    timestamp: '2026-06-11T09:15:42Z',\n  }}\n/>\n"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "date-range-field",
+  "import": "@lostgradient/cinder/date-range-field",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic date range",
+      "description": "Start and end date inputs with built-in presets for today, yesterday & today, and last 7 days.",
+      "code": "<script lang=\"ts\">\n  import { DateRangeField } from '@lostgradient/cinder/date-range-field';\n  import type { DateRangeValue } from '@lostgradient/cinder/date-range-field';\n\n  let range: DateRangeValue = $state({ start: undefined, end: undefined });\n</script>\n\n<DateRangeField id=\"basic-date-range\" label=\"Time window\" bind:value={range} />\n"
+    },
+    {
+      "id": "custom-presets",
+      "title": "Custom presets",
+      "description": "Consumer-supplied presets with labels suited to a billing or audit log context.",
+      "code": "<script lang=\"ts\">\n  import { DateRangeField } from '@lostgradient/cinder/date-range-field';\n  import type { DateRangeDatePreset, DateRangeValue } from '@lostgradient/cinder/date-range-field';\n\n  let range: DateRangeValue = $state({ start: undefined, end: undefined });\n\n  function formatLocalDate(date: Date): string {\n    const year = date.getFullYear();\n    const month = String(date.getMonth() + 1).padStart(2, '0');\n    const day = String(date.getDate()).padStart(2, '0');\n    return `${year}-${month}-${day}`;\n  }\n\n  const presets: DateRangeDatePreset[] = [\n    {\n      id: 'today',\n      label: 'Today',\n      resolve: () => {\n        const today = formatLocalDate(new Date());\n        return { start: today, end: today };\n      },\n    },\n    {\n      id: 'this-week',\n      label: 'This week',\n      resolve: () => {\n        const now = new Date();\n        const day = now.getDay();\n        const monday = new Date(now);\n        monday.setDate(now.getDate() - ((day + 6) % 7));\n        return {\n          start: formatLocalDate(monday),\n          end: formatLocalDate(now),\n        };\n      },\n    },\n    {\n      id: 'this-month',\n      label: 'This month',\n      resolve: () => {\n        const now = new Date();\n        const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;\n        return { start, end: formatLocalDate(now) };\n      },\n    },\n    {\n      id: 'this-quarter',\n      label: 'This quarter',\n      resolve: () => {\n        const now = new Date();\n        const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;\n        const start = new Date(now.getFullYear(), quarterStartMonth, 1);\n        return {\n          start: formatLocalDate(start),\n          end: formatLocalDate(now),\n        };\n      },\n    },\n  ];\n</script>\n\n<DateRangeField\n  id=\"custom-presets-range\"\n  label=\"Report period\"\n  {presets}\n  bind:value={range}\n  description=\"Select the period to include in this report.\"\n/>\n"
+    },
+    {
+      "id": "disabled",
+      "title": "Disabled state",
+      "description": "All inputs and preset buttons are disabled. Use when the date range cannot be edited in the current context.",
+      "code": "<script lang=\"ts\">\n  import { DateRangeField } from '@lostgradient/cinder/date-range-field';\n  import type { DateRangeValue } from '@lostgradient/cinder/date-range-field';\n\n  const range: DateRangeValue = { start: '2026-06-01', end: '2026-06-30' };\n</script>\n\n<DateRangeField id=\"disabled-date-range\" label=\"Billing period\" value={range} disabled />\n"
+    },
+    {
+      "id": "workflow-filter",
+      "title": "Workflow list filter",
+      "description": "Filter an operational workflow list by creation date with custom presets and validation feedback.",
+      "code": "<script lang=\"ts\">\n  import { DateRangeField } from '@lostgradient/cinder/date-range-field';\n  import type { DateRangeDatePreset, DateRangeValue } from '@lostgradient/cinder/date-range-field';\n\n  let range: DateRangeValue = $state({ start: undefined, end: undefined });\n\n  function formatLocalDate(date: Date): string {\n    const year = date.getFullYear();\n    const month = String(date.getMonth() + 1).padStart(2, '0');\n    const day = String(date.getDate()).padStart(2, '0');\n    return `${year}-${month}-${day}`;\n  }\n\n  const presets: DateRangeDatePreset[] = [\n    {\n      id: 'today',\n      label: 'Today',\n      resolve: () => {\n        const now = new Date();\n        return {\n          start: formatLocalDate(now),\n          end: formatLocalDate(now),\n        };\n      },\n    },\n    {\n      id: 'yesterday-today',\n      label: 'Yesterday & today',\n      resolve: () => {\n        const now = new Date();\n        const yesterday = new Date(now);\n        yesterday.setDate(now.getDate() - 1);\n        return {\n          start: formatLocalDate(yesterday),\n          end: formatLocalDate(now),\n        };\n      },\n    },\n    {\n      id: 'last-7d',\n      label: 'Last 7 days',\n      resolve: () => {\n        const now = new Date();\n        const sixDaysAgo = new Date(now);\n        sixDaysAgo.setDate(now.getDate() - 6);\n        return {\n          start: formatLocalDate(sixDaysAgo),\n          end: formatLocalDate(now),\n        };\n      },\n    },\n    {\n      id: 'last-30d',\n      label: 'Last 30 days',\n      resolve: () => {\n        const now = new Date();\n        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);\n        return {\n          start: formatLocalDate(monthAgo),\n          end: formatLocalDate(now),\n        };\n      },\n    },\n  ];\n\n  const error = $derived(\n    range.start && range.end && range.start > range.end\n      ? 'Start date must be on or before the end date.'\n      : undefined,\n  );\n</script>\n\n<DateRangeField\n  id=\"workflow-filter\"\n  label=\"Created between\"\n  {presets}\n  bind:value={range}\n  {...error ? { error } : {}}\n  description=\"Filter workflow runs by their creation date.\"\n/>\n"
+    }
+  ]
+}

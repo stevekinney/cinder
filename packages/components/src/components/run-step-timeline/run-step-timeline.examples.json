@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "run-step-timeline",
+  "import": "@lostgradient/cinder/run-step-timeline",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic run step timeline",
+      "description": "A multi-step async run with pending, running, and succeeded steps.",
+      "code": "<script lang=\"ts\">\n  import { RunStepTimeline } from '@lostgradient/cinder/run-step-timeline';\n  import type { RunStep } from '@lostgradient/cinder/run-step-timeline';\n\n  const steps: RunStep[] = [\n    {\n      id: 'validate',\n      label: 'Validate configuration',\n      status: 'succeeded',\n      startTime: '2026-06-01T11:00:00Z',\n      endTime: '2026-06-01T11:01:30Z',\n      duration: '1m 30s',\n    },\n    {\n      id: 'build',\n      label: 'Build Docker image',\n      status: 'running',\n      startTime: '2026-06-01T11:02:00Z',\n      progress: 40,\n    },\n    {\n      id: 'deploy',\n      label: 'Deploy to staging',\n      status: 'pending',\n    },\n  ];\n</script>\n\n<RunStepTimeline {steps} label=\"Deployment run\" />\n"
+    },
+    {
+      "id": "failed-run",
+      "title": "Failed run with error details",
+      "description": "A completed run where one step failed after retries, with expandable error output and environment info.",
+      "code": "<script lang=\"ts\">\n  import { RunStepTimeline } from '@lostgradient/cinder/run-step-timeline';\n  import type { RunStep } from '@lostgradient/cinder/run-step-timeline';\n\n  const steps: RunStep[] = [\n    {\n      id: 'lint',\n      label: 'Lint source files',\n      status: 'succeeded',\n      startTime: '2026-06-01T10:00:00Z',\n      endTime: '2026-06-01T10:00:22Z',\n      duration: '22s',\n    },\n    {\n      id: 'typecheck',\n      label: 'Type-check',\n      status: 'succeeded',\n      startTime: '2026-06-01T10:00:23Z',\n      endTime: '2026-06-01T10:00:51Z',\n      duration: '28s',\n    },\n    {\n      id: 'test',\n      label: 'Run unit tests',\n      status: 'failed',\n      startTime: '2026-06-01T10:00:52Z',\n      endTime: '2026-06-01T10:05:10Z',\n      duration: '4m 18s',\n      attemptCount: 2,\n      details: [\n        {\n          id: 'test-error',\n          label: 'Error output',\n          content:\n            'AssertionError: expected 1 to equal 2\\n  at src/math.test.ts:12:5\\n  at test (bun:test/runner.ts:88)',\n        },\n        {\n          id: 'test-env',\n          label: 'Environment',\n          content: 'NODE_ENV=test\\nCI=true\\nBUN_VERSION=1.2.0',\n        },\n      ],\n    },\n    {\n      id: 'publish',\n      label: 'Publish artifacts',\n      status: 'cancelled',\n    },\n  ];\n</script>\n\n<RunStepTimeline {steps} label=\"CI run — failed\" />\n"
+    },
+    {
+      "id": "workflow-run",
+      "title": "Workflow run with retry and signal wait",
+      "description": "A workflow run with scheduled start, activity dispatch, retry, signal wait, and terminal completion — showing all major step states.",
+      "code": "<script lang=\"ts\">\n  import { RunStepTimeline } from '@lostgradient/cinder/run-step-timeline';\n  import type { RunStep } from '@lostgradient/cinder/run-step-timeline';\n\n  const steps: RunStep[] = [\n    {\n      id: 'scheduled',\n      label: 'Schedule workflow',\n      status: 'succeeded',\n      startTime: '2026-06-01T09:00:00Z',\n      endTime: '2026-06-01T09:00:01Z',\n      duration: '1s',\n    },\n    {\n      id: 'dispatch',\n      label: 'Dispatch activity',\n      status: 'succeeded',\n      startTime: '2026-06-01T09:00:01Z',\n      endTime: '2026-06-01T09:01:15Z',\n      duration: '1m 14s',\n    },\n    {\n      id: 'retry-activity',\n      label: 'Retry failed activity',\n      status: 'succeeded',\n      startTime: '2026-06-01T09:01:30Z',\n      endTime: '2026-06-01T09:03:22Z',\n      duration: '1m 52s',\n      attemptCount: 3,\n      details: [\n        {\n          id: 'retry-error-log',\n          label: 'Error from attempt 2',\n          content:\n            'ActivityError: upstream dependency timed out after 30s\\n  at activity/fetch.ts:42',\n        },\n      ],\n    },\n    {\n      id: 'signal-wait',\n      label: 'Wait for approval signal',\n      status: 'running',\n      startTime: '2026-06-01T09:03:30Z',\n    },\n    {\n      id: 'finalize',\n      label: 'Finalize and archive',\n      status: 'pending',\n    },\n  ];\n</script>\n\n<RunStepTimeline {steps} label=\"Workflow run\" />\n"
+    }
+  ]
+}
