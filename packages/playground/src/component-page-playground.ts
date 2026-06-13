@@ -75,9 +75,14 @@ function numberDefault(value: unknown): number {
  * Build a {@link PlaygroundModel} from a component manifest.
  *
  * Supported control shapes: `boolean -> switch`, `select -> segmented/select`,
- * `text -> input`, `number -> number input`. `snippet`, `unknown`, and any
- * required-without-default prop are skipped (and, for required ones, flagged so
- * the caller can suppress the generated preview/snippet entirely).
+ * `text -> input`, `number -> number input` — all become controls, synthesizing
+ * an initial value (`false` / first option / `''` / `0`) when no default is
+ * given, so a required supported prop is still adjustable. Only `snippet` and
+ * `unknown` props are skipped. Among those, a required `unknown` prop with no
+ * default also flags `hasUnsatisfiedRequired` (see {@link blocksGeneratedPreview})
+ * so the caller can suppress the generated preview/snippet entirely; a required
+ * `snippet` (e.g. the ubiquitous `children`) does not, since its content comes
+ * from the mounted example.
  */
 export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundModel {
   const controls: PlaygroundControl[] = [];

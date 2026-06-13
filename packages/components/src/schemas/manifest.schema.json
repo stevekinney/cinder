@@ -295,6 +295,7 @@
               "notes": {
                 "type": "array",
                 "description": "Free-form accessibility notes.",
+                "minItems": 1,
                 "items": { "type": "string", "minLength": 1, "maxLength": 280 }
               }
             }

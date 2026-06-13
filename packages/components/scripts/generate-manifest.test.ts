@@ -305,6 +305,21 @@ describe('manifest schema', () => {
     expect(valid).toBe(false);
   });
 
+  it('rejects an empty a11y notes array (minItems aligns the schema with the runtime guard)', () => {
+    // The runtime guard `isA11yMetadata` rejects `notes: []`, and the generator
+    // only emits `notes` when non-empty; the schema must agree so a schema-valid
+    // payload can never be rejected at runtime.
+    const manifest = buildSyntheticManifest();
+    manifest.components = [
+      {
+        ...SYNTHETIC_COMPONENTS[0]!,
+        a11y: { notes: [] },
+      },
+    ];
+    const valid = validateManifest(manifest);
+    expect(valid).toBe(false);
+  });
+
   it('rejects a component entry missing the required "id" field', () => {
     const manifest = buildSyntheticManifest();
     const { id: _id, ...withoutId } = SYNTHETIC_COMPONENTS[0]!;

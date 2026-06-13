@@ -78,6 +78,19 @@
   {#if scenarios.length === 0}
     <h1 class="snapshot-empty-heading">{emptyHeading}</h1>
   {:else}
+    <!--
+      The key folds in `revision` so a `bump()` fully detaches and reattaches
+      every container, exercising the `@attach` mount/unmount lifecycle. The
+      `id`, by contrast, stays `example-mount-<scenario>` (revision-free) on
+      purpose: it mirrors `component-page.svelte`, whose id format is the
+      contract the `packages/testing` browser suite queries. Folding `revision`
+      into the id would diverge from that contract and make this a worse
+      regression harness. A `bump()` flush can momentarily hold the old and new
+      nodes — same id — at once, but every test reads the DOM only after
+      `await tick()`, when exactly one node per scenario remains; the probe
+      self-identifies from its own `parentElement`, never a global id lookup, so
+      the transient is unobservable.
+    -->
     {#each scenarios as scenario (`${scenario}-${revision}`)}
       <div
         class="example-preview"

@@ -64,6 +64,10 @@ describe('isA11yMetadata', () => {
     expect(isA11yMetadata({ notes: [''] })).toBe(false);
   });
 
+  test('rejects an empty notes array (mirrors manifest.schema.json minItems)', () => {
+    expect(isA11yMetadata({ notes: [] })).toBe(false);
+  });
+
   test('rejects unknown top-level keys', () => {
     expect(isA11yMetadata({ pattern: 'X', extra: true })).toBe(false);
   });
