@@ -1,11 +1,6 @@
 /**
- * Public types for the selection popover manager (DEP-422).
- *
- * Declared in a separate `.ts` file so they are processed by the standard
- * TypeScript compiler path rather than going through the Svelte module
- * compiler (`compileModule`) — `export interface` is valid TypeScript but
- * is not emitted in the Svelte-compiled JS output, which confuses the Bun
- * plugin's pre-commit resolution chain.
+ * Public types for the selection popover manager, in a plain `.ts` file so the
+ * standard TypeScript compiler (not Svelte's `compileModule`) emits them.
  */
 import type { ThreadCreateEvent } from '@lostgradient/cinder/commentary/comments';
 import type { EditorView } from '@milkdown/kit/prose/view';
@@ -13,12 +8,12 @@ import type {
   PopoverPosition,
   ReviewMode,
   ReviewEditorViewType as ViewType,
-} from './review-editor-types';
+} from './review-editor-types.ts';
 
 /**
  * Options for creating the selection popover manager.
  */
-export interface SelectionPopoverOptions {
+export type SelectionPopoverOptions = {
   /** Get the component ID */
   getId: () => string;
   /** Get the main editor area element (for scoping selection checks) */
@@ -37,12 +32,12 @@ export interface SelectionPopoverOptions {
   announce: (message: string, priority?: 'polite' | 'assertive') => void;
   /** Event callback for thread creation */
   onthreadcreate?: (event: ThreadCreateEvent) => void;
-}
+};
 
 /**
  * Selection popover manager interface.
  */
-export interface SelectionPopover {
+export type SelectionPopover = {
   /** Position for the selection popover (viewport-relative) */
   readonly position: PopoverPosition | null;
   /** Captured selection range for thread creation */
@@ -70,4 +65,4 @@ export interface SelectionPopover {
 
   /** Destroy the manager and clean up resources */
   destroy(): void;
-}
+};

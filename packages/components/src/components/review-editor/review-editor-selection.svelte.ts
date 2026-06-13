@@ -27,8 +27,6 @@ import { getSelectionAnchorPosition } from './review-editor-selection-geometry.t
 import type { SelectionPopover, SelectionPopoverOptions } from './review-editor-selection-types.ts';
 import type { PopoverPosition } from './review-editor-types';
 
-export type { SelectionPopover, SelectionPopoverOptions } from './review-editor-selection-types.ts';
-
 /** Debounce delay for selection position calculation (ms) */
 const SELECTION_DEBOUNCE_MS = 20;
 
