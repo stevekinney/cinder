@@ -31,8 +31,8 @@ export type {
 export { createThreadManager } from './review-editor-threads.svelte';
 export type { ThreadManager, ThreadManagerOptions } from './review-editor-threads.svelte';
 
+export type { SelectionPopover, SelectionPopoverOptions } from './review-editor-selection-types.ts';
 export { createSelectionPopover } from './review-editor-selection.svelte';
-export type { SelectionPopover, SelectionPopoverOptions } from './review-editor-selection.svelte';
 
 export { createAnchorManager, toPersistedThreads } from './review-editor-anchors.svelte';
 export type { AnchorManager, AnchorManagerOptions } from './review-editor-anchors.svelte';

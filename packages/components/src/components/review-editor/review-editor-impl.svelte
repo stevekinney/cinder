@@ -59,7 +59,10 @@
     ReviewEditorDiffViewMode as DiffViewMode,
     ReviewEditorViewType as ViewType,
   } from './review-editor-types.ts';
-  import { getSelectionAnchorPosition } from './review-editor-selection-geometry.ts';
+  import {
+    getSelectionAnchorPosition,
+    type SelectionAnchorPosition,
+  } from './review-editor-selection-geometry.ts';
   import DiffViewer from '../diff-viewer/diff-viewer.svelte';
   import SelectionPopover from '../selection-popover/selection-popover.svelte';
   import { computeLineDiff, getDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
@@ -217,7 +220,7 @@
   // =========================================================================
 
   /** Position for the selection popover (viewport-relative) */
-  let selectionPopoverPosition = $state<{ x: number; y: number } | null>(null);
+  let selectionPopoverPosition = $state<SelectionAnchorPosition | null>(null);
 
   /**
    * Captured selection range for thread creation.

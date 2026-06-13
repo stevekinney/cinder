@@ -1,6 +1,8 @@
 export type SelectionAnchorPosition = {
   x: number;
   y: number;
+  /** Height of the selection rect in CSS pixels. */
+  height: number;
 };
 
 type SelectionRangeGeometry = Pick<Range, 'getBoundingClientRect' | 'getClientRects'>;
@@ -24,5 +26,6 @@ export function getSelectionAnchorPosition(
   return {
     x: rect.left + rect.width / 2,
     y: rect.top,
+    height: rect.height,
   };
 }

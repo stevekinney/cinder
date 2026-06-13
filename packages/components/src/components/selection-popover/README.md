@@ -18,7 +18,7 @@ const rect =
   Array.from(range.getClientRects()).find((clientRect) => {
     return clientRect.width > 0 && clientRect.height > 0;
   }) ?? range.getBoundingClientRect();
-position = { x: rect.left + rect.width / 2, y: rect.top };
+position = { x: rect.left + rect.width / 2, y: rect.top, height: rect.height };
 ```
 
 The component treats that point as a Floating UI virtual anchor, not as the panel's top-left corner. It prefers an above-selection placement, but shifts or flips near viewport edges. Coordinates are **not** relative to a containing element — do not pass offsetLeft/offsetTop or any container-relative value.
@@ -68,7 +68,7 @@ The component treats that point as a Floating UI virtual anchor, not as the pane
         position = null;
         return;
       }
-      position = { x: rect.left + rect.width / 2, y: rect.top };
+      position = { x: rect.left + rect.width / 2, y: rect.top, height: rect.height };
       isOpen = true;
     }
 

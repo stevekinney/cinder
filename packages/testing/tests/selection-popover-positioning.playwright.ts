@@ -319,9 +319,41 @@ test('selection flush to viewport top places popover below the selection without
   // offset = selection.top + 8`, which overlapped the selection line.
   const page = await openPage(componentPage);
 
-  // Scroll the page so the first line of the basic example is at the very top
-  // of the viewport (y ≈ 0), giving no room above for a `top` placement and
-  // forcing a bottom-placement flip.
+  // Step 1: scroll so the target text is at the very top of the viewport,
+  // giving no room above for a `top` placement and forcing a bottom-placement
+  // flip. Scroll and selection geometry are split into separate evaluate calls
+  // with a waitForFunction boundary between them so the browser frame settles
+  // after the scroll before we capture post-scroll coordinates.
+  await page.evaluate(() => {
+    function findTextNode(root: Node, searchText: string): Text | null {
+      if (root.nodeType === Node.TEXT_NODE && root.textContent?.includes(searchText)) {
+        const parentElement = root.parentElement;
+        if (parentElement && parentElement.getClientRects().length > 0) {
+          return root as Text;
+        }
+      }
+      for (const child of Array.from(root.childNodes)) {
+        const found = findTextNode(child, searchText);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    const textNode = findTextNode(document.body, 'appears near highlighted text');
+    if (!textNode) throw new Error('Text "appears near highlighted text" not found.');
+
+    const initialRect = textNode.parentElement?.getBoundingClientRect();
+    if (initialRect) {
+      window.scrollBy(0, initialRect.top);
+    }
+  });
+
+  // Wait for the scroll to settle so viewport-relative coordinates are stable.
+  await page.waitForFunction(() => window.scrollY > 0);
+
+  // Step 2: now that the frame has settled, create the selection and capture
+  // post-scroll geometry. The anchorBox.y must be near 0 because the text is
+  // flush with the viewport top.
   const selectionGeometry = await page.evaluate(() => {
     function findTextNode(root: Node, searchText: string): Text | null {
       if (root.nodeType === Node.TEXT_NODE && root.textContent?.includes(searchText)) {
@@ -340,12 +372,6 @@ test('selection flush to viewport top places popover below the selection without
     const selectedText = 'appears near highlighted text';
     const textNode = findTextNode(document.body, selectedText);
     if (!textNode) throw new Error(`Text "${selectedText}" not found.`);
-
-    // Scroll so the text is at the very top of the viewport.
-    const initialRect = textNode.parentElement?.getBoundingClientRect();
-    if (initialRect) {
-      window.scrollBy(0, initialRect.top);
-    }
 
     const sourceText = textNode.textContent ?? '';
     const start = sourceText.indexOf(selectedText);
