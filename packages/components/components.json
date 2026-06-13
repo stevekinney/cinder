@@ -1358,8 +1358,12 @@
         "Offering common presets (last 7 days, last 24 hours) alongside a manual date range."
       ],
       "avoidWhen": [
-        "A single date is sufficient — use a plain date input instead.",
-        "Date-time precision (hours/minutes/timezone) is required — this v1 is date-only."
+        {
+          "reason": "A single date is sufficient — use a plain date input instead."
+        },
+        {
+          "reason": "Date-time precision (hours/minutes/timezone) is required — this v1 is date-only."
+        }
       ],
       "related": ["input", "form-field", "chip", "segmented-control"],
       "hasConstraints": false,
@@ -1780,8 +1784,12 @@
         "Showing an append-only diagnostic stream with filtering, copy, and structured detail expansion."
       ],
       "avoidWhen": [
-        "Showing a social activity feed or notification timeline — use feed instead.",
-        "Rendering paginated historical records with sorting — use data-table instead."
+        {
+          "reason": "Showing a social activity feed or notification timeline — use feed instead."
+        },
+        {
+          "reason": "Rendering paginated historical records with sorting — use data-table instead."
+        }
       ],
       "related": ["feed", "timeline", "json-viewer", "connection-indicator", "copy-button"],
       "hasConstraints": false,
@@ -1806,8 +1814,12 @@
         "Showing applied filters as removable chips so users can see and undo active constraints."
       ],
       "avoidWhen": [
-        "A single search field or one select is sufficient — compose SearchField or Select directly.",
-        "Filtering navigates to a new page — the bar owns no routing or persistence."
+        {
+          "reason": "A single search field or one select is sufficient — compose SearchField or Select directly."
+        },
+        {
+          "reason": "Filtering navigates to a new page — the bar owns no routing or persistence."
+        }
       ],
       "related": ["search-field", "chip", "select", "toolbar"],
       "hasConstraints": false,
@@ -2164,7 +2176,9 @@
         "Building a UI for configuring which agents or services run based on event conditions."
       ],
       "avoidWhen": [
-        "You need to execute, validate, or persist rules — cinder owns none of that logic."
+        {
+          "reason": "You need to execute, validate, or persist rules — cinder owns none of that logic."
+        }
       ],
       "related": ["capability-gate", "steps", "review-editor"],
       "hasConstraints": false,
@@ -2741,8 +2755,12 @@
         "Displaying a structured payload with metadata like content type, source, and timestamp."
       ],
       "avoidWhen": [
-        "Rendering a raw code block only — use code-block directly instead.",
-        "Needing search, filtering, or virtualization over large collections — compose a custom viewer."
+        {
+          "reason": "Rendering a raw code block only — use code-block directly instead."
+        },
+        {
+          "reason": "Needing search, filtering, or virtualization over large collections — compose a custom viewer."
+        }
       ],
       "related": ["json-viewer", "code-block", "description-list", "copy-button"],
       "hasConstraints": false,
@@ -3061,8 +3079,12 @@
         "Showing a sequence where one step is currently active and prior steps have streamed in over time."
       ],
       "avoidWhen": [
-        "Guiding users through an interactive wizard where they choose what to do next — use steps instead.",
-        "Showing a flat timestamp-first event log without structured step state — use timeline instead."
+        {
+          "reason": "Guiding users through an interactive wizard where they choose what to do next — use steps instead."
+        },
+        {
+          "reason": "Showing a flat timestamp-first event log without structured step state — use timeline instead."
+        }
       ],
       "related": ["timeline", "steps", "status-dot", "progress", "badge", "collapsible"],
       "hasConstraints": false,
@@ -3144,8 +3166,12 @@
         "Displaying an existing masked key in a settings table where the full value should stay hidden."
       ],
       "avoidWhen": [
-        "The value is not sensitive and can be shown as plain text — use a code or input component.",
-        "You need inline editing of the secret value — use a password input instead."
+        {
+          "reason": "The value is not sensitive and can be shown as plain text — use a code or input component."
+        },
+        {
+          "reason": "You need inline editing of the secret value — use a password input instead."
+        }
       ],
       "related": ["copy-button", "input", "badge"],
       "hasConstraints": false,
