@@ -14,6 +14,12 @@
   `window.location.pathname`, the server-injected
   `__CINDER_EXAMPLES__`/`__CINDER_SCENARIOS__` globals, and several deep-imported
   cinder components — none of which the mount lifecycle depends on.
+
+  It also mirrors the real snapshot block's zero-example branch: when `scenarios`
+  is empty, render a single visible `.snapshot-empty-heading` instead of an empty
+  container. The visual-regression harness waits for `#app > *` to be VISIBLE
+  (non-zero box) before running axe, so a component with no `*.example.svelte`
+  files must still paint a non-empty child or the wait times out.
 -->
 <script lang="ts">
   import { mount, unmount } from 'svelte';
@@ -32,9 +38,14 @@
      * container — the churn the lifecycle must survive without orphaning trees.
      */
     revision?: number;
+    /**
+     * Mirrors the real block's `humanizeId(componentName)` so the empty-examples
+     * branch has a heading to render. Only read when `scenarios` is empty.
+     */
+    emptyHeading?: string | undefined;
   };
 
-  let { scenarios, registry, revision = 0 }: Props = $props();
+  let { scenarios, registry, revision = 0, emptyHeading = 'Component' }: Props = $props();
 
   // Mirrors component-page.svelte's `mountScenario` attachment: mount on attach,
   // unmount on detach, with the same registry lookup and error handling.
@@ -64,11 +75,15 @@
 </script>
 
 <div class="example-list">
-  {#each scenarios as scenario (`${scenario}-${revision}`)}
-    <div
-      class="example-preview"
-      id="example-mount-{scenario}"
-      {@attach mountScenario(scenario)}
-    ></div>
-  {/each}
+  {#if scenarios.length === 0}
+    <h1 class="snapshot-empty-heading">{emptyHeading}</h1>
+  {:else}
+    {#each scenarios as scenario (`${scenario}-${revision}`)}
+      <div
+        class="example-preview"
+        id="example-mount-{scenario}"
+        {@attach mountScenario(scenario)}
+      ></div>
+    {/each}
+  {/if}
 </div>

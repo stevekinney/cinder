@@ -156,6 +156,35 @@ describe('component-page example-mount effect', () => {
     }
   });
 
+  test('renders a visible heading (not an empty container) when there are no scenarios', async () => {
+    // A component with no `*.example.svelte` files reaches snapshot mode with an
+    // empty examples list. The old block rendered only `{#each examples}`, so the
+    // snapshot container had zero children and zero height — and the
+    // visual-regression harness's `waitForSelector('#app > *', {state:'visible'})`
+    // (visible = non-zero box) timed out after 20s for every such component. The
+    // empty branch must paint a non-empty child instead.
+    const { unmount } = render(Driver, {
+      scenarios: [],
+      registry: {},
+      emptyHeading: 'Banner',
+    });
+    await tick();
+
+    // No mount containers and no probes — there is nothing to mount.
+    expect(containerCount()).toBe(0);
+    expect(probeMarkerCount()).toBe(0);
+
+    // But the container is NOT empty: a single visible heading stands in.
+    const heading = document.querySelector('.snapshot-empty-heading');
+    expect(heading).not.toBeNull();
+    expect(heading?.textContent).toBe('Banner');
+    // The heading is the snapshot container's sole child, so the container has
+    // content to give it a non-zero box under the visual-regression harness.
+    expect(document.querySelector('.example-list')?.children.length).toBe(1);
+
+    unmount();
+  });
+
   test('skips scenarios with no registered component without crashing', async () => {
     const scenarios = ['alpha', 'missing'];
     const registry = registryFor(scenarios);

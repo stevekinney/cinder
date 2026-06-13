@@ -461,13 +461,22 @@
        Shiki code blocks (low-contrast tokens), the hero, scroll-spy, etc. to
        every component's snapshot — so we render only the example mounts. -->
   <div class="snapshot-examples" data-component-page>
-    {#each examples as { scenario } (scenario)}
-      <div
-        class="example-preview"
-        id="example-mount-{scenario}"
-        {@attach mountScenario(scenario)}
-      ></div>
-    {/each}
+    {#if examples.length === 0}
+      <!-- Components without `*.example.svelte` files have nothing to mount. The
+           test harness still waits for `#app > *` to be VISIBLE (non-zero box)
+           before running axe, so an empty container would resolve to `hidden`
+           and time out. Render a visible, axe-clean heading so the snapshot has
+           deterministic, contrast-safe content. -->
+      <h1 class="snapshot-empty-heading">{humanizeId(componentName)}</h1>
+    {:else}
+      {#each examples as { scenario } (scenario)}
+        <div
+          class="example-preview"
+          id="example-mount-{scenario}"
+          {@attach mountScenario(scenario)}
+        ></div>
+      {/each}
+    {/if}
   </div>
 {:else}
   <div class="dx" data-component-page>
@@ -1573,6 +1582,16 @@
     flex-direction: column;
     gap: var(--cinder-space-6);
     background: light-dark(oklch(100% 0 0), var(--cinder-bg));
+  }
+
+  .snapshot-empty-heading {
+    margin: 0;
+    font-family: var(--cinder-font-sans);
+    font-size: var(--cinder-text-xl);
+    font-weight: var(--cinder-font-weight-semibold);
+    /* Explicit token (not `inherit`) so contrast is computed against the white
+       snapshot surface, keeping axe's color-contrast check green. */
+    color: var(--cinder-text);
   }
 
   .example-preview {
