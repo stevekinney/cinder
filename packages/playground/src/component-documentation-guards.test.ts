@@ -25,6 +25,20 @@ describe('isAvoidWhenArray', () => {
     expect(isAvoidWhenArray([{ reason: 'ok', extra: 'nope' }])).toBe(false);
   });
 
+  test('enforces the schema maxLength on reason (≤140) and alternative (≤64)', () => {
+    // A reason at the 140-char cap passes; one character over is rejected, so an
+    // oversized (schema-invalid) payload can't slip past the runtime guard.
+    expect(isAvoidWhenArray([{ reason: 'r'.repeat(140) }])).toBe(true);
+    expect(isAvoidWhenArray([{ reason: 'r'.repeat(141) }])).toBe(false);
+
+    // A kebab alternative at the 64-char cap passes; 65 is rejected. (Padded with
+    // hyphens so the value stays kebab-valid and only the length is under test.)
+    const altAtCap = `a${'-a'.repeat(31)}b`; // 64 chars, valid kebab
+    expect(altAtCap.length).toBe(64);
+    expect(isAvoidWhenArray([{ reason: 'ok', alternative: altAtCap }])).toBe(true);
+    expect(isAvoidWhenArray([{ reason: 'ok', alternative: `${altAtCap}-c` }])).toBe(false);
+  });
+
   test('rejects non-object or non-array shapes', () => {
     expect(isAvoidWhenArray('nope')).toBe(false);
     expect(isAvoidWhenArray([null])).toBe(false);
@@ -70,5 +84,20 @@ describe('isA11yMetadata', () => {
 
   test('rejects unknown top-level keys', () => {
     expect(isA11yMetadata({ pattern: 'X', extra: true })).toBe(false);
+  });
+
+  test('enforces the schema maxLength caps (pattern 80, keys/action 120, notes 280)', () => {
+    // Each field passes at its cap and is rejected one character over, so an
+    // oversized (schema-invalid) a11y payload can't pass the runtime guard.
+    expect(isA11yMetadata({ pattern: 'p'.repeat(80) })).toBe(true);
+    expect(isA11yMetadata({ pattern: 'p'.repeat(81) })).toBe(false);
+
+    expect(isA11yMetadata({ keyboard: [{ keys: 'k'.repeat(120), action: 'do' }] })).toBe(true);
+    expect(isA11yMetadata({ keyboard: [{ keys: 'k'.repeat(121), action: 'do' }] })).toBe(false);
+    expect(isA11yMetadata({ keyboard: [{ keys: 'Enter', action: 'a'.repeat(120) }] })).toBe(true);
+    expect(isA11yMetadata({ keyboard: [{ keys: 'Enter', action: 'a'.repeat(121) }] })).toBe(false);
+
+    expect(isA11yMetadata({ notes: ['n'.repeat(280)] })).toBe(true);
+    expect(isA11yMetadata({ notes: ['n'.repeat(281)] })).toBe(false);
   });
 });

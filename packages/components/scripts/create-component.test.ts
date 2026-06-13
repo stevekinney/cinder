@@ -83,6 +83,23 @@ describe('renderSvelte @cinder block', () => {
     expect(result.metadata.purpose.length).toBeGreaterThan(0);
   });
 
+  it('scaffolds an @avoidWhen with a reason but NO dangling alternative', () => {
+    // The scaffold once shipped `@avoidWhen <reason> | alternative-component-id`,
+    // whose placeholder id is not a real component. It passes extraction but
+    // fails manifest generation's dangling-alternative cross-check the moment the
+    // scaffolded component is added to the tree. The template must therefore emit
+    // a reason-only entry; an author opts into an alternative deliberately.
+    const source = renderSvelte(buildContext('my-widget'));
+    const result = extractFromSource(source, 'my-widget', '/virtual/my-widget.svelte', false);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error.reason);
+    expect(result.metadata.avoidWhen).toHaveLength(1);
+    const [entry] = result.metadata.avoidWhen;
+    expect(entry?.reason.length).toBeGreaterThan(0);
+    expect(entry?.alternative).toBeUndefined();
+  });
+
   it('imports class-names two levels up for a stable component (src/components/<name>/)', () => {
     const source = renderSvelte(buildContext('my-widget'));
     expect(source).toContain("import { classNames } from '../../utilities/class-names.ts';");
