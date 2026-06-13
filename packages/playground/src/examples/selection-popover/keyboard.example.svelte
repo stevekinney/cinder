@@ -38,6 +38,7 @@
     return {
       x: rect.left + rect.width / 2,
       y: rect.top,
+      height: rect.height,
     };
   }
 

@@ -50,6 +50,13 @@
   const virtualAnchor = $derived.by<VirtualElement | null>(() => {
     if (!position) return null;
 
+    // Use the selection height when provided so floating-ui sees the real bottom
+    // edge of the selection. Without this, `bottom` equals `top` (zero-height
+    // point anchor), and when `flip` switches to bottom-placement the panel's
+    // top is set to `anchor.bottom + offset = position.y + 8` — inside the
+    // selection line — causing the observed ~8.5 px overlap (issue #369).
+    const selectionHeight = position.height ?? 0;
+
     return {
       getBoundingClientRect: () =>
         ({
@@ -58,9 +65,9 @@
           top: position.y,
           left: position.x,
           right: position.x,
-          bottom: position.y,
+          bottom: position.y + selectionHeight,
           width: 0,
-          height: 0,
+          height: selectionHeight,
         }) as DOMRect,
     };
   });

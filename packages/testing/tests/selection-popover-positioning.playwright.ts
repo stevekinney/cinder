@@ -308,6 +308,110 @@ test('viewport edge anchors shift or flip inside the viewport', async ({ compone
   }
 });
 
+test('selection flush to viewport top places popover below the selection without overlapping', async ({
+  componentPage,
+}) => {
+  // Regression test for issue #369: when a selection sits flush against the
+  // viewport top and there is ample room below, the popover must anchor below
+  // the selection's BOTTOM edge (y + height), not its top edge. Without the
+  // fix, the virtual anchor had zero height so `bottom` equalled `top` — causing
+  // floating-ui's flip middleware to place the popover's top at `anchor.bottom +
+  // offset = selection.top + 8`, which overlapped the selection line.
+  const page = await openPage(componentPage);
+
+  // Scroll the page so the first line of the basic example is at the very top
+  // of the viewport (y ≈ 0), giving no room above for a `top` placement and
+  // forcing a bottom-placement flip.
+  const selectionGeometry = await page.evaluate(() => {
+    function findTextNode(root: Node, searchText: string): Text | null {
+      if (root.nodeType === Node.TEXT_NODE && root.textContent?.includes(searchText)) {
+        const parentElement = root.parentElement;
+        if (parentElement && parentElement.getClientRects().length > 0) {
+          return root as Text;
+        }
+      }
+      for (const child of Array.from(root.childNodes)) {
+        const found = findTextNode(child, searchText);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    const selectedText = 'appears near highlighted text';
+    const textNode = findTextNode(document.body, selectedText);
+    if (!textNode) throw new Error(`Text "${selectedText}" not found.`);
+
+    // Scroll so the text is at the very top of the viewport.
+    const initialRect = textNode.parentElement?.getBoundingClientRect();
+    if (initialRect) {
+      window.scrollBy(0, initialRect.top);
+    }
+
+    const sourceText = textNode.textContent ?? '';
+    const start = sourceText.indexOf(selectedText);
+    const range = document.createRange();
+    range.setStart(textNode, start);
+    range.setEnd(textNode, start + selectedText.length);
+
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+
+    const clientRects = Array.from(range.getClientRects()).filter(
+      (clientRect) => clientRect.width > 0 && clientRect.height > 0,
+    );
+    const anchorRect = clientRects[0] ?? range.getBoundingClientRect();
+
+    return {
+      anchorBox: {
+        x: anchorRect.x,
+        y: anchorRect.y,
+        width: anchorRect.width,
+        height: anchorRect.height,
+      },
+    };
+  });
+
+  // The selection must be near the viewport top (within one line height).
+  expect(selectionGeometry.anchorBox.y).toBeLessThanOrEqual(30);
+
+  const popover = page.locator('#basic-selection-popover');
+  await expect(popover).toHaveAttribute('data-cinder-position-ready', 'true');
+
+  // Poll until the popover is positioned and does not overlap the selection.
+  await waitForSelectionPopoverClearOfSelection(
+    page,
+    '#basic-selection-popover',
+    selectionGeometry.anchorBox,
+  );
+
+  const popoverBox = requireBox(await popover.boundingBox(), 'Flush-top selection popover');
+
+  // Primary assertion: no overlap — the bug caused ~8.5px overlap.
+  expect(boxesOverlap(selectionGeometry.anchorBox, popoverBox)).toBe(false);
+  // Popover must stay fully inside the viewport.
+  expectBoxInsideViewport(popoverBox, desktopViewport);
+  // With ample room below, the popover should use bottom placement.
+  const placement = await popover.getAttribute('data-cinder-placement');
+  expect(placement).toMatch(/^bottom/);
+
+  // Also verify the expanded composer does not overlap (the workaround sized
+  // the padding to 8rem specifically because the composer is ~114px tall).
+  await page.getByRole('button', { name: 'Add comment' }).first().click();
+  await expect(page.getByRole('textbox', { name: 'Comment text' })).toBeVisible();
+  await expect(popover).toHaveAttribute('data-cinder-position-ready', 'true');
+  await waitForSelectionPopoverClearOfSelection(
+    page,
+    '#basic-selection-popover',
+    selectionGeometry.anchorBox,
+  );
+
+  const expandedBox = requireBox(await popover.boundingBox(), 'Flush-top expanded composer');
+  expect(boxesOverlap(selectionGeometry.anchorBox, expandedBox)).toBe(false);
+  expectBoxInsideViewport(expandedBox, desktopViewport);
+});
+
 test('existing commented selection story renders and switches persisted anchors', async ({
   componentPage,
 }) => {
