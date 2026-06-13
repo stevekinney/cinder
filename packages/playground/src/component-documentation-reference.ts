@@ -1,3 +1,4 @@
+import { isA11yMetadata, isAvoidWhenArray } from './component-documentation-guards.ts';
 import type {
   ComponentDocumentationPayload,
   DocumentationComponentSummary,
@@ -59,11 +60,13 @@ function isDocumentationComponentSummary(value: unknown): value is Documentation
     typeof readProperty(value, 'purpose') === 'string' &&
     isStringArray(readProperty(value, 'tags')) &&
     isStringArray(readProperty(value, 'useWhen')) &&
-    isStringArray(readProperty(value, 'avoidWhen')) &&
+    isAvoidWhenArray(readProperty(value, 'avoidWhen')) &&
     isStringArray(readProperty(value, 'related')) &&
     typeof readProperty(value, 'hasConstraints') === 'boolean' &&
     typeof readProperty(value, 'hasExamples') === 'boolean' &&
-    isArtifactSpecifiers(readProperty(value, 'artifacts'))
+    isArtifactSpecifiers(readProperty(value, 'artifacts')) &&
+    typeof readProperty(value, 'packageVersion') === 'string' &&
+    (readProperty(value, 'a11y') === undefined || isA11yMetadata(readProperty(value, 'a11y')))
   );
 }
 

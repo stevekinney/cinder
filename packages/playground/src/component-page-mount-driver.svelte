@@ -10,6 +10,7 @@
   export type MountDriverProps = {
     scenarios: string[];
     registry: Record<string, unknown>;
+    emptyHeading?: string;
   };
 
   export type MountDriverHandle = {
@@ -20,7 +21,7 @@
 <script lang="ts">
   import Fixture from './component-page-mount-fixture.svelte';
 
-  let { scenarios, registry }: MountDriverProps = $props();
+  let { scenarios, registry, emptyHeading }: MountDriverProps = $props();
 
   let revision = $state(0);
 
@@ -30,4 +31,4 @@
   }
 </script>
 
-<Fixture {scenarios} {registry} {revision} />
+<Fixture {scenarios} {registry} {revision} {emptyHeading} />

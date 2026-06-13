@@ -9,12 +9,17 @@ setupHappyDom();
 const { fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: ContainerMock } = await import('./component-page-container-mock.svelte');
 const { default: AccordionItemMock } = await import('./component-page-accordion-item-mock.svelte');
+const { default: AlertMock } = await import('./component-page-alert-mock.svelte');
 const { default: BadgeMock } = await import('./component-page-badge-mock.svelte');
 const { default: ButtonMock } = await import('./component-page-button-mock.svelte');
 const { default: CalloutMock } = await import('./component-page-callout-mock.svelte');
-const { default: CardMock } = await import('./component-page-card-mock.svelte');
 const { default: CodeBlockMock } = await import('./component-page-code-block-mock.svelte');
+const { default: CollapsibleMock } = await import('./component-page-collapsible-mock.svelte');
+const { default: KbdMock } = await import('./component-page-kbd-mock.svelte');
 const { default: SkeletonMock } = await import('./component-page-skeleton-mock.svelte');
+const { default: StatusDotMock } = await import('./component-page-status-dot-mock.svelte');
+const { default: ToggleMock } = await import('./component-page-toggle-mock.svelte');
+const { default: TooltipMock } = await import('./component-page-tooltip-mock.svelte');
 const tableModule = (await import('./component-page-table-mock.svelte')) as unknown as {
   default: unknown;
   Header: unknown;
@@ -24,11 +29,9 @@ const tableModule = (await import('./component-page-table-mock.svelte')) as unkn
   Cell: unknown;
 };
 const probeModule = (await import('./component-page-scenario-probe.svelte')) as unknown as {
-  default: unknown;
-  ledgerFor: (scenario: string) => { mounts: number; unmounts: number; live: number };
   resetLedgers: () => void;
 };
-const { default: Probe, ledgerFor, resetLedgers } = probeModule;
+const { resetLedgers } = probeModule;
 const { tick } = await import('svelte');
 type TableMockComponent = {
   Header: unknown;
@@ -46,95 +49,97 @@ TableMock.Cell = tableModule.Cell;
 
 mock.module('@lostgradient/cinder/accordion', () => ({ Accordion: ContainerMock }));
 mock.module('@lostgradient/cinder/accordion-item', () => ({ AccordionItem: AccordionItemMock }));
+mock.module('@lostgradient/cinder/alert', () => ({ Alert: AlertMock }));
 mock.module('@lostgradient/cinder/badge', () => ({ Badge: BadgeMock }));
 mock.module('@lostgradient/cinder/button', () => ({ Button: ButtonMock }));
 mock.module('@lostgradient/cinder/callout', () => ({ Callout: CalloutMock }));
-mock.module('@lostgradient/cinder/card', () => ({ Card: CardMock }));
 mock.module('@lostgradient/cinder/code-block', () => ({ CodeBlock: CodeBlockMock }));
+mock.module('@lostgradient/cinder/collapsible', () => ({ Collapsible: CollapsibleMock }));
+mock.module('@lostgradient/cinder/kbd', () => ({ Kbd: KbdMock }));
 mock.module('@lostgradient/cinder/skeleton', () => ({ Skeleton: SkeletonMock }));
+mock.module('@lostgradient/cinder/status-dot', () => ({ StatusDot: StatusDotMock }));
 mock.module('@lostgradient/cinder/table', () => ({ Table: TableMock }));
+mock.module('@lostgradient/cinder/toggle', () => ({ Toggle: ToggleMock }));
+mock.module('@lostgradient/cinder/tooltip', () => ({ Tooltip: TooltipMock }));
 
 const { default: ComponentPage } = await import('./component-page.svelte');
 
-const documentationFixture: ComponentDocumentationPayload = {
-  component: {
-    id: 'button',
-    name: 'Button',
-    importSpecifier: '@lostgradient/cinder/button',
-    exportName: 'Button',
-    category: 'action',
-    categoryLabel: 'Actions',
-    categoryDescription: 'Controls that trigger operations, submit data, or navigate.',
-    status: 'stable',
-    statusDescription: 'Public API under semver protection.',
-    purpose: 'Fixture purpose for a documentation page.',
-    tags: ['action'],
-    useWhen: ['Triggering a fixture action.'],
-    avoidWhen: ['Selecting from a fixed set.'],
-    related: ['copy-button'],
-    hasConstraints: false,
-    hasExamples: true,
-    artifacts: {
-      schema: '@lostgradient/cinder/button/schema',
-      variables: '@lostgradient/cinder/button/variables',
-      constraints: '@lostgradient/cinder/button/constraints',
-      examples: '@lostgradient/cinder/button/examples',
-    },
-  },
-  readme: {
-    rawMarkdown: '# Button\n\nRendered README body.',
-    html: '<h1>Button</h1><p>Rendered README body.</p>',
-    codeBlocks: [],
-    hadUnsafeContent: false,
-  },
-  propsManifest: {
-    name: 'Button',
-    kebabName: 'button',
-    file: 'button.svelte',
-    importPath: '@lostgradient/cinder/button',
-    props: [],
-  },
-  schema: {
-    type: 'object',
-    required: ['variant'],
-    properties: {
-      variant: { type: 'string', enum: ['primary', 'secondary'] },
-    },
-  },
-  variables: ['--cinder-button-background'],
-  constraints: null,
-  examples: {
-    component: 'button',
-    examples: [{ id: 'primary', title: 'Primary', code: '<Button label="Save" />' }],
-  },
-  rawArtifacts: {
-    manifestEntry: {
+function baseFixture(): ComponentDocumentationPayload {
+  return {
+    component: {
       id: 'button',
       name: 'Button',
-      import: '@lostgradient/cinder/button',
+      importSpecifier: '@lostgradient/cinder/button',
+      exportName: 'Button',
+      category: 'action',
+      categoryLabel: 'Actions',
+      categoryDescription: 'Controls that trigger operations, submit data, or navigate.',
+      status: 'stable',
+      statusDescription: 'Public API under semver protection.',
+      purpose: 'Fixture purpose for a documentation page.',
+      tags: ['action'],
+      useWhen: ['Triggering a fixture action.'],
+      avoidWhen: [{ reason: 'Selecting from a fixed set.', alternative: 'segmented-control' }],
+      related: ['copy-button'],
+      hasConstraints: false,
+      hasExamples: true,
+      artifacts: {
+        schema: '@lostgradient/cinder/button/schema',
+        variables: '@lostgradient/cinder/button/variables',
+        constraints: '@lostgradient/cinder/button/constraints',
+        examples: '@lostgradient/cinder/button/examples',
+      },
+      packageVersion: '0.2.0',
+    },
+    readme: {
+      rawMarkdown: '# Button\n\nRendered README body.',
+      html: '<h1>Button</h1><p>Rendered README body.</p>',
+      codeBlocks: [],
+      hadUnsafeContent: false,
+    },
+    propsManifest: {
+      name: 'Button',
+      kebabName: 'button',
+      file: 'button.svelte',
+      importPath: '@lostgradient/cinder/button',
+      props: [
+        {
+          name: 'variant',
+          control: { kind: 'select', options: ['primary', 'secondary'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'primary',
+        },
+      ],
     },
     schema: {
       type: 'object',
-      properties: {
-        variant: { type: 'string' },
-      },
+      required: ['variant'],
+      properties: { variant: { type: 'string', enum: ['primary', 'secondary'] } },
     },
     variables: ['--cinder-button-background'],
     constraints: null,
     examples: {
       component: 'button',
-      examples: [{ id: 'primary' }],
+      examples: [{ id: 'primary', title: 'Primary', code: '<Button label="Save" />' }],
     },
-  },
-};
+    rawArtifacts: {
+      manifestEntry: { id: 'button', name: 'Button', import: '@lostgradient/cinder/button' },
+      schema: { type: 'object', properties: { variant: { type: 'string' } } },
+      variables: ['--cinder-button-background'],
+      constraints: null,
+      examples: { component: 'button', examples: [{ id: 'primary' }] },
+    },
+  };
+}
 
 const originalFetch = globalThis.fetch;
 
-function installDocumentationFetch(): void {
+function installDocumentationFetch(fixture: ComponentDocumentationPayload): void {
   globalThis.fetch = (async (url: string | URL | Request) => {
     const href = url instanceof Request ? url.url : String(url);
     if (href === '/api/documentation/button') {
-      return new Response(JSON.stringify(documentationFixture), {
+      return new Response(JSON.stringify(fixture), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -149,7 +154,7 @@ beforeEach(() => {
   happyWindow.happyDOM.setURL('http://localhost/page/button');
   Reflect.set(window, '__CINDER_EXAMPLES__', []);
   Reflect.set(window, '__CINDER_SCENARIOS__', {});
-  installDocumentationFetch();
+  installDocumentationFetch(baseFixture());
 });
 
 afterEach(() => {
@@ -158,73 +163,49 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('component-page documentation tabs', () => {
-  test('renders all documentation tabs from a fixture payload', async () => {
-    Reflect.set(window, '__CINDER_EXAMPLES__', [
-      {
-        scenario: 'primary',
-        title: 'Primary',
-        description: 'The default call to action.',
-        featured: true,
-      },
-      {
-        scenario: 'secondary',
-        title: 'Secondary',
-        description: 'A lower-emphasis action.',
-      },
-    ]);
-    Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe, secondary: Probe });
-
+describe('component-page single-scroll layout', () => {
+  test('renders the hero, spec card, and section anchors from a fixture', async () => {
     const { unmount } = render(ComponentPage);
 
-    for (const label of ['Documentation', 'Examples', 'Raw Artifacts']) {
-      expect(screen.getByRole('tab', { name: label })).toBeTruthy();
-    }
-    for (const removedTab of ['API', 'Styling', 'Constraints']) {
-      expect(screen.queryByRole('tab', { name: removedTab })).toBeNull();
-    }
-
-    // Examples is the default tab. Switch to Documentation to verify its content.
-    await fireEvent.click(screen.getByRole('tab', { name: 'Documentation' }));
-    await screen.findByText('Fixture purpose for a documentation page.');
-    expect(screen.getByText('Rendered README body.')).toBeTruthy();
-    expect(screen.queryByRole('heading', { level: 2, name: 'Overview' })).toBeNull();
     expect(await screen.findByRole('heading', { level: 1, name: 'Button' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Featured Examples' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Primary/ })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'API' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Styling' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Constraints' })).toBeTruthy();
+    expect(screen.getByText('Fixture purpose for a documentation page.')).toBeTruthy();
+    // Import line built from exportName + importSpecifier.
+    expect(screen.getByText("import { Button } from '@lostgradient/cinder/button';")).toBeTruthy();
+    // Spec card version row.
+    expect(screen.getByText('v0.2.0')).toBeTruthy();
+
+    // Section anchors resolve.
+    for (const id of ['overview', 'guidance', 'props', 'related']) {
+      expect(document.getElementById(id)).toBeTruthy();
+    }
+    // The README prose renders inside Overview.
+    expect(screen.getByText('Rendered README body.')).toBeTruthy();
 
     unmount();
     await tick();
   });
 
-  test('maps non-stable component status to a non-success badge variant', async () => {
-    const betaFixture: ComponentDocumentationPayload = {
-      ...documentationFixture,
-      component: {
-        ...documentationFixture.component,
-        status: 'beta',
-        statusDescription: 'API is near-final but may change before promotion.',
-      },
-    };
-    globalThis.fetch = (async (url: string | URL | Request) => {
-      const href = url instanceof Request ? url.url : String(url);
-      if (href === '/api/documentation/button') {
-        return new Response(JSON.stringify(betaFixture), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response('not found', { status: 404, statusText: 'Not Found' });
-    }) as typeof fetch;
+  test('renders the When to use / Avoid cards with the alternative link', async () => {
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    expect(screen.getByText('Triggering a fixture action.')).toBeTruthy();
+    expect(screen.getByText('Selecting from a fixed set.')).toBeTruthy();
+    // The avoidWhen alternative links to that component's page. The link text is
+    // the humanized id ("Segmented control"); the href keeps the kebab id.
+    const altLink = screen.getByRole('link', { name: /Segmented control/ });
+    expect(altLink.getAttribute('href')).toBe('/c/segmented-control');
+
+    unmount();
+    await tick();
+  });
+
+  test('maps a non-stable status to a non-success badge variant', async () => {
+    const beta = baseFixture();
+    beta.component.status = 'beta';
+    installDocumentationFetch(beta);
 
     const { unmount } = render(ComponentPage);
-
-    // Status badge is in the Documentation tab panel — click it first.
-    await fireEvent.click(screen.getByRole('tab', { name: 'Documentation' }));
-    await tick();
     const statusBadge = await screen.findByText('beta');
     expect(statusBadge.getAttribute('data-variant')).toBe('info');
 
@@ -232,110 +213,153 @@ describe('component-page documentation tabs', () => {
     await tick();
   });
 
-  test('mounts examples on first render (examples is the default tab)', async () => {
-    Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
-    Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
-
+  test('builds a TOC from the sections that have data', async () => {
     const { unmount } = render(ComponentPage);
-    await tick();
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
 
-    // Active tab's panel is in DOM; aria-controls points to the panel id.
-    const activeTab = screen.getByRole('tab', { name: 'Examples' });
-    const controlledPanel = activeTab.getAttribute('aria-controls');
-    expect(typeof controlledPanel).toBe('string');
-    expect(document.getElementById(controlledPanel ?? '')).toBeTruthy();
-
-    const exampleMount = document.getElementById('example-mount-primary');
-    expect(exampleMount).toBeTruthy();
-    expect(ledgerFor('primary').mounts).toBe(1);
-    expect(exampleMount?.querySelectorAll('.scenario-probe').length).toBe(1);
+    const nav = screen.getByRole('navigation', { name: 'On this page' });
+    const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
+    expect(labels.some((label) => label.includes('Overview'))).toBe(true);
+    expect(labels.some((label) => label.includes('When to use'))).toBe(true);
+    expect(labels.some((label) => label.includes('Props'))).toBe(true);
+    expect(labels.some((label) => label.includes('Related'))).toBe(true);
+    // No a11y data in the base fixture → no Accessibility entry.
+    expect(labels.some((label) => label.includes('Accessibility'))).toBe(false);
 
     unmount();
     await tick();
   });
 
-  test('opens the Examples tab by default', async () => {
-    Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
-    Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
+  test('omits the Accessibility section when the payload has no a11y data', async () => {
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    expect(document.getElementById('accessibility')).toBeNull();
+    unmount();
+    await tick();
+  });
+
+  test('renders the Accessibility section from a11y metadata', async () => {
+    const withA11y = baseFixture();
+    withA11y.component.a11y = {
+      pattern: 'WAI-ARIA Button',
+      keyboard: [{ keys: 'Enter / Space', action: 'Activates the button.' }],
+      notes: ['Uses a native button element.'],
+    };
+    installDocumentationFetch(withA11y);
 
     const { unmount } = render(ComponentPage);
-    await tick();
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
 
-    const examplesTab = screen.getByRole('tab', { name: 'Examples' });
-    expect(examplesTab.getAttribute('aria-selected')).toBe('true');
-    // Active panel is in DOM; inactive panels are unmounted by Cinder TabPanel.
-    const examplesPanel = document.getElementById(examplesTab.getAttribute('aria-controls') ?? '');
-    expect(examplesPanel).toBeTruthy();
-    expect(document.getElementById('example-mount-primary')).toBeTruthy();
+    expect(document.getElementById('accessibility')).toBeTruthy();
+    expect(screen.getByText(/Implements the WAI-ARIA Button pattern/)).toBeTruthy();
+    // Keyboard table built from Kbd.
+    expect(screen.getByText('Enter / Space')).toBeTruthy();
+    expect(screen.getByText('Activates the button.')).toBeTruthy();
+    expect(screen.getByText('Uses a native button element.')).toBeTruthy();
 
     unmount();
     await tick();
   });
 
-  test('opens a requested documentation tab from the tab query parameter', async () => {
-    const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
-    happyWindow.happyDOM.setURL('http://localhost/page/button?tab=overview');
-    Reflect.set(window, '__CINDER_EXAMPLES__', [{ scenario: 'primary', title: 'Primary' }]);
-    Reflect.set(window, '__CINDER_SCENARIOS__', { primary: Probe });
+  test('omits the Related section when there are no related components', async () => {
+    const noRelated = baseFixture();
+    noRelated.component.related = [];
+    installDocumentationFetch(noRelated);
 
     const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    expect(document.getElementById('related')).toBeNull();
+    unmount();
     await tick();
+  });
 
-    const docTab = screen.getByRole('tab', { name: 'Documentation' });
-    expect(docTab.getAttribute('aria-selected')).toBe('true');
-    // Active panel is in DOM; inactive panels are unmounted by Cinder TabPanel.
-    const docPanel = document.getElementById(docTab.getAttribute('aria-controls') ?? '');
-    expect(docPanel).toBeTruthy();
+  test('omits the Guidance section when useWhen and avoidWhen are both empty', async () => {
+    const noGuidance = baseFixture();
+    noGuidance.component.useWhen = [];
+    noGuidance.component.avoidWhen = [];
+    installDocumentationFetch(noGuidance);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    expect(document.getElementById('guidance')).toBeNull();
+
+    const nav = screen.getByRole('navigation', { name: 'On this page' });
+    const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
+    expect(labels.some((label) => label.includes('When to use'))).toBe(false);
 
     unmount();
     await tick();
   });
 
-  test('supports ARIA tab keyboard navigation', async () => {
+  test('shows the Playground with a control derived from a select prop', async () => {
     const { unmount } = render(ComponentPage);
-    // Examples tab is active by default; wait for the fetch to populate the panel.
-    await screen.findByText(/No examples found for/);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
 
-    const documentation = screen.getByRole('tab', { name: 'Documentation' });
-    const examples = screen.getByRole('tab', { name: 'Examples' });
-    const rawArtifacts = screen.getByRole('tab', { name: 'Raw Artifacts' });
-
-    // Click Documentation first so ArrowRight proves a real transition (examples → not selected).
-    await fireEvent.click(documentation);
-    await tick();
-    expect(documentation.getAttribute('aria-selected')).toBe('true');
-
-    documentation.focus();
-    await fireEvent.keyDown(documentation, { key: 'ArrowRight' });
-    await tick();
-    expect(examples.getAttribute('aria-selected')).toBe('true');
-
-    await fireEvent.keyDown(examples, { key: 'End' });
-    await tick();
-    expect(rawArtifacts.getAttribute('aria-selected')).toBe('true');
-
-    await fireEvent.keyDown(rawArtifacts, { key: 'Home' });
-    await tick();
-    expect(documentation.getAttribute('aria-selected')).toBe('true');
+    // `variant` is a select prop with a default → a control is generated.
+    expect(document.getElementById('playground')).toBeTruthy();
+    const select = await screen.findByLabelText('variant');
+    expect(select.tagName).toBe('SELECT');
 
     unmount();
     await tick();
   });
 
-  test('raw artifact panels render valid JSON in CodeBlock', async () => {
+  test('omits the Playground when a required non-snippet prop has no default', async () => {
+    const required = baseFixture();
+    // A required `unknown` prop with no default can't be synthesized, so the
+    // generated playground is suppressed entirely (and dropped from the TOC).
+    required.propsManifest.props = [
+      {
+        name: 'value',
+        control: { kind: 'unknown', rawType: 'CustomValue' },
+        bindable: false,
+        optional: false,
+      },
+    ];
+    installDocumentationFetch(required);
+
     const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    expect(document.getElementById('playground')).toBeNull();
 
-    await fireEvent.click(screen.getByRole('tab', { name: 'Raw Artifacts' }));
-    await screen.findByRole('heading', { name: 'Raw Artifacts' });
+    const nav = screen.getByRole('navigation', { name: 'On this page' });
+    const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
+    expect(labels.some((label) => label.includes('Playground'))).toBe(false);
 
+    unmount();
+    await tick();
+  });
+
+  // NOTE: the live-preview mount lifecycle (attachment mounts the registered
+  // scenario into both the Overview and Examples containers, with cleanup parity)
+  // is covered in `component-page-mount.test.ts`, which drives the attachment in
+  // isolation. It can't be exercised here because `component-page.svelte` reads
+  // `window.__CINDER_EXAMPLES__` into a module-level const at import time — before
+  // this file's `beforeEach` can set it — so the examples list is empty here.
+
+  test('surfaces a documentation fetch failure', async () => {
+    globalThis.fetch = (async (_url: string | URL | Request) =>
+      new Response('boom', { status: 500, statusText: 'Server Error' })) as typeof fetch;
+
+    const { unmount } = render(ComponentPage);
     await waitFor(() => {
-      expect(window.location.search).toContain('tab=raw-artifacts');
-      const blocks = Array.from(document.querySelectorAll('.raw-artifact-panel pre'));
-      expect(blocks.length).toBe(5);
-      for (const block of blocks) {
-        expect(block.getAttribute('data-highlight')).toBe('on');
-        expect(() => JSON.parse(block.querySelector('code')?.textContent ?? '')).not.toThrow();
-      }
+      expect(screen.getByText(/Could not load documentation/)).toBeTruthy();
+    });
+
+    unmount();
+    await tick();
+  });
+
+  test('lazily renders raw-artifact code blocks only after the collapsible opens', async () => {
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    // Before opening, the raw-artifact panels are not rendered.
+    expect(document.querySelectorAll('.dx-raw__panel').length).toBe(0);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Raw artifacts' }));
+    await waitFor(() => {
+      expect(document.querySelectorAll('.dx-raw__panel').length).toBe(5);
     });
 
     unmount();

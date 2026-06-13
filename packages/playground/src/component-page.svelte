@@ -3,17 +3,28 @@
   import { mount, unmount } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
   import { AccordionItem } from '@lostgradient/cinder/accordion-item';
+  import { Alert } from '@lostgradient/cinder/alert';
   import { Badge } from '@lostgradient/cinder/badge';
   import { Button } from '@lostgradient/cinder/button';
   import { Callout } from '@lostgradient/cinder/callout';
-  import { Card } from '@lostgradient/cinder/card';
   import { CodeBlock } from '@lostgradient/cinder/code-block';
+  import { Collapsible } from '@lostgradient/cinder/collapsible';
+  import { Kbd } from '@lostgradient/cinder/kbd';
   import { Skeleton } from '@lostgradient/cinder/skeleton';
+  import { StatusDot } from '@lostgradient/cinder/status-dot';
   import { Table } from '@lostgradient/cinder/table';
-  import { Tab } from '@lostgradient/cinder/tab';
-  import { TabList } from '@lostgradient/cinder/tab-list';
-  import { TabPanel } from '@lostgradient/cinder/tab-panel';
-  import { Tabs } from '@lostgradient/cinder/tabs';
+  import { Toggle } from '@lostgradient/cinder/toggle';
+  import { Tooltip } from '@lostgradient/cinder/tooltip';
+  import Accessibility from 'lucide-svelte/icons/accessibility';
+  import ArrowUpRight from 'lucide-svelte/icons/arrow-up-right';
+  import Check from 'lucide-svelte/icons/check';
+  import Copy from 'lucide-svelte/icons/copy';
+  import Github from 'lucide-svelte/icons/github';
+  import Moon from 'lucide-svelte/icons/moon';
+  import ShieldCheck from 'lucide-svelte/icons/shield-check';
+  import Sliders from 'lucide-svelte/icons/sliders-horizontal';
+  import Sun from 'lucide-svelte/icons/sun';
+  import X from 'lucide-svelte/icons/x';
   import { splitReadmeHtml } from './split-readme-html.ts';
   import {
     formatErrorForClipboard,
@@ -21,17 +32,18 @@
     type MountErrorDetail,
     type SourceErrorDetail,
   } from './example-error.ts';
-  import {
-    fetchComponentDocumentation,
-    schemaPropertyNames,
-    schemaRequiredPropertyNames,
-    variablesList,
-  } from './component-documentation-reference.ts';
+  import { fetchComponentDocumentation } from './component-documentation-reference.ts';
   import type {
     ComponentDocumentationPayload,
     JsonValue,
   } from './component-documentation-types.ts';
   import { splitUnionType, toPropReferenceRows } from './manifest-reference.ts';
+  import { computeActiveSection, type SectionOffset } from './component-page-scroll-spy.ts';
+  import {
+    buildPlaygroundModel,
+    buildSnippet,
+    type PlaygroundValue,
+  } from './component-page-playground.ts';
 
   type CinderExampleDescriptor = {
     scenario: string;
@@ -41,29 +53,13 @@
   };
   type CinderWindow = Window &
     typeof globalThis & { __CINDER_EXAMPLES__?: CinderExampleDescriptor[] };
-  type DocumentationTabId = 'overview' | 'examples' | 'raw-artifacts';
   type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
-  type ConstraintRuleSummary = {
-    id: string;
-    severity: string | undefined;
-    description: string;
-    kind: string | undefined;
-  };
-  type ConstraintExampleSummary = {
-    title: string;
-    code: string;
-    violates: string | undefined;
-  };
+  type StatusDotStatus = 'online' | 'warning' | 'error' | 'pending' | 'neutral' | 'accent';
 
-  const documentationTabs: { id: DocumentationTabId; label: string }[] = [
-    { id: 'overview', label: 'Documentation' },
-    { id: 'examples', label: 'Examples' },
-    { id: 'raw-artifacts', label: 'Raw Artifacts' },
-  ];
-  const documentationTabSearchParam = 'tab';
+  // Height of the sticky top bar, in pixels — used for scroll-spy activation
+  // and smooth-scroll offset so anchored sections clear the bar.
+  const TOP_BAR_HEIGHT = 52;
 
-  // The server injects window.__CINDER_EXAMPLES__ before the bundle script tag.
-  // Fall back to an empty array so the component doesn't crash if the global is missing.
   function readExamples(): CinderExampleDescriptor[] {
     if (typeof window === 'undefined') return [];
     const raw = (window as CinderWindow).__CINDER_EXAMPLES__;
@@ -71,122 +67,75 @@
   }
 
   const examples: CinderExampleDescriptor[] = readExamples();
-  const explicitlyFeaturedExamples = examples.filter((example) => example.featured === true);
-  const overviewFeaturedExamples =
-    explicitlyFeaturedExamples.length > 0
-      ? explicitlyFeaturedExamples
-      : examples.slice(0, Math.min(2, examples.length));
-  const overviewFeaturedScenarioIds = new Set(
-    overviewFeaturedExamples.map((example) => example.scenario),
-  );
-  const overviewLinkedExamples = examples.filter(
-    (example) => !overviewFeaturedScenarioIds.has(example.scenario),
-  );
+  const explicitlyFeatured = examples.filter((example) => example.featured === true);
+
+  // Snapshot mode (`?snapshot=1`) is how the visual-regression and a11y test
+  // harness loads this route. Those tests assert global single-instance counts
+  // (e.g. exactly one `.cinder-section-heading`), so we must not mount the
+  // featured example twice. The Overview live preview is therefore suppressed in
+  // snapshot mode — the Examples section still mounts each scenario exactly once.
+  const snapshotMode =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('snapshot') === '1';
+
+  // The Overview live preview uses the first featured example, or the first
+  // example overall. Undefined when there are no examples at all, and suppressed
+  // in snapshot mode so it never double-mounts a scenario the Examples section
+  // already shows.
+  const overviewExample: CinderExampleDescriptor | undefined = snapshotMode
+    ? undefined
+    : (explicitlyFeatured[0] ?? examples[0]);
 
   // Extract the component name from the current URL path: /page/<name>
   const componentName: string =
     window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
 
-  function isDocumentationTabId(value: string | null): value is DocumentationTabId {
-    return value !== null && documentationTabs.some((tab) => tab.id === value);
+  // --- Theme toggle -----------------------------------------------------
+  // Cinder tokens switch on `color-scheme` (via `light-dark()`); the playground
+  // bridge mirrors the same value onto `data-cinder-theme` for bookkeeping. We
+  // read the active scheme on mount and, on toggle, write BOTH `color-scheme`
+  // (the real switch) and `data-cinder-theme` so we stay consistent with the
+  // bridge, plus persist to localStorage under the pre-paint key.
+  function readInitialTheme(): 'light' | 'dark' {
+    const scheme = document.documentElement.style.colorScheme;
+    if (scheme === 'dark' || scheme === 'light') return scheme;
+    return document.documentElement.dataset['cinderTheme'] === 'dark' ? 'dark' : 'light';
   }
+  let theme: 'light' | 'dark' = $state(readInitialTheme());
 
-  function parentSearchParams(): URLSearchParams | null {
+  function toggleTheme(): void {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.style.colorScheme = theme;
+    document.documentElement.dataset['cinderTheme'] = theme;
     try {
-      if (window.parent === window) return null;
-      if (window.parent.location.origin !== window.location.origin) return null;
-      return new URL(window.parent.location.href).searchParams;
+      localStorage.setItem('cinder-docs-theme', theme);
     } catch {
-      return null;
+      // Private mode / disabled storage — the in-memory theme still applies.
     }
   }
 
-  function initialDocumentationTab(): DocumentationTabId {
-    const searchParams = new URLSearchParams(window.location.search);
-    const requestedTab =
-      searchParams.get(documentationTabSearchParam) ??
-      parentSearchParams()?.get(documentationTabSearchParam) ??
-      null;
-    if (isDocumentationTabId(requestedTab)) return requestedTab;
-    return 'examples';
-  }
-
-  let activeTab: DocumentationTabId = $state(initialDocumentationTab());
-
-  function isSnapshotMode(): boolean {
-    return new URLSearchParams(window.location.search).get('snapshot') === '1';
-  }
-
-  function hrefWithDocumentationTab(href: string, tab: DocumentationTabId): string {
-    const url = new URL(href);
-    url.searchParams.set(documentationTabSearchParam, tab);
-    return `${url.pathname}${url.search}${url.hash}`;
-  }
-
-  function synchronizeDocumentationTabUrl(tab: DocumentationTabId): void {
-    if (isSnapshotMode()) return;
-
-    history.replaceState(history.state, '', hrefWithDocumentationTab(window.location.href, tab));
-
-    try {
-      if (window.parent === window) return;
-      if (window.parent.location.origin !== window.location.origin) return;
-      window.parent.history.replaceState(
-        window.parent.history.state,
-        '',
-        hrefWithDocumentationTab(window.parent.location.href, tab),
-      );
-    } catch {
-      // Direct /page routes and locked-down embeds still have their own iframe URL.
-    }
-  }
-
-  function selectExampleFromOverview(event: MouseEvent, scenario?: string): void {
-    event.preventDefault();
-    selectTab('examples');
-    if (scenario === undefined) return;
-    requestAnimationFrame(() => {
-      document.getElementById(`example-card-${scenario}`)?.scrollIntoView({
-        block: 'start',
-        behavior: 'smooth',
-      });
-    });
-  }
-
-  // Track which scenarios have had their source fetched so we only
-  // hit /example-src once per scenario regardless of how many times the user
-  // opens and closes the accordion.
+  // --- Source-fetch + per-scenario accordion (preserved from the tabbed page) -
   const fetchedSource: Record<string, string | null> = $state({});
   const loadingSource: Record<string, boolean> = $state({});
-
-  // Per-scenario error surfaces. `mountErrors` captures failures thrown by the
-  // imperative `mount()` below — `<svelte:boundary>` can't catch those because
-  // the examples are mounted into bare <div>s via an $effect, not declaratively,
-  // so the try/catch around mount() is the only place the error is observable.
-  // `sourceErrors` captures the detail (requested URL + HTTP status / exception)
-  // behind a failed "View source" fetch so the Retry button has something to
-  // explain and re-run.
+  // Keyed by mount-container DOM id (`overview-mount-<scenario>` /
+  // `example-mount-<scenario>`), not by bare scenario, so a featured scenario
+  // mounted in both the Overview and Examples locations keeps an independent
+  // error slot per location. See `mountScenario`.
   const mountErrors: Record<string, MountErrorDetail | undefined> = $state({});
   const sourceErrors: Record<string, SourceErrorDetail | undefined> = $state({});
-
-  // Per-scenario accordion expansion state — each entry is a reactive object
-  // with a typed `ids` field so property access never returns undefined
-  // (noUncheckedIndexedAccess widens plain index signatures, but a typed tuple
-  // of objects with known property names is unambiguous).
-  const accordionState = $state(
+  const exampleDisclosures = $state(
     examples.map(({ scenario }) => ({ scenario, expandedIds: [] as string[] })),
   );
 
-  function getAccordionEntry(
+  function disclosureFor(
     scenario: string,
   ): { scenario: string; expandedIds: string[] } | undefined {
-    return accordionState.find((entry) => entry.scenario === scenario);
+    return exampleDisclosures.find((entry) => entry.scenario === scenario);
   }
 
   async function fetchSource(scenario: string): Promise<void> {
     const url = `/example-src/${componentName}/${scenario}`;
     loadingSource[scenario] = true;
-    // Clear any prior failure so a Retry starts from a clean slate.
     sourceErrors[scenario] = undefined;
     try {
       const response = await fetch(url);
@@ -210,24 +159,18 @@
     }
   }
 
-  /**
-   * Copy an error detail to the clipboard. Guarded so the button is a no-op
-   * (rather than a thrown TypeError) in browsers / contexts where the async
-   * Clipboard API is unavailable.
-   */
   async function copyError(detail: MountErrorDetail): Promise<void> {
     if (typeof navigator === 'undefined' || navigator.clipboard === undefined) return;
     try {
       await navigator.clipboard.writeText(formatErrorForClipboard(detail));
     } catch {
-      // Clipboard write can reject (permissions, insecure context). Swallow —
-      // copying an error message is a convenience, never load-bearing.
+      // Clipboard write can reject (permissions, insecure context).
     }
   }
 
-  // Fire the lazy fetch exactly once per scenario on first accordion expansion.
+  // Lazily fetch each example's source the first time its disclosure opens.
   $effect(() => {
-    for (const entry of accordionState) {
+    for (const entry of exampleDisclosures) {
       if (
         entry.expandedIds.includes('source') &&
         fetchedSource[entry.scenario] === undefined &&
@@ -238,153 +181,79 @@
     }
   });
 
-  // Mount each example into its target. The page-bundle server route bundles
-  // every scenario for this component together with this page, sharing one
-  // Svelte runtime, and exposes the components on window.__CINDER_SCENARIOS__.
-  $effect(() => {
-    // Depend on activeTab so the effect reruns when the Examples panel mounts
-    // (e.g. if the user loads with ?tab=overview, the containers don't exist
-    // on first run — re-tracking means we retry once Examples becomes active).
-    if (activeTab !== 'examples') return;
-
-    // Per-run local collection so the cleanup only unmounts this run's mounts.
-    // Svelte 5 disposal is unmount(component), not component.destroy().
-    const localApps: ReturnType<typeof mount>[] = [];
-
-    const registry =
-      ((window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] as
-        | Record<string, unknown>
-        | undefined) ?? {};
-
-    // Svelte 5 effects run after the DOM is patched, so every
-    // `example-mount-<scenario>` container the template renders already exists
-    // here. Mount synchronously into the same `localApps` the cleanup closes
-    // over — no microtask deferral, so a re-run's cleanup can never race a
-    // still-pending mount into a stale collection.
-    for (const { scenario } of examples) {
-      const container = document.getElementById(`example-mount-${scenario}`);
-      if (!container) continue;
-
+  // Mount each registered scenario into its preview container via an attachment.
+  // An attachment runs exactly when its element is created and tears down when
+  // the element is removed, so there is no effect-vs-DOM timing race (the old
+  // effect-based approach mounted before the `{#if documentation}` subtree was
+  // patched in). The featured scenario can appear twice — once in Overview, once
+  // in Examples — and each container gets its own attachment + its own mount, so
+  // the two instances stay independent with correct per-node cleanup.
+  //
+  // The mount-error record is keyed by the container's DOM `id`
+  // (`overview-mount-<scenario>` vs `example-mount-<scenario>`), NOT by the bare
+  // scenario, so a featured scenario rendered in BOTH locations gets one error
+  // slot per render location. Keying by scenario alone would let whichever
+  // attachment runs last clobber the other's entry — hiding a real failure or
+  // painting an error callout over a preview that actually rendered. The key is
+  // read from `element.id`, the same string the template sets and the same
+  // string the template reads back via `mountErrors[<container id>]`, so the two
+  // can never drift.
+  function mountScenario(scenario: string): (element: HTMLElement) => () => void {
+    return (element: HTMLElement) => {
+      const mountKey = element.id;
+      const registry =
+        ((window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] as
+          | Record<string, unknown>
+          | undefined) ?? {};
       const Component = registry[scenario];
       if (typeof Component !== 'function') {
         console.error(`[cinder playground] no registered component for scenario "${scenario}"`);
-        continue;
+        return () => {};
       }
-
+      let app: ReturnType<typeof mount> | undefined;
       try {
-        const app = mount(Component as Parameters<typeof mount>[0], { target: container });
-        localApps.push(app);
-        // A previous failed run may have left an error surface; clear it now
-        // that this scenario mounted cleanly.
-        mountErrors[scenario] = undefined;
+        app = mount(Component as Parameters<typeof mount>[0], { target: element });
+        mountErrors[mountKey] = undefined;
       } catch (error) {
         console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
-        // Surface the failure in the UI instead of leaving a silent blank slot.
-        mountErrors[scenario] = toMountErrorDetail(error);
+        mountErrors[mountKey] = toMountErrorDetail(error);
       }
-    }
-
-    return () => {
-      for (const app of localApps) {
+      return () => {
+        if (app === undefined) return;
         try {
           unmount(app);
         } catch {
-          // Suppress — best-effort cleanup only.
+          // Best-effort cleanup only.
         }
-      }
+      };
     };
-  });
+  }
 
-  // --- Component documentation payload -----------------------------------
-  // The component name is fixed for the lifetime of this page (it comes from
-  // the URL once), so the canonical documentation payload is fetched exactly
-  // once at init and then normalized locally for each tab.
+  // --- Documentation payload (fetched once) -----------------------------
   let documentation = $state<ComponentDocumentationPayload | null>(null);
   let documentationLoading = $state(true);
   let documentationError: string | null = $state(null);
 
-  // The skeleton placeholder rows give the table a stable shape while the
-  // request is in flight.
   const skeletonRowCount = 5;
   const propRows = $derived(
     documentation === null ? [] : toPropReferenceRows(documentation.propsManifest),
   );
-  const schemaProperties = $derived(
-    documentation === null ? [] : schemaPropertyNames(documentation.schema),
-  );
-  const schemaRequiredProperties = $derived(
-    new Set(documentation === null ? [] : schemaRequiredPropertyNames(documentation.schema)),
-  );
-  const cssVariables = $derived(
-    documentation === null ? [] : variablesList(documentation.variables),
-  );
-  const constraintRules = $derived(
-    documentation === null ? [] : constraintRuleSummaries(documentation.constraints),
-  );
-  const validConstraintExamples = $derived(
-    documentation === null ? [] : constraintExampleSummaries(documentation.constraints, 'valid'),
-  );
-  const invalidConstraintExamples = $derived(
-    documentation === null ? [] : constraintExampleSummaries(documentation.constraints, 'invalid'),
-  );
-
-  function isRecord(value: JsonValue | undefined): value is Record<string, JsonValue> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-  }
-
-  function stringProperty(value: Record<string, JsonValue>, key: string): string | undefined {
-    const property = value[key];
-    return typeof property === 'string' ? property : undefined;
-  }
-
-  function constraintRuleSummaries(value: JsonValue | null): ConstraintRuleSummary[] {
-    if (!isRecord(value)) return [];
-    const rules = value['rules'];
-    if (!Array.isArray(rules)) return [];
-    return rules.flatMap((rule) => {
-      if (!isRecord(rule)) return [];
-      const id = stringProperty(rule, 'id');
-      const description = stringProperty(rule, 'description');
-      if (id === undefined || description === undefined) return [];
-      return [
-        {
-          id,
-          description,
-          severity: stringProperty(rule, 'severity'),
-          kind: stringProperty(rule, 'kind'),
-        },
-      ];
-    });
-  }
-
-  function constraintExampleSummaries(
-    value: JsonValue | null,
-    kind: 'valid' | 'invalid',
-  ): ConstraintExampleSummary[] {
-    if (!isRecord(value)) return [];
-    const examples = value['examples'];
-    if (!isRecord(examples)) return [];
-    const entries = examples[kind];
-    if (!Array.isArray(entries)) return [];
-    return entries.flatMap((entry) => {
-      if (!isRecord(entry)) return [];
-      const title = stringProperty(entry, 'title');
-      const code = stringProperty(entry, 'code');
-      if (title === undefined || code === undefined) return [];
-      return [{ title, code, violates: stringProperty(entry, 'violates') }];
-    });
-  }
-
-  function jsonBlock(value: JsonValue | null): string {
-    return JSON.stringify(value, null, 2);
-  }
 
   function propsTypeClass(typeMembers: readonly string[]): string {
     return typeMembers.length > 1 ? 'props-type props-type--union' : 'props-type';
   }
 
-  function selectTab(tab: DocumentationTabId): void {
-    activeTab = tab;
+  function statusDotStatus(status: string): StatusDotStatus {
+    switch (status) {
+      case 'stable':
+        return 'online';
+      case 'beta':
+        return 'accent';
+      case 'alpha':
+        return 'warning';
+      default:
+        return 'neutral';
+    }
   }
 
   function statusBadgeVariant(status: string): BadgeVariant {
@@ -395,46 +264,11 @@
         return 'info';
       case 'alpha':
         return 'warning';
-      case 'domain-suite':
-        return 'neutral';
       default:
         return 'neutral';
     }
   }
 
-  $effect(() => {
-    synchronizeDocumentationTabUrl(activeTab);
-  });
-
-  $effect(() => {
-    function syncFromLocation(): void {
-      const requestedTab =
-        parentSearchParams()?.get(documentationTabSearchParam) ??
-        new URLSearchParams(window.location.search).get(documentationTabSearchParam);
-      if (isDocumentationTabId(requestedTab)) activeTab = requestedTab;
-    }
-
-    window.addEventListener('popstate', syncFromLocation);
-    try {
-      if (window.parent !== window && window.parent.location.origin === window.location.origin) {
-        window.parent.addEventListener('popstate', syncFromLocation);
-        return () => {
-          window.removeEventListener('popstate', syncFromLocation);
-          window.parent.removeEventListener('popstate', syncFromLocation);
-        };
-      }
-    } catch {
-      // Cross-origin parents are ignored; direct /page routes still listen above.
-    }
-
-    return () => {
-      window.removeEventListener('popstate', syncFromLocation);
-    };
-  });
-
-  // Fetch the documentation payload once. componentName is non-reactive, so
-  // this effect runs exactly once. The cancellation flag prevents writing to
-  // state after the component is torn down mid-flight.
   $effect(() => {
     if (componentName === '') {
       documentationLoading = false;
@@ -458,692 +292,1233 @@
       cancelled = true;
     };
   });
+
+  // --- Import line copy --------------------------------------------------
+  let importCopied = $state(false);
+  const importStatement = $derived(
+    documentation === null
+      ? ''
+      : `import { ${documentation.component.exportName} } from '${documentation.component.importSpecifier}';`,
+  );
+
+  async function copyImport(): Promise<void> {
+    if (typeof navigator === 'undefined' || navigator.clipboard === undefined) return;
+    try {
+      await navigator.clipboard.writeText(importStatement);
+      importCopied = true;
+    } catch {
+      // Clipboard unavailable — copying is a convenience, never load-bearing.
+    }
+  }
+
+  // Reset the "copied" flag after a beat. Driving the timer through an $effect
+  // ties it to the component lifecycle, so a teardown mid-flight cancels it
+  // instead of writing to torn-down state.
+  $effect(() => {
+    if (!importCopied) return;
+    const timer = setTimeout(() => {
+      importCopied = false;
+    }, 1500);
+    return () => clearTimeout(timer);
+  });
+
+  // --- Playground controls ----------------------------------------------
+  const playgroundModel = $derived(
+    documentation === null
+      ? { controls: [], skipped: [], hasUnsatisfiedRequired: false }
+      : buildPlaygroundModel(documentation.propsManifest),
+  );
+  // Live control values, keyed by prop name. Seeded from each control's default
+  // the first time the model resolves.
+  const playgroundValues: Record<string, PlaygroundValue> = $state({});
+  let playgroundSeeded = false;
+  $effect(() => {
+    if (playgroundSeeded || playgroundModel.controls.length === 0) return;
+    for (const control of playgroundModel.controls) {
+      playgroundValues[control.name] = control.value;
+    }
+    playgroundSeeded = true;
+  });
+
+  const playgroundSnippet = $derived(
+    documentation === null
+      ? ''
+      : buildSnippet(
+          documentation.component.exportName,
+          playgroundModel.controls,
+          playgroundValues,
+        ),
+  );
+  const showGeneratedPlayground = $derived(
+    playgroundModel.controls.length > 0 && !playgroundModel.hasUnsatisfiedRequired,
+  );
+
+  // --- Sections + scroll spy (data-driven) ------------------------------
+  type SectionDescriptor = { id: string; num: string; label: string };
+
+  const sections = $derived.by<SectionDescriptor[]>(() => {
+    if (documentation === null) return [];
+    const list: SectionDescriptor[] = [{ id: 'overview', num: '01', label: 'Overview' }];
+    if (
+      documentation.component.useWhen.length > 0 ||
+      documentation.component.avoidWhen.length > 0
+    ) {
+      list.push({ id: 'guidance', num: '', label: 'When to use' });
+    }
+    if (showGeneratedPlayground) list.push({ id: 'playground', num: '', label: 'Playground' });
+    if (examples.length > 0) list.push({ id: 'examples', num: '', label: 'Examples' });
+    if (propRows.length > 0) list.push({ id: 'props', num: '', label: 'Props' });
+    if (documentation.component.a11y !== undefined) {
+      list.push({ id: 'accessibility', num: '', label: 'Accessibility' });
+    }
+    if (documentation.component.related.length > 0) {
+      list.push({ id: 'related', num: '', label: 'Related' });
+    }
+    // Renumber sequentially so the visible index always runs 01, 02, 03…
+    return list.map((section, index) => ({
+      ...section,
+      num: String(index + 1).padStart(2, '0'),
+    }));
+  });
+
+  // Section id → display number, derived once so each section header reads its
+  // own number with an O(1) lookup instead of re-scanning `sections` by id.
+  const sectionNumber = $derived(new Map(sections.map((section) => [section.id, section.num])));
+
+  let activeSection = $state('overview');
+
+  function prefersReducedMotion(): boolean {
+    return (
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }
+
+  function goToSection(id: string): (event: MouseEvent) => void {
+    return (event: MouseEvent) => {
+      event.preventDefault();
+      const element = document.getElementById(id);
+      if (element === null) return;
+      const top = element.getBoundingClientRect().top + window.scrollY - (TOP_BAR_HEIGHT + 24);
+      // `behavior: 'smooth'` is JS-driven, so the CSS reduced-motion rule does
+      // not gate it — honor the preference explicitly with an instant jump.
+      window.scrollTo({ top, behavior: prefersReducedMotion() ? 'instant' : 'smooth' });
+    };
+  }
+
+  // Wire the scroll-spy listener. Reads the data-driven `sections` so it never
+  // tracks a section that was omitted; the pure calculator does the math.
+  $effect(() => {
+    const ids = sections.map((section) => section.id);
+    if (ids.length === 0) return;
+    let ticking = false;
+    let rafHandle: ReturnType<typeof requestAnimationFrame> | undefined;
+
+    const compute = (): void => {
+      ticking = false;
+      rafHandle = undefined;
+      const offsets: SectionOffset[] = [];
+      for (const id of ids) {
+        const element = document.getElementById(id);
+        if (element === null) continue;
+        offsets.push({ id, top: element.getBoundingClientRect().top + window.scrollY });
+      }
+      const next = computeActiveSection(
+        offsets,
+        window.scrollY,
+        window.innerHeight,
+        document.body.scrollHeight,
+        TOP_BAR_HEIGHT + 96,
+      );
+      if (next !== null) activeSection = next;
+    };
+
+    const onScroll = (): void => {
+      if (ticking) return;
+      ticking = true;
+      rafHandle = requestAnimationFrame(compute);
+    };
+
+    compute();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      // Cancel any frame still queued so a stale `compute` from this (now
+      // torn-down) effect run can't write `activeSection` after re-run.
+      if (rafHandle !== undefined) cancelAnimationFrame(rafHandle);
+    };
+  });
+
+  // --- Raw artifacts (lazy, sticky-open) --------------------------------
+  let hasOpenedRawArtifacts = $state(false);
+
+  function jsonBlock(value: JsonValue | null): string {
+    return JSON.stringify(value, null, 2);
+  }
+
+  // Turn a kebab-case component id into sentence-case display text, e.g.
+  // `segmented-control` → `Segmented control`. The href keeps the raw id.
+  // Callers pass an `avoidWhen.alternative`, which the manifest generator
+  // validates as a non-empty kebab id, so the empty-string case can't arrive
+  // from real data (it returns `''` harmlessly if it ever does).
+  function humanizeId(id: string): string {
+    const spaced = id.replace(/-/g, ' ');
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  }
 </script>
 
-<div class="documentation-page">
-  <Tabs bind:value={activeTab} class="documentation-tabs-root">
-    <TabList label="Component documentation" class="documentation-tabs">
-      {#each documentationTabs as tab (tab.id)}
-        <Tab value={tab.id}>{tab.label}</Tab>
+{#if snapshotMode}
+  <!-- Snapshot mode (`?snapshot=1`): the visual-regression / a11y test harness
+       loads this route and screenshots / axe-scans the page, expecting a clean
+       single mount of each example with no docs chrome (matching the prior
+       examples-only snapshot). Rendering the full page here would add README
+       Shiki code blocks (low-contrast tokens), the hero, scroll-spy, etc. to
+       every component's snapshot — so we render only the example mounts. -->
+  <div class="snapshot-examples" data-component-page>
+    {#if examples.length === 0}
+      <!-- Components without `*.example.svelte` files have nothing to mount. The
+           test harness still waits for `#app > *` to be VISIBLE (non-zero box)
+           before running axe, so an empty container would resolve to `hidden`
+           and time out. Render a visible, axe-clean heading so the snapshot has
+           deterministic, contrast-safe content. -->
+      <h1 class="snapshot-empty-heading">{humanizeId(componentName)}</h1>
+    {:else}
+      {#each examples as { scenario } (scenario)}
+        <div
+          class="example-preview"
+          id="example-mount-{scenario}"
+          {@attach mountScenario(scenario)}
+        ></div>
       {/each}
-    </TabList>
-
-    <TabPanel value="overview" class="documentation-panel documentation-panel--overview">
-      {#if documentationLoading}
-        <div class="documentation-skeleton" aria-hidden="true">
-          {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
-            <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
-          {/each}
-        </div>
-      {:else if documentationError !== null}
-        <Callout variant="danger" title="Could not load documentation">
-          <p class="documentation-error">{documentationError}</p>
-        </Callout>
-      {:else if documentation !== null}
-        <section class="overview-hero" aria-labelledby="overview-title">
-          <div class="overview-hero-main">
-            <h1 id="overview-title">{documentation.component.name}</h1>
-            <p class="overview-purpose">{documentation.component.purpose}</p>
-            <p class="overview-import">
-              <span>Import</span>
-              <code>{documentation.component.importSpecifier}</code>
-            </p>
-          </div>
-          <dl class="metadata-list" aria-label="Component metadata">
-            <div>
-              <dt>Status</dt>
-              <dd>
-                <Badge variant={statusBadgeVariant(documentation.component.status)} size="sm">
-                  {documentation.component.status}
-                </Badge>
-                {#if documentation.component.statusDescription !== ''}
-                  <span>{documentation.component.statusDescription}</span>
-                {/if}
-              </dd>
-            </div>
-            <div>
-              <dt>Category</dt>
-              <dd>
-                <strong>{documentation.component.categoryLabel}</strong>
-                {#if documentation.component.categoryDescription !== ''}
-                  <span>{documentation.component.categoryDescription}</span>
-                {/if}
-              </dd>
-            </div>
-            {#if documentation.component.tags.length > 0}
-              <div>
-                <dt>Tags</dt>
-                <dd class="badge-list">
-                  {#each documentation.component.tags as tag (tag)}
-                    <Badge variant="neutral" size="xs">{tag}</Badge>
-                  {/each}
-                </dd>
-              </div>
-            {/if}
-          </dl>
-        </section>
-
-        {#if overviewFeaturedExamples.length > 0}
-          <section class="overview-section" aria-labelledby="featured-examples-heading">
-            <div class="section-heading-row">
-              <h2 id="featured-examples-heading">
-                {explicitlyFeaturedExamples.length > 0 ? 'Featured Examples' : 'Start Here'}
-              </h2>
-              <a href="?tab=examples" onclick={(event) => selectExampleFromOverview(event)}>
-                View all examples
-              </a>
-            </div>
-            <div class="featured-example-grid">
-              {#each overviewFeaturedExamples as example (example.scenario)}
-                <a
-                  class="featured-example-card"
-                  href="?tab=examples#example-card-{example.scenario}"
-                  onclick={(event) => selectExampleFromOverview(event, example.scenario)}
-                >
-                  <span>{example.title}</span>
-                  {#if example.description !== undefined}
-                    <small>{example.description}</small>
-                  {/if}
-                </a>
-              {/each}
-            </div>
-            {#if overviewLinkedExamples.length > 0}
-              <div class="example-link-list" aria-label="More examples">
-                {#each overviewLinkedExamples as example (example.scenario)}
-                  <a
-                    href="?tab=examples#example-card-{example.scenario}"
-                    onclick={(event) => selectExampleFromOverview(event, example.scenario)}
-                  >
-                    {example.title}
-                  </a>
-                {/each}
-              </div>
-            {/if}
-          </section>
-        {/if}
-
-        <section class="overview-section" aria-label="{documentation.component.name} README">
-          <div class="readme-content">
-            {#each splitReadmeHtml(documentation.readme.html) as segment, i (i)}
-              {#if segment.type === 'html'}
-                {@html segment.content}
-              {:else}
-                {@const block = documentation.readme.codeBlocks[segment.index]}
-                {#if block !== undefined}
-                  <CodeBlock code={block.value} language={block.language ?? 'plaintext'} copyable />
-                {:else}
-                  <div class="readme-pre-fallback">{@html segment.fallbackHtml}</div>
-                {/if}
-              {/if}
-            {/each}
-          </div>
-        </section>
-
-        <div class="guidance-grid">
-          <section class="guidance-section" aria-labelledby="use-when-heading">
-            <h2 id="use-when-heading">Use When</h2>
-            <ul>
-              {#each documentation.component.useWhen as item (item)}
-                <li>{item}</li>
-              {/each}
-            </ul>
-          </section>
-          <section class="guidance-section" aria-labelledby="avoid-when-heading">
-            <h2 id="avoid-when-heading">Avoid When</h2>
-            <ul>
-              {#each documentation.component.avoidWhen as item (item)}
-                <li>{item}</li>
-              {/each}
-            </ul>
-          </section>
-          {#if documentation.component.related.length > 0}
-            <section class="guidance-section" aria-labelledby="related-heading">
-              <h2 id="related-heading">Related</h2>
-              <div class="related-links">
-                {#each documentation.component.related as related (related)}
-                  <a href="/c/{related}" target="_top">{related}</a>
-                {/each}
-              </div>
-            </section>
+    {/if}
+  </div>
+{:else}
+  <div class="dx" data-component-page>
+    <!-- ===== Top bar ===== -->
+    <header class="dx-topbar">
+      <div class="dx-topbar__inner">
+        <nav class="dx-crumbs" aria-label="Breadcrumb">
+          <span class="dx-crumbs__mark">CINDER</span>
+          <span class="dx-crumbs__sep" aria-hidden="true">/</span>
+          {#if documentation !== null}
+            <span>{documentation.component.categoryLabel}</span>
+            <span class="dx-crumbs__sep" aria-hidden="true">/</span>
+            <span class="dx-crumbs__current">{documentation.component.name}</span>
           {/if}
-        </div>
-
-        <section class="overview-section props-section" aria-labelledby="props-heading">
-          <h2 id="props-heading" class="props-heading">API</h2>
-          <section class="schema-section" aria-labelledby="schema-heading">
-            <h3 id="schema-heading">JSON Schema</h3>
-            <div class="schema-summary">
-              <div>
-                <span>Properties</span>
-                <strong>{schemaProperties.length}</strong>
-              </div>
-              <div>
-                <span>Required</span>
-                <strong>{schemaRequiredProperties.size}</strong>
-              </div>
-            </div>
-            {#if schemaProperties.length > 0}
-              <ul class="schema-property-list">
-                {#each schemaProperties as property (property)}
-                  <li>
-                    <code>{property}</code>
-                    {#if schemaRequiredProperties.has(property)}
-                      <Badge variant="danger" size="xs">required</Badge>
-                    {/if}
-                  </li>
-                {/each}
-              </ul>
+        </nav>
+        <div class="dx-topbar__actions">
+          <a
+            class="dx-iconbtn"
+            href="https://github.com/stevekinney/cinder"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="View source on GitHub"
+          >
+            <Github size={17} strokeWidth={1.5} aria-hidden="true" />
+          </a>
+          <button
+            type="button"
+            class="dx-iconbtn"
+            onclick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            {#if theme === 'dark'}
+              <Sun size={17} strokeWidth={1.5} aria-hidden="true" />
             {:else}
-              <p class="props-empty">The generated schema has no properties.</p>
+              <Moon size={17} strokeWidth={1.5} aria-hidden="true" />
             {/if}
-          </section>
+          </button>
+        </div>
+      </div>
+    </header>
 
-          {#if propRows.length === 0}
-            <p class="props-empty">This component has no documented props.</p>
-          {:else}
-            <!-- tabindex="0" makes the scrollable region keyboard-accessible (axe
-                 scrollable-region-focusable / WCAG 2.1.1) when the props table
-                 overflows horizontally on narrow viewports. -->
-            <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-            <div
-              class="props-table-scroll"
-              role="region"
-              aria-labelledby="props-heading"
-              tabindex="0"
-            >
-              <Table caption={`Props for ${componentName}`} density="condensed">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.HeaderCell scope="col">Name</Table.HeaderCell>
-                    <Table.HeaderCell scope="col">Type</Table.HeaderCell>
-                    <Table.HeaderCell scope="col">Default</Table.HeaderCell>
-                    <Table.HeaderCell scope="col" align="center">Required</Table.HeaderCell>
-                    <Table.HeaderCell scope="col" align="center">Bindable</Table.HeaderCell>
-                    <Table.HeaderCell scope="col">Description</Table.HeaderCell>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {#each propRows as prop (prop.name)}
-                    <Table.Row>
-                      <Table.Cell>
-                        <code class="props-name">{prop.name}</code>
-                        {#if prop.required}
-                          <span class="props-required-gem" aria-hidden="true"></span>
-                        {/if}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {@const typeMembers = splitUnionType(prop.type)}
-                        <code class={propsTypeClass(typeMembers)}>
-                          {#each typeMembers as member, index (index)}
-                            <span class="props-type__member">
-                              {#if index > 0}<span class="props-type__sep" aria-hidden="true"
-                                  >|
-                                </span>{/if}<span class="props-type__value">{member}</span>
-                            </span>
-                          {/each}
-                        </code>
-                      </Table.Cell>
-                      <Table.Cell>
-                        {#if prop.defaultValue !== undefined}
-                          <code class="props-default">{prop.defaultValue}</code>
-                        {:else}
-                          <span class="props-dash" aria-hidden="true">—</span>
-                        {/if}
-                      </Table.Cell>
-                      <Table.Cell align="center">
-                        {#if prop.required}
-                          <span class="props-required-gem" aria-hidden="true"></span>
-                          <span class="props-visually-hidden">Required</span>
-                        {:else}
-                          <span class="props-dash" aria-hidden="true">—</span>
-                        {/if}
-                      </Table.Cell>
-                      <Table.Cell align="center">
-                        {#if prop.bindable}
-                          <Badge variant="info" size="xs">bind:</Badge>
-                        {:else}
-                          <span class="props-dash" aria-hidden="true">—</span>
-                        {/if}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {#if prop.description !== undefined}
-                          <span class="props-description">{prop.description}</span>
-                        {:else}
-                          <span class="props-dash" aria-hidden="true">—</span>
-                        {/if}
-                      </Table.Cell>
-                    </Table.Row>
-                  {/each}
-                </Table.Body>
-              </Table>
-            </div>
-          {/if}
-        </section>
-
-        <section class="overview-section" aria-labelledby="styling-heading">
-          <h2 id="styling-heading">Styling</h2>
-          {#if cssVariables.length === 0}
-            <p class="empty-state">This component does not declare local CSS variables.</p>
-          {:else}
-            <ul class="variable-list">
-              {#each cssVariables as variable (variable)}
-                <li><code>{variable}</code></li>
-              {/each}
-            </ul>
-          {/if}
-        </section>
-
-        <section class="overview-section" aria-labelledby="constraints-heading">
-          <h2 id="constraints-heading">Constraints</h2>
-          {#if documentation.constraints === null}
-            <p class="empty-state">No generated constraints are declared for this component.</p>
-          {:else}
-            {@const constraintsSummary = isRecord(documentation.constraints)
-              ? stringProperty(documentation.constraints, 'summary')
-              : undefined}
-            {#if constraintsSummary !== undefined}
-              <p class="constraint-summary">{constraintsSummary}</p>
-            {/if}
-            {#if constraintRules.length > 0}
-              <ol class="constraint-rules">
-                {#each constraintRules as rule (rule.id)}
-                  <li>
-                    <div class="constraint-rule-header">
-                      <code>{rule.id}</code>
-                      {#if rule.severity !== undefined}
-                        <Badge variant={rule.severity === 'error' ? 'danger' : 'warning'} size="xs">
-                          {rule.severity}
-                        </Badge>
-                      {/if}
-                      {#if rule.kind !== undefined}
-                        <Badge variant="neutral" size="xs">{rule.kind}</Badge>
-                      {/if}
-                    </div>
-                    <p>{rule.description}</p>
-                  </li>
-                {/each}
-              </ol>
-            {:else}
-              <p class="empty-state">The constraints artifact has no readable rules.</p>
-            {/if}
-
-            <div class="constraint-example-grid">
-              <section aria-labelledby="valid-constraint-examples-heading">
-                <h3 id="valid-constraint-examples-heading">Valid Examples</h3>
-                {#if validConstraintExamples.length === 0}
-                  <p class="empty-state">No valid examples are listed.</p>
-                {:else}
-                  {#each validConstraintExamples as example (example.title)}
-                    <div class="constraint-example">
-                      <h4>{example.title}</h4>
-                      <CodeBlock code={example.code} language="svelte" copyable />
-                    </div>
-                  {/each}
-                {/if}
-              </section>
-              <section aria-labelledby="invalid-constraint-examples-heading">
-                <h3 id="invalid-constraint-examples-heading">Invalid Examples</h3>
-                {#if invalidConstraintExamples.length === 0}
-                  <p class="empty-state">No invalid examples are listed.</p>
-                {:else}
-                  {#each invalidConstraintExamples as example (example.title)}
-                    <div class="constraint-example">
-                      <h4>{example.title}</h4>
-                      {#if example.violates !== undefined}
-                        <p class="violates-label">Violates <code>{example.violates}</code></p>
-                      {/if}
-                      <CodeBlock code={example.code} language="svelte" copyable />
-                    </div>
-                  {/each}
-                {/if}
-              </section>
-            </div>
-          {/if}
-        </section>
-      {/if}
-    </TabPanel>
-    <TabPanel value="examples" class="documentation-panel">
-      <h2>Examples</h2>
-      <div class="example-list">
-        {#if examples.length === 0}
-          <p class="no-examples">No examples found for <code>{componentName}</code>.</p>
-        {/if}
-
-        {#each examples as { scenario, title, description } (scenario)}
-          {@const accordionEntry = getAccordionEntry(scenario)}
-          {@const source = fetchedSource[scenario]}
-          {@const mountError = mountErrors[scenario]}
-          {@const sourceError = sourceErrors[scenario]}
-          {#if accordionEntry}
-            <section id="example-card-{scenario}" class="example-card-anchor">
-              <Card {title} {...description !== undefined ? { description } : {}}>
-                <div class="example-preview" id="example-mount-{scenario}"></div>
-
-                {#if mountError !== undefined}
-                  <div class="example-error">
-                    <Callout variant="danger" title="This example failed to render">
-                      <p class="example-error__message">{mountError.message}</p>
-                      {#if mountError.stack !== undefined}
-                        <pre
-                          class="example-error__stack"
-                          aria-label="Stack trace">{mountError.stack}</pre>
-                      {/if}
-                      <div class="example-error__actions">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          aria-label="Copy error for {title}"
-                          onclick={() => copyError(mountError)}
-                        >
-                          Copy error
-                        </Button>
-                      </div>
-                    </Callout>
-                  </div>
-                {/if}
-
-                <Accordion bind:expandedIds={accordionEntry.expandedIds}>
-                  <AccordionItem id="source" title="View source">
-                    {#if loadingSource[scenario]}
-                      <p class="source-loading">Loading…</p>
-                    {:else if source === null}
-                      <div class="example-error">
-                        <Callout variant="danger" title="Could not load source">
-                          <dl class="example-error__detail">
-                            <dt>Requested</dt>
-                            <dd>
-                              <code>
-                                {sourceError?.url ?? `/example-src/${componentName}/${scenario}`}
-                              </code>
-                            </dd>
-                            <dt>Reason</dt>
-                            <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
-                          </dl>
-                          <div class="example-error__actions">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              aria-label="Retry loading source for {title}"
-                              onclick={() => fetchSource(scenario)}
-                            >
-                              Retry
-                            </Button>
-                          </div>
-                        </Callout>
-                      </div>
-                    {:else if source !== undefined}
-                      <CodeBlock code={source} language="svelte" copyable />
-                    {/if}
-                  </AccordionItem>
-                </Accordion>
-              </Card>
-            </section>
-          {/if}
+    {#if documentationLoading}
+      <div class="dx__inner dx-loading" aria-hidden="true">
+        {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
+          <Skeleton height="2rem" radius="var(--cinder-radius-sm)" />
         {/each}
       </div>
-    </TabPanel>
-    <TabPanel value="raw-artifacts" class="documentation-panel">
-      <h2>Raw Artifacts</h2>
-      {#if documentationLoading}
-        <div class="documentation-skeleton" aria-hidden="true">
-          {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
-            <Skeleton height="1.5rem" radius="var(--cinder-radius-sm)" />
-          {/each}
+    {:else if documentationError !== null}
+      <div class="dx__inner dx-error-region">
+        <Alert variant="danger">
+          Could not load documentation: {documentationError}
+        </Alert>
+      </div>
+    {:else if documentation !== null}
+      {@const component = documentation.component}
+
+      <!-- ===== Hero ===== -->
+      <div class="dx-hero">
+        <div class="dx__inner">
+          <div class="dx-hero__grid">
+            <div>
+              <div class="dx-eyebrow">
+                <span class="dx-eyebrow__index">{component.categoryLabel}</span>
+                <span class="dx-eyebrow__rule" aria-hidden="true"></span>
+              </div>
+              <h1 id="component-name">{component.name}</h1>
+              <p class="dx-hero__lede">{component.purpose}</p>
+              <div class="dx-hero__meta">
+                <div class="dx-import">
+                  <span class="dx-import__code">{importStatement}</span>
+                  <Tooltip text={importCopied ? 'Copied' : 'Copy import'}>
+                    <button
+                      type="button"
+                      class="dx-import__copy"
+                      data-copied={importCopied ? '' : undefined}
+                      aria-label={importCopied ? 'Copied import' : 'Copy import'}
+                      onclick={copyImport}
+                    >
+                      {#if importCopied}
+                        <Check size={14} strokeWidth={1.5} aria-hidden="true" />
+                      {:else}
+                        <Copy size={14} strokeWidth={1.5} aria-hidden="true" />
+                      {/if}
+                    </button>
+                  </Tooltip>
+                </div>
+                {#if component.tags.length > 0}
+                  <div class="dx-tags">
+                    {#each component.tags as tag (tag)}
+                      <Badge variant="accent" size="sm">{tag}</Badge>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            </div>
+
+            <aside class="dx-spec" aria-label="Component facts">
+              <div class="dx-spec__row">
+                <span class="dx-spec__key">Status</span>
+                <span class="dx-spec__val">
+                  <StatusDot status={statusDotStatus(component.status)} label={component.status} />
+                  <Badge variant={statusBadgeVariant(component.status)} size="sm">
+                    {component.status}
+                  </Badge>
+                </span>
+              </div>
+              <div class="dx-spec__row">
+                <span class="dx-spec__key">Category</span>
+                <span class="dx-spec__val">{component.categoryLabel}</span>
+              </div>
+              {#if component.a11y?.pattern !== undefined}
+                <div class="dx-spec__row">
+                  <span class="dx-spec__key">A11y pattern</span>
+                  <span class="dx-spec__val">{component.a11y.pattern}</span>
+                </div>
+              {/if}
+              <div class="dx-spec__row">
+                <span class="dx-spec__key">Export</span>
+                <span class="dx-spec__val dx-spec__val--mono">{component.exportName}</span>
+              </div>
+              <div class="dx-spec__row">
+                <span class="dx-spec__key">Version</span>
+                <span class="dx-spec__val dx-spec__val--mono">v{component.packageVersion}</span>
+              </div>
+            </aside>
+          </div>
         </div>
-      {:else if documentationError !== null}
-        <p class="props-error">Could not load documentation: {documentationError}</p>
-      {:else if documentation !== null}
-        <div class="raw-artifact-grid">
-          <section class="raw-artifact-panel" aria-labelledby="manifest-entry-heading">
-            <h3 id="manifest-entry-heading">Manifest Entry</h3>
-            <CodeBlock
-              code={jsonBlock(documentation.rawArtifacts.manifestEntry)}
-              language="json"
-              copyable
-            />
-          </section>
-          <section class="raw-artifact-panel" aria-labelledby="schema-artifact-heading">
-            <h3 id="schema-artifact-heading">Schema</h3>
-            <CodeBlock
-              code={jsonBlock(documentation.rawArtifacts.schema)}
-              language="json"
-              copyable
-            />
-          </section>
-          <section class="raw-artifact-panel" aria-labelledby="variables-artifact-heading">
-            <h3 id="variables-artifact-heading">Variables</h3>
-            <CodeBlock
-              code={jsonBlock(documentation.rawArtifacts.variables)}
-              language="json"
-              copyable
-            />
-          </section>
-          <section class="raw-artifact-panel" aria-labelledby="constraints-artifact-heading">
-            <h3 id="constraints-artifact-heading">Constraints</h3>
-            <CodeBlock
-              code={jsonBlock(documentation.rawArtifacts.constraints)}
-              language="json"
-              copyable
-            />
-          </section>
-          <section class="raw-artifact-panel" aria-labelledby="examples-artifact-heading">
-            <h3 id="examples-artifact-heading">Examples</h3>
-            <CodeBlock
-              code={jsonBlock(documentation.rawArtifacts.examples)}
-              language="json"
-              copyable
-            />
-          </section>
+      </div>
+
+      <!-- ===== Layout: TOC + content ===== -->
+      <div class="dx__inner">
+        <div class="dx-layout">
+          <nav class="dx-toc" aria-label="On this page">
+            <div class="dx-toc__label">On this page</div>
+            <ul class="dx-toc__list">
+              {#each sections as section (section.id)}
+                <li>
+                  <a
+                    class="dx-toc__link"
+                    href="#{section.id}"
+                    data-active={activeSection === section.id ? '' : undefined}
+                    aria-current={activeSection === section.id ? 'location' : undefined}
+                    onclick={goToSection(section.id)}
+                  >
+                    <span class="dx-toc__num">{section.num}</span>
+                    <span>{section.label}</span>
+                  </a>
+                </li>
+              {/each}
+            </ul>
+          </nav>
+
+          <main class="dx-content">
+            <!-- -- Overview -- -->
+            <section id="overview" class="dx-section">
+              <div class="dx-section__head">
+                <span class="dx-section__num">01</span>
+                <h2 class="dx-section__title">Overview</h2>
+                <span class="dx-section__rule" aria-hidden="true"></span>
+              </div>
+              <div class="dx-prose readme-content">
+                {#each splitReadmeHtml(documentation.readme.html) as segment, i (i)}
+                  {#if segment.type === 'html'}
+                    {@html segment.content}
+                  {:else}
+                    {@const block = documentation.readme.codeBlocks[segment.index]}
+                    {#if block !== undefined}
+                      <CodeBlock
+                        code={block.value}
+                        language={block.language ?? 'plaintext'}
+                        copyable
+                      />
+                    {:else}
+                      <div class="readme-pre-fallback">{@html segment.fallbackHtml}</div>
+                    {/if}
+                  {/if}
+                {/each}
+              </div>
+              {#if overviewExample !== undefined}
+                <div class="dx-stage">
+                  <div class="dx-stage__bar">
+                    <span class="dx-stage__dot" aria-hidden="true"></span>
+                    <span class="dx-stage__label">Live preview</span>
+                  </div>
+                  <div class="dx-stage__canvas">
+                    {#if mountErrors[`overview-mount-${overviewExample.scenario}`] !== undefined}
+                      {@const error = mountErrors[`overview-mount-${overviewExample.scenario}`]}
+                      <Callout variant="danger" title="This preview failed to render">
+                        <p>{error?.message}</p>
+                      </Callout>
+                    {/if}
+                    <div
+                      class="example-preview"
+                      id="overview-mount-{overviewExample.scenario}"
+                      {@attach mountScenario(overviewExample.scenario)}
+                    ></div>
+                  </div>
+                </div>
+              {/if}
+            </section>
+
+            <!-- -- Guidance -- -->
+            {#if component.useWhen.length > 0 || component.avoidWhen.length > 0}
+              <section id="guidance" class="dx-section">
+                <div class="dx-section__head">
+                  <span class="dx-section__num">{sectionNumber.get('guidance') ?? ''}</span>
+                  <h2 class="dx-section__title">When to use</h2>
+                  <span class="dx-section__rule" aria-hidden="true"></span>
+                </div>
+                <div class="dx-guide">
+                  {#if component.useWhen.length > 0}
+                    <div class="dx-guide__card">
+                      <div class="dx-guide__head">
+                        <span class="dx-guide__icon dx-guide__icon--use">
+                          <Check size={16} strokeWidth={1.5} aria-hidden="true" />
+                        </span>
+                        Use when
+                      </div>
+                      <ul class="dx-guide__list dx-guide__list--use">
+                        {#each component.useWhen as item, index (index)}
+                          <li>
+                            <Check size={15} strokeWidth={1.5} aria-hidden="true" />
+                            <span>{item}</span>
+                          </li>
+                        {/each}
+                      </ul>
+                    </div>
+                  {/if}
+                  {#if component.avoidWhen.length > 0}
+                    <div class="dx-guide__card">
+                      <div class="dx-guide__head">
+                        <span class="dx-guide__icon dx-guide__icon--avoid">
+                          <X size={16} strokeWidth={1.5} aria-hidden="true" />
+                        </span>
+                        Avoid when
+                      </div>
+                      <ul class="dx-guide__list dx-guide__list--avoid">
+                        {#each component.avoidWhen as item, index (index)}
+                          <li>
+                            <X size={15} strokeWidth={1.5} aria-hidden="true" />
+                            <span>
+                              {item.reason}
+                              {#if item.alternative !== undefined}
+                                <a class="dx-guide__alt" href="/c/{item.alternative}" target="_top">
+                                  Use {humanizeId(item.alternative)} instead
+                                </a>
+                              {/if}
+                            </span>
+                          </li>
+                        {/each}
+                      </ul>
+                    </div>
+                  {/if}
+                </div>
+              </section>
+            {/if}
+
+            <!-- -- Playground -- -->
+            {#if showGeneratedPlayground}
+              <section id="playground" class="dx-section">
+                <div class="dx-section__head">
+                  <span class="dx-section__num">{sectionNumber.get('playground') ?? ''}</span>
+                  <h2 class="dx-section__title">Playground</h2>
+                  <span class="dx-section__rule" aria-hidden="true"></span>
+                </div>
+                <p class="dx-prose dx-play__intro">
+                  Adjust the props below — the snippet updates live. Copy it when it looks right.
+                </p>
+                <div class="dx-play">
+                  <div class="dx-play__preview">
+                    <CodeBlock code={playgroundSnippet} language="svelte" copyable />
+                    {#if playgroundModel.skipped.length > 0}
+                      <p class="dx-play__skipped">
+                        Not adjustable here: {playgroundModel.skipped.join(', ')}.
+                      </p>
+                    {/if}
+                  </div>
+                  <div class="dx-play__controls">
+                    <div class="dx-play__controls-head">
+                      <Sliders size={13} strokeWidth={1.5} aria-hidden="true" />
+                      Props
+                    </div>
+                    {#each playgroundModel.controls as control (control.name)}
+                      <div class="dx-ctl">
+                        <div class="dx-ctl__text">
+                          <div class="dx-ctl__name">{control.name}</div>
+                          {#if control.description !== undefined}
+                            <div class="dx-ctl__desc">{control.description}</div>
+                          {/if}
+                        </div>
+                        {#if control.kind === 'boolean'}
+                          <Toggle
+                            id="pg-{control.name}"
+                            label={control.name}
+                            hideLabel
+                            bind:checked={
+                              () => Boolean(playgroundValues[control.name]),
+                              (next) => (playgroundValues[control.name] = next)
+                            }
+                          />
+                        {:else if control.kind === 'select'}
+                          <select
+                            class="dx-ctl__select"
+                            aria-label={control.name}
+                            value={String(playgroundValues[control.name] ?? control.value)}
+                            onchange={(event) =>
+                              (playgroundValues[control.name] = (
+                                event.currentTarget as HTMLSelectElement
+                              ).value)}
+                          >
+                            {#each control.options as option (option)}
+                              <option value={option}>{option}</option>
+                            {/each}
+                          </select>
+                        {:else if control.kind === 'number'}
+                          <input
+                            class="dx-ctl__input"
+                            type="number"
+                            aria-label={control.name}
+                            value={Number(playgroundValues[control.name] ?? control.value)}
+                            oninput={(event) =>
+                              (playgroundValues[control.name] = Number(
+                                (event.currentTarget as HTMLInputElement).value,
+                              ))}
+                          />
+                        {:else}
+                          <input
+                            class="dx-ctl__input"
+                            type="text"
+                            aria-label={control.name}
+                            value={String(playgroundValues[control.name] ?? control.value)}
+                            oninput={(event) =>
+                              (playgroundValues[control.name] = (
+                                event.currentTarget as HTMLInputElement
+                              ).value)}
+                          />
+                        {/if}
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              </section>
+            {/if}
+
+            <!-- -- Examples -- -->
+            {#if examples.length > 0}
+              <section id="examples" class="dx-section">
+                <div class="dx-section__head">
+                  <span class="dx-section__num">{sectionNumber.get('examples') ?? ''}</span>
+                  <h2 class="dx-section__title">Examples</h2>
+                  <span class="dx-section__rule" aria-hidden="true"></span>
+                </div>
+                <div class="dx-examples">
+                  {#each examples as { scenario, title, description } (scenario)}
+                    {@const disclosure = disclosureFor(scenario)}
+                    {@const source = fetchedSource[scenario]}
+                    {@const mountError = mountErrors[`example-mount-${scenario}`]}
+                    {@const sourceError = sourceErrors[scenario]}
+                    {#if disclosure}
+                      <section id="example-card-{scenario}" class="dx-example">
+                        <div class="dx-example__head">
+                          <div>
+                            <h3 class="dx-example__title">{title}</h3>
+                            {#if description !== undefined}
+                              <p class="dx-example__desc">{description}</p>
+                            {/if}
+                          </div>
+                        </div>
+                        <div class="dx-example__body">
+                          <div class="dx-stage">
+                            <div class="dx-stage__canvas">
+                              <div
+                                class="example-preview"
+                                id="example-mount-{scenario}"
+                                {@attach mountScenario(scenario)}
+                              ></div>
+                            </div>
+                          </div>
+
+                          {#if mountError !== undefined}
+                            <Callout variant="danger" title="This example failed to render">
+                              <p class="example-error__message">{mountError.message}</p>
+                              {#if mountError.stack !== undefined}
+                                <pre
+                                  class="example-error__stack"
+                                  aria-label="Stack trace">{mountError.stack}</pre>
+                              {/if}
+                              <div class="example-error__actions">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  aria-label="Copy error for {title}"
+                                  onclick={() => copyError(mountError)}
+                                >
+                                  Copy error
+                                </Button>
+                              </div>
+                            </Callout>
+                          {/if}
+
+                          <Accordion bind:expandedIds={disclosure.expandedIds}>
+                            <AccordionItem id="source" title="Show code">
+                              {#if loadingSource[scenario]}
+                                <p class="source-loading">Loading…</p>
+                              {:else if source === null}
+                                <Callout variant="danger" title="Could not load source">
+                                  <dl class="example-error__detail">
+                                    <dt>Requested</dt>
+                                    <dd>
+                                      <code>
+                                        {sourceError?.url ??
+                                          `/example-src/${componentName}/${scenario}`}
+                                      </code>
+                                    </dd>
+                                    <dt>Reason</dt>
+                                    <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
+                                  </dl>
+                                  <div class="example-error__actions">
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      aria-label="Retry loading source for {title}"
+                                      onclick={() => fetchSource(scenario)}
+                                    >
+                                      Retry
+                                    </Button>
+                                  </div>
+                                </Callout>
+                              {:else if source !== undefined}
+                                <CodeBlock code={source} language="svelte" copyable />
+                              {/if}
+                            </AccordionItem>
+                          </Accordion>
+                        </div>
+                      </section>
+                    {/if}
+                  {/each}
+                </div>
+              </section>
+            {/if}
+
+            <!-- -- Props -- -->
+            {#if propRows.length > 0}
+              <section id="props" class="dx-section props-section">
+                <div class="dx-section__head">
+                  <span class="dx-section__num">{sectionNumber.get('props') ?? ''}</span>
+                  <h2 class="dx-section__title">Props</h2>
+                  <span class="dx-section__rule" aria-hidden="true"></span>
+                </div>
+                <!-- tabindex makes the scroll region keyboard-accessible (WCAG 2.1.1). -->
+                <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+                <div
+                  class="props-table-scroll"
+                  role="region"
+                  aria-label="Props for {componentName}"
+                  tabindex="0"
+                >
+                  <Table caption={`Props for ${componentName}`} density="condensed">
+                    <Table.Header>
+                      <Table.Row>
+                        <Table.HeaderCell scope="col">Name</Table.HeaderCell>
+                        <Table.HeaderCell scope="col">Type</Table.HeaderCell>
+                        <Table.HeaderCell scope="col">Default</Table.HeaderCell>
+                        <Table.HeaderCell scope="col" align="center">Required</Table.HeaderCell>
+                        <Table.HeaderCell scope="col" align="center">Bindable</Table.HeaderCell>
+                        <Table.HeaderCell scope="col">Description</Table.HeaderCell>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {#each propRows as prop (prop.name)}
+                        <Table.Row>
+                          <Table.Cell>
+                            <code class="props-name">{prop.name}</code>
+                            {#if prop.required}
+                              <span class="dx-prop-flag dx-prop-flag--req">req</span>
+                            {/if}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {@const typeMembers = splitUnionType(prop.type)}
+                            <code class={propsTypeClass(typeMembers)}>
+                              {#each typeMembers as member, index (index)}
+                                <span class="props-type__member">
+                                  {#if index > 0}<span class="props-type__sep" aria-hidden="true"
+                                      >|
+                                    </span>{/if}<span class="props-type__value">{member}</span>
+                                </span>
+                              {/each}
+                            </code>
+                          </Table.Cell>
+                          <Table.Cell>
+                            {#if prop.defaultValue !== undefined}
+                              <code class="props-default">{prop.defaultValue}</code>
+                            {:else}
+                              <span class="props-dash" aria-hidden="true">—</span>
+                            {/if}
+                          </Table.Cell>
+                          <Table.Cell align="center">
+                            {#if prop.required}
+                              <span class="dx-prop-flag dx-prop-flag--req">req</span>
+                            {:else}
+                              <span class="props-dash" aria-hidden="true">—</span>
+                            {/if}
+                          </Table.Cell>
+                          <Table.Cell align="center">
+                            {#if prop.bindable}
+                              <span class="dx-prop-flag dx-prop-flag--bind">bind</span>
+                            {:else}
+                              <span class="props-dash" aria-hidden="true">—</span>
+                            {/if}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {#if prop.description !== undefined}
+                              <span class="props-description">{prop.description}</span>
+                            {:else}
+                              <span class="props-dash" aria-hidden="true">—</span>
+                            {/if}
+                          </Table.Cell>
+                        </Table.Row>
+                      {/each}
+                    </Table.Body>
+                  </Table>
+                </div>
+              </section>
+            {/if}
+
+            <!-- -- Accessibility -- -->
+            {#if component.a11y !== undefined}
+              {@const a11y = component.a11y}
+              <section id="accessibility" class="dx-section">
+                <div class="dx-section__head">
+                  <span class="dx-section__num">{sectionNumber.get('accessibility') ?? ''}</span>
+                  <h2 class="dx-section__title">Accessibility</h2>
+                  <span class="dx-section__rule" aria-hidden="true"></span>
+                </div>
+                {#if a11y.pattern !== undefined}
+                  <div class="dx-a11y-alert">
+                    <Alert variant="info">
+                      {#snippet icon()}
+                        <Accessibility size={18} strokeWidth={1.5} aria-hidden="true" />
+                      {/snippet}
+                      Implements the {a11y.pattern} pattern.
+                    </Alert>
+                  </div>
+                {/if}
+                <div class="dx-a11y">
+                  {#if a11y.keyboard !== undefined && a11y.keyboard.length > 0}
+                    <div class="dx-keys">
+                      {#each a11y.keyboard as shortcut, index (index)}
+                        <div class="dx-keys__row">
+                          <div><Kbd label={shortcut.keys} /></div>
+                          <div class="dx-keys__action">{shortcut.action}</div>
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+                  {#if a11y.notes !== undefined && a11y.notes.length > 0}
+                    <div class="dx-notes">
+                      {#each a11y.notes as note, index (index)}
+                        <div class="dx-note">
+                          <ShieldCheck size={15} strokeWidth={1.5} aria-hidden="true" />
+                          <span>{note}</span>
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              </section>
+            {/if}
+
+            <!-- -- Related -- -->
+            {#if component.related.length > 0}
+              <section id="related" class="dx-section">
+                <div class="dx-section__head">
+                  <span class="dx-section__num">{sectionNumber.get('related') ?? ''}</span>
+                  <h2 class="dx-section__title">Related</h2>
+                  <span class="dx-section__rule" aria-hidden="true"></span>
+                </div>
+                <div class="dx-related">
+                  {#each component.related as related (related)}
+                    <a class="dx-rel" href="/c/{related}" target="_top">
+                      <span class="dx-rel__top">
+                        <span class="dx-rel__name">{related}</span>
+                        <ArrowUpRight
+                          class="dx-rel__arrow"
+                          size={16}
+                          strokeWidth={1.5}
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </a>
+                  {/each}
+                </div>
+              </section>
+            {/if}
+
+            <!-- -- Raw artifacts (demoted from a primary tab) -- -->
+            <section class="dx-section dx-raw">
+              <Collapsible
+                trigger="Raw artifacts"
+                onToggle={(open) => {
+                  if (open) hasOpenedRawArtifacts = true;
+                }}
+              >
+                {#if hasOpenedRawArtifacts}
+                  <div class="dx-raw__grid">
+                    <div class="dx-raw__panel">
+                      <h3>Manifest entry</h3>
+                      <CodeBlock
+                        code={jsonBlock(documentation.rawArtifacts.manifestEntry)}
+                        language="json"
+                        copyable
+                      />
+                    </div>
+                    <div class="dx-raw__panel">
+                      <h3>Schema</h3>
+                      <CodeBlock
+                        code={jsonBlock(documentation.rawArtifacts.schema)}
+                        language="json"
+                        copyable
+                      />
+                    </div>
+                    <div class="dx-raw__panel">
+                      <h3>Variables</h3>
+                      <CodeBlock
+                        code={jsonBlock(documentation.rawArtifacts.variables)}
+                        language="json"
+                        copyable
+                      />
+                    </div>
+                    <div class="dx-raw__panel">
+                      <h3>Constraints</h3>
+                      <CodeBlock
+                        code={jsonBlock(documentation.rawArtifacts.constraints)}
+                        language="json"
+                        copyable
+                      />
+                    </div>
+                    <div class="dx-raw__panel">
+                      <h3>Examples</h3>
+                      <CodeBlock
+                        code={jsonBlock(documentation.rawArtifacts.examples)}
+                        language="json"
+                        copyable
+                      />
+                    </div>
+                  </div>
+                {/if}
+              </Collapsible>
+            </section>
+          </main>
         </div>
-      {/if}
-    </TabPanel>
-  </Tabs>
-</div>
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
-  .documentation-page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-6);
-    /* Pull to the body edges to cover the body's responsive padding, then
-       restore the same gutter as the page's own padding so content is inset
-       identically. This keeps body { background: --cinder-bg } intact for
-       the theme-parity tests while the visible surface is --cinder-surface-raised. */
-    margin: calc(-1 * clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6)));
-    padding: clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6));
+  /* Page surface: pure white in light mode, the system surface in dark. Set
+     LOCALLY on the page root via `light-dark()` (which follows `color-scheme`,
+     the same switch cinder tokens use) so the global --cinder-bg token — and
+     every other playground iframe — stays untouched. */
+  .dx {
+    --dx-gutter: clamp(1.25rem, 4vw, 3.5rem);
+    --dx-max: 78rem;
+    --dx-rail: 14.5rem;
+    --dx-topbar-h: 3.25rem;
     min-height: 100vh;
-    background: var(--cinder-surface-raised);
+    background: light-dark(oklch(100% 0 0), var(--cinder-bg));
   }
 
-  :global(.documentation-tabs-root) {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-6);
-    min-height: 100%;
+  .dx__inner {
+    max-width: var(--dx-max);
+    margin-inline: auto;
+    padding-inline: var(--dx-gutter);
   }
 
-  :global(.documentation-tabs) {
+  /* ===== Top bar ===== */
+  .dx-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    height: var(--dx-topbar-h);
     display: flex;
     align-items: center;
-    gap: var(--cinder-space-2);
-    overflow-x: auto;
-    border-block-end: 1px solid var(--cinder-border);
-    padding-block-end: var(--cinder-space-2);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    background: color-mix(in oklch, var(--cinder-bg), transparent 12%);
+    backdrop-filter: saturate(1.4) blur(10px);
   }
-
-  :global(.documentation-panel) {
+  .dx-topbar__inner {
     display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-6);
-    min-width: 0;
-    background: var(--cinder-surface-raised);
-  }
-
-  :global(.documentation-panel h2),
-  :global(.documentation-panel h3),
-  :global(.documentation-panel h4) {
-    color: var(--cinder-text);
-    font-weight: var(--cinder-font-semibold);
-    margin: 0;
-  }
-
-  :global(.documentation-panel h2) {
-    font-size: var(--cinder-text-xl);
-  }
-
-  :global(.documentation-panel h3) {
-    font-size: var(--cinder-text-lg);
-  }
-
-  :global(.documentation-panel h4) {
-    font-size: var(--cinder-text-base);
-  }
-
-  .documentation-skeleton {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-3);
-  }
-
-  .documentation-error {
-    margin: 0;
-  }
-
-  .overview-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(15rem, 22rem);
-    gap: var(--cinder-space-8);
-    align-items: start;
-    padding-block-end: var(--cinder-space-6);
-    border-block-end: 1px solid var(--cinder-border);
-  }
-
-  .overview-hero-main {
-    display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: var(--cinder-space-4);
-    min-width: 0;
+    width: 100%;
+    max-width: var(--dx-max);
+    margin-inline: auto;
+    padding-inline: var(--dx-gutter);
   }
-
-  .overview-hero h1 {
-    margin: 0;
-    color: var(--cinder-text);
-    font-size: var(--cinder-text-2xl);
-    font-weight: var(--cinder-font-semibold);
-    line-height: var(--cinder-leading-tight);
-  }
-
-  .overview-purpose {
-    margin: 0;
-    color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-base);
-    line-height: var(--cinder-leading-relaxed);
-  }
-
-  .overview-import {
+  .dx-crumbs {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--cinder-space-2);
-    margin: 0;
+    font-size: var(--cinder-text-xs);
     color: var(--cinder-text-subtle);
-    font-size: var(--cinder-text-sm);
-  }
-
-  .overview-import span {
-    font-weight: var(--cinder-font-medium);
-  }
-
-  .overview-import code {
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-sm);
-    background: var(--cinder-surface-inset);
-    color: var(--cinder-text);
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
-    padding: var(--cinder-space-1) var(--cinder-space-2);
-  }
-
-  .overview-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-4);
     min-width: 0;
   }
-
-  .section-heading-row {
+  .dx-crumbs__mark {
+    font-family: var(--cinder-font-mono);
+    font-weight: var(--cinder-font-semibold);
+    letter-spacing: 0.18em;
+    color: var(--cinder-text);
+    text-transform: uppercase;
+    font-size: var(--cinder-text-2xs);
+  }
+  .dx-crumbs__sep {
+    color: var(--cinder-border-strong);
+  }
+  .dx-crumbs__current {
+    color: var(--cinder-text);
+    font-weight: var(--cinder-font-medium);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dx-topbar__actions {
+    margin-inline-start: auto;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--cinder-space-4);
+    align-items: center;
+    gap: var(--cinder-space-1-5, 0.375rem);
   }
-
-  .section-heading-row a,
-  .example-link-list a,
-  .featured-example-card,
-  .related-links a {
-    border-radius: var(--cinder-radius-sm);
-    color: var(--cinder-link, var(--cinder-accent));
-    text-decoration: none;
+  .dx-iconbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--cinder-radius-md);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--cinder-text-muted);
+    cursor: pointer;
+    transition:
+      background 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease;
   }
-
-  .section-heading-row a:hover,
-  .example-link-list a:hover,
-  .featured-example-card:hover,
-  .related-links a:hover {
-    text-decoration: underline;
+  @media (hover: hover) {
+    .dx-iconbtn:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+      border-color: var(--cinder-border-muted);
+    }
   }
-
-  .section-heading-row a:focus-visible,
-  .example-link-list a:focus-visible,
-  .featured-example-card:focus-visible,
-  .related-links a:focus-visible {
+  .dx-iconbtn:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
-  .featured-example-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-    gap: var(--cinder-space-3);
-  }
-
-  .featured-example-card {
-    border: 1px solid var(--cinder-border);
-    background: var(--cinder-surface-raised);
+  .dx-loading {
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-2);
-    padding: var(--cinder-space-4);
+    gap: var(--cinder-space-3);
+    padding-block: var(--cinder-space-8);
+  }
+  .dx-error-region {
+    padding-block: var(--cinder-space-8);
   }
 
-  .featured-example-card span {
-    color: var(--cinder-text);
+  /* ===== Hero ===== */
+  .dx-hero {
+    padding-block: clamp(2rem, 5vw, 3.75rem) clamp(1.75rem, 4vw, 2.75rem);
+    border-block-end: 1px solid var(--cinder-border-muted);
+  }
+  .dx-hero__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    align-items: end;
+  }
+  .dx-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cinder-text-subtle);
+    margin-block-end: var(--cinder-space-5);
+  }
+  .dx-eyebrow__index {
+    color: var(--cinder-accent-text);
+  }
+  .dx-eyebrow__rule {
+    flex: 1;
+    height: 1px;
+    background: var(--cinder-border-muted);
+  }
+  .dx-hero h1 {
+    font-size: clamp(2.5rem, 6vw, 3.75rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
     font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+    margin: 0;
+    text-wrap: balance;
   }
-
-  .featured-example-card small {
+  .dx-hero__lede {
+    margin: var(--cinder-space-5) 0 0;
+    font-size: clamp(var(--cinder-text-lg), 2.2vw, var(--cinder-text-2xl));
+    line-height: var(--cinder-leading-snug);
     color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-sm);
-    line-height: var(--cinder-leading-relaxed);
+    max-width: 34ch;
+    text-wrap: pretty;
   }
-
-  .example-link-list {
+  .dx-hero__meta {
+    margin-block-start: var(--cinder-space-7);
     display: flex;
     flex-wrap: wrap;
-    gap: var(--cinder-space-2) var(--cinder-space-4);
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+  .dx-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-1-5, 0.375rem);
+  }
+
+  .dx-spec {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    box-shadow: var(--cinder-shadow-sm);
+    overflow: hidden;
+  }
+  .dx-spec__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-4);
+    padding: var(--cinder-space-3) var(--cinder-space-4);
     font-size: var(--cinder-text-sm);
   }
-
-  .readme-content {
+  .dx-spec__row + .dx-spec__row {
+    border-block-start: 1px solid var(--cinder-border-muted);
+  }
+  .dx-spec__key {
+    color: var(--cinder-text-subtle);
+    font-size: var(--cinder-text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .dx-spec__val {
     color: var(--cinder-text);
-    line-height: var(--cinder-leading-relaxed);
+    font-weight: var(--cinder-font-medium);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+  .dx-spec__val--mono {
+    font-family: var(--cinder-font-mono);
+    font-weight: var(--cinder-font-normal);
   }
 
-  .readme-content :global(*) {
+  .dx-import {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-inset);
+    overflow: hidden;
     max-width: 100%;
   }
+  .dx-import__code {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dx-import__copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    border: none;
+    border-inline-start: 1px solid var(--cinder-border);
+    background: var(--cinder-surface);
+    color: var(--cinder-text-subtle);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+      background 120ms ease,
+      color 120ms ease;
+  }
+  @media (hover: hover) {
+    .dx-import__copy:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
+  }
+  .dx-import__copy[data-copied] {
+    color: var(--cinder-success);
+  }
+  .dx-import__copy:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
 
+  /* ===== Layout + TOC ===== */
+  .dx-layout {
+    display: grid;
+    grid-template-columns: var(--dx-rail) minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+    padding-block: clamp(2rem, 4vw, 3.25rem) 5rem;
+    align-items: start;
+  }
+  .dx-toc {
+    position: sticky;
+    top: calc(var(--dx-topbar-h) + 1.5rem);
+    align-self: start;
+  }
+  .dx-toc__label {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cinder-text-subtle);
+    padding-inline-start: var(--cinder-space-4);
+    margin-block-end: var(--cinder-space-3);
+  }
+  .dx-toc__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .dx-toc__link {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: var(--cinder-space-2-5, 0.625rem);
+    padding: var(--cinder-space-1-5, 0.375rem) var(--cinder-space-4);
+    border-inline-start: 2px solid var(--cinder-border-muted);
+    color: var(--cinder-text-subtle);
+    text-decoration: none;
+    font-size: var(--cinder-text-sm);
+    line-height: 1.3;
+    transition:
+      color 120ms ease,
+      border-color 120ms ease;
+  }
+  @media (hover: hover) {
+    .dx-toc__link:hover {
+      color: var(--cinder-text);
+    }
+  }
+  .dx-toc__num {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    color: var(--cinder-text-disabled);
+    width: 1.1rem;
+    flex-shrink: 0;
+  }
+  .dx-toc__link[data-active] {
+    color: var(--cinder-text);
+    font-weight: var(--cinder-font-medium);
+    border-inline-start-color: var(--cinder-accent);
+  }
+  .dx-toc__link[data-active] .dx-toc__num {
+    color: var(--cinder-accent-text);
+  }
+  .dx-toc__link:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  /* ===== Sections ===== */
+  .dx-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(3rem, 6vw, 4.5rem);
+  }
+  .dx-section {
+    scroll-margin-block-start: calc(var(--dx-topbar-h) + 1.5rem);
+  }
+  .dx-section__head {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+    margin-block-end: var(--cinder-space-5);
+  }
+  .dx-section__num {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    letter-spacing: 0.1em;
+    color: var(--cinder-accent-text);
+    padding: 2px var(--cinder-space-2);
+    border: 1px solid color-mix(in oklch, var(--cinder-accent), transparent 70%);
+    border-radius: var(--cinder-radius-sm);
+    background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+  }
+  .dx-section__title {
+    font-size: var(--cinder-text-2xl);
+    font-weight: var(--cinder-font-semibold);
+    letter-spacing: -0.01em;
+    color: var(--cinder-text);
+    margin: 0;
+  }
+  .dx-section__rule {
+    flex: 1;
+    height: 1px;
+    background: var(--cinder-border-muted);
+  }
+
+  .dx-prose {
+    color: var(--cinder-text-muted);
+    line-height: var(--cinder-leading-relaxed);
+    text-wrap: pretty;
+  }
+
+  /* README prose */
   .readme-content :global(h1),
   .readme-content :global(h2),
   .readme-content :global(h3) {
@@ -1152,240 +1527,112 @@
     line-height: var(--cinder-leading-tight);
     margin: var(--cinder-space-6) 0 var(--cinder-space-3);
   }
-
   .readme-content :global(h1:first-child),
   .readme-content :global(h2:first-child),
   .readme-content :global(h3:first-child) {
     margin-top: 0;
   }
-
   .readme-content :global(h1:first-child) {
     display: none;
   }
-
-  .readme-content :global(h1) {
-    font-size: var(--cinder-text-xl);
-  }
-
-  .readme-content :global(h2) {
-    font-size: var(--cinder-text-lg);
-  }
-
-  .readme-content :global(h3) {
-    font-size: var(--cinder-text-base);
-  }
-
   .readme-content :global(p),
   .readme-content :global(ul),
   .readme-content :global(ol),
   .readme-content :global(table) {
     margin: 0 0 var(--cinder-space-4);
   }
-
-  /* CodeBlock and its fallback get the same bottom-margin as prose elements
-   * so code-to-paragraph transitions don't collapse. The fallback wrapper also
-   * provides an overflow-x scroll container for wide pre blocks. */
   .readme-content :global(.cinder-code-block),
   .readme-pre-fallback {
     margin-block-end: var(--cinder-space-4);
   }
-
   .readme-pre-fallback {
     overflow-x: auto;
   }
-
   .readme-content :global(code) {
     font-family: var(--cinder-font-mono);
     font-size: 0.95em;
   }
 
-  .readme-content :global(table) {
-    overflow-x: auto;
+  /* ===== Preview stage ===== */
+  .dx-stage {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface);
+    overflow: hidden;
+    box-shadow: var(--cinder-shadow-sm);
+    margin-block-start: var(--cinder-space-6);
   }
-
-  .metadata-list {
+  .dx-stage__bar {
     display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-5);
-    margin: 0;
-  }
-
-  .metadata-list div {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-2);
-  }
-
-  .metadata-list dt {
-    color: var(--cinder-text-subtle);
-    font-size: var(--cinder-text-xs);
-    font-weight: var(--cinder-font-semibold);
-    letter-spacing: 0;
-    text-transform: uppercase;
-  }
-
-  .metadata-list dd {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--cinder-space-2);
-    margin: 0;
-    color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-sm);
-    line-height: var(--cinder-leading-relaxed);
-  }
-
-  .metadata-list code,
-  .related-links a,
-  .variable-list code,
-  .violates-label code {
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
-  }
-
-  .badge-list,
-  .related-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: var(--cinder-space-2);
-  }
-
-  .guidance-grid,
-  .constraint-example-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-    gap: var(--cinder-space-6);
-  }
-
-  .guidance-section,
-  .schema-section,
-  .raw-artifact-panel,
-  .constraint-example {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-3);
-    min-width: 0;
-  }
-
-  .guidance-section ul,
-  .constraint-rules,
-  .variable-list,
-  .schema-property-list {
-    margin: 0;
-    padding-inline-start: var(--cinder-space-5);
-  }
-
-  .guidance-section li,
-  .constraint-rules li,
-  .variable-list li,
-  .schema-property-list li {
-    margin-block: var(--cinder-space-2);
-    color: var(--cinder-text-muted);
-  }
-
-  .schema-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-    gap: var(--cinder-space-3);
-  }
-
-  .schema-summary div {
-    border-block-start: 1px solid var(--cinder-border);
-    display: flex;
-    justify-content: space-between;
-    gap: var(--cinder-space-3);
-    padding-block-start: var(--cinder-space-3);
-  }
-
-  .schema-summary span {
-    color: var(--cinder-text-subtle);
-    font-size: var(--cinder-text-sm);
-  }
-
-  .schema-summary strong {
-    color: var(--cinder-text);
-    font-size: var(--cinder-text-lg);
-  }
-
-  .schema-property-list {
-    column-width: 12rem;
-  }
-
-  .schema-property-list li {
-    break-inside: avoid;
-  }
-
-  .empty-state,
-  .constraint-summary,
-  .violates-label {
-    margin: 0;
-    color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-sm);
-  }
-
-  .constraint-rules {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-4);
-  }
-
-  .constraint-rule-header {
-    display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--cinder-space-2);
+    padding: var(--cinder-space-2) var(--cinder-space-3) var(--cinder-space-2) var(--cinder-space-4);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface-raised);
   }
-
-  .constraint-rules p {
-    margin: var(--cinder-space-2) 0 0;
+  .dx-stage__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-border-strong);
   }
-
-  .raw-artifact-grid {
+  .dx-stage__label {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cinder-text-subtle);
+  }
+  .dx-stage__canvas {
+    padding: clamp(1.5rem, 4vw, 3rem);
+  }
+  /* Snapshot-mode body: just the mounted examples, no docs chrome, so the
+     visual-regression / a11y harness captures a clean component mount. The light
+     surface is pure white (carried over from the docs page) so translucent
+     component backgrounds — e.g. a selected tree row's 15%-accent fill —
+     composite over the same white the visual baselines were captured against,
+     rather than the body's grey `--cinder-bg`, which would shift the contrast. */
+  .snapshot-examples {
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-6);
+    background: light-dark(oklch(100% 0 0), var(--cinder-bg));
+    /* Headroom above the first example mount. The old tabbed snapshot layout
+       wrapped each example in a Card under an `<h2>Examples</h2>` inside a tab
+       panel, pushing the first example ~100px down from the viewport top. The
+       positioning test harness (selection-popover-positioning.playwright.ts)
+       depends on that clearance: when a selection sits flush against the
+       viewport top, SelectionPopover has no room to flip above and falls back
+       to a `bottom` placement that OVERLAPS the selection — a real flip/shift
+       bug in the shared anchored-overlay logic, tracked in issue #369 (the
+       popover should anchor below the selection's bottom edge, not overlap it).
+       This
+       padding restores the fixture geometry the test was written against; it
+       does not fix the underlying component bug. Sized (8rem) so the EXPANDED
+       composer (~114px tall) also clears the selection when it flips above. */
+    padding-block-start: var(--cinder-space-32);
   }
 
-  .example-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-8);
-  }
-
-  .example-card-anchor {
-    scroll-margin-block-start: var(--cinder-space-6);
-  }
-
-  .no-examples {
-    color: var(--cinder-text-muted);
-    font-style: italic;
+  .snapshot-empty-heading {
     margin: 0;
+    font-family: var(--cinder-font-sans);
+    font-size: var(--cinder-text-xl);
+    font-weight: var(--cinder-font-weight-semibold);
+    /* Explicit token (not `inherit`) so contrast is computed against the white
+       snapshot surface, keeping axe's color-contrast check green. */
+    color: var(--cinder-text);
   }
 
   .example-preview {
-    /* Scale the inner preview gutter with the viewport so components aren't
-       boxed into a sliver on narrow screens — matches the iframe body's
-       responsive gutter. Floors at space-2 (8px) on phones; the body gutter is
-       already near-zero there, so the component gets almost the full width. */
-    padding: clamp(var(--cinder-space-2), 2vw, var(--cinder-space-6));
-    min-height: 4rem;
     display: block;
-    overflow: visible;
+    min-height: 2rem;
   }
-
-  /* Scoped to .example-preview descendants so the helper can't leak into
-     unrelated pages even though the inner selector is :global. */
   .example-preview :global(.example-preview-row) {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
     gap: var(--cinder-space-4);
   }
-
-  /* Column counterpart to -row: stacks example variants vertically. Same
-     scoping rationale (:global inner selector, .example-preview anchor) so the
-     helper stays confined to the preview surface. */
   .example-preview :global(.example-preview-column) {
     display: flex;
     flex-direction: column;
@@ -1393,23 +1640,208 @@
     gap: var(--cinder-space-4);
   }
 
+  /* ===== Use / Avoid ===== */
+  .dx-guide {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--cinder-space-4);
+  }
+  .dx-guide__card {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    padding: var(--cinder-space-5);
+    box-shadow: var(--cinder-shadow-sm);
+  }
+  .dx-guide__head {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2-5, 0.625rem);
+    margin-block-end: var(--cinder-space-4);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+  }
+  .dx-guide__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: var(--cinder-radius-md);
+  }
+  .dx-guide__icon--use {
+    color: var(--cinder-color-success-fg);
+    background: var(--cinder-color-success-bg);
+  }
+  .dx-guide__icon--avoid {
+    color: var(--cinder-color-danger-fg);
+    background: var(--cinder-color-danger-bg);
+  }
+  .dx-guide__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
+  .dx-guide__list li {
+    display: grid;
+    grid-template-columns: 1.1rem 1fr;
+    gap: var(--cinder-space-2-5, 0.625rem);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-snug);
+    color: var(--cinder-text-muted);
+  }
+  .dx-guide__list--use :global(svg) {
+    color: var(--cinder-success);
+    margin-top: 1px;
+  }
+  .dx-guide__list--avoid :global(svg) {
+    color: var(--cinder-danger);
+    margin-top: 1px;
+  }
+  .dx-guide__alt {
+    display: inline-block;
+    margin-block-start: 2px;
+    color: var(--cinder-accent-text);
+    font-weight: var(--cinder-font-medium);
+    text-decoration: none;
+  }
+  .dx-guide__alt:hover {
+    text-decoration: underline;
+  }
+  .dx-guide__alt:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  /* ===== Playground ===== */
+  .dx-play__intro {
+    margin-block-end: var(--cinder-space-5);
+  }
+  .dx-play {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 16.5rem;
+    gap: var(--cinder-space-4);
+    align-items: start;
+  }
+  .dx-play__preview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    min-width: 0;
+  }
+  .dx-play__skipped {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+  }
+  .dx-play__controls {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    box-shadow: var(--cinder-shadow-sm);
+    /* Scroll the controls when a many-prop component makes the sticky panel
+       taller than the viewport, so lower controls stay reachable. The radius
+       clips the inner rows. */
+    overflow-y: auto;
+    max-height: calc(100dvh - var(--dx-topbar-h) - 3rem);
+    position: sticky;
+    top: calc(var(--dx-topbar-h) + 1.5rem);
+  }
+  .dx-play__controls-head {
+    padding: var(--cinder-space-3) var(--cinder-space-4);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cinder-text-subtle);
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+  .dx-ctl {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-3-5, 0.875rem) var(--cinder-space-4);
+  }
+  .dx-ctl + .dx-ctl {
+    border-block-start: 1px solid var(--cinder-border-muted);
+  }
+  .dx-ctl__text {
+    min-width: 0;
+  }
+  .dx-ctl__name {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+  }
+  .dx-ctl__desc {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    margin-block-start: 2px;
+    line-height: 1.4;
+  }
+  .dx-ctl__select,
+  .dx-ctl__input {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text);
+    font-family: inherit;
+    font-size: var(--cinder-text-sm);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+    max-width: 8rem;
+  }
+
+  /* ===== Examples ===== */
+  .dx-examples {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-6);
+  }
+  .dx-example {
+    scroll-margin-block-start: calc(var(--dx-topbar-h) + 1.5rem);
+  }
+  .dx-example__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--cinder-space-4);
+    margin-block-end: var(--cinder-space-3);
+  }
+  .dx-example__title {
+    font-size: var(--cinder-text-lg);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+    margin: 0;
+  }
+  .dx-example__desc {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-subtle);
+    margin: 2px 0 0;
+    max-width: 60ch;
+  }
+  .dx-example__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
   .source-loading {
     margin: 0;
     font-size: var(--cinder-text-sm);
     color: var(--cinder-text-subtle);
     font-style: italic;
   }
-
-  /* --- Example error surfaces ------------------------------------------- */
-  .example-error {
-    padding: 0 var(--cinder-space-6) var(--cinder-space-6);
-  }
-
   .example-error__message {
     margin: 0;
     font-weight: var(--cinder-font-medium);
   }
-
   .example-error__stack {
     margin: var(--cinder-space-3) 0 0;
     padding: var(--cinder-space-3);
@@ -1422,7 +1854,6 @@
     overflow-x: auto;
     max-height: 16rem;
   }
-
   .example-error__detail {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -1430,41 +1861,32 @@
     margin: 0;
     font-size: var(--cinder-text-sm);
   }
-
   .example-error__detail dt {
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-subtle);
   }
-
   .example-error__detail dd {
     margin: 0;
     word-break: break-word;
   }
-
   .example-error__actions {
     display: flex;
     gap: var(--cinder-space-2);
-    margin-top: var(--cinder-space-4);
+    margin-block-start: var(--cinder-space-4);
   }
 
-  /* --- Props / API reference panel ------------------------------------- */
+  /* ===== Props table ===== */
   .props-section {
-    /* Establish a query container so the table responds to ITS OWN width (the
-       preview pane), not the viewport — the iframe is resized by the toolbar
-       independently of the device. */
     container: props-section / inline-size;
   }
-
-  .props-heading {
-    margin: 0 0 var(--cinder-space-4);
-    font-size: var(--cinder-text-lg);
-    font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+  .props-table-scroll {
+    overflow-x: auto;
+    border-radius: var(--cinder-radius-sm);
   }
-
-  /* The <h3> is the only visible heading. The <Table caption> stays in the DOM
-     so the table keeps an accessible name, but is visually hidden to avoid a
-     second, redundant "Props for <component>" heading. */
+  .props-table-scroll:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
   .props-section :global(.cinder-table__caption) {
     position: absolute;
     width: 1px;
@@ -1476,173 +1898,96 @@
     white-space: nowrap;
     border: 0;
   }
-
-  .props-skeleton {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-3);
-    padding: var(--cinder-space-2) 0;
-  }
-
-  /* Wide container: a normal horizontally-scrollable table. */
-  .props-table-scroll {
-    overflow-x: auto;
-    border-radius: var(--cinder-radius-sm);
-  }
-
-  .props-table-scroll:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
-  }
-
-  @media (forced-colors: active) {
-    .props-table-scroll:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: calc(var(--cinder-ring-width) * -1);
-    }
-  }
-
-  .props-error,
-  .props-empty {
-    margin: 0;
-    font-size: var(--cinder-text-sm);
-    color: var(--cinder-text-subtle);
-    font-style: italic;
-  }
-
   .props-name,
   .props-type,
   .props-default {
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
   }
-
   .props-name {
     font-weight: var(--cinder-font-medium);
+    color: var(--cinder-accent-text);
   }
-
-  /* Union type: one member per line, no mid-token wrapping. Each member stays
-     intact; the separator pipe is decorative (real `|` punctuation is read by
-     screen readers from the cell text, so the visual one is aria-hidden). */
   .props-type {
     display: inline-flex;
     flex-direction: column;
     gap: var(--cinder-space-0-5, 0.125rem);
     align-items: flex-start;
   }
-
   .props-type__member {
     white-space: nowrap;
   }
-
-  /* Hang the leading `|` of continuation lines in a small gutter so the member
-     values line up vertically under each other. */
   .props-type--union .props-type__member {
     padding-inline-start: 1ch;
   }
-
   .props-type__sep {
     margin-inline-start: -1ch;
     color: var(--cinder-text-subtle);
   }
-
-  /* Required indicator — the same 6px red gem cinder renders for required form
-     fields (.cinder-form-field__required). Used both as the Name-column marker
-     (where the leading margin separates it from the prop name) and in the
-     centered Required column. It's decorative (aria-hidden); the "Required"
-     meaning is carried by adjacent visually-hidden text / the column header. */
-  .props-required-gem {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--cinder-danger);
-    flex-shrink: 0;
-    vertical-align: middle;
-  }
-
-  /* Only the Name-column gem trails the prop name and needs separating space;
-     the centered Required column shows the gem alone, so no leading margin. */
-  .props-name + .props-required-gem {
+  .dx-prop-flag {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: var(--cinder-space-0-5, 0.125rem) var(--cinder-space-1-5, 0.375rem);
+    border-radius: var(--cinder-radius-sm);
     margin-inline-start: var(--cinder-space-1);
   }
-
-  /* Standard visually-hidden helper: keeps the "Required" label in the
-     accessibility tree while only the gem is shown visually. */
-  .props-visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+  .dx-prop-flag--req {
+    color: var(--cinder-color-danger-fg);
+    background: var(--cinder-color-danger-bg);
+    border: 1px solid var(--cinder-color-danger-border);
   }
-
+  .dx-prop-flag--bind {
+    color: var(--cinder-accent-text);
+    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+    border: 1px solid color-mix(in oklch, var(--cinder-accent), transparent 72%);
+    margin-inline-start: 0;
+  }
   .props-description {
     font-size: var(--cinder-text-sm);
     color: var(--cinder-text-muted);
   }
-
   .props-dash {
     color: var(--cinder-text-subtle);
   }
 
-  /*
-   * Narrow container (a constrained preview pane): a 6-column table can't fit,
-   * so stack each row into a labelled card. The column order is fixed (Name,
-   * Type, Default, Required, Bindable, Description), so each cell's header label
-   * is injected by nth-child via ::before — no per-cell attribute or change to
-   * the cinder Table component is needed. Table semantics (and the SR-only
-   * caption) stay intact; only `display` changes.
-   */
+  /* Narrow container → stacked cards (same ::before-label pattern as before). */
   @container props-section (max-width: 34rem) {
     .props-table-scroll {
       overflow-x: visible;
     }
-
     .props-section :global(.cinder-table) {
       display: block;
       inline-size: 100%;
     }
-
     .props-section :global(.cinder-table thead) {
-      /* Column headers are reproduced as per-cell ::before labels below, so the
-         visual header row is hidden (kept in the a11y tree). */
       position: absolute;
       width: 1px;
       height: 1px;
       overflow: hidden;
       clip: rect(0, 0, 0, 0);
     }
-
     .props-section :global(.cinder-table tbody),
     .props-section :global(.cinder-table tr) {
       display: block;
     }
-
     .props-section :global(.cinder-table tr) {
       padding-block: var(--cinder-space-3);
       border-block-end: 1px solid var(--cinder-border);
     }
-
     .props-section :global(.cinder-table td) {
       display: grid;
       grid-template-columns: minmax(4.5rem, max-content) 1fr;
       gap: var(--cinder-space-3);
       padding-block: var(--cinder-space-1);
       border: none;
-      /* Reset the centered alignment from the Required/Bindable columns. */
       text-align: start;
     }
-
     .props-section :global(.cinder-table td)::before {
       font-weight: var(--cinder-font-medium);
       color: var(--cinder-text-subtle);
     }
-
     .props-section :global(.cinder-table td:nth-child(1))::before {
       content: 'Name';
     }
@@ -1663,14 +2008,231 @@
     }
   }
 
-  @media (max-width: 46rem) {
-    .overview-hero {
-      grid-template-columns: 1fr;
-      gap: var(--cinder-space-6);
-    }
+  /* ===== Accessibility ===== */
+  .dx-a11y-alert {
+    margin-block-end: var(--cinder-space-5);
+  }
+  .dx-a11y {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    gap: var(--cinder-space-4);
+    align-items: start;
+  }
+  .dx-keys {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    overflow: hidden;
+    background: var(--cinder-surface-raised);
+    box-shadow: var(--cinder-shadow-sm);
+  }
+  .dx-keys__row {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: var(--cinder-space-3);
+    align-items: center;
+    padding: var(--cinder-space-3) var(--cinder-space-4);
+    font-size: var(--cinder-text-sm);
+  }
+  .dx-keys__row + .dx-keys__row {
+    border-block-start: 1px solid var(--cinder-border-muted);
+  }
+  .dx-keys__action {
+    color: var(--cinder-text-muted);
+    line-height: 1.4;
+  }
+  .dx-notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
+  .dx-note {
+    display: grid;
+    grid-template-columns: 1.1rem 1fr;
+    gap: var(--cinder-space-2-5, 0.625rem);
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-muted);
+    line-height: var(--cinder-leading-snug);
+  }
+  .dx-note :global(svg) {
+    color: var(--cinder-accent-text);
+    margin-top: 1px;
+  }
 
-    .documentation-tab {
-      padding-inline: var(--cinder-space-3);
+  /* ===== Related ===== */
+  .dx-related {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: var(--cinder-space-3);
+  }
+  .dx-rel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-4);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+    text-decoration: none;
+    color: inherit;
+    box-shadow: var(--cinder-shadow-sm);
+    transition:
+      border-color 120ms ease,
+      transform 120ms ease,
+      box-shadow 120ms ease;
+  }
+  @media (hover: hover) {
+    .dx-rel:hover {
+      border-color: var(--cinder-border-strong);
+      transform: translateY(-2px);
+      box-shadow: var(--cinder-shadow-md);
+    }
+  }
+  .dx-rel:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  .dx-rel__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+  }
+  .dx-rel__name {
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+  }
+  .dx-rel :global(.dx-rel__arrow) {
+    color: var(--cinder-text-disabled);
+    transition:
+      color 120ms ease,
+      transform 120ms ease;
+  }
+  @media (hover: hover) {
+    .dx-rel:hover :global(.dx-rel__arrow) {
+      color: var(--cinder-accent-text);
+      transform: translate(2px, -2px);
+    }
+  }
+
+  /* ===== Raw artifacts ===== */
+  .dx-raw__grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-6);
+    margin-block-start: var(--cinder-space-4);
+  }
+  .dx-raw__panel h3 {
+    font-size: var(--cinder-text-base);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+    margin: 0 0 var(--cinder-space-2);
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 1080px) {
+    .dx-hero__grid {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
+    }
+    .dx-spec {
+      max-width: 26rem;
+    }
+  }
+  @media (max-width: 920px) {
+    .dx-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .dx-toc {
+      position: sticky;
+      top: var(--dx-topbar-h);
+      z-index: 30;
+      margin-inline: calc(var(--dx-gutter) * -1);
+      padding-inline: var(--dx-gutter);
+      padding-block: var(--cinder-space-2);
+      background: color-mix(in oklch, var(--cinder-bg), transparent 8%);
+      backdrop-filter: blur(8px);
+      border-block-end: 1px solid var(--cinder-border-muted);
+    }
+    .dx-toc__label {
+      display: none;
+    }
+    .dx-toc__list {
+      flex-direction: row;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      gap: var(--cinder-space-1);
+      scrollbar-width: none;
+    }
+    .dx-toc__list::-webkit-scrollbar {
+      display: none;
+    }
+    .dx-toc__link {
+      border-inline-start: none;
+      border-block-end: 2px solid transparent;
+      white-space: nowrap;
+      padding: var(--cinder-space-2) var(--cinder-space-2-5, 0.625rem);
+    }
+    .dx-toc__link[data-active] {
+      border-inline-start: none;
+      border-block-end-color: var(--cinder-accent);
+    }
+    .dx-play {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .dx-play__controls {
+      position: static;
+      order: -1;
+      /* No longer sticky here, so drop the viewport height cap — the stacked
+         panel should grow with its content. */
+      max-height: none;
+      overflow: visible;
+    }
+    .dx-a11y {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .dx-guide {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .dx-spec {
+      max-width: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dx * {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+    /* The hover lift is a position change, not a transition, so zeroing
+       durations doesn't stop the instantaneous jump — suppress it outright. */
+    .dx-rel:hover,
+    .dx-rel:hover :global(.dx-rel__arrow) {
+      transform: none;
+    }
+  }
+  /* Forced-colors (Windows High Contrast): box-shadow focus rings are
+     suppressed by the browser, so the inset/offset rings on every interactive
+     element vanish. Restore a system-color outline so focus stays visible. */
+  @media (forced-colors: active) {
+    /* The props table is excluded here and handled below: it is an
+       `overflow-x: auto` scroll region, so its outline must be drawn inside. */
+    .dx :is(button, a, [tabindex]):not(.props-table-scroll):focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+    /* An outward outline (the generic +2px above) is clipped by the scroll
+       box and effectively invisible, so draw the forced-colors outline INSIDE
+       the container with a negative offset — mirroring the inset `box-shadow`
+       the non-forced-colors `:focus-visible` rule already uses. */
+    .props-table-scroll:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
+    .dx-topbar {
+      border-block-end: 1px solid ButtonText;
     }
   }
 </style>

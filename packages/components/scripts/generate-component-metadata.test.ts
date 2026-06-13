@@ -49,8 +49,8 @@ describe('happy path', () => {
  * @tag cta
  * @useWhen Triggering an action (submit, save, delete).
  * @useWhen Anchor that should look like a button (pass href).
- * @avoidWhen Toggling on/off state — use Toggle.
- * @avoidWhen Selecting from a fixed set — use SegmentedControl.
+ * @avoidWhen Toggling on/off state. | toggle
+ * @avoidWhen Selecting from a fixed set of mutually exclusive options.
  * @related button-group, copy-button
  */
 export type { ButtonProps } from './button.types.ts';
@@ -75,10 +75,11 @@ export type { ButtonProps } from './button.types.ts';
       'Anchor that should look like a button (pass href).',
     ]);
     expect(metadata.avoidWhen).toEqual([
-      'Toggling on/off state — use Toggle.',
-      'Selecting from a fixed set — use SegmentedControl.',
+      { reason: 'Toggling on/off state.', alternative: 'toggle' },
+      { reason: 'Selecting from a fixed set of mutually exclusive options.' },
     ]);
     expect(metadata.related).toEqual(['button-group', 'copy-button']);
+    expect(metadata.a11y).toBeUndefined();
   });
 
   it('returns isExperimental=true when passed true', () => {
@@ -680,7 +681,7 @@ describe('error: @useWhen over 140 characters', () => {
     expect(result.ok).toBe(true);
   });
 
-  it('returns error when a @avoidWhen entry exceeds 140 characters', () => {
+  it('returns error when a @avoidWhen reason exceeds 140 characters', () => {
     const longEntry = 'C'.repeat(141);
     const source = svelteFile(
       moduleScript(`
@@ -697,7 +698,143 @@ describe('error: @useWhen over 140 characters', () => {
     const result = extract(source);
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
-    expect(result.error.reason).toContain('@avoidWhen entry exceeds 140 characters');
+    expect(result.error.reason).toContain('@avoidWhen reason exceeds 140 characters');
+  });
+});
+
+describe('@avoidWhen structured parsing', () => {
+  function extractAvoidWhen(avoidWhenLines: string[]) {
+    const source = svelteFile(
+      moduleScript(`
+/**
+ * @cinder
+ * @category action
+ * @status stable
+ * @purpose Short purpose.
+${avoidWhenLines.map((line) => ` * @avoidWhen ${line}`).join('\n')}
+ */
+`),
+    );
+    return extract(source);
+  }
+
+  it('parses a reason-only entry (no pipe) into { reason }', () => {
+    const result = extractAvoidWhen(['Some plain reason with no alternative.']);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.metadata.avoidWhen).toEqual([
+      { reason: 'Some plain reason with no alternative.' },
+    ]);
+  });
+
+  it('splits on the first " | " and keeps a kebab alternative', () => {
+    const result = extractAvoidWhen(['Switching between views. | tabs']);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.metadata.avoidWhen).toEqual([
+      { reason: 'Switching between views.', alternative: 'tabs' },
+    ]);
+  });
+
+  it('rejects an empty reason', () => {
+    const result = extractAvoidWhen([' | tabs']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('@avoidWhen reason must be non-empty');
+  });
+
+  it('rejects an empty alternative after a pipe', () => {
+    const result = extractAvoidWhen(['A reason here. | ']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('@avoidWhen alternative is empty');
+  });
+
+  it('rejects a non-kebab alternative', () => {
+    const result = extractAvoidWhen(['A reason here. | SegmentedControl']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('must be a kebab-case component id');
+  });
+});
+
+describe('a11y metadata', () => {
+  function extractA11y(lines: string[]) {
+    const source = svelteFile(
+      moduleScript(`
+/**
+ * @cinder
+ * @category data-display
+ * @status stable
+ * @purpose Short purpose.
+${lines.map((line) => ` * ${line}`).join('\n')}
+ */
+`),
+    );
+    return extract(source);
+  }
+
+  it('parses @a11yPattern, @keyboardShortcut and @a11yNote', () => {
+    const result = extractA11y([
+      '@a11yPattern WAI-ARIA Accordion',
+      '@keyboardShortcut Enter / Space | Toggles the focused panel.',
+      '@keyboardShortcut Tab | Moves focus to the next element.',
+      '@a11yNote Triggers expose aria-expanded.',
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.metadata.a11y).toEqual({
+      pattern: 'WAI-ARIA Accordion',
+      keyboard: [
+        { keys: 'Enter / Space', action: 'Toggles the focused panel.' },
+        { keys: 'Tab', action: 'Moves focus to the next element.' },
+      ],
+      notes: ['Triggers expose aria-expanded.'],
+    });
+  });
+
+  it('leaves a11y undefined when no a11y tags are present', () => {
+    const result = extractA11y([]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.metadata.a11y).toBeUndefined();
+  });
+
+  it('rejects a duplicate @a11yPattern', () => {
+    const result = extractA11y(['@a11yPattern One', '@a11yPattern Two']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('duplicate @a11yPattern');
+  });
+
+  it('rejects a @keyboardShortcut missing the " | " separator', () => {
+    const result = extractA11y(['@keyboardShortcut Enter toggles the panel']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain("missing the '|' separator");
+  });
+
+  it('rejects a @keyboardShortcut with an empty half', () => {
+    const result = extractA11y(['@keyboardShortcut Enter | ']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('must both be non-empty');
+  });
+
+  it('rejects an empty @a11yNote', () => {
+    const result = extractA11y(['@a11yNote']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('@a11yNote must be non-empty');
+  });
+
+  it('rejects a whitespace-only @a11yPattern', () => {
+    // The JSDoc line parser trims trailing whitespace, so `@a11yPattern   `
+    // arrives as an empty value — the non-empty guard must still reject it.
+    const result = extractA11y(['@a11yPattern    ']);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.reason).toContain('@a11yPattern must be non-empty');
   });
 });
 

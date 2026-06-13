@@ -1097,7 +1097,10 @@ describe('/api/documentation/:name', () => {
     if (!isComponentDocumentationPayload(body)) return;
     expect(body.component.id).toBe('button');
     expect(body.component.purpose).toContain('Primary interactive control');
-    expect(body.readme.html).toContain('<h1>Button</h1>');
+    // The Overview README drops the leading `# Button` title (the hero shows it)
+    // and the generated reference sections, leaving only the hand-written prose.
+    expect(body.readme.html).not.toContain('<h1>Button</h1>');
+    expect(body.readme.html).toContain('<h2>Usage</h2>');
     expect(body.constraints).not.toBeNull();
     expect(body.examples).not.toBeNull();
   }, 30_000);

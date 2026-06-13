@@ -33,7 +33,7 @@ type ComponentEntry = {
   name: string;
   purpose: string;
   useWhen?: readonly string[];
-  avoidWhen?: readonly string[];
+  avoidWhen?: readonly { reason: string; alternative?: string }[];
 };
 
 type Manifest = {

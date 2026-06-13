@@ -2,7 +2,10 @@ import { dirname, join } from 'node:path';
 
 import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
 
+import { isA11yMetadata, isAvoidWhenArray } from './component-documentation-guards.ts';
 import type {
+  A11yMetadata,
+  AvoidWhenEntry,
   ComponentDocumentationPayload,
   DocumentationComponentSummary,
   DocumentationReadme,
@@ -25,7 +28,7 @@ type PackageComponentEntry = {
   purpose: string;
   tags: string[];
   useWhen: string[];
-  avoidWhen: string[];
+  avoidWhen: AvoidWhenEntry[];
   related: string[];
   hasConstraints: boolean;
   hasExamples: boolean;
@@ -35,9 +38,11 @@ type PackageComponentEntry = {
     examples?: string;
     constraints?: string;
   };
+  a11y?: A11yMetadata;
 };
 
 type PackageManifest = {
+  package: { version: string };
   components: PackageComponentEntry[];
   categories: Record<string, { label: string; description: string }>;
   statusLevels: Record<string, string>;
@@ -105,11 +110,12 @@ function isPackageComponentEntry(value: unknown): value is PackageComponentEntry
     typeof value['purpose'] === 'string' &&
     isStringArray(value['tags']) &&
     isStringArray(value['useWhen']) &&
-    isStringArray(value['avoidWhen']) &&
+    isAvoidWhenArray(value['avoidWhen']) &&
     isStringArray(value['related']) &&
     typeof value['hasConstraints'] === 'boolean' &&
     typeof value['hasExamples'] === 'boolean' &&
-    isArtifactSpecifiers(value['artifacts'])
+    isArtifactSpecifiers(value['artifacts']) &&
+    (value['a11y'] === undefined || isA11yMetadata(value['a11y']))
   );
 }
 
@@ -127,10 +133,15 @@ function isStatusMap(value: unknown): value is PackageManifest['statusLevels'] {
   return isObject(value) && Object.values(value).every((entry) => typeof entry === 'string');
 }
 
+function isPackageMetadata(value: unknown): value is PackageManifest['package'] {
+  return isObject(value) && typeof value['version'] === 'string';
+}
+
 function isPackageManifest(value: unknown): value is PackageManifest {
   if (!isObject(value)) return false;
   const components = value['components'];
   return (
+    isPackageMetadata(value['package']) &&
     Array.isArray(components) &&
     components.every(isPackageComponentEntry) &&
     isCategoryMap(value['categories']) &&
@@ -234,8 +245,32 @@ function normalizeReadmeMarkdownForRendering(markdown: string): string {
   );
 }
 
+// A generated reference section in the README: its `##`/`###` heading plus the
+// generated region that follows it. The docs page presents this data in its own
+// dedicated sections (Props table, etc.), so rendering it again inside the
+// Overview prose would duplicate it. Matches the heading line through the end of
+// the `<!-- generated:…:end -->` marker (and any blank line after).
+const generatedSectionWithHeadingPattern =
+  /^#{2,3} [^\n]*\n+<!-- generated:(props|variables|subcomponents):start -->[\s\S]*?<!-- generated:\1:end -->\n*/gm;
+
+// The leading top-level `# <Name>` heading duplicates the hero title on the page,
+// so it is dropped from the Overview render.
+const leadingTitlePattern = /^#\s+[^\n]*\n+/;
+
+/**
+ * Trim the README markdown for the page's **Overview** section: drop the leading
+ * `# <Name>` title (the hero already shows it) and the generated reference
+ * sections (`## Props` table, `## CSS Variables`, `## Subcomponents`) whose data
+ * the page renders in its own dedicated sections. The hand-written prose
+ * (Usage, comparisons, etc.) is what remains.
+ */
+function trimReadmeForOverview(markdown: string): string {
+  return markdown.replace(leadingTitlePattern, '').replace(generatedSectionWithHeadingPattern, '');
+}
+
 export function renderReadmeDocumentation(rawMarkdown: string): DocumentationReadme {
-  const rendered = renderMarkdown(normalizeReadmeMarkdownForRendering(rawMarkdown));
+  const trimmed = trimReadmeForOverview(rawMarkdown);
+  const rendered = renderMarkdown(normalizeReadmeMarkdownForRendering(trimmed));
   return {
     rawMarkdown: rendered.rawMarkdown,
     html: rendered.html,
@@ -268,6 +303,10 @@ function toComponentSummary(
     hasConstraints: entry.hasConstraints,
     hasExamples: entry.hasExamples,
     artifacts: entry.artifacts,
+    // Library-level version (no per-component version exists). The spec card
+    // renders it; it is the version that ships this component.
+    packageVersion: packageManifest.package.version,
+    ...(entry.a11y !== undefined ? { a11y: entry.a11y } : {}),
   };
 }
 
@@ -332,6 +371,7 @@ export async function buildComponentDocumentation(
     hasConstraints: entry.hasConstraints,
     hasExamples: entry.hasExamples,
     artifacts: entry.artifacts,
+    ...(entry.a11y !== undefined ? { a11y: entry.a11y } : {}),
   };
 
   return {

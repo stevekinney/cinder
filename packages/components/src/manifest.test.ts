@@ -214,7 +214,7 @@ describe('overlap families', () => {
         const siblings = members.filter((id) => id !== memberId);
         const guidance = [
           ...meta.useWhen.map((s) => s.toLowerCase()),
-          ...meta.avoidWhen.map((s) => s.toLowerCase()),
+          ...meta.avoidWhen.map((e) => `${e.reason} ${e.alternative ?? ''}`.toLowerCase()),
         ].join(' ');
         const mentionsASibling = siblings.some((sibling) => guidance.includes(sibling));
         if (!mentionsASibling) {
@@ -257,14 +257,30 @@ describe('length budgets', () => {
     expect(violations).toEqual([]);
   });
 
-  test('each avoidWhen entry does not exceed 140 characters', () => {
+  test('each avoidWhen reason does not exceed 140 characters', () => {
     if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const meta of allMetadata) {
       for (const entry of meta.avoidWhen) {
-        if (entry.length > 140) {
+        if (entry.reason.length > 140) {
           violations.push(
-            `${meta.id}: avoidWhen entry is ${entry.length} chars: "${entry.slice(0, 40)}…"`,
+            `${meta.id}: avoidWhen reason is ${entry.reason.length} chars: "${entry.reason.slice(0, 40)}…"`,
+          );
+        }
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+
+  test('each avoidWhen alternative is a known kebab-case component id', () => {
+    if (skipIfExtractionErrors()) return;
+    const knownIds = new Set(allMetadata.map((m) => m.id));
+    const violations: string[] = [];
+    for (const meta of allMetadata) {
+      for (const entry of meta.avoidWhen) {
+        if (entry.alternative !== undefined && !knownIds.has(entry.alternative)) {
+          violations.push(
+            `${meta.id}: avoidWhen alternative '${entry.alternative}' is not a known component`,
           );
         }
       }
@@ -278,7 +294,11 @@ describe('length budgets', () => {
 // ---------------------------------------------------------------------------
 
 describe('manifest size budget', () => {
-  test('each component serializes to at most 1024 bytes', () => {
+  // The guidance/classification fields carry the original 1024-byte budget. The
+  // a11y block (a keyboard table + prose notes) is a heavier, different kind of
+  // payload, so it gets its own looser budget rather than inflating this one —
+  // otherwise guidance prose could quietly grow to fill a combined limit.
+  test('each component serializes its guidance fields to at most 1024 bytes', () => {
     if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const meta of allMetadata) {
@@ -297,7 +317,20 @@ describe('manifest size budget', () => {
       };
       const bytes = Buffer.byteLength(JSON.stringify(entry), 'utf8');
       if (bytes > 1024) {
-        violations.push(`${meta.id}: serialized entry is ${bytes} bytes (limit 1024)`);
+        violations.push(`${meta.id}: serialized guidance entry is ${bytes} bytes (limit 1024)`);
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+
+  test('each component a11y block serializes to at most 2048 bytes', () => {
+    if (skipIfExtractionErrors()) return;
+    const violations: string[] = [];
+    for (const meta of allMetadata) {
+      if (meta.a11y === undefined) continue;
+      const bytes = Buffer.byteLength(JSON.stringify(meta.a11y), 'utf8');
+      if (bytes > 2048) {
+        violations.push(`${meta.id}: serialized a11y block is ${bytes} bytes (limit 2048)`);
       }
     }
     expect(violations).toEqual([]);

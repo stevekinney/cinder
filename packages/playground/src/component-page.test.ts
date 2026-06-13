@@ -36,6 +36,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Driver } = await import('./component-page-mount-driver.svelte');
+const { default: MountErrorFixture } = await import('./component-page-mount-error-fixture.svelte');
 // The probe's `<script module>` exports ledger helpers alongside the default
 // component, but the ambient `*.svelte` module type only surfaces `default`.
 // Cast to the known shape — test files may assert types they know hold.
@@ -156,6 +157,35 @@ describe('component-page example-mount effect', () => {
     }
   });
 
+  test('renders a visible heading (not an empty container) when there are no scenarios', async () => {
+    // A component with no `*.example.svelte` files reaches snapshot mode with an
+    // empty examples list. The old block rendered only `{#each examples}`, so the
+    // snapshot container had zero children and zero height — and the
+    // visual-regression harness's `waitForSelector('#app > *', {state:'visible'})`
+    // (visible = non-zero box) timed out after 20s for every such component. The
+    // empty branch must paint a non-empty child instead.
+    const { unmount } = render(Driver, {
+      scenarios: [],
+      registry: {},
+      emptyHeading: 'Banner',
+    });
+    await tick();
+
+    // No mount containers and no probes — there is nothing to mount.
+    expect(containerCount()).toBe(0);
+    expect(probeMarkerCount()).toBe(0);
+
+    // But the container is NOT empty: a single visible heading stands in.
+    const heading = document.querySelector('.snapshot-empty-heading');
+    expect(heading).not.toBeNull();
+    expect(heading?.textContent).toBe('Banner');
+    // The heading is the snapshot container's sole child, so the container has
+    // content to give it a non-zero box under the visual-regression harness.
+    expect(document.querySelector('.example-list')?.children.length).toBe(1);
+
+    unmount();
+  });
+
   test('skips scenarios with no registered component without crashing', async () => {
     const scenarios = ['alpha', 'missing'];
     const registry = registryFor(scenarios);
@@ -173,5 +203,86 @@ describe('component-page example-mount effect', () => {
     unmount();
     await tick();
     expect(totalLive()).toBe(0);
+  });
+});
+
+describe('component-page mount-error keying (overview vs example)', () => {
+  // The featured scenario can mount in two locations — the Overview live
+  // preview (`overview-mount-<scenario>`) and the Examples list
+  // (`example-mount-<scenario>`). Cursor Bugbot flagged that keying the shared
+  // `mountErrors` record by bare scenario lets whichever attachment runs last
+  // clobber the other's entry, so a failure in one mount can hide the error in
+  // the other or show an error callout over a preview that actually rendered.
+  // The fix keys the record by container DOM id; these tests lock that.
+
+  test('a failure in the overview mount does not leak into the example slot', async () => {
+    const scenario = 'demo';
+    const mountErrors: Record<string, string | undefined> = {};
+    const { unmount } = render(MountErrorFixture, {
+      scenario,
+      registry: registryFor([scenario]),
+      failingPrefixes: ['overview-mount'],
+      mountErrors,
+    });
+    await tick();
+
+    // The overview container carries an error keyed to ITS id; the example
+    // container, which mounted successfully, is explicitly error-free.
+    expect(mountErrors[`overview-mount-${scenario}`]).toContain('overview-mount');
+    expect(mountErrors[`example-mount-${scenario}`]).toBeUndefined();
+
+    // The example instance actually rendered its probe; the overview did not.
+    expect(
+      document.getElementById(`example-mount-${scenario}`)?.querySelector('.scenario-probe'),
+    ).not.toBeNull();
+    expect(
+      document.getElementById(`overview-mount-${scenario}`)?.querySelector('.scenario-probe'),
+    ).toBeNull();
+
+    unmount();
+  });
+
+  test('a failure in the example mount does not leak into the overview slot', async () => {
+    const scenario = 'demo';
+    const mountErrors: Record<string, string | undefined> = {};
+    const { unmount } = render(MountErrorFixture, {
+      scenario,
+      registry: registryFor([scenario]),
+      failingPrefixes: ['example-mount'],
+      mountErrors,
+    });
+    await tick();
+
+    expect(mountErrors[`example-mount-${scenario}`]).toContain('example-mount');
+    expect(mountErrors[`overview-mount-${scenario}`]).toBeUndefined();
+
+    expect(
+      document.getElementById(`overview-mount-${scenario}`)?.querySelector('.scenario-probe'),
+    ).not.toBeNull();
+    expect(
+      document.getElementById(`example-mount-${scenario}`)?.querySelector('.scenario-probe'),
+    ).toBeNull();
+
+    unmount();
+  });
+
+  test('both mounts succeeding leaves both location slots error-free', async () => {
+    const scenario = 'demo';
+    const mountErrors: Record<string, string | undefined> = {};
+    const { unmount } = render(MountErrorFixture, {
+      scenario,
+      registry: registryFor([scenario]),
+      failingPrefixes: [],
+      mountErrors,
+    });
+    await tick();
+
+    expect(mountErrors[`overview-mount-${scenario}`]).toBeUndefined();
+    expect(mountErrors[`example-mount-${scenario}`]).toBeUndefined();
+    // Both locations rendered their own probe — independent mounts, not a
+    // single shared one.
+    expect(document.querySelectorAll('.scenario-probe').length).toBe(2);
+
+    unmount();
   });
 });

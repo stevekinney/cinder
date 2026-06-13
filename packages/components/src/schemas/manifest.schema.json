@@ -194,7 +194,27 @@
           "avoidWhen": {
             "type": "array",
             "description": "Guidance on when NOT to use this component and what to reach for instead.",
-            "items": { "type": "string", "maxLength": 140 }
+            "items": {
+              "type": "object",
+              "description": "One 'avoid when' entry: a reason plus an optional alternative component id.",
+              "required": ["reason"],
+              "additionalProperties": false,
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "description": "Why not to use this component in this situation.",
+                  "minLength": 1,
+                  "maxLength": 140
+                },
+                "alternative": {
+                  "type": "string",
+                  "description": "Kebab-case id of the component to use instead.",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                }
+              }
+            }
           },
           "related": {
             "type": "array",
@@ -234,6 +254,49 @@
                 "type": "string",
                 "description": "Import specifier for the constraints sidecar. Present only when hasConstraints is true.",
                 "examples": ["cinder/button/constraints"]
+              }
+            }
+          },
+          "a11y": {
+            "type": "object",
+            "description": "Accessibility metadata, present only when @a11yPattern / @keyboardShortcut / @a11yNote tags were authored.",
+            "additionalProperties": false,
+            "properties": {
+              "pattern": {
+                "type": "string",
+                "description": "WAI-ARIA pattern name this component implements.",
+                "minLength": 1,
+                "maxLength": 80,
+                "examples": ["WAI-ARIA Accordion", "WAI-ARIA Combobox"]
+              },
+              "keyboard": {
+                "type": "array",
+                "description": "Keyboard interactions this component handles.",
+                "items": {
+                  "type": "object",
+                  "required": ["keys", "action"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "keys": {
+                      "type": "string",
+                      "description": "Key or chord, e.g. 'Enter / Space' or 'Shift + Tab'.",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "action": {
+                      "type": "string",
+                      "description": "What the key does.",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  }
+                }
+              },
+              "notes": {
+                "type": "array",
+                "description": "Free-form accessibility notes.",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1, "maxLength": 280 }
               }
             }
           }

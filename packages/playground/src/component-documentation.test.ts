@@ -22,7 +22,13 @@ describe('buildComponentDocumentation', () => {
 
     expect(payload.component.id).toBe('button');
     expect(payload.component.purpose).toContain('Primary interactive control');
-    expect(payload.readme.html).toContain('<h1>Button</h1>');
+    // The Overview README drops the leading `# Button` title (the hero shows it)
+    // and the generated reference sections (Props table, CSS Variables,
+    // Subcomponents) — those render in the page's own dedicated sections — so
+    // only the hand-written prose remains.
+    expect(payload.readme.html).not.toContain('<h1>Button</h1>');
+    expect(payload.readme.html).toContain('<h2>Usage</h2>');
+    expect(payload.readme.html).not.toContain('<h2>Props</h2>');
     expect(payload.readme.html).toContain('class="shiki');
     expect(payload.readme.hadUnsafeContent).toBe(false);
     expect(payload.schema).toBeDefined();
@@ -70,10 +76,19 @@ describe('buildComponentDocumentation', () => {
 `);
 
     expect(readme.hadUnsafeContent).toBe(false);
-    expect(readme.html).toContain('&lt;Modal>');
-    expect(readme.html).toContain('&lt;p>');
-    expect(readme.html).toContain('&lt;script>');
-    expect(readme.html).toContain('&lt;style>');
+    // The tag-like text must stay ESCAPED. `<` can serialize as the named
+    // reference (`&lt;`) or as a numeric reference in hex (`&#x3C;`/`&#x3c;`) or
+    // decimal (`&#60;`); which spelling the rehype serializer emits depends on
+    // which variant of `decode-named-character-reference` the test environment
+    // resolves (the `browser` export condition routes to a DOM-based decoder).
+    // Accept any of them — the contract is "escaped, never raw".
+    const escapedLessThan = /(?:&lt;|&#x3c;|&#60;)/i;
+    const escapedTag = (tag: string) => new RegExp(`${escapedLessThan.source}${tag}>`, 'i');
+    expect(readme.html).toMatch(escapedTag('Modal'));
+    expect(readme.html).toMatch(escapedTag('p'));
+    expect(readme.html).toMatch(escapedTag('script'));
+    expect(readme.html).toMatch(escapedTag('style'));
+    expect(readme.html).not.toContain('<Modal>');
     expect(readme.html).not.toContain('<script>');
     expect(readme.html).not.toContain('<style>');
     expect(readme.html).not.toContain('<img');
