@@ -36,6 +36,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Driver } = await import('./component-page-mount-driver.svelte');
+const { default: MountErrorFixture } = await import('./component-page-mount-error-fixture.svelte');
 // The probe's `<script module>` exports ledger helpers alongside the default
 // component, but the ambient `*.svelte` module type only surfaces `default`.
 // Cast to the known shape — test files may assert types they know hold.
@@ -202,5 +203,86 @@ describe('component-page example-mount effect', () => {
     unmount();
     await tick();
     expect(totalLive()).toBe(0);
+  });
+});
+
+describe('component-page mount-error keying (overview vs example)', () => {
+  // The featured scenario can mount in two locations — the Overview live
+  // preview (`overview-mount-<scenario>`) and the Examples list
+  // (`example-mount-<scenario>`). Cursor Bugbot flagged that keying the shared
+  // `mountErrors` record by bare scenario lets whichever attachment runs last
+  // clobber the other's entry, so a failure in one mount can hide the error in
+  // the other or show an error callout over a preview that actually rendered.
+  // The fix keys the record by container DOM id; these tests lock that.
+
+  test('a failure in the overview mount does not leak into the example slot', async () => {
+    const scenario = 'demo';
+    const mountErrors: Record<string, string | undefined> = {};
+    const { unmount } = render(MountErrorFixture, {
+      scenario,
+      registry: registryFor([scenario]),
+      failingPrefixes: ['overview-mount'],
+      mountErrors,
+    });
+    await tick();
+
+    // The overview container carries an error keyed to ITS id; the example
+    // container, which mounted successfully, is explicitly error-free.
+    expect(mountErrors[`overview-mount-${scenario}`]).toContain('overview-mount');
+    expect(mountErrors[`example-mount-${scenario}`]).toBeUndefined();
+
+    // The example instance actually rendered its probe; the overview did not.
+    expect(
+      document.getElementById(`example-mount-${scenario}`)?.querySelector('.scenario-probe'),
+    ).not.toBeNull();
+    expect(
+      document.getElementById(`overview-mount-${scenario}`)?.querySelector('.scenario-probe'),
+    ).toBeNull();
+
+    unmount();
+  });
+
+  test('a failure in the example mount does not leak into the overview slot', async () => {
+    const scenario = 'demo';
+    const mountErrors: Record<string, string | undefined> = {};
+    const { unmount } = render(MountErrorFixture, {
+      scenario,
+      registry: registryFor([scenario]),
+      failingPrefixes: ['example-mount'],
+      mountErrors,
+    });
+    await tick();
+
+    expect(mountErrors[`example-mount-${scenario}`]).toContain('example-mount');
+    expect(mountErrors[`overview-mount-${scenario}`]).toBeUndefined();
+
+    expect(
+      document.getElementById(`overview-mount-${scenario}`)?.querySelector('.scenario-probe'),
+    ).not.toBeNull();
+    expect(
+      document.getElementById(`example-mount-${scenario}`)?.querySelector('.scenario-probe'),
+    ).toBeNull();
+
+    unmount();
+  });
+
+  test('both mounts succeeding leaves both location slots error-free', async () => {
+    const scenario = 'demo';
+    const mountErrors: Record<string, string | undefined> = {};
+    const { unmount } = render(MountErrorFixture, {
+      scenario,
+      registry: registryFor([scenario]),
+      failingPrefixes: [],
+      mountErrors,
+    });
+    await tick();
+
+    expect(mountErrors[`overview-mount-${scenario}`]).toBeUndefined();
+    expect(mountErrors[`example-mount-${scenario}`]).toBeUndefined();
+    // Both locations rendered their own probe — independent mounts, not a
+    // single shared one.
+    expect(document.querySelectorAll('.scenario-probe').length).toBe(2);
+
+    unmount();
   });
 });

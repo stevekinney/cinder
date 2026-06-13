@@ -117,6 +117,10 @@
   // --- Source-fetch + per-scenario accordion (preserved from the tabbed page) -
   const fetchedSource: Record<string, string | null> = $state({});
   const loadingSource: Record<string, boolean> = $state({});
+  // Keyed by mount-container DOM id (`overview-mount-<scenario>` /
+  // `example-mount-<scenario>`), not by bare scenario, so a featured scenario
+  // mounted in both the Overview and Examples locations keeps an independent
+  // error slot per location. See `mountScenario`.
   const mountErrors: Record<string, MountErrorDetail | undefined> = $state({});
   const sourceErrors: Record<string, SourceErrorDetail | undefined> = $state({});
   const exampleDisclosures = $state(
@@ -184,8 +188,19 @@
   // patched in). The featured scenario can appear twice — once in Overview, once
   // in Examples — and each container gets its own attachment + its own mount, so
   // the two instances stay independent with correct per-node cleanup.
+  //
+  // The mount-error record is keyed by the container's DOM `id`
+  // (`overview-mount-<scenario>` vs `example-mount-<scenario>`), NOT by the bare
+  // scenario, so a featured scenario rendered in BOTH locations gets one error
+  // slot per render location. Keying by scenario alone would let whichever
+  // attachment runs last clobber the other's entry — hiding a real failure or
+  // painting an error callout over a preview that actually rendered. The key is
+  // read from `element.id`, the same string the template sets and the same
+  // string the template reads back via `mountErrors[<container id>]`, so the two
+  // can never drift.
   function mountScenario(scenario: string): (element: HTMLElement) => () => void {
     return (element: HTMLElement) => {
+      const mountKey = element.id;
       const registry =
         ((window as unknown as Record<string, unknown>)['__CINDER_SCENARIOS__'] as
           | Record<string, unknown>
@@ -198,10 +213,10 @@
       let app: ReturnType<typeof mount> | undefined;
       try {
         app = mount(Component as Parameters<typeof mount>[0], { target: element });
-        mountErrors[scenario] = undefined;
+        mountErrors[mountKey] = undefined;
       } catch (error) {
         console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
-        mountErrors[scenario] = toMountErrorDetail(error);
+        mountErrors[mountKey] = toMountErrorDetail(error);
       }
       return () => {
         if (app === undefined) return;
@@ -662,8 +677,8 @@
                     <span class="dx-stage__label">Live preview</span>
                   </div>
                   <div class="dx-stage__canvas">
-                    {#if mountErrors[overviewExample.scenario] !== undefined}
-                      {@const error = mountErrors[overviewExample.scenario]}
+                    {#if mountErrors[`overview-mount-${overviewExample.scenario}`] !== undefined}
+                      {@const error = mountErrors[`overview-mount-${overviewExample.scenario}`]}
                       <Callout variant="danger" title="This preview failed to render">
                         <p>{error?.message}</p>
                       </Callout>
@@ -833,7 +848,7 @@
                   {#each examples as { scenario, title, description } (scenario)}
                     {@const disclosure = disclosureFor(scenario)}
                     {@const source = fetchedSource[scenario]}
-                    {@const mountError = mountErrors[scenario]}
+                    {@const mountError = mountErrors[`example-mount-${scenario}`]}
                     {@const sourceError = sourceErrors[scenario]}
                     {#if disclosure}
                       <section id="example-card-{scenario}" class="dx-example">
