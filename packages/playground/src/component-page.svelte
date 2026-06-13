@@ -1582,6 +1582,20 @@
     flex-direction: column;
     gap: var(--cinder-space-6);
     background: light-dark(oklch(100% 0 0), var(--cinder-bg));
+    /* Headroom above the first example mount. The old tabbed snapshot layout
+       wrapped each example in a Card under an `<h2>Examples</h2>` inside a tab
+       panel, pushing the first example ~100px down from the viewport top. The
+       positioning test harness (selection-popover-positioning.playwright.ts)
+       depends on that clearance: when a selection sits flush against the
+       viewport top, SelectionPopover has no room to flip above and falls back
+       to a `bottom` placement that OVERLAPS the selection — a real flip/shift
+       bug in the shared anchored-overlay logic, tracked in issue #369 (the
+       popover should anchor below the selection's bottom edge, not overlap it).
+       This
+       padding restores the fixture geometry the test was written against; it
+       does not fix the underlying component bug. Sized (8rem) so the EXPANDED
+       composer (~114px tall) also clears the selection when it flips above. */
+    padding-block-start: var(--cinder-space-32);
   }
 
   .snapshot-empty-heading {
@@ -2188,9 +2202,19 @@
      suppressed by the browser, so the inset/offset rings on every interactive
      element vanish. Restore a system-color outline so focus stays visible. */
   @media (forced-colors: active) {
-    .dx :is(button, a, [tabindex]):focus-visible {
+    /* The props table is excluded here and handled below: it is an
+       `overflow-x: auto` scroll region, so its outline must be drawn inside. */
+    .dx :is(button, a, [tabindex]):not(.props-table-scroll):focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: 2px;
+    }
+    /* An outward outline (the generic +2px above) is clipped by the scroll
+       box and effectively invisible, so draw the forced-colors outline INSIDE
+       the container with a negative offset — mirroring the inset `box-shadow`
+       the non-forced-colors `:focus-visible` rule already uses. */
+    .props-table-scroll:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
     }
     .dx-topbar {
       border-block-end: 1px solid ButtonText;

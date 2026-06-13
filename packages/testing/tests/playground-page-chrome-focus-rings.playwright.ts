@@ -4,8 +4,10 @@
  *
  * The broad focus sweep should be able to separate component-under-test focus
  * rings from reusable playground chrome. These assertions therefore target the
- * component documentation page's own `View source` accordion trigger and
- * props-table scroll region on a stable component page.
+ * component documentation page's own example `Show code` accordion trigger and
+ * props-table scroll region on a stable component page. The page is a single
+ * scrolling reference (no tabs), so both targets live on one page and are
+ * scrolled into view rather than reached through a tab switch.
  */
 
 import { expect, test, type Frame, type Locator, type Page } from '@playwright/test';
@@ -47,28 +49,44 @@ async function activeElementSummary(frame: Frame): Promise<ActiveElementSummary 
   });
 }
 
-async function tabUntilFocused(
+/**
+ * Move keyboard focus onto `target` by focusing the focusable element that
+ * immediately precedes it in the document tab order, then pressing `Tab` once.
+ *
+ * A bare `target.focus()` does NOT engage `:focus-visible` in Chromium, and a
+ * blind Tab walk from `document.body` does not traverse into the preview
+ * `iframe` (Playwright's `page.keyboard` drives the top page's focus, which
+ * starts on the top `body`, not inside the frame). Seeding focus on the
+ * in-frame neighbor and pressing `Tab` once is genuine keyboard navigation, so
+ * the heuristic that gates `:focus-visible` fires on `target`. The single,
+ * element-anchored step also removes the fragile unbounded press budget.
+ */
+async function tabOntoFromNeighbor(
   page: Page,
   frame: Frame,
+  precedingNeighbor: Locator,
   target: Locator,
   label: string,
 ): Promise<void> {
-  await frame.evaluate(() => {
+  await precedingNeighbor.evaluate((element) => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    document.body.focus();
+    (element as HTMLElement).focus();
   });
+  await expect(
+    precedingNeighbor,
+    `${label}: preceding neighbor should accept keyboard focus before the Tab step`,
+  ).toBeFocused();
 
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    await page.keyboard.press('Tab');
-    const landed = await target.evaluate((element) => element === document.activeElement);
-    if (landed) return;
+  await page.keyboard.press('Tab');
+
+  const landed = await target.evaluate((element) => element === document.activeElement);
+  if (!landed) {
+    throw new Error(
+      `Tab from the preceding neighbor did not land on ${label}. Active element: ${JSON.stringify(
+        await activeElementSummary(frame),
+      )}`,
+    );
   }
-
-  throw new Error(
-    `Tab walk did not reach ${label}. Active element: ${JSON.stringify(
-      await activeElementSummary(frame),
-    )}`,
-  );
 }
 
 async function focusPaint(locator: Locator): Promise<FocusPaint> {
@@ -148,34 +166,63 @@ async function openButtonDocumentationPage(page: Page): Promise<Frame> {
     throw new Error('/c/button did not expose the component documentation preview frame.');
   }
 
-  await expect(previewFrame.getByRole('tab', { name: 'Examples' })).toBeVisible();
+  // The single-scroll page renders every section at once; the hero heading is a
+  // stable readiness signal that the documentation payload has hydrated.
+  await expect(previewFrame.getByRole('heading', { level: 1, name: 'Button' })).toBeVisible();
   return previewFrame;
 }
 
-async function showButtonExamplesTab(frame: Frame): Promise<Locator> {
-  await frame.getByRole('tab', { name: 'Examples' }).click();
-
-  const firstCard = frame.locator('.example-list .cinder-card').first();
-  await expect(firstCard).toBeVisible();
-  const viewSourceTrigger = firstCard.getByRole('button', {
+/**
+ * The first example's `Show code` accordion trigger, plus the focusable element
+ * that immediately precedes it in the tab order (the example's "Internal link"
+ * anchor), so the keyboard ring can be engaged with a single anchored Tab.
+ */
+async function locateFirstExampleShowCodeTrigger(
+  frame: Frame,
+): Promise<{ precedingNeighbor: Locator; target: Locator }> {
+  const firstExample = frame.locator('.dx-example').first();
+  await expect(firstExample).toBeVisible();
+  const showCodeTrigger = firstExample.getByRole('button', {
     exact: true,
-    name: 'View source',
+    name: 'Show code',
   });
-  await expect(viewSourceTrigger).toHaveCount(1);
+  await expect(showCodeTrigger).toHaveCount(1);
 
-  return viewSourceTrigger;
+  // The example body renders its component before the disclosure trigger; its
+  // last focusable element (the demo's link button) sits immediately before the
+  // trigger in the tab order, so a single Tab from it lands on `Show code`.
+  const precedingNeighbor = firstExample.locator('a.cinder-button').last();
+  await expect(precedingNeighbor).toBeVisible();
+  await showCodeTrigger.scrollIntoViewIfNeeded();
+
+  return { precedingNeighbor, target: showCodeTrigger };
 }
 
-async function showButtonOverviewApiSection(frame: Frame): Promise<Locator> {
-  await frame.getByRole('tab', { name: 'Documentation' }).click();
+/**
+ * The Props table scroll region, plus the focusable element that immediately
+ * precedes it in the tab order (the last example's `Show code` trigger), so the
+ * keyboard ring can be engaged with a single anchored Tab.
+ */
+async function locatePropsTableScrollRegion(
+  frame: Frame,
+): Promise<{ precedingNeighbor: Locator; target: Locator }> {
   const propsTableScroll = frame.locator('.props-table-scroll').first();
   const propsTableCount = await frame.locator('.props-table-scroll').count();
   expect(
     propsTableCount,
-    '/c/button overview no longer exposes `.props-table-scroll`; update the stable page-chrome fixture.',
+    '/c/button Props section no longer exposes `.props-table-scroll`; update the stable page-chrome fixture.',
   ).toBe(1);
 
-  return propsTableScroll;
+  // The last example's `Show code` disclosure trigger is the final focusable
+  // element before the Props scroll region, so one Tab from it lands on the
+  // region.
+  const precedingNeighbor = frame
+    .locator('.dx-example .cinder-accordion-item__trigger', { hasText: 'Show code' })
+    .last();
+  await expect(precedingNeighbor).toBeVisible();
+  await propsTableScroll.scrollIntoViewIfNeeded();
+
+  return { precedingNeighbor, target: propsTableScroll };
 }
 
 test.describe('playground page chrome focus rings', () => {
@@ -183,16 +230,28 @@ test.describe('playground page chrome focus rings', () => {
     page,
   }) => {
     const frame = await openButtonDocumentationPage(page);
-    const viewSourceTrigger = await showButtonExamplesTab(frame);
+    const showCode = await locateFirstExampleShowCodeTrigger(frame);
 
-    await tabUntilFocused(page, frame, viewSourceTrigger, 'first View source trigger');
-    await expect(viewSourceTrigger).toBeFocused();
-    expectInsetFocusPaint(await focusPaint(viewSourceTrigger), 'View source trigger');
+    await tabOntoFromNeighbor(
+      page,
+      frame,
+      showCode.precedingNeighbor,
+      showCode.target,
+      'first Show code trigger',
+    );
+    await expect(showCode.target).toBeFocused();
+    expectInsetFocusPaint(await focusPaint(showCode.target), 'Show code trigger');
 
-    const propsTableScroll = await showButtonOverviewApiSection(frame);
-    await tabUntilFocused(page, frame, propsTableScroll, 'props table scroll region');
-    await expect(propsTableScroll).toBeFocused();
-    expectInsetFocusPaint(await focusPaint(propsTableScroll), 'props table scroll region');
+    const propsTable = await locatePropsTableScrollRegion(frame);
+    await tabOntoFromNeighbor(
+      page,
+      frame,
+      propsTable.precedingNeighbor,
+      propsTable.target,
+      'props table scroll region',
+    );
+    await expect(propsTable.target).toBeFocused();
+    expectInsetFocusPaint(await focusPaint(propsTable.target), 'props table scroll region');
   });
 
   test('forced-colors mode repaints the props-table focus outline inside the scroll container', async ({
@@ -201,12 +260,18 @@ test.describe('playground page chrome focus rings', () => {
     await page.emulateMedia({ forcedColors: 'active' });
     await page.waitForFunction(() => matchMedia('(forced-colors: active)').matches);
     const frame = await openButtonDocumentationPage(page);
-    const propsTableScroll = await showButtonOverviewApiSection(frame);
+    const propsTable = await locatePropsTableScrollRegion(frame);
 
-    await tabUntilFocused(page, frame, propsTableScroll, 'props table scroll region');
-    await expect(propsTableScroll).toBeFocused();
+    await tabOntoFromNeighbor(
+      page,
+      frame,
+      propsTable.precedingNeighbor,
+      propsTable.target,
+      'props table scroll region',
+    );
+    await expect(propsTable.target).toBeFocused();
 
-    const paint = await focusPaint(propsTableScroll);
+    const paint = await focusPaint(propsTable.target);
     expect(paint.matchesFocusVisible, 'props table should match :focus-visible').toBe(true);
     expect(paint.outlineStyle, 'forced-colors outline should be solid').toBe('solid');
     expect(
