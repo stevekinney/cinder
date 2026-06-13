@@ -10,7 +10,7 @@
   type="button"
   role="switch"
   aria-checked={checked}
-  aria-label={label}
+  aria-label={label || undefined}
   data-toggle-id={id}
   onclick={() => (checked = !checked)}
 ></button>

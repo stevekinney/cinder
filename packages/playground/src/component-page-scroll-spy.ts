@@ -19,9 +19,13 @@ export type SectionOffset = {
  *
  * A section is active when its top has scrolled above an activation line
  * (`scrollY + activationLine`). The last section whose top is at or above that
- * line wins. When the viewport has reached the bottom of the document, the
- * final section is forced active so the last (often short) section can light up
- * even if its top never crosses the line.
+ * line wins. When the viewport has reached the bottom of a *scrollable*
+ * document, the final section is forced active so the last (often short)
+ * section can light up even if its top never crosses the line. The bottom-snap
+ * only applies when the document is actually taller than the viewport — on a
+ * short page (`documentHeight <= viewportHeight`) `scrollY + viewportHeight`
+ * already exceeds `documentHeight` at `scrollY = 0`, and snapping there would
+ * wrongly light the last section while the user is looking at the first.
  *
  * @param sections - Section offsets in document order. Must be non-empty.
  * @param scrollY - Current vertical scroll position (`window.scrollY`).
@@ -40,8 +44,10 @@ export function computeActiveSection(
 ): string | null {
   if (sections.length === 0) return null;
 
-  // Bottom of the page: the last section wins regardless of its top.
-  if (scrollY + viewportHeight >= documentHeight - 4) {
+  // Bottom of the page: the last section wins regardless of its top. Only when
+  // the document actually scrolls — otherwise the condition is true at the top
+  // of a short page and would wrongly activate the last section.
+  if (documentHeight > viewportHeight && scrollY + viewportHeight >= documentHeight - 4) {
     return sections[sections.length - 1]!.id;
   }
 

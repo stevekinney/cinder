@@ -121,11 +121,18 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
   return { controls, skipped, hasUnsatisfiedRequired };
 }
 
-/** Render one control's current value as a Svelte attribute fragment, or `null` to omit it. */
+/**
+ * Render one control's current value as a Svelte attribute fragment, or `null`
+ * to omit it. String values that are safe for a double-quoted attribute use the
+ * plain `name="value"` form; values containing a quote, ampersand, or angle
+ * bracket would break that form, so they fall back to a `name={"..."}`
+ * expression with a JSON-escaped literal that copy-pastes as valid Svelte.
+ */
 function attributeFor(name: string, value: PlaygroundValue): string | null {
   if (typeof value === 'boolean') return value ? name : null;
   if (typeof value === 'number') return `${name}={${value}}`;
   if (value === '') return null;
+  if (/["&<>]/.test(value)) return `${name}={${JSON.stringify(value)}}`;
   return `${name}="${value}"`;
 }
 

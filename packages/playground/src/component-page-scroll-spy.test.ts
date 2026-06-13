@@ -39,4 +39,11 @@ describe('computeActiveSection', () => {
     // A larger activation line activates later sections sooner.
     expect(computeActiveSection(sections, 500, 800, 3000, 700)).toBe('examples');
   });
+
+  test('a non-scrollable short page keeps the first section active at the top', () => {
+    // documentHeight (700) <= viewportHeight (800): the page cannot scroll, so
+    // `scrollY + viewportHeight >= documentHeight - 4` is already true at the
+    // top. The bottom-snap must NOT fire here — the first section stays active.
+    expect(computeActiveSection(sections, 0, 800, 700, 100)).toBe('overview');
+  });
 });

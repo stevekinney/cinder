@@ -186,4 +186,26 @@ describe('buildSnippet', () => {
     ).controls;
     expect(buildSnippet('Comp', numberControls, { count: 42 })).toBe('<Comp count={42} />');
   });
+
+  test('escapes a string value with attribute-breaking characters as an expression', () => {
+    const textControls = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'label',
+          control: { kind: 'text' },
+          bindable: false,
+          optional: true,
+          defaultValue: '',
+        },
+      ]),
+    ).controls;
+    // A double-quote, ampersand, or angle bracket in a `name="..."` attribute
+    // would produce invalid Svelte that won't copy-paste; fall back to a
+    // JSON-escaped expression.
+    expect(buildSnippet('Comp', textControls, { label: 'a "b" & <c>' })).toBe(
+      '<Comp label={"a \\"b\\" & <c>"} />',
+    );
+    // A safe value keeps the plain quoted-attribute form.
+    expect(buildSnippet('Comp', textControls, { label: 'plain' })).toBe('<Comp label="plain" />');
+  });
 });

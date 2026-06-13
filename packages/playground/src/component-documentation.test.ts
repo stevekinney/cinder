@@ -76,15 +76,18 @@ describe('buildComponentDocumentation', () => {
 `);
 
     expect(readme.hadUnsafeContent).toBe(false);
-    // The tag-like text must stay ESCAPED. `&lt;` and `&#x3C;` are the named and
-    // numeric character references for the same `<`; which spelling the rehype
-    // serializer emits depends on which variant of `decode-named-character-reference`
-    // the test environment resolves (the `browser` export condition routes to a
-    // DOM-based decoder). Accept either — the contract is "escaped, never raw".
-    expect(readme.html).toMatch(/(?:&lt;|&#x3C;)Modal>/);
-    expect(readme.html).toMatch(/(?:&lt;|&#x3C;)p>/);
-    expect(readme.html).toMatch(/(?:&lt;|&#x3C;)script>/);
-    expect(readme.html).toMatch(/(?:&lt;|&#x3C;)style>/);
+    // The tag-like text must stay ESCAPED. `<` can serialize as the named
+    // reference (`&lt;`) or as a numeric reference in hex (`&#x3C;`/`&#x3c;`) or
+    // decimal (`&#60;`); which spelling the rehype serializer emits depends on
+    // which variant of `decode-named-character-reference` the test environment
+    // resolves (the `browser` export condition routes to a DOM-based decoder).
+    // Accept any of them — the contract is "escaped, never raw".
+    const escapedLessThan = /(?:&lt;|&#x3c;|&#60;)/i;
+    const escapedTag = (tag: string) => new RegExp(`${escapedLessThan.source}${tag}>`, 'i');
+    expect(readme.html).toMatch(escapedTag('Modal'));
+    expect(readme.html).toMatch(escapedTag('p'));
+    expect(readme.html).toMatch(escapedTag('script'));
+    expect(readme.html).toMatch(escapedTag('style'));
     expect(readme.html).not.toContain('<Modal>');
     expect(readme.html).not.toContain('<script>');
     expect(readme.html).not.toContain('<style>');
