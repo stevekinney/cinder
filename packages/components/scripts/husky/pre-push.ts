@@ -21,8 +21,10 @@ import {
   isUnderWorkspace,
   loadWorkspacePackages,
   parsePushRefs,
+  phaseMaxConcurrency,
   REPO_ROOT,
   runHookCommand,
+  runWithConcurrencyPool,
   success,
   summarizeFailures,
   warning,
@@ -124,46 +126,31 @@ type BatchOutcome = {
  * and return a {@link BatchOutcome} so the caller can render a digest and write
  * the full log.
  *
- * `maxConcurrency` caps the pool; the default is CPU-bound (up to 4). The test
- * phase passes `1` to serialize — see the call site in `runScoped` for why.
+ * `maxConcurrency` caps the pool; callers should derive it from
+ * {@link phaseMaxConcurrency} so the per-script policy lives in one place. The
+ * test phase uses `1` to serialize — see `phaseMaxConcurrency` in utilities.ts
+ * for the full rationale.
  */
-async function runJobs(
-  jobs: readonly Job[],
-  maxConcurrency = Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4)),
-): Promise<BatchOutcome> {
+async function runJobs(jobs: readonly Job[], maxConcurrency: number): Promise<BatchOutcome> {
   if (jobs.length === 0) return { ok: true, failures: [], output: '' };
-  // Floor to a finite integer ≥ 1. A non-finite `maxConcurrency` (e.g. a caller
-  // computing `Math.min(navigator.hardwareConcurrency, 4)` where
-  // `hardwareConcurrency` is undefined → `NaN`) must NOT slip through: `NaN`
-  // would make `Math.min(concurrency, jobs.length)` NaN, start zero workers, and
-  // silently pass every job — a false green. `Number.isFinite` rejects NaN and
-  // ±Infinity; the `Math.max(1, …)` then guards 0 / negatives.
-  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
-  const results: JobResult[] = [];
-  let nextIndex = 0;
-  const workers: Promise<void>[] = [];
-  for (let workerId = 0; workerId < Math.min(concurrency, jobs.length); workerId++) {
-    workers.push(
-      (async () => {
-        while (true) {
-          const index = nextIndex++;
-          if (index >= jobs.length) return;
-          const job = jobs[index];
-          if (job === undefined) return; // unreachable given the guard above
-          try {
-            results[index] = await runJob(job);
-          } catch (cause) {
-            // `$.nothrow()` means runJob normally won't throw, but a spawn
-            // failure (missing binary, OOM) could. Record it as a failed job
-            // rather than crashing the whole pool with an unhandled rejection.
-            const reason = cause instanceof Error ? cause.message : String(cause);
-            results[index] = { job, exitCode: 1, stdout: '', stderr: reason };
-          }
-        }
-      })(),
-    );
-  }
-  await Promise.all(workers);
+  // The bounded pool (and its non-finite-concurrency floor) lives in
+  // `runWithConcurrencyPool`; the test phase passes `maxConcurrency === 1` so
+  // builds never overlap (the #364 race). This runner only shapes results.
+  const results = await runWithConcurrencyPool(
+    jobs,
+    maxConcurrency,
+    async (job): Promise<JobResult> => {
+      try {
+        return await runJob(job);
+      } catch (cause) {
+        // `$.nothrow()` means runJob normally won't throw, but a spawn failure
+        // (missing binary, OOM) could. Record it as a failed job rather than
+        // crashing the whole pool with an unhandled rejection.
+        const reason = cause instanceof Error ? cause.message : String(cause);
+        return { job, exitCode: 1, stdout: '', stderr: reason };
+      }
+    },
+  );
 
   let output = '';
   for (const result of results) {
@@ -238,11 +225,12 @@ async function runFull(): Promise<boolean> {
     // The full-suite path can produce very large output. Stream it directly so
     // Bun never keeps the hook alive waiting on captured pipe readers after the
     // command has exited.
-    // NOTE: the root `test` script is `bun run --filter='*' test`, which runs
-    // every package's tests concurrently — so the same shared-`dist/` rebuild
-    // race the scoped path serializes around (see `runScoped`) can still occur
-    // here. The atomic-build-output follow-up is the real fix; this path is
-    // taken only on root-config escalation / fail-safe, not routine pushes.
+    // NOTE: the root `test` script is `bun run --filter='*' test`, which fans
+    // out every package's tests concurrently through Bun's workspace filter.
+    // Each package's inline `bun run --filter=<dep> build` previously raced
+    // concurrent `rm -rf dist` + write cycles (issue #364). The atomic-build
+    // fix in each `packages/*/scripts/build.ts` (build to dist.tmp, then
+    // rename over dist) removes the write window for this path too.
     const result = await runHookCommand('bun', ['run', script], {
       cwd: REPO_ROOT,
       stderr: 'inherit',
@@ -431,7 +419,7 @@ async function runScoped(
         ...(stylelintFiles.length > 0 ? ['stylelint'] : []),
       ];
       info(`Running lint (${targets.join(', ')})…`);
-      const lint = await runJobs(phaseJobs);
+      const lint = await runJobs(phaseJobs, phaseMaxConcurrency('lint'));
       const stylelintOk = await runStylelint(stylelintFiles);
       fullOutput += lint.output;
       allFailures.push(...lint.failures);
@@ -444,14 +432,14 @@ async function runScoped(
 
     if (phaseJobs.length === 0) continue;
     info(`Running ${script} (${phaseJobs.map((job) => job.packageName).join(', ')})…`);
-    // The `test` phase runs serially (concurrency 1). Each package's `test`
-    // script runs inline `bun run --filter=<dep> build` steps that `rm -rf dist`
-    // and re-emit shared dependency `dist/` dirs (e.g. `@cinder/markdown`,
-    // `@cinder/editor`). Run in parallel, two jobs race those writes while a
-    // third job's bundler reads the dist mid-write, yielding non-deterministic
-    // `error: "<name>" is not declared in this file`. Lint (oxlint) and typecheck
-    // (`tsc --noEmit`) are read-only, so they stay parallel.
-    const phase = await runJobs(phaseJobs, script === 'test' ? 1 : undefined);
+    // Per-phase concurrency is determined by `phaseMaxConcurrency` (see
+    // utilities.ts). The test phase runs at concurrency 1 to prevent the
+    // shared-dist rebuild race — each package's test script does inline
+    // `bun run --filter=<dep> build` steps that `rm -rf dist` and re-emit
+    // shared upstream `dist/` dirs (e.g. `@cinder/markdown`, `@cinder/diff`).
+    // Atomic build output (dist.tmp → dist rename) removes the write window and
+    // is the root fix; serialization is the belt. Both defences are kept.
+    const phase = await runJobs(phaseJobs, phaseMaxConcurrency(script));
     fullOutput += phase.output;
     allFailures.push(...phase.failures);
     ok = phase.ok && ok;

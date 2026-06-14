@@ -1,20 +1,43 @@
 import { $ } from 'bun';
 
+import { atomicSwapDist, stagingDirectoryName } from './lib/atomic-swap-dist.ts';
 import { getExpectedBuildOutputs, readPackageExports } from './package-exports.js';
 
 const packageRoot = process.cwd();
+const distributionDirectory = `${packageRoot}/dist`;
+// Unique-per-invocation staging directory (a `dist.tmp-*` sibling of `dist`, so
+// the same filesystem `atomicSwapDist`'s rename requires). Each build owns its
+// own staging dir, so two concurrent same-package builds never collide on it.
+const stagingName = stagingDirectoryName();
+const stagingDirectory = `${packageRoot}/${stagingName}`;
 const packageExports = await readPackageExports();
 
-await $`rm -rf dist`;
+// Build into the staging directory, then promote it via `atomicSwapDist`. A
+// build never writes into `dist/` in place, so a concurrent reader (a sibling
+// package's test running `bun run --filter=@cinder/commentary build`, or a
+// typecheck holding dist declarations) can never observe a half-written tree.
+// NOTE: this is defense-in-depth, not the #364 fix — the husky test gate
+// serializes its test phase, and THAT is what stops concurrent same-package
+// rebuilds inside the hook. See `./lib/atomic-swap-dist.ts` for the exact
+// guarantees (and the residual transient-ENOENT window this does not close).
+await $`rm -rf ${stagingDirectory}`;
 
-const compileResult = await $`tsc -p tsconfig.build.json`.nothrow();
+// `tsc` is configured to emit into `./dist` via tsconfig.build.json, but we
+// override `--outDir` on the command line so it emits into the staging
+// directory. The CLI flag takes precedence over the tsconfig value.
+const compileResult = await $`tsc -p tsconfig.build.json --outDir ./${stagingName}`.nothrow();
 if (compileResult.exitCode !== 0) {
   process.stderr.write(compileResult.stdout.toString());
   process.stderr.write(compileResult.stderr.toString());
   process.exit(1);
 }
 
-const expectedOutputs = getExpectedBuildOutputs(packageRoot, packageExports);
+// `getExpectedBuildOutputs` returns absolute paths rooted at the package root,
+// pointing into `dist/`. Substitute `dist` with the staging dir for the staging
+// validation — we must verify the staging tree before promoting it.
+const expectedOutputs = getExpectedBuildOutputs(packageRoot, packageExports).map((path) =>
+  path.replace(`${packageRoot}/dist/`, `${stagingDirectory}/`),
+);
 
 for (const outputPath of expectedOutputs) {
   if (!(await Bun.file(outputPath).exists())) {
@@ -22,5 +45,10 @@ for (const outputPath of expectedOutputs) {
     process.exit(1);
   }
 }
+
+// Promote the validated staging tree into `dist/` (handles a concurrent
+// same-package build winning the race; never exposes a partial tree). See
+// `./lib/atomic-swap-dist.ts` for the exact guarantees and limits.
+atomicSwapDist(stagingDirectory, distributionDirectory);
 
 process.stdout.write('Build complete.\n');
