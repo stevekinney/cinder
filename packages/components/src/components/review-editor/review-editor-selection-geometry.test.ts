@@ -60,11 +60,24 @@ describe('ReviewEditor selection geometry', () => {
     expect(rect).toBeNull();
   });
 
-  test('centers the anchor on the selected visual line', () => {
+  test('centers the anchor on the selected visual line and includes rect height', () => {
     const position = getSelectionAnchorPosition(
       createRangeGeometry([createRect(20, 40, 120, 18)], createRect(20, 40, 120, 18)),
     );
 
-    expect(position).toEqual({ x: 80, y: 40 });
+    expect(position).toEqual({ x: 80, y: 40, height: 18 });
+  });
+
+  test('propagates height from the first visible client rect', () => {
+    const firstLineRect = createRect(20, 40, 120, 22);
+    const secondLineRect = createRect(10, 66, 240, 22);
+    const boundingRect = createRect(10, 40, 250, 48);
+
+    const position = getSelectionAnchorPosition(
+      createRangeGeometry([firstLineRect, secondLineRect], boundingRect),
+    );
+
+    // height must match the anchor rect (first visible line), not the bounding rect
+    expect(position?.height).toBe(22);
   });
 });

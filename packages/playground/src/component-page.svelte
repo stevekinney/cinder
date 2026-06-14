@@ -1597,20 +1597,6 @@
     flex-direction: column;
     gap: var(--cinder-space-6);
     background: light-dark(oklch(100% 0 0), var(--cinder-bg));
-    /* Headroom above the first example mount. The old tabbed snapshot layout
-       wrapped each example in a Card under an `<h2>Examples</h2>` inside a tab
-       panel, pushing the first example ~100px down from the viewport top. The
-       positioning test harness (selection-popover-positioning.playwright.ts)
-       depends on that clearance: when a selection sits flush against the
-       viewport top, SelectionPopover has no room to flip above and falls back
-       to a `bottom` placement that OVERLAPS the selection — a real flip/shift
-       bug in the shared anchored-overlay logic, tracked in issue #369 (the
-       popover should anchor below the selection's bottom edge, not overlap it).
-       This
-       padding restores the fixture geometry the test was written against; it
-       does not fix the underlying component bug. Sized (8rem) so the EXPANDED
-       composer (~114px tall) also clears the selection when it flips above. */
-    padding-block-start: var(--cinder-space-32);
   }
 
   .snapshot-empty-heading {

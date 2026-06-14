@@ -2,6 +2,14 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type SelectionPopoverPosition = {
   x: number;
   y: number;
+  /**
+   * Height of the selection rect in CSS pixels. When provided, the virtual
+   * anchor exposes the correct `bottom` edge (`y + height`) to floating-ui so
+   * that `flip` places the panel below the selection's actual bottom edge
+   * instead of overlapping it. Defaults to 0 when omitted (zero-height point
+   * anchor — the original behaviour, which causes overlap when flipped).
+   */
+  height?: number;
 };
 export type SelectionPopoverProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   /** Unique identifier for the popover. */
