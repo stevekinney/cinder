@@ -322,9 +322,12 @@ test('selection flush to viewport top places popover below the selection without
   // Step 1: scroll so the target text is at the very top of the viewport,
   // giving no room above for a `top` placement and forcing a bottom-placement
   // flip. Scroll and selection geometry are split into separate evaluate calls
-  // with a waitForFunction boundary between them so the browser frame settles
-  // after the scroll before we capture post-scroll coordinates.
-  await page.evaluate(() => {
+  // so the browser frame settles after the scroll before we capture post-scroll
+  // coordinates. The scroll returns its intended target so we can wait on a
+  // condition that is satisfied even when no scroll was needed (the text is
+  // already flush to the top, so `initialRect.top` is 0) — waiting on
+  // `scrollY > 0` would hang in that case.
+  const targetScrollY = await page.evaluate(() => {
     function findTextNode(root: Node, searchText: string): Text | null {
       if (root.nodeType === Node.TEXT_NODE && root.textContent?.includes(searchText)) {
         const parentElement = root.parentElement;
@@ -346,10 +349,17 @@ test('selection flush to viewport top places popover below the selection without
     if (initialRect) {
       window.scrollBy(0, initialRect.top);
     }
+    // The page may already be scrolled past the document's max, so clamp the
+    // expected value to whatever the browser actually allows.
+    const maxScrollY = document.documentElement.scrollHeight - window.innerHeight;
+    return Math.max(0, Math.min(window.scrollY, maxScrollY));
   });
 
   // Wait for the scroll to settle so viewport-relative coordinates are stable.
-  await page.waitForFunction(() => window.scrollY > 0);
+  // `scrollY` has already reached its target inside the evaluate above; this
+  // waits for the rendered frame to reflect it (and resolves immediately when
+  // the target is 0 — no scroll was needed).
+  await page.waitForFunction((expected) => Math.abs(window.scrollY - expected) <= 1, targetScrollY);
 
   // Step 2: now that the frame has settled, create the selection and capture
   // post-scroll geometry. The anchorBox.y must be near 0 because the text is
