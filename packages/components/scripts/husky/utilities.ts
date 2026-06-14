@@ -45,6 +45,35 @@ export const error = (msg: string) => console.error(chalk.red(msg));
 
 export type GateScript = 'lint' | 'typecheck' | 'test';
 
+/**
+ * The maximum number of jobs that may run concurrently for a given gate
+ * script. This is the side-effect-free seam the regression test imports to
+ * assert the test phase runs at concurrency 1 without triggering the gate
+ * entry path's process.exit / stdin-read / lock side effects.
+ *
+ * Why `test` must be 1: each package's `test` script runs inline
+ * `bun run --filter=<dep> build` steps that wipe and re-emit the shared
+ * upstream `dist/` directories (e.g. `@cinder/markdown`, `@cinder/diff`).
+ * Running two test jobs in parallel races those `rm -rf dist` + write cycles
+ * against each other (and against a third job's bundler that reads the same
+ * dist mid-write), yielding non-deterministic
+ * `error: "<name>" is not declared in this file`. Lint (oxlint) and typecheck
+ * (`tsc --noEmit`) are read-only, so they stay parallel.
+ *
+ * The atomic-build follow-up (building to a temp dir then renaming over
+ * `dist/`) removes the write window, which makes this serialization redundant.
+ * Both defences are kept: atomic builds are the root fix; serialization is the
+ * belt. Removing serialization after atomic builds land requires its own PR
+ * with a verified concurrency stress test.
+ */
+export function phaseMaxConcurrency(script: GateScript): number {
+  if (script === 'test') return 1;
+  // CPU-bound default (up to 4 workers). The `?? 1` guards environments where
+  // `navigator.hardwareConcurrency` is undefined; `Math.max(1, …)` ensures the
+  // floor stays at 1 so a zero / negative value never silently skips all jobs.
+  return Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4));
+}
+
 export type GateFailure = {
   readonly script: GateScript;
   readonly scope: string;

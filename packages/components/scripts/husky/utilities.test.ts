@@ -20,6 +20,7 @@ import {
   isUnderWorkspace,
   loadWorkspacePackages,
   parsePushRefs,
+  phaseMaxConcurrency,
   runHookCommand,
   summarizeFailures,
   withGateLock,
@@ -1095,6 +1096,80 @@ describe('formatFailureSummary', () => {
       '    (fail) second',
       '    ...and 2 more failure lines',
     ]);
+  });
+});
+
+/**
+ * Regression test for issue #364 — pre-push and pre-commit test phases race shared-dist rebuilds.
+ *
+ * `phaseMaxConcurrency` is the side-effect-free seam extracted from pre-push.ts
+ * so this test can assert the policy without importing the gate entry path
+ * (which has module-scope side effects: isContinuousIntegration → process.exit,
+ * stdin read, gate lock). The assertion would fail on origin/main (before this PR)
+ * because the concurrency was an inline literal at the call site, not an
+ * exported function that could be independently verified. The pre-commit hook
+ * originally used a single flat pool for both typecheck and test — this fix
+ * applies the same two-phase execution (typecheck parallel, test serialized) as
+ * the pre-push hook already uses after #365.
+ */
+describe('phaseMaxConcurrency', () => {
+  it('returns 1 for the test phase to prevent the shared-dist rebuild race', () => {
+    // This is the key regression guard for issue #364. Each package's `test`
+    // script does inline `bun run --filter=<dep> build` steps that wipe and
+    // re-emit shared upstream `dist/` directories. Running two test jobs
+    // concurrently races those rm -rf + write cycles against a third job's
+    // bundler reading the same dist mid-write. Concurrency must be exactly 1.
+    expect(phaseMaxConcurrency('test')).toBe(1);
+  });
+
+  it('returns a value greater than 1 for lint (read-only, safe to parallelize)', () => {
+    // Pin hardwareConcurrency to 2 so the assertion is environment-independent:
+    // on a real 1-vCPU host Math.max(1, Math.min(1, 4)) === 1, which would
+    // make toBeGreaterThan(1) fail.  The fixture value must be ≥ 2 and ≤ 4
+    // (the cap in the implementation) so the mocked result equals min(2,4)=2.
+    const original = navigator.hardwareConcurrency;
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      value: 2,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      expect(phaseMaxConcurrency('lint')).toBeGreaterThan(1);
+    } finally {
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        value: original,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
+
+  it('returns a value greater than 1 for typecheck (read-only, safe to parallelize)', () => {
+    // Same pin as the lint test above — see that comment.
+    const original = navigator.hardwareConcurrency;
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      value: 2,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      expect(phaseMaxConcurrency('typecheck')).toBeGreaterThan(1);
+    } finally {
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        value: original,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
+
+  it('returns a finite positive integer for every gate script', () => {
+    for (const script of ['lint', 'typecheck', 'test'] as const) {
+      const concurrency = phaseMaxConcurrency(script);
+      expect(Number.isFinite(concurrency)).toBe(true);
+      expect(concurrency).toBeGreaterThanOrEqual(1);
+      expect(Number.isInteger(concurrency)).toBe(true);
+    }
   });
 });
 

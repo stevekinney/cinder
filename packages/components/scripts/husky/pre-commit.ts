@@ -11,6 +11,7 @@ import {
   installHookProcessCleanup,
   isContinuousIntegration,
   loadWorkspacePackages,
+  phaseMaxConcurrency,
   REPO_ROOT,
   runHookCommand,
   success,
@@ -135,21 +136,22 @@ type Job = {
   readonly script: 'typecheck' | 'test';
 };
 
-const jobs: Job[] = [];
+const typecheckJobs: Job[] = [];
+const testJobs: Job[] = [];
 for (const pkg of touched) {
   if (pkg.hasTypecheck) {
-    jobs.push({ packageName: pkg.name, script: 'typecheck' });
+    typecheckJobs.push({ packageName: pkg.name, script: 'typecheck' });
   } else {
     info(`${pkg.name}: no typecheck script; skipping`);
   }
   if (pkg.hasTest) {
-    jobs.push({ packageName: pkg.name, script: 'test' });
+    testJobs.push({ packageName: pkg.name, script: 'test' });
   } else {
     info(`${pkg.name}: no test script; skipping`);
   }
 }
 
-if (jobs.length === 0) {
+if (typecheckJobs.length === 0 && testJobs.length === 0) {
   success('No applicable scripts for touched packages; nothing to run');
   process.exit(0);
 }
@@ -160,8 +162,6 @@ type JobResult = {
   readonly stdout: string;
   readonly stderr: string;
 };
-
-const concurrency = Math.min(navigator.hardwareConcurrency, 4);
 
 const start = Date.now();
 const elapsed = () => Date.now() - start;
@@ -188,39 +188,73 @@ async function runJob(job: Job): Promise<JobResult> {
   };
 }
 
-// Small inline async pool — `concurrency` workers pull jobs off a shared index.
-// `results` is keyed by job index so the output order matches the job order
-// regardless of worker scheduling.
-const results: JobResult[] = [];
-let nextIndex = 0;
-const workers: Promise<void>[] = [];
-for (let workerId = 0; workerId < Math.min(concurrency, jobs.length); workerId++) {
-  workers.push(
-    (async () => {
-      while (true) {
-        const index = nextIndex++;
-        if (index >= jobs.length) return;
-        results[index] = await runJob(jobs[index]!);
-      }
-    })(),
-  );
-}
-await Promise.all(workers);
-
-const failures = results.filter((r) => r.exitCode !== 0);
-if (failures.length > 0) {
-  for (const failure of failures) {
-    error(`\n--- ${failure.job.packageName} ${failure.job.script} (exit ${failure.exitCode}) ---`);
-    if (failure.stdout.trim().length > 0) {
-      console.log(failure.stdout);
-    }
-    if (failure.stderr.trim().length > 0) {
-      console.error(failure.stderr);
-    }
+/**
+ * Run a batch of jobs through a small async pool capped at `maxConcurrency`.
+ * Returns the full result list in job-index order.
+ *
+ * Concurrency should be derived from {@link phaseMaxConcurrency}: typecheck and
+ * lint are read-only and safe to run in parallel; the test phase runs at
+ * concurrency 1 to prevent the shared-dist rebuild race described in issue #364.
+ * Each package's test script contains inline `bun run --filter=<dep> build`
+ * steps that rewrite a shared dep's `dist/` directory; running two such tests
+ * concurrently means one may rewrite `dist/` while another package's tsc
+ * incremental engine has those declaration files open, producing spurious
+ * TS1109 errors.
+ */
+async function runJobs(jobs: readonly Job[], maxConcurrency: number): Promise<JobResult[]> {
+  if (jobs.length === 0) return [];
+  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
+  const results: JobResult[] = [];
+  let nextIndex = 0;
+  const workers: Promise<void>[] = [];
+  for (let workerId = 0; workerId < Math.min(concurrency, jobs.length); workerId++) {
+    workers.push(
+      (async () => {
+        while (true) {
+          const index = nextIndex++;
+          if (index >= jobs.length) return;
+          results[index] = await runJob(jobs[index]!);
+        }
+      })(),
+    );
   }
-  error(`Pre-commit checks failed (${failures.length} of ${results.length} jobs)`);
+  await Promise.all(workers);
+  return results;
+}
+
+// Phase 1: typecheck (read-only — safe to run in parallel).
+const typecheckResults = await runJobs(typecheckJobs, phaseMaxConcurrency('typecheck'));
+
+const typecheckFailures = typecheckResults.filter((r) => r.exitCode !== 0);
+if (typecheckFailures.length > 0) {
+  for (const failure of typecheckFailures) {
+    error(`\n--- ${failure.job.packageName} ${failure.job.script} (exit ${failure.exitCode}) ---`);
+    if (failure.stdout.trim().length > 0) console.log(failure.stdout);
+    if (failure.stderr.trim().length > 0) console.error(failure.stderr);
+  }
+  // Don't run tests when typecheck already failed — surface failures fast and
+  // avoid spending minutes on tests that will likely also fail.
+  error(
+    `Pre-commit checks failed (${typecheckFailures.length} of ${typecheckResults.length} typecheck jobs)`,
+  );
   process.exit(1);
 }
 
-success(`All pre-commit checks passed (${results.length} jobs in ${elapsed()}ms)`);
+// Phase 2: test (serialized at concurrency 1 to prevent the shared-dist race —
+// see phaseMaxConcurrency in utilities.ts for the full rationale).
+const testResults = await runJobs(testJobs, phaseMaxConcurrency('test'));
+
+const allResults = [...typecheckResults, ...testResults];
+const failures = allResults.filter((r) => r.exitCode !== 0);
+if (failures.length > 0) {
+  for (const failure of failures) {
+    error(`\n--- ${failure.job.packageName} ${failure.job.script} (exit ${failure.exitCode}) ---`);
+    if (failure.stdout.trim().length > 0) console.log(failure.stdout);
+    if (failure.stderr.trim().length > 0) console.error(failure.stderr);
+  }
+  error(`Pre-commit checks failed (${failures.length} of ${allResults.length} jobs)`);
+  process.exit(1);
+}
+
+success(`All pre-commit checks passed (${allResults.length} jobs in ${elapsed()}ms)`);
 process.exit(0);
