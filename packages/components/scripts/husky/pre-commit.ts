@@ -198,9 +198,9 @@ async function runJob(job: Job): Promise<JobResult> {
  * concurrency 1 to prevent the shared-dist rebuild race described in issue #364.
  * Each package's test script contains inline `bun run --filter=<dep> build`
  * steps that rewrite a shared dep's `dist/` directory; running two such tests
- * concurrently means one may rewrite `dist/` while another package's tsc
- * incremental engine has those declaration files open, producing spurious
- * TS1109 errors.
+ * concurrently means one may be reading a dep's `dist/` while another rebuild
+ * has it half-written, so the reader observes a partial tree and fails
+ * non-deterministically with `"<name>" is not declared in this file`.
  */
 async function runJobs(jobs: readonly Job[], maxConcurrency: number): Promise<JobResult[]> {
   return runWithConcurrencyPool(jobs, maxConcurrency, (job) => runJob(job));

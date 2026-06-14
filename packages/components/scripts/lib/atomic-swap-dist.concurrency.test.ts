@@ -12,7 +12,15 @@
 // fixture) holds the dangerous state open indefinitely, so neither case relies
 // on timing luck — the parent orchestrates, it does not race.
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -154,7 +162,7 @@ describe('atomicSwapDist publication contract (#364 regression)', () => {
 /** Write a complete `dist/` (manifest + payload files) for the rebuild seed. */
 function seedCompleteDist(distributionDirectory: string): void {
   rmSync(distributionDirectory, { recursive: true, force: true });
-  Bun.spawnSync(['mkdir', '-p', distributionDirectory]);
+  mkdirSync(distributionDirectory, { recursive: true });
   for (const file of PAYLOAD_FILES) {
     writeFileSync(join(distributionDirectory, file), `// ${file} seed\n`);
   }

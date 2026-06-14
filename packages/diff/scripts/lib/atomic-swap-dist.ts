@@ -1,11 +1,12 @@
-// CANONICAL SOURCE for `atomicSwapDist`. The four upstream packages
-// (diff, markdown, editor, commentary) each carry a byte-identical copy at
-// `packages/<pkg>/scripts/lib/atomic-swap-dist.ts` because a cross-package
-// import would put a source file outside that package's `rootDir: "."` and
-// break its typecheck. A `paths` mapping does not lift that restriction — only
-// a built/referenced project would, which is heavier than the duplication.
-// Keep all copies in sync: `atomic-swap-dist.duplication.test.ts` asserts they
-// are byte-for-byte identical, so drift fails the suite.
+// CANONICAL SOURCE for `atomicSwapDist`. This file lives under `components`;
+// the four upstream packages (diff, markdown, editor, commentary) each carry a
+// byte-identical copy at `packages/<pkg>/scripts/lib/atomic-swap-dist.ts` — five
+// copies total. The duplication exists because a cross-package import would put
+// a source file outside that package's `rootDir: "."` and break its typecheck.
+// A `paths` mapping does not lift that restriction — only a built/referenced
+// project would, which is heavier than the duplication. Keep all five copies in
+// sync: `atomic-swap-dist.duplication.test.ts` asserts they are byte-for-byte
+// identical, so drift fails the suite.
 import { renameSync, rmSync } from 'node:fs';
 
 /** The slice of `node:fs` this helper uses. Defaulted to the real functions in
@@ -64,16 +65,21 @@ const DESTINATION_EXISTS_CODES = new Set(['ENOTEMPTY', 'EEXIST']);
  *      error re-throws.
  *   3. Install: rename(temp, dist). If dist now exists (ENOTEMPTY / EEXIST) a
  *      concurrent build raced in after we vacated — its dist is complete; drop
- *      our `old` and return; any other error re-throws.
+ *      our `old` and return. On any OTHER error we best-effort roll back —
+ *      rename(old, dist) to restore the last good build — then re-throw the
+ *      original error. (Without the rollback, a failed install would leave the
+ *      package with no `dist` at all, since the only copy is in `old`.)
  *   4. We own the installed dist. Remove the vacated `old` tree.
  *
  * The success and concurrent-loser paths remove `temp` / `old` synchronously
  * before returning. A `process.on('exit')` handler is also registered as a
- * backstop for the case where the process exits between two rename steps — but
- * it runs on normal exit and `process.exit()` only, NOT on SIGKILL/SIGINT, so a
- * hard kill mid-swap can still leave a `dist.tmp-*` / `dist.old-*` sibling
- * behind. Those names are gitignored, so such litter never reaches version
- * control.
+ * backstop that removes the staging tree (`temp`) if the process exits between
+ * two rename steps — but it runs on normal exit and `process.exit()` only, NOT
+ * on SIGKILL/SIGINT, so a hard kill mid-swap can still leave a `dist.tmp-*` /
+ * `dist.old-*` sibling behind. Those names are gitignored, so such litter never
+ * reaches version control. The handler deliberately never deletes `old`:
+ * between step 2 and step 4 it is the last good build, and the step-3 rollback
+ * relies on it surviving.
  *
  * @param tempDirectory - Completed, validated build output to promote.
  * @param distributionDirectory - Final destination (e.g. `dist/`).
@@ -91,10 +97,16 @@ export function atomicSwapDist(
   // other's vacated tree.
   const oldDirectory = `${distributionDirectory}.old-${stagingSuffix()}`;
 
-  // Best-effort cleanup of the dirs THIS call owns, on normal exit only.
+  // Best-effort cleanup of the staging tree THIS call owns, on normal exit only.
+  // The handler deliberately does NOT touch `oldDirectory`: after step 2 vacates
+  // the live tree there, `oldDirectory` is the ONLY copy of the last good build
+  // until step 4 (success) or the step-3 loser path removes it synchronously. If
+  // step 3 fails unexpectedly we restore from it (see below); deleting it here
+  // would destroy the last good build on that failure path. Every safe path
+  // already removes `oldDirectory` synchronously, so the handler has no reason
+  // to — leaving a `dist.old-*` sibling behind on a hard exit is the safe choice.
   process.on('exit', () => {
     fileSystem.rmSync(tempDirectory, { recursive: true, force: true });
-    fileSystem.rmSync(oldDirectory, { recursive: true, force: true });
   });
 
   // Step 1: optimistic — first build, or dist is absent.
@@ -133,6 +145,20 @@ export function atomicSwapDist(
       fileSystem.rmSync(oldDirectory, { recursive: true, force: true });
       fileSystem.rmSync(tempDirectory, { recursive: true, force: true });
       return;
+    }
+    // Unexpected install failure (ENOSPC / EIO / EPERM / …) after we already
+    // vacated the live tree to `oldDirectory`. Best-effort rollback: move the
+    // last good build back into place so the package is left buildable, then
+    // re-throw the ORIGINAL error so the failure still surfaces. The rollback is
+    // intentionally swallowed — if it fails (e.g. a concurrent build installed a
+    // complete dist in the gap, giving ENOTEMPTY/EEXIST), that build's tree is
+    // the valid one and ours is redundant; either way we must not mask the
+    // original error or delete `oldDirectory` (it may still be the last good
+    // build).
+    try {
+      fileSystem.renameSync(oldDirectory, distributionDirectory);
+    } catch {
+      // Rollback failed; preserve `oldDirectory` and the original error.
     }
     throw error;
   }
