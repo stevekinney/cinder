@@ -125,7 +125,10 @@
     margin-inline-start: auto;
   }
 
-  .cinder-capability-gate__dismiss:hover {
-    color: var(--cinder-text);
+  @media (hover: hover) {
+    .cinder-capability-gate__dismiss:hover {
+      background-color: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
   }
 }

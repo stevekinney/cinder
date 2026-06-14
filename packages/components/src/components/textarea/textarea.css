@@ -93,6 +93,7 @@
   }
 
   .cinder-textarea[aria-invalid='true']:focus-visible {
+    border-color: transparent;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);

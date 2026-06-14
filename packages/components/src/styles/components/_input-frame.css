@@ -20,6 +20,13 @@
     border-color: var(--cinder-danger);
   }
 
+  .cinder-_input-frame[aria-invalid='true']:focus-visible,
+  .cinder-_input-frame[aria-invalid='true']:focus-within,
+  .cinder-_input-frame[data-invalid]:focus-visible,
+  .cinder-_input-frame[data-invalid]:focus-within {
+    border-color: transparent;
+  }
+
   .cinder-_input-frame:disabled,
   .cinder-_input-frame[data-disabled] {
     background: var(--cinder-surface-inset);

@@ -134,14 +134,20 @@ Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinde
 
 Background and surface tokens for the three core elevations — page background, default surface, and raised surface — plus an inset variant for sunken regions and `hover`/`pressed` derivatives that lift or darken via `color-mix`.
 
-| Token                      | Default                                                                                     |
-| -------------------------- | ------------------------------------------------------------------------------------------- |
-| `--cinder-bg`              | `light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245))`                                     |
-| `--cinder-surface`         | `light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245))`                                   |
-| `--cinder-surface-raised`  | `light-dark(oklch(100% 0.006 245), oklch(26% 0.045 245))`                                   |
-| `--cinder-surface-inset`   | `light-dark(oklch(95.5% 0.01 245), oklch(11% 0.03 245))`                                    |
-| `--cinder-surface-hover`   | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
-| `--cinder-surface-pressed` | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
+| Token                              | Default                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `--cinder-bg`                      | `light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245))`                                     |
+| `--cinder-surface`                 | `light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245))`                                   |
+| `--cinder-surface-raised`          | `light-dark(oklch(100% 0.006 245), oklch(26% 0.045 245))`                                   |
+| `--cinder-surface-inset`           | `light-dark(oklch(95.5% 0.01 245), oklch(11% 0.03 245))`                                    |
+| `--cinder-surface-hover`           | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
+| `--cinder-surface-pressed`         | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
+| `--cinder-surface-upcoming-marker` | `light-dark(var(--cinder-surface-inset), var(--cinder-surface))`                            |
+| `--cinder-surface-inverse`         | `light-dark(var(--cinder-text), var(--cinder-surface-raised))`                              |
+| `--cinder-text-inverse`            | `light-dark(var(--cinder-surface), var(--cinder-text))`                                     |
+| `--cinder-border-inverse`          | `light-dark(transparent, var(--cinder-border-strong))`                                      |
+
+`--cinder-surface-upcoming-marker` is the background for Steps component upcoming-state markers. In light mode it resolves to `--cinder-surface-inset` (visibly recessed); in dark mode it lifts to `--cinder-surface` so the marker is visible against the dark stage. `--cinder-surface-inverse`, `--cinder-text-inverse`, and `--cinder-border-inverse` form the dark-overlay triple used by Tooltip — both arms render a dark overlay with legible light text (no theme inversion occurs in dark mode).
 
 ## Text colors
 
@@ -153,15 +159,19 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 | `--cinder-text-muted`    | `light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245))` |
 | `--cinder-text-subtle`   | `light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245))` |
 | `--cinder-text-disabled` | `light-dark(oklch(52% 0.01 245), oklch(64% 0.02 245))`  |
-| `--cinder-fill-disabled` | `light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245))`  |
+| `--cinder-fill-disabled` | `light-dark(oklch(88% 0.01 245), oklch(30% 0.015 245))` |
 
 ## Borders
 
-| Token                    | Default                                                 |
-| ------------------------ | ------------------------------------------------------- |
-| `--cinder-border`        | `light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245))` |
-| `--cinder-border-muted`  | `light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245))`  |
-| `--cinder-border-strong` | `light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245))` |
+| Token                                     | Default                                                       |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| `--cinder-border`                         | `light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245))`       |
+| `--cinder-border-muted`                   | `light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245))`        |
+| `--cinder-border-strong`                  | `light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245))`       |
+| `--cinder-toggle-track-off-resting`       | `light-dark(var(--cinder-border-muted), oklch(45% 0.02 245))` |
+| `--cinder-toggle-track-off-hover-resting` | `light-dark(var(--cinder-border), oklch(52% 0.02 245))`       |
+
+`--cinder-toggle-track-off-resting` and `--cinder-toggle-track-off-hover-resting` are the default fill colors for an unchecked Toggle track. In light mode they alias the existing muted and default border tokens. In dark mode they lift to L≈0.45 (rest) and L≈0.52 (hover) so the track has ≥3:1 shape contrast against the dark surface. The `--cinder-toggle-track-off` consumer override hook still takes priority.
 
 ## Accent
 
@@ -279,6 +289,9 @@ The ring tokens drive the focus-visible outline used across interactive primitiv
 | `--cinder-ring-offset`       | `1px`                                                                                                   |
 | `--cinder-ring-offset-color` | `var(--cinder-bg)`                                                                                      |
 | `--cinder-ring-color`        | `light-dark(oklch(from var(--cinder-accent) 0.58 0.16 h), oklch(from var(--cinder-accent) 0.7 0.14 h))` |
+| `--cinder-ring-on-accent`    | `light-dark(oklch(20% 0.02 245), oklch(95% 0.01 245))`                                                  |
+
+`--cinder-ring-on-accent` is a high-contrast focus ring for use on solid accent-fill surfaces (e.g. the primary `FloatingActionButton`). The light arm is a near-black that contrasts both the accent fill (≥11:1) and the page background (≥19:1). The dark arm is a near-white that contrasts the bright dark-mode accent (≥5:1) and the dark page background (≥18:1). Regular interactive elements on neutral surfaces use `--cinder-ring-color` instead.
 
 ## Z-index layers
 
@@ -322,12 +335,12 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 
 ### Base
 
-| Token                    | Default                        |
-| ------------------------ | ------------------------------ |
-| `--cinder-button-bg`     | `var(--cinder-surface-raised)` |
-| `--cinder-button-fg`     | `var(--cinder-text)`           |
-| `--cinder-button-border` | `var(--cinder-border)`         |
-| `--cinder-button-radius` | `var(--cinder-radius-md)`      |
+| Token                    | Default                                                         |
+| ------------------------ | --------------------------------------------------------------- |
+| `--cinder-button-bg`     | `var(--cinder-surface-raised)`                                  |
+| `--cinder-button-fg`     | `var(--cinder-text)`                                            |
+| `--cinder-button-border` | `light-dark(var(--cinder-border), var(--cinder-border-strong))` |
+| `--cinder-button-radius` | `var(--cinder-radius-md)`                                       |
 
 ### Size: xs
 

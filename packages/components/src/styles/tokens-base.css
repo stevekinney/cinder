@@ -188,6 +188,20 @@
   --cinder-surface: light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245));
   --cinder-surface-raised: light-dark(oklch(100% 0.006 245), oklch(26% 0.045 245));
   --cinder-surface-inset: light-dark(oklch(95.5% 0.01 245), oklch(11% 0.03 245));
+
+  /* Upcoming step marker background — keeps the inset treatment in light mode
+     (surface-inset is visibly recessed vs surface), but lifts to surface in dark
+     mode where surface-inset (0.11) is nearly invisible against dark stage (0.15-0.20). */
+  --cinder-surface-upcoming-marker: light-dark(var(--cinder-surface-inset), var(--cinder-surface));
+
+  /* Inverse surface — used by Tooltip to stay a dark overlay in both themes.
+   * Light arm mirrors the text/surface swap (dark bg, light fg).
+   * Dark arm uses the elevated surface + near-white text so the tooltip reads as
+   * a dark elevated layer rather than inverting to light.
+   * --cinder-border-inverse adds a 1px delineation in dark mode only. */
+  --cinder-surface-inverse: light-dark(var(--cinder-text), var(--cinder-surface-raised));
+  --cinder-text-inverse: light-dark(var(--cinder-surface), var(--cinder-text));
+  --cinder-border-inverse: light-dark(transparent, var(--cinder-border-strong));
   /* Hover/pressed surface derivatives. The mix DIRECTION is per-theme — the
      `light-dark(black, white)` mix target darkens the surface in light mode and
      lightens it in dark mode — so only the PERCENTAGE is shared across themes.
@@ -215,12 +229,20 @@
      inert. NOTE the glyph on top must use --cinder-text-disabled, NOT --cinder-accent-contrast:
      accent-contrast is dark ink in both arms and would be ~1.45:1 on the dark-arm fill (0.30) —
      invisible. --cinder-text-disabled clears the 3:1 UI floor in both themes (light ~3.8:1, dark ~4.1:1). */
-  --cinder-fill-disabled: light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245));
+  --cinder-fill-disabled: light-dark(oklch(88% 0.01 245), oklch(30% 0.015 245));
 
   /* Borders */
   --cinder-border: light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245));
   --cinder-border-muted: light-dark(oklch(88% 0.01 245), oklch(30% 0.04 245));
   --cinder-border-strong: light-dark(oklch(72% 0.014 245), oklch(45% 0.06 245));
+
+  /* Toggle track off-state defaults — encode dark-arm contrast improvement here
+     so toggle.css uses only var() references and stays guard-clean.
+     Light arm preserves existing --cinder-border-muted look; dark arm raises L
+     to 0.45 (vs surface 0.20) for ≥3:1 shape contrast. Chroma kept at 0.02
+     (near-neutral). Hover steps up by 0.07 to be distinguishable from rest. */
+  --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
+  --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
 
   /* Accent - cyan (hue 195) */
   --cinder-accent: light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195));
@@ -299,6 +321,14 @@
   --cinder-scrollbar-thumb: light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45));
   --cinder-scrollbar-thumb-hover: light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65));
 
+  /* Ring color tuned for use on solid accent/fill surfaces. Light arm is a
+   * near-black that contrasts both the accent fill (≥11:1) and the page bg
+   * (≥19:1). Dark arm is a near-white that contrasts the bright dark-mode
+   * accent (≥5:1) and the dark page bg (≥18:1). Used by FloatingActionButton
+   * primary variant. Raw oklch is legitimate here (tokens-base.css is the
+   * one place raw colors are allowed). */
+  --cinder-ring-on-accent: light-dark(oklch(20% 0.02 245), oklch(95% 0.01 245));
+
   /* Focus ring */
   --cinder-ring-width: 3px;
   --cinder-ring-offset: 1px;
@@ -343,7 +373,7 @@
   /* Base button tokens (secondary defaults) */
   --cinder-button-bg: var(--cinder-surface-raised);
   --cinder-button-fg: var(--cinder-text);
-  --cinder-button-border: var(--cinder-border);
+  --cinder-button-border: light-dark(var(--cinder-border), var(--cinder-border-strong));
   --cinder-button-radius: var(--cinder-radius-md);
 
   /* Size: xs */

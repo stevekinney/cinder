@@ -50,7 +50,7 @@
    * doesn't "stick" after tap. */
   @media (hover: hover) {
     .cinder-_dismiss-button:hover {
-      background: color-mix(in oklch, currentColor, transparent 80%);
+      background: color-mix(in oklch, currentColor, transparent 75%);
     }
   }
 }

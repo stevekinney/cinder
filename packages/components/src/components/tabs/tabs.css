@@ -57,6 +57,7 @@
     padding: var(--cinder-space-2) var(--cinder-space-3);
     font: inherit;
     font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-muted);
     cursor: pointer;
     position: relative;
@@ -96,7 +97,6 @@
 
   .cinder-tab[data-cinder-active] {
     color: var(--cinder-accent-text);
-    font-weight: var(--cinder-font-medium);
   }
 
   /* Active indicator — bottom (horizontal) / right (vertical) accent stripe. */

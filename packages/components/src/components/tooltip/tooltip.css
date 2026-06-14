@@ -23,8 +23,17 @@
     padding: var(--cinder-space-1-5) var(--cinder-space-2-5);
 
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-text);
-    color: var(--cinder-surface);
+    /* Dark-overlay in both themes.
+     * Light: --cinder-surface-inverse → --cinder-text (dark ink bg);
+     *        --cinder-text-inverse → --cinder-surface (near-white text).
+     * Dark:  --cinder-surface-inverse → --cinder-surface-raised (elevated dark
+     *        surface); --cinder-text-inverse → --cinder-text (near-white, ~8.3:1).
+     *        --cinder-border-inverse adds 1px strong border so tooltip separates
+     *        from the dark stage. Both arms render a dark overlay with legible
+     *        light text — no theme inversion occurs. */
+    background: var(--cinder-surface-inverse);
+    color: var(--cinder-text-inverse);
+    border: 1px solid var(--cinder-border-inverse);
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-snug);
     white-space: nowrap;

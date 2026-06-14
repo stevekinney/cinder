@@ -261,6 +261,23 @@
     box-shadow: var(--cinder-shadow-sm);
   }
 
+  /* For the default pill variant: the `[data-cinder-selected]` rule (specificity
+   * 0,1,0) is declared after `:focus-visible` (0,1,0) and wins by cascade order,
+   * replacing the focus ring's box-shadow with shadow-sm. Re-assert the ring so
+   * the selected+focused segment still shows a visible ring in single and multiple
+   * selection modes. Scope to :not([data-cinder-variant='tablist']) so this does
+   * not conflict with the tablist re-assert below.
+   * Specificity 0,3,0 beats the base shadow-sm rule's 0,2,0 — intentional. */
+  .cinder-segmented-control:not([data-cinder-variant='tablist'])
+    .cinder-segmented-control-option[data-cinder-selected]:focus-visible,
+  .cinder-segmented-control:not([data-cinder-variant='tablist'])
+    .cinder-segmented-control-option[data-cinder-pressed]:focus-visible {
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+    z-index: 1;
+  }
+
   /* ── Tablist variant (single mode only) ─────────────────────────────────────
  * See docs/decisions/segmented-control-tablist-variant.md. The tablist variant
  * carries tab semantics for externally owned panels, so it must read as a

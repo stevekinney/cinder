@@ -32,17 +32,22 @@
 
   /* Tree items are full-bleed rows whose first/last siblings sit flush against
    the tree's clipping bounds; an outset ring would be trimmed there. Paint the
-   ring INSET (Strategy B-inset) so it stays inside each row's own border box. */
-  .cinder-tree-item:focus-visible {
+   ring INSET (Strategy B-inset) so it stays inside each row's own border box.
+   The ring is scoped to .cinder-tree-item__row (the direct child row) so that
+   when a branch item is expanded the ring surrounds only the label row, not
+   the entire subtree that the outer .cinder-tree-item div also wraps. The
+   tabindex/role attributes stay on the outer .cinder-tree-item. */
+  .cinder-tree-item:focus-visible > .cinder-tree-item__row {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: inset 0 0 0 var(--cinder-ring-width)
       var(--_cinder-tree-item-ring, var(--cinder-ring-color));
   }
 
   @media (forced-colors: active) {
-    .cinder-tree-item:focus-visible {
+    .cinder-tree-item:focus-visible > .cinder-tree-item__row {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
     }
   }
 

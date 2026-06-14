@@ -48,7 +48,7 @@
  * ---------------------------------------- */
 
   .cinder-badge[data-cinder-variant='neutral'] {
-    background: var(--cinder-surface-inset);
+    background: color-mix(in oklch, var(--cinder-surface-inset), var(--cinder-surface) 40%);
     color: var(--cinder-text);
     border-color: var(--cinder-border);
   }

@@ -11,6 +11,7 @@
     justify-content: center;
     overflow: hidden;
     background: var(--cinder-surface-inset);
+    border: 1px solid var(--cinder-border-muted);
     color: var(--cinder-text-muted);
     font-weight: var(--cinder-font-medium);
     user-select: none;

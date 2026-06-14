@@ -674,7 +674,11 @@ function assertOuterRecipe(css: string, selector: string, parser = parse): void 
 
 describe('focus-ring sweep — Strategy B-inset CSS selectors', () => {
   const insetCases: Array<{ name: string; css: string; selector: string }> = [
-    { name: 'tree item', css: treeCss, selector: '.cinder-tree-item:focus-visible' },
+    {
+      name: 'tree item',
+      css: treeCss,
+      selector: '.cinder-tree-item:focus-visible > .cinder-tree-item__row',
+    },
     {
       name: 'accordion trigger',
       css: accordionItemCss,
