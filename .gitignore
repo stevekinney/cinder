@@ -67,6 +67,11 @@ jspm_packages/
 # Nuxt.js build output
 .nuxt/
 dist/
+# Staging / vacated build trees from atomicSwapDist (packages/*/scripts/build.ts).
+# Normally cleaned on exit; a hard kill (SIGKILL) can leave one behind, so ignore
+# them to keep `git status` clean and the commit/push flow unblocked.
+dist.tmp-*/
+dist.old-*/
 
 # SvelteKit build output
 .svelte-kit/

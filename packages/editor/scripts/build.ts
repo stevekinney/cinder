@@ -1,6 +1,6 @@
 import { $ } from 'bun';
 
-import { atomicSwapDist } from './lib/atomic-swap-dist.ts';
+import { atomicSwapDist, stagingDirectoryName } from './lib/atomic-swap-dist.ts';
 import {
   getBuildEntrypoints,
   getExpectedBuildOutputs,
@@ -9,21 +9,22 @@ import {
 
 const packageRoot = process.cwd();
 const distributionDirectory = `${packageRoot}/dist`;
-// Per-PID staging directory so concurrent same-package builds never collide on
-// a shared `dist.tmp` (each writer owns its own `dist.tmp-<pid>`).
-const stagingName = `dist.tmp-${process.pid}`;
+// Unique-per-invocation staging directory (a `dist.tmp-*` sibling of `dist`, so
+// the same filesystem `atomicSwapDist`'s rename requires). Each build owns its
+// own staging dir, so two concurrent same-package builds never collide on it.
+const stagingName = stagingDirectoryName();
 const stagingDirectory = `${packageRoot}/${stagingName}`;
 const packageExports = await readPackageExports();
 const entrypoints = getBuildEntrypoints(packageRoot, packageExports);
 
-// Build to a staging directory first so a concurrent reader of `dist/` never
-// sees a partially-written tree. The `rm -rf dist` → write-to-dist pattern
-// opens a window where another process (e.g. a sibling package's test script
-// doing `bun run --filter=@cinder/editor build`) wipes `dist` while the first
-// process's bundler is still writing into it. Building to `dist.tmp-<pid>` then
-// atomically renaming over `dist` closes that window: on POSIX, `rename(2)` is
-// atomic — a concurrent reader either sees the old tree or the new tree, never
-// a partial write. This is the root fix for issue #364.
+// Build into the staging directory, then promote it via `atomicSwapDist`. A
+// build never writes into `dist/` in place, so a concurrent reader (a sibling
+// package's test running `bun run --filter=@cinder/editor build`, or a
+// typecheck holding dist declarations) can never observe a half-written tree.
+// NOTE: this is defense-in-depth, not the #364 fix — the husky test gate
+// serializes its test phase, and THAT is what stops concurrent same-package
+// rebuilds inside the hook. See `./lib/atomic-swap-dist.ts` for the exact
+// guarantees (and the residual transient-ENOENT window this does not close).
 await $`rm -rf ${stagingDirectory}`;
 
 const buildResult = await Bun.build({
@@ -64,9 +65,9 @@ for (const outputPath of expectedOutputs) {
   }
 }
 
-// Atomically swap the staging directory into place without ever removing dist/
-// while it is live (see packages/diff/scripts/lib/atomic-swap-dist.ts for the
-// full concurrent-build rationale).
+// Promote the validated staging tree into `dist/` (handles a concurrent
+// same-package build winning the race; never exposes a partial tree). See
+// `./lib/atomic-swap-dist.ts` for the exact guarantees and limits.
 atomicSwapDist(stagingDirectory, distributionDirectory);
 
 process.stdout.write('Build complete.\n');

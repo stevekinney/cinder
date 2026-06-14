@@ -60,11 +60,14 @@ export type GateScript = 'lint' | 'typecheck' | 'test';
  * `error: "<name>" is not declared in this file`. Lint (oxlint) and typecheck
  * (`tsc --noEmit`) are read-only, so they stay parallel.
  *
- * The atomic-build follow-up (building to a temp dir then renaming over
- * `dist/`) removes the write window, which makes this serialization redundant.
- * Both defences are kept: atomic builds are the root fix; serialization is the
- * belt. Removing serialization after atomic builds land requires its own PR
- * with a verified concurrency stress test.
+ * This serialization is the actual #364 fix. The companion atomic-build change
+ * (each package builds into a private staging dir then renames over `dist/`,
+ * see each package's `scripts/build.ts` and `scripts/lib/atomic-swap-dist.ts`)
+ * is defense-in-depth: it stops a reader seeing a half-written tree, but the
+ * rebuild path still has a sub-millisecond window where `dist/` is absent, so
+ * it does NOT make this serialization redundant. Keep both. Relaxing this to
+ * run the test phase in parallel would reopen that ENOENT window and needs its
+ * own PR backed by a concurrency stress test that proves it safe.
  */
 export function phaseMaxConcurrency(script: GateScript): number {
   if (script === 'test') return 1;
