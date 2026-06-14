@@ -77,6 +77,47 @@ export function phaseMaxConcurrency(script: GateScript): number {
   return Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4));
 }
 
+/**
+ * Run `items` through a bounded async pool, invoking `worker(item, index)` for
+ * each and returning the results in input order. At most `maxConcurrency`
+ * workers run at once — this is the *mechanism* that {@link phaseMaxConcurrency}
+ * feeds: with `maxConcurrency === 1` the pool is strictly serial, so the test
+ * phase never overlaps two `dist/`-rewriting build steps (the #364 race).
+ *
+ * The concurrency floor is defensive. A non-finite `maxConcurrency` — e.g. a
+ * caller computing `Math.min(navigator.hardwareConcurrency, 4)` where
+ * `hardwareConcurrency` is `undefined`, yielding `NaN` — must NOT slip through:
+ * `NaN` would make `Math.min(concurrency, items.length)` `NaN`, start zero
+ * workers, and silently resolve every item to `undefined` — a false green.
+ * `Number.isFinite` rejects `NaN`/±Infinity; `Math.max(1, …)` then guards
+ * `0`/negatives. This binding lives in ONE place so both hooks' job runners and
+ * the regression test share the same guarantee.
+ */
+export async function runWithConcurrencyPool<Item, Result>(
+  items: readonly Item[],
+  maxConcurrency: number,
+  worker: (item: Item, index: number) => Promise<Result>,
+): Promise<Result[]> {
+  if (items.length === 0) return [];
+  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
+  const results: Result[] = Array.from({ length: items.length });
+  let nextIndex = 0;
+  const workers: Promise<void>[] = [];
+  for (let workerId = 0; workerId < Math.min(concurrency, items.length); workerId++) {
+    workers.push(
+      (async () => {
+        while (true) {
+          const index = nextIndex++;
+          if (index >= items.length) return;
+          results[index] = await worker(items[index]!, index);
+        }
+      })(),
+    );
+  }
+  await Promise.all(workers);
+  return results;
+}
+
 export type GateFailure = {
   readonly script: GateScript;
   readonly scope: string;

@@ -14,6 +14,7 @@ import {
   phaseMaxConcurrency,
   REPO_ROOT,
   runHookCommand,
+  runWithConcurrencyPool,
   success,
   warning,
 } from './utilities.ts';
@@ -202,24 +203,7 @@ async function runJob(job: Job): Promise<JobResult> {
  * TS1109 errors.
  */
 async function runJobs(jobs: readonly Job[], maxConcurrency: number): Promise<JobResult[]> {
-  if (jobs.length === 0) return [];
-  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
-  const results: JobResult[] = [];
-  let nextIndex = 0;
-  const workers: Promise<void>[] = [];
-  for (let workerId = 0; workerId < Math.min(concurrency, jobs.length); workerId++) {
-    workers.push(
-      (async () => {
-        while (true) {
-          const index = nextIndex++;
-          if (index >= jobs.length) return;
-          results[index] = await runJob(jobs[index]!);
-        }
-      })(),
-    );
-  }
-  await Promise.all(workers);
-  return results;
+  return runWithConcurrencyPool(jobs, maxConcurrency, (job) => runJob(job));
 }
 
 // Phase 1: typecheck (read-only — safe to run in parallel).

@@ -22,6 +22,7 @@ import {
   parsePushRefs,
   phaseMaxConcurrency,
   runHookCommand,
+  runWithConcurrencyPool,
   summarizeFailures,
   withGateLock,
   type GitRunner,
@@ -1170,6 +1171,94 @@ describe('phaseMaxConcurrency', () => {
       expect(concurrency).toBeGreaterThanOrEqual(1);
       expect(Number.isInteger(concurrency)).toBe(true);
     }
+  });
+});
+
+/**
+ * `runWithConcurrencyPool` is the *mechanism* the `phaseMaxConcurrency` policy
+ * feeds. The policy test above only proves the test phase asks for concurrency
+ * 1 — it does NOT prove the runner honors it. Both hooks' `runJobs` now delegate
+ * to this pool, so a future edit that passed a hardcoded `4` instead of
+ * `phaseMaxConcurrency('test')` would still leave the policy test green. These
+ * tests close that gap: they instrument the worker to record the maximum number
+ * of overlapping invocations and assert the pool never exceeds the cap. With
+ * `maxConcurrency === 1` the overlap is strictly 1 — the actual #364 guarantee.
+ */
+describe('runWithConcurrencyPool', () => {
+  /**
+   * Run `items` through the pool with a worker that records concurrent overlap.
+   * Each worker waits one microtask-batch (a resolved-promise tick) before
+   * "finishing", which is enough to interleave with sibling workers if the pool
+   * starts more than one at a time — so a broken cap is observable.
+   */
+  async function observeOverlap(
+    itemCount: number,
+    maxConcurrency: number,
+  ): Promise<{ readonly results: number[]; readonly maxObserved: number }> {
+    let active = 0;
+    let maxObserved = 0;
+    const items = Array.from({ length: itemCount }, (_, index) => index);
+    const results = await runWithConcurrencyPool(items, maxConcurrency, async (item) => {
+      active += 1;
+      maxObserved = Math.max(maxObserved, active);
+      // Yield several times so a too-eager pool has room to overlap workers.
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      active -= 1;
+      return item * 2;
+    });
+    return { results, maxObserved };
+  }
+
+  it('runs strictly one at a time when maxConcurrency is 1 (the #364 guarantee)', async () => {
+    const { results, maxObserved } = await observeOverlap(6, 1);
+    expect(maxObserved).toBe(1);
+    // Results stay in input order regardless of pool scheduling.
+    expect(results).toEqual([0, 2, 4, 6, 8, 10]);
+  });
+
+  it('overlaps workers up to the cap when maxConcurrency is greater than 1', async () => {
+    const { results, maxObserved } = await observeOverlap(6, 3);
+    // The pool must actually parallelize — otherwise the cap is meaningless and
+    // the serial case above proves nothing distinctive.
+    expect(maxObserved).toBe(3);
+    expect(results).toEqual([0, 2, 4, 6, 8, 10]);
+  });
+
+  it('never starts more workers than there are items', async () => {
+    const { maxObserved } = await observeOverlap(2, 8);
+    expect(maxObserved).toBe(2);
+  });
+
+  it('returns an empty array for no items without invoking the worker', async () => {
+    let invoked = false;
+    const results = await runWithConcurrencyPool([], 4, async () => {
+      invoked = true;
+      return 1;
+    });
+    expect(results).toEqual([]);
+    expect(invoked).toBe(false);
+  });
+
+  it('floors a non-finite concurrency to 1 instead of starting zero workers', async () => {
+    // A `NaN` cap (e.g. Math.min(undefined hardwareConcurrency, 4)) must NOT
+    // start zero workers and silently resolve every item to undefined — that
+    // would be a false green. The floor forces strictly-serial execution.
+    const { results, maxObserved } = await observeOverlap(4, Number.NaN);
+    expect(maxObserved).toBe(1);
+    expect(results).toEqual([0, 2, 4, 6]);
+  });
+
+  it('preserves input order even when later items resolve first', async () => {
+    // Earlier indices take longer than later ones; the pool must still return
+    // results indexed by input position, not completion order.
+    const items = [3, 2, 1, 0];
+    const results = await runWithConcurrencyPool(items, 2, async (delayTicks) => {
+      for (let tick = 0; tick < delayTicks; tick += 1) await Promise.resolve();
+      return delayTicks;
+    });
+    expect(results).toEqual([3, 2, 1, 0]);
   });
 });
 

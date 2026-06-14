@@ -24,6 +24,7 @@ import {
   phaseMaxConcurrency,
   REPO_ROOT,
   runHookCommand,
+  runWithConcurrencyPool,
   success,
   summarizeFailures,
   warning,
@@ -132,38 +133,24 @@ type BatchOutcome = {
  */
 async function runJobs(jobs: readonly Job[], maxConcurrency: number): Promise<BatchOutcome> {
   if (jobs.length === 0) return { ok: true, failures: [], output: '' };
-  // Floor to a finite integer ≥ 1. A non-finite `maxConcurrency` (e.g. a caller
-  // computing `Math.min(navigator.hardwareConcurrency, 4)` where
-  // `hardwareConcurrency` is undefined → `NaN`) must NOT slip through: `NaN`
-  // would make `Math.min(concurrency, jobs.length)` NaN, start zero workers, and
-  // silently pass every job — a false green. `Number.isFinite` rejects NaN and
-  // ±Infinity; the `Math.max(1, …)` then guards 0 / negatives.
-  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
-  const results: JobResult[] = [];
-  let nextIndex = 0;
-  const workers: Promise<void>[] = [];
-  for (let workerId = 0; workerId < Math.min(concurrency, jobs.length); workerId++) {
-    workers.push(
-      (async () => {
-        while (true) {
-          const index = nextIndex++;
-          if (index >= jobs.length) return;
-          const job = jobs[index];
-          if (job === undefined) return; // unreachable given the guard above
-          try {
-            results[index] = await runJob(job);
-          } catch (cause) {
-            // `$.nothrow()` means runJob normally won't throw, but a spawn
-            // failure (missing binary, OOM) could. Record it as a failed job
-            // rather than crashing the whole pool with an unhandled rejection.
-            const reason = cause instanceof Error ? cause.message : String(cause);
-            results[index] = { job, exitCode: 1, stdout: '', stderr: reason };
-          }
-        }
-      })(),
-    );
-  }
-  await Promise.all(workers);
+  // The bounded pool (and its non-finite-concurrency floor) lives in
+  // `runWithConcurrencyPool`; the test phase passes `maxConcurrency === 1` so
+  // builds never overlap (the #364 race). This runner only shapes results.
+  const results = await runWithConcurrencyPool(
+    jobs,
+    maxConcurrency,
+    async (job): Promise<JobResult> => {
+      try {
+        return await runJob(job);
+      } catch (cause) {
+        // `$.nothrow()` means runJob normally won't throw, but a spawn failure
+        // (missing binary, OOM) could. Record it as a failed job rather than
+        // crashing the whole pool with an unhandled rejection.
+        const reason = cause instanceof Error ? cause.message : String(cause);
+        return { job, exitCode: 1, stdout: '', stderr: reason };
+      }
+    },
+  );
 
   let output = '';
   for (const result of results) {
