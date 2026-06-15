@@ -3,17 +3,20 @@
   "type": "object",
   "properties": {
     "text": {
-      "type": "string"
+      "type": "string",
+      "description": "Text content rendered inside the tooltip."
     },
     "placement": {
-      "enum": ["top", "right", "bottom", "left"]
+      "enum": ["top", "right", "bottom", "left"],
+      "description": "Preferred side of the trigger on which the tooltip appears. Default `top`."
     },
     "describe": {
       "type": "boolean",
       "description": "Whether to wire tooltip text to the trigger via aria-describedby."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class names merged with the component's root class."
     }
   },
   "additionalProperties": false,

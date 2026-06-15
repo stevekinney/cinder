@@ -3,7 +3,8 @@
   "type": "object",
   "properties": {
     "title": {
-      "type": "string"
+      "type": "string",
+      "description": "Primary heading text rendered inside the card's header region."
     },
     "variant": {
       "enum": ["card", "well"],
@@ -30,7 +31,8 @@
       "description": "Heading level for the generated title. Defaults to `3`. Set this so the\ncard title nests correctly within the surrounding document outline."
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "description": "Optional subheading rendered as a paragraph below the title inside the header."
     }
   },
   "additionalProperties": false,

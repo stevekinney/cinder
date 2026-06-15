@@ -39,12 +39,14 @@ type CardWithHeader = CardBase & {
 };
 /** Card with a title/description string API — simpler for standard cards. */
 type CardWithTitle = CardBase & {
+  /** Primary heading text rendered inside the card's header region. */
   title: string;
   /**
    * Heading level for the generated title. Defaults to `3`. Set this so the
    * card title nests correctly within the surrounding document outline.
    */
   headingLevel?: CardHeadingLevel;
+  /** Optional subheading rendered as a paragraph below the title inside the header. */
   description?: string;
   children: Snippet;
   footer?: Snippet;

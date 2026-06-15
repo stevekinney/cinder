@@ -10,9 +10,13 @@ const schema = {
     },
     ariaLabel: {
       type: 'string',
+      description:
+        'Accessible label for the group, applied as aria-label. Provide exactly one of `ariaLabel` or `labelledBy`.',
     },
     labelledBy: {
       type: 'string',
+      description:
+        'ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `ariaLabel` or `labelledBy`.',
     },
   },
   additionalProperties: false,

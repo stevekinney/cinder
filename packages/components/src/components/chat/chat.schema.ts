@@ -6,54 +6,83 @@ const schema = {
   properties: {
     id: {
       type: 'string',
+      description:
+        'Unique identifier used to scope accessibility attributes across the chat surface.',
     },
     isAtBottom: {
       type: 'boolean',
+      description:
+        'Whether the message viewport is scrolled to the bottom. Bindable; updated automatically as the user scrolls. Default `true`.',
     },
     unreadCount: {
       type: 'number',
+      description:
+        'Number of messages received while the viewport was scrolled away from the bottom. Bindable; resets to `0` when the user scrolls to the bottom. Default `0`.',
     },
     hasNewMessageIndicator: {
       type: 'boolean',
+      description:
+        'Whether the "new messages" indicator is currently visible above the composer. Bindable; cleared automatically when the viewport reaches the bottom. Default `false`.',
     },
     class: {
       type: 'string',
+      description: 'Additional class name merged onto the `.chat-container` root element.',
     },
     surfaceMode: {
       enum: ['default', 'transparent'],
+      description:
+        "Controls the background of the chat surface. Use `'transparent'` to inherit the host element's background when embedding chat inside a card or panel. Default `'default'`.",
     },
     bottomThreshold: {
       type: 'number',
+      description:
+        'Distance in pixels from the bottom of the scroll viewport within which the chat is considered "at bottom" and will auto-scroll on new messages. Default `150`.',
     },
     jumpThreshold: {
       type: 'number',
+      description:
+        'Distance in pixels scrolled up from the bottom required before the jump-to-latest button appears. Must be greater than `bottomThreshold` to prevent button flickering. Default `200`.',
     },
     isStreaming: {
       type: 'boolean',
+      description:
+        'Whether a streaming response is currently in progress. When `true`, the composer is disabled and a stop-generating button is shown. Default `false`.',
     },
     streamingStatus: {
       type: 'string',
+      description:
+        'Optional status label displayed in the typing indicator while `isStreaming` is `true` and no streaming content has arrived yet (e.g. `"Thinking…"` or `"Analyzing file…"`). When omitted, three animated dots are shown.',
     },
     allowAttachments: {
       type: 'boolean',
+      description:
+        'Whether file attachments are enabled in the composer. When `false`, the attachment button is hidden and drag-and-drop onto the chat surface is suppressed. Default `true`.',
     },
     allowSearch: {
       type: 'boolean',
+      description:
+        'Whether in-conversation search is enabled. When `true`, pressing Ctrl+F / Cmd+F opens a search bar that highlights matching messages. Default `true`.',
     },
     allowCopy: {
       type: 'boolean',
+      description:
+        'Whether per-message copy buttons are shown in the message action bar. Default `true`.',
     },
     allowEditing: {
       type: 'boolean',
+      description: 'Whether user messages can be edited inline. Default `true`.',
     },
     allowRetry: {
       type: 'boolean',
+      description: 'Whether failed assistant messages show a retry button. Default `true`.',
     },
     emptyPrompts: {
       type: 'array',
       items: {
         type: 'string',
       },
+      description:
+        'List of suggested starter prompt strings shown as clickable buttons in the default empty state. Clicking a prompt submits it immediately as a user message. Has no effect when a custom `empty` snippet is provided.',
     },
   },
   additionalProperties: false,

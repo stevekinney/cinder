@@ -11,7 +11,7 @@ export type MatrixChartProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   label: string;
   /** Optional description rendered below the label. */
   description?: string;
-  /** Rows of data. Each row must contain xField, yField, and valueField. */
+  /** Rows of data. Each row must include the keys named by the `xField`, `yField`, and `valueField` props. */
   data: MatrixChartDatum[];
   /** Key on each datum used for the x-axis (columns). */
   xField: string;
@@ -40,17 +40,30 @@ export type MatrixChartProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
 };
 
 export type MatrixChartSchemaProps = {
+  /** Accessible label for the chart. Required for screen readers. */
   label: string;
+  /** Optional description rendered below the label. */
   description?: string;
+  /** Rows of data. Each row must include the keys named by the `xField`, `yField`, and `valueField` props. */
   data: Record<string, string | number | null>[];
+  /** Key on each datum used for the x-axis (columns). */
   xField: string;
+  /** Key on each datum used for the y-axis (rows). */
   yField: string;
+  /** Key on each datum used for the numeric cell value. */
   valueField: string;
+  /** Color interpolation scale. Default `sequential`. */
   colorScale?: MatrixColorScale;
+  /** Show cell value labels. Default `true`. */
   showCellLabels?: boolean;
+  /** Pixel height of the chart viewport. Default `280`. */
   height?: number;
+  /** Whether the chart is in a loading state. Default `false`. */
   loading?: boolean;
+  /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
+  /** Controls data table visibility. Default `screen-reader-only`. */
   dataTableVisibility?: ChartDataTableVisibility;
+  /** Custom class applied to the root element. */
   class?: string;
 };

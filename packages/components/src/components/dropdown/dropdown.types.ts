@@ -15,11 +15,15 @@ export type DropdownContext = {
   focusTrigger: () => void;
 };
 type DropdownBaseProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+  /** HTML id applied to the dropdown root element. Auto-generated when omitted. */
   id?: string;
+  /** Additional class names merged with the component's root class. */
   class?: string;
 };
 type LegacyDropdownProps = DropdownBaseProps & {
+  /** Controls the open state of the dropdown menu; bindable for controlled usage. */
   open?: boolean;
+  /** Preferred side of the trigger on which the menu opens. Default `bottom-start`. */
   placement?: DropdownPlacement;
   trigger: Snippet;
   children: Snippet;

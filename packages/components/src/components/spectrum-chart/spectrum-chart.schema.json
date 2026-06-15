@@ -3,10 +3,12 @@
   "type": "object",
   "properties": {
     "label": {
-      "type": "string"
+      "type": "string",
+      "description": "Accessible label for the chart. Required for screen readers."
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "description": "Optional description rendered below the label."
     },
     "bins": {
       "type": "array",
@@ -24,22 +26,28 @@
         },
         "additionalProperties": false,
         "required": ["label", "value"]
-      }
+      },
+      "description": "Frequency bins with label + magnitude value."
     },
     "height": {
-      "type": "number"
+      "type": "number",
+      "description": "Pixel height of the chart. Default `160`."
     },
     "loading": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Whether the chart is in a loading state. Default `false`."
     },
     "dataTableVisibility": {
-      "enum": ["screen-reader-only", "visible", "hidden"]
+      "enum": ["screen-reader-only", "visible", "hidden"],
+      "description": "Controls data table visibility. Default `screen-reader-only`."
     },
     "dataTableCaption": {
-      "type": "string"
+      "type": "string",
+      "description": "Custom data table caption; falls back to `label`."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Custom class applied to the root element."
     }
   },
   "additionalProperties": false,

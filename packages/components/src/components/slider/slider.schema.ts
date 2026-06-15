@@ -56,6 +56,8 @@ const schema = {
     },
     mode: {
       enum: ['single', 'range'],
+      description:
+        'Slider mode. `"single"` renders one thumb and emits a scalar value; `"range"` renders two thumbs and emits a `[low, high]` tuple. Default `"single"`.',
     },
   },
   additionalProperties: false,

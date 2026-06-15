@@ -6,9 +6,11 @@ const schema = {
   properties: {
     label: {
       type: 'string',
+      description: 'Accessible label for the chart. Required for screen readers.',
     },
     description: {
       type: 'string',
+      description: 'Optional description rendered below the label.',
     },
     data: {
       type: 'array',
@@ -28,36 +30,48 @@ const schema = {
           ],
         },
       },
+      description:
+        'Rows of data. Each row must include the keys named by the `xField`, `yField`, and `valueField` props.',
     },
     xField: {
       type: 'string',
+      description: 'Key on each datum used for the x-axis (columns).',
     },
     yField: {
       type: 'string',
+      description: 'Key on each datum used for the y-axis (rows).',
     },
     valueField: {
       type: 'string',
+      description: 'Key on each datum used for the numeric cell value.',
     },
     colorScale: {
       enum: ['sequential', 'diverging'],
+      description: 'Color interpolation scale. Default `sequential`.',
     },
     showCellLabels: {
       type: 'boolean',
+      description: 'Show cell value labels. Default `true`.',
     },
     height: {
       type: 'number',
+      description: 'Pixel height of the chart viewport. Default `280`.',
     },
     loading: {
       type: 'boolean',
+      description: 'Whether the chart is in a loading state. Default `false`.',
     },
     dataTableCaption: {
       type: 'string',
+      description: 'Custom data table caption; falls back to `label`.',
     },
     dataTableVisibility: {
       enum: ['screen-reader-only', 'visible', 'hidden'],
+      description: 'Controls data table visibility. Default `screen-reader-only`.',
     },
     class: {
       type: 'string',
+      description: 'Custom class applied to the root element.',
     },
   },
   additionalProperties: false,

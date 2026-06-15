@@ -1,6 +1,7 @@
 import type { Snippet } from 'svelte';
 import type { HTMLButtonAttributes } from 'svelte/elements';
 export type DropdownTriggerProps = Omit<HTMLButtonAttributes, 'class'> & {
+  /** Additional class names merged with the component's root class. */
   class?: string;
   /** Render the trailing disclosure caret. Defaults to true. */
   showCaret?: boolean;

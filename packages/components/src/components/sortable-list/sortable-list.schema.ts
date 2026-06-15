@@ -10,6 +10,7 @@ const schema = {
     },
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-sortable-list` root element.',
     },
   },
   additionalProperties: false,

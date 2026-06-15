@@ -6,6 +6,7 @@ const schema = {
   properties: {
     title: {
       type: 'string',
+      description: "Primary heading text rendered inside the card's header region.",
     },
     variant: {
       enum: ['card', 'well'],
@@ -35,6 +36,7 @@ const schema = {
     },
     description: {
       type: 'string',
+      description: 'Optional subheading rendered as a paragraph below the title inside the header.',
     },
   },
   additionalProperties: false,

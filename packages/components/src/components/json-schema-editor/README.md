@@ -27,7 +27,7 @@ Multi-view editor for authoring JSON Schema documents with form, raw JSON, and d
 
 | Prop            | Type                                       | Required | Default | Description                                                                                                                                          |
 | --------------- | ------------------------------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`         | `string`                                   | no       | —       |                                                                                                                                                      |
+| `class`         | `string`                                   | no       | —       | Additional class merged onto the `.cinder-jse` root element.                                                                                         |
 | `draftOverride` | `"2020-12"` \| `"2019-09"` \| `"draft-07"` | no       | —       | Force a draft override regardless of $schema.                                                                                                        |
 | `id`            | `string`                                   | yes      | —       | Required for ARIA wiring.                                                                                                                            |
 | `maxHistory`    | `number`                                   | no       | —       | Maximum history entries (default 100).                                                                                                               |

@@ -37,6 +37,7 @@ export type DataListProps<T> = Omit<
    * `{...(density ? { density } : {})}`
    */
   density?: StackedListItemDensity;
+  /** Additional class merged onto the `.cinder-data-list` root element. */
   class?: string;
   /**
    * Row renderer. MUST render an `<li>` (the list root is a `<ul role="list">`).

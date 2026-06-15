@@ -24,6 +24,7 @@ export type DescriptionListProps = Omit<HTMLAttributes<HTMLDListElement>, 'class
    *   surrounding context already labels the value. NOT a general compact mode.
    */
   variant?: DescriptionListVariant;
+  /** Additional class merged onto the `.cinder-description-list` root element. */
   class?: string;
   /**
    * Optional snippet rendered once per row. Receives the full `DescriptionListItem` so

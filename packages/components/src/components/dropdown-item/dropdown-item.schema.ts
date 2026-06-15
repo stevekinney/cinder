@@ -6,15 +6,22 @@ const schema = {
   properties: {
     variant: {
       enum: ['default', 'danger'],
+      description:
+        'Visual style of the item. Use `danger` to signal a destructive action. Default `default`.',
     },
     inset: {
       type: 'boolean',
+      description:
+        'When true, adds leading padding to align the item with items that have a leading icon or indicator. Default `false`.',
     },
     closeOnSelect: {
       type: 'boolean',
+      description:
+        'When true, the parent dropdown closes after this item is activated. Default `true`.',
     },
     class: {
       type: 'string',
+      description: "Additional class names merged with the component's root class.",
     },
     disabled: {
       type: 'boolean',

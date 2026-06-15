@@ -6,6 +6,7 @@ const schema = {
   properties: {
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-feed` root element.',
     },
     live: {
       type: 'boolean',

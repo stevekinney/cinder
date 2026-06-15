@@ -15,6 +15,7 @@ const schema = {
     },
     href: {
       type: 'string',
+      description: 'Destination URL that turns the `title` snippet into an `<a>` link for the row.',
     },
     rel: {
       anyOf: [
@@ -25,6 +26,8 @@ const schema = {
           type: 'null',
         },
       ],
+      description:
+        '`rel` attribute forwarded to the title anchor; `noopener noreferrer` is merged automatically when `target="_blank"`.',
     },
     hreflang: {
       anyOf: [
@@ -35,6 +38,8 @@ const schema = {
           type: 'null',
         },
       ],
+      description:
+        '`hreflang` attribute forwarded to the title anchor, indicating the language of the linked resource.',
     },
   },
   additionalProperties: false,

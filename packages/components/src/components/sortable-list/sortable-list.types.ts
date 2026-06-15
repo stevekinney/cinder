@@ -36,5 +36,6 @@ export type SortableListProps<Item> = {
   >;
   /** Accessible name for the list (applied as aria-label on the list root). */
   label?: string;
+  /** Additional class merged onto the `.cinder-sortable-list` root element. */
   class?: string;
 };

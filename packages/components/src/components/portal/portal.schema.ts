@@ -13,15 +13,22 @@ const schema = {
           type: 'null',
         },
       ],
+      description:
+        'CSS selector string or `null` specifying where the portal content is appended. Defaults to `document.body` when `null` or omitted.',
     },
     disabled: {
       type: 'boolean',
+      description:
+        'When true, renders the content inline in normal document flow instead of teleporting it to the target.',
     },
     class: {
       type: 'string',
+      description: 'Additional class applied to the portal wrapper element.',
     },
     inheritAttributes: {
       type: 'boolean',
+      description:
+        'When true (default), HTML attributes passed to the portal are forwarded onto the wrapper element inside the target.',
     },
   },
   additionalProperties: false,

@@ -2,6 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 export type FeedEventVariant = 'icon' | 'minimal';
 type FeedEventBase = Omit<HTMLAttributes<HTMLLIElement>, 'children' | 'class'> & {
+  /** Additional class merged onto the `.cinder-feed-event` root element. */
   class?: string;
   /**
    * ISO 8601 datetime string. Rendered as `<time datetime={datetime}>` so

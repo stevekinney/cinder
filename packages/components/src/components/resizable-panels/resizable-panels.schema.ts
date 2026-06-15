@@ -6,15 +6,22 @@ const schema = {
   properties: {
     orientation: {
       enum: ['horizontal', 'vertical'],
+      description:
+        "Direction the panes are arranged. `'horizontal'` (default) places them side by side; `'vertical'` stacks them.",
     },
     collapseOnDoubleClick: {
       type: 'boolean',
+      description:
+        'When true, double-clicking a separator collapses or expands the adjacent collapsible pane. Default `false`.',
     },
     collapseTarget: {
       enum: ['leading', 'trailing', 'nearest-collapsible'],
+      description:
+        "Which pane to collapse when double-clicking a separator: `'leading'`, `'trailing'`, or `'nearest-collapsible'` (default).",
     },
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-resizable-panels` root element.',
     },
   },
   additionalProperties: false,

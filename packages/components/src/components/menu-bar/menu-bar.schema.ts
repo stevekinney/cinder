@@ -6,15 +6,21 @@ const schema = {
   properties: {
     id: {
       type: 'string',
+      description: 'HTML id applied to the menubar root element. Auto-generated when omitted.',
     },
     label: {
       type: 'string',
+      description:
+        'Accessible label for the menubar, applied as aria-label. Ignored when labelledBy is set. Default `Application menu`.',
     },
     labelledBy: {
       type: 'string',
+      description:
+        'ID of an existing element whose text labels the menubar, applied as aria-labelledby. Takes precedence over label.',
     },
     class: {
       type: 'string',
+      description: "Additional class names merged with the component's root class.",
     },
   },
   additionalProperties: false,

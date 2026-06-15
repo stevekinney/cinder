@@ -42,5 +42,6 @@ export type JsonSchemaEditorProps = {
   onchange?: (event: JsonSchemaEditorChangeEvent) => void;
   onrevert?: (event: JsonSchemaEditorRevertEvent) => void;
   onvalidate?: (result: JsonSchemaValidationResult) => void;
+  /** Additional class merged onto the `.cinder-jse` root element. */
   class?: string;
 };

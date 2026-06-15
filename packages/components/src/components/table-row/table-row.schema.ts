@@ -10,6 +10,8 @@ const schema = {
     },
     selected: {
       type: 'boolean',
+      description:
+        "Whether the row's selection checkbox is checked. Required in selectable tables alongside `onSelectedChange` and `selectionLabel`.",
     },
     selectionLabel: {
       type: 'string',
@@ -18,6 +20,8 @@ const schema = {
     },
     selectionDisabled: {
       type: 'boolean',
+      description:
+        'When true, renders a disabled selection checkbox for this row, preventing selection while keeping the alignment cell.',
     },
   },
   additionalProperties: false,

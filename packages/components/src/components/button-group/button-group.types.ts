@@ -20,4 +20,15 @@ type ButtonGroupBase = Omit<
  * Exactly one must be provided.
  */
 export type ButtonGroupProps = ButtonGroupBase &
-  ({ label: string; labelledBy?: never } | { label?: never; labelledBy: string });
+  (
+    | {
+        /** Inline accessible name for the group, applied as `aria-label`. Provide exactly one of `label` or `labelledBy`. */
+        label: string;
+        labelledBy?: never;
+      }
+    | {
+        label?: never;
+        /** The `id` of a visible heading element that already names the group, applied as `aria-labelledby`. Provide exactly one of `label` or `labelledBy`. */
+        labelledBy: string;
+      }
+  );

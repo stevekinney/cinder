@@ -6,15 +6,19 @@ const schema = {
   properties: {
     id: {
       type: 'string',
+      description: 'HTML id applied to the dropdown root element. Auto-generated when omitted.',
     },
     class: {
       type: 'string',
+      description: "Additional class names merged with the component's root class.",
     },
     open: {
       type: 'boolean',
+      description: 'Controls the open state of the dropdown menu; bindable for controlled usage.',
     },
     placement: {
       enum: ['bottom-start', 'bottom-end'],
+      description: 'Preferred side of the trigger on which the menu opens. Default `bottom-start`.',
     },
   },
   additionalProperties: false,

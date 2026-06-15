@@ -6,12 +6,15 @@ const schema = {
   properties: {
     label: {
       type: 'string',
+      description: 'Accessible label for the chart. Required for screen readers.',
     },
     description: {
       type: 'string',
+      description: 'Optional description rendered below the label.',
     },
     height: {
       type: 'number',
+      description: 'Pixel height of the chart viewport. Default `280`.',
     },
     xAxis: {
       type: 'object',
@@ -24,6 +27,7 @@ const schema = {
         },
       },
       additionalProperties: false,
+      description: 'Configuration for the x-axis label and tick count.',
     },
     yAxis: {
       type: 'object',
@@ -36,30 +40,40 @@ const schema = {
         },
       },
       additionalProperties: false,
+      description: 'Configuration for the y-axis label and tick count.',
     },
     legendPosition: {
       enum: ['top', 'bottom', 'none'],
+      description: 'Where to render the series legend relative to the chart. Default `top`.',
     },
     hiddenSeriesIds: {
       type: 'array',
       items: {
         type: 'string',
       },
+      description:
+        'IDs of series currently hidden from the chart. Can be two-way bound with `bind:hiddenSeriesIds`.',
     },
     loading: {
       type: 'boolean',
+      description: 'Whether the chart is in a loading state. Default `false`.',
     },
     dataTableCaption: {
       type: 'string',
+      description: 'Custom data table caption; falls back to `label`.',
     },
     dataTableVisibility: {
       enum: ['screen-reader-only', 'visible', 'hidden'],
+      description: 'Controls data table visibility. Default `screen-reader-only`.',
     },
     maximumInteractivePoints: {
       type: 'number',
+      description:
+        'Maximum number of interactive focus targets before keyboard navigation is disabled. Default `500`.',
     },
     class: {
       type: 'string',
+      description: 'Custom class applied to the root element.',
     },
     series: {
       type: 'array',
@@ -109,9 +123,11 @@ const schema = {
         additionalProperties: false,
         required: ['data', 'id', 'label'],
       },
+      description: 'Series rendered as independent filled areas or stacked areas.',
     },
     mode: {
       enum: ['single', 'stacked'],
+      description: 'Area rendering mode. Default `single`.',
     },
   },
   additionalProperties: false,

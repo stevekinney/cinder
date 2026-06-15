@@ -12,4 +12,15 @@ type DropdownGroupBaseProps = Omit<
 };
 
 export type DropdownGroupProps = DropdownGroupBaseProps &
-  ({ ariaLabel: string; labelledBy?: never } | { ariaLabel?: never; labelledBy: string });
+  (
+    | {
+        /** Accessible label for the group, applied as aria-label. Provide exactly one of `ariaLabel` or `labelledBy`. */
+        ariaLabel: string;
+        labelledBy?: never;
+      }
+    | {
+        ariaLabel?: never;
+        /** ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `ariaLabel` or `labelledBy`. */
+        labelledBy: string;
+      }
+  );

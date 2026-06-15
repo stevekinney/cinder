@@ -6,9 +6,13 @@ const schema = {
   properties: {
     active: {
       type: 'boolean',
+      description:
+        'When true (default), Tab key navigation is constrained within the trap container. Set to false to temporarily suspend trapping without unmounting.',
     },
     restoreFocus: {
       type: 'boolean',
+      description:
+        'When true (default), returns focus to the previously focused element when the trap is deactivated or unmounted.',
     },
     initialFocus: {
       anyOf: [
@@ -19,6 +23,8 @@ const schema = {
           type: 'null',
         },
       ],
+      description:
+        'CSS selector for the element that should receive focus when the trap activates. Falls back to `fallbackFocus` when the selector matches nothing.',
     },
     fallbackFocus: {
       anyOf: [
@@ -29,9 +35,12 @@ const schema = {
           type: 'null',
         },
       ],
+      description:
+        'CSS selector for the element that receives focus when `initialFocus` is unset or unresolvable. Defaults to the trap container itself.',
     },
     class: {
       type: 'string',
+      description: 'Additional class applied to the focus-trap wrapper element.',
     },
   },
   additionalProperties: false,

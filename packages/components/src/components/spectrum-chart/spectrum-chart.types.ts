@@ -34,12 +34,20 @@ export type SpectrumChartProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
 };
 
 export type SpectrumChartSchemaProps = {
+  /** Accessible label for the chart. Required for screen readers. */
   label: string;
+  /** Optional description rendered below the label. */
   description?: string;
+  /** Frequency bins with label + magnitude value. */
   bins: SpectrumBin[];
+  /** Pixel height of the chart. Default `160`. */
   height?: number;
+  /** Whether the chart is in a loading state. Default `false`. */
   loading?: boolean;
+  /** Controls data table visibility. Default `screen-reader-only`. */
   dataTableVisibility?: ChartDataTableVisibility;
+  /** Custom data table caption; falls back to `label`. */
   dataTableCaption?: string;
+  /** Custom class applied to the root element. */
   class?: string;
 };

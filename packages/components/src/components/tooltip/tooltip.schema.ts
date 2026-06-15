@@ -6,9 +6,11 @@ const schema = {
   properties: {
     text: {
       type: 'string',
+      description: 'Text content rendered inside the tooltip.',
     },
     placement: {
       enum: ['top', 'right', 'bottom', 'left'],
+      description: 'Preferred side of the trigger on which the tooltip appears. Default `top`.',
     },
     describe: {
       type: 'boolean',
@@ -16,6 +18,7 @@ const schema = {
     },
     class: {
       type: 'string',
+      description: "Additional class names merged with the component's root class.",
     },
   },
   additionalProperties: false,

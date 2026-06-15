@@ -47,7 +47,8 @@
       "description": "Additional class names merged with `.cinder-segmented-control`."
     },
     "selectionMode": {
-      "enum": ["single", "multiple"]
+      "enum": ["single", "multiple"],
+      "description": "Selection mode. `\"single\"` allows exactly one segment to be selected at a time; `\"multiple\"` allows any number of segments to be selected simultaneously. Default `\"single\"`."
     },
     "disallowEmptySelection": {
       "type": "boolean",

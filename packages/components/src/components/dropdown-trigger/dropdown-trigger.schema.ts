@@ -6,6 +6,7 @@ const schema = {
   properties: {
     class: {
       type: 'string',
+      description: "Additional class names merged with the component's root class.",
     },
     showCaret: {
       type: 'boolean',

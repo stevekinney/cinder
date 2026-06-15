@@ -7,7 +7,8 @@
       "description": "Controls the visual layout:\n- `default`: stacked rows with visible terms.\n- `striped`: alternating row backgrounds.\n- `two-column`: term and definition share a row; collapses to stacked at narrow widths.\n- `narrow`: `<dt>` is visually hidden via `.cinder-sr-only`. Only appropriate when\n  surrounding context already labels the value. NOT a general compact mode."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class merged onto the `.cinder-description-list` root element."
     }
   },
   "additionalProperties": false,

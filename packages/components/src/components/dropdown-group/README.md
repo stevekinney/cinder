@@ -26,12 +26,12 @@ Accessible group boundary that clusters related dropdown-item rows inside a drop
 
 <!-- generated:props:start -->
 
-| Prop         | Type       | Required | Default | Description                                                                                                              |
-| ------------ | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `ariaLabel`  | `string`   | no       | —       |                                                                                                                          |
-| `class`      | `string`   | no       | —       | Additional class names merged onto the group root.                                                                       |
-| `labelledBy` | `string`   | no       | —       |                                                                                                                          |
-| `children`   | `(opaque)` | no       | —       | DropdownLabel plus grouped DropdownItem rows. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop         | Type       | Required | Default | Description                                                                                                                            |
+| ------------ | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `ariaLabel`  | `string`   | no       | —       | Accessible label for the group, applied as aria-label. Provide exactly one of `ariaLabel` or `labelledBy`.                             |
+| `class`      | `string`   | no       | —       | Additional class names merged onto the group root.                                                                                     |
+| `labelledBy` | `string`   | no       | —       | ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `ariaLabel` or `labelledBy`. |
+| `children`   | `(opaque)` | no       | —       | DropdownLabel plus grouped DropdownItem rows. Not expressible in JSON Schema; see the component types for the signature.               |
 
 <!-- generated:props:end -->
 

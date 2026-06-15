@@ -6,9 +6,13 @@ const schema = {
   properties: {
     active: {
       type: 'boolean',
+      description:
+        'Marks this item as the currently active destination; emits `aria-current` and applies active visual styling.',
     },
     disabled: {
       type: 'boolean',
+      description:
+        'Prevents interaction: removes the item from the tab order, blocks clicks, and applies disabled visual styling.',
     },
     current: {
       enum: ['true', 'page', 'step', 'location', 'date', 'time'],
@@ -17,6 +21,7 @@ const schema = {
     },
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-navigation-item` root element.',
     },
     variant: {
       enum: ['horizontal', 'vertical', 'mobile'],
@@ -25,6 +30,8 @@ const schema = {
     },
     href: {
       type: 'string',
+      description:
+        'Destination URL. Providing this prop renders the item as an `<a>` element instead of a `<button>`.',
     },
   },
   additionalProperties: false,
