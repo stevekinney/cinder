@@ -84,19 +84,25 @@ describe('ContextMenuTrigger', () => {
     expect(menu.getAttribute('aria-orientation')).toBe('vertical');
   });
 
-  test('aria-expanded is false initially and toggles to true when the menu opens', async () => {
+  test('trigger advertises a menu popup without an aria-expanded the role-less div cannot carry', async () => {
     const { container } = render(Harness);
     const region = container.querySelector('.cinder-context-menu-trigger') as HTMLElement;
 
-    // Initially the menu is closed — aria-expanded must reflect that.
-    expect(region.getAttribute('aria-expanded')).toBe('false');
+    // aria-haspopup is globally allowed and correctly advertises the menu popup.
+    expect(region.getAttribute('aria-haspopup')).toBe('menu');
+    // aria-expanded is NOT a globally-allowed attribute: on a role-less <div> it
+    // is a critical aria-allowed-attr violation. The region is not a disclosure
+    // widget — the menu's open state is announced via focus moving into the
+    // role="menu" popup — so the trigger must never set aria-expanded, opened or
+    // not.
+    expect(region.hasAttribute('aria-expanded')).toBe(false);
 
     await fireEvent.contextMenu(region, { clientX: 12, clientY: 18 });
 
     await waitFor(() => {
       expect(document.body.querySelector('[role="menu"]')).not.toBeNull();
-      expect(region.getAttribute('aria-expanded')).toBe('true');
     });
+    expect(region.hasAttribute('aria-expanded')).toBe(false);
   });
 
   // Regression test: handlePointerdown schedules longPressTimer when the pointer

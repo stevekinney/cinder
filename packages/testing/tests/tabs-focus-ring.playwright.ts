@@ -433,8 +433,14 @@ test.describe('Tabs — activating a tab does not reflow sibling widths (regress
     expect(watched, 'need an inactive enabled tab to watch').toBeTruthy();
     expect(toActivate, 'need a second enabled tab to activate').toBeTruthy();
 
-    // Activate the other tab by clicking it (selection, not just focus).
-    await page.getByRole('tab', { name: toActivate!.label, exact: true }).click();
+    // Activate the other tab by clicking it (selection, not just focus). Scope
+    // the locator to the horizontal list: /page/tabs mounts a second (vertical)
+    // tab list that reuses the same labels, so a page-global getByRole('tab')
+    // resolves to two elements and trips Playwright strict mode.
+    await page
+      .locator(HORIZONTAL_LIST)
+      .getByRole('tab', { name: toActivate!.label, exact: true })
+      .click();
     await page.waitForFunction(
       ({ selector, label }) => {
         const list = document.querySelector(selector);

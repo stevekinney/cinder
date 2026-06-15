@@ -171,7 +171,7 @@ test.describe('focus-ring sweep — rendered keyboard-focus rings', () => {
     expect(elementRect.bottom).toBeLessThanOrEqual(clipRect!.bottom + PIXEL_TOLERANCE);
   });
 
-  test('Tree item (Strategy B-inset): keyboard ring is an inset ring within the tree bounds', async ({
+  test('Tree item (Strategy B-inset): keyboard ring paints on the label row, not the whole subtree', async ({
     page,
   }) => {
     await page.goto('/page/tree?snapshot=1', { waitUntil: 'load' });
@@ -180,14 +180,36 @@ test.describe('focus-ring sweep — rendered keyboard-focus rings', () => {
 
     // Tree items receive focus via roving tabindex; the first item carries
     // tabindex=0, so Tab lands on it. (Arrow keys move within once focused.)
+    // The focus target is the OUTER .cinder-tree-item (it owns tabindex/role),
+    // but per #398 the inset ring must paint on its direct-child label ROW —
+    // NOT the outer item, which wraps the entire (potentially expanded) subtree
+    // and would draw a ring around all descendants.
     const item = page.locator('.cinder-tree-item').first();
+    const row = item.locator(':scope > .cinder-tree-item__row');
+    await expect(row).toBeVisible();
+
+    const ringColor = await resolvedRingColor(item);
+
+    // Pre-focus negative: before any keyboard focus, the row must NOT already
+    // carry the ring color — otherwise a permanently-styled row would pass the
+    // post-focus assertion vacuously.
+    const ringBeforeFocus = await row.evaluate((element) => getComputedStyle(element).boxShadow);
+    expect(ringBeforeFocus).not.toContain('inset');
+
     const landed = await tabUntilFocused(page, item);
     expect(landed, 'Tab walk should reach the first tree item').toBe(true);
     await expect(item).toBeFocused();
 
-    const ringColor = await resolvedRingColor(item);
-    const result = await item.evaluate((element) => {
-      const styles = getComputedStyle(element as HTMLElement);
+    // The outer item is the :focus-visible target (focus lives there)...
+    expect(await item.evaluate((element) => element.matches(':focus-visible'))).toBe(true);
+    // ...and it must NOT itself carry the inset ring color (the ring moved to
+    // the row; the old bug painted it here, around the whole subtree).
+    const outerBoxShadow = await item.evaluate((element) => getComputedStyle(element).boxShadow);
+    expect(outerBoxShadow).not.toContain(ringColor);
+
+    // The direct-child row carries the rendered inset ring.
+    const result = await row.evaluate((element) => {
+      const styles = getComputedStyle(element);
       const elementRect = element.getBoundingClientRect();
       let clip: Element | null = element.parentElement;
       let clipRect: DOMRect | null = null;
@@ -200,7 +222,6 @@ test.describe('focus-ring sweep — rendered keyboard-focus rings', () => {
         clip = clip.parentElement;
       }
       return {
-        matchesFocusVisible: element.matches(':focus-visible'),
         boxShadow: styles.boxShadow,
         outline: styles.outlineColor,
         clipRect: clipRect
@@ -216,16 +237,22 @@ test.describe('focus-ring sweep — rendered keyboard-focus rings', () => {
           left: elementRect.left,
           right: elementRect.right,
           bottom: elementRect.bottom,
+          width: elementRect.width,
+          height: elementRect.height,
         },
       };
     });
 
-    expect(result.matchesFocusVisible).toBe(true);
+    // Guard against a "present in computed style but invisible" false pass: the
+    // row that carries the ring must actually occupy space.
+    expect(result.elementRect.width).toBeGreaterThan(0);
+    expect(result.elementRect.height).toBeGreaterThan(0);
+
     expect(result.boxShadow).not.toBe('none');
     expect(result.boxShadow).toContain('inset');
     expect(result.boxShadow).toContain(ringColor);
-    // If a clipping ancestor exists, the inset ring (inside the item border box)
-    // is contained by it; assert containment when present.
+    // If a clipping ancestor exists, the inset ring (inside the row's border
+    // box) is contained by it; assert containment when present.
     if (result.clipRect) {
       const { elementRect, clipRect } = result;
       expect(elementRect.top).toBeGreaterThanOrEqual(clipRect.top - PIXEL_TOLERANCE);
