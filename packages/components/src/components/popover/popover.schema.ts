@@ -53,6 +53,11 @@ const schema = {
       type: 'boolean',
       description: 'Whether Popover owns trigger ARIA wiring. Default `true`.',
     },
+    closeOnEscape: {
+      type: 'boolean',
+      description:
+        "Whether the Popover registers its own handler on the shared Escape stack.\nDefault `true`. Set `false` when a parent component (e.g. Combobox) owns\nEscape for the whole interaction and must remain the single, top-most\nEscape consumer — otherwise both would register and the Popover's handler\nwould shadow the parent's while options are visible.",
+    },
     widthMode: {
       enum: ['content', 'match-anchor', 'menu', 'none'],
       description: "Floating panel width strategy. Default `'content'`.",

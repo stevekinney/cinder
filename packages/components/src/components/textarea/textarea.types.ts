@@ -12,6 +12,10 @@ export type TextareaProps = HTMLTextareaAttributes & {
   error?: string;
   /** Number of visible text rows. Defaults to 4. */
   rows?: number;
+  /** Marks the field as required. Passed through to the native `required` attribute. */
+  required?: boolean;
+  /** Maximum character count. Passed through to the native `maxlength` attribute and used as the denominator for the `showCount` counter. */
+  maxlength?: number;
   /** Disables the textarea. */
   disabled?: boolean;
   /** Extra class names merged with `.cinder-textarea`. */

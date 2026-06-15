@@ -8,6 +8,16 @@ const schema = {
       type: 'boolean',
       description: 'Disables the textarea.',
     },
+    maxlength: {
+      type: 'number',
+      description:
+        'Maximum character count. Passed through to the native `maxlength` attribute and used as the denominator for the `showCount` counter.',
+    },
+    required: {
+      type: 'boolean',
+      description:
+        'Marks the field as required. Passed through to the native `required` attribute.',
+    },
     rows: {
       type: 'number',
       description: 'Number of visible text rows. Defaults to 4.',
