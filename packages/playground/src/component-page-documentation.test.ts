@@ -393,6 +393,13 @@ describe('component-page single-scroll layout', () => {
     expect(section).not.toBeNull();
     const note = section?.querySelector('.dx-play__context-note');
     expect(note).not.toBeNull();
+    // The note describes the ACTUAL condition — a required prop the playground
+    // can't fill in automatically — rather than over-claiming a specific cause
+    // like "must be nested inside a parent", which only applies to some of the
+    // components this branch covers.
+    const noteText = note?.textContent ?? '';
+    expect(noteText).toContain("can't fill in automatically");
+    expect(noteText).not.toMatch(/nested inside/i);
     // The base fixture's first `avoidWhen` alternative is `segmented-control`, so
     // the note links to that component's page rather than the in-page Examples.
     const noteLink = note?.querySelector('a');

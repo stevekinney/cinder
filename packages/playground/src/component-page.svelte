@@ -924,7 +924,7 @@
                   <span class="dx-section__rule" aria-hidden="true"></span>
                 </div>
                 <p class="dx-play__context-note">
-                  {humanizeId(componentName)} must be nested inside a parent component to render.
+                  This component requires a prop value the playground can't fill in automatically.
                   {#if firstAlternative !== undefined}
                     See the <a href="/c/{firstAlternative}">{humanizeId(firstAlternative)}</a> page for
                     a live demo.
