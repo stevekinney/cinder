@@ -25,6 +25,7 @@
     describeId,
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Popover from '../popover/popover.svelte';
 
@@ -109,6 +110,41 @@
     }
   });
 
+  // Escape ownership.
+  //
+  // The combobox is the single Escape owner for the whole time it is open. The
+  // option Popover is told `closeOnEscape={false}`, so it never registers its
+  // own escape-stack handler — otherwise, while options are visible, the
+  // Popover's handler would sit on top of the shared LIFO stack and shadow this
+  // one. With the Popover opting out, this combobox's handler is the top-most
+  // Escape consumer for the entire open session, including the empty-filter gap
+  // (`open && filteredOptions.length === 0`) where the Popover is unmounted.
+  //
+  // That matters most when the combobox is nested inside a Modal/Sheet: the
+  // shared escape stack's window listener is capture-phase and invokes ONLY its
+  // top handler, so this combobox consumes Escape and `preventDefault()`s it
+  // before the parent overlay ever sees the key — Escape dismisses just the
+  // combobox, never the enclosing overlay.
+  function handleEscape(event?: KeyboardEvent): void {
+    const wasOpen = open;
+    open = false;
+    // Restore the committed label whenever the live text drifted from it.
+    if (inputValue !== committedLabel) {
+      inputValue = committedLabel;
+      if (inputElement) inputElement.value = committedLabel;
+    }
+    // Swallow the key if the combobox actually consumed this Escape (it was
+    // open) so the same keystroke doesn't also dismiss an enclosing overlay or
+    // trigger a page-level default.
+    if (wasOpen) event?.preventDefault();
+  }
+
+  $effect(() => {
+    if (!open) return;
+    const releaseEscape = pushEscapeHandler(handleEscape);
+    return releaseEscape;
+  });
+
   const activeOptionId = $derived(
     activeIndex >= 0 && activeIndex < filteredOptions.length
       ? `${id}-option-${activeIndex}`
@@ -169,21 +205,14 @@
         selectOption(option);
       }
     } else if (event.key === 'Escape') {
-      // Close the dropdown directly. When the Popover is rendered, its
-      // capture-phase escape-stack handler already set open = false before this
-      // handler runs; this assignment is then an idempotent no-op. But the
-      // Popover only mounts while there are filtered options to show, so an open
-      // combobox whose input filtered every option away (open && filtered === 0)
-      // has NO escape handler on the stack — without this line Escape would
-      // leave it stuck open.
-      open = false;
-      // Restore inputValue unconditionally when Escape is pressed while the
-      // input is focused, regardless of whether open was still true.
-      if (inputValue !== committedLabel) {
-        event.preventDefault();
-        inputValue = committedLabel;
-        if (inputElement) inputElement.value = committedLabel;
-      }
+      // Fallback path. In a real browser the capture-phase escape-stack listener
+      // (installed by the $effect's pushEscapeHandler) runs first and has
+      // already closed + restored + preventDefault'd; `defaultPrevented` is true
+      // here and we bail. This branch only does real work when the stack
+      // listener never ran — SSR/no-window environments where `window` is
+      // absent so `pushEscapeHandler` installed nothing.
+      if (event.defaultPrevented) return;
+      handleEscape(event);
     }
   }
 </script>
@@ -229,6 +258,7 @@
       role="listbox"
       focusManagement="preserve"
       wireTriggerAria={false}
+      closeOnEscape={false}
       widthMode="match-anchor"
       class="cinder-combobox__panel"
     >

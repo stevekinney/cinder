@@ -18,6 +18,7 @@ const {
   cleanup,
 } = await import('@testing-library/svelte');
 const { default: Combobox } = await import('./combobox.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // These tests render into the shared `document.body` (see `render` below). The
 // listbox opens on focus through Svelte effects, so options are not guaranteed
@@ -30,7 +31,12 @@ const { default: Combobox } = await import('./combobox.svelte');
 // `replaceChildren()` before each test additionally wipes any listbox nodes a
 // prior test left appended to `document.body` that `cleanup()` doesn't track,
 // so `findOption` can never match a stale option from another test.
-beforeEach(() => document.body.replaceChildren());
+beforeEach(() => {
+  document.body.replaceChildren();
+  // Clear the shared module-level escape stack so a sibling-overlay handler
+  // registered by one test can't leak into the next and skew the LIFO order.
+  _resetEscapeStack();
+});
 afterEach(() => cleanup());
 
 const fruits = [
@@ -606,5 +612,53 @@ describe('Combobox Escape restores committed label', () => {
     await tick();
     // The combobox is closed: the active empty-state marker is gone.
     expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).toBeNull();
+  });
+
+  test('nested in an overlay, Escape closes only the combobox and is swallowed (zero filtered options)', async () => {
+    // Regression for the escape-stack ownership contract. A parent overlay
+    // (Modal/Sheet/etc.) registers its escape handler first. The combobox then
+    // opens and — because it pushes its own handler whenever open and its
+    // Popover opts out via closeOnEscape={false} — must sit on top of the LIFO
+    // stack. The window listener is capture-phase and invokes ONLY the topmost
+    // handler, so Escape must route to the combobox, never the parent. The
+    // combobox must also preventDefault so the same keystroke can't bubble to a
+    // page-level default. The empty-filter state is the hardest case: the
+    // Popover is unmounted there, so without the always-on registration the
+    // parent would win.
+    let parentEscapeCount = 0;
+    const releaseParentEscape = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = render(Combobox, { id: 'escape-nested', options: escapeFruits });
+      const input = container.querySelector('#escape-nested') as HTMLInputElement;
+
+      input.focus();
+      await fireEvent.focus(input);
+      // Filter every option away so the Popover does not mount — the gap state.
+      await fireEvent.input(input, { target: { value: 'zzz' } });
+      await waitForListbox();
+      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull();
+
+      // Dispatch a cancelable, bubbling Escape so the capture-phase window
+      // listener receives it and `defaultPrevented` is observable afterward.
+      const escapeEvent = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      input.dispatchEvent(escapeEvent);
+      await tick();
+
+      // The combobox consumed and swallowed the key...
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      // ...closed itself...
+      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).toBeNull();
+      // ...and the parent overlay's handler never fired (combobox was topmost).
+      expect(parentEscapeCount).toBe(0);
+    } finally {
+      releaseParentEscape();
+    }
   });
 });

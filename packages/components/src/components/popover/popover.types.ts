@@ -47,6 +47,14 @@ export type PopoverProps = {
   focusManagement?: PopoverFocusManagement;
   /** Whether Popover owns trigger ARIA wiring. Default `true`. */
   wireTriggerAria?: boolean;
+  /**
+   * Whether the Popover registers its own handler on the shared Escape stack.
+   * Default `true`. Set `false` when a parent component (e.g. Combobox) owns
+   * Escape for the whole interaction and must remain the single, top-most
+   * Escape consumer — otherwise both would register and the Popover's handler
+   * would shadow the parent's while options are visible.
+   */
+  closeOnEscape?: boolean;
   /** Floating panel width strategy. Default `'content'`. */
   widthMode?: PopoverWidthMode;
   /** Extra class merged onto `.cinder-popover`. */

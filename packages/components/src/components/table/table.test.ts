@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, mock, test } from 'bun:test';
+import { tick } from 'svelte';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -167,6 +168,113 @@ describe('Table sticky header', () => {
     const { container } = render(Wrapper, { columns, rows, stickyHeader: true });
     expect(container.querySelector('.cinder-table__caption--hoisted')).toBeNull();
     expect(container.querySelector('caption')).toBeNull();
+  });
+});
+
+// A wrapped, multi-line caption is taller than `1lh`, so the prior hard-coded
+// sticky offset (`calc(space-3 + space-2 + 1lh)`) would let the pinned header
+// overlap the caption's lower lines. The fix measures the caption's real
+// border-box height with a ResizeObserver and feeds it to the sticky `top` via
+// the `--cinder-table-caption-height` custom property. happy-dom has no layout
+// engine, so the visual non-overlap is a Playwright concern — here we verify the
+// measurement WIRING (observer entry → custom property), which is the part that
+// regresses in JS. The hard-coded-to-variable swap in the CSS is asserted below.
+describe('Table sticky-header caption measurement', () => {
+  /** Captures the ResizeObserver callback the table registers so the test can
+   *  drive it with a synthetic entry carrying a known border-box height. */
+  class CapturingResizeObserver implements ResizeObserver {
+    static lastCallback: ResizeObserverCallback | null = null;
+    static lastObserver: CapturingResizeObserver | null = null;
+    readonly observed: Element[] = [];
+    constructor(callback: ResizeObserverCallback) {
+      CapturingResizeObserver.lastCallback = callback;
+      CapturingResizeObserver.lastObserver = this;
+    }
+    observe(target: Element): void {
+      this.observed.push(target);
+    }
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+
+  async function withResizeObserver(run: () => void | Promise<void>): Promise<void> {
+    const original = globalThis.ResizeObserver;
+    CapturingResizeObserver.lastCallback = null;
+    CapturingResizeObserver.lastObserver = null;
+    globalThis.ResizeObserver = CapturingResizeObserver as unknown as typeof ResizeObserver;
+    try {
+      await run();
+    } finally {
+      globalThis.ResizeObserver = original;
+    }
+  }
+
+  test('writes the measured caption border-box height into --cinder-table-caption-height', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(Wrapper, {
+        columns,
+        rows,
+        stickyHeader: true,
+        caption: 'A caption long enough to wrap onto several lines in a narrow table',
+      });
+      // Let the attachment's $effect run so the observer is constructed and the
+      // <caption> is observed.
+      await tick();
+      const table = container.querySelector('table') as HTMLTableElement;
+      const caption = container.querySelector('caption') as HTMLTableCaptionElement;
+
+      // The attachment observed the real <caption> element.
+      expect(CapturingResizeObserver.lastObserver?.observed).toContain(caption);
+      // Before any measurement the custom property reads 0px (the CSS fallback).
+      expect(table.style.getPropertyValue('--cinder-table-caption-height')).toBe('0px');
+
+      // Drive the observer with a synthetic two-line caption height.
+      const entry = {
+        target: caption,
+        borderBoxSize: [{ blockSize: 60, inlineSize: 200 }],
+        contentRect: { height: 60 },
+      } as unknown as ResizeObserverEntry;
+      CapturingResizeObserver.lastCallback?.([entry], CapturingResizeObserver.lastObserver!);
+      // The callback updates the captionHeight $state; flush so the style: binding
+      // writes the new custom-property value to the DOM.
+      await tick();
+
+      expect(table.style.getPropertyValue('--cinder-table-caption-height')).toBe('60px');
+    });
+  });
+
+  test('falls back to contentRect.height when borderBoxSize is unavailable', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(Wrapper, {
+        columns,
+        rows,
+        stickyHeader: true,
+        caption: 'Wraps',
+      });
+      await tick();
+      const table = container.querySelector('table') as HTMLTableElement;
+      const caption = container.querySelector('caption') as HTMLTableCaptionElement;
+
+      const entry = {
+        target: caption,
+        borderBoxSize: [],
+        contentRect: { height: 42 },
+      } as unknown as ResizeObserverEntry;
+      CapturingResizeObserver.lastCallback?.([entry], CapturingResizeObserver.lastObserver!);
+      await tick();
+
+      expect(table.style.getPropertyValue('--cinder-table-caption-height')).toBe('42px');
+    });
+  });
+
+  test('a caption-less table does not emit the custom property', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(Wrapper, { columns, rows, stickyHeader: true });
+      await tick();
+      const table = container.querySelector('table') as HTMLTableElement;
+      // No caption → the `caption ? ... : undefined` guard omits the property.
+      expect(table.style.getPropertyValue('--cinder-table-caption-height')).toBe('');
+    });
   });
 });
 
@@ -600,16 +708,19 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
     expect(tableRule?.style.minInlineSize).toBe('max-content');
   });
 
-  test('sticky header offsets its top by the caption block size only when a caption is present', () => {
+  test('sticky header offsets its top by the measured caption height only when a caption is present', () => {
     // The native <caption> renders above the table border box; the sticky thead
     // must pin below it (not over it). The offset is scoped with :has(caption) so
-    // a caption-less sticky table keeps top: 0.
+    // a caption-less sticky table keeps top: 0. The offset is the caption's
+    // MEASURED border-box height (--cinder-table-caption-height, set by a
+    // ResizeObserver in table.svelte), not a hard-coded `1lh` — so a wrapped,
+    // multi-line caption no longer overlaps the pinned header.
     //
-    // Assert against the raw source: happy-dom's CSSOM drops a `top` whose calc()
-    // contains var() (it serializes to ""), so style.top is unreadable here even
+    // Assert against the raw source: happy-dom's CSSOM drops a `top` whose value
+    // is a var() (it serializes to ""), so style.top is unreadable here even
     // though the declaration is valid in real browsers. The presence of the rule
     // confirms the :has(caption) selector parsed; the source check confirms the
-    // 1lh-plus-padding offset is the value.
+    // measured-height variable is the value.
     const rule = injectTableCssAndFind(
       '.cinder-table[data-cinder-sticky-header]:has(caption) .cinder-table__header',
     );
@@ -617,7 +728,14 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
     expect(tableCss).toContain(
       '.cinder-table[data-cinder-sticky-header]:has(caption) .cinder-table__header',
     );
-    expect(tableCss).toContain('top: calc(var(--cinder-space-3) + var(--cinder-space-2) + 1lh)');
+    expect(tableCss).toContain('top: var(--cinder-table-caption-height, 0px)');
+    // Guard against a regression to the line-height assumption: the sticky-offset
+    // declaration must not resolve to a `1lh`-based calc. (The explanatory CSS
+    // comment may still mention `1lh` in prose, so match the declaration, not a
+    // bare substring.)
+    expect(tableCss).not.toContain(
+      'top: calc(var(--cinder-space-3) + var(--cinder-space-2) + 1lh)',
+    );
   });
 
   test('right-aligned sortable headers justify the sort button content to the end', () => {
