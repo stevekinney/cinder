@@ -573,6 +573,9 @@
 
   function dismissLabel(message: string): string {
     const trimmed = message.trim();
+    // An empty/whitespace message would yield a dangling "Dismiss: " — a
+    // low-quality control name for assistive tech. Fall back to a generic label.
+    if (trimmed.length === 0) return 'Dismiss notification';
     if (trimmed.length <= DISMISS_LABEL_MAX) return `Dismiss: ${trimmed}`;
     return `Dismiss: ${trimmed.slice(0, DISMISS_LABEL_MAX - 1).trimEnd()}…`;
   }

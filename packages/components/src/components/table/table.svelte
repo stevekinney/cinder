@@ -49,13 +49,16 @@
   // calc consumes, so the header always pins just below the real caption.
   let captionHeight = $state(0);
 
+  // Only the sticky-header `top` calc consumes `captionHeight`, so a non-sticky
+  // captioned table has no reason to run a ResizeObserver. Gate observation on
+  // `stickyHeader` to avoid the work in the common case.
   const measureCaption = useResizeObserver(
     (entries) => {
       const entry = entries[0];
       if (!entry) return;
       captionHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
     },
-    { box: 'border-box' },
+    { box: 'border-box', enabled: () => stickyHeader },
   );
 
   function onSortChange(column: string): void {

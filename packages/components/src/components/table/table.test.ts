@@ -276,6 +276,18 @@ describe('Table sticky-header caption measurement', () => {
       expect(table.style.getPropertyValue('--cinder-table-caption-height')).toBe('');
     });
   });
+
+  test('a non-sticky captioned table does not observe the caption (no wasted observer)', async () => {
+    // captionHeight is only consumed by the sticky-header offset, so the
+    // observer is gated on `stickyHeader`. A common non-sticky captioned table
+    // must not run a ResizeObserver.
+    await withResizeObserver(async () => {
+      render(Wrapper, { columns, rows, stickyHeader: false, caption: 'Plain caption' });
+      await tick();
+      // The `enabled: () => stickyHeader` gate skips observation entirely.
+      expect(CapturingResizeObserver.lastObserver?.observed ?? []).toHaveLength(0);
+    });
+  });
 });
 
 describe('Table density', () => {

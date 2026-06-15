@@ -169,6 +169,13 @@
     const next = event.relatedTarget as Node | null;
     if (next && listboxElement?.contains(next)) return;
     open = false;
+    // Restore the committed label if the live text drifted from it. Leaving the
+    // field on a stale edit (without selecting an option) would desync the
+    // visible text from the unchanged `value` — the same mismatch Escape fixes.
+    if (inputValue !== committedLabel) {
+      inputValue = committedLabel;
+      if (inputElement) inputElement.value = committedLabel;
+    }
   }
 
   function selectOption(option: ComboboxOption<T>) {

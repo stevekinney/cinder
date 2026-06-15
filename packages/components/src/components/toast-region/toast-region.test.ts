@@ -1039,6 +1039,27 @@ describe('toast dismiss button label', () => {
       expect(label).toEndWith('…');
     });
   });
+
+  test('dismiss button aria-label falls back to a generic label for an empty/whitespace message', async () => {
+    // A blank message would otherwise yield a dangling "Dismiss: " — a
+    // low-quality control name for assistive tech.
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('   ', { dismissible: true, duration: 0 });
+    await waitFor(() => {
+      const dismissButton = container.querySelector('.cinder-toast__dismiss');
+      expect(dismissButton).not.toBeNull();
+      expect(dismissButton?.getAttribute('aria-label')).toBe('Dismiss notification');
+    });
+  });
 });
 
 describe('toast variant icons', () => {

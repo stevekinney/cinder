@@ -661,4 +661,31 @@ describe('Combobox Escape restores committed label', () => {
       releaseParentEscape();
     }
   });
+
+  test('blur restores the committed label when the live text drifted (no stale edit left behind)', async () => {
+    // Regression: blurring after editing a committed selection (tab/click away
+    // without choosing an option) must restore the committed label, mirroring
+    // Escape — otherwise the input shows stale text while `value` is unchanged.
+    const { container } = render(Combobox, { id: 'blur-restore', options: escapeFruits });
+    const input = container.querySelector('#blur-restore') as HTMLInputElement;
+
+    // Commit Apple.
+    input.focus();
+    await fireEvent.focus(input);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    expect(input.value).toBe('Apple');
+
+    // Dirty the input, then blur to nowhere (relatedTarget outside the listbox).
+    await fireEvent.input(input, { target: { value: 'App' } });
+    expect(input.value).toBe('App');
+    await fireEvent.blur(input, { relatedTarget: null });
+    await tick();
+
+    // The stale edit is gone; the committed label is restored.
+    expect(input.value).toBe('Apple');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
 });
