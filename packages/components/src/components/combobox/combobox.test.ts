@@ -560,4 +560,51 @@ describe('Combobox Escape restores committed label', () => {
     expect(input.value).toBe('');
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
+
+  test('Escape restores the label of a value committed via the value prop (no desync)', async () => {
+    // Regression: the value-sync effect set `committedLabel` only when it ALSO
+    // had to change `inputValue`. With value+inputValue pre-supplied to the same
+    // label, `committedLabel` stayed '' and Escape wrongly cleared the input.
+    const { container } = render(Combobox, {
+      id: 'escape-prefilled',
+      options: escapeFruits,
+      value: 'banana',
+      inputValue: 'Banana',
+    });
+    const input = container.querySelector('#escape-prefilled') as HTMLInputElement;
+    await tick();
+    expect(input.value).toBe('Banana');
+
+    // Edit to dirty the input, then Escape — should restore to the committed
+    // label 'Banana', not clear to ''.
+    input.focus();
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'Ban' } });
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await tick();
+    expect(input.value).toBe('Banana');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('Escape closes an open combobox even when every option is filtered away', async () => {
+    // Regression: when the input filters out all options the Popover does not
+    // mount, so its capture-phase escape-stack handler is absent. Escape must
+    // still close the combobox directly rather than leaving it stuck open.
+    const { container } = render(Combobox, { id: 'escape-no-popover', options: escapeFruits });
+    const input = container.querySelector('#escape-no-popover') as HTMLInputElement;
+
+    input.focus();
+    await fireEvent.focus(input);
+    // Type text matching no option — the empty state activates and the option
+    // Popover (gated on filteredOptions.length > 0) does not render.
+    await fireEvent.input(input, { target: { value: 'zzz' } });
+    await waitForListbox();
+    expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull();
+
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await tick();
+    // The combobox is closed: the active empty-state marker is gone.
+    expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).toBeNull();
+  });
 });

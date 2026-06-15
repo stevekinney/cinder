@@ -155,15 +155,6 @@
 
   function handleTargetKeydown(event: KeyboardEvent): void {
     rememberKeyboardFocusModality(event);
-    // Enter and Space activate the focused data point — a role="button" element
-    // must respond to these keys per ARIA 1.2 §6.6.3 (button widget).
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      if (event.currentTarget instanceof Element) {
-        event.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      }
-      return;
-    }
     interaction.activateByKeyboard(event, rootElement!, model.targets, keyboardEnabled);
   }
 </script>

@@ -15,6 +15,20 @@ export type FocusTrapOptions = {
   restoreFocus?: boolean;
   initialFocus?: FocusTargetInput;
   fallbackFocus?: FocusTargetInput;
+  /**
+   * Whether the trap moves focus into its panel when it activates. Defaults to
+   * `true` — the trap focuses {@link initialFocus} → first tabbable → fallback →
+   * the root on open, which is what stand-alone overlays (popovers, menus) want.
+   *
+   * Set to `false` for hosts that perform their OWN initial focus (native
+   * `<dialog>.showModal()` already focuses, and Modal/Sheet/Drawer then deliberately
+   * move focus to a `tabindex="-1"` body container so reading starts at the content,
+   * not the close button). With `manageInitialFocus: false` the trap still provides
+   * Tab-wrapping and trap-stack membership, but never overrides the host's chosen
+   * initial focus. Such hosts also own focus restoration, so they pair this with
+   * `restoreFocus: false`.
+   */
+  manageInitialFocus?: boolean;
 };
 
 type TrapInstance = {
@@ -52,7 +66,14 @@ function isHiddenByTree(element: HTMLElement): boolean {
 function isFocusableCandidate(element: HTMLElement): boolean {
   if (isHiddenByTree(element)) return false;
   if (element.hasAttribute('disabled')) return false;
-  if (element.getAttribute('tabindex') === '-1') return false;
+  // Reject ALL explicit negative tabindex values (not just "-1"). `tabindex="-2"`
+  // is programmatically focusable but NOT reachable via sequential Tab, so
+  // including it in `getTabbableElements` would corrupt the first/last boundary
+  // the Tab-wrap logic relies on. Gate on `hasAttribute` first so the IDL
+  // `tabIndex` property is only read for elements that actually set it — natively
+  // focusable elements without the attribute keep their default tabbability
+  // without depending on the DOM environment's IDL defaults (happy-dom vs real).
+  if (element.hasAttribute('tabindex') && element.tabIndex < 0) return false;
   return true;
 }
 
@@ -153,6 +174,7 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
     const restoreFocus = options.restoreFocus ?? true;
     const initialFocus = options.initialFocus ?? null;
     const fallbackFocus = options.fallbackFocus ?? null;
+    const manageInitialFocus = options.manageInitialFocus ?? true;
 
     let activated = false;
     // Bumped on every `activate()`. The deferred `focusTrapTarget` microtask snapshots this value
@@ -191,12 +213,19 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
           ? document.activeElement
           : null;
       pushTrap({ id: trapId, node });
+      // Hosts that own their own initial focus (Modal/Sheet/Drawer focus a body
+      // container after showModal()) opt out so the trap never overrides that choice
+      // by yanking focus to the first tabbable (the close button) on the next microtask.
+      if (!manageInitialFocus) return;
       // Defer focusing so the trap's content is in the DOM. Guard against the trap being
       // deactivated (or deactivated then reactivated) before this microtask drains — moving focus
       // into a no-longer-current activation would steal it back after `deactivate()` already
-      // restored it to the previously-focused element.
+      // restored it to the previously-focused element. The `!isActive()` check covers the
+      // synchronous open→close window: `deactivate()` runs on the next effect flush (after this
+      // microtask), but the live reactive `active` getter already reads false, so a host that
+      // closes immediately after opening does not have focus dragged into the trap post-close.
       queueMicrotask(() => {
-        if (!activated || generation !== activationGeneration) return;
+        if (!activated || generation !== activationGeneration || !isActive()) return;
         focusTrapTarget();
       });
     }

@@ -1013,6 +1013,32 @@ describe('toast dismiss button label', () => {
       expect(labels).toContain('Dismiss: Upload failed');
     });
   });
+
+  test('dismiss button aria-label is bounded for a long message (the full text is in the live region)', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    const longMessage =
+      'Upload failed because the connection to the server was interrupted partway through the transfer; please retry.';
+    api!.show(longMessage, { dismissible: true, duration: 0, variant: 'danger' });
+
+    await waitFor(() => {
+      const dismissButton = container.querySelector('.cinder-toast__dismiss');
+      expect(dismissButton).not.toBeNull();
+      const label = dismissButton?.getAttribute('aria-label') ?? '';
+      // Bounded: not the entire message dumped into the control name.
+      expect(label.length).toBeLessThan(longMessage.length);
+      expect(label).toStartWith('Dismiss: ');
+      expect(label).toEndWith('…');
+    });
+  });
 });
 
 describe('toast variant icons', () => {

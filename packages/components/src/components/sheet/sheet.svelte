@@ -247,7 +247,11 @@
         class="cinder-sheet__panel"
         data-cinder-closing={isClosing ? '' : undefined}
         inert={isClosing}
-        {@attach createFocusTrap({ active: () => open && !isClosing, restoreFocus: false, initialFocus: null })}
+        {@attach createFocusTrap({
+          active: () => open && !isClosing,
+          restoreFocus: false,
+          manageInitialFocus: false,
+        })}
       >
         {#if showDragHandle}
           <div class="cinder-sheet__drag-handle" aria-hidden="true">

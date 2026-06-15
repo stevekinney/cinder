@@ -23,7 +23,7 @@ mock.module('./code-block-default-highlighter.ts', () => ({
   loadDefaultHighlighter,
 }));
 
-const { render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { default: CodeBlock } = await import('./code-block.svelte');
 
 // CodeBlock emits a dev warning when a highlighter throws / fails to load (it
@@ -40,6 +40,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Unmount rendered components BEFORE the warning assertion: component teardown
+  // may emit console.warn, so cleanup must run while warnSpy is still installed.
+  // @testing-library/svelte v5's auto-cleanup does not register under bun:test, so
+  // without this the mounted code blocks leak into the shared happy-dom
+  // document.body and later sibling files (e.g. copy-button) see duplicate elements.
+  cleanup();
   const unexpected = warnSpy.mock.calls
     .map((args) => args.map(String).join(' '))
     .filter((message) => !message.includes(KNOWN_CODE_BLOCK_WARNING));

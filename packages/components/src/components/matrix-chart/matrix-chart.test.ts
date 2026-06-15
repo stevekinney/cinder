@@ -293,7 +293,7 @@ describe('MatrixChart', () => {
     expect(tableText).toContain('22');
   });
 
-  test('pointer move over the hit surface marks the hovered cell data-cinder-active', async () => {
+  test('pointer enter on a cell marks it data-cinder-active and leaving the plot clears it', async () => {
     const { container } = render(MatrixChart, {
       label: 'Confusion matrix',
       data: confusionData,
@@ -301,33 +301,35 @@ describe('MatrixChart', () => {
       yField: 'actual',
       valueField: 'count',
     });
-
-    const hitSurface = container.querySelector(
-      '.cinder-matrix-chart__hit-surface',
-    ) as SVGRectElement;
-    expect(hitSurface).not.toBeNull();
 
     // Before hover: no cell is active.
     expect(container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]')).toBeNull();
 
-    // Move the pointer over the hit surface. clientX/Y map into the cell grid.
-    // The hit surface getBoundingClientRect is (0,0,0,0) in happy-dom so the
-    // computed plotX/plotY will both be 0, placing the pointer in the first cell
-    // (xIndex=0, yIndex=0 → key "0:0").
-    await fireEvent.pointerMove(hitSurface, { clientX: 0, clientY: 0 });
+    // Pointer enters the first cell directly — no overlay intercepting, so the
+    // cell's own native <title> (the value-on-hover tooltip) stays reachable.
+    const firstCell = container.querySelector('.cinder-matrix-chart__cell') as SVGRectElement;
+    expect(firstCell).not.toBeNull();
+    await fireEvent.pointerEnter(firstCell);
 
     const activeCell = container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]');
-    // The first cell (top-left) should be marked active.
-    expect(activeCell).not.toBeNull();
-    expect(activeCell?.getAttribute('data-cinder-x')).toBeTruthy();
-    expect(activeCell?.getAttribute('data-cinder-y')).toBeTruthy();
+    expect(activeCell).toBe(firstCell);
+    // The first cell is the first predicted (x) × first actual (y) combination.
+    // `confusionData` lists Cat before Dog for both fields, so the first cell is
+    // Cat × Cat. Asserting the exact coordinates (not merely truthy) pins which
+    // cell the pointer handler activated — a regression that activated the wrong
+    // cell, or dropped the coordinate data attributes, would fail here.
+    expect(activeCell?.getAttribute('data-cinder-x')).toBe('Cat');
+    expect(activeCell?.getAttribute('data-cinder-y')).toBe('Cat');
 
-    // Pointer leave clears the active cell.
-    await fireEvent.pointerLeave(hitSurface);
+    // Leaving the plot group (the presentation <g> that owns onpointerleave)
+    // clears the active cell.
+    const plotGroup = firstCell.closest('g[role="presentation"]');
+    expect(plotGroup).not.toBeNull();
+    await fireEvent.pointerLeave(plotGroup as SVGGElement);
     expect(container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]')).toBeNull();
   });
 
-  test('hit surface is present when data is available and not loading', () => {
+  test('each cell carries a native <title> so pointer users get value-on-hover', () => {
     const { container } = render(MatrixChart, {
       label: 'Confusion matrix',
       data: confusionData,
@@ -335,12 +337,17 @@ describe('MatrixChart', () => {
       yField: 'actual',
       valueField: 'count',
     });
-    expect(container.querySelector('.cinder-matrix-chart__hit-surface')).not.toBeNull();
+    const cells = container.querySelectorAll('.cinder-matrix-chart__cell');
+    expect(cells.length).toBeGreaterThan(0);
+    // Every cell owns a <title> child — the affordance an intercepting overlay
+    // would have hidden from pointer hover. The text mirrors the formatted value.
+    for (const cell of cells) {
+      expect(cell.querySelector('title')?.textContent).toContain('×');
+    }
   });
 
-  test('matrix-chart CSS has rules for data-cinder-active and hit-surface', async () => {
+  test('matrix-chart CSS has a rule for data-cinder-active', async () => {
     const cssText = await Bun.file(new URL('./matrix-chart.css', import.meta.url)).text();
     expect(cssText).toContain('.cinder-matrix-chart__cell[data-cinder-active]');
-    expect(cssText).toContain('.cinder-matrix-chart__hit-surface');
   });
 });

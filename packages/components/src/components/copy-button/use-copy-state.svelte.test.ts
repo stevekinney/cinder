@@ -7,7 +7,7 @@ import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 setupHappyDom();
 
 // Import as dynamic to allow happy-dom to be fully set up first
-const { render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 // We exercise createCopyState indirectly through a minimal mounted Svelte component
 // to verify the reactive state and onDestroy cleanup work correctly.
 // We also test the factory directly in unit form.
@@ -46,6 +46,11 @@ describe('createCopyState', () => {
   });
 
   afterEach(() => {
+    // Unmount rendered components first: @testing-library/svelte v5's auto-cleanup
+    // does not register under bun:test (no global afterEach), so without this the
+    // mounted wrappers leak into the shared happy-dom document.body and later tests
+    // (here and in sibling files) see duplicate elements.
+    cleanup();
     if (originalClipboard) {
       Object.defineProperty(globalThis.navigator, 'clipboard', {
         configurable: true,

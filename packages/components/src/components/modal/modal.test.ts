@@ -916,12 +916,16 @@ describe('Modal focus containment', () => {
     expect(container.querySelector('dialog')?.getAttribute('aria-modal')).toBe('true');
   });
 
-  test('Tab on the last focusable element wraps back to the first (focus trap prevents default)', async () => {
-    // tabWrap attaches a keydown listener to the panel that intercepts Tab when
-    // document.activeElement is the last tabbable element. Verifying preventDefault() was
-    // called proves the trap is active and wrapping — body cannot receive focus.
+  test('Tab on the last focusable element wraps back to the first (focus moves + default prevented)', async () => {
+    // The trap attaches a keydown listener to the panel that intercepts Tab when
+    // document.activeElement is the last tabbable element. Asserting BOTH that
+    // preventDefault() fired AND that focus actually landed on the first tabbable
+    // makes this fail if the trap is removed or wraps to the wrong boundary —
+    // `defaultPrevented` alone would still pass with a no-op handler that never
+    // moves focus.
     const childrenWithButtons = createRawSnippet(() => ({
-      render: () => `<div><button id="inner-first">First</button><button id="inner-second">Second</button></div>`,
+      render: () =>
+        `<div><button id="inner-first">First</button><button id="inner-second">Second</button></div>`,
       setup: () => {},
     }));
 
@@ -932,25 +936,31 @@ describe('Modal focus containment', () => {
     const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
     expect(panel).not.toBeNull();
 
-    // The close button is the last tabbable element in the panel (rendered after footer).
+    const firstButton = container.querySelector('#inner-first') as HTMLButtonElement;
+    // The close button is rendered last in DOM order, so it is the LAST tabbable.
     const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    expect(firstButton).not.toBeNull();
     expect(closeButton).not.toBeNull();
 
-    // Move focus to the close button (last focusable element).
+    // Move focus to the close button (last tabbable element) and Tab forward.
     closeButton.focus();
+    expect(document.activeElement).toBe(closeButton);
 
-    // Fire a Tab keydown event on the panel. The focus trap's handler intercepts it.
-    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
-    panel.dispatchEvent(tabEvent);
+    const result = await fireEvent.keyDown(panel, { key: 'Tab' });
 
-    // The trap must have called event.preventDefault() to wrap focus back to the first element.
-    expect(tabEvent.defaultPrevented).toBe(true);
+    // fireEvent returns false when the handler called preventDefault().
+    expect(result).toBe(false);
+    // Focus wrapped to the first tabbable, never escaping to <body>.
+    expect(document.activeElement).toBe(firstButton);
   });
 
-  test('Shift+Tab on the first focusable element wraps to the last (focus trap prevents default)', async () => {
-    // tabWrap intercepts Shift+Tab when document.activeElement is the first tabbable element.
+  test('Shift+Tab on the first focusable element wraps to the last (focus moves + default prevented)', async () => {
+    // Children render two buttons; with the close button rendered last, the tab
+    // order is inner-first → inner-second → close. Shift+Tab from inner-first
+    // (the first tabbable) must wrap to the close button (the last tabbable).
     const childrenWithButtons = createRawSnippet(() => ({
-      render: () => `<span><button id="inner-first">First</button></span>`,
+      render: () =>
+        `<div><button id="inner-first">First</button><button id="inner-second">Second</button></div>`,
       setup: () => {},
     }));
 
@@ -962,24 +972,20 @@ describe('Modal focus containment', () => {
     expect(panel).not.toBeNull();
 
     // The body container has tabindex="-1" and is not in the tabbable set.
-    // The first tabbable element is the inner button rendered by children.
     const firstButton = container.querySelector('#inner-first') as HTMLButtonElement;
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
     expect(firstButton).not.toBeNull();
+    expect(closeButton).not.toBeNull();
 
-    // Move focus to the first tabbable element.
+    // Move focus to the first tabbable element and Shift+Tab backward.
     firstButton.focus();
+    expect(document.activeElement).toBe(firstButton);
 
-    // Fire a Shift+Tab keydown event on the panel.
-    const shiftTabEvent = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      shiftKey: true,
-      bubbles: true,
-      cancelable: true,
-    });
-    panel.dispatchEvent(shiftTabEvent);
+    const result = await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: true });
 
-    // The trap must have called event.preventDefault() to wrap focus to the last element.
-    expect(shiftTabEvent.defaultPrevented).toBe(true);
+    expect(result).toBe(false);
+    // Focus wrapped to the last tabbable (the close button).
+    expect(document.activeElement).toBe(closeButton);
   });
 
   test('focus trap is inactive when modal is closed — Tab events are not intercepted', async () => {

@@ -17,12 +17,13 @@
 
 <script lang="ts">
   import type { DrawerProps } from './drawer.types.ts';
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy } from 'svelte';
 
   import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { createFocusTrap } from '../focus-trap/index.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
@@ -43,13 +44,11 @@
   const titleId = $props.id();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
-  let bodyElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
   let hydrated = $state(false);
   let renderPanel = $state(open);
   let isClosing = $state(false);
   let closeGeneration = $state(0);
-  let pendingOpenFocus = $state(false);
   /**
    * The side that was active when the current open/close cycle began.
    * Snapshotted at open time so that a side-prop change while the drawer
@@ -105,7 +104,6 @@
 
       if (!dialogElement.open) {
         capturedFocus = captureFocus();
-        pendingOpenFocus = true;
         dialogElement.showModal();
         acquireScrollLock();
         acquireEscapeMarker();
@@ -117,35 +115,30 @@
       beginClosing();
     } else {
       renderPanel = false;
-      pendingOpenFocus = false;
     }
   });
 
-  $effect(() => {
-    if (!pendingOpenFocus || !dialogElement?.open) return;
-    pendingOpenFocus = false;
-    void tick().then(() => {
-      if (!open || !dialogElement?.open) return;
-      const hasExplicitAutofocus =
-        dialogElement.querySelector('[autofocus]') !== null ||
-        Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).some(
-          (element) => element.autofocus === true,
-        );
-      if (!hasExplicitAutofocus) {
-        // Prefer the first naturally focusable element inside the panel body.
-        // Falling back to the body container (tabindex=-1) ensures a focus trap
-        // is always established even when the drawer has no interactive content.
-        const focusableSelectors =
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-        const firstFocusable = panelElement?.querySelector<HTMLElement>(focusableSelectors);
-        if (firstFocusable) {
-          firstFocusable.focus();
-        } else if (bodyElement) {
-          bodyElement.focus();
-        }
-      }
-    });
-  });
+  /**
+   * Resolve the drawer's initial focus target for the shared focus trap.
+   *
+   * When the consumer marked a child with `autofocus`, the native <dialog>
+   * already focused it — honour that by handing the element back so the trap
+   * does not steal focus to the first tabbable. Otherwise return `null`, which
+   * lets `createFocusTrap` fall through to its first-tabbable → body-fallback
+   * strategy (the close button, then the `tabindex="-1"` body container). This
+   * replaces the prior ad-hoc selector, which accepted any `[tabindex]` other
+   * than `-1` (e.g. `-2`) and CSS-hidden elements that are not Tab-reachable.
+   */
+  function resolveInitialFocus(): HTMLElement | null {
+    if (!dialogElement) return null;
+    const explicitlyAutofocused =
+      dialogElement.querySelector<HTMLElement>('[autofocus]') ??
+      Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).find(
+        (element) => element.autofocus === true,
+      ) ??
+      null;
+    return explicitlyAutofocused;
+  }
 
   function beginClosing(): void {
     if (!dialogElement?.open || isClosing) return;
@@ -170,7 +163,6 @@
     cancelPendingClose = null;
     isClosing = false;
     renderPanel = false;
-    pendingOpenFocus = false;
     if (dialogElement?.open) {
       dialogElement.close();
     }
@@ -274,6 +266,13 @@
     {/snippet}
 
     {#if renderPanel}
+      <!--
+        The native <dialog> (showModal) traps focus in supporting browsers; the
+        shared focus-trap is the defence-in-depth fallback and owns initial focus.
+        It carefully filters hidden/inert/disabled/`tabindex="-1"` elements, so it
+        replaces the prior ad-hoc selector. Drawer owns focus restoration
+        (returnFocus), so the trap runs with `restoreFocus: false`.
+      -->
       <div
         bind:this={panelElement}
         class="cinder-drawer__panel"
@@ -281,6 +280,11 @@
         data-cinder-size={size}
         data-cinder-closing={isClosing ? '' : undefined}
         inert={isClosing}
+        {@attach createFocusTrap({
+          active: () => open && !isClosing,
+          restoreFocus: false,
+          initialFocus: resolveInitialFocus,
+        })}
       >
         <header class="cinder-drawer__header">
           {#if header}
@@ -294,12 +298,7 @@
           {@render closeButton()}
         </header>
 
-        <div
-          bind:this={bodyElement}
-          class="cinder-drawer__body"
-          tabindex="-1"
-          {@attach bodyOverflowFade}
-        >
+        <div class="cinder-drawer__body" tabindex="-1" {@attach bodyOverflowFade}>
           {@render children()}
         </div>
 

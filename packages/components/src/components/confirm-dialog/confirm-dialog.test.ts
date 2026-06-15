@@ -563,9 +563,11 @@ describe('ConfirmDialog focus trap', () => {
   // ConfirmDialog inherits Modal's focus trap. These tests verify that the inherited
   // Tab-wrap behavior works for ConfirmDialog's footer buttons.
 
-  test('Tab on the close button (last tabbable) wraps back — focus trap prevents default', async () => {
-    // Modal's focus trap is active on the panel when open. The close button is the last
-    // tabbable element; Tab on it must be intercepted so focus never reaches <body>.
+  test('Tab on the close button (last tabbable) wraps to the cancel button — focus moves + default prevented', async () => {
+    // Modal's focus trap is active on the panel when open. The tabbable order is
+    // cancel → confirm → close (the close button renders last in DOM order). Tab
+    // on the close button must wrap to the first tabbable (cancel), and asserting
+    // the destination — not just `defaultPrevented` — proves focus actually moved.
     const { container } = render(ConfirmDialog, {
       props: {
         open: true,
@@ -579,20 +581,23 @@ describe('ConfirmDialog focus trap', () => {
     expect(panel).not.toBeNull();
 
     const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    const [cancelButton] = footerButtons(container);
     expect(closeButton).not.toBeNull();
+    expect(cancelButton).not.toBeNull();
 
     closeButton.focus();
+    expect(document.activeElement).toBe(closeButton);
 
-    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
-    panel.dispatchEvent(tabEvent);
+    const result = await fireEvent.keyDown(panel, { key: 'Tab' });
 
-    // The focus trap must have prevented default — Tab wraps within the dialog.
-    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(result).toBe(false);
+    // Focus wrapped to the first tabbable (cancel), never reaching <body>.
+    expect(document.activeElement).toBe(cancelButton);
   });
 
-  test('Shift+Tab on the cancel button (first tabbable) wraps to last — focus trap prevents default', async () => {
-    // The cancel button carries autofocus and is the first tabbable element in the footer.
-    // Shift+Tab on it must wrap to the last element inside the dialog.
+  test('Shift+Tab on the cancel button (first tabbable) wraps to the close button — focus moves + default prevented', async () => {
+    // The cancel button carries autofocus and is the first tabbable element.
+    // Shift+Tab on it must wrap to the last tabbable (the close button).
     const { container } = render(ConfirmDialog, {
       props: {
         open: true,
@@ -606,22 +611,18 @@ describe('ConfirmDialog focus trap', () => {
     const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
     expect(panel).not.toBeNull();
 
-    // The first tabbable element in the ConfirmDialog panel is the cancel button
-    // (the modal body has tabindex=-1 and is excluded from tabbable set).
     const [cancelButton] = footerButtons(container);
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
     expect(cancelButton).not.toBeNull();
+    expect(closeButton).not.toBeNull();
 
     cancelButton.focus();
+    expect(document.activeElement).toBe(cancelButton);
 
-    const shiftTabEvent = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      shiftKey: true,
-      bubbles: true,
-      cancelable: true,
-    });
-    panel.dispatchEvent(shiftTabEvent);
+    const result = await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: true });
 
-    // The focus trap must have prevented default — Shift+Tab wraps within the dialog.
-    expect(shiftTabEvent.defaultPrevented).toBe(true);
+    expect(result).toBe(false);
+    // Focus wrapped to the last tabbable (the close button).
+    expect(document.activeElement).toBe(closeButton);
   });
 });

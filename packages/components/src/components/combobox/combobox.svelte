@@ -97,9 +97,15 @@
       return;
     }
     const matched = options.find((option) => option.value === value);
-    if (matched && untrack(() => inputValue) !== matched.label) {
-      inputValue = matched.label;
+    if (matched) {
+      // `committedLabel` tracks the committed `value`'s label and must stay in
+      // sync whenever a match exists — even when `inputValue` already shows that
+      // label. Gating it behind the `inputValue !== matched.label` check left
+      // `committedLabel` stale (''), so a later Escape restored to empty text.
       committedLabel = matched.label;
+      if (untrack(() => inputValue) !== matched.label) {
+        inputValue = matched.label;
+      }
     }
   });
 
@@ -163,10 +169,16 @@
         selectOption(option);
       }
     } else if (event.key === 'Escape') {
-      // The Popover's escape-stack handler already closed the dropdown (set
-      // open = false) before this keydown handler runs (capture-phase listener
-      // fires first). Restore inputValue unconditionally when Escape is pressed
-      // while the input is focused, regardless of whether open is still true.
+      // Close the dropdown directly. When the Popover is rendered, its
+      // capture-phase escape-stack handler already set open = false before this
+      // handler runs; this assignment is then an idempotent no-op. But the
+      // Popover only mounts while there are filtered options to show, so an open
+      // combobox whose input filtered every option away (open && filtered === 0)
+      // has NO escape handler on the stack — without this line Escape would
+      // leave it stuck open.
+      open = false;
+      // Restore inputValue unconditionally when Escape is pressed while the
+      // input is focused, regardless of whether open was still true.
       if (inputValue !== committedLabel) {
         event.preventDefault();
         inputValue = committedLabel;

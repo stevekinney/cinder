@@ -6,7 +6,7 @@ import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: CopyButton } = await import('./copy-button.svelte');
 
 type ClipboardLike = { writeText: (text: string) => Promise<void> };
@@ -32,6 +32,11 @@ describe('CopyButton', () => {
   });
 
   afterEach(() => {
+    // Unmount rendered components first: @testing-library/svelte v5's auto-cleanup
+    // does not register under bun:test (no global afterEach), so without this the
+    // mounted buttons leak into the shared happy-dom document.body and later tests
+    // (here and in sibling files) see duplicate elements.
+    cleanup();
     if (originalClipboard) {
       Object.defineProperty(globalThis.navigator, 'clipboard', {
         configurable: true,

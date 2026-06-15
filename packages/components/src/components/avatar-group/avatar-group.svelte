@@ -36,10 +36,17 @@
     shape = 'circle',
     overflowLabel,
     label = 'Collaborators',
+    'aria-label': consumerAriaLabel,
     class: className,
     style,
     ...rest
   }: AvatarGroupProps = $props();
+
+  // A consumer-provided `aria-label` wins over the `label` default; destructuring
+  // it out of `rest` (rather than letting `{...rest}` spread it) lets us resolve
+  // the accessible name explicitly instead of having the hard-coded default
+  // silently clobber it after the spread.
+  const accessibleName = $derived(consumerAriaLabel ?? label);
 
   const normalizedMaxVisible = $derived(normalizeMaxVisible(maxVisible));
   const visibleCount = $derived(Math.min(normalizedMaxVisible, avatars.length));
@@ -122,7 +129,7 @@
   class={classNames('cinder-avatar-group', className)}
   style={rootStyle}
   role="list"
-  aria-label={label}
+  aria-label={accessibleName}
   data-cinder-size={size}
   data-cinder-shape={shape}
   data-cinder-z-order={zOrder}

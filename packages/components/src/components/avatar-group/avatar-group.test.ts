@@ -381,15 +381,27 @@ describe('AvatarGroup accessible name', () => {
     expect(list?.getAttribute('aria-label')).toBe('Team members');
   });
 
-  test('explicit aria-label in rest is overridden by the label prop default', () => {
-    // Because aria-label={label} comes AFTER {...rest} in the markup, the
-    // explicit label prop always wins. Consumers must use label= to customize.
+  test('an explicit consumer aria-label wins over the label default', () => {
+    // ARIA passthrough must work: a consumer-provided aria-label is the
+    // accessible name, not silently clobbered by the 'Collaborators' default.
     const { container } = render(AvatarGroup, {
       avatars: collaborators.slice(0, 1),
-      'aria-label': 'Override attempt',
+      'aria-label': 'Project team',
     });
     const list = container.querySelector('[role="list"]');
-    // label defaults to 'Collaborators', which overrides the rest spread
-    expect(list?.getAttribute('aria-label')).toBe('Collaborators');
+    expect(list?.getAttribute('aria-label')).toBe('Project team');
+  });
+
+  test('an explicit aria-label also wins over an explicit label prop', () => {
+    // When both are supplied, the consumer's raw ARIA value takes precedence —
+    // aria-label is the lower-level escape hatch and should not be overridable
+    // by the component's higher-level `label` convenience prop.
+    const { container } = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 1),
+      label: 'Team members',
+      'aria-label': 'Project team',
+    });
+    const list = container.querySelector('[role="list"]');
+    expect(list?.getAttribute('aria-label')).toBe('Project team');
   });
 });

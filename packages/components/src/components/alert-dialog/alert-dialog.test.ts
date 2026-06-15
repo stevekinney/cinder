@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
+import { _resetEscapeStack, _resetScrollLock } from '../../_internal/overlay.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -26,8 +27,21 @@ if (typeof HTMLDialogElement !== 'undefined') {
   }
 }
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: AlertDialog } = await import('./alert-dialog.svelte');
+
+// AlertDialog renders a native <dialog> via showModal(); without this teardown the
+// dialog (and its title "Session expired") leaks into the shared happy-dom document,
+// so a later `getByRole('alertdialog', { name: 'Session expired' })` finds duplicates
+// once these tests run in the same `bun test` invocation as the modal/drawer suites.
+// Mirror the sibling overlay suites: unmount, clear the body, and reset the overlay
+// scroll-lock refcount + escape stack so neither leaks across tests.
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+  _resetScrollLock();
+  _resetEscapeStack();
+});
 
 describe('AlertDialog', () => {
   test('renders alertdialog semantics with required description', () => {
