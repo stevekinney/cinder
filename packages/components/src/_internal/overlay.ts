@@ -78,10 +78,12 @@ export function useHydrated(): { value: boolean } {
  * Stack of ESC handlers. Top-most overlay handles ESC; lower overlays ignore
  * the event. Each overlay registers a handler on open and unregisters on close.
  *
- * The stack lives in module scope so all Cinder overlays share it. This is
- * fine for tests (each test runs against a fresh module instance) and fine
- * for production (a real app has at most a handful of stacked overlays at
- * once). It is a plain LIFO stack: each `pushEscapeHandler` call appends one
+ * The stack lives in module scope so all Cinder overlays share it. It persists
+ * for the lifetime of the JS module — under bun:test that means it is shared
+ * across every test in a file, so suites that leave handlers registered must
+ * call `_resetEscapeStack()` between cases to avoid leaking state. In
+ * production this is fine (a real app has at most a handful of stacked overlays
+ * at once). It is a plain LIFO stack: each `pushEscapeHandler` call appends one
  * entry and returns a one-shot `release` token that removes that entry's most
  * recent occurrence. Overlays push exactly once per open and release via the
  * returned token, so duplicates don't arise in practice; releasing a token

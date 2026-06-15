@@ -404,4 +404,27 @@ describe('AvatarGroup accessible name', () => {
     const list = container.querySelector('[role="list"]');
     expect(list?.getAttribute('aria-label')).toBe('Project team');
   });
+
+  // Regression: an empty or whitespace-only consumer aria-label must be treated
+  // as absent and fall back to `label`. Rendering aria-label="" suppresses the
+  // accessible-name computation (ARIA §4.3.2) without naming the region, leaving
+  // a nameless role="list".
+  test('an empty or whitespace-only aria-label falls back to the label', () => {
+    const empty = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 1),
+      'aria-label': '',
+    });
+    expect(empty.container.querySelector('[role="list"]')?.getAttribute('aria-label')).toBe(
+      'Collaborators',
+    );
+
+    const whitespace = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 1),
+      label: 'Team members',
+      'aria-label': '   ',
+    });
+    expect(whitespace.container.querySelector('[role="list"]')?.getAttribute('aria-label')).toBe(
+      'Team members',
+    );
+  });
 });

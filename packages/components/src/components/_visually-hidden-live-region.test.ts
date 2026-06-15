@@ -1,16 +1,21 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, waitFor, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor, fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
+
+// `@testing-library/svelte` v5 auto-cleanup does not register under bun:test, so
+// each test's rendered tree would otherwise leak into the shared happy-dom
+// document and interfere with later cases (and other suites). Tear down after
+// every test, matching the rest of the component suites.
+afterEach(() => cleanup());
 const { default: VisuallyHiddenLiveRegion } = await import('./_visually-hidden-live-region.svelte');
-const { default: SameMessageFixture } = await import(
-  './_visually-hidden-live-region.same-message-fixture.svelte'
-);
+const { default: SameMessageFixture } =
+  await import('./_visually-hidden-live-region.same-message-fixture.svelte');
 
 describe('VisuallyHiddenLiveRegion', () => {
   test('renders a polite role=status region with aria-atomic by default', () => {

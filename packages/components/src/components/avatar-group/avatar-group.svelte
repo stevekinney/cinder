@@ -45,8 +45,15 @@
   // A consumer-provided `aria-label` wins over the `label` default; destructuring
   // it out of `rest` (rather than letting `{...rest}` spread it) lets us resolve
   // the accessible name explicitly instead of having the hard-coded default
-  // silently clobber it after the spread.
-  const accessibleName = $derived(consumerAriaLabel ?? label);
+  // silently clobber it after the spread. An empty or whitespace-only
+  // `aria-label` is treated as absent (rendering `aria-label=""` would suppress
+  // the accessible-name computation per ARIA §4.3.2 without naming the region),
+  // so it falls back to `label` rather than producing a nameless `role="list"`.
+  const accessibleName = $derived(
+    typeof consumerAriaLabel === 'string' && consumerAriaLabel.trim().length > 0
+      ? consumerAriaLabel
+      : label,
+  );
 
   const normalizedMaxVisible = $derived(normalizeMaxVisible(maxVisible));
   const visibleCount = $derived(Math.min(normalizedMaxVisible, avatars.length));
