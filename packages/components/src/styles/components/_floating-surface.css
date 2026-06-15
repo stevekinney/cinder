@@ -68,8 +68,12 @@
 
     /*
      * Forced-colors strips `box-shadow`, so the keyboard cursor falls back to a
-     * system `Highlight` outline. `aria-selected` is reset to no outline so the
-     * committed choice does not masquerade as the keyboard cursor here either.
+     * system `Highlight` outline. A selected-but-not-active row is reset to no
+     * outline so the committed choice does not masquerade as the keyboard
+     * cursor. The `:not([data-cinder-active])` guard is load-bearing: a row that
+     * is BOTH selected and the cursor must keep its `Highlight` outline (equal
+     * specificity means a bare `[aria-selected='true']` reset would win on
+     * source order and erase the only forced-colors position indicator).
      */
     .cinder-_option-row[data-cinder-active] {
       box-shadow: none;
@@ -77,7 +81,7 @@
       outline-offset: -1px;
     }
 
-    .cinder-_option-row[aria-selected='true'] {
+    .cinder-_option-row[aria-selected='true']:not([data-cinder-active]) {
       outline: none;
     }
   }

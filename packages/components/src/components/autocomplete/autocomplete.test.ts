@@ -337,6 +337,19 @@ describe('Autocomplete — keyboard completion', () => {
     expect(sharedCssWithoutComments).toMatch(
       /\.cinder-_option-row\[data-cinder-active\]\s*\{[^}]*box-shadow:\s*inset[^}]*var\(--cinder-ring-color\)/,
     );
+
+    // Forced-colors fallback: a row that is BOTH selected and the keyboard
+    // cursor must keep its `Highlight` outline. The `aria-selected` reset is
+    // guarded by `:not([data-cinder-active])` so it cannot win on source order
+    // (equal specificity) and erase the cursor on a selected-active row. Assert
+    // the guard is present and that no UNGUARDED bare `[aria-selected='true']`
+    // reset survives inside the forced-colors block.
+    expect(sharedCssWithoutComments).toMatch(
+      /\.cinder-_option-row\[aria-selected='true'\]:not\(\[data-cinder-active\]\)\s*\{\s*outline:\s*none/,
+    );
+    expect(sharedCssWithoutComments).not.toMatch(
+      /\.cinder-_option-row\[aria-selected='true'\]\s*\{\s*outline:\s*none/,
+    );
   });
 });
 
