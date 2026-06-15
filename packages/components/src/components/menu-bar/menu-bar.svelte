@@ -281,7 +281,10 @@
       return;
     }
 
-    if (event.key === 'Escape') {
+    // Only consume Escape when a menu or submenu is actually open. On a closed
+    // menubar item, swallowing Escape (preventDefault + a no-op closeAll) would
+    // block an enclosing overlay or page-level Escape handler from ever running.
+    if (event.key === 'Escape' && (openMenuIndex !== null || openSubmenuKey !== null)) {
       event.preventDefault();
       closeAll();
       return;
