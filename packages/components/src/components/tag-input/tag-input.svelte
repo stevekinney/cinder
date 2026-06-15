@@ -71,6 +71,15 @@
   let uncontrolledTags = $state(initialDefaultTags);
   let focusedChipIndex = $state(-1);
   let statusAnnouncement = $state('');
+  // Bumped on every announce so the live region re-fires even when two consecutive
+  // announcements share the same text (e.g. adding the same tag again) — a same-value
+  // `$state` assignment is a no-op in Svelte 5 and would otherwise be swallowed.
+  let statusAnnouncementSequence = $state(0);
+
+  function announceStatus(announcement: string): void {
+    statusAnnouncement = announcement;
+    statusAnnouncementSequence += 1;
+  }
 
   const isControlled = $derived(value !== undefined);
   const currentTags = $derived(isControlled ? (value ?? []) : uncontrolledTags);
@@ -230,7 +239,7 @@
     draftValue = '';
     focusedChipIndex = -1;
     setTags([...currentTags, candidate]);
-    statusAnnouncement = `${candidate} added.`;
+    announceStatus(`${candidate} added.`);
     return true;
   }
 
@@ -240,7 +249,7 @@
     const removed = currentTags[index] ?? '';
     const nextTags = currentTags.filter((_, candidateIndex) => candidateIndex !== index);
     setTags(nextTags);
-    if (removed) statusAnnouncement = `${removed} removed.`;
+    if (removed) announceStatus(`${removed} removed.`);
   }
 
   function focusAfterRemove(index: number): void {
@@ -421,5 +430,8 @@
       <input type="hidden" {name} value={tag} disabled={field.disabled} />
     {/each}
   {/if}
-  <VisuallyHiddenLiveRegion message={statusAnnouncement} />
+  <VisuallyHiddenLiveRegion
+    message={statusAnnouncement}
+    announcementSequence={statusAnnouncementSequence}
+  />
 </div>

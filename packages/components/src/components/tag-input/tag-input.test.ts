@@ -612,14 +612,24 @@ describe('TagInput ARIA live announcements', () => {
     expect(liveRegion?.textContent).toContain('Svelte added.');
 
     // Second add of the SAME value (allowDuplicates=true, no intervening removal).
-    // The live region still holds "Svelte added." — the blank-then-set cycle
-    // must set it to '' first so the identical string re-triggers the AT.
+    // The live region still holds "Svelte added." — the announcementSequence bump
+    // re-runs the region's effect, which blanks the text to '' first so the
+    // identical string re-triggers the AT.
     await fireEvent.input(input, { target: { value: 'Svelte' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
+
+    // Load-bearing assertion: after the second add (before the deferred setTimeout(0)
+    // fires) the region must transition through the blank state. Without the
+    // announcementSequence fix, the same-value $state assignment is a Svelte 5 no-op,
+    // the effect never runs, and the content stays "Svelte added." — making THIS
+    // assertion fail. That is what makes this a genuine regression guard.
+    await tick();
+    expect(container.querySelector('[role="status"]')?.textContent?.trim()).toBe('');
+
     await flushLiveRegion();
 
-    // After the macro-task the content must be back to "Svelte added." — not
-    // still the blank state or something else.
+    // After the macro-task the content must be back to "Svelte added." — proving the
+    // identical message was genuinely re-announced.
     expect(container.querySelector('[role="status"]')?.textContent).toContain('Svelte added.');
   });
 });

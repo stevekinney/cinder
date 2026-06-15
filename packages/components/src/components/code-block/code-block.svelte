@@ -127,7 +127,17 @@
            so there is exactly one focusable scroll region. No role="region":
            a landmark per code block would flood landmark navigation with
            identically-named "Code" regions on docs pages with many snippets —
-           tabindex alone satisfies the keyboard-scroll requirement. -->
+           tabindex alone satisfies the keyboard-scroll requirement.
+
+           The tabindex is UNCONDITIONAL on purpose (see #380). Making it
+           conditional on actual overflow (scrollWidth > clientWidth) would drop
+           the empty tab stop on short, non-overflowing snippets — but any
+           "start non-focusable, add tabindex after measuring" scheme races
+           font-load reflow and hydration: an overflowing block could be briefly
+           keyboard-unreachable, a hard WCAG 2.1.1 failure. axe only flags
+           scrollable-region-focusable on elements that actually scroll, so the
+           always-on tabindex adds NO axe exposure on short blocks. An extra tab
+           stop on a short snippet is the lesser failure mode; keep it always-on. -->
       <div class="cinder-code-block__highlighted" tabindex="0">
         {@html highlighted}
       </div>
