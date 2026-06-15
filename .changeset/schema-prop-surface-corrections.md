@@ -11,4 +11,4 @@ Correct generated schema/documentation prop surfaces flagged in the component au
 Also regenerates schema artifacts that had drifted from their source types on `main`, surfacing two props that were already accepted but undocumented:
 
 - **`AvatarGroup`** — `label` (`string`, default `"Collaborators"`) now appears in the schema and README as the accessible name for the avatar stack.
-- **`Popover`** — `closeOnEscape` (`boolean`, default `true`) now appears in the schema and README; it controls whether the Popover registers its own handler on the shared Escape stack.
+- **`Popover`** — `closeOnEscape` (`boolean`, default `true`) now appears in the schema and README; it controls whether Escape closes the Popover (set `false` when a parent composite widget owns Escape for the whole interaction).
