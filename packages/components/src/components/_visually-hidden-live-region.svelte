@@ -38,10 +38,20 @@
 
   let {
     message = '',
+    announcementSequence = 0,
     priority = 'polite',
     class: className,
   }: {
     message?: string;
+    /**
+     * Bump this (monotonically) to force a re-announcement of an identical
+     * `message`. In Svelte 5, assigning the same string to a `$state` is a no-op,
+     * so a consumer that announces the same text twice in a row (e.g. adding the
+     * same tag again) would not re-run this component's effect. Reading the
+     * sequence inside the effect registers it as a dependency, so incrementing it
+     * — even with `message` unchanged — re-fires the blank-then-set dance.
+     */
+    announcementSequence?: number;
     priority?: LiveRegionPriority;
     class?: string;
   } = $props();
@@ -69,6 +79,9 @@
   // then PERSISTS until the consumer changes it (no auto-clear of an active status).
   $effect(() => {
     const next = message;
+    // Read the sequence so it is tracked as a dependency: bumping it re-runs this
+    // effect even when `message` is byte-identical to the previous announcement.
+    void announcementSequence;
     const current = ++version;
 
     if (setTimeoutId) {

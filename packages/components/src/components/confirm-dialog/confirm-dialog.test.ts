@@ -558,3 +558,71 @@ describe('ConfirmDialog', () => {
     expect(cancelCount).toBe(1);
   });
 });
+
+describe('ConfirmDialog focus trap', () => {
+  // ConfirmDialog inherits Modal's focus trap. These tests verify that the inherited
+  // Tab-wrap behavior works for ConfirmDialog's footer buttons.
+
+  test('Tab on the close button (last tabbable) wraps to the cancel button — focus moves + default prevented', async () => {
+    // Modal's focus trap is active on the panel when open. The tabbable order is
+    // cancel → confirm → close (the close button renders last in DOM order). Tab
+    // on the close button must wrap to the first tabbable (cancel), and asserting
+    // the destination — not just `defaultPrevented` — proves focus actually moved.
+    const { container } = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete account?',
+        confirmLabel: 'Delete',
+        onconfirm: () => {},
+      },
+    });
+
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    const [cancelButton] = footerButtons(container);
+    expect(closeButton).not.toBeNull();
+    expect(cancelButton).not.toBeNull();
+
+    closeButton.focus();
+    expect(document.activeElement).toBe(closeButton);
+
+    const result = await fireEvent.keyDown(panel, { key: 'Tab' });
+
+    expect(result).toBe(false);
+    // Focus wrapped to the first tabbable (cancel), never reaching <body>.
+    expect(document.activeElement).toBe(cancelButton);
+  });
+
+  test('Shift+Tab on the cancel button (first tabbable) wraps to the close button — focus moves + default prevented', async () => {
+    // The cancel button carries autofocus and is the first tabbable element.
+    // Shift+Tab on it must wrap to the last tabbable (the close button).
+    const { container } = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete account?',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Delete',
+        onconfirm: () => {},
+      },
+    });
+
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+
+    const [cancelButton] = footerButtons(container);
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    expect(cancelButton).not.toBeNull();
+    expect(closeButton).not.toBeNull();
+
+    cancelButton.focus();
+    expect(document.activeElement).toBe(cancelButton);
+
+    const result = await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: true });
+
+    expect(result).toBe(false);
+    // Focus wrapped to the last tabbable (the close button).
+    expect(document.activeElement).toBe(closeButton);
+  });
+});

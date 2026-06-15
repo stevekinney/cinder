@@ -1,12 +1,21 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor, fireEvent } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
+
+// `@testing-library/svelte` v5 auto-cleanup does not register under bun:test, so
+// each test's rendered tree would otherwise leak into the shared happy-dom
+// document and interfere with later cases (and other suites). Tear down after
+// every test, matching the rest of the component suites.
+afterEach(() => cleanup());
 const { default: VisuallyHiddenLiveRegion } = await import('./_visually-hidden-live-region.svelte');
+const { default: SameMessageFixture } =
+  await import('./_visually-hidden-live-region.same-message-fixture.svelte');
 
 describe('VisuallyHiddenLiveRegion', () => {
   test('renders a polite role=status region with aria-atomic by default', () => {
@@ -99,5 +108,38 @@ describe('VisuallyHiddenLiveRegion', () => {
     });
     // Confirm the stale 'First' never briefly appeared.
     expect(region()?.textContent?.trim()).toBe('Second');
+  });
+
+  test('re-announces when the parent re-assigns the same $state string (announcementSequence bump)', async () => {
+    // Regression for #400: a consumer (e.g. tag-input adding the same tag twice)
+    // assigns the SAME announcement string to a `$state`. In Svelte 5 that is a
+    // no-op, so without `announcementSequence` the effect never re-runs and the
+    // region is never re-announced. `rerender({ message })` cannot reproduce this
+    // (it drives the prop from outside) — only a real parent holding `$state` does,
+    // hence the fixture.
+    const { container } = render(SameMessageFixture);
+    const region = () => container.querySelector('[role="status"]');
+    const button = container.querySelector('button');
+    expect(button).not.toBeNull();
+
+    // First announcement lands after the blank-then-set setTimeout(0).
+    await fireEvent.click(button as HTMLButtonElement);
+    await waitFor(() => {
+      expect(region()?.textContent?.trim()).toBe('Copied.');
+    });
+
+    // Second click assigns the identical string 'Copied.' again. The sequence bump
+    // re-runs the effect, which blanks the region first. This intermediate blank is
+    // the load-bearing assertion: if the fix is reverted, the effect never runs and
+    // the content stays 'Copied.' — this assertion then fails.
+    await fireEvent.click(button as HTMLButtonElement);
+    await tick();
+    expect(region()?.textContent?.trim()).toBe('');
+
+    // Then the deferred set re-announces the same text, so the AT sees a genuine
+    // content change.
+    await waitFor(() => {
+      expect(region()?.textContent?.trim()).toBe('Copied.');
+    });
   });
 });

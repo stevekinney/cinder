@@ -61,14 +61,19 @@
     }
   }
 
+  /* The root .cinder-event-stream-viewer has `overflow: hidden`; an outset ring
+   * is clipped. Use Strategy B-inset so the ring stays within the button's own
+   * border box. Matches the pattern used by .cinder-drawer__close (drawer.css). */
   .cinder-event-stream-viewer__resume-button:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
   @media (forced-colors: active) {
     .cinder-event-stream-viewer__resume-button:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
     }
   }
 
@@ -156,7 +161,7 @@
   }
 
   .cinder-event-stream-viewer__viewport:focus-visible {
-    box-shadow: inset var(--_cinder-focus-ring-shadow);
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
   @media (forced-colors: active) {

@@ -47,7 +47,7 @@
     'past-due': { tone: 'warning', icon: TriangleAlert, label: 'Past due' },
     canceled: { tone: 'neutral', icon: CircleX, label: 'Canceled' },
     expired: { tone: 'danger', icon: CalendarX, label: 'Expired' },
-    refunded: { tone: 'info', icon: RotateCcw, label: 'Refunded' },
+    refunded: { tone: 'neutral', icon: RotateCcw, label: 'Refunded' },
   };
 
   let { state, class: customClassName, ...rest }: SubscriptionBadgeProps = $props();

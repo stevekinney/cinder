@@ -47,6 +47,7 @@
     role = 'dialog',
     focusManagement = 'panel',
     wireTriggerAria = true,
+    closeOnEscape = true,
     widthMode = 'content',
     class: className,
   }: PopoverProps = $props();
@@ -160,9 +161,15 @@
     // open don't retrigger this effect; positioning rebind is the positioning
     // effect's responsibility.
     resolvedAnchorAtOpen = untrack(() => anchorElement);
-    const releaseEscape = pushEscapeHandler(() => {
-      open = false;
-    });
+    // Skip the Escape registration entirely when a parent owns Escape (e.g.
+    // Combobox passes closeOnEscape={false}); registering here would put the
+    // Popover on top of the shared stack and shadow the parent's handler while
+    // options are visible.
+    const releaseEscape = closeOnEscape
+      ? pushEscapeHandler(() => {
+          open = false;
+        })
+      : () => {};
 
     return () => {
       releaseEscape();

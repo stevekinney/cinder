@@ -2,7 +2,7 @@
 import { join } from 'node:path';
 
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import { _resetEscapeStack, _resetScrollLock, pushEscapeHandler } from '../../_internal/overlay.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -789,6 +789,100 @@ describe('Sheet', () => {
     await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
     expect(siblingEscapeCount).toBe(2);
     releaseSiblingEscape();
+  });
+});
+
+describe('Sheet focus trap', () => {
+  function makeSnippetWithInput() {
+    return createRawSnippet(() => ({
+      render: () => `<input type="text" data-testid="sheet-input" />`,
+      setup: () => {},
+    }));
+  }
+
+  // DOM order inside the panel: the close button lives in the <header> first,
+  // then the body <input>. So the close button is the FIRST tabbable and the
+  // input is the LAST — asserting exact wrap destinations (not mere panel
+  // containment, which is already true before the event) makes these tests fail
+  // if the shared trap is removed or its boundary logic breaks.
+  //
+  // Each test `await tick()`s after render: on open, the sheet defers its own
+  // initial focus to the body via `tick().then(() => bodyElement.focus())`. That
+  // microtask must drain BEFORE we exercise the trap, otherwise it races in
+  // during the `await fireEvent` and clobbers the trap's wrap destination. In
+  // real usage the deferred focus has long settled before a user tabs.
+  test('Tab from the last focusable element wraps to the first and prevents default', async () => {
+    const { container } = render(Sheet, {
+      props: {
+        open: true,
+        title: 'Test Sheet',
+        children: makeSnippetWithInput(),
+      },
+    });
+    await tick();
+
+    const panel = container.querySelector('.cinder-sheet__panel') as HTMLElement;
+    const closeButton = container.querySelector('.cinder-sheet__close') as HTMLElement;
+    const input = container.querySelector('input[data-testid="sheet-input"]') as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(closeButton).not.toBeNull();
+    expect(input).not.toBeNull();
+
+    // The input is the LAST tabbable (close button is first, in the header).
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    const result = await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: false });
+
+    // Trap intercepted the boundary Tab and wrapped focus to the first tabbable.
+    expect(result).toBe(false); // fireEvent returns false when preventDefault was called
+    expect(document.activeElement).toBe(closeButton);
+  });
+
+  test('Shift+Tab from the first focusable element wraps to the last and prevents default', async () => {
+    const { container } = render(Sheet, {
+      props: {
+        open: true,
+        title: 'Test Sheet',
+        children: makeSnippetWithInput(),
+      },
+    });
+    await tick();
+
+    const panel = container.querySelector('.cinder-sheet__panel') as HTMLElement;
+    const closeButton = container.querySelector('.cinder-sheet__close') as HTMLElement;
+    const input = container.querySelector('input[data-testid="sheet-input"]') as HTMLElement;
+
+    // The close button is the FIRST tabbable (header precedes the body input).
+    closeButton.focus();
+    expect(document.activeElement).toBe(closeButton);
+
+    const result = await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: true });
+
+    expect(result).toBe(false);
+    expect(document.activeElement).toBe(input);
+  });
+
+  test('document.body never receives focus while tabbing inside an open sheet', async () => {
+    const { container } = render(Sheet, {
+      props: {
+        open: true,
+        title: 'Test Sheet',
+        children: makeSnippetWithInput(),
+      },
+    });
+    await tick();
+
+    const panel = container.querySelector('.cinder-sheet__panel') as HTMLElement;
+    const input = container.querySelector('input[data-testid="sheet-input"]') as HTMLElement;
+    input.focus();
+
+    // Tab repeatedly from the boundary — focus must never escape to the body.
+    for (let i = 0; i < 5; i++) {
+      await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: false });
+      expect(document.activeElement).not.toBe(document.body);
+      expect(panel.contains(document.activeElement)).toBe(true);
+    }
   });
 });
 

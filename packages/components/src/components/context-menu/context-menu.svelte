@@ -146,10 +146,14 @@
     get disabled() {
       return disabled;
     },
+    get isOpen() {
+      return open;
+    },
     get longPressDelay() {
       return longPressDelay;
     },
     openAt,
+    close,
   });
 
   $effect(() => {

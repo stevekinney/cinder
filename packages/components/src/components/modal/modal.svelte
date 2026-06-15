@@ -25,6 +25,7 @@
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
+  import { createFocusTrap } from '../focus-trap/index.ts';
 
   const titleId = $props.id();
 
@@ -202,7 +203,24 @@
     oncancel={handleNativeCancel}
   >
     {#if open}
-      <div class="cinder-modal__panel">
+      <!--
+        The native <dialog> opened with showModal() already traps focus in
+        supporting browsers. The shared focus-trap is a defence-in-depth fallback
+        that keeps Tab / Shift+Tab cycling inside the panel; it carefully filters
+        hidden/inert/disabled/`tabindex="-1"` elements. Modal owns its own initial
+        focus (the body container, below) and focus restoration (returnFocus), so
+        the trap runs with `manageInitialFocus: false` and `restoreFocus: false` —
+        without the former the trap would yank focus off the body onto the close
+        button on the next microtask.
+      -->
+      <div
+        class="cinder-modal__panel"
+        {@attach createFocusTrap({
+          active: () => open,
+          restoreFocus: false,
+          manageInitialFocus: false,
+        })}
+      >
         <div class="cinder-modal__header">
           <h2 id={titleId} class="cinder-modal__title">{title}</h2>
         </div>

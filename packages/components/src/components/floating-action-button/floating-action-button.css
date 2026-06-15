@@ -41,7 +41,8 @@
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--_cinder-fab-ring, var(--cinder-ring-color)),
       var(--_cinder-fab-elevation);
   }
 
@@ -119,6 +120,7 @@
 
   /* primary — accent fill with contrast foreground */
   .cinder-fab[data-cinder-color='primary'] {
+    --_cinder-fab-ring: var(--cinder-ring-on-accent);
     background: var(--cinder-accent);
     color: var(--cinder-accent-contrast);
   }

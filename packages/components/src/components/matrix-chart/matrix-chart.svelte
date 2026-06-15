@@ -200,6 +200,15 @@
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
 
+  // Pointer hover tracking: the key of the cell under the pointer, or null.
+  // Each cell rect sets this on pointerenter; the plot group clears it on leave.
+  // Hovering a cell also surfaces its native <title> (the value-on-hover tooltip).
+  let hoveredCellKey = $state<string | null>(null);
+
+  function handlePlotPointerLeave(): void {
+    hoveredCellKey = null;
+  }
+
   // Table rows for the data table fallback: xLabel × yLabel grid. Reuses the
   // nested lookup (O(1) per cell) instead of scanning the flattened cells array.
   const tableRows = $derived.by(() => {
@@ -252,7 +261,14 @@
            heatmap cells/labels would draw under the loading or empty overlay
            (data may be present while loading, so isEmpty alone is not enough). -->
       {#if !loading && !isEmpty}
-        <g transform={`translate(${marginLeft}, ${marginTop})`}>
+        <!-- Clearing on plot-level leave (not per-cell) avoids a stale highlight
+             flickering at the sub-pixel seams between cells, whose dimensions are
+             fractional (plotWidth / xLabels.length). -->
+        <g
+          role="presentation"
+          transform={`translate(${marginLeft}, ${marginTop})`}
+          onpointerleave={handlePlotPointerLeave}
+        >
           <!-- X-axis labels (column headers) -->
           {#each xLabels as xLabel, index (xLabel)}
             <text
@@ -286,6 +302,8 @@
                 aria-hidden="true"
                 data-cinder-x={cell.xLabel}
                 data-cinder-y={cell.yLabel}
+                data-cinder-active={hoveredCellKey === cell.key ? '' : undefined}
+                onpointerenter={() => (hoveredCellKey = cell.key)}
               >
                 <title
                   >{cell.xLabel} × {cell.yLabel}: {cell.value !== null

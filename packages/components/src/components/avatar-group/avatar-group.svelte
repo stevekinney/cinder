@@ -35,10 +35,25 @@
     size = 'md',
     shape = 'circle',
     overflowLabel,
+    label = 'Collaborators',
+    'aria-label': consumerAriaLabel,
     class: className,
     style,
     ...rest
   }: AvatarGroupProps = $props();
+
+  // A consumer-provided `aria-label` wins over the `label` default; destructuring
+  // it out of `rest` (rather than letting `{...rest}` spread it) lets us resolve
+  // the accessible name explicitly instead of having the hard-coded default
+  // silently clobber it after the spread. An empty or whitespace-only
+  // `aria-label` is treated as absent (rendering `aria-label=""` would suppress
+  // the accessible-name computation per ARIA §4.3.2 without naming the region),
+  // so it falls back to `label` rather than producing a nameless `role="list"`.
+  const accessibleName = $derived(
+    typeof consumerAriaLabel === 'string' && consumerAriaLabel.trim().length > 0
+      ? consumerAriaLabel
+      : label,
+  );
 
   const normalizedMaxVisible = $derived(normalizeMaxVisible(maxVisible));
   const visibleCount = $derived(Math.min(normalizedMaxVisible, avatars.length));
@@ -121,6 +136,7 @@
   class={classNames('cinder-avatar-group', className)}
   style={rootStyle}
   role="list"
+  aria-label={accessibleName}
   data-cinder-size={size}
   data-cinder-shape={shape}
   data-cinder-z-order={zOrder}

@@ -15,7 +15,7 @@ class TestResizeObserver {
 const originalResizeObserver = globalThis.ResizeObserver;
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
 
-const { cleanup, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: MatrixChart } = await import('./matrix-chart.svelte');
 
 afterEach(() => cleanup());
@@ -291,5 +291,63 @@ describe('MatrixChart', () => {
     const tableText = container.querySelector('table')?.textContent ?? '';
     expect(tableText).toContain('11');
     expect(tableText).toContain('22');
+  });
+
+  test('pointer enter on a cell marks it data-cinder-active and leaving the plot clears it', async () => {
+    const { container } = render(MatrixChart, {
+      label: 'Confusion matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+    });
+
+    // Before hover: no cell is active.
+    expect(container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]')).toBeNull();
+
+    // Pointer enters the first cell directly — no overlay intercepting, so the
+    // cell's own native <title> (the value-on-hover tooltip) stays reachable.
+    const firstCell = container.querySelector('.cinder-matrix-chart__cell') as SVGRectElement;
+    expect(firstCell).not.toBeNull();
+    await fireEvent.pointerEnter(firstCell);
+
+    const activeCell = container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]');
+    expect(activeCell).toBe(firstCell);
+    // The first cell is the first predicted (x) × first actual (y) combination.
+    // `confusionData` lists Cat before Dog for both fields, so the first cell is
+    // Cat × Cat. Asserting the exact coordinates (not merely truthy) pins which
+    // cell the pointer handler activated — a regression that activated the wrong
+    // cell, or dropped the coordinate data attributes, would fail here.
+    expect(activeCell?.getAttribute('data-cinder-x')).toBe('Cat');
+    expect(activeCell?.getAttribute('data-cinder-y')).toBe('Cat');
+
+    // Leaving the plot group (the presentation <g> that owns onpointerleave)
+    // clears the active cell.
+    const plotGroup = firstCell.closest('g[role="presentation"]');
+    expect(plotGroup).not.toBeNull();
+    await fireEvent.pointerLeave(plotGroup as SVGGElement);
+    expect(container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]')).toBeNull();
+  });
+
+  test('each cell carries a native <title> so pointer users get value-on-hover', () => {
+    const { container } = render(MatrixChart, {
+      label: 'Confusion matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+    });
+    const cells = container.querySelectorAll('.cinder-matrix-chart__cell');
+    expect(cells.length).toBeGreaterThan(0);
+    // Every cell owns a <title> child — the affordance an intercepting overlay
+    // would have hidden from pointer hover. The text mirrors the formatted value.
+    for (const cell of cells) {
+      expect(cell.querySelector('title')?.textContent).toContain('×');
+    }
+  });
+
+  test('matrix-chart CSS has a rule for data-cinder-active', async () => {
+    const cssText = await Bun.file(new URL('./matrix-chart.css', import.meta.url)).text();
+    expect(cssText).toContain('.cinder-matrix-chart__cell[data-cinder-active]');
   });
 });

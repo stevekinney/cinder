@@ -24,6 +24,33 @@ describe('JsonViewer', () => {
     expect(labels).toContain('age:');
   });
 
+  test('key label for an expandable node sits INSIDE the toggle button (focus ring covers the full row)', () => {
+    // The nested object means the root is expandable. Its key label (the property
+    // name) must be a child of the .cinder-json-viewer__toggle button so that
+    // the focus ring drawn on the button surrounds the key text as well.
+    const { container } = render(JsonViewer, { value: { config: { a: 1 } } });
+    // Find the toggle button for the nested expandable node whose key is "config"
+    const toggleButtons = Array.from(container.querySelectorAll('.cinder-json-viewer__toggle'));
+    const configButton = toggleButtons.find((button) =>
+      button.querySelector('.cinder-json-viewer__key')?.textContent?.trim() === 'config:',
+    );
+    expect(configButton).not.toBeNull();
+    // The key span must be a DESCENDANT of the button, not a sibling
+    const keySpan = configButton?.querySelector('.cinder-json-viewer__key');
+    expect(keySpan).not.toBeNull();
+    expect(keySpan?.textContent?.trim()).toBe('config:');
+  });
+
+  test('toggle button aria-label includes the key name for an expandable node', () => {
+    const { container } = render(JsonViewer, { value: { items: [1, 2, 3] } });
+    const toggleButtons = Array.from(container.querySelectorAll('.cinder-json-viewer__toggle'));
+    const itemsButton = toggleButtons.find((button) =>
+      button.getAttribute('aria-label')?.startsWith('items:'),
+    );
+    expect(itemsButton).not.toBeNull();
+    expect(itemsButton?.getAttribute('aria-label')).toBe('items: array, 3 items');
+  });
+
   test('renders an array with index labels', () => {
     const { container } = render(JsonViewer, { value: [10, 20, 30] });
     const keys = Array.from(container.querySelectorAll('.cinder-json-viewer__key'));

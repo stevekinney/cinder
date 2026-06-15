@@ -42,6 +42,19 @@ const fallbackFocusChildren = createRawSnippet(() => ({
   render: () => '<div data-testid="fallback-target" tabindex="-1">Fallback</div>',
 }));
 
+// A `tabindex="-2"` element is programmatically focusable but NOT reachable via
+// sequential Tab. It is placed AFTER the real last button so that, if the trap
+// wrongly counted it as tabbable, it would become the "last" boundary element.
+const negativeTabindexChildren = createRawSnippet(() => ({
+  render: () => `
+    <div>
+      <button data-testid="first-button">First</button>
+      <button data-testid="last-button">Last</button>
+      <div data-testid="negative-tabindex" tabindex="-2">Not tabbable</div>
+    </div>
+  `,
+}));
+
 beforeEach(() => {
   document.body.replaceChildren();
 });
@@ -80,6 +93,26 @@ describe('FocusTrap', () => {
     await fireEvent.keyDown(first, { key: 'Tab', shiftKey: true, bubbles: true });
 
     expect(document.activeElement).toBe(last);
+  });
+
+  test('excludes negative tabindex (other than -1) from the tab-wrap boundary', async () => {
+    // Regression: the tabbable filter rejected only `tabindex="-1"`, so a
+    // `tabindex="-2"` element after the last button was counted as the "last"
+    // tabbable and corrupted the wrap boundary. Tab from the real last button
+    // must still wrap to first, and the negative-tabindex node never gets focus.
+    const { getByTestId } = render(FocusTrap, {
+      props: { children: negativeTabindexChildren },
+    });
+
+    const first = getByTestId('first-button') as HTMLButtonElement;
+    const last = getByTestId('last-button') as HTMLButtonElement;
+    await tick();
+    last.focus();
+
+    await fireEvent.keyDown(last, { key: 'Tab' });
+
+    expect(document.activeElement).toBe(first);
+    expect(document.activeElement).not.toBe(getByTestId('negative-tabindex'));
   });
 
   test('restores focus to the previously focused element on teardown', async () => {

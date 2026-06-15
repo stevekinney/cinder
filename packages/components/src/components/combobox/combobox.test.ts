@@ -2,6 +2,7 @@
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { tick } from 'svelte';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -17,6 +18,7 @@ const {
   cleanup,
 } = await import('@testing-library/svelte');
 const { default: Combobox } = await import('./combobox.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // These tests render into the shared `document.body` (see `render` below). The
 // listbox opens on focus through Svelte effects, so options are not guaranteed
@@ -29,7 +31,12 @@ const { default: Combobox } = await import('./combobox.svelte');
 // `replaceChildren()` before each test additionally wipes any listbox nodes a
 // prior test left appended to `document.body` that `cleanup()` doesn't track,
 // so `findOption` can never match a stale option from another test.
-beforeEach(() => document.body.replaceChildren());
+beforeEach(() => {
+  document.body.replaceChildren();
+  // Clear the shared module-level escape stack so a sibling-overlay handler
+  // registered by one test can't leak into the next and skew the LIFO order.
+  _resetEscapeStack();
+});
 afterEach(() => cleanup());
 
 const fruits = [
@@ -507,5 +514,178 @@ describe('Combobox rich option rows', () => {
         'Banana',
       );
     });
+  });
+});
+
+describe('Combobox Escape restores committed label', () => {
+  const escapeFruits = [
+    { label: 'Apple', value: 'apple' },
+    { label: 'Banana', value: 'banana' },
+    { label: 'Cherry', value: 'cherry' },
+  ];
+
+  test('Escape restores inputValue to the committed option label when the dropdown is open with partial text', async () => {
+    const { container } = render(Combobox, { id: 'escape-test', options: escapeFruits });
+    const input = container.querySelector('#escape-test') as HTMLInputElement;
+
+    // Open the dropdown and select Apple
+    input.focus();
+    await fireEvent.focus(input);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    expect(input.value).toBe('Apple');
+
+    // Type partial text to open the dropdown again
+    await fireEvent.input(input, { target: { value: 'ban' } });
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+
+    // Press Escape — should restore to committed label 'Apple'
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await tick();
+    // After Escape, input should show the committed label
+    expect(input.value).toBe('Apple');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('Escape clears inputValue when no option has been committed', async () => {
+    const { container } = render(Combobox, { id: 'escape-empty', options: escapeFruits });
+    const input = container.querySelector('#escape-empty') as HTMLInputElement;
+
+    // Type something without selecting to open the dropdown
+    input.focus();
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'ban' } });
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+
+    // Press Escape — should clear since nothing was committed
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await tick();
+    // input.value should be '' since committedLabel defaults to ''
+    expect(input.value).toBe('');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('Escape restores the label of a value committed via the value prop (no desync)', async () => {
+    // Regression: the value-sync effect set `committedLabel` only when it ALSO
+    // had to change `inputValue`. With value+inputValue pre-supplied to the same
+    // label, `committedLabel` stayed '' and Escape wrongly cleared the input.
+    const { container } = render(Combobox, {
+      id: 'escape-prefilled',
+      options: escapeFruits,
+      value: 'banana',
+      inputValue: 'Banana',
+    });
+    const input = container.querySelector('#escape-prefilled') as HTMLInputElement;
+    await tick();
+    expect(input.value).toBe('Banana');
+
+    // Edit to dirty the input, then Escape — should restore to the committed
+    // label 'Banana', not clear to ''.
+    input.focus();
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'Ban' } });
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await tick();
+    expect(input.value).toBe('Banana');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('Escape closes an open combobox even when every option is filtered away', async () => {
+    // Regression: when the input filters out all options the Popover does not
+    // mount, so its capture-phase escape-stack handler is absent. Escape must
+    // still close the combobox directly rather than leaving it stuck open.
+    const { container } = render(Combobox, { id: 'escape-no-popover', options: escapeFruits });
+    const input = container.querySelector('#escape-no-popover') as HTMLInputElement;
+
+    input.focus();
+    await fireEvent.focus(input);
+    // Type text matching no option — the empty state activates and the option
+    // Popover (gated on filteredOptions.length > 0) does not render.
+    await fireEvent.input(input, { target: { value: 'zzz' } });
+    await waitForListbox();
+    expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull();
+
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await tick();
+    // The combobox is closed: the active empty-state marker is gone.
+    expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).toBeNull();
+  });
+
+  test('nested in an overlay, Escape closes only the combobox and is swallowed (zero filtered options)', async () => {
+    // Regression for the escape-stack ownership contract. A parent overlay
+    // (Modal/Sheet/etc.) registers its escape handler first. The combobox then
+    // opens and — because it pushes its own handler whenever open and its
+    // Popover opts out via closeOnEscape={false} — must sit on top of the LIFO
+    // stack. The window listener is capture-phase and invokes ONLY the topmost
+    // handler, so Escape must route to the combobox, never the parent. The
+    // combobox must also preventDefault so the same keystroke can't bubble to a
+    // page-level default. The empty-filter state is the hardest case: the
+    // Popover is unmounted there, so without the always-on registration the
+    // parent would win.
+    let parentEscapeCount = 0;
+    const releaseParentEscape = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = render(Combobox, { id: 'escape-nested', options: escapeFruits });
+      const input = container.querySelector('#escape-nested') as HTMLInputElement;
+
+      input.focus();
+      await fireEvent.focus(input);
+      // Filter every option away so the Popover does not mount — the gap state.
+      await fireEvent.input(input, { target: { value: 'zzz' } });
+      await waitForListbox();
+      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull();
+
+      // Dispatch a cancelable, bubbling Escape so the capture-phase window
+      // listener receives it and `defaultPrevented` is observable afterward.
+      const escapeEvent = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      input.dispatchEvent(escapeEvent);
+      await tick();
+
+      // The combobox consumed and swallowed the key...
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      // ...closed itself...
+      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).toBeNull();
+      // ...and the parent overlay's handler never fired (combobox was topmost).
+      expect(parentEscapeCount).toBe(0);
+    } finally {
+      releaseParentEscape();
+    }
+  });
+
+  test('blur restores the committed label when the live text drifted (no stale edit left behind)', async () => {
+    // Regression: blurring after editing a committed selection (tab/click away
+    // without choosing an option) must restore the committed label, mirroring
+    // Escape — otherwise the input shows stale text while `value` is unchanged.
+    const { container } = render(Combobox, { id: 'blur-restore', options: escapeFruits });
+    const input = container.querySelector('#blur-restore') as HTMLInputElement;
+
+    // Commit Apple.
+    input.focus();
+    await fireEvent.focus(input);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    expect(input.value).toBe('Apple');
+
+    // Dirty the input, then blur to nowhere (relatedTarget outside the listbox).
+    await fireEvent.input(input, { target: { value: 'App' } });
+    expect(input.value).toBe('App');
+    await fireEvent.blur(input, { relatedTarget: null });
+    await tick();
+
+    // The stale edit is gone; the committed label is restored.
+    expect(input.value).toBe('Apple');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
 });

@@ -375,3 +375,92 @@ test.describe('Tabs — focus-visible ring is complete and unclipped in the tab 
     expect(metrics.resolvedRingColor).toBe(ringColor);
   });
 });
+
+/**
+ * Regression test for #402 — "Active tab font-weight shift causes sibling tabs
+ * to jump laterally on selection."
+ *
+ * The fix moves `font-weight: var(--cinder-font-medium)` from the
+ * `.cinder-tab[data-cinder-active]` rule to the base `.cinder-tab` rule, so the
+ * weight is constant and activation no longer reflows the row. A unit test can
+ * only assert the CSS shape (happy-dom does no layout); this spec proves the
+ * BEHAVIOUR in a real browser by measuring an inactive sibling tab's
+ * `offsetWidth` before and after a different tab is activated and asserting it
+ * does not change.
+ *
+ * Pre-fix, activating a sibling promoted that tab to weight 500, which widened
+ * it and pushed the row — the measured inactive tab's `offsetWidth` shifted by
+ * 1-3px and this assertion fails.
+ */
+test.describe('Tabs — activating a tab does not reflow sibling widths (regression #402)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(TABS_ROUTE, { waitUntil: 'load' });
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector(`${HORIZONTAL_LIST} .cinder-tab`, { state: 'visible' });
+    await page.waitForFunction((selector) => {
+      const tab = document.querySelector(`${selector} .cinder-tab`);
+      return tab instanceof HTMLElement && tab.getBoundingClientRect().width > 0;
+    }, HORIZONTAL_LIST);
+  });
+
+  test('an inactive sibling tab keeps its offsetWidth when another tab is activated', async ({
+    page,
+  }) => {
+    // Read every tab's label + offsetWidth, plus which tab is currently active.
+    const readTabs = () =>
+      page.evaluate((selector) => {
+        const list = document.querySelector(selector);
+        if (!(list instanceof HTMLElement)) throw new Error(`No list ${selector}`);
+        const tabs = Array.from(list.querySelectorAll('.cinder-tab')).filter(
+          (tab): tab is HTMLElement => tab instanceof HTMLElement,
+        );
+        return tabs.map((tab) => ({
+          label: tab.textContent?.trim() ?? '',
+          width: tab.offsetWidth,
+          active: tab.getAttribute('data-cinder-active') !== null,
+          disabled: tab.hasAttribute('disabled') || tab.getAttribute('aria-disabled') === 'true',
+        }));
+      }, HORIZONTAL_LIST);
+
+    const before = await readTabs();
+    expect(before.length, 'expected multiple tabs to measure').toBeGreaterThan(1);
+
+    // Pick an INACTIVE, enabled tab to watch, and a DIFFERENT enabled tab to activate.
+    const watched = before.find((tab) => !tab.active && !tab.disabled);
+    const toActivate = before.find(
+      (tab) => !tab.disabled && tab.label !== watched?.label && !tab.active,
+    );
+    expect(watched, 'need an inactive enabled tab to watch').toBeTruthy();
+    expect(toActivate, 'need a second enabled tab to activate').toBeTruthy();
+
+    // Activate the other tab by clicking it (selection, not just focus). Scope
+    // the locator to the horizontal list: /page/tabs mounts a second (vertical)
+    // tab list that reuses the same labels, so a page-global getByRole('tab')
+    // resolves to two elements and trips Playwright strict mode.
+    await page
+      .locator(HORIZONTAL_LIST)
+      .getByRole('tab', { name: toActivate!.label, exact: true })
+      .click();
+    await page.waitForFunction(
+      ({ selector, label }) => {
+        const list = document.querySelector(selector);
+        if (!(list instanceof HTMLElement)) return false;
+        const active = list.querySelector('.cinder-tab[data-cinder-active]');
+        return active instanceof HTMLElement && active.textContent?.trim() === label;
+      },
+      { selector: HORIZONTAL_LIST, label: toActivate!.label },
+    );
+
+    const after = await readTabs();
+    const watchedAfter = after.find((tab) => tab.label === watched!.label);
+    expect(watchedAfter, 'watched tab disappeared after activation').toBeTruthy();
+
+    // The load-bearing assertion: the watched inactive tab's width must be
+    // unchanged. Pre-fix, the newly-active sibling widened and reflowed the row,
+    // shifting this width by 1-3px.
+    expect(
+      watchedAfter!.width,
+      `inactive tab "${watched!.label}" offsetWidth changed on sibling activation (jank)`,
+    ).toBe(watched!.width);
+  });
+});

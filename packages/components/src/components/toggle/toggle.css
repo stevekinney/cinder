@@ -64,7 +64,7 @@
     vertical-align: middle;
 
     /* Track background — unset (off) state. */
-    background: var(--cinder-toggle-track-off, var(--cinder-border-muted));
+    background: var(--cinder-toggle-track-off, var(--cinder-toggle-track-off-resting));
 
     transition:
       background-color var(--cinder-duration-fast, 150ms) var(--cinder-ease-standard, ease),
@@ -107,7 +107,10 @@
 
   @media (hover: hover) {
     .cinder-toggle:hover:not(:disabled) {
-      background: var(--cinder-toggle-track-off-hover, var(--cinder-border));
+      background: var(
+        --cinder-toggle-track-off-hover,
+        var(--cinder-toggle-track-off-hover-resting)
+      );
     }
 
     .cinder-toggle[data-cinder-checked]:hover:not(:disabled) {

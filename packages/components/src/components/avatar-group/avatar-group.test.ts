@@ -364,3 +364,67 @@ describe('AvatarGroup', () => {
     expect(RootAvatarGroup).toBe(AvatarGroup);
   });
 });
+
+describe('AvatarGroup accessible name', () => {
+  test('root list carries aria-label defaulting to Collaborators', () => {
+    const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
+    const list = container.querySelector('[role="list"]');
+    expect(list?.getAttribute('aria-label')).toBe('Collaborators');
+  });
+
+  test('label prop overrides default accessible name', () => {
+    const { container } = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 2),
+      label: 'Team members',
+    });
+    const list = container.querySelector('[role="list"]');
+    expect(list?.getAttribute('aria-label')).toBe('Team members');
+  });
+
+  test('an explicit consumer aria-label wins over the label default', () => {
+    // ARIA passthrough must work: a consumer-provided aria-label is the
+    // accessible name, not silently clobbered by the 'Collaborators' default.
+    const { container } = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 1),
+      'aria-label': 'Project team',
+    });
+    const list = container.querySelector('[role="list"]');
+    expect(list?.getAttribute('aria-label')).toBe('Project team');
+  });
+
+  test('an explicit aria-label also wins over an explicit label prop', () => {
+    // When both are supplied, the consumer's raw ARIA value takes precedence —
+    // aria-label is the lower-level escape hatch and should not be overridable
+    // by the component's higher-level `label` convenience prop.
+    const { container } = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 1),
+      label: 'Team members',
+      'aria-label': 'Project team',
+    });
+    const list = container.querySelector('[role="list"]');
+    expect(list?.getAttribute('aria-label')).toBe('Project team');
+  });
+
+  // Regression: an empty or whitespace-only consumer aria-label must be treated
+  // as absent and fall back to `label`. Rendering aria-label="" suppresses the
+  // accessible-name computation (ARIA §4.3.2) without naming the region, leaving
+  // a nameless role="list".
+  test('an empty or whitespace-only aria-label falls back to the label', () => {
+    const empty = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 1),
+      'aria-label': '',
+    });
+    expect(empty.container.querySelector('[role="list"]')?.getAttribute('aria-label')).toBe(
+      'Collaborators',
+    );
+
+    const whitespace = render(AvatarGroup, {
+      avatars: collaborators.slice(0, 1),
+      label: 'Team members',
+      'aria-label': '   ',
+    });
+    expect(whitespace.container.querySelector('[role="list"]')?.getAttribute('aria-label')).toBe(
+      'Team members',
+    );
+  });
+});

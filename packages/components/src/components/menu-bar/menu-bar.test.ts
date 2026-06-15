@@ -277,6 +277,55 @@ describe('MenuBar', () => {
     expect(file.getAttribute('aria-expanded')).toBe('false');
   });
 
+  test('Escape closes the open top-level menu when focus is on the trigger button', async () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const fileButton = getByRole('menuitem', { name: 'File' });
+
+    // Open the File menu
+    await fireEvent.click(fileButton);
+    await tick();
+    expect(fileButton.getAttribute('aria-expanded')).toBe('true');
+
+    // Press Escape while focus is on the trigger button
+    await fireEvent.keyDown(fileButton, { key: 'Escape' });
+    await tick();
+    expect(fileButton.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('Escape on a closed menubar item is not consumed, so enclosing handlers still run', async () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const fileButton = getByRole('menuitem', { name: 'File' });
+    fileButton.focus();
+    expect(fileButton.getAttribute('aria-expanded')).toBe('false');
+
+    // Construct a cancelable KeyboardEvent so we can assert `defaultPrevented`
+    // after dispatch. With nothing open, the menu bar must let Escape through —
+    // calling preventDefault here would swallow it from an enclosing overlay or
+    // page-level Escape handler.
+    const closedEscape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    fileButton.dispatchEvent(closedEscape);
+    await tick();
+    expect(closedEscape.defaultPrevented).toBe(false);
+
+    // Open the menu, then Escape IS consumed (it has something to close).
+    await fireEvent.click(fileButton);
+    await tick();
+    expect(fileButton.getAttribute('aria-expanded')).toBe('true');
+    const openEscape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    fileButton.dispatchEvent(openEscape);
+    await tick();
+    expect(openEscape.defaultPrevented).toBe(true);
+    expect(fileButton.getAttribute('aria-expanded')).toBe('false');
+  });
+
   test('reuses dropdown primitives instead of copying their markup classes', async () => {
     const source = await Bun.file(new URL('./menu-bar.svelte', import.meta.url)).text();
 

@@ -895,3 +895,129 @@ describe('Modal', () => {
     expect(container.querySelector('.cinder-modal__close')).toBeNull();
   });
 });
+
+describe('Modal focus containment', () => {
+  // The <dialog> element natively traps focus via its showModal() API in real browsers.
+  // The modal also uses a `tabWrap` attachment on the panel that intercepts Tab/Shift+Tab
+  // keystrokes to keep focus within the panel, providing defense-in-depth for environments
+  // where the native dialog focus trap is not available (e.g. happy-dom in tests).
+
+  test('panel is rendered while open', () => {
+    const { container } = render(Modal, {
+      props: { open: true, title: 'Focus test', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-modal__panel')).not.toBeNull();
+  });
+
+  test('dialog carries aria-modal="true" to signal focus containment to AT', () => {
+    const { container } = render(Modal, {
+      props: { open: true, title: 'Focus test', children: emptySnippet },
+    });
+    expect(container.querySelector('dialog')?.getAttribute('aria-modal')).toBe('true');
+  });
+
+  test('Tab on the last focusable element wraps back to the first (focus moves + default prevented)', async () => {
+    // The trap attaches a keydown listener to the panel that intercepts Tab when
+    // document.activeElement is the last tabbable element. Asserting BOTH that
+    // preventDefault() fired AND that focus actually landed on the first tabbable
+    // makes this fail if the trap is removed or wraps to the wrong boundary —
+    // `defaultPrevented` alone would still pass with a no-op handler that never
+    // moves focus.
+    const childrenWithButtons = createRawSnippet(() => ({
+      render: () =>
+        `<div><button id="inner-first">First</button><button id="inner-second">Second</button></div>`,
+      setup: () => {},
+    }));
+
+    const { container } = render(Modal, {
+      props: { open: true, title: 'Trap test', children: childrenWithButtons },
+    });
+
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+
+    const firstButton = container.querySelector('#inner-first') as HTMLButtonElement;
+    // The close button is rendered last in DOM order, so it is the LAST tabbable.
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    expect(firstButton).not.toBeNull();
+    expect(closeButton).not.toBeNull();
+
+    // Move focus to the close button (last tabbable element) and Tab forward.
+    closeButton.focus();
+    expect(document.activeElement).toBe(closeButton);
+
+    const result = await fireEvent.keyDown(panel, { key: 'Tab' });
+
+    // fireEvent returns false when the handler called preventDefault().
+    expect(result).toBe(false);
+    // Focus wrapped to the first tabbable, never escaping to <body>.
+    expect(document.activeElement).toBe(firstButton);
+  });
+
+  test('Shift+Tab on the first focusable element wraps to the last (focus moves + default prevented)', async () => {
+    // Children render two buttons; with the close button rendered last, the tab
+    // order is inner-first → inner-second → close. Shift+Tab from inner-first
+    // (the first tabbable) must wrap to the close button (the last tabbable).
+    const childrenWithButtons = createRawSnippet(() => ({
+      render: () =>
+        `<div><button id="inner-first">First</button><button id="inner-second">Second</button></div>`,
+      setup: () => {},
+    }));
+
+    const { container } = render(Modal, {
+      props: { open: true, title: 'Trap test', children: childrenWithButtons },
+    });
+
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+
+    // The body container has tabindex="-1" and is not in the tabbable set.
+    const firstButton = container.querySelector('#inner-first') as HTMLButtonElement;
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    expect(firstButton).not.toBeNull();
+    expect(closeButton).not.toBeNull();
+
+    // Move focus to the first tabbable element and Shift+Tab backward.
+    firstButton.focus();
+    expect(document.activeElement).toBe(firstButton);
+
+    const result = await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: true });
+
+    expect(result).toBe(false);
+    // Focus wrapped to the last tabbable (the close button).
+    expect(document.activeElement).toBe(closeButton);
+  });
+
+  test('focus trap is inactive when modal is closed — Tab events are not intercepted', async () => {
+    // When open=false, the panel is unmounted and the trap is torn down. A Tab event
+    // dispatched before opening must pass through without preventDefault().
+    const { container } = render(Modal, {
+      props: { open: false, title: 'Trap test', children: emptySnippet },
+    });
+
+    // With open=false the panel is absent — no focus trap is active.
+    const panel = container.querySelector('.cinder-modal__panel');
+    expect(panel).toBeNull();
+  });
+
+  test('focus trap wraps even when modal has no explicit children buttons (uses close button)', async () => {
+    // The close button is always the last tabbable element. The body (tabindex=-1) is programmatically
+    // focusable but not tabbable. So with no children buttons, the close button IS both first and last.
+    const { container } = render(Modal, {
+      props: { open: true, title: 'Trap test', children: emptySnippet },
+    });
+
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    expect(closeButton).not.toBeNull();
+
+    // Focus the only tabbable element (close button).
+    closeButton.focus();
+
+    // Tab forward should wrap (preventDefault), since close is also the first element.
+    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    panel.dispatchEvent(tabEvent);
+
+    expect(tabEvent.defaultPrevented).toBe(true);
+  });
+});

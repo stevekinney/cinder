@@ -23,7 +23,8 @@
   }
 
   .cinder-spectrogram__cell {
-    stroke: none;
+    stroke: color-mix(in oklch, var(--cinder-text), transparent 88%);
+    stroke-width: 0.5;
   }
 
   .cinder-spectrogram__tick-label {

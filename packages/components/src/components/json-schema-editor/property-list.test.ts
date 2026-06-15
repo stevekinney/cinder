@@ -1,12 +1,18 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: PropertyList } = await import('./property-list.svelte');
+
+// @testing-library/svelte v5's auto-cleanup does not register under bun:test (no
+// global afterEach), so unmount the rendered list after each test. Without this
+// the mounted list leaks into the shared happy-dom document.body and sibling
+// files (e.g. json-schema-editor.test.ts) see duplicate elements.
+afterEach(() => cleanup());
 
 describe('PropertyList', () => {
   test('can add the first required-only property name', async () => {

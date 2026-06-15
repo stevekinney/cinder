@@ -28,6 +28,10 @@
     stroke-width: 1.5;
   }
 
+  .cinder-matrix-chart__cell[data-cinder-active] {
+    filter: brightness(1.15);
+  }
+
   .cinder-matrix-chart__cell-label {
     font-size: var(--cinder-text-xs);
     pointer-events: none;

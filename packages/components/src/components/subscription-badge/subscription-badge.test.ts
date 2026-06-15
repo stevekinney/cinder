@@ -21,7 +21,7 @@ const STATE_TABLE: Record<SubscriptionState, { tone: string; label: string }> = 
   'past-due': { tone: 'warning', label: 'Past due' },
   canceled: { tone: 'neutral', label: 'Canceled' },
   expired: { tone: 'danger', label: 'Expired' },
-  refunded: { tone: 'info', label: 'Refunded' },
+  refunded: { tone: 'neutral', label: 'Refunded' },
 };
 
 const ALL_STATES = Object.keys(STATE_TABLE) as SubscriptionState[];
@@ -108,6 +108,24 @@ describe('SubscriptionBadge — data-cinder-state per state', () => {
     const { container } = render(SubscriptionBadge, { props: { state } });
     const badge = container.querySelector('.cinder-badge');
     expect(badge?.getAttribute('data-cinder-state')).toBe(state);
+  });
+});
+
+describe('SubscriptionBadge — tone differentiation', () => {
+  test('refunded has a distinct tone from trialing so they are visually distinguishable', () => {
+    const refundedContainer = render(SubscriptionBadge, { props: { state: 'refunded' } });
+    const refundedBadge = refundedContainer.container.querySelector('.cinder-badge');
+    const refundedTone = refundedBadge?.getAttribute('data-cinder-variant');
+
+    const trialingContainer = render(SubscriptionBadge, { props: { state: 'trialing' } });
+    const trialingBadge = trialingContainer.container.querySelector('.cinder-badge');
+    const trialingTone = trialingBadge?.getAttribute('data-cinder-variant');
+
+    expect(refundedTone).toBe('neutral');
+    expect(trialingTone).toBe('info');
+    // Key invariant: the two states must not share the same tone so users can
+    // distinguish them by color/appearance alone (WCAG 1.4.1).
+    expect(refundedTone).not.toBe(trialingTone);
   });
 });
 

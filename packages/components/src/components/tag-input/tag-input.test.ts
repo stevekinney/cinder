@@ -561,6 +561,79 @@ describe('TagInput FormField wiring', () => {
   });
 });
 
+describe('TagInput ARIA live announcements', () => {
+  async function flushLiveRegion() {
+    // VisuallyHiddenLiveRegion uses setTimeout(0) for blank-then-set timing;
+    // we need to let that macro-task complete.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await tick();
+  }
+
+  test('announces "<tag> added." in the live region after committing via Enter', async () => {
+    const { container } = render(TagInput, { id: 'live-add' });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'Svelte' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await flushLiveRegion();
+
+    const liveRegion = container.querySelector('[role="status"]');
+    expect(liveRegion?.textContent).toContain('Svelte added.');
+  });
+
+  test('announces "<tag> removed." after clicking the remove button', async () => {
+    const { container } = render(TagInput, { id: 'live-remove', defaultValue: ['Svelte'] });
+
+    const removeButton = container.querySelector('.cinder-tag-input__remove') as HTMLElement;
+    expect(removeButton).not.toBeNull();
+
+    await fireEvent.click(removeButton);
+    await flushLiveRegion();
+
+    const liveRegion = container.querySelector('[role="status"]');
+    expect(liveRegion?.textContent).toContain('Svelte removed.');
+  });
+
+  test('consecutive identical add announcements both fire via blank-then-set', async () => {
+    // This test specifically exercises the blank-then-set reset path: the same
+    // announcement string ("Svelte added.") must re-fire even when the live
+    // region already contains that exact text from the previous commit. A naive
+    // assignment of the same string would be a no-op for the AT; blank-then-set
+    // is the only mechanism that guarantees re-announcement.
+    const { container } = render(TagInput, { id: 'live-repeat', allowDuplicates: true });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    // First add — live region should show "Svelte added."
+    await fireEvent.input(input, { target: { value: 'Svelte' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await flushLiveRegion();
+
+    const liveRegion = container.querySelector('[role="status"]');
+    expect(liveRegion?.textContent).toContain('Svelte added.');
+
+    // Second add of the SAME value (allowDuplicates=true, no intervening removal).
+    // The live region still holds "Svelte added." — the announcementSequence bump
+    // re-runs the region's effect, which blanks the text to '' first so the
+    // identical string re-triggers the AT.
+    await fireEvent.input(input, { target: { value: 'Svelte' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    // Load-bearing assertion: after the second add (before the deferred setTimeout(0)
+    // fires) the region must transition through the blank state. Without the
+    // announcementSequence fix, the same-value $state assignment is a Svelte 5 no-op,
+    // the effect never runs, and the content stays "Svelte added." — making THIS
+    // assertion fail. That is what makes this a genuine regression guard.
+    await tick();
+    expect(container.querySelector('[role="status"]')?.textContent?.trim()).toBe('');
+
+    await flushLiveRegion();
+
+    // After the macro-task the content must be back to "Svelte added." — proving the
+    // identical message was genuinely re-announced.
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('Svelte added.');
+  });
+});
+
 describe('TagInput CSS contract', () => {
   test('focus-within ring, invalid override, and forced-colors fallback stay encoded in the CSS', async () => {
     const css = await Bun.file(new URL('./tag-input.css', import.meta.url)).text();

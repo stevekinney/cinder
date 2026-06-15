@@ -23,7 +23,7 @@ mock.module('./code-block-default-highlighter.ts', () => ({
   loadDefaultHighlighter,
 }));
 
-const { render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { default: CodeBlock } = await import('./code-block.svelte');
 
 // CodeBlock emits a dev warning when a highlighter throws / fails to load (it
@@ -40,6 +40,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Unmount rendered components BEFORE the warning assertion: component teardown
+  // may emit console.warn, so cleanup must run while warnSpy is still installed.
+  // @testing-library/svelte v5's auto-cleanup does not register under bun:test, so
+  // without this the mounted code blocks leak into the shared happy-dom
+  // document.body and later sibling files (e.g. copy-button) see duplicate elements.
+  cleanup();
   const unexpected = warnSpy.mock.calls
     .map((args) => args.map(String).join(' '))
     .filter((message) => !message.includes(KNOWN_CODE_BLOCK_WARNING));
@@ -127,6 +133,27 @@ describe('CodeBlock — static structure', () => {
   test('CSS contains prefers-color-scheme: dark fallback for system dark mode', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
     expect(css).toContain('@media (prefers-color-scheme: dark)');
+  });
+
+  test('highlighted and plain scroll containers carry inset focus ring (regression #398)', async () => {
+    // .cinder-code-block has overflow:hidden, so the standard outset focus ring is
+    // clipped. The fix adds an INSET box-shadow ring to both focusable scroll
+    // containers. This test locks that pattern so it cannot silently regress.
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+    // Both selectors must appear together in a combined rule.
+    expect(css).toContain('.cinder-code-block__highlighted:focus-visible');
+    expect(css).toContain('.cinder-code-block__pre:focus-visible');
+    // The rule must use an inset box-shadow (not an outset ring that would be clipped).
+    expect(css).toMatch(
+      /\.cinder-code-block__highlighted:focus-visible[\s\S]*?box-shadow:\s*inset\s+0\s+0\s+0\s+var\(--cinder-ring-width\)\s+var\(--cinder-ring-color\)/,
+    );
+    expect(css).toMatch(
+      /\.cinder-code-block__pre:focus-visible[\s\S]*?box-shadow:\s*inset\s+0\s+0\s+0\s+var\(--cinder-ring-width\)\s+var\(--cinder-ring-color\)/,
+    );
+    // The outline must be set to transparent so the inset shadow is the visible ring.
+    expect(css).toMatch(
+      /\.cinder-code-block__highlighted:focus-visible[\s\S]*?outline:\s*var\(--cinder-ring-width\)\s+solid\s+transparent/,
+    );
   });
 });
 

@@ -971,6 +971,246 @@ describe('useToast api', () => {
   });
 });
 
+describe('toast dismiss button label', () => {
+  test('dismiss button aria-label includes the toast message', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('File saved', { dismissible: true, duration: 0 });
+    await waitFor(() => {
+      const dismissButton = container.querySelector('.cinder-toast__dismiss');
+      expect(dismissButton).not.toBeNull();
+      expect(dismissButton?.getAttribute('aria-label')).toBe('Dismiss: File saved');
+    });
+  });
+
+  test('stacked toasts each have a distinct dismiss aria-label', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('File saved', { dismissible: true, duration: 0, id: 'msg-1' });
+    api!.show('Upload failed', { dismissible: true, duration: 0, id: 'msg-2', variant: 'danger' });
+
+    await waitFor(() => {
+      const buttons = Array.from(container.querySelectorAll('.cinder-toast__dismiss'));
+      expect(buttons.length).toBeGreaterThanOrEqual(2);
+      const labels = buttons.map((b) => b.getAttribute('aria-label'));
+      expect(labels).toContain('Dismiss: File saved');
+      expect(labels).toContain('Dismiss: Upload failed');
+    });
+  });
+
+  test('dismiss button aria-label is bounded for a long message (the full text is in the live region)', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    const longMessage =
+      'Upload failed because the connection to the server was interrupted partway through the transfer; please retry.';
+    api!.show(longMessage, { dismissible: true, duration: 0, variant: 'danger' });
+
+    await waitFor(() => {
+      const dismissButton = container.querySelector('.cinder-toast__dismiss');
+      expect(dismissButton).not.toBeNull();
+      const label = dismissButton?.getAttribute('aria-label') ?? '';
+      // Bounded: not the entire message dumped into the control name.
+      expect(label.length).toBeLessThan(longMessage.length);
+      expect(label).toStartWith('Dismiss: ');
+      expect(label).toEndWith('…');
+    });
+  });
+
+  test('dismiss button aria-label falls back to a generic label for an empty/whitespace message', async () => {
+    // A blank message would otherwise yield a dangling "Dismiss: " — a
+    // low-quality control name for assistive tech.
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('   ', { dismissible: true, duration: 0 });
+    await waitFor(() => {
+      const dismissButton = container.querySelector('.cinder-toast__dismiss');
+      expect(dismissButton).not.toBeNull();
+      expect(dismissButton?.getAttribute('aria-label')).toBe('Dismiss notification');
+    });
+  });
+});
+
+describe('toast variant icons', () => {
+  test('info toast renders default icon when showIcon=true', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Information message', { variant: 'info', duration: 0, showIcon: true });
+    await waitFor(() => {
+      const toastIcon = container.querySelector('.cinder-toast__icon');
+      expect(toastIcon).not.toBeNull();
+    });
+  });
+
+  test('showIcon=false suppresses the default icon', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('No icon', { variant: 'info', duration: 0, showIcon: false });
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-toast__icon')).toBeNull();
+    });
+  });
+
+  test('success toast renders its distinct checkmark icon when showIcon=true', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Saved', { variant: 'success', duration: 0, showIcon: true });
+    await waitFor(() => {
+      const iconWrapper = container.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      // Success branch: fill-rule="evenodd" path contains the checkmark shape.
+      const svg = iconWrapper?.querySelector('svg');
+      expect(svg).not.toBeNull();
+      const path = svg?.querySelector('path');
+      // The success path includes the clip-rule="evenodd" checkmark.
+      expect(path?.getAttribute('d')).toContain('3.857-9.809');
+    });
+  });
+
+  test('warning toast renders its distinct triangle icon when showIcon=true', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Caution', { variant: 'warning', duration: 0, showIcon: true });
+    await waitFor(() => {
+      const assertive = container.querySelector('[role="alert"]');
+      const iconWrapper = assertive?.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      const svg = iconWrapper?.querySelector('svg');
+      expect(svg).not.toBeNull();
+      const path = svg?.querySelector('path');
+      // The warning path contains the triangle/exclamation shape.
+      expect(path?.getAttribute('d')).toContain('8.485 2.495');
+    });
+  });
+
+  test('danger toast renders its distinct X-circle icon when showIcon=true', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Error', { variant: 'danger', duration: 0, showIcon: true });
+    await waitFor(() => {
+      const assertive = container.querySelector('[role="alert"]');
+      const iconWrapper = assertive?.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      const svg = iconWrapper?.querySelector('svg');
+      expect(svg).not.toBeNull();
+      const path = svg?.querySelector('path');
+      // The danger path contains the X-circle shape with 8.28 7.22 coords.
+      expect(path?.getAttribute('d')).toContain('8.28 7.22');
+    });
+  });
+
+  test('showIcon=false suppresses the variant icon for success', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Saved silently', { variant: 'success', duration: 0, showIcon: false });
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"]')?.textContent).toContain('Saved silently');
+    });
+    expect(container.querySelector('.cinder-toast__icon')).toBeNull();
+  });
+
+  test('consumer icon prop overrides default icon regardless of showIcon', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    const customIcon = createRawSnippet(() => ({
+      render: () => `<span data-testid="custom-icon">★</span>`,
+    }));
+
+    api!.show('Custom icon', { variant: 'info', duration: 0, icon: customIcon });
+    await waitFor(() => {
+      const customEl = container.querySelector('[data-testid="custom-icon"]');
+      expect(customEl).not.toBeNull();
+    });
+  });
+});
+
 describe('useToast outside a region', () => {
   test('throws when called outside of any component (getContext lifecycle)', async () => {
     // useToast() ultimately calls getContext, which Svelte requires to run

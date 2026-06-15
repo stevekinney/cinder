@@ -78,23 +78,36 @@ export function useHydrated(): { value: boolean } {
  * Stack of ESC handlers. Top-most overlay handles ESC; lower overlays ignore
  * the event. Each overlay registers a handler on open and unregisters on close.
  *
- * The stack lives in module scope so all Cinder overlays share it. This is
- * fine for tests (each test runs against a fresh module instance) and fine
- * for production (a real app has at most a handful of stacked overlays at
- * once). The stack is also keyed-set semantics: pushing the same handler
- * twice is a no-op; popping a handler not on the stack is a no-op.
+ * The stack lives in module scope so all Cinder overlays share it. It persists
+ * for the lifetime of the JS module — under bun:test that means it is shared
+ * across every test in a file, so suites that leave handlers registered must
+ * call `_resetEscapeStack()` between cases to avoid leaking state. In
+ * production this is fine (a real app has at most a handful of stacked overlays
+ * at once). It is a plain LIFO stack: each `pushEscapeHandler` call appends one
+ * entry and returns a one-shot `release` token that removes that entry's most
+ * recent occurrence. Overlays push exactly once per open and release via the
+ * returned token, so duplicates don't arise in practice; releasing a token
+ * twice (or releasing a handler already gone) is a no-op.
  */
-const escapeStack: Array<() => void> = [];
+/**
+ * An escape-stack handler. Receives the originating `KeyboardEvent` so a
+ * handler that owns the keystroke (e.g. a nested interactive popup closing on
+ * Escape) can call `event.preventDefault()` to stop the key from also reaching
+ * the page's default action. Most overlays ignore the argument and just close.
+ */
+type EscapeHandler = (event: KeyboardEvent) => void;
+
+const escapeStack: EscapeHandler[] = [];
 
 /**
  * Register a handler to be called when ESC is pressed and this overlay is at
- * the top of the stack. Returns a `release` function the overlay must call
- * on close.
+ * the top of the stack. The handler receives the originating `KeyboardEvent`.
+ * Returns a `release` function the overlay must call on close.
  *
  * The first handler pushed installs the global keydown listener; the last
  * handler popped removes it.
  */
-export function pushEscapeHandler(handler: () => void): () => void {
+export function pushEscapeHandler(handler: EscapeHandler): () => void {
   escapeStack.push(handler);
   if (escapeStack.length === 1 && typeof window !== 'undefined') {
     window.addEventListener('keydown', onEscapeKeydown, { capture: true });
@@ -115,9 +128,11 @@ function onEscapeKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return;
   const handler = escapeStack.at(-1);
   if (!handler) return;
-  // Don't preventDefault — native dialog ESC and consumer keydown handlers
-  // may want to react too. We just invoke the topmost overlay's close.
-  handler();
+  // We don't preventDefault here — whether the keystroke should be swallowed is
+  // the topmost handler's call, so we pass the event through and let it decide
+  // (a nested popup that owns Escape calls event.preventDefault(); a plain
+  // overlay that's fine letting native dialog ESC also fire does not).
+  handler(event);
 }
 
 /**

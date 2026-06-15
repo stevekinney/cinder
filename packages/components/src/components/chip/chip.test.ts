@@ -164,6 +164,27 @@ describe('Chip', () => {
     expect(removeBtn?.getAttribute('aria-label')).toBe('Remove JavaScript');
   });
 
+  test('removable mode names its role="group" with the label by default', () => {
+    const { container } = render(Chip, { mode: 'removable', label: 'JavaScript' });
+    const chip = container.querySelector('.cinder-chip');
+    expect(chip?.getAttribute('role')).toBe('group');
+    expect(chip?.getAttribute('aria-label')).toBe('JavaScript');
+  });
+
+  // Regression: removable mode forwards `aria-label` through `rest` (it is not a
+  // bespoke key). A consumer-supplied `aria-label` must win over the default
+  // `label`-derived group name — an explicit `aria-label={label}` after the
+  // spread silently clobbered it.
+  test('removable mode lets a consumer-supplied aria-label override the default group name', () => {
+    const { container } = render(Chip, {
+      mode: 'removable',
+      label: 'JavaScript',
+      'aria-label': 'Programming language: JavaScript',
+    });
+    const chip = container.querySelector('.cinder-chip');
+    expect(chip?.getAttribute('aria-label')).toBe('Programming language: JavaScript');
+  });
+
   test('all modes share the same root class without mode-specific surface classes', () => {
     const display = render(Chip, { label: 'Display chip' });
     const toggle = render(Chip, { mode: 'toggle', label: 'Toggle chip', pressed: false });
@@ -448,6 +469,23 @@ describe('Chip', () => {
       const chip = container.querySelector('span.cinder-chip');
       expect(chip?.getAttribute('id')).toBe('chip-removable');
     });
+  });
+});
+
+describe('Chip removable mode ARIA group', () => {
+  test('outer span carries role=group and aria-label matching the label prop', () => {
+    const { container } = render(Chip, { mode: 'removable', label: 'JavaScript' });
+    const root = container.querySelector('[role="group"]');
+    expect(root).not.toBeNull();
+    expect(root?.tagName.toLowerCase()).toBe('span');
+    expect(root?.getAttribute('aria-label')).toBe('JavaScript');
+  });
+
+  test('group aria-label matches the label prop value', () => {
+    const { container } = render(Chip, { mode: 'removable', label: 'TypeScript' });
+    const root = container.querySelector('span.cinder-chip');
+    expect(root?.getAttribute('role')).toBe('group');
+    expect(root?.getAttribute('aria-label')).toBe('TypeScript');
   });
 });
 

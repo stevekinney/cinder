@@ -260,6 +260,10 @@
             aria-hidden="true"
             data-cinder-series={bar.seriesId}
             data-cinder-category={bar.categoryLabel}
+            data-cinder-active={interaction.activeTarget?.seriesId === bar.seriesId &&
+            interaction.activeTarget?.xLabel === bar.categoryLabel
+              ? ''
+              : undefined}
           />
         {/each}
         {#each model.categoryTicks as tick (tick.categoryKey)}

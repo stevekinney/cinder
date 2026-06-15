@@ -163,7 +163,7 @@
     width: var(--_marker-size);
     height: var(--_marker-size);
     border-radius: var(--cinder-radius-full);
-    background: var(--cinder-surface-inset);
+    background: var(--cinder-surface-upcoming-marker);
     flex-shrink: 0;
   }
 
@@ -256,6 +256,12 @@
 
   .cinder-steps[data-cinder-orientation='vertical'] .cinder-steps__interactive.cinder-steps__body {
     padding-bottom: var(--cinder-space-4);
+  }
+
+  @media (hover: hover) {
+    .cinder-steps__interactive:hover {
+      background: var(--cinder-surface-hover);
+    }
   }
 
   .cinder-steps__interactive:focus-visible {

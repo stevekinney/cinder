@@ -32,7 +32,7 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .cinder-table-scroll > .cinder-table {
+  .cinder-table-scroll .cinder-table {
     min-inline-size: max-content;
   }
 
@@ -59,13 +59,26 @@
     z-index: 1;
   }
 
+  /* A native <caption> (caption-side: top) renders above the table's border box
+   * but inside the same scroll container, so a sticky <thead> pinned at top: 0
+   * would scroll up and overlap it. Offset the sticky threshold by the caption's
+   * MEASURED border-box height (set on the table by a ResizeObserver in
+   * table.svelte as --cinder-table-caption-height) so the header pins just below
+   * the real caption — including when the caption wraps to multiple lines, which
+   * a hard-coded `1lh` assumption could not handle. Scoped with :has(caption) so
+   * a caption-less sticky table keeps top: 0; the var falls back to 0px before
+   * the first measurement. */
+  .cinder-table[data-cinder-sticky-header]:has(caption) .cinder-table__header {
+    top: var(--cinder-table-caption-height, 0px);
+  }
+
   .cinder-table__header-cell {
     padding-block: var(--cinder-space-2);
     padding-inline: var(--cinder-space-3);
     text-align: left;
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-muted);
-    border-bottom: 1px solid var(--cinder-border-muted);
+    border-bottom: 1px solid var(--cinder-border);
     text-wrap: balance;
   }
 
@@ -149,6 +162,12 @@
     z-index: 2;
   }
 
+  @media (hover: hover) {
+    .cinder-table__sort-button:hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
   .cinder-table__sort-indicator {
     display: inline-flex;
     color: var(--cinder-text-subtle);
@@ -161,7 +180,7 @@
 
   .cinder-table__sort-indicator[data-cinder-direction='ascending'] .cinder-table__sort-chevron-down,
   .cinder-table__sort-indicator[data-cinder-direction='descending'] .cinder-table__sort-chevron-up {
-    opacity: 0.3;
+    opacity: 0.15;
   }
 
   /* ----------------------------------------
@@ -181,7 +200,7 @@
   .cinder-table__cell {
     padding-block: var(--cinder-space-2);
     padding-inline: var(--cinder-space-3);
-    border-bottom: 1px solid var(--cinder-border-muted);
+    border-bottom: 1px solid var(--cinder-border);
   }
 
   .cinder-table__cell[data-cinder-align='center'] {

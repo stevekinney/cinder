@@ -9,8 +9,14 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, render } = await import('@testing-library/svelte');
 const { default: JsonSchemaToolbar } = await import('./json-schema-toolbar.svelte');
+
+// @testing-library/svelte v5's auto-cleanup does not register under bun:test (no
+// global afterEach), so unmount every rendered toolbar after each test. Without
+// this the mounted toolbars leak into the shared happy-dom document.body and
+// sibling files (e.g. json-schema-editor.test.ts) see duplicate elements.
+afterEach(() => cleanup());
 
 /** Minimal fake EditorState for toolbar rendering. */
 function makeFakeState(

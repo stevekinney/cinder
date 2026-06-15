@@ -25,15 +25,17 @@ describe('Stat', () => {
     expect(el?.getAttribute('role')).toBe('group');
   });
 
-  test('aria-labelledby references both label and value element ids', () => {
+  test('aria-labelledby references both the label and value element ids', () => {
     const { container } = render(Stat, { label: 'Revenue', value: '$1,000' });
     const root = container.querySelector('.cinder-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
-    const [labelId, valueId] = ariaLabelledby.split(' ');
-    const labelEl = container.querySelector(`#${labelId}`);
-    const valueEl = container.querySelector(`#${valueId}`);
-    expect(labelEl?.textContent).toContain('Revenue');
-    expect(valueEl?.textContent).toContain('$1,000');
+    // A statistic is announced as label + value together (see stat.a11y.md):
+    // aria-labelledby points at both the label span and the value span so a
+    // screen reader user hears "Revenue $1,000" as one atomic accessible name.
+    const ids = ariaLabelledby.split(' ').filter(Boolean);
+    expect(ids).toHaveLength(2);
+    expect(container.querySelector('#' + ids[0])?.textContent).toContain('Revenue');
+    expect(container.querySelector('#' + ids[1])?.textContent).toContain('$1,000');
   });
 
   test('renders the label and value text', () => {
@@ -175,10 +177,13 @@ describe('Stat', () => {
     const root = container.querySelector('.cinder-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
     expect(ariaLabelledby).not.toBe('custom-id');
-    // Should still reference label and value spans
-    const [labelId, valueId] = ariaLabelledby.split(' ');
-    expect(container.querySelector(`#${labelId}`)).not.toBeNull();
-    expect(container.querySelector(`#${valueId}`)).not.toBeNull();
+    // The component owns aria-labelledby and points it at its own label + value
+    // spans, so a consumer-forwarded value cannot break the statistic's name.
+    const ids = ariaLabelledby.split(' ').filter(Boolean);
+    expect(ids).toHaveLength(2);
+    for (const id of ids) {
+      expect(container.querySelector('#' + id)).not.toBeNull();
+    }
   });
 
   test('data-cinder-direction on change element reflects change.direction', () => {
@@ -241,7 +246,7 @@ describe('Stat', () => {
     expect(root?.getAttribute('data-testid')).toBe('revenue-stat');
   });
 
-  test('explicit id prop sets the base for labelId and valueId', () => {
+  test('explicit id prop sets the base for labelId', () => {
     const { container } = render(Stat, {
       id: 'my-revenue-stat',
       label: 'Revenue',
@@ -250,6 +255,7 @@ describe('Stat', () => {
     const root = container.querySelector('.cinder-stat');
     expect(root?.getAttribute('id')).toBe('my-revenue-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
+    // aria-labelledby derives both ids from the explicit id base
     expect(ariaLabelledby).toBe('my-revenue-stat-label my-revenue-stat-value');
     expect(container.querySelector('#my-revenue-stat-label')?.textContent).toContain('Revenue');
     expect(container.querySelector('#my-revenue-stat-value')?.textContent).toContain('$1,000');
