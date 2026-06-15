@@ -9,23 +9,28 @@
  * preview re-renders as the controls change — a genuine "Live preview". The
  * load-bearing invariants this locks:
  *
- *   1. Each `playgroundValues` change re-mounts the bare component with the NEW
+ *   1. The bare component is resolved from its module namespace by the documented
+ *      export name, falling back to the default export.
+ *   2. Each `playgroundValues` change re-mounts the bare component with the NEW
  *      values (the attachment reads `playgroundValues` inside its body, so
  *      Svelte tears down and remounts on change).
- *   2. Props arrive as a plain object (`$state.snapshot`), never the reactive
+ *   3. Props arrive as a plain object (`$state.snapshot`), never the reactive
  *      `$state` proxy — that's what a real consumer would receive.
- *   3. When the bare component can't be resolved, the section falls back to the
- *      static featured-example mount (#374 behaviour preserved).
- *   4. Under `?snapshot=1` NEITHER mount renders — the snapshot-mode contract
+ *   4. When the bare component can't be resolved, or its live mount FAILS while a
+ *      featured example exists, the section falls back to the static
+ *      featured-example mount (#374 behaviour preserved; no error callout over a
+ *      preview that would otherwise work).
+ *   5. Under `?snapshot=1` NEITHER mount renders — the snapshot-mode contract
  *      forbids stray live mounts that would break the browser-test selector
  *      counts and axe surface.
- *   5. Mount errors are keyed by container DOM id, mirroring `mountScenario`.
+ *   6. Mount errors are keyed by container DOM id, mirroring `mountScenario`, and
+ *      clear once a later mount succeeds.
  *
- * Mounting the full `component-page.svelte` is impractical (it reads
- * `window.location`, the server-injected globals, and deep cinder imports), so
- * these tests drive `component-page-live-preview-fixture.svelte`, which copies
- * the `mountLivePreview` attachment and its gating branch verbatim — exactly
- * the pattern `component-page.test.ts` uses for the example mounts.
+ * The tests drive `component-page-live-preview-fixture.svelte`, a thin HOST that
+ * imports the SAME `createLivePreviewMount` / `resolveBareComponent` the page
+ * uses — so a passing test exercises production logic, not a copy of it. Mounting
+ * the full `component-page.svelte` is impractical (it reads `window.location`,
+ * the server-injected globals, and fetches documentation over HTTP).
  *
  * Harness setup mirrors `component-page.test.ts`: happy-dom is installed onto
  * `globalThis` before `@testing-library/svelte` loads.
@@ -64,6 +69,11 @@ function liveProbeCount(): number {
   return document.querySelectorAll('.live-probe').length;
 }
 
+/** Wrap a component as a single-export module namespace, as the page bundle hands it over. */
+function asNamedModule(component: unknown, exportName = 'Demo'): Record<string, unknown> {
+  return { [exportName]: component };
+}
+
 beforeEach(() => {
   resetLiveProbe();
 });
@@ -74,9 +84,10 @@ afterEach(() => {
 });
 
 describe('component-page live preview (#405)', () => {
-  test('mounts the bare component once with the seeded prop values', async () => {
+  test('resolves the bare component from the module namespace by export name', async () => {
     const { unmount } = render(Fixture, {
-      bareComponent: LiveProbe,
+      bareComponentModule: asNamedModule(LiveProbe, 'Demo'),
+      exportName: 'Demo',
       initialValues: { label: 'Save', disabled: false },
     });
     await tick();
@@ -90,9 +101,24 @@ describe('component-page live preview (#405)', () => {
     unmount();
   });
 
+  test('resolves the bare component from the default export when the named one is absent', async () => {
+    const { unmount } = render(Fixture, {
+      bareComponentModule: { default: LiveProbe },
+      exportName: 'NotThisOne',
+      initialValues: { label: 'Save' },
+    });
+    await tick();
+
+    expect(liveProbeCount()).toBe(1);
+    expect(mountCount()).toBe(1);
+    expect(document.querySelector('.dx-stage__label')?.textContent).toBe('Live preview');
+
+    unmount();
+  });
+
   test('re-mounts with the new value when a control changes', async () => {
     const { component, unmount } = render(Fixture, {
-      bareComponent: LiveProbe,
+      bareComponentModule: asNamedModule(LiveProbe),
       initialValues: { label: 'Save' },
     });
     await tick();
@@ -122,9 +148,37 @@ describe('component-page live preview (#405)', () => {
     unmount();
   });
 
+  // Lock the remount-with-new-value behavior across the control value shapes the
+  // playground actually synthesizes — not just the one string case — since a
+  // boolean/select/number value could in principle snapshot or remount
+  // differently. Each row mutates a value and asserts the latest mount saw it.
+  test.each([
+    ['boolean', 'disabled', false, true],
+    ['select/string', 'variant', 'primary', 'secondary'],
+    ['number', 'count', 1, 2],
+  ] as const)('re-mounts with the new %s value', async (_kind, key, from, to) => {
+    const { component, unmount } = render(Fixture, {
+      bareComponentModule: asNamedModule(LiveProbe),
+      initialValues: { [key]: from },
+    });
+    await tick();
+    expect(lastProps()).toEqual({ [key]: from });
+
+    (component as unknown as { setValue: (name: string, value: unknown) => void }).setValue(
+      key,
+      to,
+    );
+    await tick();
+
+    expect(lastProps()).toEqual({ [key]: to });
+    expect(liveProbeCount()).toBe(1);
+
+    unmount();
+  });
+
   test('passes a plain object, not the reactive $state proxy', async () => {
     const { unmount } = render(Fixture, {
-      bareComponent: LiveProbe,
+      bareComponentModule: asNamedModule(LiveProbe),
       initialValues: { label: 'Save', count: 3 },
     });
     await tick();
@@ -134,9 +188,12 @@ describe('component-page live preview (#405)', () => {
     unmount();
   });
 
-  test('falls back to the featured example when the bare component is undefined', async () => {
+  test('falls back to the featured example when the module has no resolvable component', async () => {
+    // A module namespace that exposes neither the named nor a default component
+    // — the real unresolved-export path, not just an explicit `undefined`.
     const { unmount } = render(Fixture, {
-      bareComponent: undefined,
+      bareComponentModule: { default: undefined, somethingElse: 'not a component' },
+      exportName: 'Demo',
       featuredExample: FeaturedProbe,
       featuredScenario: 'demo',
       initialValues: { label: 'Save' },
@@ -153,9 +210,33 @@ describe('component-page live preview (#405)', () => {
     unmount();
   });
 
+  test('falls back to the featured example when the live mount fails', async () => {
+    // A component whose constructor throws stands in for a bare mount that fails
+    // (an unsynthesized required snippet, a missing context provider, …). With a
+    // featured example available, the section must show THAT, not an error
+    // callout over a preview that would otherwise work.
+    const Throwing = function ThrowingComponent() {
+      throw new Error('boom');
+    };
+    const { unmount } = render(Fixture, {
+      bareComponentModule: asNamedModule(Throwing),
+      featuredExample: FeaturedProbe,
+      featuredScenario: 'demo',
+      initialValues: { label: 'Save' },
+    });
+    await tick();
+
+    expect(liveProbeCount()).toBe(0);
+    // The featured example took over once the live mount recorded its failure.
+    expect(document.querySelector('.scenario-probe')).not.toBeNull();
+    expect(document.querySelector('.dx-stage__label')?.textContent).toBe('Featured example');
+
+    unmount();
+  });
+
   test('renders NEITHER mount under ?snapshot=1', async () => {
     const { unmount } = render(Fixture, {
-      bareComponent: LiveProbe,
+      bareComponentModule: asNamedModule(LiveProbe),
       featuredExample: FeaturedProbe,
       featuredScenario: 'demo',
       snapshotMode: true,
@@ -173,7 +254,7 @@ describe('component-page live preview (#405)', () => {
 
   test('tears down the live mount on unmount — no orphaned probe', async () => {
     const { unmount } = render(Fixture, {
-      bareComponent: LiveProbe,
+      bareComponentModule: asNamedModule(LiveProbe),
       initialValues: { label: 'Save' },
     });
     await tick();
@@ -185,20 +266,21 @@ describe('component-page live preview (#405)', () => {
     expect(liveProbeCount()).toBe(0);
   });
 
-  test('keys a mount failure by the live container id', async () => {
-    // A component whose constructor throws stands in for a real mount failure.
+  test('keys a mount failure by the live container id when no featured example exists', async () => {
+    // With NO featured fallback, the live branch stays put and surfaces the error
+    // keyed by container id — better than a blank section.
     const Throwing = function ThrowingComponent() {
       throw new Error('boom');
     };
-    const mountErrors: Record<string, string | undefined> = {};
+    const mountErrors: Record<string, { message: string } | undefined> = {};
     const { unmount } = render(Fixture, {
-      bareComponent: Throwing,
+      bareComponentModule: asNamedModule(Throwing),
       initialValues: { label: 'Save' },
       mountErrors,
     });
     await tick();
 
-    expect(mountErrors['playground-live-mount']).toContain('boom');
+    expect(mountErrors['playground-live-mount']?.message).toContain('boom');
     expect(liveProbeCount()).toBe(0);
 
     unmount();

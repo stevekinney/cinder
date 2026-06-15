@@ -48,6 +48,7 @@
     buildSnippet,
     type PlaygroundValue,
   } from './component-page-playground.ts';
+  import { createLivePreviewMount, resolveBareComponent } from './component-page-live-preview.ts';
 
   type CinderExampleDescriptor = {
     scenario: string;
@@ -59,6 +60,14 @@
     typeof globalThis & { __CINDER_EXAMPLES__?: CinderExampleDescriptor[] };
   type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
   type StatusDotStatus = 'online' | 'warning' | 'error' | 'pending' | 'neutral' | 'accent';
+
+  // The bare component's module namespace, passed in by the page-bundle entry
+  // (`compilePageBundleArtifacts`) which `import * as`-es the component's package
+  // subpath and mounts this page with it. Threaded as a prop rather than read
+  // from a `window` global so the live preview (#405) is wired explicitly to the
+  // bundle that mounted it — no out-of-band global to go stale against the page.
+  // Defaults to `undefined` for the no-prop mount paths (tests, SSR render).
+  let { bareComponentModule }: { bareComponentModule?: unknown } = $props();
 
   // Height of the sticky top bar, in pixels — used for scroll-spy activation
   // and smooth-scroll offset so anchored sections clear the bar.
@@ -392,73 +401,35 @@
     playgroundModel.controls.length > 0 && !playgroundModel.hasUnsatisfiedRequired,
   );
 
-  // The bare component constructor, registered on the page bundle by
-  // `compilePageBundleArtifacts` as the whole module namespace under
-  // `__CINDER_BARE_COMPONENT__`. The Playground section mounts it directly with
-  // the synthesized `playgroundValues` so the preview is genuinely prop-driven
-  // (#405), instead of the static featured-example wrapper. Resolved by the
-  // documented `exportName`; falls back to the module's default export. When the
-  // module is absent (older bundle) or the export can't be resolved, this is
-  // `undefined` and the section degrades to the featured-example mount.
-  //
-  // Read once into a plain `const` (not `$derived`): each `/page/<name>` is its
-  // own freshly evaluated bundle inside the preview iframe, so the global is
-  // effectively immutable for the page's lifetime. Do NOT promote this to a
-  // `$derived` unless the shell ever routes component pages WITHOUT a full bundle
-  // reload — under SPA navigation the global would go stale against `documentation`.
-  const bareComponentModule =
-    typeof window === 'undefined'
+  // The bare component constructor for the Playground section's LIVE preview
+  // (#405): resolved from the module namespace passed in as a prop by the page
+  // bundle, by the documented `exportName` (falling back to the default export).
+  // `undefined` when the module wasn't provided or the export isn't a component,
+  // in which case the section degrades to the static featured-example mount.
+  const bareComponent = $derived(
+    documentation === null
       ? undefined
-      : (window as unknown as Record<string, unknown>)['__CINDER_BARE_COMPONENT__'];
-  const bareComponent = $derived.by<unknown>(() => {
-    if (documentation === null || bareComponentModule === undefined) return undefined;
-    const namespace = bareComponentModule as Record<string, unknown>;
-    const named = namespace[documentation.component.exportName];
-    if (typeof named === 'function') return named;
-    return typeof namespace['default'] === 'function' ? namespace['default'] : undefined;
+      : resolveBareComponent(bareComponentModule, documentation.component.exportName),
+  );
+
+  // The `{@attach …}` factory that mounts the bare component live. Reading the
+  // synthesized values *inside* the attachment (the getter below) makes Svelte
+  // re-run it — teardown + fresh mount — on every control change, so the preview
+  // tracks the controls. The getter snapshots `playgroundValues` so the mounted
+  // component receives a plain object, exactly like a real consumer. See
+  // `component-page-live-preview.ts` for the remount-on-change rationale and the
+  // text-control focus-loss trade-off.
+  const mountLivePreview = createLivePreviewMount({
+    readValues: () => $state.snapshot(playgroundValues),
+    mountErrors,
   });
 
-  // Mounts the bare component with the current synthesized `playgroundValues`
-  // (#405). Reading `playgroundValues` *inside* the returned attachment means
-  // Svelte's attachment effect re-runs — tearing the old instance down and
-  // mounting a fresh one — every time a control changes, so the preview tracks
-  // the snippet. `$state.snapshot` hands Svelte a plain object rather than the
-  // reactive proxy, matching how a real consumer would pass props. The mount
-  // error is keyed by the container's DOM id, mirroring `mountScenario`.
-  //
-  // Remount-on-change is by design and correct for the boolean/select controls
-  // that dominate. The known trade-off: a text control loses focus on each
-  // keystroke because the whole instance is rebuilt — acceptable for a preview
-  // surface (the snippet, not this mount, is the copy target), but worth knowing
-  // before adding text-heavy live controls.
-  function mountLivePreview(Component: unknown): (element: HTMLElement) => () => void {
-    return (element: HTMLElement) => {
-      const mountKey = element.id;
-      if (typeof Component !== 'function') {
-        mountErrors[mountKey] = undefined;
-        return () => {};
-      }
-      let app: ReturnType<typeof mount> | undefined;
-      try {
-        app = mount(Component as Parameters<typeof mount>[0], {
-          target: element,
-          props: $state.snapshot(playgroundValues),
-        });
-        mountErrors[mountKey] = undefined;
-      } catch (error) {
-        console.error('[cinder playground] failed to mount live preview:', error);
-        mountErrors[mountKey] = toMountErrorDetail(error);
-      }
-      return () => {
-        if (app === undefined) return;
-        try {
-          unmount(app);
-        } catch {
-          // Best-effort cleanup only.
-        }
-      };
-    };
-  }
+  // True once the live mount has recorded a failure. The Playground template
+  // uses this to fall through to the featured example when the bare mount fails
+  // and a featured example exists — a component whose bare mount throws (an
+  // unsynthesized required snippet, a missing context provider, a portal target)
+  // must not replace a working featured example with an error callout (#405).
+  const liveMountFailed = $derived(mountErrors['playground-live-mount'] !== undefined);
 
   // --- Sections + scroll spy (data-driven) ------------------------------
   type SectionDescriptor = { id: string; num: string; label: string };
@@ -883,8 +854,14 @@
                          `playgroundValues` change. The stage is gated off under
                          `?snapshot=1`: the browser tests count `example-mount-*`
                          selectors and run axe against a fixed surface, so a live mount
-                         must not appear there (see snapshot-mode contract). -->
-                    {#if bareComponent !== undefined && !snapshotMode}
+                         must not appear there (see snapshot-mode contract).
+
+                         If the bare mount FAILS and a featured example exists, the
+                         `liveMountFailed` guard falls through to the featured branch
+                         rather than show an error callout over what would otherwise be
+                         a working preview. With no featured fallback, the live branch
+                         stays and surfaces the error — better than a blank section. -->
+                    {#if bareComponent !== undefined && !snapshotMode && (!liveMountFailed || overviewExample === undefined)}
                       <div class="dx-stage">
                         <div class="dx-stage__bar">
                           <span class="dx-stage__dot" aria-hidden="true"></span>

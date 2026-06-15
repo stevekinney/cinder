@@ -1,36 +1,48 @@
 <!--
-  Test-only fixture isolating the live-preview mount from `component-page.svelte`
-  (#405). The real page mounts the BARE component with the synthesized
-  `playgroundValues` so the preview re-renders as the prop controls change. That
-  mount is gated behind `bareComponent !== undefined && !snapshotMode`, and falls
-  back to the static featured-example mount otherwise.
+  Test-only HOST for the live-preview logic in `component-page.svelte` (#405).
 
-  This fixture reproduces that branch and the `mountLivePreview` attachment
-  verbatim — same re-mount-on-`playgroundValues`-change semantics, same
-  `$state.snapshot` plain-object props, same error keying by container DOM id —
-  driven by bindable `playgroundValues` so a test can flip a control and assert
-  the live mount re-renders with the new values. Mounting the full
-  `component-page.svelte` is impractical (it reads `window.location`, the
-  server-injected globals, and deep cinder imports), so this fixture stands in
-  exactly as `component-page-mount-fixture.svelte` does for the example mounts.
+  It does NOT re-implement the mount/error/resolve behavior — it imports the same
+  `createLivePreviewMount` and `resolveBareComponent` the page uses, so the test
+  exercises production code rather than a copy that could drift. The fixture only
+  supplies what the real page gets from its environment that a unit test cannot:
+  the owned `$state` prop values (so a test can flip a control), the snapshot-mode
+  flag, and a stand-in featured-example component for the fallback branch.
+
+  The gating template mirrors the page's Playground branch exactly, including the
+  `liveMountFailed` fall-through to the featured example when the bare mount fails
+  and a featured example exists. Mounting the full `component-page.svelte` is
+  impractical (it reads `window.location`, server-injected globals, and fetches
+  documentation over HTTP), so this host stands in just as
+  `component-page-mount-fixture.svelte` does for the example mounts.
 -->
 <script lang="ts" module>
-  /** Mount-error record keyed by container DOM id, exposed for assertions. */
-  export type MountErrorRecord = Record<string, string | undefined>;
+  import type { MountErrorRecord } from './component-page-live-preview.ts';
+
+  export type { MountErrorRecord };
 </script>
 
 <script lang="ts">
   import { mount, unmount, untrack } from 'svelte';
 
+  import {
+    createLivePreviewMount,
+    isMountableComponent,
+    resolveBareComponent,
+  } from './component-page-live-preview.ts';
+  import { toMountErrorDetail } from './example-error.ts';
+
   type PlaygroundValue = string | number | boolean | undefined;
 
   type Props = {
     /**
-     * The resolved bare component constructor, or `undefined` to exercise the
-     * featured-example fallback branch (mirrors `bareComponent` in the page).
+     * The bare component's module namespace, resolved by `resolveBareComponent`
+     * exactly as the page resolves its prop. Pass `{ default: undefined }` (or a
+     * module lacking the export) to exercise the featured-example fallback.
      */
-    bareComponent?: unknown;
-    /** The featured example component used when `bareComponent` is undefined. */
+    bareComponentModule?: unknown;
+    /** Export name `resolveBareComponent` looks up first (mirrors `exportName`). */
+    exportName?: string;
+    /** The featured example component used when the bare component can't mount. */
     featuredExample?: unknown;
     /** Scenario id for the featured-example container, mirroring the page. */
     featuredScenario?: string;
@@ -43,7 +55,8 @@
   };
 
   let {
-    bareComponent,
+    bareComponentModule,
+    exportName = 'Demo',
     featuredExample,
     featuredScenario = 'demo',
     snapshotMode = false,
@@ -67,58 +80,40 @@
     playgroundValues[name] = value;
   }
 
-  // Verbatim copy of `mountLivePreview` from component-page.svelte: read
-  // `playgroundValues` INSIDE the returned attachment so Svelte re-runs it
-  // (teardown + remount) on every control change; pass a plain snapshot rather
-  // than the reactive proxy; key the error record by container DOM id.
-  function mountLivePreview(Component: unknown): (element: HTMLElement) => () => void {
-    return (element: HTMLElement) => {
-      const mountKey = element.id;
-      if (typeof Component !== 'function') {
-        mountErrors[mountKey] = undefined;
-        return () => {};
-      }
-      let app: ReturnType<typeof mount> | undefined;
-      try {
-        app = mount(Component as Parameters<typeof mount>[0], {
-          target: element,
-          props: $state.snapshot(playgroundValues),
-        });
-        mountErrors[mountKey] = undefined;
-      } catch (error) {
-        mountErrors[mountKey] = error instanceof Error ? error.message : String(error);
-      }
-      return () => {
-        if (app === undefined) return;
-        try {
-          unmount(app);
-        } catch {
-          // Best-effort cleanup only.
-        }
-      };
-    };
-  }
+  // Resolve + mount via the SAME production helpers the page uses, so a passing
+  // test means the real page logic works, not a fixture copy of it.
+  const bareComponent = $derived(resolveBareComponent(bareComponentModule, exportName));
+  const liveMountFailed = $derived(mountErrors['playground-live-mount'] !== undefined);
+  const mountLivePreview = createLivePreviewMount({
+    readValues: () => $state.snapshot(playgroundValues),
+    mountErrors,
+  });
 
-  // Verbatim copy of `mountScenario`'s shape for the fallback branch — a
-  // no-props mount keyed by container id.
+  // The featured-example fallback is a plain no-props mount keyed by container id
+  // (mirrors `mountScenario`'s shape). Kept inline because it is trivial and not
+  // the behavior under test — the live-preview path is. It narrows with the SAME
+  // `isMountableComponent` guard, records errors with the SAME `toMountErrorDetail`
+  // helper, and tears down with the SAME `void unmount` as the production code, so
+  // the fallback path here can't diverge from the real error-keying contract.
   function mountFeatured(Component: unknown): (element: HTMLElement) => () => void {
     return (element: HTMLElement) => {
       const mountKey = element.id;
-      if (typeof Component !== 'function') {
+      if (!isMountableComponent(Component)) {
         mountErrors[mountKey] = undefined;
         return () => {};
       }
       let app: ReturnType<typeof mount> | undefined;
       try {
-        app = mount(Component as Parameters<typeof mount>[0], { target: element });
+        app = mount(Component, { target: element });
         mountErrors[mountKey] = undefined;
       } catch (error) {
-        mountErrors[mountKey] = error instanceof Error ? error.message : String(error);
+        mountErrors[mountKey] = toMountErrorDetail(error);
       }
       return () => {
         if (app === undefined) return;
         try {
-          unmount(app);
+          // `unmount` returns a Promise; teardown is fire-and-forget here.
+          void unmount(app);
         } catch {
           // Best-effort cleanup only.
         }
@@ -128,7 +123,7 @@
 </script>
 
 <div class="dx-play__preview">
-  {#if bareComponent !== undefined && !snapshotMode}
+  {#if bareComponent !== undefined && !snapshotMode && (!liveMountFailed || featuredExample === undefined)}
     <div class="dx-stage">
       <span class="dx-stage__label">Live preview</span>
       <div
