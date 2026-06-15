@@ -236,6 +236,34 @@
     };
   }
 
+  // Whether the props table currently overflows horizontally. Drives the
+  // `is-scrollable` modifier on the scroll container so the `::after` fade
+  // affordance renders ONLY while content actually overflows — a non-overflowing
+  // table must not show a misleading fade over its right edge. Held in `$state`
+  // (rather than toggled imperatively) so the binding is statically analysable.
+  let propsTableOverflows = $state(false);
+
+  /**
+   * Measure a horizontal scroll container and keep {@link propsTableOverflows}
+   * in sync with its overflow state, re-measuring on element + content resize
+   * via `ResizeObserver`.
+   */
+  function scrollOverflowSentinel(element: HTMLElement): () => void {
+    const update = () => {
+      // A 1px tolerance avoids flicker from sub-pixel layout rounding.
+      propsTableOverflows = element.scrollWidth - element.clientWidth > 1;
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    // Table content can change width without the container resizing (e.g. async
+    // prop rows arriving), so observe the first child too when present.
+    if (element.firstElementChild instanceof HTMLElement) {
+      observer.observe(element.firstElementChild);
+    }
+    return () => observer.disconnect();
+  }
+
   // --- Documentation payload (fetched once) -----------------------------
   let documentation = $state<ComponentDocumentationPayload | null>(null);
   let documentationLoading = $state(true);
@@ -605,10 +633,11 @@
               <div class="dx-spec__row">
                 <span class="dx-spec__key">Status</span>
                 <span class="dx-spec__val">
-                  <StatusDot
-                    status={statusDotStatus(component.status)}
-                    aria-label={component.status}
-                  />
+                  <!-- The adjacent Badge is the accessible status text. The dot
+                       is a redundant color cue, so mark it decorative — otherwise
+                       its role="img" name re-announces the same word the Badge
+                       already speaks (the audible half of #388). -->
+                  <StatusDot status={statusDotStatus(component.status)} aria-hidden="true" />
                   <Badge variant={statusBadgeVariant(component.status)} size="sm">
                     {component.status}
                   </Badge>
@@ -779,11 +808,19 @@
 
                 <div class="dx-play">
                   <div class="dx-play__preview">
+                    <!-- This stage mounts the component's featured example so the
+                         Playground section shows a rendered instance, not just a
+                         snippet (#374). It renders the static featured scenario —
+                         it does NOT yet re-render from the prop controls, so it is
+                         deliberately NOT labelled "Live preview" (that would be a
+                         false promise: only the snippet is prop-driven today).
+                         Driving this mount from `playgroundValues` is tracked as a
+                         follow-up. -->
                     {#if overviewExample !== undefined && !snapshotMode}
                       <div class="dx-stage">
                         <div class="dx-stage__bar">
                           <span class="dx-stage__dot" aria-hidden="true"></span>
-                          <span class="dx-stage__label">Live preview</span>
+                          <span class="dx-stage__label">Featured example</span>
                         </div>
                         <div class="dx-stage__canvas">
                           {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
@@ -799,6 +836,9 @@
                             {@attach mountScenario(overviewExample.scenario)}
                           ></div>
                         </div>
+                        <p class="dx-stage__note">
+                          Shows the featured example. Adjust the controls to update the snippet.
+                        </p>
                       </div>
                     {/if}
                     <CodeBlock code={playgroundSnippet} language="svelte" copyable />
@@ -1003,10 +1043,11 @@
                 <!-- tabindex makes the scroll region keyboard-accessible (WCAG 2.1.1). -->
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <div
-                  class="props-table-scroll"
+                  class={['props-table-scroll', { 'is-scrollable': propsTableOverflows }]}
                   role="region"
                   aria-label="Props for {componentName}"
                   tabindex="0"
+                  {@attach scrollOverflowSentinel}
                 >
                   <Table caption={`Props for ${componentName}`} density="condensed">
                     <Table.Header>
@@ -1677,6 +1718,13 @@
   .dx-stage__canvas {
     padding: clamp(1.5rem, 4vw, 3rem);
   }
+  .dx-stage__note {
+    margin: 0;
+    padding: var(--cinder-space-1) var(--cinder-space-3) var(--cinder-space-2);
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-subtle);
+    border-block-start: 1px solid var(--cinder-border-subtle, var(--cinder-border));
+  }
   /* Snapshot-mode body: just the mounted examples, no docs chrome, so the
      visual-regression / a11y harness captures a clean component mount. The light
      surface is pure white (carried over from the docs page) so translucent
@@ -2060,7 +2108,12 @@
   .props-table-scroll {
     position: relative;
   }
-  .props-table-scroll::after {
+  /* The fade affordance renders ONLY when the table actually overflows
+     horizontally — gated by the `is-scrollable` class that `scrollOverflowSentinel`
+     toggles via ResizeObserver. Without this gate a non-overflowing table would
+     show a misleading fade over its right edge (the always-on version reviewers
+     flagged). */
+  .props-table-scroll.is-scrollable::after {
     content: '';
     position: absolute;
     top: 0;
@@ -2074,16 +2127,13 @@
       var(--cinder-surface-raised, var(--cinder-surface)) 80%
     );
   }
-  /* NOTE: A JS-driven .is-scrollable sentinel is the robust approach for
-     showing the fade only when overflow exists. This CSS-only version always
-     renders the fade; a follow-up issue should implement the sentinel. */
 
   /* Narrow container → stacked cards (same ::before-label pattern as before). */
   @container props-section (max-width: 34rem) {
     .props-table-scroll {
       overflow-x: visible;
     }
-    .props-table-scroll::after {
+    .props-table-scroll.is-scrollable::after {
       display: none;
     }
     .props-section :global(.cinder-table) {

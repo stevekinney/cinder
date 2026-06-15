@@ -213,6 +213,24 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('renders the status dot as decorative so it does not re-announce the badge text', async () => {
+    // Regression for #388/#372: the spec-row StatusDot sits next to a Badge that
+    // already names the status visibly. The dot must be decorative
+    // (`aria-hidden`) — if it carried `aria-label={status}` it would speak the
+    // same word the Badge already announces (the audible duplication).
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    const dot = document.querySelector('.dx-spec__val [role="img"]');
+    expect(dot).not.toBeNull();
+    expect(dot?.getAttribute('aria-hidden')).toBe('true');
+    // The decorative dot carries no accessible name of its own.
+    expect(dot?.getAttribute('aria-label')).toBeNull();
+
+    unmount();
+    await tick();
+  });
+
   test('builds a TOC from the sections that have data', async () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -308,7 +326,7 @@ describe('component-page single-scroll layout', () => {
     const required = baseFixture();
     // A required `unknown` prop with no default can't be synthesized, so the
     // generated interactive playground is suppressed. A context-note section
-    // IS rendered instead, pointing the reader to the Examples section.
+    // IS rendered instead, linking to the first `avoidWhen` alternative's page.
     // The Playground TOC link is still omitted.
     required.propsManifest.props = [
       {
@@ -326,7 +344,12 @@ describe('component-page single-scroll layout', () => {
     // The playground section renders a context note, not interactive controls.
     const section = document.getElementById('playground');
     expect(section).not.toBeNull();
-    expect(section?.querySelector('.dx-play__context-note')).not.toBeNull();
+    const note = section?.querySelector('.dx-play__context-note');
+    expect(note).not.toBeNull();
+    // The base fixture's first `avoidWhen` alternative is `segmented-control`, so
+    // the note links to that component's page rather than the in-page Examples.
+    const noteLink = note?.querySelector('a');
+    expect(noteLink?.getAttribute('href')).toBe('/c/segmented-control');
     // No control widgets are rendered.
     expect(section?.querySelector('.dx-ctl')).toBeNull();
 
@@ -335,6 +358,32 @@ describe('component-page single-scroll layout', () => {
     const nav = screen.getByRole('navigation', { name: 'On this page' });
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
     expect(labels.some((label) => label.includes('Playground'))).toBe(false);
+
+    unmount();
+    await tick();
+  });
+
+  test('context note falls back to the Examples anchor when there is no avoidWhen alternative', async () => {
+    const required = baseFixture();
+    // Same unsatisfiable required prop, but with no `avoidWhen` alternative to
+    // link to — the note should fall back to the in-page Examples anchor.
+    required.component.avoidWhen = [];
+    required.propsManifest.props = [
+      {
+        name: 'value',
+        control: { kind: 'unknown', rawType: 'CustomValue' },
+        bindable: false,
+        optional: false,
+      },
+    ];
+    installDocumentationFetch(required);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    const note = document.getElementById('playground')?.querySelector('.dx-play__context-note');
+    expect(note).not.toBeNull();
+    expect(note?.querySelector('a')?.getAttribute('href')).toBe('#examples');
 
     unmount();
     await tick();
