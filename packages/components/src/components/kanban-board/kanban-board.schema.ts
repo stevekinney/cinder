@@ -6,15 +6,21 @@ const schema = {
   properties: {
     label: {
       type: 'string',
+      description: "Accessible label applied to the board's `<section>` root via `aria-label`.",
     },
     collapsible: {
       type: 'boolean',
+      description:
+        'When true, each column renders a collapse/expand button that toggles its card list.',
     },
     reorderColumns: {
       type: 'boolean',
+      description:
+        'When true (default), columns can be reordered by dragging or keyboard. Set to false to make column order fixed.',
     },
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-kanban-board` root element.',
     },
   },
   additionalProperties: false,

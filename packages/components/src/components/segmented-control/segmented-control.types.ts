@@ -62,6 +62,7 @@ type CommonProps<T extends string> = Omit<
 };
 
 type SingleProps<T extends string> = CommonProps<T> & {
+  /** Selection mode. `"single"` allows exactly one segment to be selected at a time; `"multiple"` allows any number of segments to be selected simultaneously. Default `"single"`. */
   selectionMode?: 'single' | undefined;
   /** Currently selected value. */
   value?: T | undefined;
@@ -73,6 +74,7 @@ type SingleProps<T extends string> = CommonProps<T> & {
 };
 
 type MultipleProps<T extends string> = CommonProps<T> & {
+  /** Selection mode. `"single"` allows exactly one segment to be selected at a time; `"multiple"` allows any number of segments to be selected simultaneously. Default `"single"`. */
   selectionMode: 'multiple';
   /** Set of selected values. Must be a SvelteSet for reactivity. */
   value?: SvelteSet<T> | undefined;

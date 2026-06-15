@@ -64,8 +64,12 @@ export type KanbanBoardProps<Card> = {
   columnHeader?: Snippet<[KanbanBoardColumn<Card>, KanbanBoardColumnContext<Card>]>;
   columnActions?: Snippet<[KanbanBoardColumn<Card>, KanbanBoardColumnContext<Card>]>;
   emptyColumn?: Snippet<[KanbanBoardColumn<Card>]>;
+  /** Accessible label applied to the board's `<section>` root via `aria-label`. */
   label?: string;
+  /** When true, each column renders a collapse/expand button that toggles its card list. */
   collapsible?: boolean;
+  /** When true (default), columns can be reordered by dragging or keyboard. Set to false to make column order fixed. */
   reorderColumns?: boolean;
+  /** Additional class merged onto the `.cinder-kanban-board` root element. */
   class?: string;
 };

@@ -30,6 +30,7 @@ const schema = {
     },
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-jse` root element.',
     },
   },
   additionalProperties: false,

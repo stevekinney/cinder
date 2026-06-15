@@ -52,6 +52,8 @@ const schema = {
     },
     selectionMode: {
       enum: ['single', 'multiple'],
+      description:
+        'Selection mode. `"single"` allows exactly one segment to be selected at a time; `"multiple"` allows any number of segments to be selected simultaneously. Default `"single"`.',
     },
     disallowEmptySelection: {
       type: 'boolean',

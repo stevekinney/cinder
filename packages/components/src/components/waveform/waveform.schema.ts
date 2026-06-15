@@ -6,33 +6,44 @@ const schema = {
   properties: {
     label: {
       type: 'string',
+      description: 'Accessible label for the waveform. Required for screen readers.',
     },
     description: {
       type: 'string',
+      description: 'Optional description rendered below the label.',
     },
     data: {
       type: 'array',
       items: {
         type: 'number',
       },
+      description:
+        'Time-domain amplitude samples. Each value should be in the range [-1, 1]; values outside this range are clamped.',
     },
     renderMode: {
       enum: ['path', 'bars'],
+      description:
+        'How to render the waveform: as a continuous path or vertical amplitude bars. Default `path`.',
     },
     height: {
       type: 'number',
+      description: 'Pixel height of the chart. Default `80`.',
     },
     loading: {
       type: 'boolean',
+      description: 'Whether the waveform is in a loading state. Default `false`.',
     },
     dataTableVisibility: {
       enum: ['screen-reader-only', 'visible', 'hidden'],
+      description: 'Controls data table visibility. Default `screen-reader-only`.',
     },
     dataTableCaption: {
       type: 'string',
+      description: 'Custom data table caption; falls back to `label`.',
     },
     class: {
       type: 'string',
+      description: 'Custom class applied to the root element.',
     },
   },
   additionalProperties: false,

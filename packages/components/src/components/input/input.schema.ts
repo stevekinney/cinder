@@ -6,30 +6,44 @@ const schema = {
   properties: {
     disabled: {
       type: 'boolean',
+      description: 'When true, disables the input, matching the native `disabled` attribute.',
     },
     required: {
       type: 'boolean',
+      description:
+        'Marks the input as required for form validation, matching the native `required` attribute.',
     },
     type: {
       enum: ['number', 'date', 'email', 'password', 'search', 'tel', 'text', 'url'],
+      description:
+        'Input type controlling the browser\'s built-in validation and keyboard. Default `"text"`.',
     },
     id: {
       type: 'string',
+      description:
+        'HTML `id` for the underlying input, used to associate the `<label>` and ARIA attributes. Required.',
     },
     leadingInteractive: {
       type: 'boolean',
+      description:
+        'When true, the leading adornment is interactive and included in the accessibility tree. Default `false`.',
     },
     trailingInteractive: {
       type: 'boolean',
+      description:
+        'When true, the trailing adornment is interactive and included in the accessibility tree. Default `false`.',
     },
     label: {
       type: 'string',
+      description: 'Visible label text rendered above the input and linked via `for`/`id`.',
     },
     description: {
       type: 'string',
+      description: 'Helper text rendered below the input and associated via `aria-describedby`.',
     },
     error: {
       type: 'string',
+      description: 'Error message rendered below the input; also sets `aria-invalid` on the input.',
     },
   },
   additionalProperties: false,
@@ -52,6 +66,7 @@ const schema = {
         name: 'value',
         reason: 'unknown-shape',
         required: true,
+        description: 'Bindable current text value of the input.',
       },
     ],
   },

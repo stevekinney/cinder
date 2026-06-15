@@ -6,9 +6,11 @@ const schema = {
   properties: {
     label: {
       type: 'string',
+      description: 'Accessible label for the chart. Required for screen readers.',
     },
     description: {
       type: 'string',
+      description: 'Optional description rendered below the label.',
     },
     frames: {
       type: 'array',
@@ -31,27 +33,36 @@ const schema = {
         additionalProperties: false,
         required: ['bins', 'label'],
       },
+      description:
+        'Ordered sequence of time-indexed frames. Each frame contains a label and an array of per-frequency-bin magnitudes.',
     },
     frequencyLabels: {
       type: 'array',
       items: {
         type: 'string',
       },
+      description:
+        "Optional frequency-bin labels for the y-axis (e.g. ['100 Hz', '200 Hz', …]). When omitted, bins are labelled by index.",
     },
     height: {
       type: 'number',
+      description: 'Pixel height of the chart. Default `200`.',
     },
     loading: {
       type: 'boolean',
+      description: 'Whether the chart is in a loading state. Default `false`.',
     },
     dataTableVisibility: {
       enum: ['screen-reader-only', 'visible', 'hidden'],
+      description: 'Controls data table visibility. Default `screen-reader-only`.',
     },
     dataTableCaption: {
       type: 'string',
+      description: 'Custom data table caption; falls back to `label`.',
     },
     class: {
       type: 'string',
+      description: 'Custom class applied to the root element.',
     },
   },
   additionalProperties: false,

@@ -3,7 +3,8 @@
   "type": "object",
   "properties": {
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class merged onto the `.cinder-feed` root element."
     },
     "live": {
       "type": "boolean",

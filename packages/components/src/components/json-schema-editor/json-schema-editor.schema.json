@@ -27,7 +27,8 @@
       "description": "Force a draft override regardless of $schema."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class merged onto the `.cinder-jse` root element."
     }
   },
   "additionalProperties": false,

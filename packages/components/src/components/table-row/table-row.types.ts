@@ -16,12 +16,14 @@ import type { Snippet } from 'svelte';
  */
 export type TableRowSelectionProps =
   | {
+      /** Whether the row's selection checkbox is checked. Required in selectable tables alongside `onSelectedChange` and `selectionLabel`. */
       selected: boolean;
       onSelectedChange: (next: boolean) => void;
       selectionLabel: string;
       selectionDisabled?: false;
     }
   | {
+      /** When true, renders a disabled selection checkbox for this row, preventing selection while keeping the alignment cell. */
       selectionDisabled: true;
       selected?: undefined;
       onSelectedChange?: undefined;

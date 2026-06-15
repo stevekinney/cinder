@@ -2,7 +2,9 @@ import type { Snippet } from 'svelte';
 import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
 type CommonArm = {
+  /** Marks this item as the currently active destination; emits `aria-current` and applies active visual styling. */
   active?: boolean;
+  /** Prevents interaction: removes the item from the tab order, blocks clicks, and applies disabled visual styling. */
   disabled?: boolean;
   /**
    * The `aria-current` token emitted while `active` is true. Defaults to `'page'`,
@@ -12,6 +14,7 @@ type CommonArm = {
    * the current page in the browsing context.
    */
   current?: 'page' | 'step' | 'location' | 'date' | 'time' | 'true';
+  /** Additional class merged onto the `.cinder-navigation-item` root element. */
   class?: string;
   /**
    * Controls item geometry. Emitted as `data-variant`. Default `'horizontal'`.
@@ -35,6 +38,7 @@ type CommonArm = {
 // `buttonAttributes` runtime cast).
 export type LinkArm = CommonArm &
   Omit<HTMLAnchorAttributes, 'class' | 'href' | 'onclick' | 'aria-current' | 'aria-disabled'> & {
+    /** Destination URL. Providing this prop renders the item as an `<a>` element instead of a `<button>`. */
     href: string;
     /**
      * Optional click handler called for the rendered `<a>` element. Useful for

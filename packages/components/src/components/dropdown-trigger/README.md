@@ -16,7 +16,7 @@ snippet. The flat `@lostgradient/cinder/dropdown-trigger` subpath remains export
 
 | Prop        | Type       | Required | Default | Description                                                                                                                |
 | ----------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `class`     | `string`   | no       | —       |                                                                                                                            |
+| `class`     | `string`   | no       | —       | Additional class names merged with the component's root class.                                                             |
 | `showCaret` | `boolean`  | no       | —       | Render the trailing disclosure caret. Defaults to true.                                                                    |
 | `children`  | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 

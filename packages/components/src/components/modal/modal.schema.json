@@ -3,25 +3,32 @@
   "type": "object",
   "properties": {
     "open": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Controls whether the modal is open; bindable for controlled usage."
     },
     "title": {
-      "type": "string"
+      "type": "string",
+      "description": "Text rendered as the modal's visible heading and used as its accessible label."
     },
     "dismissOnBackdropClick": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "When true, clicking the backdrop outside the modal panel dismisses it. Default `true`."
     },
     "dismissOnEscape": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "When true, pressing Escape dismisses the modal. Default `true`."
     },
     "showCloseButton": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "When true, renders the close button in the upper corner of the modal panel. Default `true`."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class names merged with the component's root class."
     },
     "role": {
-      "enum": ["dialog", "alertdialog"]
+      "enum": ["dialog", "alertdialog"],
+      "description": "ARIA role applied to the underlying dialog element. Default `dialog`."
     },
     "describedById": {
       "type": "string",

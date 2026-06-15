@@ -14,9 +14,9 @@ snippet. The flat `@lostgradient/cinder/dropdown-separator` subpath remains expo
 
 <!-- generated:props:start -->
 
-| Prop    | Type     | Required | Default | Description |
-| ------- | -------- | -------- | ------- | ----------- |
-| `class` | `string` | no       | —       |             |
+| Prop    | Type     | Required | Default | Description                                                    |
+| ------- | -------- | -------- | ------- | -------------------------------------------------------------- |
+| `class` | `string` | no       | —       | Additional class names merged with the component's root class. |
 
 <!-- generated:props:end -->
 

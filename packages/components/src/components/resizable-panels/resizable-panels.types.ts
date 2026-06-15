@@ -63,13 +63,17 @@ export type ResizablePanelsProps = Omit<
 
 export interface ResizablePanelsSchemaProps {
   panes: ResizablePanelDefinition[];
+  /** Direction the panes are arranged. `'horizontal'` (default) places them side by side; `'vertical'` stacks them. */
   orientation?: ResizablePanelsOrientation;
   keyboardStep?: ResizablePanelSize;
   snapThreshold?: ResizablePanelSize;
+  /** When true, double-clicking a separator collapses or expands the adjacent collapsible pane. Default `false`. */
   collapseOnDoubleClick?: boolean;
+  /** Which pane to collapse when double-clicking a separator: `'leading'`, `'trailing'`, or `'nearest-collapsible'` (default). */
   collapseTarget?: ResizablePanelsCollapseTarget;
   onlayoutchange?: (event: ResizablePanelsResizeEvent) => void;
   onlayoutcommit?: (event: ResizablePanelsResizeEvent) => void;
   children: Snippet<[pane: ResizablePanelDefinition, context: ResizablePanelRenderContext]>;
+  /** Additional class merged onto the `.cinder-resizable-panels` root element. */
   class?: string;
 }

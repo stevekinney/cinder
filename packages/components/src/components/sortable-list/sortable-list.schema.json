@@ -7,7 +7,8 @@
       "description": "Accessible name for the list (applied as aria-label on the list root)."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class merged onto the `.cinder-sortable-list` root element."
     }
   },
   "additionalProperties": false,

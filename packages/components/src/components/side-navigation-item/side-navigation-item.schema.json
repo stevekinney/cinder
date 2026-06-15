@@ -3,16 +3,20 @@
   "type": "object",
   "properties": {
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class merged onto the `.cinder-navigation-item` root element."
     },
     "href": {
-      "type": "string"
+      "type": "string",
+      "description": "Destination URL. Providing this prop renders the item as an `<a>` element instead of a `<button>`."
     },
     "disabled": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Prevents interaction: removes the item from the tab order, blocks clicks, and applies disabled visual styling."
     },
     "active": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Marks this item as the currently active destination; emits `aria-current` and applies active visual styling."
     },
     "current": {
       "enum": ["true", "page", "step", "location", "date", "time"],

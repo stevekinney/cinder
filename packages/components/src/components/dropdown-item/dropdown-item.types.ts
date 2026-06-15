@@ -10,9 +10,13 @@ export type DropdownItemVariant = 'default' | 'danger';
 // "prove" which branch it is on. Element-specific NON-event attributes live in
 // the two branches so the `href` ⇄ `type` discriminant stays real.
 type DropdownItemBase = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
+  /** Visual style of the item. Use `danger` to signal a destructive action. Default `default`. */
   variant?: DropdownItemVariant;
+  /** When true, adds leading padding to align the item with items that have a leading icon or indicator. Default `false`. */
   inset?: boolean;
+  /** When true, the parent dropdown closes after this item is activated. Default `true`. */
   closeOnSelect?: boolean;
+  /** Additional class names merged with the component's root class. */
   class?: string;
   children?: Snippet;
   /** When true the item is inert: click is blocked and aria-disabled is set. */

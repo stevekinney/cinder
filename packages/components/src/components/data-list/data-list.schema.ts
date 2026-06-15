@@ -11,6 +11,7 @@ const schema = {
     },
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-data-list` root element.',
     },
   },
   additionalProperties: false,

@@ -20,10 +20,10 @@ Hover-and-focus triggered hint for terse controls, anchored to a focusable child
 
 | Prop        | Type                                           | Required | Default | Description                                                                                                                |
 | ----------- | ---------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `class`     | `string`                                       | no       | —       |                                                                                                                            |
+| `class`     | `string`                                       | no       | —       | Additional class names merged with the component's root class.                                                             |
 | `describe`  | `boolean`                                      | no       | —       | Whether to wire tooltip text to the trigger via aria-describedby.                                                          |
-| `placement` | `"top"` \| `"right"` \| `"bottom"` \| `"left"` | no       | —       |                                                                                                                            |
-| `text`      | `string`                                       | yes      | —       |                                                                                                                            |
+| `placement` | `"top"` \| `"right"` \| `"bottom"` \| `"left"` | no       | —       | Preferred side of the trigger on which the tooltip appears. Default `top`.                                                 |
+| `text`      | `string`                                       | yes      | —       | Text content rendered inside the tooltip.                                                                                  |
 | `children`  | `(opaque)`                                     | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->

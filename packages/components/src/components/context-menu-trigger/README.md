@@ -28,7 +28,7 @@ Compose-only trigger region that opens a context-menu on right-click or touch lo
 
 | Prop       | Type       | Required | Default | Description                                                                                                                |
 | ---------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`   | no       | —       |                                                                                                                            |
+| `class`    | `string`   | no       | —       | Additional class names merged with the component's root class.                                                             |
 | `children` | `(opaque)` | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->

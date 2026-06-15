@@ -35,9 +35,12 @@ type StackedListItemStatic = StackedListItemBase & {
 };
 /** Linkified row — `title` snippet renders as `<a href>`. */
 type StackedListItemLinked = StackedListItemBase & {
+  /** Destination URL that turns the `title` snippet into an `<a>` link for the row. */
   href: string;
   target?: HTMLAnchorAttributes['target'];
+  /** `rel` attribute forwarded to the title anchor; `noopener noreferrer` is merged automatically when `target="_blank"`. */
   rel?: HTMLAnchorAttributes['rel'];
+  /** `hreflang` attribute forwarded to the title anchor, indicating the language of the linked resource. */
   hreflang?: HTMLAnchorAttributes['hreflang'];
 };
 export type StackedListItemProps = StackedListItemStatic | StackedListItemLinked;

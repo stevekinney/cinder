@@ -29,14 +29,14 @@ Responsive SVG frequency-bin bar chart for visualizing audio spectrum magnitude 
 
 | Prop                  | Type                                                | Required | Default | Description                                                                                                         |
 | --------------------- | --------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `bins`                | { label: `string`; value: `number` }[]              | yes      | —       |                                                                                                                     |
-| `class`               | `string`                                            | no       | —       |                                                                                                                     |
-| `dataTableCaption`    | `string`                                            | no       | —       |                                                                                                                     |
-| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       |                                                                                                                     |
-| `description`         | `string`                                            | no       | —       |                                                                                                                     |
-| `height`              | `number`                                            | no       | —       |                                                                                                                     |
-| `label`               | `string`                                            | yes      | —       |                                                                                                                     |
-| `loading`             | `boolean`                                           | no       | —       |                                                                                                                     |
+| `bins`                | { label: `string`; value: `number` }[]              | yes      | —       | Frequency bins with label + magnitude value.                                                                        |
+| `class`               | `string`                                            | no       | —       | Custom class applied to the root element.                                                                           |
+| `dataTableCaption`    | `string`                                            | no       | —       | Custom data table caption; falls back to `label`.                                                                   |
+| `dataTableVisibility` | `"screen-reader-only"` \| `"visible"` \| `"hidden"` | no       | —       | Controls data table visibility. Default `screen-reader-only`.                                                       |
+| `description`         | `string`                                            | no       | —       | Optional description rendered below the label.                                                                      |
+| `height`              | `number`                                            | no       | —       | Pixel height of the chart. Default `160`.                                                                           |
+| `label`               | `string`                                            | yes      | —       | Accessible label for the chart. Required for screen readers.                                                        |
+| `loading`             | `boolean`                                           | no       | —       | Whether the chart is in a loading state. Default `false`.                                                           |
 | `empty`               | `(opaque)`                                          | no       | —       | Snippet rendered when there are no bins. Not expressible in JSON Schema; see the component types for the signature. |
 | `loadingContent`      | `(opaque)`                                          | no       | —       | Snippet rendered while loading. Not expressible in JSON Schema; see the component types for the signature.          |
 

@@ -6,9 +6,12 @@ const schema = {
   properties: {
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-grid-list__item` root element.',
     },
     href: {
       type: 'string',
+      description:
+        'Destination URL. When set, the `title` snippet is rendered as a stretched `<a>` anchor covering the entire tile.',
     },
     rel: {
       anyOf: [
@@ -19,6 +22,8 @@ const schema = {
           type: 'null',
         },
       ],
+      description:
+        '`rel` attribute forwarded to the stretched-link anchor; `noopener noreferrer` is merged automatically when `target="_blank"`.',
     },
   },
   additionalProperties: false,

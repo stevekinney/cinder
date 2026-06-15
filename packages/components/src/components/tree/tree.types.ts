@@ -17,6 +17,7 @@ export type TreeProps = {
   expandedIds?: string[];
   /** Accessible label for the tree. One of aria-label or aria-labelledby is required. */
   'aria-label'?: string;
+  /** The `id` of a visible element whose text serves as the accessible label for the tree. One of `aria-label` or `aria-labelledby` is required. */
   'aria-labelledby'?: string;
   /** Disable typeahead. Default: false. */
   disableTypeahead?: boolean;

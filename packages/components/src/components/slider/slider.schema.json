@@ -52,7 +52,8 @@
       "description": "Extra class names merged with `.cinder-slider`."
     },
     "mode": {
-      "enum": ["single", "range"]
+      "enum": ["single", "range"],
+      "description": "Slider mode. `\"single\"` renders one thumb and emits a scalar value; `\"range\"` renders two thumbs and emits a `[low, high]` tuple. Default `\"single\"`."
     }
   },
   "additionalProperties": false,

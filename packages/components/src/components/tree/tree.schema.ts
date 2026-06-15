@@ -39,6 +39,8 @@ const schema = {
     },
     'aria-labelledby': {
       type: 'string',
+      description:
+        'The `id` of a visible element whose text serves as the accessible label for the tree. One of `aria-label` or `aria-labelledby` is required.',
     },
     disableTypeahead: {
       type: 'boolean',

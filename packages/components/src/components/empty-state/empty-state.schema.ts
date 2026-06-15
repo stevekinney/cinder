@@ -6,12 +6,16 @@ const schema = {
   properties: {
     title: {
       type: 'string',
+      description:
+        'Primary heading text rendered as a heading element at the configured `headingLevel`.',
     },
     description: {
       type: 'string',
+      description: 'Secondary descriptive text rendered as a paragraph below the title.',
     },
     class: {
       type: 'string',
+      description: 'Additional class merged onto the `.cinder-empty-state` root element.',
     },
     headingLevel: {
       enum: [1, 2, 3, 4, 5, 6],

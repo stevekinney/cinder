@@ -29,6 +29,7 @@ type SliderBaseProps = {
  * `onchange` receives a scalar.
  */
 export type SliderSingleProps = SliderBaseProps & {
+  /** Slider mode. `"single"` renders one thumb and emits a scalar value; `"range"` renders two thumbs and emits a `[low, high]` tuple. Default `"single"`. */
   mode?: 'single';
   value?: number;
   defaultValue?: number;
@@ -39,6 +40,7 @@ export type SliderSingleProps = SliderBaseProps & {
  * tuples and `onchange` receives the same tuple shape.
  */
 export type SliderRangeProps = SliderBaseProps & {
+  /** Slider mode. `"single"` renders one thumb and emits a scalar value; `"range"` renders two thumbs and emits a `[low, high]` tuple. Default `"single"`. */
   mode: 'range';
   value?: [number, number];
   defaultValue?: [number, number];
