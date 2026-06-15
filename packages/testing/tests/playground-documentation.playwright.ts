@@ -40,6 +40,38 @@ test.describe('playground component documentation', () => {
     await expect(preview.locator('.cinder-code-block__highlighted .shiki').first()).toBeVisible();
   });
 
+  test('playground preview re-renders live as a prop control changes (#405)', async ({ page }) => {
+    // `toggle` is used here (not `button`) because its generated playground
+    // actually renders: Toggle has no required prop the control synthesizer
+    // can't fill, so `showGeneratedPlayground` is true and the live mount
+    // appears. Button requires an accessible name with no default, which flags
+    // `hasUnsatisfiedRequired` and suppresses the generated playground entirely.
+    await page.goto('/c/toggle', { waitUntil: 'load' });
+    const preview = page.frameLocator('iframe[data-cinder-preview]');
+
+    // The Playground section mounts the BARE component live with the synthesized
+    // prop values, labelled "Live preview" — not the static "Featured example".
+    const playground = preview.locator('#playground');
+    await expect(playground).toBeVisible();
+    const liveMount = preview.locator('#playground-live-mount');
+    await expect(liveMount).toBeVisible();
+    await expect(playground.getByText('Live preview')).toBeVisible();
+
+    // A real Toggle instance rendered inside the live mount — a `role="switch"`
+    // button, enabled to start (the synthesized `disabled` default is false).
+    const liveSwitch = liveMount.getByRole('switch');
+    await expect(liveSwitch).toBeVisible();
+    await expect(liveSwitch).toBeEnabled();
+
+    // Flip the `disabled` boolean control. The bare Toggle forwards `disabled`
+    // onto its `<button role="switch">`, so the live mount re-renders with a
+    // DISABLED switch — proving the preview is prop-driven, not static. The
+    // control id follows the `pg-<prop>` pattern the controls panel emits; the
+    // boolean control renders as a switch button, so `.click()` flips it.
+    await playground.locator('#pg-disabled').click();
+    await expect(liveMount.getByRole('switch')).toBeDisabled();
+  });
+
   test('avatar-group exposes its styling variables in the raw artifacts', async ({ page }) => {
     await page.goto('/c/avatar-group', { waitUntil: 'load' });
     const preview = page.frameLocator('iframe[data-cinder-preview]');
