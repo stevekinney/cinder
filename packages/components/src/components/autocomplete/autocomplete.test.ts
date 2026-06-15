@@ -280,6 +280,77 @@ describe('Autocomplete — keyboard completion', () => {
     expect(getListbox()).toBeNull();
     expect(document.body.textContent).not.toContain('Apple');
   });
+
+  test('the keyboard-active option carries the shared option-row class so its highlight is distinct from the panel', async () => {
+    // Regression: autocomplete.css previously pinned
+    // `.cinder-autocomplete__option[data-cinder-active]` to
+    // `--cinder-surface-raised` — the exact token the floating panel uses for
+    // its own background — so the keyboard-highlighted option was invisible
+    // against the panel in light mode. The active-row treatment is now owned by
+    // the shared `.cinder-_option-row[data-cinder-active]` rules: a
+    // `--cinder-surface-hover` background PLUS an inset `--cinder-ring-color`
+    // ring that clears WCAG 1.4.11 (3:1) for the keyboard cursor.
+    // This asserts (1) the active option carries `cinder-_option-row` at
+    // runtime, (2) the component CSS no longer reintroduces the override, and
+    // (3) the shared rule still provides the contrast-clearing ring.
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        suggestionSource: () => fruits,
+      },
+    });
+
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: 'a' } });
+    await waitFor(() => {
+      expect(getOptions()).toHaveLength(3);
+    });
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    const activeOption = getOptions().find(
+      (option) => option.getAttribute('data-cinder-active') !== null,
+    );
+    expect(activeOption).toBeDefined();
+    // The shared `_floating-surface.css` rules key off this class, so carrying
+    // it is what gives the active row its background + keyboard-cursor ring.
+    expect(activeOption?.classList.contains('cinder-_option-row')).toBe(true);
+
+    // happy-dom does not apply stylesheets, so assert against CSS source. The
+    // component must not re-pin the active row to the panel's own
+    // `--cinder-surface-raised` background. Anchor to a rule open-brace with a
+    // negative lookbehind so a *compound* selector (e.g. one that also carries
+    // `cinder-_option-row`, which does not reproduce the bug) does not false-fail.
+    const componentCss = await Bun.file(new URL('./autocomplete.css', import.meta.url)).text();
+    const componentCssWithoutComments = componentCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(componentCssWithoutComments).not.toMatch(
+      /(?<![.\w-])\.cinder-autocomplete__option\[data-cinder-active\]\s*\{/,
+    );
+
+    // The contrast-clearing keyboard-cursor ring lives in the shared rule.
+    // Pin it here so the affordance cannot be silently dropped: the active row
+    // must inset a `--cinder-ring-color` ring (the system focus-ring token,
+    // tuned to clear 3:1 against near-white surfaces).
+    const sharedCss = await Bun.file(
+      new URL('../../styles/components/_floating-surface.css', import.meta.url),
+    ).text();
+    const sharedCssWithoutComments = sharedCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(sharedCssWithoutComments).toMatch(
+      /\.cinder-_option-row\[data-cinder-active\]\s*\{[^}]*box-shadow:\s*inset[^}]*var\(--cinder-ring-color\)/,
+    );
+
+    // Forced-colors fallback: a row that is BOTH selected and the keyboard
+    // cursor must keep its `Highlight` outline. The `aria-selected` reset is
+    // guarded by `:not([data-cinder-active])` so it cannot win on source order
+    // (equal specificity) and erase the cursor on a selected-active row. Assert
+    // the guard is present and that no UNGUARDED bare `[aria-selected='true']`
+    // reset survives inside the forced-colors block.
+    expect(sharedCssWithoutComments).toMatch(
+      /\.cinder-_option-row\[aria-selected='true'\]:not\(\[data-cinder-active\]\)\s*\{\s*outline:\s*none/,
+    );
+    expect(sharedCssWithoutComments).not.toMatch(
+      /\.cinder-_option-row\[aria-selected='true'\]\s*\{\s*outline:\s*none/,
+    );
+  });
 });
 
 describe('Autocomplete — async source handling', () => {
