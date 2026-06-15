@@ -31,7 +31,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  process.on = originalProcessOn as typeof process.on;
+  process.on = originalProcessOn;
   for (const listener of exitListeners) process.off('exit', listener);
   exitListeners.length = 0;
   rmSync(testRoot, { recursive: true, force: true });
