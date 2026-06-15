@@ -27,6 +27,11 @@ const schema = {
       },
       description: 'Collaborators to render in the stack.',
     },
+    label: {
+      type: 'string',
+      description: 'Accessible name for the avatar stack list.',
+      default: 'Collaborators',
+    },
     maxVisible: {
       type: 'number',
       description: 'Maximum visible avatars before overflow.',

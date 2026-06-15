@@ -30,7 +30,10 @@
   import { buildTimelineRenderPlan } from './timeline-groups.ts';
   import type { TimelineProps } from './timeline.types.ts';
 
-  type TimelineInternalProps = TimelineProps & { role?: unknown };
+  // The public TimelineProps omits `role`; this internal slot exists only so the
+  // `role: _role` destructure below can strip a role injected through an untyped
+  // spread, preserving the `<ol>`'s implicit `list` role for assistive technology.
+  type TimelineInternalProps = TimelineProps & { role?: never };
 
   let {
     entries,

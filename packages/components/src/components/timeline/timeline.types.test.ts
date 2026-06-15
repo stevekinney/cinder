@@ -5,7 +5,12 @@ import type { HTMLAttributes } from 'svelte/elements';
 import Timeline from './timeline.svelte';
 import type { TimelineEntry, TimelineProps } from './timeline.types.ts';
 
-type SnapshotTimelineProps = Omit<HTMLAttributes<HTMLOListElement>, 'class' | 'children'> & {
+// `role` is intentionally omitted: Timeline owns the `<ol>`'s implicit `list` role
+// and the public TimelineProps excludes `role` so consumers cannot clobber it.
+type SnapshotTimelineProps = Omit<
+  HTMLAttributes<HTMLOListElement>,
+  'class' | 'children' | 'role'
+> & {
   entries: TimelineEntry[];
   orientation?: 'vertical' | 'horizontal' | undefined;
   groupBy?: 'none' | 'day' | 'week' | undefined;

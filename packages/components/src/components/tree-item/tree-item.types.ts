@@ -20,9 +20,11 @@ export type TreeItemProps = {
   /** When true, the item cannot be selected or actioned. Still keyboard-reachable. */
   disabled?: boolean;
   /**
-   * Required to make a node behave as a branch. Without `branch` or `loadChildren`,
-   * the node is a leaf regardless of any `children` snippet. The children snippet's
-   * presence is NOT sufficient — see tree.svelte plan for rationale.
+   * Marks the node as an expandable branch. A node is a leaf unless it sets `branch`
+   * or `loadChildren`; supplying a `children` snippet alone is not enough. Marking the
+   * node as a branch lets the tree render the correct expand affordance and
+   * `aria-expanded` state before any children exist (for example, before an async
+   * `loadChildren` resolves).
    */
   branch?: boolean;
   /**

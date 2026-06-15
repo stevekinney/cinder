@@ -14,6 +14,17 @@ const { default: FormFieldTextareaFixture } =
   await import('../../test/fixtures/form-field-textarea-fixture.svelte');
 const { resolveMaximumLength } = await import('../textarea-count.ts');
 
+// Compile-time contract: `required` and `maxlength` are deliberately narrowed to
+// clean `boolean`/`number` from the inherited `… | null`, so the documented prop
+// surface stays free of the native "remove the attribute" `null` convention. These
+// assertions fail to compile if a future change re-widens (or further narrows) them.
+type TextareaProps = import('./textarea.types.ts').TextareaProps;
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+const _requiredIsBoolean: Exact<TextareaProps['required'], boolean | undefined> = true;
+const _maxlengthIsNumber: Exact<TextareaProps['maxlength'], number | undefined> = true;
+void _requiredIsBoolean;
+void _maxlengthIsNumber;
+
 function idsIn(container: Element): string[] {
   return Array.from(container.querySelectorAll('[id]'), (element) => element.id);
 }
@@ -104,6 +115,13 @@ describe('Textarea', () => {
     const { container } = render(Textarea, { props: { id: 'locked', disabled: true } });
     const textarea = container.querySelector('textarea');
     expect(textarea?.hasAttribute('disabled')).toBe(true);
+  });
+
+  test('required prop is reflected on the native attribute without aria-required', () => {
+    const { container } = render(Textarea, { props: { id: 'req', required: true } });
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea.required).toBe(true);
+    expect(textarea.hasAttribute('aria-required')).toBe(false);
   });
 
   test('consumer class name merges with .cinder-textarea', () => {

@@ -19,7 +19,7 @@ const schema = {
     branch: {
       type: 'boolean',
       description:
-        "Required to make a node behave as a branch. Without `branch` or `loadChildren`,\nthe node is a leaf regardless of any `children` snippet. The children snippet's\npresence is NOT sufficient — see tree.svelte plan for rationale.",
+        'Marks the node as an expandable branch. A node is a leaf unless it sets `branch`\nor `loadChildren`; supplying a `children` snippet alone is not enough. Marking the\nnode as a branch lets the tree render the correct expand affordance and\n`aria-expanded` state before any children exist (for example, before an async\n`loadChildren` resolves).',
     },
     selectionScopeIds: {
       type: 'array',
