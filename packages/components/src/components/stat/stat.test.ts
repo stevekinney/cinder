@@ -25,14 +25,17 @@ describe('Stat', () => {
     expect(el?.getAttribute('role')).toBe('group');
   });
 
-  test('aria-labelledby references only the label element id', () => {
+  test('aria-labelledby references both the label and value element ids', () => {
     const { container } = render(Stat, { label: 'Revenue', value: '$1,000' });
     const root = container.querySelector('.cinder-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
-    // Must be a single id (no space-separated list)
-    expect(ariaLabelledby).not.toContain(' ');
-    const labelEl = container.querySelector('#' + ariaLabelledby);
-    expect(labelEl?.textContent).toContain('Revenue');
+    // A statistic is announced as label + value together (see stat.a11y.md):
+    // aria-labelledby points at both the label span and the value span so a
+    // screen reader user hears "Revenue $1,000" as one atomic accessible name.
+    const ids = ariaLabelledby.split(' ').filter(Boolean);
+    expect(ids).toHaveLength(2);
+    expect(container.querySelector('#' + ids[0])?.textContent).toContain('Revenue');
+    expect(container.querySelector('#' + ids[1])?.textContent).toContain('$1,000');
   });
 
   test('renders the label and value text', () => {
@@ -174,9 +177,13 @@ describe('Stat', () => {
     const root = container.querySelector('.cinder-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
     expect(ariaLabelledby).not.toBe('custom-id');
-    // Should reference only the label span (not value id, which was the old double-read pattern)
-    expect(ariaLabelledby).not.toContain(' ');
-    expect(container.querySelector('#' + ariaLabelledby)).not.toBeNull();
+    // The component owns aria-labelledby and points it at its own label + value
+    // spans, so a consumer-forwarded value cannot break the statistic's name.
+    const ids = ariaLabelledby.split(' ').filter(Boolean);
+    expect(ids).toHaveLength(2);
+    for (const id of ids) {
+      expect(container.querySelector('#' + id)).not.toBeNull();
+    }
   });
 
   test('data-cinder-direction on change element reflects change.direction', () => {
@@ -248,10 +255,9 @@ describe('Stat', () => {
     const root = container.querySelector('.cinder-stat');
     expect(root?.getAttribute('id')).toBe('my-revenue-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
-    // aria-labelledby now references only the label element
-    expect(ariaLabelledby).toBe('my-revenue-stat-label');
+    // aria-labelledby derives both ids from the explicit id base
+    expect(ariaLabelledby).toBe('my-revenue-stat-label my-revenue-stat-value');
     expect(container.querySelector('#my-revenue-stat-label')?.textContent).toContain('Revenue');
-    // valueId element still exists (may be referenced by stat-group consumers)
     expect(container.querySelector('#my-revenue-stat-value')?.textContent).toContain('$1,000');
   });
 
