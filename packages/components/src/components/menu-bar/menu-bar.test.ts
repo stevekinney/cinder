@@ -277,6 +277,21 @@ describe('MenuBar', () => {
     expect(file.getAttribute('aria-expanded')).toBe('false');
   });
 
+  test('Escape closes the open top-level menu when focus is on the trigger button', async () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const fileButton = getByRole('menuitem', { name: 'File' });
+
+    // Open the File menu
+    await fireEvent.click(fileButton);
+    await tick();
+    expect(fileButton.getAttribute('aria-expanded')).toBe('true');
+
+    // Press Escape while focus is on the trigger button
+    await fireEvent.keyDown(fileButton, { key: 'Escape' });
+    await tick();
+    expect(fileButton.getAttribute('aria-expanded')).toBe('false');
+  });
+
   test('reuses dropdown primitives instead of copying their markup classes', async () => {
     const source = await Bun.file(new URL('./menu-bar.svelte', import.meta.url)).text();
 

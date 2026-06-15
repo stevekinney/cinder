@@ -141,6 +141,8 @@
 {:else if mode === 'removable'}
   <span
     {...rest}
+    role="group"
+    aria-label={label}
     data-cinder-mode="removable"
     data-cinder-variant={variant}
     data-cinder-size={size}

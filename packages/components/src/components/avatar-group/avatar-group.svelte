@@ -35,6 +35,7 @@
     size = 'md',
     shape = 'circle',
     overflowLabel,
+    label = 'Collaborators',
     class: className,
     style,
     ...rest
@@ -121,6 +122,7 @@
   class={classNames('cinder-avatar-group', className)}
   style={rootStyle}
   role="list"
+  aria-label={label}
   data-cinder-size={size}
   data-cinder-shape={shape}
   data-cinder-z-order={zOrder}

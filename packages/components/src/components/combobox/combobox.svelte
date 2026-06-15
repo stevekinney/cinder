@@ -75,6 +75,7 @@
   let activeIndex = $state(-1);
   let inputElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
+  let committedLabel = $state('');
 
   // Reset active index whenever the filtered set changes so we don't point
   // at a stale option.
@@ -92,11 +93,13 @@
       // Clearing the value (deselect/reset) must also clear the visible text;
       // otherwise the input keeps showing the previously selected option's label.
       if (untrack(() => inputValue)) inputValue = '';
+      committedLabel = '';
       return;
     }
     const matched = options.find((option) => option.value === value);
     if (matched && untrack(() => inputValue) !== matched.label) {
       inputValue = matched.label;
+      committedLabel = matched.label;
     }
   });
 
@@ -130,6 +133,7 @@
     if (option.disabled) return;
     value = option.value;
     inputValue = option.label;
+    committedLabel = option.label;
     open = false;
   }
 
@@ -159,9 +163,14 @@
         selectOption(option);
       }
     } else if (event.key === 'Escape') {
-      if (open) {
+      // The Popover's escape-stack handler already closed the dropdown (set
+      // open = false) before this keydown handler runs (capture-phase listener
+      // fires first). Restore inputValue unconditionally when Escape is pressed
+      // while the input is focused, regardless of whether open is still true.
+      if (inputValue !== committedLabel) {
         event.preventDefault();
-        open = false;
+        inputValue = committedLabel;
+        if (inputElement) inputElement.value = committedLabel;
       }
     }
   }

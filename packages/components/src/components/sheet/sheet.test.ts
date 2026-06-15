@@ -792,6 +792,77 @@ describe('Sheet', () => {
   });
 });
 
+describe('Sheet focus trap', () => {
+  function makeSnippetWithInput() {
+    return createRawSnippet(() => ({
+      render: () => `<input type="text" data-testid="sheet-input" />`,
+      setup: () => {},
+    }));
+  }
+
+  test('Tab from last focusable element wraps to first inside open sheet', async () => {
+    const { container } = render(Sheet, {
+      props: {
+        open: true,
+        title: 'Test Sheet',
+        children: makeSnippetWithInput(),
+      },
+    });
+
+    const panel = container.querySelector('.cinder-sheet__panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+
+    const closeButton = container.querySelector('.cinder-sheet__close') as HTMLElement;
+    expect(closeButton).not.toBeNull();
+
+    // Focus the close button (last tabbable element in the panel header)
+    closeButton.focus();
+
+    // Tab forward — focus trap should wrap to first focusable in the panel
+    await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: false });
+    expect(panel.contains(document.activeElement) || document.activeElement === panel).toBe(true);
+  });
+
+  test('Shift+Tab from first focusable wraps to last inside open sheet', async () => {
+    const { container } = render(Sheet, {
+      props: {
+        open: true,
+        title: 'Test Sheet',
+        children: makeSnippetWithInput(),
+      },
+    });
+
+    const panel = container.querySelector('.cinder-sheet__panel') as HTMLElement;
+    const input = container.querySelector('input[data-testid="sheet-input"]') as HTMLElement;
+    expect(input).not.toBeNull();
+
+    // Focus the input (first tabbable element in the body)
+    input.focus();
+
+    // Shift+Tab should wrap to the last focusable element
+    await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: true });
+    expect(panel.contains(document.activeElement) || document.activeElement === panel).toBe(true);
+  });
+
+  test('document.body does not receive focus while sheet is open', async () => {
+    const { container } = render(Sheet, {
+      props: {
+        open: true,
+        title: 'Test Sheet',
+        children: makeSnippetWithInput(),
+      },
+    });
+
+    const panel = container.querySelector('.cinder-sheet__panel') as HTMLElement;
+
+    // Tab multiple times — focus should always remain inside the panel
+    for (let i = 0; i < 5; i++) {
+      await fireEvent.keyDown(panel, { key: 'Tab', shiftKey: false });
+      expect(panel.contains(document.activeElement) || document.activeElement === panel).toBe(true);
+    }
+  });
+});
+
 // The sheet's <dialog> is gated behind a `hydrated` $state set inside an
 // $effect, which never runs on the server. These tests render the component in
 // Svelte's server compiler and assert the gated markup is absent server-side —

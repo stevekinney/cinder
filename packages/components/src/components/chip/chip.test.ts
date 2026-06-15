@@ -451,6 +451,23 @@ describe('Chip', () => {
   });
 });
 
+describe('Chip removable mode ARIA group', () => {
+  test('outer span carries role=group and aria-label matching the label prop', () => {
+    const { container } = render(Chip, { mode: 'removable', label: 'JavaScript' });
+    const root = container.querySelector('[role="group"]');
+    expect(root).not.toBeNull();
+    expect(root?.tagName.toLowerCase()).toBe('span');
+    expect(root?.getAttribute('aria-label')).toBe('JavaScript');
+  });
+
+  test('group aria-label matches the label prop value', () => {
+    const { container } = render(Chip, { mode: 'removable', label: 'TypeScript' });
+    const root = container.querySelector('span.cinder-chip');
+    expect(root?.getAttribute('role')).toBe('group');
+    expect(root?.getAttribute('aria-label')).toBe('TypeScript');
+  });
+});
+
 // Source-level guard for the disabled-chip contrast fix. The disabled label must
 // resolve to --cinder-text-disabled (4.61:1 on --cinder-surface-inset) AND must
 // not be trapped under a parent `opacity` that would composite it down — opacity

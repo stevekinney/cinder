@@ -46,6 +46,12 @@ export type ToastOptions = {
    */
   icon?: Snippet;
   /**
+   * When true, renders a per-variant default icon before the message. Defaults
+   * to false. Has no effect when a custom icon snippet is provided via the icon
+   * prop.
+   */
+  showIcon?: boolean;
+  /**
    * Optional action paired with the message. Renders a button after the
    * message text and invokes `onAction` when clicked. The toast is dismissed
    * after the action runs unless `keepOpen` is true, even when `dismissible`
@@ -61,6 +67,8 @@ export type ToastItem = {
   variant: ToastVariant;
   duration: number;
   dismissible: boolean;
+  /** Normalized from ToastOptions.showIcon; defaults to false. */
+  showIcon: boolean;
   icon?: Snippet;
   action?: { label: string; onAction: () => void; keepOpen?: boolean };
 };

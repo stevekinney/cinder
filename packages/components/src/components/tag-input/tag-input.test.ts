@@ -561,6 +561,68 @@ describe('TagInput FormField wiring', () => {
   });
 });
 
+describe('TagInput ARIA live announcements', () => {
+  async function flushLiveRegion() {
+    // VisuallyHiddenLiveRegion uses setTimeout(0) for blank-then-set timing;
+    // we need to let that macro-task complete.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await tick();
+  }
+
+  test('announces "<tag> added." in the live region after committing via Enter', async () => {
+    const { container } = render(TagInput, { id: 'live-add' });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'Svelte' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await flushLiveRegion();
+
+    const liveRegion = container.querySelector('[role="status"]');
+    expect(liveRegion?.textContent).toContain('Svelte added.');
+  });
+
+  test('announces "<tag> removed." after clicking the remove button', async () => {
+    const { container } = render(TagInput, { id: 'live-remove', defaultValue: ['Svelte'] });
+
+    const removeButton = container.querySelector('.cinder-tag-input__remove') as HTMLElement;
+    expect(removeButton).not.toBeNull();
+
+    await fireEvent.click(removeButton);
+    await flushLiveRegion();
+
+    const liveRegion = container.querySelector('[role="status"]');
+    expect(liveRegion?.textContent).toContain('Svelte removed.');
+  });
+
+  test('consecutive identical add announcements both fire via blank-then-set', async () => {
+    const { container } = render(TagInput, { id: 'live-repeat', allowDuplicates: true });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    // First add
+    await fireEvent.input(input, { target: { value: 'Svelte' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await flushLiveRegion();
+
+    let liveRegion = container.querySelector('[role="status"]');
+    expect(liveRegion?.textContent).toContain('Svelte added.');
+
+    // Remove it (to have something to re-add)
+    const removeButton = container.querySelector('.cinder-tag-input__remove') as HTMLElement;
+    await fireEvent.click(removeButton);
+    await flushLiveRegion();
+
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('Svelte removed.');
+
+    // Second add of same value — live region should re-announce
+    await fireEvent.input(input, { target: { value: 'Svelte' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await flushLiveRegion();
+
+    liveRegion = container.querySelector('[role="status"]');
+    expect(liveRegion?.textContent).toContain('Svelte added.');
+  });
+});
+
 describe('TagInput CSS contract', () => {
   test('focus-within ring, invalid override, and forced-colors fallback stay encoded in the CSS', async () => {
     const css = await Bun.file(new URL('./tag-input.css', import.meta.url)).text();

@@ -64,7 +64,7 @@
   {id}
   class={classNames('cinder-stat', customClassName)}
   role="group"
-  aria-labelledby={`${labelId} ${valueId}`}
+  aria-labelledby={labelId}
   data-cinder-has-icon={icon ? '' : undefined}
 >
   {#if icon}

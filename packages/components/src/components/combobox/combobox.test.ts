@@ -2,6 +2,7 @@
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { tick } from 'svelte';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -507,5 +508,56 @@ describe('Combobox rich option rows', () => {
         'Banana',
       );
     });
+  });
+});
+
+describe('Combobox Escape restores committed label', () => {
+  const escapeFruits = [
+    { label: 'Apple', value: 'apple' },
+    { label: 'Banana', value: 'banana' },
+    { label: 'Cherry', value: 'cherry' },
+  ];
+
+  test('Escape restores inputValue to the committed option label when the dropdown is open with partial text', async () => {
+    const { container } = render(Combobox, { id: 'escape-test', options: escapeFruits });
+    const input = container.querySelector('#escape-test') as HTMLInputElement;
+
+    // Open the dropdown and select Apple
+    input.focus();
+    await fireEvent.focus(input);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    expect(input.value).toBe('Apple');
+
+    // Type partial text to open the dropdown again
+    await fireEvent.input(input, { target: { value: 'ban' } });
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+
+    // Press Escape — should restore to committed label 'Apple'
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await tick();
+    // After Escape, input should show the committed label
+    expect(input.value).toBe('Apple');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('Escape clears inputValue when no option has been committed', async () => {
+    const { container } = render(Combobox, { id: 'escape-empty', options: escapeFruits });
+    const input = container.querySelector('#escape-empty') as HTMLInputElement;
+
+    // Type something without selecting to open the dropdown
+    input.focus();
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'ban' } });
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+
+    // Press Escape — should clear since nothing was committed
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    await tick();
+    // input.value should be '' since committedLabel defaults to ''
+    expect(input.value).toBe('');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
 });
