@@ -10,8 +10,16 @@
  */
 import type { ComponentManifest, PropManifest } from './types.ts';
 
-/** Fields common to every {@link PlaygroundControl}, regardless of kind. */
-type PlaygroundControlBase = { name: string; description?: string };
+/**
+ * Fields common to every {@link PlaygroundControl}, regardless of kind.
+ *
+ * `value` is the control's seeded initial state — for props without a manifest
+ * default it is a synthesized placeholder (first option / `0` / `''` / `false`),
+ * not the component's real default. `hasDefault` records whether the manifest
+ * actually declared a default; the snippet uses it to decide what to omit, so a
+ * synthesized placeholder is never silently dropped from the copyable code.
+ */
+type PlaygroundControlBase = { name: string; description?: string; hasDefault: boolean };
 
 /** A single adjustable control derived from a supported prop shape. */
 export type PlaygroundControl = PlaygroundControlBase &
@@ -94,6 +102,7 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
     // `description?: string` under `exactOptionalPropertyTypes`.
     const base = {
       name: prop.name,
+      hasDefault: prop.defaultValue !== undefined,
       ...(prop.description !== undefined ? { description: prop.description } : {}),
     };
     switch (prop.control.kind) {
@@ -127,24 +136,47 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
 }
 
 /**
- * Render one control's current value as a Svelte attribute fragment, or `null`
- * to omit it. String values that are safe for a double-quoted attribute use the
- * plain `name="value"` form; values containing a quote, ampersand, or angle
- * bracket would break that form, so they fall back to a `name={"..."}`
- * expression with a JSON-escaped literal that copy-pastes as valid Svelte.
+ * Render one control's current value as a Svelte attribute fragment.
+ *
+ * Booleans always render explicitly — bare `name` for `true`, `name={false}` for
+ * `false` — so a snippet faithfully reproduces the selected state even when the
+ * component's default for that prop is `true` (omitting it would otherwise show
+ * the default, contradicting the UI). String values that are safe for a
+ * double-quoted attribute use the plain `name="value"` form; values containing a
+ * quote, ampersand, or angle bracket fall back to a `name={"..."}` expression
+ * with a JSON-escaped literal that copy-pastes as valid Svelte. Whether a prop is
+ * emitted at all is decided by {@link buildSnippet}; this only formats it.
  */
-function attributeFor(name: string, value: PlaygroundValue): string | null {
-  if (typeof value === 'boolean') return value ? name : null;
+function attributeFor(name: string, value: PlaygroundValue): string {
+  if (typeof value === 'boolean') return value ? name : `${name}={false}`;
   if (typeof value === 'number') return `${name}={${value}}`;
-  if (value === '') return null;
   if (/["&<>]/.test(value)) return `${name}={${JSON.stringify(value)}}`;
   return `${name}="${value}"`;
 }
 
 /**
+ * Decide whether a control's current value should appear in the snippet.
+ *
+ * A prop is omitted only when it has a real manifest default AND the current
+ * value equals that default — omitting it then renders identically, so the
+ * snippet stays minimal. A prop WITHOUT a manifest default keeps its
+ * synthesized seed (first option / `0` / `''` / `false`) visible: we cannot
+ * prove the component's own default matches the placeholder, so dropping it
+ * could silently change what the snippet renders. Empty strings are the one
+ * exception — `name=""` is noise that adds nothing over omission.
+ */
+function shouldEmit(control: PlaygroundControl, current: PlaygroundValue): boolean {
+  if (current === '') return false;
+  if (control.hasDefault && current === control.value) return false;
+  return true;
+}
+
+/**
  * Generate a copy-able Svelte snippet for the component from the live control
- * values. Boolean controls render as bare attributes when true (and are omitted
- * when false); string/number controls render as `name="value"` / `name={value}`.
+ * values. Each emitted control renders explicitly — booleans as bare `name` /
+ * `name={false}`, strings as `name="value"`, numbers as `name={value}` — so the
+ * snippet always reproduces the live UI state. {@link shouldEmit} governs which
+ * props are included.
  *
  * @param exportName - The component's PascalCase export name, e.g. `Accordion`.
  * @param controls - The controls in display order.
@@ -157,12 +189,8 @@ export function buildSnippet(
   values: Record<string, PlaygroundValue>,
 ): string {
   const attributes = controls
-    .map((control) => {
-      const current = values[control.name] ?? control.value;
-      if (current === control.value) return null;
-      return attributeFor(control.name, current);
-    })
-    .filter((fragment): fragment is string => fragment !== null);
+    .filter((control) => shouldEmit(control, values[control.name] ?? control.value))
+    .map((control) => attributeFor(control.name, values[control.name] ?? control.value));
 
   if (attributes.length === 0) return `<${exportName} />`;
   if (attributes.length === 1) return `<${exportName} ${attributes[0]} />`;
