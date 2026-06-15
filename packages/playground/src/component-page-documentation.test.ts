@@ -213,6 +213,24 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('renders the status dot as decorative so it does not re-announce the badge text', async () => {
+    // Regression for #388/#372: the spec-row StatusDot sits next to a Badge that
+    // already names the status visibly. The dot must be decorative
+    // (`aria-hidden`) — if it carried `aria-label={status}` it would speak the
+    // same word the Badge already announces (the audible duplication).
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    const dot = document.querySelector('.dx-spec__val [role="img"]');
+    expect(dot).not.toBeNull();
+    expect(dot?.getAttribute('aria-hidden')).toBe('true');
+    // The decorative dot carries no accessible name of its own.
+    expect(dot?.getAttribute('aria-label')).toBeNull();
+
+    unmount();
+    await tick();
+  });
+
   test('builds a TOC from the sections that have data', async () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -261,6 +279,53 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('stacked union props type has no leading separator before the first member', async () => {
+    // A 5-option select exceeds the inline `isShortUnion` budget (≤4 members),
+    // so the props-table renders the stacked union layout: one `.props-type__member`
+    // per union member, each prefixed by a `.props-type__sep` "|" — EXCEPT the
+    // first, which must stand alone. An earlier pass emitted a leading separator
+    // before every member including the first, producing `| 'alpha'` at the top
+    // of the list. The separator is now gated on the member's index.
+    const fixture = baseFixture();
+    fixture.propsManifest.props = [
+      {
+        name: 'variant',
+        control: {
+          kind: 'select',
+          options: ['alpha', 'beta', 'gamma', 'delta', 'epsilon'],
+        },
+        bindable: false,
+        optional: true,
+        defaultValue: 'alpha',
+      },
+    ];
+    installDocumentationFetch(fixture);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    const union = document.querySelector('.props-type--union');
+    expect(union).not.toBeNull();
+
+    const members = Array.from(union?.querySelectorAll('.props-type__member') ?? []);
+    expect(members).toHaveLength(5);
+
+    // The first member carries only its value — no separator precedes it.
+    expect(members[0]?.querySelector('.props-type__sep')).toBeNull();
+    expect(members[0]?.querySelector('.props-type__value')?.textContent).toBe("'alpha'");
+
+    // Every subsequent member is prefixed by exactly one separator.
+    for (const member of members.slice(1)) {
+      expect(member.querySelectorAll('.props-type__sep')).toHaveLength(1);
+    }
+
+    // Separator count equals members − 1 (no leading pipe anywhere).
+    expect(union?.querySelectorAll('.props-type__sep')).toHaveLength(members.length - 1);
+
+    unmount();
+    await tick();
+  });
+
   test('omits the Related section when there are no related components', async () => {
     const noRelated = baseFixture();
     noRelated.component.related = [];
@@ -304,10 +369,12 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
-  test('omits the Playground when a required non-snippet prop has no default', async () => {
+  test('shows a context note (not controls) when a required non-snippet prop has no default', async () => {
     const required = baseFixture();
     // A required `unknown` prop with no default can't be synthesized, so the
-    // generated playground is suppressed entirely (and dropped from the TOC).
+    // generated interactive playground is suppressed. A context-note section
+    // IS rendered instead, linking to the first `avoidWhen` alternative's page.
+    // The Playground TOC link is still omitted.
     required.propsManifest.props = [
       {
         name: 'value',
@@ -320,11 +387,57 @@ describe('component-page single-scroll layout', () => {
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
-    expect(document.getElementById('playground')).toBeNull();
 
+    // The playground section renders a context note, not interactive controls.
+    const section = document.getElementById('playground');
+    expect(section).not.toBeNull();
+    const note = section?.querySelector('.dx-play__context-note');
+    expect(note).not.toBeNull();
+    // The note describes the ACTUAL condition — a required prop the playground
+    // can't fill in automatically — rather than over-claiming a specific cause
+    // like "must be nested inside a parent", which only applies to some of the
+    // components this branch covers.
+    const noteText = note?.textContent ?? '';
+    expect(noteText).toContain("can't fill in automatically");
+    expect(noteText).not.toMatch(/nested inside/i);
+    // The base fixture's first `avoidWhen` alternative is `segmented-control`, so
+    // the note links to that component's page rather than the in-page Examples.
+    const noteLink = note?.querySelector('a');
+    expect(noteLink?.getAttribute('href')).toBe('/c/segmented-control');
+    // No control widgets are rendered.
+    expect(section?.querySelector('.dx-ctl')).toBeNull();
+
+    // The TOC still does NOT include a Playground link — the context-note
+    // section is shown outside the TOC-driven flow.
     const nav = screen.getByRole('navigation', { name: 'On this page' });
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
     expect(labels.some((label) => label.includes('Playground'))).toBe(false);
+
+    unmount();
+    await tick();
+  });
+
+  test('context note falls back to the Examples anchor when there is no avoidWhen alternative', async () => {
+    const required = baseFixture();
+    // Same unsatisfiable required prop, but with no `avoidWhen` alternative to
+    // link to — the note should fall back to the in-page Examples anchor.
+    required.component.avoidWhen = [];
+    required.propsManifest.props = [
+      {
+        name: 'value',
+        control: { kind: 'unknown', rawType: 'CustomValue' },
+        bindable: false,
+        optional: false,
+      },
+    ];
+    installDocumentationFetch(required);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    const note = document.getElementById('playground')?.querySelector('.dx-play__context-note');
+    expect(note).not.toBeNull();
+    expect(note?.querySelector('a')?.getAttribute('href')).toBe('#examples');
 
     unmount();
     await tick();

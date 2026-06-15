@@ -42,10 +42,10 @@ describe('buildPlaygroundModel', () => {
       ]),
     );
     expect(model.controls).toEqual([
-      { name: 'flag', kind: 'boolean', value: true },
-      { name: 'variant', kind: 'select', options: ['a', 'b'], value: 'b' },
-      { name: 'title', kind: 'text', value: 'hi' },
-      { name: 'count', kind: 'number', value: 3 },
+      { name: 'flag', hasDefault: true, kind: 'boolean', value: true },
+      { name: 'variant', hasDefault: true, kind: 'select', options: ['a', 'b'], value: 'b' },
+      { name: 'title', hasDefault: true, kind: 'text', value: 'hi' },
+      { name: 'count', hasDefault: true, kind: 'number', value: 3 },
     ]);
     expect(model.skipped).toEqual([]);
     expect(model.hasUnsatisfiedRequired).toBe(false);
@@ -127,6 +127,7 @@ describe('buildPlaygroundModel', () => {
     );
     expect(model.controls[0]).toEqual({
       name: 'variant',
+      hasDefault: false,
       kind: 'select',
       options: ['primary', 'secondary'],
       value: 'primary',
@@ -155,13 +156,15 @@ describe('buildSnippet', () => {
   ).controls;
 
   test('omits a false boolean and renders self-closing when no attributes', () => {
-    expect(buildSnippet('Accordion', controls, { multiple: false, size: '' })).toBe(
+    // `size` stays at its 'md' default (a select is never empty at runtime), so
+    // it is omitted; `multiple` is at its `false` default, so it is too.
+    expect(buildSnippet('Accordion', controls, { multiple: false, size: 'md' })).toBe(
       '<Accordion />',
     );
   });
 
   test('renders a true boolean as a bare attribute', () => {
-    expect(buildSnippet('Accordion', controls, { multiple: true, size: '' })).toBe(
+    expect(buildSnippet('Accordion', controls, { multiple: true, size: 'md' })).toBe(
       '<Accordion multiple />',
     );
   });
@@ -207,5 +210,160 @@ describe('buildSnippet', () => {
     );
     // A safe value keeps the plain quoted-attribute form.
     expect(buildSnippet('Comp', textControls, { label: 'plain' })).toBe('<Comp label="plain" />');
+  });
+
+  test('omits a control at its default value from the snippet', () => {
+    // A select at its default value ('left') should produce a self-closing tag.
+    const selectControls = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'align',
+          control: { kind: 'select', options: ['left', 'center', 'right'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'left',
+        },
+      ]),
+    ).controls;
+    expect(buildSnippet('Table', selectControls, { align: 'left' })).toBe('<Table />');
+  });
+
+  test('emits only controls that have changed from their default', () => {
+    const mixedControls = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'align',
+          control: { kind: 'select', options: ['left', 'center', 'right'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'left',
+        },
+        {
+          name: 'as',
+          control: { kind: 'select', options: ['td', 'th'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'td',
+        },
+      ]),
+    ).controls;
+    // Only 'align' changed; 'as' is still at its default 'td'.
+    expect(buildSnippet('Table', mixedControls, { align: 'center', as: 'td' })).toBe(
+      '<Table align="center" />',
+    );
+  });
+
+  test('emits name="" when a text prop with a non-empty default is cleared', () => {
+    // Regression: clearing a non-empty default to '' is a real state change, so
+    // the snippet must preserve `label=""`. Omitting it would silently revert to
+    // the default ('Submit') when pasted, contradicting the live UI.
+    const withDefault = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'label',
+          control: { kind: 'text' },
+          bindable: false,
+          optional: true,
+          defaultValue: 'Submit',
+        },
+      ]),
+    ).controls;
+    // Cleared to '' (differs from the 'Submit' default) → emitted as label="".
+    expect(buildSnippet('Comp', withDefault, { label: '' })).toBe('<Comp label="" />');
+    // Still at the default → omitted.
+    expect(buildSnippet('Comp', withDefault, { label: 'Submit' })).toBe('<Comp />');
+  });
+
+  test('omits an empty string when the prop has no default or an empty default', () => {
+    // No manifest default: the seeded '' is noise — `name=""` adds nothing.
+    const noDefault = buildPlaygroundModel(
+      manifest([{ name: 'label', control: { kind: 'text' }, bindable: false, optional: true }]),
+    ).controls;
+    expect(buildSnippet('Comp', noDefault, { label: '' })).toBe('<Comp />');
+
+    // Explicit empty-string default: '' equals the default → still omitted.
+    const emptyDefault = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'label',
+          control: { kind: 'text' },
+          bindable: false,
+          optional: true,
+          defaultValue: '',
+        },
+      ]),
+    ).controls;
+    expect(buildSnippet('Comp', emptyDefault, { label: '' })).toBe('<Comp />');
+  });
+
+  test('omits a number control at its default 0, emits it when changed', () => {
+    const numberControls = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'count',
+          control: { kind: 'number' },
+          bindable: false,
+          optional: true,
+          defaultValue: 0,
+        },
+      ]),
+    ).controls;
+    expect(buildSnippet('Comp', numberControls, { count: 0 })).toBe('<Comp />');
+    expect(buildSnippet('Comp', numberControls, { count: 42 })).toBe('<Comp count={42} />');
+  });
+
+  test('emits name={false} when a boolean defaulting to true is toggled off', () => {
+    // Regression: omitting the prop would render the default `true`, so a snippet
+    // that drops a user-selected `false` silently contradicts the live UI.
+    const trueByDefault = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'closable',
+          control: { kind: 'boolean' },
+          bindable: false,
+          optional: true,
+          defaultValue: true,
+        },
+      ]),
+    ).controls;
+    // At its `true` default → omitted (omitting renders `true`, the same state).
+    expect(buildSnippet('Modal', trueByDefault, { closable: true })).toBe('<Modal />');
+    // Toggled to `false` → must be explicit, not dropped.
+    expect(buildSnippet('Modal', trueByDefault, { closable: false })).toBe(
+      '<Modal closable={false} />',
+    );
+  });
+
+  test('keeps a synthesized seed visible when the prop has no manifest default', () => {
+    // Regression: a control without a manifest default seeds a placeholder
+    // (first option / `0` / `false`) that is NOT the component's real default,
+    // so it must stay in the snippet rather than being elided as if it were one.
+    const noDefault = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'variant',
+          control: { kind: 'select', options: ['primary', 'secondary'] },
+          bindable: false,
+          optional: true,
+        },
+        {
+          name: 'disabled',
+          control: { kind: 'boolean' },
+          bindable: false,
+          optional: true,
+        },
+        {
+          name: 'count',
+          control: { kind: 'number' },
+          bindable: false,
+          optional: true,
+        },
+      ]),
+    ).controls;
+    // The seeded values (first option / `false` / `0`) are surfaced explicitly,
+    // because we cannot prove they match the component's own defaults.
+    expect(
+      buildSnippet('Widget', noDefault, { variant: 'primary', disabled: false, count: 0 }),
+    ).toBe('<Widget\n  variant="primary"\n  disabled={false}\n  count={0}\n/>');
   });
 });
