@@ -37,6 +37,23 @@
     background: var(--cinder-surface-hover);
   }
 
+  /*
+   * The keyboard cursor (`data-cinder-active`) gets a geometric ring on top of
+   * the background tint. The `--cinder-surface-hover` fill is intentionally a
+   * subtle ~1.1:1 step against the panel's `--cinder-surface-raised` — fine for
+   * pointer hover, but on its own it fails WCAG 1.4.11 (3:1 non-text contrast)
+   * for the *sole* keyboard-position indicator. `--cinder-ring-color` is the
+   * system focus-ring token (light arm clamped to L 0.58 specifically to clear
+   * 3:1 against near-white surfaces), so an inset ring makes the active row
+   * unambiguous in both themes. An inset `box-shadow` (not `outline`) is used so
+   * the ring follows the row's `border-radius`. Scoped to `data-cinder-active`
+   * only: `aria-selected` is the committed choice and must stay visually
+   * distinct from the transient keyboard cursor.
+   */
+  .cinder-_option-row[data-cinder-active] {
+    box-shadow: inset 0 0 0 1px var(--cinder-ring-color);
+  }
+
   .cinder-_option-row[aria-disabled='true'],
   .cinder-_option-row[data-cinder-disabled] {
     color: var(--cinder-text-disabled);
@@ -49,10 +66,19 @@
       box-shadow: none;
     }
 
-    .cinder-_option-row[data-cinder-active],
-    .cinder-_option-row[aria-selected='true'] {
+    /*
+     * Forced-colors strips `box-shadow`, so the keyboard cursor falls back to a
+     * system `Highlight` outline. `aria-selected` is reset to no outline so the
+     * committed choice does not masquerade as the keyboard cursor here either.
+     */
+    .cinder-_option-row[data-cinder-active] {
+      box-shadow: none;
       outline: 1px solid Highlight;
       outline-offset: -1px;
+    }
+
+    .cinder-_option-row[aria-selected='true'] {
+      outline: none;
     }
   }
 }
