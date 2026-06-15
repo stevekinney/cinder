@@ -758,6 +758,7 @@ async function compilePageBundleArtifacts(
   const entrySource = `import { mount } from 'svelte';
 
 import ComponentPage from '../component-page.svelte';
+import * as BareComponentModule from '@lostgradient/cinder/${componentName}';
 ${scenarioImports}
 const scenarios: Record<string, unknown> = {
 ${scenarioRegistrations}
@@ -769,7 +770,13 @@ if (target === null) {
   throw new Error('[cinder playground] #app target not found');
 }
 
-mount(ComponentPage, { target });
+// Pass the bare component's module namespace as a prop so the Playground section
+// can mount the component directly with synthesized prop values (live preview,
+// #405). The page resolves it by \`documentation.component.exportName\`, falling
+// back to the default export — the whole namespace is handed over so both
+// resolve. Threaded as a prop (not a \`window\` global) so the live preview is
+// wired explicitly to the bundle that mounted the page.
+mount(ComponentPage, { target, props: { bareComponentModule: BareComponentModule } });
 `;
 
   try {
