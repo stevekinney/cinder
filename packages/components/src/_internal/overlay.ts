@@ -81,8 +81,11 @@ export function useHydrated(): { value: boolean } {
  * The stack lives in module scope so all Cinder overlays share it. This is
  * fine for tests (each test runs against a fresh module instance) and fine
  * for production (a real app has at most a handful of stacked overlays at
- * once). The stack is also keyed-set semantics: pushing the same handler
- * twice is a no-op; popping a handler not on the stack is a no-op.
+ * once). It is a plain LIFO stack: each `pushEscapeHandler` call appends one
+ * entry and returns a one-shot `release` token that removes that entry's most
+ * recent occurrence. Overlays push exactly once per open and release via the
+ * returned token, so duplicates don't arise in practice; releasing a token
+ * twice (or releasing a handler already gone) is a no-op.
  */
 /**
  * An escape-stack handler. Receives the originating `KeyboardEvent` so a

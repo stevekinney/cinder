@@ -111,6 +111,16 @@
     }
     return result;
   });
+
+  // A bare `role="group"` needs an accessible name, so removable mode names the
+  // group with its `label` by default. But `aria-label` flows through `rest` for
+  // display/removable modes (see above), so a consumer-supplied `aria-label`
+  // must win. Resolve to the consumer's value when present, falling back to
+  // `label` — and apply it explicitly so it can't be clobbered by the spread.
+  const removableAriaLabel = $derived.by(() => {
+    const forwarded = rest['aria-label'];
+    return typeof forwarded === 'string' && forwarded.trim().length > 0 ? forwarded : label;
+  });
 </script>
 
 {#if mode === 'toggle'}
@@ -142,7 +152,7 @@
   <span
     {...rest}
     role="group"
-    aria-label={label}
+    aria-label={removableAriaLabel}
     data-cinder-mode="removable"
     data-cinder-variant={variant}
     data-cinder-size={size}

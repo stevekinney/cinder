@@ -53,7 +53,7 @@
     (entries) => {
       const entry = entries[0];
       if (!entry) return;
-      captionHeight = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
+      captionHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
     },
     { box: 'border-box' },
   );

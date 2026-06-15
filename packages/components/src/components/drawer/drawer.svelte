@@ -124,10 +124,13 @@
    * When the consumer marked a child with `autofocus`, the native <dialog>
    * already focused it — honour that by handing the element back so the trap
    * does not steal focus to the first tabbable. Otherwise return `null`, which
-   * lets `createFocusTrap` fall through to its first-tabbable → body-fallback
-   * strategy (the close button, then the `tabindex="-1"` body container). This
-   * replaces the prior ad-hoc selector, which accepted any `[tabindex]` other
-   * than `-1` (e.g. `-2`) and CSS-hidden elements that are not Tab-reachable.
+   * lets `createFocusTrap` fall through to the first tabbable element inside the
+   * drawer — typically the close button. (The Drawer passes no `fallbackFocus`,
+   * so when there is nothing tabbable the trap focuses the trap root itself;
+   * unlike Modal/Sheet, the Drawer does not opt into host-managed body focus.)
+   * This replaces the prior ad-hoc selector, which accepted any `[tabindex]`
+   * other than `-1` (e.g. `-2`) and CSS-hidden elements that are not
+   * Tab-reachable.
    */
   function resolveInitialFocus(): HTMLElement | null {
     if (!dialogElement) return null;
