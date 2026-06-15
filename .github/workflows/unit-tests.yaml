@@ -148,6 +148,16 @@ jobs:
       - name: Check styles aggregator completeness
         run: bun run --filter=@lostgradient/cinder aggregator:check
 
+      # Unconditional whole-repo invariant: the generated component artifacts
+      # (component manifest, examples manifests, exports map) must match what the
+      # generator would produce from the current sources. Drift ships stale docs
+      # and packaging metadata to consumers. Runs regardless of scope because a
+      # source change (e.g. a *.example.svelte edit) can desync the committed
+      # manifest while the generator's own files are unchanged (so `test:changed`
+      # would miss it). Sub-second; mirrors the aggregator gate above.
+      - name: Check generated component artifacts are up to date
+        run: bun run --filter=@lostgradient/cinder components:check
+
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and
         # their dependents. Sibling @cinder/* package suites are intentionally
