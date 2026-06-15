@@ -165,6 +165,15 @@
 
   function handleTargetKeydown(event: KeyboardEvent): void {
     rememberKeyboardFocusModality(event);
+    // Enter and Space activate the focused data point — a role="button" element
+    // must respond to these keys per ARIA 1.2 §6.6.3 (button widget).
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (event.currentTarget instanceof Element) {
+        event.currentTarget.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      }
+      return;
+    }
     interaction.activateByKeyboard(event, rootElement!, model.targets, keyboardEnabled);
   }
 </script>
@@ -260,6 +269,10 @@
             aria-hidden="true"
             data-cinder-series={bar.seriesId}
             data-cinder-category={bar.categoryLabel}
+            data-cinder-active={interaction.activeTarget?.seriesId === bar.seriesId &&
+            interaction.activeTarget?.xLabel === bar.categoryLabel
+              ? ''
+              : undefined}
           />
         {/each}
         {#each model.categoryTicks as tick (tick.categoryKey)}

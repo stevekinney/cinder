@@ -39,6 +39,10 @@
     children,
   }: TableProps = $props();
 
+  // A stable per-instance ID used to associate the hoisted caption div with the
+  // table via aria-labelledby when stickyHeader is true.
+  const captionId = $props.id();
+
   function onSortChange(column: string): void {
     if (!sort || sort.column !== column) {
       sort = { column, direction: 'ascending' };
@@ -62,14 +66,20 @@
   });
 </script>
 
-<table
-  class={classNames('cinder-table', className)}
-  data-cinder-sticky-header={stickyHeader || undefined}
-  data-cinder-density={density}
-  data-cinder-selectable={selectable || undefined}
->
-  {#if caption}
-    <caption class="cinder-table__caption">{caption}</caption>
+<div class={classNames('cinder-table-root', caption && stickyHeader ? 'cinder-table-root--captioned' : undefined)}>
+  {#if caption && stickyHeader}
+    <div id={captionId} class="cinder-table__caption--hoisted">{caption}</div>
   {/if}
-  {@render children()}
-</table>
+  <table
+    class={classNames('cinder-table', className)}
+    data-cinder-sticky-header={stickyHeader || undefined}
+    data-cinder-density={density}
+    data-cinder-selectable={selectable || undefined}
+    aria-labelledby={caption && stickyHeader ? captionId : undefined}
+  >
+    {#if caption && !stickyHeader}
+      <caption class="cinder-table__caption">{caption}</caption>
+    {/if}
+    {@render children()}
+  </table>
+</div>

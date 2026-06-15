@@ -26,6 +26,71 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
 
+  // Selector for elements that participate in sequential Tab navigation.
+  // Mirrors the selector used in the shared focus-trap utility.
+  const FOCUSABLE_SELECTOR = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    'summary',
+    '[tabindex]:not([tabindex="-1"])',
+    '[contenteditable]:not([contenteditable="false"])',
+  ].join(', ');
+
+  /**
+   * Returns all elements in `root` that are reachable via the Tab key. Elements
+   * with `tabindex="-1"` are excluded because they opt out of sequential focus
+   * navigation (they remain programmatically focusable but not Tab-reachable).
+   */
+  function getTabbableElements(root: HTMLElement): HTMLElement[] {
+    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) => {
+      if (element.hidden) return false;
+      if (element.matches('[inert], [aria-hidden="true"]')) return false;
+      const ancestor = element.closest<HTMLElement>('[hidden], [inert], [aria-hidden="true"]');
+      if (ancestor !== null && ancestor !== element) return false;
+      return true;
+    });
+  }
+
+  /**
+   * Attachment that wraps Tab / Shift+Tab navigation within a container so focus
+   * never escapes to `<body>` while the modal is open.
+   *
+   * Intentionally avoids any initial-focus or focus-restore side effects — the
+   * modal's own `$effect` and `returnFocus()` own those concerns. This attachment
+   * purely intercepts Tab keystrokes and re-routes them to keep focus trapped.
+   */
+  function tabWrap(node: HTMLElement) {
+    function handleKeydown(event: KeyboardEvent) {
+      if (event.key !== 'Tab') return;
+
+      const tabbable = getTabbableElements(node);
+      if (tabbable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = tabbable[0];
+      const last = tabbable[tabbable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+
+    node.addEventListener('keydown', handleKeydown);
+    return () => {
+      node.removeEventListener('keydown', handleKeydown);
+    };
+  }
+
   const titleId = $props.id();
 
   let {
@@ -202,7 +267,10 @@
     oncancel={handleNativeCancel}
   >
     {#if open}
-      <div class="cinder-modal__panel">
+      <div
+        class="cinder-modal__panel"
+        {@attach tabWrap}
+      >
         <div class="cinder-modal__header">
           <h2 id={titleId} class="cinder-modal__title">{title}</h2>
         </div>

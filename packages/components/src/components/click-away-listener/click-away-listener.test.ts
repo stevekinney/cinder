@@ -227,6 +227,11 @@ describe('ClickAwayListener — TouchEvent-undefined regression', () => {
   // Window object installed on globalThis. We need to shadow it there.
   const win = (g['window'] ?? g) as Record<string, unknown>;
 
+  // Save originals before any override so afterEach can restore exactly.
+  const originalPointerEventWin = win['PointerEvent'];
+  const originalPointerEventG = g['PointerEvent'];
+  const originalTouchEventG = g['TouchEvent'];
+
   beforeEach(() => {
     // Override PointerEvent on both globalThis and the window object to force
     // the mousedown+touchstart fallback path.
@@ -248,24 +253,25 @@ describe('ClickAwayListener — TouchEvent-undefined regression', () => {
   });
 
   afterEach(() => {
-    // happy-dom restores its own globals; just remove our overrides.
-    // Deletion restores the prototype-chain value, which is sufficient for
-    // happy-dom's own property defined via defineProperty on the Window ctor.
-    try {
-      delete win['PointerEvent'];
-    } catch {
-      /* non-configurable in some environments — ignore */
-    }
-    try {
-      delete g['PointerEvent'];
-    } catch {
-      /* non-configurable in some environments — ignore */
-    }
-    try {
-      delete g['TouchEvent'];
-    } catch {
-      /* non-configurable in some environments — ignore */
-    }
+    // Restore the saved originals so that later test files see the real globals.
+    // Simple `delete` is not sufficient here because we installed own-properties
+    // via Object.defineProperty on globalThis itself (not on a prototype), so
+    // deleting the own-property leaves the name unresolvable in subsequent files.
+    Object.defineProperty(win, 'PointerEvent', {
+      value: originalPointerEventWin,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(g, 'PointerEvent', {
+      value: originalPointerEventG,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(g, 'TouchEvent', {
+      value: originalTouchEventG,
+      configurable: true,
+      writable: true,
+    });
     cleanup();
     document.body.replaceChildren();
   });

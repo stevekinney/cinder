@@ -697,6 +697,22 @@ describe('Drawer', () => {
     const closeButton = container.querySelector('.cinder-drawer__close');
     expect(closeButton?.getAttribute('aria-label')).toBe('Close drawer');
   });
+
+  // ---- Initial focus on open: first focusable element inside the panel ----
+  test('opening focuses the first focusable element inside the panel when one exists', async () => {
+    // The close button inside the header is the first focusable element in the panel.
+    // The drawer renders: header (close button) → body → footer.
+    const { container } = render(Drawer, {
+      props: { open: true, title: 'Test', children: emptySnippet },
+    });
+    // Svelte schedules the open-focus effect with tick().then(). In happy-dom,
+    // effects run synchronously but the tick().then() microtask needs to drain.
+    // Wait for two microtask cycles to ensure both the effect and the tick resolve.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
+    expect(closeButton).not.toBeNull();
+    expect(document.activeElement).toBe(closeButton);
+  });
 });
 
 // ---------------------------------------------------------------------------

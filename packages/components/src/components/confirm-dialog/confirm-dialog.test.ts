@@ -558,3 +558,70 @@ describe('ConfirmDialog', () => {
     expect(cancelCount).toBe(1);
   });
 });
+
+describe('ConfirmDialog focus trap', () => {
+  // ConfirmDialog inherits Modal's focus trap. These tests verify that the inherited
+  // Tab-wrap behavior works for ConfirmDialog's footer buttons.
+
+  test('Tab on the close button (last tabbable) wraps back — focus trap prevents default', async () => {
+    // Modal's focus trap is active on the panel when open. The close button is the last
+    // tabbable element; Tab on it must be intercepted so focus never reaches <body>.
+    const { container } = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete account?',
+        confirmLabel: 'Delete',
+        onconfirm: () => {},
+      },
+    });
+
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    expect(closeButton).not.toBeNull();
+
+    closeButton.focus();
+
+    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    panel.dispatchEvent(tabEvent);
+
+    // The focus trap must have prevented default — Tab wraps within the dialog.
+    expect(tabEvent.defaultPrevented).toBe(true);
+  });
+
+  test('Shift+Tab on the cancel button (first tabbable) wraps to last — focus trap prevents default', async () => {
+    // The cancel button carries autofocus and is the first tabbable element in the footer.
+    // Shift+Tab on it must wrap to the last element inside the dialog.
+    const { container } = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete account?',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Delete',
+        onconfirm: () => {},
+      },
+    });
+
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+
+    // The first tabbable element in the ConfirmDialog panel is the cancel button
+    // (the modal body has tabindex=-1 and is excluded from tabbable set).
+    const [cancelButton] = footerButtons(container);
+    expect(cancelButton).not.toBeNull();
+
+    cancelButton.focus();
+
+    const shiftTabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    panel.dispatchEvent(shiftTabEvent);
+
+    // The focus trap must have prevented default — Shift+Tab wraps within the dialog.
+    expect(shiftTabEvent.defaultPrevented).toBe(true);
+  });
+});

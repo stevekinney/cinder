@@ -136,6 +136,49 @@ describe('Table sticky header', () => {
     const { container } = render(Wrapper, { columns, rows });
     expect(container.querySelector('table')?.hasAttribute('data-cinder-sticky-header')).toBe(false);
   });
+
+  test('stickyHeader=true with caption renders a hoisted div caption above the table (not a <caption> element)', () => {
+    const { container } = render(Wrapper, { columns, rows, stickyHeader: true, caption: 'Hoisted' });
+    // The hoisted div must exist and contain the caption text
+    const hoisted = container.querySelector('.cinder-table__caption--hoisted');
+    expect(hoisted).not.toBeNull();
+    expect(hoisted?.textContent?.trim()).toBe('Hoisted');
+    // No native <caption> element should be present in the sticky-header case
+    expect(container.querySelector('caption')).toBeNull();
+  });
+
+  test('stickyHeader=true with caption: hoisted div appears before the <table> in the DOM', () => {
+    const { container } = render(Wrapper, { columns, rows, stickyHeader: true, caption: 'Hoisted' });
+    const hoisted = container.querySelector('.cinder-table__caption--hoisted');
+    const table = container.querySelector('table');
+    expect(hoisted).not.toBeNull();
+    expect(table).not.toBeNull();
+    // compareDocumentPosition returns a bitmask; DOCUMENT_POSITION_FOLLOWING (4) means
+    // table comes after hoisted, i.e. hoisted is before table.
+    expect(hoisted!.compareDocumentPosition(table!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  test('stickyHeader=true with caption: table has aria-labelledby pointing at the hoisted div id', () => {
+    const { container } = render(Wrapper, { columns, rows, stickyHeader: true, caption: 'Hoisted' });
+    const hoisted = container.querySelector('.cinder-table__caption--hoisted');
+    const table = container.querySelector('table');
+    const hoistedId = hoisted?.getAttribute('id');
+    expect(hoistedId).not.toBeNull();
+    expect(table?.getAttribute('aria-labelledby')).toBe(hoistedId);
+  });
+
+  test('stickyHeader=false with caption renders native <caption> element and no hoisted div', () => {
+    const { container } = render(Wrapper, { columns, rows, stickyHeader: false, caption: 'Native' });
+    expect(container.querySelector('caption')?.textContent?.trim()).toBe('Native');
+    expect(container.querySelector('.cinder-table__caption--hoisted')).toBeNull();
+    expect(container.querySelector('table')?.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
+  test('stickyHeader=true without caption renders neither hoisted div nor <caption>', () => {
+    const { container } = render(Wrapper, { columns, rows, stickyHeader: true });
+    expect(container.querySelector('.cinder-table__caption--hoisted')).toBeNull();
+    expect(container.querySelector('caption')).toBeNull();
+  });
 });
 
 describe('Table density', () => {
@@ -561,7 +604,10 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
 
   test('scroll wrapper owns horizontal overflow without changing table semantics', () => {
     const wrapperRule = injectTableCssAndFind('.cinder-table-scroll');
-    const tableRule = injectTableCssAndFind('.cinder-table-scroll > .cinder-table');
+    // The .cinder-table-root wrapper uses display:contents so the table appears
+    // as a direct layout child of .cinder-table-scroll; the CSS uses a descendant
+    // combinator to account for the transparent wrapper div in the DOM.
+    const tableRule = injectTableCssAndFind('.cinder-table-scroll .cinder-table');
     expect(wrapperRule?.style.overflowX).toBe('auto');
     expect(tableRule?.style.minInlineSize).toBe('max-content');
   });

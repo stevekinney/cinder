@@ -82,6 +82,31 @@ describe('Tabs responsive CSS', () => {
   });
 });
 
+describe('Tabs font-weight layout stability (regression #402)', () => {
+  // The fix for #402 moved font-weight from [data-cinder-active] to the base
+  // .cinder-tab rule so that activating a sibling does not toggle a tab's weight
+  // and cause layout shift / offsetWidth change in neighbouring tabs.
+
+  test('base .cinder-tab rule carries font-weight (weight is always applied)', () => {
+    // The base rule must set font-weight so the weight never changes on activation.
+    expect(tabsCss).toMatch(/\.cinder-tab\s*\{[^}]*font-weight\s*:/);
+  });
+
+  test('[data-cinder-active] rule does NOT set font-weight (no weight toggle)', () => {
+    // Extracting just the [data-cinder-active] block and asserting font-weight is absent
+    // prevents the sibling-jank regression: an inactive tab's offsetWidth must not
+    // change when a sibling activates.
+    const activeBlockMatch = tabsCss.match(
+      /\.cinder-tab\[data-cinder-active\]\s*\{([^}]*)\}/,
+    );
+    // The selector must exist (active state is styled).
+    expect(activeBlockMatch).not.toBeNull();
+    // The block must NOT contain font-weight.
+    const activeBlock = activeBlockMatch![1];
+    expect(activeBlock).not.toContain('font-weight');
+  });
+});
+
 describe('Tabs activation', () => {
   test('clicking a tab activates it and reveals its panel', async () => {
     const { container } = render(Wrapper, { value: 'a', items });

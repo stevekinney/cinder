@@ -441,4 +441,74 @@ describe('BarChart', () => {
     expect(container.querySelector('table')?.textContent).toContain('30');
     expect(tableCellText).not.toContain('Revenue');
   });
+
+  test('Enter key on a role="button" focus target activates it (ARIA button widget contract)', async () => {
+    // ARIA 1.2 §6.6.3: a role="button" element must respond to Enter and Space.
+    let clickCount = 0;
+    const { getByRole } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const target = getByRole('button', { name: 'Revenue, Jan, 120' });
+    target.addEventListener('click', () => {
+      clickCount++;
+    });
+
+    await fireEvent.focus(target);
+    await fireEvent.keyDown(target, { key: 'Enter' });
+
+    expect(clickCount).toBe(1);
+  });
+
+  test('Space key on a role="button" focus target activates it (ARIA button widget contract)', async () => {
+    let clickCount = 0;
+    const { getByRole } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+    const target = getByRole('button', { name: 'Revenue, Jan, 120' });
+    target.addEventListener('click', () => {
+      clickCount++;
+    });
+
+    await fireEvent.focus(target);
+    await fireEvent.keyDown(target, { key: ' ' });
+
+    expect(clickCount).toBe(1);
+  });
+
+  test('hovered bar gets data-cinder-active attribute for CSS hover engagement', async () => {
+    const { container, getByRole } = render(BarChart, {
+      label: 'Revenue by month',
+      data,
+      categoryKey: 'month',
+      series,
+    });
+
+    // Before hover: no bar has data-cinder-active.
+    expect(container.querySelector('.cinder-bar-chart__bar[data-cinder-active]')).toBeNull();
+
+    // Focus a target to set activeTarget via the keyboard path (no pointer move needed).
+    const target = getByRole('button', { name: 'Revenue, Jan, 120' });
+    await fireEvent.focus(target);
+
+    // The Revenue Jan bar should now be data-cinder-active.
+    const activeBar = container.querySelector('.cinder-bar-chart__bar[data-cinder-active]');
+    expect(activeBar).not.toBeNull();
+    expect(activeBar?.getAttribute('data-cinder-series')).toBe('revenue');
+    expect(activeBar?.getAttribute('data-cinder-category')).toBe('Jan');
+
+    // After blur, the active bar should clear.
+    await fireEvent.blur(target);
+    expect(container.querySelector('.cinder-bar-chart__bar[data-cinder-active]')).toBeNull();
+  });
+
+  test('bar-chart CSS has a rule for data-cinder-active bars', async () => {
+    const cssText = await Bun.file(new URL('./bar-chart.css', import.meta.url)).text();
+    expect(cssText).toContain('.cinder-bar-chart__bar[data-cinder-active]');
+  });
 });

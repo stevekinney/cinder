@@ -84,6 +84,21 @@ describe('ContextMenuTrigger', () => {
     expect(menu.getAttribute('aria-orientation')).toBe('vertical');
   });
 
+  test('aria-expanded is false initially and toggles to true when the menu opens', async () => {
+    const { container } = render(Harness);
+    const region = container.querySelector('.cinder-context-menu-trigger') as HTMLElement;
+
+    // Initially the menu is closed — aria-expanded must reflect that.
+    expect(region.getAttribute('aria-expanded')).toBe('false');
+
+    await fireEvent.contextMenu(region, { clientX: 12, clientY: 18 });
+
+    await waitFor(() => {
+      expect(document.body.querySelector('[role="menu"]')).not.toBeNull();
+      expect(region.getAttribute('aria-expanded')).toBe('true');
+    });
+  });
+
   // Regression test: handlePointerdown schedules longPressTimer when the pointer
   // type is "touch". onDestroy must call clearLongPress() so the timer does not
   // outlive the component. Use a very large longPressDelay so the timer is still

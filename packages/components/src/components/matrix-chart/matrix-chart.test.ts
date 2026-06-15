@@ -15,7 +15,7 @@ class TestResizeObserver {
 const originalResizeObserver = globalThis.ResizeObserver;
 globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
 
-const { cleanup, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: MatrixChart } = await import('./matrix-chart.svelte');
 
 afterEach(() => cleanup());
@@ -291,5 +291,56 @@ describe('MatrixChart', () => {
     const tableText = container.querySelector('table')?.textContent ?? '';
     expect(tableText).toContain('11');
     expect(tableText).toContain('22');
+  });
+
+  test('pointer move over the hit surface marks the hovered cell data-cinder-active', async () => {
+    const { container } = render(MatrixChart, {
+      label: 'Confusion matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+    });
+
+    const hitSurface = container.querySelector(
+      '.cinder-matrix-chart__hit-surface',
+    ) as SVGRectElement;
+    expect(hitSurface).not.toBeNull();
+
+    // Before hover: no cell is active.
+    expect(container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]')).toBeNull();
+
+    // Move the pointer over the hit surface. clientX/Y map into the cell grid.
+    // The hit surface getBoundingClientRect is (0,0,0,0) in happy-dom so the
+    // computed plotX/plotY will both be 0, placing the pointer in the first cell
+    // (xIndex=0, yIndex=0 → key "0:0").
+    await fireEvent.pointerMove(hitSurface, { clientX: 0, clientY: 0 });
+
+    const activeCell = container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]');
+    // The first cell (top-left) should be marked active.
+    expect(activeCell).not.toBeNull();
+    expect(activeCell?.getAttribute('data-cinder-x')).toBeTruthy();
+    expect(activeCell?.getAttribute('data-cinder-y')).toBeTruthy();
+
+    // Pointer leave clears the active cell.
+    await fireEvent.pointerLeave(hitSurface);
+    expect(container.querySelector('.cinder-matrix-chart__cell[data-cinder-active]')).toBeNull();
+  });
+
+  test('hit surface is present when data is available and not loading', () => {
+    const { container } = render(MatrixChart, {
+      label: 'Confusion matrix',
+      data: confusionData,
+      xField: 'predicted',
+      yField: 'actual',
+      valueField: 'count',
+    });
+    expect(container.querySelector('.cinder-matrix-chart__hit-surface')).not.toBeNull();
+  });
+
+  test('matrix-chart CSS has rules for data-cinder-active and hit-surface', async () => {
+    const cssText = await Bun.file(new URL('./matrix-chart.css', import.meta.url)).text();
+    expect(cssText).toContain('.cinder-matrix-chart__cell[data-cinder-active]');
+    expect(cssText).toContain('.cinder-matrix-chart__hit-surface');
   });
 });

@@ -166,6 +166,7 @@
   bind:this={triggerElement}
   class={classNames('cinder-context-menu-trigger', className)}
   aria-haspopup="menu"
+  aria-expanded={context.isOpen}
   oncontextmenu={handleContextmenu}
   onpointerdown={handlePointerdown}
   onpointerup={handlePointerup}

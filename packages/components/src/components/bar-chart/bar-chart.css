@@ -56,6 +56,10 @@
     rx: 3;
   }
 
+  .cinder-bar-chart__bar[data-cinder-active] {
+    filter: brightness(1.15);
+  }
+
   .cinder-bar-chart__crosshair {
     stroke: var(--cinder-text-muted);
     stroke-dasharray: 4 4;

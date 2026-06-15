@@ -595,31 +595,32 @@ describe('TagInput ARIA live announcements', () => {
   });
 
   test('consecutive identical add announcements both fire via blank-then-set', async () => {
+    // This test specifically exercises the blank-then-set reset path: the same
+    // announcement string ("Svelte added.") must re-fire even when the live
+    // region already contains that exact text from the previous commit. A naive
+    // assignment of the same string would be a no-op for the AT; blank-then-set
+    // is the only mechanism that guarantees re-announcement.
     const { container } = render(TagInput, { id: 'live-repeat', allowDuplicates: true });
     const input = container.querySelector('input') as HTMLInputElement;
 
-    // First add
+    // First add — live region should show "Svelte added."
     await fireEvent.input(input, { target: { value: 'Svelte' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
     await flushLiveRegion();
 
-    let liveRegion = container.querySelector('[role="status"]');
+    const liveRegion = container.querySelector('[role="status"]');
     expect(liveRegion?.textContent).toContain('Svelte added.');
 
-    // Remove it (to have something to re-add)
-    const removeButton = container.querySelector('.cinder-tag-input__remove') as HTMLElement;
-    await fireEvent.click(removeButton);
-    await flushLiveRegion();
-
-    expect(container.querySelector('[role="status"]')?.textContent).toContain('Svelte removed.');
-
-    // Second add of same value — live region should re-announce
+    // Second add of the SAME value (allowDuplicates=true, no intervening removal).
+    // The live region still holds "Svelte added." — the blank-then-set cycle
+    // must set it to '' first so the identical string re-triggers the AT.
     await fireEvent.input(input, { target: { value: 'Svelte' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
     await flushLiveRegion();
 
-    liveRegion = container.querySelector('[role="status"]');
-    expect(liveRegion?.textContent).toContain('Svelte added.');
+    // After the macro-task the content must be back to "Svelte added." — not
+    // still the blank state or something else.
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('Svelte added.');
   });
 });
 

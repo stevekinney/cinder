@@ -16,6 +16,23 @@
  *              Table > TableBody   > TableRow > TableCell
  * ======================================== */
 
+  /* ----------------------------------------
+ * Table root wrapper
+ * Normally a structural pass-through (`display: contents`) so the inner
+ * <table> participates directly in the parent layout. When a caption is
+ * hoisted above a sticky-header table the wrapper generates a block to stack
+ * the caption div above the table.
+ * ---------------------------------------- */
+
+  .cinder-table-root {
+    display: contents;
+  }
+
+  .cinder-table-root--captioned {
+    display: flex;
+    flex-direction: column;
+  }
+
   .cinder-table {
     width: 100%;
     border-collapse: collapse;
@@ -32,7 +49,12 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .cinder-table-scroll > .cinder-table {
+  /* The .cinder-table-root wrapper uses display:contents and is a transparent
+   * pass-through in the box model, but it still appears in the DOM. Use a
+   * descendant combinator so the table is targeted whether or not the wrapper
+   * is present. The selector is scoped tightly enough: nested tables are not
+   * a pattern in this component family. */
+  .cinder-table-scroll .cinder-table {
     min-inline-size: max-content;
   }
 

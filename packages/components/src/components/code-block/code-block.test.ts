@@ -128,6 +128,27 @@ describe('CodeBlock — static structure', () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
     expect(css).toContain('@media (prefers-color-scheme: dark)');
   });
+
+  test('highlighted and plain scroll containers carry inset focus ring (regression #398)', async () => {
+    // .cinder-code-block has overflow:hidden, so the standard outset focus ring is
+    // clipped. The fix adds an INSET box-shadow ring to both focusable scroll
+    // containers. This test locks that pattern so it cannot silently regress.
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+    // Both selectors must appear together in a combined rule.
+    expect(css).toContain('.cinder-code-block__highlighted:focus-visible');
+    expect(css).toContain('.cinder-code-block__pre:focus-visible');
+    // The rule must use an inset box-shadow (not an outset ring that would be clipped).
+    expect(css).toMatch(
+      /\.cinder-code-block__highlighted:focus-visible[\s\S]*?box-shadow:\s*inset\s+0\s+0\s+0\s+var\(--cinder-ring-width\)\s+var\(--cinder-ring-color\)/,
+    );
+    expect(css).toMatch(
+      /\.cinder-code-block__pre:focus-visible[\s\S]*?box-shadow:\s*inset\s+0\s+0\s+0\s+var\(--cinder-ring-width\)\s+var\(--cinder-ring-color\)/,
+    );
+    // The outline must be set to transparent so the inset shadow is the visible ring.
+    expect(css).toMatch(
+      /\.cinder-code-block__highlighted:focus-visible[\s\S]*?outline:\s*var\(--cinder-ring-width\)\s+solid\s+transparent/,
+    );
+  });
 });
 
 describe('CodeBlock — automatic highlighting (bundled default)', () => {

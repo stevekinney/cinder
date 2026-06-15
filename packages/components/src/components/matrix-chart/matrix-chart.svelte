@@ -200,6 +200,35 @@
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
 
+  // Pointer hover tracking: the key of the cell under the pointer, or null.
+  let hoveredCellKey = $state<string | null>(null);
+
+  /**
+   * Maps a pointer position (relative to the plot's translated origin) to the
+   * cell that contains it, returning that cell's key or null if outside the grid.
+   */
+  function cellKeyAtPlotPoint(plotX: number, plotY: number): string | null {
+    if (cellWidth <= 0 || cellHeight <= 0) return null;
+    const xIndex = Math.floor(plotX / cellWidth);
+    const yIndex = Math.floor(plotY / cellHeight);
+    if (xIndex < 0 || xIndex >= xLabels.length || yIndex < 0 || yIndex >= yLabels.length) {
+      return null;
+    }
+    return `${xIndex}:${yIndex}`;
+  }
+
+  function handleHitSurfacePointerMove(event: PointerEvent): void {
+    if (!(event.currentTarget instanceof SVGRectElement)) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const plotX = event.clientX - bounds.left;
+    const plotY = event.clientY - bounds.top;
+    hoveredCellKey = cellKeyAtPlotPoint(plotX, plotY);
+  }
+
+  function handleHitSurfacePointerLeave(): void {
+    hoveredCellKey = null;
+  }
+
   // Table rows for the data table fallback: xLabel × yLabel grid. Reuses the
   // nested lookup (O(1) per cell) instead of scanning the flattened cells array.
   const tableRows = $derived.by(() => {
@@ -286,6 +315,7 @@
                 aria-hidden="true"
                 data-cinder-x={cell.xLabel}
                 data-cinder-y={cell.yLabel}
+                data-cinder-active={hoveredCellKey === cell.key ? '' : undefined}
               >
                 <title
                   >{cell.xLabel} × {cell.yLabel}: {cell.value !== null
@@ -306,6 +336,17 @@
               {/if}
             </g>
           {/each}
+          <!-- Transparent hit surface captures pointer events for cell hover tracking.
+               Rendered above cells so pointer events reach it without interference
+               from cell rect pointer-event quirks in SVG. -->
+          <rect
+            class="cinder-matrix-chart__hit-surface"
+            role="presentation"
+            width={plotWidth}
+            height={plotHeight}
+            onpointermove={handleHitSurfacePointerMove}
+            onpointerleave={handleHitSurfacePointerLeave}
+          />
         </g>
       {/if}
     </svg>

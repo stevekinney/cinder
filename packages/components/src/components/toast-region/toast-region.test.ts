@@ -1051,6 +1051,96 @@ describe('toast variant icons', () => {
     });
   });
 
+  test('success toast renders its distinct checkmark icon when showIcon=true', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Saved', { variant: 'success', duration: 0, showIcon: true });
+    await waitFor(() => {
+      const iconWrapper = container.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      // Success branch: fill-rule="evenodd" path contains the checkmark shape.
+      const svg = iconWrapper?.querySelector('svg');
+      expect(svg).not.toBeNull();
+      const path = svg?.querySelector('path');
+      // The success path includes the clip-rule="evenodd" checkmark.
+      expect(path?.getAttribute('d')).toContain('3.857-9.809');
+    });
+  });
+
+  test('warning toast renders its distinct triangle icon when showIcon=true', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Caution', { variant: 'warning', duration: 0, showIcon: true });
+    await waitFor(() => {
+      const assertive = container.querySelector('[role="alert"]');
+      const iconWrapper = assertive?.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      const svg = iconWrapper?.querySelector('svg');
+      expect(svg).not.toBeNull();
+      const path = svg?.querySelector('path');
+      // The warning path contains the triangle/exclamation shape.
+      expect(path?.getAttribute('d')).toContain('8.485 2.495');
+    });
+  });
+
+  test('danger toast renders its distinct X-circle icon when showIcon=true', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Error', { variant: 'danger', duration: 0, showIcon: true });
+    await waitFor(() => {
+      const assertive = container.querySelector('[role="alert"]');
+      const iconWrapper = assertive?.querySelector('.cinder-toast__icon');
+      expect(iconWrapper).not.toBeNull();
+      const svg = iconWrapper?.querySelector('svg');
+      expect(svg).not.toBeNull();
+      const path = svg?.querySelector('path');
+      // The danger path contains the X-circle shape with 8.28 7.22 coords.
+      expect(path?.getAttribute('d')).toContain('8.28 7.22');
+    });
+  });
+
+  test('showIcon=false suppresses the variant icon for success', async () => {
+    let api: ToastApi | null = null;
+    const { container } = render(Wrapper, {
+      props: {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      },
+    });
+    await waitFor(() => expect(api).not.toBeNull());
+
+    api!.show('Saved silently', { variant: 'success', duration: 0, showIcon: false });
+    await waitFor(() => {
+      expect(container.querySelector('[role="status"]')?.textContent).toContain('Saved silently');
+    });
+    expect(container.querySelector('.cinder-toast__icon')).toBeNull();
+  });
+
   test('consumer icon prop overrides default icon regardless of showIcon', async () => {
     let api: ToastApi | null = null;
     const { container } = render(Wrapper, {

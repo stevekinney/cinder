@@ -131,8 +131,18 @@
         Array.from(dialogElement.querySelectorAll<HTMLElement>('*')).some(
           (element) => element.autofocus === true,
         );
-      if (!hasExplicitAutofocus && bodyElement) {
-        bodyElement.focus();
+      if (!hasExplicitAutofocus) {
+        // Prefer the first naturally focusable element inside the panel body.
+        // Falling back to the body container (tabindex=-1) ensures a focus trap
+        // is always established even when the drawer has no interactive content.
+        const focusableSelectors =
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const firstFocusable = panelElement?.querySelector<HTMLElement>(focusableSelectors);
+        if (firstFocusable) {
+          firstFocusable.focus();
+        } else if (bodyElement) {
+          bodyElement.focus();
+        }
       }
     });
   });

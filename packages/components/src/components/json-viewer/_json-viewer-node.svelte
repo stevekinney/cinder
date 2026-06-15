@@ -34,10 +34,10 @@
     return Object.entries(value as Record<string, unknown>);
   });
 
-  // The key label renders in a sibling <span> outside the <button>, so a screen
-  // reader announces the toggle without any indication of which node it belongs
-  // to. Compose a distinguishing accessible name from the key (when present) and
-  // the collection shape so sibling toggles are tellable apart.
+  // The key label renders inside the <button> so the focus ring encloses the
+  // full row label + caret. The aria-label on the button provides a distinguishing
+  // accessible name from the key (when present) and the collection shape so
+  // sibling toggles are tellable apart.
   const itemCount = $derived(entries.length);
   const collectionLabel = $derived(
     `${isArray ? 'array' : 'object'}, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`,
@@ -57,9 +57,6 @@
 
 {#if isObject && !tooDeep}
   <span class={classNames('cinder-json-viewer__node')}>
-    {#if keyName !== undefined}
-      <span class="cinder-json-viewer__key">{keyName}:</span>
-    {/if}
     <button
       type="button"
       class="cinder-json-viewer__toggle"
@@ -67,6 +64,9 @@
       aria-label={toggleLabel}
       onclick={() => (collapsed = !collapsed)}
     >
+      {#if keyName !== undefined}
+        <span class="cinder-json-viewer__key">{keyName}:</span>
+      {/if}
       <span class="cinder-json-viewer__caret" data-cinder-collapsed={collapsed || undefined}></span>
       <span class="cinder-json-viewer__brace">
         {isArray ? '[' : '{'}

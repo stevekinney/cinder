@@ -235,6 +235,13 @@
 
   .cinder-button[data-cinder-variant='ghost'] {
     background: transparent;
+    /* --cinder-text-muted is intentional for the ghost variant — it reads as
+     * intentionally de-emphasised (visually secondary to primary/secondary actions)
+     * while still meeting WCAG 1.4.3 AA (4.5:1) against the typical page surfaces
+     * in both themes: light-dark oklch(32% 0.014 245 / 82% 0.02 245) clears 4.5:1
+     * against --cinder-surface (L≈98.5%/20%) and --cinder-surface-raised (L≈100%/26%).
+     * Switching to --cinder-text (L≈20%/92%) would meet a higher bar but remove
+     * the visual hierarchy distinction from secondary buttons. */
     color: var(--cinder-text-muted);
     border-color: transparent;
   }

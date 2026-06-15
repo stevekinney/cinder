@@ -322,4 +322,35 @@ describe('AreaChart', () => {
     await fireEvent.click(getByRole('button', { name: 'Storage' }));
     expect(getByText('No chart data')).toBeTruthy();
   });
+
+  test('Enter key on a role="button" focus target activates it (ARIA button widget contract)', async () => {
+    // ARIA 1.2 §6.6.3: a role="button" element must respond to Enter and Space
+    // by dispatching a click. This test verifies Enter triggers the same click
+    // event that pointer interaction would, keeping the keyboard-accessible path parity.
+    let clickCount = 0;
+    const { getByRole } = render(AreaChart, { label: 'Usage trend', series });
+    const target = getByRole('button', { name: 'Usage, Jan, 30' });
+    target.addEventListener('click', () => {
+      clickCount++;
+    });
+
+    await fireEvent.focus(target);
+    await fireEvent.keyDown(target, { key: 'Enter' });
+
+    expect(clickCount).toBe(1);
+  });
+
+  test('Space key on a role="button" focus target activates it (ARIA button widget contract)', async () => {
+    let clickCount = 0;
+    const { getByRole } = render(AreaChart, { label: 'Usage trend', series });
+    const target = getByRole('button', { name: 'Usage, Jan, 30' });
+    target.addEventListener('click', () => {
+      clickCount++;
+    });
+
+    await fireEvent.focus(target);
+    await fireEvent.keyDown(target, { key: ' ' });
+
+    expect(clickCount).toBe(1);
+  });
 });
