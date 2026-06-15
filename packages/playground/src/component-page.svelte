@@ -48,7 +48,11 @@
     buildSnippet,
     type PlaygroundValue,
   } from './component-page-playground.ts';
-  import { createLivePreviewMount, resolveBareComponent } from './component-page-live-preview.ts';
+  import {
+    createLivePreviewMount,
+    LIVE_MOUNT_CONTAINER_ID,
+    resolveBareComponent,
+  } from './component-page-live-preview.ts';
 
   type CinderExampleDescriptor = {
     scenario: string;
@@ -429,7 +433,7 @@
   // and a featured example exists — a component whose bare mount throws (an
   // unsynthesized required snippet, a missing context provider, a portal target)
   // must not replace a working featured example with an error callout (#405).
-  const liveMountFailed = $derived(mountErrors['playground-live-mount'] !== undefined);
+  const liveMountFailed = $derived(mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined);
 
   // --- Sections + scroll spy (data-driven) ------------------------------
   type SectionDescriptor = { id: string; num: string; label: string };
@@ -868,15 +872,15 @@
                           <span class="dx-stage__label">Live preview</span>
                         </div>
                         <div class="dx-stage__canvas">
-                          {#if mountErrors['playground-live-mount'] !== undefined}
-                            {@const error = mountErrors['playground-live-mount']}
+                          {#if mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined}
+                            {@const error = mountErrors[LIVE_MOUNT_CONTAINER_ID]}
                             <Callout variant="danger" title="This preview failed to render">
                               <p>{error?.message}</p>
                             </Callout>
                           {/if}
                           <div
                             class="example-preview"
-                            id="playground-live-mount"
+                            id={LIVE_MOUNT_CONTAINER_ID}
                             {@attach mountLivePreview(bareComponent)}
                           ></div>
                         </div>

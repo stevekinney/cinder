@@ -21,6 +21,15 @@ import { mount, unmount } from 'svelte';
 import { toMountErrorDetail, type MountErrorDetail } from './example-error.ts';
 
 /**
+ * The DOM `id` of the live-preview mount container, and therefore the
+ * {@link MountErrorRecord} key the live mount writes its failures under. Exported
+ * so the page template, the `liveMountFailed` derivation, and the test fixture all
+ * reference ONE string — a rename then fails at every import site instead of
+ * silently leaving the fixture asserting against a key the page no longer writes.
+ */
+export const LIVE_MOUNT_CONTAINER_ID = 'playground-live-mount';
+
+/**
  * The parameter type Svelte's `mount` accepts as its first argument. Used as the
  * return type of {@link resolveBareComponent}. Note this union is satisfied by any
  * function (a bare `() => void` type-checks), so the type alias is a readability
@@ -112,8 +121,14 @@ export type LivePreviewMountOptions = {
  *     so the preview tracks the controls. The caller snapshots its `$state` in
  *     that getter, so the mounted component receives a plain object, exactly what
  *     a real consumer would pass, never the reactive proxy;
- *   - records any mount failure under the container's DOM id and returns a
- *     cleanup that unmounts the instance.
+ *   - records a SYNCHRONOUS mount failure (a throw from the component's
+ *     construction, e.g. an unsynthesized required snippet or a missing context
+ *     provider) under the container's DOM id, and returns a cleanup that unmounts
+ *     the instance. Errors thrown LATER — from an `$effect` or `onMount` that runs
+ *     after `mount()` returns — escape this `try`/`catch` and are NOT recorded
+ *     here; catching those would require wrapping the mount in a
+ *     `<svelte:boundary>`, which #405 deliberately leaves out of scope (the
+ *     featured-example fallback already covers the common construction-time case).
  *
  * Remount-on-change is intentional and correct for the boolean/select controls
  * that dominate the playground. The known trade-off: a text control loses focus

@@ -27,6 +27,7 @@
   import {
     createLivePreviewMount,
     isMountableComponent,
+    LIVE_MOUNT_CONTAINER_ID,
     resolveBareComponent,
   } from './component-page-live-preview.ts';
   import { toMountErrorDetail } from './example-error.ts';
@@ -83,7 +84,7 @@
   // Resolve + mount via the SAME production helpers the page uses, so a passing
   // test means the real page logic works, not a fixture copy of it.
   const bareComponent = $derived(resolveBareComponent(bareComponentModule, exportName));
-  const liveMountFailed = $derived(mountErrors['playground-live-mount'] !== undefined);
+  const liveMountFailed = $derived(mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined);
   const mountLivePreview = createLivePreviewMount({
     readValues: () => $state.snapshot(playgroundValues),
     mountErrors,
@@ -128,7 +129,7 @@
       <span class="dx-stage__label">Live preview</span>
       <div
         class="example-preview"
-        id="playground-live-mount"
+        id={LIVE_MOUNT_CONTAINER_ID}
         {@attach mountLivePreview(bareComponent)}
       ></div>
     </div>

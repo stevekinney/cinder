@@ -38,6 +38,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
+import {
+  createLivePreviewMount,
+  LIVE_MOUNT_CONTAINER_ID,
+  type MountErrorRecord,
+} from './component-page-live-preview.ts';
 
 setupHappyDom();
 
@@ -72,6 +77,17 @@ function liveProbeCount(): number {
 /** Wrap a component as a single-export module namespace, as the page bundle hands it over. */
 function asNamedModule(component: unknown, exportName = 'Demo'): Record<string, unknown> {
   return { [exportName]: component };
+}
+
+/**
+ * The fixture instance exposes `setValue` as a `module`-script export; `render`
+ * returns it typed as `unknown`. Name the cast once here rather than repeating the
+ * same structural assertion at every call site.
+ */
+function fixtureComponent(instance: unknown): { setValue: (name: string, value: unknown) => void } {
+  // `instance` is already `unknown`, so a single assertion to the call shape is
+  // the idiomatic narrowing here — no `as unknown as` double-cast needed.
+  return instance as { setValue: (name: string, value: unknown) => void };
 }
 
 beforeEach(() => {
@@ -129,10 +145,7 @@ describe('component-page live preview (#405)', () => {
     // (`playgroundValues[name] = next`), not by reassigning the whole object.
     // `$state.snapshot` deep-reads the proxy, so the key mutation is what
     // re-runs the live-mount attachment.
-    (component as unknown as { setValue: (name: string, value: unknown) => void }).setValue(
-      'label',
-      'Delete',
-    );
+    fixtureComponent(component).setValue('label', 'Delete');
     await tick();
 
     // A fresh mount carried the new value; the stale instance was torn down, so
@@ -164,10 +177,7 @@ describe('component-page live preview (#405)', () => {
     await tick();
     expect(lastProps()).toEqual({ [key]: from });
 
-    (component as unknown as { setValue: (name: string, value: unknown) => void }).setValue(
-      key,
-      to,
-    );
+    fixtureComponent(component).setValue(key, to);
     await tick();
 
     expect(lastProps()).toEqual({ [key]: to });
@@ -224,6 +234,13 @@ describe('component-page live preview (#405)', () => {
       featuredScenario: 'demo',
       initialValues: { label: 'Save' },
     });
+    // Two ticks, not one: the fallback is a TWO-step reactive cascade — the mount
+    // throws and writes `mountErrors[LIVE_MOUNT_CONTAINER_ID]` inside the
+    // attachment (tick 1), THEN `liveMountFailed` recomputes and the `{#if}` swaps
+    // from the live branch to the featured branch (tick 2). One tick happens to
+    // suffice under the current scheduler, but waiting the second step explicitly
+    // asserts the branch-switch rather than relying on flush ordering.
+    await tick();
     await tick();
 
     expect(liveProbeCount()).toBe(0);
@@ -280,9 +297,45 @@ describe('component-page live preview (#405)', () => {
     });
     await tick();
 
-    expect(mountErrors['playground-live-mount']?.message).toContain('boom');
+    expect(mountErrors[LIVE_MOUNT_CONTAINER_ID]?.message).toContain('boom');
     expect(liveProbeCount()).toBe(0);
 
     unmount();
+  });
+
+  test('clears a recorded mount error once a later mount succeeds (invariant 6)', () => {
+    // Drive `createLivePreviewMount` directly rather than through the fixture: the
+    // fixture resolves its component from a fixed `bareComponentModule`, so it
+    // can't model "the SAME container that just failed now mounts a working
+    // component." Re-running the factory on one element — first with a throwing
+    // component, then with a working one — is the honest way to exercise the
+    // success-path `mountErrors[mountKey] = undefined` write (the clear that keeps
+    // a stale error callout from lingering over a now-healthy preview).
+    const Throwing = function ThrowingComponent() {
+      throw new Error('boom');
+    };
+    const mountErrors: MountErrorRecord = {};
+    const element = document.createElement('div');
+    element.id = LIVE_MOUNT_CONTAINER_ID;
+    document.body.append(element);
+
+    const factory = createLivePreviewMount({
+      readValues: () => ({ label: 'Save' }),
+      mountErrors,
+    });
+
+    // First run: the throwing component records an error under the container id.
+    const teardownFailed = factory(Throwing)(element);
+    expect(mountErrors[LIVE_MOUNT_CONTAINER_ID]?.message).toContain('boom');
+    teardownFailed();
+
+    // Second run on the SAME element: a working component mounts and the error
+    // slot is cleared back to `undefined`.
+    const teardownOk = factory(LiveProbe)(element);
+    expect(mountErrors[LIVE_MOUNT_CONTAINER_ID]).toBeUndefined();
+    expect(element.querySelector('.live-probe')).not.toBeNull();
+    teardownOk();
+
+    element.remove();
   });
 });
