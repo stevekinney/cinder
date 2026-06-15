@@ -20,11 +20,19 @@
     border-color: var(--cinder-danger);
   }
 
+  /* On focus, swap the danger border for a danger-colored focus ring so the
+     invalid state still reads as an error (the neutral box-shadow ring alone
+     does not signal "error"). Zeroing the border without this replacement —
+     as an earlier pass did — left a focused invalid Select with no error
+     affordance at all. Mirrors the danger ring in textarea.css. */
   .cinder-_input-frame[aria-invalid='true']:focus-visible,
   .cinder-_input-frame[aria-invalid='true']:focus-within,
   .cinder-_input-frame[data-invalid]:focus-visible,
   .cinder-_input-frame[data-invalid]:focus-within {
     border-color: transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);
   }
 
   .cinder-_input-frame:disabled,
@@ -46,6 +54,20 @@
     .cinder-_input-frame:focus-within {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: 3px;
+    }
+
+    /* In forced-colors mode the box-shadow danger ring is suppressed and
+       --cinder-danger is not a system color, so the focused invalid state
+       above would otherwise read as a plain neutral focus outline with no
+       error signal. Restore an error-emphasis affordance with the `Mark`
+       system color (the WHCM keyword for flagged/annotated content). */
+    .cinder-_input-frame[aria-invalid='true']:focus-visible,
+    .cinder-_input-frame[aria-invalid='true']:focus-within,
+    .cinder-_input-frame[data-invalid]:focus-visible,
+    .cinder-_input-frame[data-invalid]:focus-within {
+      border-color: Mark;
+      outline-color: Mark;
+      box-shadow: none;
     }
   }
 }
