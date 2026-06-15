@@ -411,7 +411,7 @@ test.describe('Tabs — activating a tab does not reflow sibling widths (regress
       page.evaluate((selector) => {
         const list = document.querySelector(selector);
         if (!(list instanceof HTMLElement)) throw new Error(`No list ${selector}`);
-        const tabs = [...list.querySelectorAll('.cinder-tab')].filter(
+        const tabs = Array.from(list.querySelectorAll('.cinder-tab')).filter(
           (tab): tab is HTMLElement => tab instanceof HTMLElement,
         );
         return tabs.map((tab) => ({
