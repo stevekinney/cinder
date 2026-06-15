@@ -157,18 +157,20 @@ function attributeFor(name: string, value: PlaygroundValue): string {
 /**
  * Decide whether a control's current value should appear in the snippet.
  *
- * A prop is omitted only when it has a real manifest default AND the current
- * value equals that default — omitting it then renders identically, so the
- * snippet stays minimal. A prop WITHOUT a manifest default keeps its
- * synthesized seed (first option / `0` / `''` / `false`) visible: we cannot
- * prove the component's own default matches the placeholder, so dropping it
- * could silently change what the snippet renders. Empty strings are the one
- * exception — `name=""` is noise that adds nothing over omission.
+ * When the prop has a real manifest default, emit it only when the current
+ * value DIFFERS from that default — omitting an unchanged value renders
+ * identically, keeping the snippet minimal. Crucially, clearing a non-empty
+ * default to `''` differs from it, so `name=""` IS emitted (otherwise a paste
+ * would silently revert to the default, contradicting the live UI).
+ *
+ * When the prop has NO manifest default, it carries a synthesized seed (first
+ * option / `0` / `''` / `false`). A seeded `''` is noise — `name=""` adds
+ * nothing over omission — so empty strings are dropped; any other value stays
+ * visible, since we cannot prove the component's own default matches the seed.
  */
 function shouldEmit(control: PlaygroundControl, current: PlaygroundValue): boolean {
-  if (current === '') return false;
-  if (control.hasDefault && current === control.value) return false;
-  return true;
+  if (control.hasDefault) return current !== control.value;
+  return current !== '';
 }
 
 /**
