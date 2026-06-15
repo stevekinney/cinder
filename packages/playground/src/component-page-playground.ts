@@ -157,7 +157,11 @@ export function buildSnippet(
   values: Record<string, PlaygroundValue>,
 ): string {
   const attributes = controls
-    .map((control) => attributeFor(control.name, values[control.name] ?? control.value))
+    .map((control) => {
+      const current = values[control.name] ?? control.value;
+      if (current === control.value) return null;
+      return attributeFor(control.name, current);
+    })
     .filter((fragment): fragment is string => fragment !== null);
 
   if (attributes.length === 0) return `<${exportName} />`;

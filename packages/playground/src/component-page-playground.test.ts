@@ -208,4 +208,61 @@ describe('buildSnippet', () => {
     // A safe value keeps the plain quoted-attribute form.
     expect(buildSnippet('Comp', textControls, { label: 'plain' })).toBe('<Comp label="plain" />');
   });
+
+  test('omits a control at its default value from the snippet', () => {
+    // A select at its default value ('left') should produce a self-closing tag.
+    const selectControls = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'align',
+          control: { kind: 'select', options: ['left', 'center', 'right'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'left',
+        },
+      ]),
+    ).controls;
+    expect(buildSnippet('Table', selectControls, { align: 'left' })).toBe('<Table />');
+  });
+
+  test('emits only controls that have changed from their default', () => {
+    const mixedControls = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'align',
+          control: { kind: 'select', options: ['left', 'center', 'right'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'left',
+        },
+        {
+          name: 'as',
+          control: { kind: 'select', options: ['td', 'th'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'td',
+        },
+      ]),
+    ).controls;
+    // Only 'align' changed; 'as' is still at its default 'td'.
+    expect(buildSnippet('Table', mixedControls, { align: 'center', as: 'td' })).toBe(
+      '<Table align="center" />',
+    );
+  });
+
+  test('omits a number control at its default 0, emits it when changed', () => {
+    const numberControls = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'count',
+          control: { kind: 'number' },
+          bindable: false,
+          optional: true,
+          defaultValue: 0,
+        },
+      ]),
+    ).controls;
+    expect(buildSnippet('Comp', numberControls, { count: 0 })).toBe('<Comp />');
+    expect(buildSnippet('Comp', numberControls, { count: 42 })).toBe('<Comp count={42} />');
+  });
 });

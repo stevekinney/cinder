@@ -16,6 +16,7 @@ import {
   describeDefaultValue,
   fetchComponentManifest,
   isComponentManifest,
+  renderPropDescription,
   splitUnionType,
   toPropReferenceRow,
   toPropReferenceRows,
@@ -63,6 +64,61 @@ describe('describeControlType', () => {
     expect(describeControlType({ kind: 'number' })).toBe('number');
     expect(describeControlType({ kind: 'boolean' })).toBe('boolean');
     expect(describeControlType({ kind: 'snippet' })).toBe('snippet');
+  });
+});
+
+describe('describeControlType unknown newline normalization', () => {
+  it('collapses literal newlines in multi-line type strings', () => {
+    expect(
+      describeControlType({
+        kind: 'unknown',
+        rawType: "Exclude<\n  keyof HTMLElementTagNameMap,\n  'script'>",
+      }),
+    ).toBe("Exclude<keyof HTMLElementTagNameMap, 'script'>");
+  });
+
+  it('maps a newline-only type that trims to "?" to "unknown"', () => {
+    expect(describeControlType({ kind: 'unknown', rawType: '\n?' })).toBe('unknown');
+  });
+
+  it('maps whitespace-only types to "unknown"', () => {
+    expect(describeControlType({ kind: 'unknown', rawType: '  \n  ' })).toBe('unknown');
+  });
+});
+
+describe('renderPropDescription', () => {
+  it('passes plain text through unchanged', () => {
+    expect(renderPropDescription('A simple description.')).toBe('A simple description.');
+  });
+
+  it('converts backtick spans to <code> elements', () => {
+    expect(renderPropDescription('Use `align` prop.')).toBe('Use <code>align</code> prop.');
+  });
+
+  it('converts **bold** spans to <strong> elements', () => {
+    expect(renderPropDescription('This is **required**.')).toBe(
+      'This is <strong>required</strong>.',
+    );
+  });
+
+  it('handles mixed backtick and bold in the same string', () => {
+    expect(renderPropDescription('Set `value` or **bind** it.')).toBe(
+      'Set <code>value</code> or <strong>bind</strong> it.',
+    );
+  });
+
+  it('HTML-escapes angle brackets before Markdown conversion (injection prevention)', () => {
+    expect(renderPropDescription('<script>alert(1)</script> `code`')).toBe(
+      '&lt;script&gt;alert(1)&lt;/script&gt; <code>code</code>',
+    );
+  });
+
+  it('HTML-escapes ampersands', () => {
+    expect(renderPropDescription('A & B')).toBe('A &amp; B');
+  });
+
+  it('returns empty string for empty input', () => {
+    expect(renderPropDescription('')).toBe('');
   });
 });
 

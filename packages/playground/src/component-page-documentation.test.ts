@@ -304,10 +304,12 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
-  test('omits the Playground when a required non-snippet prop has no default', async () => {
+  test('shows a context note (not controls) when a required non-snippet prop has no default', async () => {
     const required = baseFixture();
     // A required `unknown` prop with no default can't be synthesized, so the
-    // generated playground is suppressed entirely (and dropped from the TOC).
+    // generated interactive playground is suppressed. A context-note section
+    // IS rendered instead, pointing the reader to the Examples section.
+    // The Playground TOC link is still omitted.
     required.propsManifest.props = [
       {
         name: 'value',
@@ -320,8 +322,16 @@ describe('component-page single-scroll layout', () => {
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
-    expect(document.getElementById('playground')).toBeNull();
 
+    // The playground section renders a context note, not interactive controls.
+    const section = document.getElementById('playground');
+    expect(section).not.toBeNull();
+    expect(section?.querySelector('.dx-play__context-note')).not.toBeNull();
+    // No control widgets are rendered.
+    expect(section?.querySelector('.dx-ctl')).toBeNull();
+
+    // The TOC still does NOT include a Playground link — the context-note
+    // section is shown outside the TOC-driven flow.
     const nav = screen.getByRole('navigation', { name: 'On this page' });
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
     expect(labels.some((label) => label.includes('Playground'))).toBe(false);

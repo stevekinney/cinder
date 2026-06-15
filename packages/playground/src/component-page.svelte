@@ -37,7 +37,11 @@
     ComponentDocumentationPayload,
     JsonValue,
   } from './component-documentation-types.ts';
-  import { splitUnionType, toPropReferenceRows } from './manifest-reference.ts';
+  import {
+    renderPropDescription,
+    splitUnionType,
+    toPropReferenceRows,
+  } from './manifest-reference.ts';
   import { computeActiveSection, type SectionOffset } from './component-page-scroll-spy.ts';
   import {
     buildPlaygroundModel,
@@ -172,7 +176,7 @@
   $effect(() => {
     for (const entry of exampleDisclosures) {
       if (
-        entry.expandedIds.includes('source') &&
+        entry.expandedIds.includes(`source-${entry.scenario}`) &&
         fetchedSource[entry.scenario] === undefined &&
         !loadingSource[entry.scenario]
       ) {
@@ -212,7 +216,10 @@
       }
       let app: ReturnType<typeof mount> | undefined;
       try {
-        app = mount(Component as Parameters<typeof mount>[0], { target: element });
+        app = mount(Component as Parameters<typeof mount>[0], {
+          target: element,
+          props: { mountIdPrefix: mountKey },
+        });
         mountErrors[mountKey] = undefined;
       } catch (error) {
         console.error(`[cinder playground] failed to mount example "${scenario}":`, error);
@@ -239,8 +246,12 @@
     documentation === null ? [] : toPropReferenceRows(documentation.propsManifest),
   );
 
-  function propsTypeClass(typeMembers: readonly string[]): string {
-    return typeMembers.length > 1 ? 'props-type props-type--union' : 'props-type';
+  /**
+   * A union is "short" when it has ≤4 members and every member is ≤20
+   * characters, so the whole type fits comfortably inline as `A | B | C`.
+   */
+  function isShortUnion(members: readonly string[]): boolean {
+    return members.length <= 4 && members.every((member) => member.length <= 20);
   }
 
   function statusDotStatus(status: string): StatusDotStatus {
@@ -504,7 +515,9 @@
           {#if documentation !== null}
             <span>{documentation.component.categoryLabel}</span>
             <span class="dx-crumbs__sep" aria-hidden="true">/</span>
-            <span class="dx-crumbs__current">{documentation.component.name}</span>
+            <span class="dx-crumbs__current" aria-current="page"
+              >{documentation.component.name}</span
+            >
           {/if}
         </nav>
         <div class="dx-topbar__actions">
@@ -592,7 +605,10 @@
               <div class="dx-spec__row">
                 <span class="dx-spec__key">Status</span>
                 <span class="dx-spec__val">
-                  <StatusDot status={statusDotStatus(component.status)} label={component.status} />
+                  <StatusDot
+                    status={statusDotStatus(component.status)}
+                    aria-label={component.status}
+                  />
                   <Badge variant={statusBadgeVariant(component.status)} size="sm">
                     {component.status}
                   </Badge>
@@ -760,8 +776,31 @@
                 <p class="dx-prose dx-play__intro">
                   Adjust the props below — the snippet updates live. Copy it when it looks right.
                 </p>
+
                 <div class="dx-play">
                   <div class="dx-play__preview">
+                    {#if overviewExample !== undefined && !snapshotMode}
+                      <div class="dx-stage">
+                        <div class="dx-stage__bar">
+                          <span class="dx-stage__dot" aria-hidden="true"></span>
+                          <span class="dx-stage__label">Live preview</span>
+                        </div>
+                        <div class="dx-stage__canvas">
+                          {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
+                            {@const error =
+                              mountErrors[`playground-mount-${overviewExample.scenario}`]}
+                            <Callout variant="danger" title="This preview failed to render">
+                              <p>{error?.message}</p>
+                            </Callout>
+                          {/if}
+                          <div
+                            class="example-preview"
+                            id="playground-mount-{overviewExample.scenario}"
+                            {@attach mountScenario(overviewExample.scenario)}
+                          ></div>
+                        </div>
+                      </div>
+                    {/if}
                     <CodeBlock code={playgroundSnippet} language="svelte" copyable />
                     {#if playgroundModel.skipped.length > 0}
                       <p class="dx-play__skipped">
@@ -777,9 +816,11 @@
                     {#each playgroundModel.controls as control (control.name)}
                       <div class="dx-ctl">
                         <div class="dx-ctl__text">
-                          <div class="dx-ctl__name">{control.name}</div>
+                          <div class="dx-ctl__name" title={control.name}>{control.name}</div>
                           {#if control.description !== undefined}
-                            <div class="dx-ctl__desc">{control.description}</div>
+                            <div class="dx-ctl__desc">
+                              {@html renderPropDescription(control.description)}
+                            </div>
                           {/if}
                         </div>
                         {#if control.kind === 'boolean'}
@@ -833,6 +874,24 @@
                     {/each}
                   </div>
                 </div>
+              </section>
+            {:else if documentation !== null && playgroundModel.hasUnsatisfiedRequired}
+              {@const firstAlternative = documentation.component.avoidWhen[0]?.alternative}
+              <section id="playground" class="dx-section">
+                <div class="dx-section__head">
+                  <span class="dx-section__num">{sectionNumber.get('playground') ?? ''}</span>
+                  <h2 class="dx-section__title">Playground</h2>
+                  <span class="dx-section__rule" aria-hidden="true"></span>
+                </div>
+                <p class="dx-play__context-note">
+                  {humanizeId(componentName)} must be nested inside a parent component to render.
+                  {#if firstAlternative !== undefined}
+                    See the <a href="/c/{firstAlternative}">{humanizeId(firstAlternative)}</a> page for
+                    a live demo.
+                  {:else}
+                    See the <a href="#examples">Examples</a> section for usage.
+                  {/if}
+                </p>
               </section>
             {/if}
 
@@ -893,7 +952,7 @@
                           {/if}
 
                           <Accordion bind:expandedIds={disclosure.expandedIds}>
-                            <AccordionItem id="source" title="Show code">
+                            <AccordionItem id={`source-${scenario}`} title="Show code">
                               {#if loadingSource[scenario]}
                                 <p class="source-loading">Loading…</p>
                               {:else if source === null}
@@ -971,15 +1030,19 @@
                           </Table.Cell>
                           <Table.Cell>
                             {@const typeMembers = splitUnionType(prop.type)}
-                            <code class={propsTypeClass(typeMembers)}>
-                              {#each typeMembers as member, index (index)}
-                                <span class="props-type__member">
-                                  {#if index > 0}<span class="props-type__sep" aria-hidden="true"
-                                      >|
-                                    </span>{/if}<span class="props-type__value">{member}</span>
-                                </span>
-                              {/each}
-                            </code>
+                            {#if typeMembers.length === 1 || isShortUnion(typeMembers)}
+                              <code class="props-type">{typeMembers.join(' | ')}</code>
+                            {:else}
+                              <code class="props-type props-type--union">
+                                {#each typeMembers as member, index (index)}
+                                  <span class="props-type__member"
+                                    ><span class="props-type__sep" aria-hidden="true">|</span><span
+                                      class="props-type__value">{member}</span
+                                    ></span
+                                  >
+                                {/each}
+                              </code>
+                            {/if}
                           </Table.Cell>
                           <Table.Cell>
                             {#if prop.defaultValue !== undefined}
@@ -1004,7 +1067,9 @@
                           </Table.Cell>
                           <Table.Cell>
                             {#if prop.description !== undefined}
-                              <span class="props-description">{prop.description}</span>
+                              <span class="props-description"
+                                >{@html renderPropDescription(prop.description)}</span
+                              >
                             {:else}
                               <span class="props-dash" aria-hidden="true">—</span>
                             {/if}
@@ -1551,6 +1616,32 @@
   .readme-content :global(code) {
     font-family: var(--cinder-font-mono);
     font-size: 0.95em;
+    background: var(--cinder-surface-raised);
+    padding-inline: 0.2em;
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  /* ===== Doc-page code-block overrides =====
+     Fix #380: The outer .cinder-code-block has overflow:hidden (for border-radius
+     clipping). An outset focus outline on its scroll-container children is clipped,
+     producing a partial or invisible ring. Override with an inset box-shadow ring.
+     Fix #381: Ensure code-block scroll containers show a visible scrollbar track
+     and that inner pre.shiki contributes its full content width to the scroll port. */
+  .dx :global(.cinder-code-block__highlighted),
+  .dx :global(.cinder-code-block__pre) {
+    overflow-x: auto;
+    scrollbar-width: auto;
+  }
+  .dx :global(.cinder-code-block__highlighted:focus-visible),
+  .dx :global(.cinder-code-block__pre:focus-visible) {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+  /* Allow pre.shiki to expand to its natural content width so the parent
+     .cinder-code-block__highlighted scroll port becomes scrollable. (#398
+     addresses the root in the component; this override is scoped to .dx.) */
+  .dx :global(.cinder-code-block__highlighted) :global(pre.shiki) {
+    overflow-x: visible;
   }
 
   /* ===== Preview stage ===== */
@@ -1724,6 +1815,24 @@
     font-size: var(--cinder-text-xs);
     color: var(--cinder-text-subtle);
   }
+  .dx-play__context-note {
+    margin: 0;
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-subtle);
+    line-height: var(--cinder-leading-relaxed);
+  }
+  .dx-play__context-note a {
+    color: var(--cinder-accent-text);
+    text-decoration: none;
+  }
+  .dx-play__context-note a:hover {
+    text-decoration: underline;
+  }
+  .dx-play__context-note a:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+    border-radius: var(--cinder-radius-sm);
+  }
   .dx-play__controls {
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
@@ -1766,6 +1875,8 @@
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     color: var(--cinder-text);
+    overflow-wrap: break-word;
+    word-break: break-all;
   }
   .dx-ctl__desc {
     font-size: var(--cinder-text-xs);
@@ -1775,6 +1886,7 @@
   }
   .dx-ctl__select,
   .dx-ctl__input {
+    color-scheme: inherit;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-inset);
@@ -1782,7 +1894,7 @@
     font-family: inherit;
     font-size: var(--cinder-text-sm);
     padding: var(--cinder-space-1) var(--cinder-space-2);
-    max-width: 8rem;
+    max-width: 14rem;
   }
 
   /* ===== Examples ===== */
@@ -1867,6 +1979,7 @@
   }
   .props-table-scroll {
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     border-radius: var(--cinder-radius-sm);
   }
   .props-table-scroll:focus-visible {
@@ -1890,6 +2003,9 @@
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
   }
+  .props-default {
+    white-space: nowrap;
+  }
   .props-name {
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
@@ -1901,18 +2017,21 @@
     align-items: flex-start;
   }
   .props-type__member {
-    white-space: nowrap;
+    white-space: pre-wrap;
+    max-width: 28rem;
   }
   .props-type--union .props-type__member {
-    padding-inline-start: 1ch;
+    display: flex;
+    align-items: baseline;
+    gap: 0.35ch;
   }
   .props-type__sep {
-    margin-inline-start: -1ch;
     color: var(--cinder-text-subtle);
+    user-select: none;
   }
   .dx-prop-flag {
     font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-2xs);
+    font-size: var(--cinder-text-xs);
     letter-spacing: 0.04em;
     text-transform: uppercase;
     padding: var(--cinder-space-0-5, 0.125rem) var(--cinder-space-1-5, 0.375rem);
@@ -1938,10 +2057,34 @@
     color: var(--cinder-text-subtle);
   }
 
+  .props-table-scroll {
+    position: relative;
+  }
+  .props-table-scroll::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 3rem;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--cinder-surface-raised, var(--cinder-surface)) 80%
+    );
+  }
+  /* NOTE: A JS-driven .is-scrollable sentinel is the robust approach for
+     showing the fade only when overflow exists. This CSS-only version always
+     renders the fade; a follow-up issue should implement the sentinel. */
+
   /* Narrow container → stacked cards (same ::before-label pattern as before). */
   @container props-section (max-width: 34rem) {
     .props-table-scroll {
       overflow-x: visible;
+    }
+    .props-table-scroll::after {
+      display: none;
     }
     .props-section :global(.cinder-table) {
       display: block;
@@ -2115,6 +2258,9 @@
     color: var(--cinder-text);
     margin: 0 0 var(--cinder-space-2);
   }
+  .dx-raw__panel :global(.cinder-code-block) {
+    overflow-x: auto;
+  }
 
   /* ===== Responsive ===== */
   @media (max-width: 1080px) {
@@ -2214,6 +2360,13 @@
        the container with a negative offset — mirroring the inset `box-shadow`
        the non-forced-colors `:focus-visible` rule already uses. */
     .props-table-scroll:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
+    /* Same inset treatment for code-block scroll containers — the outer
+       overflow:hidden clips an outset outline just as it does for the props table. */
+    .dx :global(.cinder-code-block__highlighted:focus-visible),
+    .dx :global(.cinder-code-block__pre:focus-visible) {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: calc(var(--cinder-ring-width) * -1);
     }

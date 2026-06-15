@@ -44,7 +44,19 @@ export function describeControlType(control: ControlKind): string {
     case 'select':
       return control.options.map((option) => `'${option}'`).join(' | ');
     case 'unknown': {
-      const raw = control.rawType.trim();
+      // Collapse multi-line analyzer types (e.g. `Exclude<\n  keyof …,\n  …>`)
+      // to a single line. The replacement is context-sensitive:
+      // - After `<`, `(`, `[` — no space (bracket already separates tokens).
+      // - After `,` — a single space (produces `, nextToken`).
+      // - Otherwise — a single space.
+      const normalized = control.rawType.replace(
+        /([<([,])\s*\n\s*|(\S)\s*\n\s*/g,
+        (_, bracket, nonBracket) => {
+          if (bracket !== undefined) return bracket === ',' ? ', ' : bracket;
+          return `${nonBracket} `;
+        },
+      );
+      const raw = normalized.trim();
       return raw === '' || raw === '?' ? 'unknown' : raw;
     }
     default:
@@ -228,6 +240,33 @@ function isPropManifest(value: unknown): value is PropManifest {
     typeof readProperty(value, 'optional') === 'boolean' &&
     (description === undefined || typeof description === 'string')
   );
+}
+
+/**
+ * Convert a prop/control description string that may contain inline Markdown
+ * into a safe HTML fragment for rendering via `{@html ...}`.
+ *
+ * Conversion rules (applied in order):
+ * 1. HTML-escape the entire string first (prevents injection).
+ * 2. Backtick spans — `` `...` `` → `<code>...</code>`.
+ * 3. Bold spans — `**...**` → `<strong>...</strong>`.
+ *
+ * Only inline Markdown is handled; block-level constructs are intentionally
+ * left as plain text because prop descriptions are single short sentences.
+ *
+ * @param description - The raw description string from a {@link PropManifest}
+ *   or a {@link ControlKind}.
+ * @returns A safe HTML string suitable for `{@html ...}`.
+ */
+export function renderPropDescription(description: string): string {
+  const escaped = description
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  const withCode = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+  const withStrong = withCode.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return withStrong;
 }
 
 /**
