@@ -56,7 +56,7 @@ const schema = {
     closeOnEscape: {
       type: 'boolean',
       description:
-        "Whether the Popover registers its own handler on the shared Escape stack.\nDefault `true`. Set `false` when a parent component (e.g. Combobox) owns\nEscape for the whole interaction and must remain the single, top-most\nEscape consumer — otherwise both would register and the Popover's handler\nwould shadow the parent's while options are visible.",
+        "Whether Escape closes the Popover. Default `true`. Set `false` when a parent\ncomposite widget (e.g. Combobox) owns Escape for the whole interaction, so the\nPopover does not shadow the parent's handler while its panel is open.",
     },
     widthMode: {
       enum: ['content', 'match-anchor', 'menu', 'none'],

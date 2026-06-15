@@ -11,7 +11,7 @@ const schema = {
     maxlength: {
       type: 'number',
       description:
-        'Maximum character count. Passed through to the native `maxlength` attribute and used as the denominator for the `showCount` counter.',
+        'Maximum character count. Passed through to the native `maxlength` attribute and shown as the limit in the `showCount` counter.',
     },
     required: {
       type: 'boolean',

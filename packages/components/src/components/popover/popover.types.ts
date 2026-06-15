@@ -48,11 +48,9 @@ export type PopoverProps = {
   /** Whether Popover owns trigger ARIA wiring. Default `true`. */
   wireTriggerAria?: boolean;
   /**
-   * Whether the Popover registers its own handler on the shared Escape stack.
-   * Default `true`. Set `false` when a parent component (e.g. Combobox) owns
-   * Escape for the whole interaction and must remain the single, top-most
-   * Escape consumer — otherwise both would register and the Popover's handler
-   * would shadow the parent's while options are visible.
+   * Whether Escape closes the Popover. Default `true`. Set `false` when a parent
+   * composite widget (e.g. Combobox) owns Escape for the whole interaction, so the
+   * Popover does not shadow the parent's handler while its panel is open.
    */
   closeOnEscape?: boolean;
   /** Floating panel width strategy. Default `'content'`. */

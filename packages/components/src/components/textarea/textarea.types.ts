@@ -12,9 +12,14 @@ export type TextareaProps = HTMLTextareaAttributes & {
   error?: string;
   /** Number of visible text rows. Defaults to 4. */
   rows?: number;
+  // `required` and `maxlength` redeclare inherited `HTMLTextareaAttributes` keys,
+  // deliberately narrowing them from `… | null` to clean `boolean` / `number`. The
+  // native "remove the attribute" `null` is noise in the documented prop surface
+  // (this mirrors how `rows` above narrows its inherited type), and `null` is still
+  // accepted via the spread-forwarded `...rest`. textarea.test.ts pins this contract.
   /** Marks the field as required. Passed through to the native `required` attribute. */
   required?: boolean;
-  /** Maximum character count. Passed through to the native `maxlength` attribute and used as the denominator for the `showCount` counter. */
+  /** Maximum character count. Passed through to the native `maxlength` attribute and shown as the limit in the `showCount` counter. */
   maxlength?: number;
   /** Disables the textarea. */
   disabled?: boolean;
