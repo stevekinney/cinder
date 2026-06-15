@@ -279,6 +279,53 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('stacked union props type has no leading separator before the first member', async () => {
+    // A 5-option select exceeds the inline `isShortUnion` budget (≤4 members),
+    // so the props-table renders the stacked union layout: one `.props-type__member`
+    // per union member, each prefixed by a `.props-type__sep` "|" — EXCEPT the
+    // first, which must stand alone. An earlier pass emitted a leading separator
+    // before every member including the first, producing `| 'alpha'` at the top
+    // of the list. The separator is now gated on the member's index.
+    const fixture = baseFixture();
+    fixture.propsManifest.props = [
+      {
+        name: 'variant',
+        control: {
+          kind: 'select',
+          options: ['alpha', 'beta', 'gamma', 'delta', 'epsilon'],
+        },
+        bindable: false,
+        optional: true,
+        defaultValue: 'alpha',
+      },
+    ];
+    installDocumentationFetch(fixture);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    const union = document.querySelector('.props-type--union');
+    expect(union).not.toBeNull();
+
+    const members = Array.from(union?.querySelectorAll('.props-type__member') ?? []);
+    expect(members).toHaveLength(5);
+
+    // The first member carries only its value — no separator precedes it.
+    expect(members[0]?.querySelector('.props-type__sep')).toBeNull();
+    expect(members[0]?.querySelector('.props-type__value')?.textContent).toBe("'alpha'");
+
+    // Every subsequent member is prefixed by exactly one separator.
+    for (const member of members.slice(1)) {
+      expect(member.querySelectorAll('.props-type__sep')).toHaveLength(1);
+    }
+
+    // Separator count equals members − 1 (no leading pipe anywhere).
+    expect(union?.querySelectorAll('.props-type__sep')).toHaveLength(members.length - 1);
+
+    unmount();
+    await tick();
+  });
+
   test('omits the Related section when there are no related components', async () => {
     const noRelated = baseFixture();
     noRelated.component.related = [];

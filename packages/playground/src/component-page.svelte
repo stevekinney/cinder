@@ -1077,9 +1077,9 @@
                               <code class="props-type props-type--union">
                                 {#each typeMembers as member, index (index)}
                                   <span class="props-type__member"
-                                    ><span class="props-type__sep" aria-hidden="true">|</span><span
-                                      class="props-type__value">{member}</span
-                                    ></span
+                                    >{#if index > 0}<span class="props-type__sep" aria-hidden="true"
+                                        >|</span
+                                      >{/if}<span class="props-type__value">{member}</span></span
                                   >
                                 {/each}
                               </code>
