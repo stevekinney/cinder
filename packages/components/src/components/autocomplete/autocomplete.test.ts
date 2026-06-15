@@ -280,6 +280,46 @@ describe('Autocomplete — keyboard completion', () => {
     expect(getListbox()).toBeNull();
     expect(document.body.textContent).not.toContain('Apple');
   });
+
+  test('the keyboard-active option carries the shared option-row class so its highlight is distinct from the panel', async () => {
+    // Regression: autocomplete.css previously pinned
+    // `.cinder-autocomplete__option[data-cinder-active]` to
+    // `--cinder-surface-raised` — the exact token the floating panel uses for
+    // its own background — so the keyboard-highlighted option was invisible
+    // against the panel in light mode. The active-row background is now owned
+    // by the shared `.cinder-_option-row[data-cinder-active]` rule
+    // (`--cinder-surface-hover`), which is visibly distinct from the panel.
+    // This asserts (1) the active option carries `cinder-_option-row` at
+    // runtime, and (2) the component CSS no longer reintroduces the override.
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'fruit-search',
+        suggestionSource: () => fruits,
+      },
+    });
+
+    const input = getInput(container);
+    await fireEvent.input(input, { target: { value: 'a' } });
+    await waitFor(() => {
+      expect(getOptions()).toHaveLength(3);
+    });
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    const activeOption = getOptions().find(
+      (option) => option.getAttribute('data-cinder-active') !== null,
+    );
+    expect(activeOption).toBeDefined();
+    // The shared `_floating-surface.css` rule keys off this class, so carrying
+    // it is what gives the active row its `--cinder-surface-hover` background.
+    expect(activeOption?.classList.contains('cinder-_option-row')).toBe(true);
+
+    // happy-dom does not apply stylesheets, so assert the override is gone from
+    // the CSS source. The component must not re-pin the active row to the
+    // panel's own `--cinder-surface-raised` background.
+    const css = await Bun.file(new URL('./autocomplete.css', import.meta.url)).text();
+    const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(cssWithoutComments).not.toMatch(/\.cinder-autocomplete__option\[data-cinder-active\]/);
+  });
 });
 
 describe('Autocomplete — async source handling', () => {

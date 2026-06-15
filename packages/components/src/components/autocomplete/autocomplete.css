@@ -58,9 +58,17 @@
     color: var(--cinder-text-muted);
   }
 
-  .cinder-autocomplete__option[data-cinder-active] {
-    background: var(--cinder-surface-raised);
-  }
+  /*
+   * The active/keyboard-highlighted row background is owned by the shared
+   * `.cinder-_option-row[data-cinder-active]` rule in
+   * `styles/components/_floating-surface.css`, which uses
+   * `--cinder-surface-hover` (a token visibly distinct from the panel's own
+   * `--cinder-surface-raised` background in both themes, plus a forced-colors
+   * `outline: Highlight`). A component-local override here previously set the
+   * background back to `--cinder-surface-raised` — identical to the panel — so
+   * the highlighted option was invisible in light mode. Do not reintroduce it;
+   * inherit the shared row treatment instead.
+   */
 
   .cinder-autocomplete__option-text {
     display: grid;
