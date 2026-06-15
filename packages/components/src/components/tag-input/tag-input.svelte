@@ -25,6 +25,7 @@
     composeDescribedBy,
     resolveFieldControl,
   } from '../../_internal/field-control.ts';
+  import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown, isRovingKey } from '../../utilities/roving-tabindex.ts';
@@ -69,6 +70,7 @@
   let inlineError = $state<string | null>(null);
   let uncontrolledTags = $state(initialDefaultTags);
   let focusedChipIndex = $state(-1);
+  let statusAnnouncement = $state('');
 
   const isControlled = $derived(value !== undefined);
   const currentTags = $derived(isControlled ? (value ?? []) : uncontrolledTags);
@@ -228,14 +230,17 @@
     draftValue = '';
     focusedChipIndex = -1;
     setTags([...currentTags, candidate]);
+    statusAnnouncement = `${candidate} added.`;
     return true;
   }
 
   function removeTag(index: number): void {
     if (field.disabled || resolvedReadonly) return;
     inlineError = null;
+    const removed = currentTags[index] ?? '';
     const nextTags = currentTags.filter((_, candidateIndex) => candidateIndex !== index);
     setTags(nextTags);
+    if (removed) statusAnnouncement = `${removed} removed.`;
   }
 
   function focusAfterRemove(index: number): void {
@@ -416,4 +421,5 @@
       <input type="hidden" {name} value={tag} disabled={field.disabled} />
     {/each}
   {/if}
+  <VisuallyHiddenLiveRegion message={statusAnnouncement} />
 </div>

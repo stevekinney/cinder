@@ -281,6 +281,12 @@
       return;
     }
 
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeAll();
+      return;
+    }
+
     if (event.key === 'ArrowUp') {
       event.preventDefault();
       openMenu(index, 'last');

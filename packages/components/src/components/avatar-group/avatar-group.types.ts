@@ -21,6 +21,11 @@ export type AvatarGroupProps = AvatarGroupRootAttributes & {
   /** Collaborators to render in the stack. */
   avatars: AvatarGroupItem[];
   /**
+   * Accessible name for the avatar stack list.
+   * @default "Collaborators"
+   */
+  label?: string;
+  /**
    * Maximum visible avatars before overflow.
    * @default 5
    */
@@ -55,6 +60,11 @@ export type AvatarGroupProps = AvatarGroupRootAttributes & {
 export interface AvatarGroupSchemaProps {
   /** Collaborators to render in the stack. */
   avatars: AvatarGroupItem[];
+  /**
+   * Accessible name for the avatar stack list.
+   * @default "Collaborators"
+   */
+  label?: string;
   /**
    * Maximum visible avatars before overflow.
    * @default 5

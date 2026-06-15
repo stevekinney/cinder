@@ -129,6 +129,12 @@
       callTriggerHandler(onkeydown, event);
       return;
     }
+    if (event.key === 'Escape' && context.isOpen) {
+      event.preventDefault();
+      context.close();
+      callTriggerHandler(onkeydown, event);
+      return;
+    }
     if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) {
       callTriggerHandler(onkeydown, event);
       return;

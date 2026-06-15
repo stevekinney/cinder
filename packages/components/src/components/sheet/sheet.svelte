@@ -22,6 +22,7 @@
   import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
+  import { createFocusTrap } from '../focus-trap/index.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -246,6 +247,7 @@
         class="cinder-sheet__panel"
         data-cinder-closing={isClosing ? '' : undefined}
         inert={isClosing}
+        {@attach createFocusTrap({ active: () => open && !isClosing, restoreFocus: false, initialFocus: null })}
       >
         {#if showDragHandle}
           <div class="cinder-sheet__drag-handle" aria-hidden="true">

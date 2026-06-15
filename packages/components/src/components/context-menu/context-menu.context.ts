@@ -2,8 +2,10 @@ import { createContext } from 'svelte';
 
 export type ContextMenuContext = {
   get disabled(): boolean;
+  get isOpen(): boolean;
   get longPressDelay(): number;
   openAt: (x: number, y: number) => void;
+  close: () => void;
 };
 
 const [getContextMenuContextStrict, setContextMenuContext] = createContext<ContextMenuContext>();

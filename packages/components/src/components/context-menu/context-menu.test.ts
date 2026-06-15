@@ -451,6 +451,19 @@ describe('ContextMenu', () => {
     expect(region.contains(document.activeElement)).toBe(true);
   });
 
+  test('Escape closes the menu when focus is on the trigger region not the menu panel', async () => {
+    const { container, getByRole, queryByRole } = render(ContextMenuHarness);
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    // Open the context menu via right-click
+    await fireEvent.contextMenu(region, { clientX: 50, clientY: 50 });
+    await waitFor(() => getByRole('menu'));
+
+    // Fire Escape on the trigger region (not inside the menu)
+    await fireEvent.keyDown(region, { key: 'Escape' });
+    await waitFor(() => expect(queryByRole('menu')).toBeNull());
+  });
+
   test('keyboard context menu keys open at the focused target edge', async () => {
     const { container } = render(ContextMenuHarness);
     const button = container.querySelector('.context-menu-button') as HTMLButtonElement;

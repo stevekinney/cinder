@@ -205,3 +205,14 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
   });
 });
+
+describe('StatusDot CSS contract', () => {
+  test('neutral status uses --cinder-border-strong not --cinder-text-muted', async () => {
+    const css = await Bun.file(new URL('./status-dot.css', import.meta.url)).text();
+    expect(css).toContain("data-cinder-status='neutral']");
+    expect(css).toContain('--cinder-status-dot-color: var(--cinder-border-strong)');
+    // Ensure the neutral rule no longer points to text-muted (which offline also uses)
+    const neutralBlock = css.match(/\[data-cinder-status='neutral'\]\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(neutralBlock).not.toContain('--cinder-text-muted');
+  });
+});

@@ -25,15 +25,14 @@ describe('Stat', () => {
     expect(el?.getAttribute('role')).toBe('group');
   });
 
-  test('aria-labelledby references both label and value element ids', () => {
+  test('aria-labelledby references only the label element id', () => {
     const { container } = render(Stat, { label: 'Revenue', value: '$1,000' });
     const root = container.querySelector('.cinder-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
-    const [labelId, valueId] = ariaLabelledby.split(' ');
-    const labelEl = container.querySelector(`#${labelId}`);
-    const valueEl = container.querySelector(`#${valueId}`);
+    // Must be a single id (no space-separated list)
+    expect(ariaLabelledby).not.toContain(' ');
+    const labelEl = container.querySelector('#' + ariaLabelledby);
     expect(labelEl?.textContent).toContain('Revenue');
-    expect(valueEl?.textContent).toContain('$1,000');
   });
 
   test('renders the label and value text', () => {
@@ -175,10 +174,9 @@ describe('Stat', () => {
     const root = container.querySelector('.cinder-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
     expect(ariaLabelledby).not.toBe('custom-id');
-    // Should still reference label and value spans
-    const [labelId, valueId] = ariaLabelledby.split(' ');
-    expect(container.querySelector(`#${labelId}`)).not.toBeNull();
-    expect(container.querySelector(`#${valueId}`)).not.toBeNull();
+    // Should reference only the label span (not value id, which was the old double-read pattern)
+    expect(ariaLabelledby).not.toContain(' ');
+    expect(container.querySelector('#' + ariaLabelledby)).not.toBeNull();
   });
 
   test('data-cinder-direction on change element reflects change.direction', () => {
@@ -241,7 +239,7 @@ describe('Stat', () => {
     expect(root?.getAttribute('data-testid')).toBe('revenue-stat');
   });
 
-  test('explicit id prop sets the base for labelId and valueId', () => {
+  test('explicit id prop sets the base for labelId', () => {
     const { container } = render(Stat, {
       id: 'my-revenue-stat',
       label: 'Revenue',
@@ -250,8 +248,10 @@ describe('Stat', () => {
     const root = container.querySelector('.cinder-stat');
     expect(root?.getAttribute('id')).toBe('my-revenue-stat');
     const ariaLabelledby = root?.getAttribute('aria-labelledby') ?? '';
-    expect(ariaLabelledby).toBe('my-revenue-stat-label my-revenue-stat-value');
+    // aria-labelledby now references only the label element
+    expect(ariaLabelledby).toBe('my-revenue-stat-label');
     expect(container.querySelector('#my-revenue-stat-label')?.textContent).toContain('Revenue');
+    // valueId element still exists (may be referenced by stat-group consumers)
     expect(container.querySelector('#my-revenue-stat-value')?.textContent).toContain('$1,000');
   });
 
