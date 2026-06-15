@@ -7,6 +7,12 @@ export type AvatarShape = 'circle' | 'square';
  * Renders an image when `src` is supplied; falls back to initials computed
  * from `name` when the image is missing or fails to load. The `name` prop
  * is also used for the accessible name when no `alt` is supplied.
+ *
+ * When neither `src` nor `name` is provided, a decorative placeholder
+ * (`aria-hidden`) renders and the avatar has no accessible name. If such a
+ * placeholder-only avatar still needs to be announced (e.g. an "unassigned"
+ * slot), supply an `aria-label` via the forwarded rest props — it lands on
+ * the root element and names the avatar.
  */
 export type AvatarProps = HTMLAttributes<HTMLSpanElement> & {
   /** Image source. When omitted, the initials fallback renders. */

@@ -1,5 +1,5 @@
 import type { HTMLAttributes } from 'svelte/elements';
-/** Visual density for the statistics display. */
+/** Layout variant for the statistics display: `default` shows full markup, `compact` trims it. */
 export type DiffStatisticsVariant = 'default' | 'compact';
 /**
  * Opt the compact-variant pills into the shared toolbar height
@@ -15,7 +15,10 @@ export type DiffStatisticsProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> 
   removed: number;
   /** Number of modified lines. */
   modified: number;
-  /** Visual density. */
+  /**
+   * Layout variant. `default` shows full statistic markup; `compact` trims it
+   * for tight surfaces. Distinct from `density`, which adjusts control height.
+   */
   variant?: DiffStatisticsVariant;
   /**
    * Toolbar density opt-in (compact variant only). When set, pills snap to

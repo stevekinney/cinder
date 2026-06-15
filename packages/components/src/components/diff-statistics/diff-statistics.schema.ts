@@ -18,7 +18,8 @@ const schema = {
     },
     variant: {
       enum: ['default', 'compact'],
-      description: 'Visual density.',
+      description:
+        'Layout variant. `default` shows full statistic markup; `compact` trims it\nfor tight surfaces. Distinct from `density`, which adjusts control height.',
     },
     density: {
       const: 'toolbar',

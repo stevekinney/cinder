@@ -32,15 +32,15 @@ Compact inline display of added, modified, and removed line counts for a file di
 
 <!-- generated:props:start -->
 
-| Prop       | Type                       | Required | Default | Description                                                                                                          |
-| ---------- | -------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `added`    | `number`                   | yes      | —       | Number of added lines.                                                                                               |
-| `class`    | `string`                   | no       | —       | Additional class names merged with `.cinder-diff-statistics`.                                                        |
-| `density`  | `"toolbar"`                | no       | —       | Toolbar density opt-in (compact variant only). When set, pills snap to the shared `--cinder-control-height-sm` tier. |
-| `hideZero` | `boolean`                  | no       | —       | Hide statistics with a zero value.                                                                                   |
-| `modified` | `number`                   | yes      | —       | Number of modified lines.                                                                                            |
-| `removed`  | `number`                   | yes      | —       | Number of removed lines.                                                                                             |
-| `variant`  | `"default"` \| `"compact"` | no       | —       | Visual density.                                                                                                      |
+| Prop       | Type                       | Required | Default | Description                                                                                                                                          |
+| ---------- | -------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `added`    | `number`                   | yes      | —       | Number of added lines.                                                                                                                               |
+| `class`    | `string`                   | no       | —       | Additional class names merged with `.cinder-diff-statistics`.                                                                                        |
+| `density`  | `"toolbar"`                | no       | —       | Toolbar density opt-in (compact variant only). When set, pills snap to the shared `--cinder-control-height-sm` tier.                                 |
+| `hideZero` | `boolean`                  | no       | —       | Hide statistics with a zero value.                                                                                                                   |
+| `modified` | `number`                   | yes      | —       | Number of modified lines.                                                                                                                            |
+| `removed`  | `number`                   | yes      | —       | Number of removed lines.                                                                                                                             |
+| `variant`  | `"default"` \| `"compact"` | no       | —       | Layout variant. `default` shows full statistic markup; `compact` trims it for tight surfaces. Distinct from `density`, which adjusts control height. |
 
 <!-- generated:props:end -->
 

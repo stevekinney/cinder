@@ -60,6 +60,22 @@ describe('Avatar', () => {
     expect(placeholder).not.toBeNull();
   });
 
+  test('placeholder is decorative — it carries aria-hidden so it never appears as an anonymous node in the a11y tree', () => {
+    const { container } = render(Avatar, {});
+    const placeholder = container.querySelector('.cinder-avatar__placeholder');
+    expect(placeholder?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('a consumer-supplied aria-label reaches the outer span, giving a placeholder-only avatar an accessible name', () => {
+    const { container } = render(Avatar, { 'aria-label': 'Unassigned reviewer' });
+    const root = container.querySelector('.cinder-avatar');
+    expect(root?.getAttribute('aria-label')).toBe('Unassigned reviewer');
+    // The inner placeholder stays decorative so the name is announced exactly once, on the root.
+    expect(
+      container.querySelector('.cinder-avatar__placeholder')?.getAttribute('aria-hidden'),
+    ).toBe('true');
+  });
+
   test('empty placeholder uses flat inset surface styling', async () => {
     const css = await Bun.file(new URL('./avatar.css', import.meta.url)).text();
     const placeholderBlock = css.match(/\.cinder-avatar__placeholder\s*\{[^}]*\}/)?.[0] ?? '';
