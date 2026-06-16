@@ -166,7 +166,7 @@ Pick the appropriate semver bump (`patch`, `minor`, `major`), write a short summ
 
 The npm artifact has one source of truth: `packages/components/scripts/pack-for-publish.ts`. Consumer validation, release dry-runs, the Changesets publish path, and the manual break-glass workflow all publish or inspect the staged tarball from that script. Do not publish from raw `packages/components/package.json`; that source manifest contains workspace-only development dependencies and scripts that are intentionally stripped from the released artifact.
 
-Before a release, `bun run --filter=cinder validate:consumer` installs the staged tarball into consumer fixtures, runs the Svelte peer compatibility matrix (`5.55.0`, workspace `~5.55.0`, latest `svelte@^5`), and checks tarball hygiene. `bun run --filter=cinder package:weight:check` reports packed size, unpacked size, file count, largest entry directories, and largest files, then fails on budget drift.
+Before a release, `bun run --filter=@lostgradient/cinder validate:consumer` installs the staged tarball into consumer fixtures, runs the Svelte peer compatibility matrix (`5.55.0`, workspace `~5.55.0`, latest `svelte@^5`), and checks tarball hygiene. `bun run --filter=@lostgradient/cinder package:weight:check` reports packed size, unpacked size, file count, largest entry directories, and largest files, then fails on budget drift.
 
 Only `cinder` (the workspace at `packages/components/`) publishes to npm; the other `@cinder/*` workspaces are private. Changes confined to `@cinder/playground` (the only private workspace with no dependents and listed under `ignore` in `.changeset/config.json`) do not need a changeset. The remaining private workspaces (`@cinder/commentary`, `@cinder/diff`, `@cinder/editor`, `@cinder/markdown`, `@cinder/testing`) are `workspace:*` dependencies of `cinder`, so changes to them generally do warrant a `cinder` changeset — they ship inside the published package.
 
@@ -195,7 +195,7 @@ Until this is configured on npmjs.com, OIDC publishes will be rejected by the re
 
 #### The workflow validation guard
 
-`bun run --filter=cinder validate:workflow` (part of the full `bun run validate` suite) includes a check that asserts `release.yaml` does not contain `NODE_AUTH_TOKEN` or `NPM_TOKEN` anywhere outside comments — not in the publish step's `env:`, and not in a job-level or workflow-level `env:` block that the publish step would silently inherit. If either token reappears, CI fails with a clear message. The guard lives at `packages/components/scripts/validate-release-workflow.ts`.
+`bun run --filter=@lostgradient/cinder validate:workflow` (part of the full `bun run validate` suite) includes a check that asserts `release.yaml` does not contain `NODE_AUTH_TOKEN` or `NPM_TOKEN` anywhere outside comments — not in the publish step's `env:`, and not in a job-level or workflow-level `env:` block that the publish step would silently inherit. If either token reappears, CI fails with a clear message. The guard lives at `packages/components/scripts/validate-release-workflow.ts`.
 
 #### Break-glass fallback
 

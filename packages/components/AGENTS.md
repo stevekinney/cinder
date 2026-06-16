@@ -12,16 +12,21 @@ sections:
 
 ## Using cinder in your app
 
-`@lostgradient/cinder` is a Svelte 5 component library — roughly 100 accessible primitives
-plus a few opinionated domain suites. It targets Svelte `>=5.55.0 <6` and is
-SSR-safe out of the box. Everything ships with a JSON Schema, CSS variable
-list, and (where it matters) a constraints sidecar and runnable examples.
+`@lostgradient/cinder` is a Svelte 5 component library with more than 150 public
+component entries across accessible primitives and opinionated domain suites.
+It targets Svelte `>=5.55.0 <6` and is SSR-safe out of the box. Everything ships
+with a JSON Schema, CSS variable list, and (where it matters) a constraints
+sidecar and runnable examples.
 
 ### Quickstart
 
 ```bash
-bun add @lostgradient/cinder svelte
+bun add @lostgradient/cinder svelte lucide-svelte
 ```
+
+`svelte` and `lucide-svelte` are peer dependencies. Cinder uses Lucide for its
+own component chrome, but it does not provide a general icon library for your
+application-specific icons.
 
 Two import shapes, pick one per file:
 
@@ -354,9 +359,9 @@ scope and you should wire them up yourself:
   nicely with `bind:value`. Pair them with a form library of your choice
   (Felte, Superforms, plain `<form>`) for validation, submission, and field
   state.
-- **No icon library.** Bring your own icons. Components that accept icons
-  take them as snippets or slots — pass an `<svg>`, a Lucide component,
-  whatever you ship.
+- **No general-purpose icon library.** Bring your own product-specific icons.
+  Components that accept icons take them as snippets or slots — pass an
+  `<svg>`, a Lucide component, whatever you ship.
 - **No data fetching.** Components render the data you hand them.
 - **No global state.** There is no `@lostgradient/cinder` store, context provider, or
   initialization step beyond the styles import. `<CodeBlock>` highlights

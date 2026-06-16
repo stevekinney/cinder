@@ -1,0 +1,112 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-speed-dial {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cinder-speed-dial__trigger {
+    position: relative;
+    z-index: 1;
+  }
+
+  .cinder-speed-dial__actions {
+    position: absolute;
+    display: flex;
+    gap: var(--cinder-space-3);
+    pointer-events: none;
+  }
+
+  .cinder-speed-dial[data-cinder-direction='up'] .cinder-speed-dial__actions {
+    bottom: calc(100% + var(--cinder-space-3));
+    left: 50%;
+    flex-direction: column-reverse;
+    transform: translateX(-50%);
+  }
+
+  .cinder-speed-dial[data-cinder-direction='down'] .cinder-speed-dial__actions {
+    top: calc(100% + var(--cinder-space-3));
+    left: 50%;
+    flex-direction: column;
+    transform: translateX(-50%);
+  }
+
+  .cinder-speed-dial[data-cinder-direction='left'] .cinder-speed-dial__actions {
+    right: calc(100% + var(--cinder-space-3));
+    top: 50%;
+    flex-direction: row-reverse;
+    transform: translateY(-50%);
+  }
+
+  .cinder-speed-dial[data-cinder-direction='right'] .cinder-speed-dial__actions {
+    left: calc(100% + var(--cinder-space-3));
+    top: 50%;
+    flex-direction: row;
+    transform: translateY(-50%);
+  }
+
+  .cinder-speed-dial[data-cinder-open='true'] .cinder-speed-dial__actions {
+    pointer-events: auto;
+  }
+
+  .cinder-speed-dial-action {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    opacity: 0;
+    transform: scale(0.86);
+    transition:
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
+      transform var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-speed-dial[data-cinder-open='true'] .cinder-speed-dial-action {
+    opacity: 1;
+    transform: none;
+  }
+
+  .cinder-speed-dial[data-cinder-direction='up'] .cinder-speed-dial-action,
+  .cinder-speed-dial[data-cinder-direction='down'] .cinder-speed-dial-action {
+    flex-direction: row;
+  }
+
+  .cinder-speed-dial[data-cinder-direction='left'] .cinder-speed-dial-action {
+    flex-direction: row-reverse;
+  }
+
+  .cinder-speed-dial[data-cinder-direction='right'] .cinder-speed-dial-action {
+    flex-direction: row;
+  }
+
+  .cinder-speed-dial-action[data-cinder-label-placement='start'] {
+    flex-direction: row-reverse;
+  }
+
+  .cinder-speed-dial-action[data-cinder-label-placement='end'] {
+    flex-direction: row;
+  }
+
+  .cinder-speed-dial-action__label {
+    max-inline-size: 12rem;
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    box-shadow: var(--cinder-shadow-sm);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-tight);
+    white-space: nowrap;
+  }
+
+  .cinder-speed-dial[data-cinder-open='false'] .cinder-speed-dial-action {
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-speed-dial-action {
+      transition: none;
+    }
+  }
+}

@@ -317,6 +317,12 @@ export type { FormSectionHeadingLevel, FormSectionProps } from './components/for
 
 export type { FormFieldContext } from './_internal/form-field-context.ts';
 
+export { default as Grid } from './components/grid/index.ts';
+export type { GridColumns, GridProps } from './components/grid/index.ts';
+
+export { default as GridItem } from './components/grid-item/index.ts';
+export type { GridItemProps } from './components/grid-item/index.ts';
+
 export { default as GridList } from './components/grid-list/index.ts';
 export type { GridListProps } from './components/grid-list/index.ts';
 
@@ -433,12 +439,17 @@ export { default as MatrixChart } from './components/matrix-chart/index.ts';
 export type { MatrixChartProps, MatrixChartSchemaProps } from './components/matrix-chart/index.ts';
 export type { MatrixColorScale } from './components/matrix-chart/matrix-chart.types.ts';
 
+export { default as Masonry } from './components/masonry/index.ts';
+export type { MasonryProps } from './components/masonry/index.ts';
+
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
 
 export { default as NavigationBar } from './components/navigation-bar/index.ts';
 export type {
   NavigationBarItemsContext,
+  NavigationBarLabelVisibility,
+  NavigationBarPlacement,
   NavigationBarProps,
   NavigationBarToggleAttributes,
   NavigationVariant,
@@ -637,6 +648,19 @@ export type {
 export { default as Spinner } from './components/spinner/index.ts';
 export type { SpinnerProps, SpinnerSize } from './components/spinner/index.ts';
 
+export { default as SpeedDial } from './components/speed-dial/index.ts';
+export type {
+  SpeedDialContext,
+  SpeedDialDirection,
+  SpeedDialProps,
+} from './components/speed-dial/index.ts';
+
+export { default as SpeedDialAction } from './components/speed-dial-action/index.ts';
+export type {
+  SpeedDialActionLabelPlacement,
+  SpeedDialActionProps,
+} from './components/speed-dial-action/index.ts';
+
 export { default as Steps } from './components/steps/index.ts';
 export type { StepItem, StepsOrientation, StepsProps } from './components/steps/index.ts';
 
@@ -719,6 +743,13 @@ export type {
   ToastRegionProps,
   ToastVariant,
 } from './components/toast-region/index.ts';
+
+export { default as TransferList } from './components/transfer-list/index.ts';
+export type {
+  TransferListItem,
+  TransferListProps,
+  TransferListSchemaProps,
+} from './components/transfer-list/index.ts';
 
 export { useAnnouncer } from './utilities/use-announcer.svelte.ts';
 export type { Announcer, AnnouncerOptions } from './utilities/use-announcer.svelte.ts';

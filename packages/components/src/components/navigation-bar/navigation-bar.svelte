@@ -13,7 +13,9 @@
    * @related navigation-item, breadcrumbs, side-navigation
    */
   export type {
+    NavigationBarLabelVisibility,
     NavigationBarItemsContext,
+    NavigationBarPlacement,
     NavigationBarProps,
     NavigationBarToggleAttributes,
     NavigationVariant,
@@ -28,6 +30,8 @@
 
   let {
     class: className,
+    placement = 'top',
+    showLabels = 'always',
     brand,
     items,
     actions,
@@ -37,13 +41,17 @@
     // Strip these from rest so they cannot collide with internal attributes.
     'aria-label': _ariaLabel,
     'data-collapsible': _dataCollapsible,
+    'data-cinder-placement': _dataCinderPlacement,
+    'data-cinder-label-visibility': _dataCinderLabelVisibility,
     onkeydown: consumerOnKeyDown,
     ...rest
   }: NavigationBarProps = $props();
   const navigationItemSelector = '[data-cinder-navigation-item]';
 
+  const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
+
   const variant: NavigationVariant = $derived(
-    menuToggle !== undefined && mobileMenuOpen ? 'mobile' : 'horizontal',
+    placement === 'bottom' ? 'mobile' : isCollapsible && mobileMenuOpen ? 'mobile' : 'horizontal',
   );
 
   // Stores the toggle element for focus return after Escape-close.
@@ -99,7 +107,7 @@
     }
     if (event.defaultPrevented) return;
 
-    if (event.key === 'Escape' && mobileMenuOpen) {
+    if (event.key === 'Escape' && isCollapsible && mobileMenuOpen) {
       mobileMenuOpen = false;
       // Return focus synchronously — toggleElement is captured on each click.
       toggleElement?.focus();
@@ -128,7 +136,9 @@
   {...rest}
   aria-label={navAriaLabel}
   class={classNames('cinder-navigation-bar', className)}
-  data-collapsible={menuToggle !== undefined ? 'true' : 'false'}
+  data-collapsible={isCollapsible ? 'true' : 'false'}
+  data-cinder-placement={placement}
+  data-cinder-label-visibility={showLabels}
   onkeydown={handleKeyDown}
 >
   {#if brand}
@@ -137,7 +147,7 @@
     </div>
   {/if}
 
-  {#if menuToggle}
+  {#if isCollapsible && menuToggle}
     <div class="cinder-navigation-bar__menu-toggle">
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
@@ -152,9 +162,9 @@
     id={regionId}
     class="cinder-navigation-bar__items"
     data-open={mobileMenuOpen ? 'true' : 'false'}
-    inert={menuToggle !== undefined && !mobileMenuOpen ? true : undefined}
+    inert={isCollapsible && !mobileMenuOpen ? true : undefined}
   >
-    {@render items({ variant })}
+    {@render items({ variant, placement, showLabels })}
   </div>
 
   {#if actions}

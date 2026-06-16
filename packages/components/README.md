@@ -7,8 +7,10 @@ Use cinder when you want UI building blocks without adopting a framework-level s
 ## Install
 
 ```bash
-bun add @lostgradient/cinder svelte
+bun add @lostgradient/cinder svelte lucide-svelte
 ```
+
+`svelte` and `lucide-svelte` are peer dependencies. Cinder uses Lucide for its own component chrome, but it does not provide a general icon library for your application-specific icons.
 
 ## Quickstart
 
@@ -127,7 +129,7 @@ Cinder is a presentation library, not an application framework.
 - No toast queue store.
 - No data fetching layer.
 - No global state provider.
-- No bundled icon library.
+- No general-purpose icon library for product-specific icons.
 
 Wire those pieces with your application stack and pass the resulting state, callbacks, links, icons, and data into cinder components.
 
