@@ -6,7 +6,8 @@ const schema = {
   properties: {
     open: {
       type: 'boolean',
-      description: 'Controlled open state.',
+      description:
+        'Bindable open state. Trigger, Escape, outside click, and action activation update it.',
       default: false,
     },
     direction: {
@@ -16,7 +17,7 @@ const schema = {
     },
     hidden: {
       type: 'boolean',
-      description: 'Makes the whole control inert and hidden from assistive technology.',
+      description: 'Applies the native hidden attribute and makes the whole control inert.',
       default: false,
     },
     'aria-label': {
@@ -29,7 +30,6 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['aria-label'],
   metadata: {
     unsupportedProps: [
       {

@@ -38,11 +38,20 @@
 
   const announcer = useAnnouncer({ clearDelay: 5000 });
 
-  const itemById = $derived.by(() => new Map(items.map((item) => [item.id, item])));
+  const uniqueItems = $derived.by(() => {
+    const seenIds: string[] = [];
+    return items.filter((item) => {
+      if (seenIds.includes(item.id)) return false;
+      seenIds.push(item.id);
+      return true;
+    });
+  });
+
+  const itemById = $derived.by(() => new Map(uniqueItems.map((item) => [item.id, item])));
   const knownValue = $derived(value.filter((id) => itemById.has(id)));
   const rightIdSet = $derived(new Set(knownValue));
-  const leftItems = $derived(items.filter((item) => !rightIdSet.has(item.id)));
-  const rightItems = $derived(items.filter((item) => rightIdSet.has(item.id)));
+  const leftItems = $derived(uniqueItems.filter((item) => !rightIdSet.has(item.id)));
+  const rightItems = $derived(uniqueItems.filter((item) => rightIdSet.has(item.id)));
 
   const leftSelectedSet = $derived(new Set(leftSelectedIds));
   const rightSelectedSet = $derived(new Set(rightSelectedIds));
@@ -279,7 +288,7 @@
       disabled={movableLeftSelectedIds.length === 0}
       onclick={moveSelectedRight}
     >
-      &gt;
+      Add
     </button>
     <button
       type="button"
@@ -288,7 +297,7 @@
       disabled={movableLeftItemIds.length === 0}
       onclick={moveAllRight}
     >
-      &gt;&gt;
+      Add all
     </button>
     <button
       type="button"
@@ -297,7 +306,7 @@
       disabled={movableRightSelectedIds.length === 0}
       onclick={moveSelectedLeft}
     >
-      &lt;
+      Remove
     </button>
     <button
       type="button"
@@ -306,7 +315,7 @@
       disabled={movableRightItemIds.length === 0}
       onclick={moveAllLeft}
     >
-      &lt;&lt;
+      Remove all
     </button>
   </div>
 

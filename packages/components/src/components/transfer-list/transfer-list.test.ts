@@ -6,7 +6,8 @@ import type { TransferListItem } from './transfer-list.types.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render, screen, within } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, waitFor, within } =
+  await import('@testing-library/svelte');
 const { default: TransferList } = await import('./transfer-list.svelte');
 const { default: TransferListFixture } = await import('./transfer-list.fixture.svelte');
 
@@ -22,10 +23,6 @@ const items: TransferListItem[] = [
   { id: 'admin', label: 'Admin' },
 ];
 
-async function waitForAnnouncement(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 10));
-}
-
 describe('TransferList', () => {
   test('renders two labelled multiselect listboxes and transfer controls', () => {
     render(TransferList, {
@@ -40,6 +37,12 @@ describe('TransferList', () => {
     expect(selected.getAttribute('aria-multiselectable')).toBe('true');
     expect(within(available).getByRole('option', { name: 'Read' })).toBeTruthy();
     expect(controls).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Move selected items to Selected' }).textContent,
+    ).toBe('Add');
+    expect(screen.getByRole('button', { name: 'Move all items to Selected' }).textContent).toBe(
+      'Add all',
+    );
     expect(screen.getByRole('alert')).toBeTruthy();
   });
 
@@ -123,9 +126,10 @@ describe('TransferList', () => {
 
     await fireEvent.click(screen.getByRole('option', { name: 'Read' }));
     await fireEvent.click(screen.getByRole('button', { name: 'Move selected items to Selected' }));
-    await waitForAnnouncement();
 
-    expect(screen.getByRole('alert').textContent).toContain('1 item moved to Selected.');
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain('1 item moved to Selected.'),
+    );
   });
 
   test('keyboard navigation selects and transfers the active option', async () => {
@@ -162,6 +166,21 @@ describe('TransferList', () => {
     expect(screen.getByText('No available items')).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Read' })).toBeTruthy();
     expect(screen.queryByText('missing')).toBeNull();
+  });
+
+  test('ignores duplicate item IDs after the first occurrence', () => {
+    render(TransferList, {
+      props: {
+        items: [
+          { id: 'read', label: 'Read' },
+          { id: 'read', label: 'Duplicate read' },
+        ],
+        value: [],
+      },
+    });
+
+    expect(screen.getByRole('option', { name: 'Read' })).toBeTruthy();
+    expect(screen.queryByText('Duplicate read')).toBeNull();
   });
 
   test('bind:value receives transfer updates', async () => {

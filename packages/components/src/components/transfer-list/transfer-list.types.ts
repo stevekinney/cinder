@@ -1,8 +1,10 @@
 import type { HTMLAttributes } from 'svelte/elements';
 
-/** Item rendered by TransferList. */
+/**
+ * @schemaObject
+ */
 export type TransferListItem = {
-  /** Stable item identifier stored in `value`. */
+  /** Unique stable item identifier stored in `value`. */
   id: string;
   /** Visible option label. */
   label: string;
@@ -12,9 +14,9 @@ export type TransferListItem = {
 
 /** Props for the TransferList component. */
 export type TransferListProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'class'> & {
-  /** Full item pool. The component never mutates this array. */
+  /** Full item pool. Item IDs must be unique; duplicate IDs after the first are ignored. The component never mutates this array. */
   items: TransferListItem[];
-  /** IDs currently assigned to the right-side selected list. Supports `bind:value`. */
+  /** Unique IDs currently assigned to the right-side selected list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next transfer. */
   value?: string[];
   /**
    * Accessible and visible label for the left list.
@@ -31,3 +33,23 @@ export type TransferListProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' 
   /** Custom class merged with `.cinder-transfer-list`. */
   class?: string;
 };
+
+/** Schema-facing props for TransferList. */
+export interface TransferListSchemaProps {
+  /** Full item pool. Item IDs must be unique; duplicate IDs after the first are ignored. The component never mutates this array. */
+  items: TransferListItem[];
+  /** Unique IDs currently assigned to the right-side selected list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next transfer. */
+  value?: string[];
+  /**
+   * Accessible and visible label for the left list.
+   * @default "Available"
+   */
+  leftLabel?: string;
+  /**
+   * Accessible and visible label for the right list.
+   * @default "Selected"
+   */
+  rightLabel?: string;
+  /** Custom class merged with `.cinder-transfer-list`. */
+  class?: string;
+}

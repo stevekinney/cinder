@@ -7,7 +7,7 @@ export type GridColumns = number | string;
 /** Props for the Grid component. */
 export type GridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /**
-   * Number of equal-width columns or a full CSS `grid-template-columns` value.
+   * Positive integer number of equal-width columns or a full CSS `grid-template-columns` value.
    * Numeric values render as `repeat(<columns>, 1fr)`.
    */
   columns?: GridColumns;

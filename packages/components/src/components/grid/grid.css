@@ -15,10 +15,10 @@
   }
 
   .cinder-grid-item[data-cinder-column-span='true'] {
-    grid-column: span var(--cinder-grid-item-column-span);
+    grid-column-end: span var(--cinder-grid-item-column-span);
   }
 
   .cinder-grid-item[data-cinder-row-span='true'] {
-    grid-row: span var(--cinder-grid-item-row-span);
+    grid-row-end: span var(--cinder-grid-item-row-span);
   }
 }

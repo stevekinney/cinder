@@ -745,7 +745,11 @@ export type {
 } from './components/toast-region/index.ts';
 
 export { default as TransferList } from './components/transfer-list/index.ts';
-export type { TransferListItem, TransferListProps } from './components/transfer-list/index.ts';
+export type {
+  TransferListItem,
+  TransferListProps,
+  TransferListSchemaProps,
+} from './components/transfer-list/index.ts';
 
 export { useAnnouncer } from './utilities/use-announcer.svelte.ts';
 export type { Announcer, AnnouncerOptions } from './utilities/use-announcer.svelte.ts';

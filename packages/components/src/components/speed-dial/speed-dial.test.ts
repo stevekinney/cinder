@@ -23,11 +23,11 @@ describe('SpeedDial', () => {
 
     const group = screen.getByRole('group', { name: 'Quick actions' });
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
-    const toolbar = screen.getByRole('toolbar', { name: 'Quick actions actions' });
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
 
     expect(group.classList.contains('cinder-speed-dial')).toBe(true);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
-    expect(trigger.getAttribute('aria-haspopup')).toBe('true');
+    expect(trigger.hasAttribute('aria-haspopup')).toBe(false);
     expect(trigger.getAttribute('aria-controls')).toBe(toolbar.id);
     expect(toolbar.getAttribute('aria-orientation')).toBe('vertical');
     expect(container.querySelector('[data-cinder-open="false"]')).not.toBeNull();
@@ -51,7 +51,7 @@ describe('SpeedDial', () => {
   test('direction controls data attributes and toolbar orientation', () => {
     const { container } = render(SpeedDialFixture, { props: { direction: 'left' } });
     const root = container.querySelector('.cinder-speed-dial');
-    const toolbar = screen.getByRole('toolbar', { name: 'Quick actions actions' });
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
     expect(root?.getAttribute('data-cinder-direction')).toBe('left');
     expect(toolbar.getAttribute('aria-orientation')).toBe('horizontal');
   });
@@ -117,6 +117,7 @@ describe('SpeedDial', () => {
     const group = container.querySelector('.cinder-speed-dial') as HTMLElement;
     const trigger = screen.getByRole('button', { name: 'Quick actions', hidden: true });
 
+    expect(group.hasAttribute('hidden')).toBe(true);
     expect(group.getAttribute('aria-hidden')).toBe('true');
     expect(group.hasAttribute('inert')).toBe(true);
     expect(trigger.hasAttribute('disabled')).toBe(true);

@@ -40,7 +40,10 @@
       return 'repeat(auto-fill, minmax(min(var(--cinder-grid-min-item-width), 100%), 1fr))';
     }
 
-    if (typeof columns === 'number') return `repeat(${columns}, 1fr)`;
+    if (typeof columns === 'number') {
+      if (!Number.isInteger(columns) || columns < 1) return undefined;
+      return `repeat(${columns}, 1fr)`;
+    }
     if (typeof columns === 'string' && columns.length > 0) return columns;
     return undefined;
   });

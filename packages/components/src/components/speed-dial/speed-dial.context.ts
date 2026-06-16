@@ -7,4 +7,10 @@ const [getSpeedDialContextStrict, setSpeedDialContext] = createContext<SpeedDial
 export { setSpeedDialContext };
 
 /** Read the nearest enclosing SpeedDial context. */
-export const getSpeedDialContext = getSpeedDialContextStrict;
+export function getSpeedDialContext(): SpeedDialContext {
+  try {
+    return getSpeedDialContextStrict();
+  } catch {
+    throw new Error('SpeedDial.Action must be rendered inside a SpeedDial parent.');
+  }
+}

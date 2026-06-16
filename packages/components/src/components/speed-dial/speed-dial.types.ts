@@ -19,14 +19,14 @@ export type SpeedDialProps = Omit<
   HTMLAttributes<HTMLDivElement>,
   'aria-label' | 'children' | 'class' | 'hidden'
 > & {
-  /** Controlled open state. Supports `bind:open`. */
+  /** Bindable open state. Trigger, Escape, outside click, and action activation update it. */
   open?: boolean;
   /** Direction the actions fan out. */
   direction?: SpeedDialDirection;
-  /** Makes the whole control inert and hidden from assistive technology. */
+  /** Applies the native hidden attribute and makes the whole control inert. */
   hidden?: boolean;
   /** Accessible label for the root group and trigger button. */
-  'aria-label': string;
+  'aria-label'?: string;
   /** Trigger icon or content rendered inside the FloatingActionButton. */
   trigger: Snippet;
   /** `SpeedDial.Action` children. */
@@ -38,7 +38,7 @@ export type SpeedDialProps = Omit<
 /** Schema-facing props for SpeedDial. */
 export interface SpeedDialSchemaProps {
   /**
-   * Controlled open state.
+   * Bindable open state. Trigger, Escape, outside click, and action activation update it.
    * @default false
    */
   open?: boolean;
@@ -48,12 +48,12 @@ export interface SpeedDialSchemaProps {
    */
   direction?: SpeedDialDirection;
   /**
-   * Makes the whole control inert and hidden from assistive technology.
+   * Applies the native hidden attribute and makes the whole control inert.
    * @default false
    */
   hidden?: boolean;
   /** Accessible label for the root group and trigger button. */
-  'aria-label': string;
+  'aria-label'?: string;
   /** Custom class merged with `.cinder-speed-dial`. */
   class?: string;
 }

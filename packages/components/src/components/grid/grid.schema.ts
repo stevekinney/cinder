@@ -14,7 +14,7 @@ const schema = {
         },
       ],
       description:
-        'Number of equal-width columns or a full CSS `grid-template-columns` value.\nNumeric values render as `repeat(<columns>, 1fr)`.',
+        'Positive integer number of equal-width columns or a full CSS `grid-template-columns` value.\nNumeric values render as `repeat(<columns>, 1fr)`.',
     },
     gap: {
       type: 'string',

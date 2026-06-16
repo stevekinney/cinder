@@ -26,11 +26,11 @@ related secondary actions.
 
 | Prop         | Type                                        | Required | Default | Description                                                                                                                                  |
 | ------------ | ------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aria-label` | `string`                                    | yes      | —       | Accessible label for the root group and trigger button.                                                                                      |
+| `aria-label` | `string`                                    | no       | —       | Accessible label for the root group and trigger button.                                                                                      |
 | `class`      | `string`                                    | no       | —       | Custom class merged with `.cinder-speed-dial`.                                                                                               |
 | `direction`  | `"up"` \| `"down"` \| `"left"` \| `"right"` | no       | `"up"`  | Direction the actions fan out.                                                                                                               |
-| `hidden`     | `boolean`                                   | no       | `false` | Makes the whole control inert and hidden from assistive technology.                                                                          |
-| `open`       | `boolean`                                   | no       | `false` | Controlled open state.                                                                                                                       |
+| `hidden`     | `boolean`                                   | no       | `false` | Applies the native hidden attribute and makes the whole control inert.                                                                       |
+| `open`       | `boolean`                                   | no       | `false` | Bindable open state. Trigger, Escape, outside click, and action activation update it.                                                        |
 | `children`   | `(opaque)`                                  | yes      | —       | `SpeedDial.Action` children. Not expressible in JSON Schema; see the component types for the signature.                                      |
 | `trigger`    | `(opaque)`                                  | yes      | —       | Trigger icon or content rendered inside the FloatingActionButton. Not expressible in JSON Schema; see the component types for the signature. |
 

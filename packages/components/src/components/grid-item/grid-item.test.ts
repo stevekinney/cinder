@@ -81,6 +81,26 @@ describe('GridItem', () => {
     expect(root.style.getPropertyValue('--cinder-grid-item-column-end')).toBe('span 4');
   });
 
+  test('preserves explicit column start while applying span through column end', () => {
+    const { container } = render(GridItem, {
+      props: { span: 2, columnStart: 3, children: textSnippet('content') },
+    });
+    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    expect(root.style.getPropertyValue('--cinder-grid-item-column-start')).toBe('3');
+    expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('2');
+    expect(root.getAttribute('data-cinder-column-span')).toBe('true');
+  });
+
+  test('explicit column end wins over span state', () => {
+    const { container } = render(GridItem, {
+      props: { span: 2, columnEnd: 5, children: textSnippet('content') },
+    });
+    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('2');
+    expect(root.style.getPropertyValue('--cinder-grid-item-column-end')).toBe('5');
+    expect(root.hasAttribute('data-cinder-column-span')).toBe(false);
+  });
+
   test('threads row span and row start values', () => {
     const { container } = render(GridItem, {
       props: { rowSpan: 3, rowStart: 2, children: textSnippet('content') },

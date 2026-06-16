@@ -12,8 +12,8 @@ export type NavigationBarToggleAttributes = {
 /** Context passed to the items snippet so items can adapt their layout. */
 export type NavigationBarItemsContext = {
   variant: NavigationVariant;
-  placement: NavigationBarPlacement;
-  showLabels: NavigationBarLabelVisibility;
+  placement?: NavigationBarPlacement;
+  showLabels?: NavigationBarLabelVisibility;
 };
 export type NavigationBarProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Custom class merged onto the root `<nav>` element. */

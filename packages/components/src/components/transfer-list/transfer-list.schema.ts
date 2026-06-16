@@ -4,12 +4,37 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Unique stable item identifier stored in `value`.',
+          },
+          label: {
+            type: 'string',
+            description: 'Visible option label.',
+          },
+          disabled: {
+            type: 'boolean',
+            description: 'Prevents selecting or transferring the item.',
+          },
+        },
+        additionalProperties: false,
+        required: ['id', 'label'],
+      },
+      description:
+        'Full item pool. Item IDs must be unique; duplicate IDs after the first are ignored. The component never mutates this array.',
+    },
     value: {
       type: 'array',
       items: {
         type: 'string',
       },
-      description: 'IDs currently assigned to the right-side selected list. Supports `bind:value`.',
+      description:
+        'Unique IDs currently assigned to the right-side selected list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next transfer.',
     },
     leftLabel: {
       type: 'string',
@@ -27,14 +52,9 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['items'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'items',
-        reason: 'unknown-shape',
-        required: true,
-        description: 'Full item pool. The component never mutates this array.',
-      },
       {
         name: 'onChange',
         reason: 'function-or-snippet',

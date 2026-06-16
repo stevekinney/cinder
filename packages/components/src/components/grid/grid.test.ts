@@ -64,6 +64,14 @@ describe('Grid', () => {
     expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(3, 1fr)');
   });
 
+  test('ignores invalid numeric column counts', () => {
+    const { container } = render(Grid, {
+      props: { columns: 0, children: textSnippet('content') },
+    });
+    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('');
+  });
+
   test('threads string columns verbatim', () => {
     const { container } = render(Grid, {
       props: { columns: '12rem minmax(0, 1fr)', children: textSnippet('content') },

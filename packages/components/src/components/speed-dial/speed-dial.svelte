@@ -151,6 +151,7 @@
 <div
   {...rest}
   bind:this={rootElement}
+  hidden={hidden ? true : undefined}
   role="group"
   aria-label={ariaLabel}
   aria-hidden={hidden ? 'true' : undefined}
@@ -163,7 +164,7 @@
   <div
     id={actionsId}
     role="toolbar"
-    aria-label={`${ariaLabel} actions`}
+    aria-label="Actions"
     aria-orientation={orientation}
     class="cinder-speed-dial__actions"
     data-cinder-open={open ? 'true' : 'false'}
@@ -178,7 +179,6 @@
     <FloatingActionButton
       aria-label={ariaLabel}
       aria-expanded={open ? 'true' : 'false'}
-      aria-haspopup="true"
       aria-controls={actionsId}
       disabled={hidden}
       tabindex={hidden ? -1 : undefined}
