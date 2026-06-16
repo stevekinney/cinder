@@ -128,8 +128,21 @@ const MODULE_SCRIPT_REGEX =
 /** Matches the presence of any `<style>` block. */
 const STYLE_BLOCK_REGEX = /<style\b[^>]*>/;
 
-/** Matches all `export const <name> = '...'` statements in a block. */
-const ALL_STRING_EXPORTS_REGEX = /export\s+const\s+(\w+)\s*=\s*(['"`])([\s\S]*?)\2\s*;?/gm;
+/**
+ * Matches all `export const <name> = '...'` statements in a block.
+ *
+ * The value capture is escape-aware: `(?:\\[\s\S]|[^\\])*?` consumes any
+ * backslash-escape sequence (`\"`, `\'`, `` \` ``, `\\`, `\n`, a line
+ * continuation `\` + newline, …) as a unit, so an escaped delimiter inside the
+ * literal does NOT prematurely terminate the match. The escaped half uses
+ * `[\s\S]` rather than `.` so a backslash-newline line continuation is also
+ * consumed. A naive `([\s\S]*?)\2` stops at the first raw delimiter char and
+ * truncates literals like `"Set \"auto\" mode."` — the #420 corruption. The
+ * captured value is still the RAW (escaped) source text; callers must run it
+ * through `unescapeStringLiteral` to recover the true string value.
+ */
+const ALL_STRING_EXPORTS_REGEX =
+  /export\s+const\s+(\w+)\s*=\s*(['"`])((?:\\[\s\S]|[^\\])*?)\2\s*;?/gm;
 
 /** Matches `from 'specifier'` or `from "specifier"` in import statements. */
 const IMPORT_FROM_REGEX = /^\s*import\b[^;]*\bfrom\s+['"]([^'"]+)['"]/gm;
@@ -319,9 +332,66 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
 // ---------------------------------------------------------------------------
 
 /**
+ * Decodes the standard JavaScript string-escape sequences that can appear in a
+ * single-, double-, or backtick-delimited literal so the stored metadata value
+ * is the true string the author intended (`It's`, not `It\'s`). Handles the
+ * common single-character escapes, line continuations (`\` + a line terminator,
+ * which JS cooks away to nothing), and the `\xHH`, `\uHHHH`, and `\u{H…}`
+ * numeric forms; an unrecognized `\<char>` (including a literal escaped
+ * delimiter) yields `<char>` verbatim, matching JS semantics. Octal escapes and
+ * malformed `\x`/`\u` forms are illegal in the strict-mode module scripts this
+ * generator parses, so upstream `svelte-check`/`bun build` rejects them before
+ * generation — they are not handled here.
+ */
+function unescapeStringLiteral(raw: string): string {
+  return raw.replace(
+    // A line continuation is `\` followed by a line terminator (LF, CR, CRLF,
+    // U+2028, or U+2029). Its CRLF / single-terminator alternatives precede the
+    // catch-all `[\s\S]` branch so the terminator is consumed as part of the
+    // continuation rather than returned verbatim.
+    /\\(\r\n|[\n\r\u2028\u2029]|u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[\s\S])/g,
+    (_match, escape: string) => {
+      switch (escape) {
+        case 'n':
+          return '\n';
+        case 't':
+          return '\t';
+        case 'r':
+          return '\r';
+        case 'b':
+          return '\b';
+        case 'f':
+          return '\f';
+        case 'v':
+          return '\v';
+        case '0':
+          return '\0';
+      }
+      // Line continuation: `\` + a line terminator cooks away to nothing.
+      if (/^(?:\r\n|[\n\r\u2028\u2029])$/.test(escape)) {
+        return '';
+      }
+      if (escape[0] === 'x') {
+        return String.fromCodePoint(Number.parseInt(escape.slice(1), 16));
+      }
+      if (escape[0] === 'u') {
+        const hex = escape[1] === '{' ? escape.slice(2, -1) : escape.slice(1);
+        return String.fromCodePoint(Number.parseInt(hex, 16));
+      }
+      // Escaped delimiter (`\"`, `\'`, `` \` ``), escaped backslash (`\\`),
+      // or any other `\<char>` → the char itself.
+      return escape;
+    },
+  );
+}
+
+/**
  * Parses all `export const <name> = '<literal>'` statements from a module
  * block's content. Returns a map from export name → string value.
  * Non-string-literal exports are not included in the map.
+ *
+ * The captured value is escape-decoded so the stored metadata is the true
+ * string value, free of source-level escape sequences (#420).
  */
 function parseStringExports(moduleBlockContent: string): Map<string, string> {
   const result = new Map<string, string>();
@@ -331,7 +401,7 @@ function parseStringExports(moduleBlockContent: string): Map<string, string> {
     const name = match[1];
     const value = match[3];
     if (name !== undefined && value !== undefined) {
-      result.set(name, value);
+      result.set(name, unescapeStringLiteral(value));
     }
   }
   return result;
@@ -461,19 +531,23 @@ function buildCodeField(
   metadataExports: Map<string, string>,
 ): string {
   // Check whether the module block contains ONLY metadata exports.
-  // Strategy: remove all metadata export statements from the block content
-  // and check that only whitespace and comments remain.
+  // Strategy: remove every metadata export statement from the block content and
+  // check that only whitespace and comments remain.
+  //
+  // The string-export statements are matched STRUCTURALLY with the same
+  // escape-aware literal grammar as ALL_STRING_EXPORTS_REGEX, NOT by
+  // reconstructing the statement from the parsed value. metadataExports holds
+  // the UNESCAPED value (#420), so a value-based pattern would fail to match
+  // the raw source whenever a literal contains an escape sequence — and the
+  // unremoved statement would then make the block look non-metadata-only,
+  // leaking the `<script module>` block into the published `code` field.
   const metadataKeys = new Set(['title', 'description', 'component']);
   let remaining = moduleBlockContent;
 
   for (const key of metadataKeys) {
     if (!metadataExports.has(key)) continue;
-    // Remove the export const statement for this key.
-    const value = metadataExports.get(key)!;
-    // Escape the value for regex use.
-    const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const removePattern = new RegExp(
-      `export\\s+const\\s+${key}\\s*=\\s*(['"\`])${escapedValue}\\1\\s*;?\\s*`,
+      `export\\s+const\\s+${key}\\s*=\\s*(['"\`])(?:\\\\[\\s\\S]|[^\\\\])*?\\1\\s*;?\\s*`,
       'g',
     );
     remaining = remaining.replace(removePattern, '');
