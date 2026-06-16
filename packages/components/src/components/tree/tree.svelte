@@ -87,6 +87,11 @@
 
   const generatedId = $props.id();
 
+  function normalizeOptionalText(value: string | undefined): string | undefined {
+    const trimmedValue = value?.trim();
+    return trimmedValue ? trimmedValue : undefined;
+  }
+
   function defaultFilterPredicate(label: string, _id: string, query: string): boolean {
     return label.toLowerCase().includes(query.toLowerCase());
   }
@@ -126,8 +131,14 @@
   let hasWarnedVirtualizedChildren = false;
   let hasWarnedVirtualizedWithoutItems = false;
 
+  const resolvedAriaLabel = $derived(normalizeOptionalText(ariaLabel));
+  const resolvedAriaLabelledBy = $derived(normalizeOptionalText(ariaLabelledBy));
+  const resolvedFilterPlaceholder = $derived(
+    normalizeOptionalText(filterPlaceholder) ?? 'Search tree',
+  );
+
   $effect(() => {
-    if (!ariaLabel && !ariaLabelledBy && !hasWarnedNoLabel) {
+    if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
       hasWarnedNoLabel = true;
       devWarn('[cinder-tree] Tree requires either aria-label or aria-labelledby.');
     }
@@ -1181,8 +1192,8 @@
     tabindex={isVirtualizedTree ? 0 : -1}
     class={classNames('cinder-tree', className)}
     style={treeStyle()}
-    aria-label={ariaLabel}
-    aria-labelledby={ariaLabelledBy}
+    aria-label={resolvedAriaLabel}
+    aria-labelledby={resolvedAriaLabelledBy}
     aria-activedescendant={virtualizedActiveDescendantId}
     aria-multiselectable={selectionMode === 'multiple' ? true : undefined}
     aria-busy={filterStatusBusy || undefined}
@@ -1205,15 +1216,15 @@
   <div class="cinder-tree-root">
     {#if showSearch}
       <div class="cinder-tree__filter">
-        <label class="cinder-sr-only" for={filterInputId}>{filterPlaceholder}</label>
+        <label class="cinder-sr-only" for={filterInputId}>{resolvedFilterPlaceholder}</label>
         <input
           bind:this={filterInputElement}
           id={filterInputId}
           class="cinder-tree__filter-input"
           type="search"
           value={currentFilterValue}
-          placeholder={filterPlaceholder}
-          aria-label={filterPlaceholder}
+          placeholder={resolvedFilterPlaceholder}
+          aria-label={resolvedFilterPlaceholder}
           aria-controls={treeId}
           autocomplete="off"
           autocorrect="off"

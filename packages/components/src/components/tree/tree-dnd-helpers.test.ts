@@ -55,4 +55,12 @@ describe('moveTreeNode', () => {
 
     expect(result).toEqual(nodes);
   });
+
+  test('drag controller avoids ES2023 array reversal helpers', async () => {
+    const source = await Bun.file(
+      new URL('../../_internal/tree-drag-controller.svelte.ts', import.meta.url),
+    ).text();
+
+    expect(source).not.toContain('.toReversed(');
+  });
 });

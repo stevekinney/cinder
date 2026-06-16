@@ -27,6 +27,15 @@ type TreeDragControllerOptions = {
   commit: (draggedId: string, target: TreeReorderTarget) => void;
 };
 
+function reversedVisibleIds(visibleIds: readonly string[]): string[] {
+  const reversedIds: string[] = [];
+  for (let index = visibleIds.length - 1; index >= 0; index -= 1) {
+    const id = visibleIds[index];
+    if (id !== undefined) reversedIds.push(id);
+  }
+  return reversedIds;
+}
+
 export class TreeDragController {
   phase = $state<'idle' | 'dragging'>('idle');
   draggedId = $state<string | null>(null);
@@ -88,7 +97,7 @@ export class TreeDragController {
   moveToEdge(edge: 'first' | 'last'): void {
     if (this.phase !== 'dragging' || !this.draggedId) return;
     const visibleIds = this.#options.getVisibleIds();
-    const candidates = edge === 'first' ? visibleIds : [...visibleIds].toReversed();
+    const candidates = edge === 'first' ? visibleIds : reversedVisibleIds(visibleIds);
     for (const targetId of candidates) {
       const target: TreeDropTarget = {
         id: targetId,
@@ -108,7 +117,7 @@ export class TreeDragController {
     const visibleIds = this.#options.getVisibleIds();
     const currentId = this.dropTarget?.id ?? this.draggedId;
     const currentIndex = visibleIds.indexOf(currentId);
-    const before = visibleIds.slice(0, Math.max(0, currentIndex)).toReversed();
+    const before = reversedVisibleIds(visibleIds.slice(0, Math.max(0, currentIndex)));
     const branchId = before.find(
       (id) => this.#isValidDropTarget({ id, position: 'child' }) && this.#options.isBranch(id),
     );

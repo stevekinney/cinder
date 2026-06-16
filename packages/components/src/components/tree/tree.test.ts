@@ -393,6 +393,31 @@ describe('Tree — structure and ARIA', () => {
       console.warn = originalWarn;
     }
   });
+
+  test('warns and omits accessible-name attributes when labels are empty after trimming', () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.join(' '));
+    };
+
+    try {
+      const { container } = render(Tree, {
+        props: {
+          'aria-label': '   ',
+          'aria-labelledby': '   ',
+          children: textSnippet(''),
+        },
+      });
+      const tree = container.querySelector<HTMLElement>('[role="tree"]');
+
+      expect(warnings.some((warning) => warning.includes('[cinder-tree]'))).toBe(true);
+      expect(tree?.hasAttribute('aria-label')).toBe(false);
+      expect(tree?.hasAttribute('aria-labelledby')).toBe(false);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -420,6 +445,24 @@ describe('Tree — filter/search', () => {
     expect(search?.getAttribute('aria-label')).toBe('Search tree');
     expect(search?.autocomplete).toBe('off');
     expect(search?.getAttribute('spellcheck')).toBe('false');
+  });
+
+  test('falls back to the default search label when filterPlaceholder is empty after trimming', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterPlaceholder: '   ',
+        children: treeItemsSnippet([{ id: 'apollo', label: 'Apollo' }]),
+      },
+    });
+
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]');
+    const label = container.querySelector<HTMLLabelElement>('label[for]');
+
+    expect(search?.getAttribute('aria-label')).toBe('Search tree');
+    expect(search?.getAttribute('placeholder')).toBe('Search tree');
+    expect(label?.textContent).toBe('Search tree');
   });
 
   test('hides non-matching items while retaining ancestors of deep matches', async () => {
