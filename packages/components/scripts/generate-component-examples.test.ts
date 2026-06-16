@@ -295,12 +295,38 @@ ${extraModuleContent}</script>
   });
 
   it('decodes a \\uHHHH unicode escape in metadata', () => {
-    const source = buildSourceWithDescriptionLiteral(String.raw`'café au lait'`);
+    // The SOURCE literal must carry the real six-character escape sequence
+    // (backslash, u, 0, 0, e, 9), NOT a literal é — otherwise the extraction
+    // regex matches it via [^\\] and never exercises unescapeStringLiteral's
+    // \u branch. Build it from an explicit backslash so the on-disk bytes are
+    // unambiguous.
+    const escape = String.fromCharCode(92); // single backslash
+    const source = buildSourceWithDescriptionLiteral(`'caf${escape}u00e9 au lait'`);
     const result = extractExampleFile(buildInput(source));
 
     expect(result.kind).toBe('example');
     if (result.kind !== 'example') return;
-    expect(result.example.description).toBe('café au lait');
+    expect(result.example.description).toBe('caf' + String.fromCodePoint(0xe9) + ' au lait');
+  });
+
+  it('decodes a \\u{...} unicode code-point escape in metadata', () => {
+    const escape = String.fromCharCode(92);
+    const source = buildSourceWithDescriptionLiteral(`'caf${escape}u{e9} au lait'`);
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('caf' + String.fromCodePoint(0xe9) + ' au lait');
+  });
+
+  it('decodes a \\xHH hex escape in metadata', () => {
+    const escape = String.fromCharCode(92);
+    const source = buildSourceWithDescriptionLiteral(`'caf${escape}xe9 au lait'`);
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('caf' + String.fromCodePoint(0xe9) + ' au lait');
   });
 
   it('round-trips an escaped delimiter in title and strips the module block', () => {
