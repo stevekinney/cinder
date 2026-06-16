@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic JSON Schema editor",
       "description": "Edit a flat object schema with form, JSON, and diff views.",
-      "code": "<script lang=\"ts\">\n  import { JsonSchemaEditor } from '@lostgradient/cinder/json-schema-editor';\n  import type { JsonSchemaValue } from '@lostgradient/cinder/json-schema-editor';\n  const personSchema: JsonSchemaValue = {\n    $schema: 'https://json-schema.org/draft/2020-12/schema',\n    title: 'Person',\n    type: 'object',\n    properties: {\n      name: { type: 'string', title: 'Full name', minLength: 1 },\n      age: { type: 'integer', minimum: 0 },\n      email: { type: 'string', format: 'email' },\n    },\n    required: ['name'],\n  };\n</script>\n\n<JsonSchemaEditor id=\"basic-jse\" schema={personSchema} />\n"
+      "code": "<script lang=\"ts\">\n  import { JsonSchemaEditor } from '@lostgradient/cinder/json-schema-editor';\n  import type { JsonSchemaValue } from '@lostgradient/cinder/json-schema-editor';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let jseId = $derived(`${mountIdPrefix ?? uid}-jse`);\n\n  const personSchema: JsonSchemaValue = {\n    $schema: 'https://json-schema.org/draft/2020-12/schema',\n    title: 'Person',\n    type: 'object',\n    properties: {\n      name: { type: 'string', title: 'Full name', minLength: 1 },\n      age: { type: 'integer', minimum: 0 },\n      email: { type: 'string', format: 'email' },\n    },\n    required: ['name'],\n  };\n</script>\n\n<JsonSchemaEditor id={jseId} schema={personSchema} />\n"
     },
     {
       "id": "composition",

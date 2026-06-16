@@ -77,6 +77,7 @@ import {
   snapshotModeHtmlAttribute,
   snapshotModeStyleTag,
 } from './snapshot-mode.ts';
+import { stripExampleHarness } from './strip-example-harness.ts';
 import type { ComponentManifest } from './types.ts';
 
 export const PORT = 5555;
@@ -1395,6 +1396,32 @@ function badRequest(message: string): Response {
   return new Response(message, { status: 400, headers: { 'Content-Type': 'text/plain' } });
 }
 
+/**
+ * Build the `/example-src/:name/:scenario` response: strip the doc-page
+ * mount-isolation harness so the reader copies clean consumer usage, not the
+ * `mountIdPrefix` / `$props.id()` internals.
+ *
+ * The strip fails closed — it throws on an unrecognized binding shape rather
+ * than serve half-stripped, uncopyable code — so a throw becomes a clear 500
+ * (with the failing `scenarioKey`) instead of bubbling out as an opaque
+ * connection error. Exported for testing both the 200 and 500 paths without a
+ * live socket or a filesystem poison fixture.
+ */
+export function exampleSnippetResponse(source: string, scenarioKey: string): Response {
+  let snippet: string;
+  try {
+    snippet = stripExampleHarness(source, scenarioKey);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(`stripExampleHarness failed for "${scenarioKey}": ${detail}`);
+    return new Response(`Failed to prepare example snippet for "${scenarioKey}": ${detail}`, {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' },
+    });
+  }
+  return new Response(snippet, { headers: { 'Content-Type': 'text/plain' } });
+}
+
 /** Main request handler — exported for testing. */
 export async function handleRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -1713,7 +1740,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (!(await exampleFile.exists()))
       return notFound(`Example "${componentName}/${scenario}" not found`);
     const source = await exampleFile.text();
-    return new Response(source, { headers: { 'Content-Type': 'text/plain' } });
+    return exampleSnippetResponse(source, `${componentName}/${scenario}`);
   }
 
   // GET /c/:name

@@ -7,11 +7,15 @@
   import { Segment } from '@lostgradient/cinder/segment';
   import { SegmentedControl } from '@lostgradient/cinder/segmented-control';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let controlId = $derived(`${mountIdPrefix ?? uid}-playground-view`);
+
   let value = $state('rendered');
 </script>
 
 <div style="display: grid; gap: 0.75rem; justify-items: start;">
-  <SegmentedControl id="playground-view" selectionMode="single" bind:value label="Document view">
+  <SegmentedControl id={controlId} selectionMode="single" bind:value label="Document view">
     <Segment value="source">Source</Segment>
     <Segment value="rendered">Rendered</Segment>
     <Segment value="diff">Diff</Segment>

@@ -5,10 +5,14 @@
 
 <script lang="ts">
   import { SearchField } from '@lostgradient/cinder/search-field';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);
 </script>
 
 <SearchField
-  id="search-field-basic"
+  id={fieldId}
   aria-label="Search components"
   defaultValue="cinder"
   placeholder="Filter by name"

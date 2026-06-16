@@ -6,6 +6,11 @@
 <script lang="ts">
   import { JsonSchemaEditor } from '@lostgradient/cinder/json-schema-editor';
   import type { JsonSchemaValue } from '@lostgradient/cinder/json-schema-editor';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let jseId = $derived(`${mountIdPrefix ?? uid}-jse`);
+
   const personSchema: JsonSchemaValue = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     title: 'Person',
@@ -19,4 +24,4 @@
   };
 </script>
 
-<JsonSchemaEditor id="basic-jse" schema={personSchema} />
+<JsonSchemaEditor id={jseId} schema={personSchema} />

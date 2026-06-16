@@ -5,11 +5,16 @@
 
 <script lang="ts">
   import { Textarea } from '@lostgradient/cinder/textarea';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);
+
   let bio = $state('');
 </script>
 
 <Textarea
-  id="bio"
+  id={fieldId}
   bind:value={bio}
   label="Bio"
   description="Tell us a little about yourself."

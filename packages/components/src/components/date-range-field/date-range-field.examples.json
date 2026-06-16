@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic date range",
       "description": "Start and end date inputs with built-in presets for today, yesterday & today, and last 7 days.",
-      "code": "<script lang=\"ts\">\n  import { DateRangeField } from '@lostgradient/cinder/date-range-field';\n  import type { DateRangeValue } from '@lostgradient/cinder/date-range-field';\n\n  let range: DateRangeValue = $state({ start: undefined, end: undefined });\n</script>\n\n<DateRangeField id=\"basic-date-range\" label=\"Time window\" bind:value={range} />\n"
+      "code": "<script lang=\"ts\">\n  import { DateRangeField } from '@lostgradient/cinder/date-range-field';\n  import type { DateRangeValue } from '@lostgradient/cinder/date-range-field';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let fieldId = $derived(`${mountIdPrefix ?? uid}-date-range-field`);\n\n  let range: DateRangeValue = $state({ start: undefined, end: undefined });\n</script>\n\n<DateRangeField id={fieldId} label=\"Time window\" bind:value={range} />\n"
     },
     {
       "id": "custom-presets",

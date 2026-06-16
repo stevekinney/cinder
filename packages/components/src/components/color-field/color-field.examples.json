@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic color field",
       "description": "An uncontrolled color field that accepts hex, rgb(), and hsl() strings and normalizes them to hex on commit.",
-      "code": "<script lang=\"ts\">\n  import { ColorField } from '@lostgradient/cinder/color-field';\n\n  let committed = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; max-width: 20rem;\">\n  <label for=\"color-field-basic\" style=\"font-size: 0.875rem; font-weight: 500;\">\n    Brand color\n  </label>\n  <ColorField\n    id=\"color-field-basic\"\n    defaultValue=\"#3b82f6\"\n    onchange={(value) => {\n      committed = value;\n    }}\n  />\n  {#if committed}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Committed: {committed}</p>\n  {/if}\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { ColorField } from '@lostgradient/cinder/color-field';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);\n\n  let committed = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; max-width: 20rem;\">\n  <label for={fieldId} style=\"font-size: 0.875rem; font-weight: 500;\"> Brand color </label>\n  <ColorField\n    id={fieldId}\n    defaultValue=\"#3b82f6\"\n    onchange={(value) => {\n      committed = value;\n    }}\n  />\n  {#if committed}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Committed: {committed}</p>\n  {/if}\n</div>\n"
     },
     {
       "id": "states",

@@ -6,11 +6,16 @@
 
 <script lang="ts">
   import { PinInput } from '@lostgradient/cinder/pin-input';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-invite-code`);
+
   let invite = $state('');
 </script>
 
 <PinInput
-  id="invite-code"
+  id={fieldId}
   bind:value={invite}
   length={8}
   mode="alphanumeric"

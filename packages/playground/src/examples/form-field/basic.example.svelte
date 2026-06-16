@@ -6,9 +6,14 @@
 <script lang="ts">
   import { FormField } from '@lostgradient/cinder/form-field';
   import { Input } from '@lostgradient/cinder/input';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-full-name`);
+
   let name = $state('');
 </script>
 
-<FormField id="full-name" label="Full name">
-  <Input id="full-name" bind:value={name} placeholder="Jane Smith" />
+<FormField id={fieldId} label="Full name">
+  <Input id={fieldId} bind:value={name} placeholder="Jane Smith" />
 </FormField>

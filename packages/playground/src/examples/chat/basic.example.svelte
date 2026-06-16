@@ -11,6 +11,13 @@
     createConversation,
   } from '@lostgradient/cinder/chat';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let chatId = $derived(`${mountIdPrefix ?? uid}-chat`);
+
+  // `id` below is the conversation snapshot's data key — it never reaches a DOM
+  // element id (Chat derives every rendered id from its `id` prop, scoped above
+  // as `chatId`), so it needs no mount-prefix scoping.
   let conversation = $state(
     appendAssistantMessage(
       appendUserMessage(createConversation({ id: 'basic-chat' }), 'Can you summarize this plan?'),
@@ -24,5 +31,5 @@
 </script>
 
 <div style="height: 34rem;">
-  <Chat id="playground-basic-chat" {conversation} allowAttachments={false} />
+  <Chat id={chatId} {conversation} allowAttachments={false} />
 </div>

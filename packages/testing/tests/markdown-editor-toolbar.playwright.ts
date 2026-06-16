@@ -34,12 +34,13 @@ for (const theme of THEMES) {
         viewport,
       });
 
-      const editor = page.locator('#playground-markdown-editor');
-      await expect(editor).toBeVisible();
+      // The example's editor id is namespaced per mount (#399), so this test
+      // locates the editor by its component wrapper class instead of a hardcoded
+      // id. Snapshot mode renders exactly one example, so the wrapper is unique.
+      const editorWrapper = page.locator('.markdown-editor-wrapper');
+      await expect(editorWrapper).toBeVisible();
 
-      const toolbarWrapper = page.locator(
-        '.markdown-editor-wrapper:has(#playground-markdown-editor) .editor-toolbar-wrapper',
-      );
+      const toolbarWrapper = editorWrapper.locator('.editor-toolbar-wrapper');
       await expect(toolbarWrapper).toBeVisible();
 
       const toolbar = toolbarWrapper.locator('.editor-toolbar');
