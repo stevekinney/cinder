@@ -63,6 +63,20 @@ describe('DataGrid ARIA', () => {
     expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual(['1', '2']);
   });
 
+  test('wraps body rows in a rowgroup owned by the grid', () => {
+    const { container } = render(IssueDataGrid, {
+      rows,
+      columns,
+      getRowId: getIssueId,
+      'aria-label': 'Issues',
+    });
+
+    const bodyRowGroup = container.querySelector('.cinder-data-grid__body[role="rowgroup"]');
+
+    expect(bodyRowGroup).not.toBeNull();
+    expect(bodyRowGroup?.querySelectorAll('[role="row"]').length).toBe(rows.length);
+  });
+
   test('uses active descendant on the root grid and keeps cells out of the tab order', () => {
     const { container } = render(IssueDataGrid, {
       rows,

@@ -219,7 +219,7 @@
     {/each}
   </div>
 
-  <div class="cinder-data-grid__body">
+  <div class="cinder-data-grid__body" role="rowgroup">
     {#each rows as row, rowIndex (getRowId(row))}
       {@const rowId = getRowId(row)}
       <div
