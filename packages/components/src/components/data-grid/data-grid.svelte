@@ -48,6 +48,7 @@
     class: className,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
+    onkeydown: consumerOnKeydown,
     ...rest
   }: DataGridProps<TRow> = $props();
 
@@ -131,6 +132,7 @@
 
   let hasWarnedNoLabel = false;
   let warnedDuplicateRowIdsSignature: string | undefined;
+  let previousActiveCellId: string | undefined;
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
@@ -156,15 +158,29 @@
     );
   });
 
+  $effect(() => {
+    const cellId = activeCellId;
+    if (cellId === undefined || cellId === previousActiveCellId) {
+      previousActiveCellId = cellId;
+      return;
+    }
+
+    if (previousActiveCellId === undefined) {
+      previousActiveCellId = cellId;
+      return;
+    }
+
+    previousActiveCellId = cellId;
+    document.getElementById(cellId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
+
   function getCellId(rowId: string, columnKey: string): string {
-    return `${gridId}-cell-${toDomIdSegment(rowId)}-${toDomIdSegment(columnKey)}`;
+    return `${gridId}-cell-r-${toDomIdSegment(rowId)}-c-${toDomIdSegment(columnKey)}`;
   }
 
   function toDomIdSegment(value: string): string {
-    return value.replace(/[^A-Za-z0-9_-]/gu, (character) => {
-      const codePoint = character.codePointAt(0)?.toString(16) ?? '0';
-      return `-${codePoint}-`;
-    });
+    const segment = Array.from(value, (character) => character.codePointAt(0)?.toString(16) ?? '0');
+    return segment.length > 0 ? segment.join('_') : 'empty';
   }
 
   function formatDataGridValue(value: unknown): string {
@@ -204,6 +220,11 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
+    if (consumerOnKeydown) {
+      (consumerOnKeydown as (event: KeyboardEvent) => void)(event);
+    }
+    if (event.defaultPrevented) return;
+
     if (keyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
 
     if (event.key === 'ArrowRight') {

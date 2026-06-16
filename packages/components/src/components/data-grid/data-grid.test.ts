@@ -7,7 +7,7 @@ import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
 
 setupHappyDom();
 
-const { createRawSnippet } = await import('svelte');
+const { createRawSnippet, tick } = await import('svelte');
 const { fireEvent, render } = await import('@testing-library/svelte');
 const { default: DataGrid } = await import('./data-grid.svelte');
 
@@ -105,6 +105,86 @@ describe('DataGrid', () => {
     expect(grid?.getAttribute('aria-activedescendant')).toBe(secondRowCells[1]?.getAttribute('id'));
   });
 
+  test('scrolls the active descendant into view after keyboard navigation', async () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollCalls: Array<{ id: string; options: ScrollIntoViewOptions | boolean | undefined }> =
+      [];
+    Element.prototype.scrollIntoView = function scrollIntoView(
+      options?: ScrollIntoViewOptions | boolean,
+    ) {
+      scrollCalls.push({ id: (this as HTMLElement).id, options });
+    };
+
+    try {
+      const { container } = render(OrderDataGrid, {
+        rows,
+        columns,
+        getRowId: getOrderId,
+        'aria-label': 'Orders',
+      });
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      const firstRowCells = Array.from(
+        container.querySelectorAll('[role="row"][aria-rowindex="2"] [role="gridcell"]'),
+      );
+
+      await tick();
+      expect(scrollCalls).toEqual([]);
+
+      await fireEvent.keyDown(grid!, { key: 'ArrowRight' });
+      await tick();
+
+      expect(scrollCalls).toEqual([
+        { id: firstRowCells[1]?.id ?? '', options: { block: 'nearest', inline: 'nearest' } },
+      ]);
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
+  });
+
+  test('composes consumer keydown handlers with grid keyboard navigation', async () => {
+    const consumerKeydown = mock((event: KeyboardEvent) => {
+      expect(event.key).toBe('ArrowRight');
+    });
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+      onkeydown: consumerKeydown,
+    });
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const firstRowCells = Array.from(
+      container.querySelectorAll('[role="row"][aria-rowindex="2"] [role="gridcell"]'),
+    );
+
+    await fireEvent.keyDown(grid!, { key: 'ArrowRight' });
+
+    expect(consumerKeydown).toHaveBeenCalledTimes(1);
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(firstRowCells[1]?.id);
+  });
+
+  test('lets consumer keydown cancellation block grid keyboard navigation', async () => {
+    const consumerKeydown = mock((event: KeyboardEvent) => {
+      event.preventDefault();
+    });
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+      onkeydown: consumerKeydown,
+    });
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const firstRowCells = Array.from(
+      container.querySelectorAll('[role="row"][aria-rowindex="2"] [role="gridcell"]'),
+    );
+
+    await fireEvent.keyDown(grid!, { key: 'ArrowRight' });
+
+    expect(consumerKeydown).toHaveBeenCalledTimes(1);
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(firstRowCells[0]?.id);
+  });
+
   test('generates unique cell ids for multiple grid instances', () => {
     const first = render(OrderDataGrid, {
       rows,
@@ -137,9 +217,30 @@ describe('DataGrid', () => {
 
     const cell = container.querySelector('[role="gridcell"]');
 
-    expect(cell?.id).toContain('-1f603-');
-    expect(cell?.id).toContain('-1f4b0-');
+    expect(cell?.id).toContain('1f603');
+    expect(cell?.id).toContain('1f4b0');
     expect(cell?.id).not.toContain('-de03-');
+  });
+
+  test('generates unique cell ids for hyphenated row and column keys', () => {
+    const { container } = render(OrderDataGrid, {
+      rows: [
+        { id: 'a', customer: 'First', status: 'Queued', total: 1 },
+        { id: 'a-b', customer: 'Second', status: 'Queued', total: 2 },
+      ],
+      columns: [
+        { key: 'b-c', header: 'First', getValue: (row: Order) => row.customer },
+        { key: 'c', header: 'Second', getValue: (row: Order) => row.status },
+      ],
+      getRowId: getOrderId,
+      'aria-label': 'Hyphenated orders',
+    });
+
+    const cellIds = Array.from(container.querySelectorAll('[role="gridcell"]')).map(
+      (cell) => cell.id,
+    );
+
+    expect(new Set(cellIds).size).toBe(cellIds.length);
   });
 
   test('keeps the active descendant for empty row and column ids', () => {
@@ -153,7 +254,7 @@ describe('DataGrid', () => {
     const grid = container.querySelector('[role="grid"]');
     const cell = container.querySelector('[role="gridcell"]');
 
-    expect(cell?.id.endsWith('-cell--')).toBe(true);
+    expect(cell?.id.endsWith('-cell-r-empty-c-empty')).toBe(true);
     expect(grid?.getAttribute('aria-activedescendant')).toBe(cell?.id);
     expect(cell?.getAttribute('data-cinder-active')).toBe('true');
   });
