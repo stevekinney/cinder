@@ -83,11 +83,19 @@
       ? getCellId(activeRowId, columnModel.renderColumns[activeColumnIndex]?.key ?? firstColumnKey)
       : undefined,
   );
+  const resolvedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
+  );
+  const resolvedAriaLabelledBy = $derived(
+    typeof ariaLabelledBy === 'string' && ariaLabelledBy.trim().length > 0
+      ? ariaLabelledBy
+      : undefined,
+  );
 
   let hasWarnedNoLabel = false;
 
   $effect(() => {
-    if (!ariaLabel && !ariaLabelledBy && !hasWarnedNoLabel) {
+    if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
       hasWarnedNoLabel = true;
       devWarn('[cinder-data-grid] DataGrid requires either aria-label or aria-labelledby.');
     }
@@ -184,8 +192,8 @@
   role="grid"
   aria-rowcount={rows.length + 1}
   aria-colcount={columnModel.orderedColumns.length}
-  aria-label={ariaLabel}
-  aria-labelledby={ariaLabelledBy}
+  aria-label={resolvedAriaLabel}
+  aria-labelledby={resolvedAriaLabelledBy}
   aria-activedescendant={activeCellId}
   tabindex="0"
   onkeydown={handleKeydown}

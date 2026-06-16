@@ -131,14 +131,14 @@ function withPinOffsets<TRow>(
   }
 
   let offset = 0;
-  return columns
-    .toReversed()
-    .map((column) => {
-      const nextColumn = { ...column, pinOffset: offset };
-      offset += column.width;
-      return nextColumn;
-    })
-    .toReversed();
+  const columnsWithOffsets: ResolvedDataGridColumn<TRow>[] = [];
+  for (let index = columns.length - 1; index >= 0; index -= 1) {
+    const column = columns[index];
+    if (!column) continue;
+    columnsWithOffsets.unshift({ ...column, pinOffset: offset });
+    offset += column.width;
+  }
+  return columnsWithOffsets;
 }
 
 export function getDataGridColumnValue<TRow>(row: TRow, column: DataGridColumnDef<TRow>): unknown {

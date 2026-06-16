@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 import type { Component } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -108,6 +108,34 @@ describe('DataGrid ARIA', () => {
 
     expect(grid?.getAttribute('aria-labelledby')).toBe('issues-heading');
     expect(grid?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('omits whitespace-only accessible-name attributes and warns', () => {
+    const warningMessages: unknown[] = [];
+    const warnSpy = mock((message?: unknown) => {
+      warningMessages.push(message);
+    });
+    const originalWarn = console.warn;
+    console.warn = warnSpy;
+
+    try {
+      const { container } = render(IssueDataGrid, {
+        rows,
+        columns,
+        getRowId: getIssueId,
+        'aria-label': '   ',
+        'aria-labelledby': '  ',
+      });
+
+      const grid = container.querySelector('[role="grid"]');
+
+      expect(grid?.hasAttribute('aria-label')).toBe(false);
+      expect(grid?.hasAttribute('aria-labelledby')).toBe(false);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(String(warningMessages[0])).toStartWith('[cinder-data-grid]');
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 
   test('keeps counts stable through server render and hydration', async () => {
