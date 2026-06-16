@@ -416,17 +416,15 @@
       : resolveBareComponent(bareComponentModule, documentation.component.exportName),
   );
 
-  // The `{@attach …}` factory that mounts the bare component live. Reading the
-  // synthesized values *inside* the attachment (the getter below) makes Svelte
-  // re-run it — teardown + fresh mount — on every control change, so the preview
-  // tracks the controls. The getter snapshots `playgroundValues` so the mounted
-  // component receives a plain object, exactly like a real consumer. See
-  // `component-page-live-preview.ts` for the remount-on-change rationale and the
-  // text-control focus-loss trade-off.
-  const mountLivePreview = createLivePreviewMount({
-    readValues: () => $state.snapshot(playgroundValues),
-    mountErrors,
-  });
+  // The `{@attach …}` factory that mounts the bare component live. The props are
+  // passed EAGERLY at the call site in the template
+  // (`mountLivePreview(bareComponent, $state.snapshot(playgroundValues))`) so the
+  // reactive read of `playgroundValues` happens in the attach EXPRESSION — that is
+  // what makes Svelte re-run the attachment (teardown + fresh mount) on every
+  // control change, so the preview tracks the controls. See
+  // `component-page-live-preview.ts` for why the read must be in the expression and
+  // the text-control focus-loss trade-off.
+  const mountLivePreview = createLivePreviewMount({ mountErrors });
 
   // True once the live mount has recorded a failure. The Playground template
   // uses this to fall through to the featured example when the bare mount fails
@@ -881,7 +879,10 @@
                           <div
                             class="example-preview"
                             id={LIVE_MOUNT_CONTAINER_ID}
-                            {@attach mountLivePreview(bareComponent)}
+                            {@attach mountLivePreview(
+                              bareComponent,
+                              $state.snapshot(playgroundValues),
+                            )}
                           ></div>
                         </div>
                         <p class="dx-stage__note">
@@ -931,7 +932,7 @@
                       Props
                     </div>
                     {#each playgroundModel.controls as control (control.name)}
-                      <div class="dx-ctl">
+                      <div class={['dx-ctl', control.kind === 'boolean' && 'dx-ctl--inline']}>
                         <div class="dx-ctl__text">
                           <div class="dx-ctl__name" title={control.name}>{control.name}</div>
                           {#if control.description !== undefined}
@@ -1142,9 +1143,6 @@
                         <Table.Row>
                           <Table.Cell>
                             <code class="props-name">{prop.name}</code>
-                            {#if prop.required}
-                              <span class="dx-prop-flag dx-prop-flag--req">req</span>
-                            {/if}
                           </Table.Cell>
                           <Table.Cell>
                             {@const typeMembers = splitUnionType(prop.type)}
@@ -1558,14 +1556,19 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* A real button affordance, not a bare icon hugging the code field's edge:
+     a comfortable square hit target with its own raised surface, separated from
+     the code by the divider border, and a clear hover state. */
   .dx-import__copy {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.1rem;
+    inline-size: 2.25rem;
+    min-block-size: 1.75rem;
+    padding: 0 var(--cinder-space-2);
     border: none;
     border-inline-start: 1px solid var(--cinder-border);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     color: var(--cinder-text-subtle);
     cursor: pointer;
     flex-shrink: 0;
@@ -1968,11 +1971,14 @@
     align-items: center;
     gap: var(--cinder-space-2);
   }
+  /* The controls panel is a fixed 16.5rem column, so a side-by-side label/control
+     row squeezes long mono prop names to one character per line. Stack instead:
+     label + description on their own row, the control full-width below. The boolean
+     toggle is tiny, so it stays inline at the end of the label row (see __row). */
   .dx-ctl {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--cinder-space-3);
+    flex-direction: column;
+    gap: var(--cinder-space-2);
     padding: var(--cinder-space-3-5, 0.875rem) var(--cinder-space-4);
   }
   .dx-ctl + .dx-ctl {
@@ -1985,14 +1991,25 @@
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     color: var(--cinder-text);
+    /* Break only when a token genuinely overflows the column, never per-character. */
     overflow-wrap: break-word;
-    word-break: break-all;
   }
   .dx-ctl__desc {
     font-size: var(--cinder-text-xs);
     color: var(--cinder-text-subtle);
     margin-block-start: 2px;
     line-height: 1.4;
+  }
+  /* A boolean control keeps its label and toggle on one row (the toggle is small);
+     the label text can shrink and the toggle pins to the inline end. */
+  .dx-ctl--inline {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-3);
+  }
+  .dx-ctl--inline .dx-ctl__text {
+    flex: 1;
   }
   .dx-ctl__select,
   .dx-ctl__input {
@@ -2003,8 +2020,9 @@
     color: var(--cinder-text);
     font-family: inherit;
     font-size: var(--cinder-text-sm);
-    padding: var(--cinder-space-1) var(--cinder-space-2);
-    max-width: 14rem;
+    padding: var(--cinder-space-1-5) var(--cinder-space-2);
+    /* Fill the panel width rather than crowding against the right edge. */
+    inline-size: 100%;
   }
 
   /* ===== Examples ===== */

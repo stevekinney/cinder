@@ -319,22 +319,35 @@ describe('component-page live preview (#405)', () => {
     element.id = LIVE_MOUNT_CONTAINER_ID;
     document.body.append(element);
 
-    const factory = createLivePreviewMount({
-      readValues: () => ({ label: 'Save' }),
-      mountErrors,
-    });
+    const factory = createLivePreviewMount({ mountErrors });
 
     // First run: the throwing component records an error under the container id.
-    const teardownFailed = factory(Throwing)(element);
+    const teardownFailed = factory(Throwing, { label: 'Save' })(element);
     expect(mountErrors[LIVE_MOUNT_CONTAINER_ID]?.message).toContain('boom');
     teardownFailed();
 
     // Second run on the SAME element: a working component mounts and the error
     // slot is cleared back to `undefined`.
-    const teardownOk = factory(LiveProbe)(element);
+    const teardownOk = factory(LiveProbe, { label: 'Save' })(element);
     expect(mountErrors[LIVE_MOUNT_CONTAINER_ID]).toBeUndefined();
     expect(element.querySelector('.live-probe')).not.toBeNull();
     teardownOk();
+
+    element.remove();
+  });
+
+  test('passes the eager props object straight through to mount (invariant 7)', () => {
+    // The props are passed by value at the call site — assert the exact object the
+    // caller snapshots reaches the mounted component, with no late re-read.
+    const mountErrors: MountErrorRecord = {};
+    const element = document.createElement('div');
+    element.id = LIVE_MOUNT_CONTAINER_ID;
+    document.body.append(element);
+
+    const factory = createLivePreviewMount({ mountErrors });
+    const teardown = factory(LiveProbe, { label: 'Indigo' })(element);
+    expect(element.querySelector('.live-probe')?.textContent).toContain('Indigo');
+    teardown();
 
     element.remove();
   });

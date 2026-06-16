@@ -94,15 +94,6 @@ export function resolveBareComponent(
 /** Options for {@link createLivePreviewMount}. */
 export type LivePreviewMountOptions = {
   /**
-   * Read the current synthesized prop values as a PLAIN object — the caller
-   * snapshots its reactive `$state` here (`() => $state.snapshot(playgroundValues)`)
-   * so this module stays rune-free. Called INSIDE the returned attachment so
-   * Svelte's attachment effect observes the reactive read and re-runs (teardown +
-   * fresh mount) whenever a control changes. Returning a plain object — never the
-   * reactive proxy — is exactly what a real consumer would pass as props.
-   */
-  readValues: () => Record<string, unknown>;
-  /**
    * The mount-error record to write into, keyed by the container's DOM id.
    * Mutated in place (never reassigned) so a Svelte `$state` proxy stays
    * reactive for the error callout that reads it back.
@@ -113,14 +104,26 @@ export type LivePreviewMountOptions = {
 /**
  * Build the `{@attach …}` factory that mounts the bare component live.
  *
- * The returned factory takes the resolved component and yields an attachment
- * that, on each run:
+ * The returned factory takes the resolved component AND a plain snapshot of the
+ * current prop values, and yields an attachment that mounts the component with
+ * those props.
  *
- *   - reads the current values via `readValues()` — the reactive read that makes
- *     Svelte re-run this attachment (teardown + remount) on every control change,
- *     so the preview tracks the controls. The caller snapshots its `$state` in
- *     that getter, so the mounted component receives a plain object, exactly what
- *     a real consumer would pass, never the reactive proxy;
+ * The reason props are passed EAGERLY (not via a late getter) is how Svelte
+ * attachments track reactivity: Svelte re-runs an `{@attach EXPR}` only when
+ * reactive state read **while evaluating EXPR** changes — not state read inside
+ * the returned attachment body. So the caller must read its reactive
+ * `playgroundValues` in the attach expression itself:
+ *
+ *     {@attach mountLivePreview(bareComponent, $state.snapshot(playgroundValues))}
+ *
+ * The `$state.snapshot(...)` call is the tracked read; changing any control
+ * re-evaluates the expression, which produces a new attachment, which Svelte runs
+ * after tearing down the previous mount — so the preview tracks the controls.
+ * The snapshot is a plain object, exactly what a real consumer passes as props,
+ * never the reactive proxy.
+ *
+ * On each run the attachment:
+ *
  *   - records a SYNCHRONOUS mount failure (a throw from the component's
  *     construction, e.g. an unsynthesized required snippet or a missing context
  *     provider) under the container's DOM id, and returns a cleanup that unmounts
@@ -135,15 +138,15 @@ export type LivePreviewMountOptions = {
  * on each keystroke because the whole instance is rebuilt — acceptable for a
  * preview surface (the snippet, not this mount, is the copy target).
  *
- * @returns A factory `(Component) => attachment`. When `Component` isn't
+ * @returns A factory `(Component, props) => attachment`. When `Component` isn't
  *   mountable the attachment clears any stale error and renders nothing, letting
  *   the caller's template fall back to the featured example.
  */
 export function createLivePreviewMount(
   options: LivePreviewMountOptions,
-): (component: unknown) => (element: HTMLElement) => () => void {
-  const { readValues, mountErrors } = options;
-  return (component: unknown) => (element: HTMLElement) => {
+): (component: unknown, props: Record<string, unknown>) => (element: HTMLElement) => () => void {
+  const { mountErrors } = options;
+  return (component: unknown, props: Record<string, unknown>) => (element: HTMLElement) => {
     const mountKey = element.id;
     if (!isMountableComponent(component)) {
       mountErrors[mountKey] = undefined;
@@ -153,7 +156,7 @@ export function createLivePreviewMount(
     try {
       app = mount(component, {
         target: element,
-        props: readValues(),
+        props,
       });
       mountErrors[mountKey] = undefined;
     } catch (error) {

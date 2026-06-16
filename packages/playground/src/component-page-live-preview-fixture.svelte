@@ -85,10 +85,7 @@
   // test means the real page logic works, not a fixture copy of it.
   const bareComponent = $derived(resolveBareComponent(bareComponentModule, exportName));
   const liveMountFailed = $derived(mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined);
-  const mountLivePreview = createLivePreviewMount({
-    readValues: () => $state.snapshot(playgroundValues),
-    mountErrors,
-  });
+  const mountLivePreview = createLivePreviewMount({ mountErrors });
 
   // The featured-example fallback is a plain no-props mount keyed by container id
   // (mirrors `mountScenario`'s shape). Kept inline because it is trivial and not
@@ -130,7 +127,7 @@
       <div
         class="example-preview"
         id={LIVE_MOUNT_CONTAINER_ID}
-        {@attach mountLivePreview(bareComponent)}
+        {@attach mountLivePreview(bareComponent, $state.snapshot(playgroundValues))}
       ></div>
     </div>
   {:else if featuredExample !== undefined && !snapshotMode}
