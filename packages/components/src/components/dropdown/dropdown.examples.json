@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic dropdown",
       "description": "A button trigger with a list of menu items.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let dropdownId = $derived(`${mountIdPrefix ?? uid}-dropdown`);\n</script>\n\n<Dropdown id={dropdownId}>\n  <Dropdown.Trigger>Options</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Item>Edit</Dropdown.Item>\n    <Dropdown.Item>Duplicate</Dropdown.Item>\n    <Dropdown.Item variant=\"danger\">Delete</Dropdown.Item>\n  </Dropdown.Menu>\n</Dropdown>\n"
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n\n</script>\n\n<Dropdown id=\"dropdown\">\n  <Dropdown.Trigger>Options</Dropdown.Trigger>\n  <Dropdown.Menu>\n    <Dropdown.Item>Edit</Dropdown.Item>\n    <Dropdown.Item>Duplicate</Dropdown.Item>\n    <Dropdown.Item variant=\"danger\">Delete</Dropdown.Item>\n  </Dropdown.Menu>\n</Dropdown>\n"
     },
     {
       "id": "placement",

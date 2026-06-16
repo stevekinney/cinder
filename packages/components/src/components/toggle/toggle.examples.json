@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic toggle",
       "description": "Switch using the WAI-ARIA switch pattern (aria-checked reflects state).",
-      "code": "<script lang=\"ts\">\n  import { Toggle } from '@lostgradient/cinder/toggle';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let fieldId = $derived(`${mountIdPrefix ?? uid}-email-notifications`);\n\n  let emailNotifications = $state(false);\n</script>\n\n<Toggle id={fieldId} bind:checked={emailNotifications} label=\"Email notifications\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">\n  {emailNotifications ? 'Notifications enabled' : 'Notifications disabled'}\n</p>\n"
+      "code": "<script lang=\"ts\">\n  import { Toggle } from '@lostgradient/cinder/toggle';\n\n  let emailNotifications = $state(false);\n</script>\n\n<Toggle id=\"email-notifications\" bind:checked={emailNotifications} label=\"Email notifications\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">\n  {emailNotifications ? 'Notifications enabled' : 'Notifications disabled'}\n</p>\n"
     },
     {
       "id": "group",

@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic phone input",
       "description": "Country selector plus national number with E.164 emission.",
-      "code": "<script lang=\"ts\">\n  import { PhoneInput } from '@lostgradient/cinder/phone-input';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);\n\n  let phone = $state('');\n</script>\n\n<PhoneInput id={fieldId} bind:value={phone} label=\"Phone number\" />\n\n{#if phone}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">E.164: {phone}</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { PhoneInput } from '@lostgradient/cinder/phone-input';\n\n  let phone = $state('');\n</script>\n\n<PhoneInput id=\"field\" bind:value={phone} label=\"Phone number\" />\n\n{#if phone}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">E.164: {phone}</p>\n{/if}\n"
     },
     {
       "id": "country-switching",

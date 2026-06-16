@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic textarea",
       "description": "Multi-line text input with label and bound value.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);\n\n  let bio = $state('');\n</script>\n\n<Textarea\n  id={fieldId}\n  bind:value={bio}\n  label=\"Bio\"\n  description=\"Tell us a little about yourself.\"\n  placeholder=\"I'm a designer who…\"\n/>\n{#if bio.length > 0}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">{bio.length} characters</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let bio = $state('');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={bio}\n  label=\"Bio\"\n  description=\"Tell us a little about yourself.\"\n  placeholder=\"I'm a designer who…\"\n/>\n{#if bio.length > 0}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">{bio.length} characters</p>\n{/if}\n"
     },
     {
       "id": "with-error",

@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic form field",
       "description": "A form field wrapping an input with label association.",
-      "code": "<script lang=\"ts\">\n  import { FormField } from '@lostgradient/cinder/form-field';\n  import { Input } from '@lostgradient/cinder/input';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let fieldId = $derived(`${mountIdPrefix ?? uid}-full-name`);\n\n  let name = $state('');\n</script>\n\n<FormField id={fieldId} label=\"Full name\">\n  <Input id={fieldId} bind:value={name} placeholder=\"Jane Smith\" />\n</FormField>\n"
+      "code": "<script lang=\"ts\">\n  import { FormField } from '@lostgradient/cinder/form-field';\n  import { Input } from '@lostgradient/cinder/input';\n\n  let name = $state('');\n</script>\n\n<FormField id=\"full-name\" label=\"Full name\">\n  <Input id=\"full-name\" bind:value={name} placeholder=\"Jane Smith\" />\n</FormField>\n"
     },
     {
       "id": "composed-input",

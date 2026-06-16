@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic checkbox",
       "description": "Unchecked and checked variants with associated labels.",
-      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let termsId = $derived(`${mountIdPrefix ?? uid}-terms`);\n  let newsletterId = $derived(`${mountIdPrefix ?? uid}-newsletter`);\n\n  let acceptTerms = $state(false);\n  let subscribed = $state(true);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id={termsId} label=\"I accept the terms of service\" bind:checked={acceptTerms} />\n  <Checkbox id={newsletterId} label=\"Subscribe to the newsletter\" bind:checked={subscribed} />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n\n  let acceptTerms = $state(false);\n  let subscribed = $state(true);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id=\"terms\" label=\"I accept the terms of service\" bind:checked={acceptTerms} />\n  <Checkbox id=\"newsletter\" label=\"Subscribe to the newsletter\" bind:checked={subscribed} />\n</div>\n"
     },
     {
       "id": "disabled",

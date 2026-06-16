@@ -35,10 +35,22 @@
  *   `mountIdPrefix` prop (fixed). Asserting that property in the source pins the
  *   contract precisely, in milliseconds, with no browser. This mirrors the
  *   established `selection-popover-examples.test.ts` precedent.
+ *
+ * The featured-example registry and the source-shape predicates live in the
+ * sibling {@link ./featured-examples.ts} module (not this test file) so the
+ * strip-harness full-corpus sweep can cross-check its count against the same
+ * list without importing from a test.
  */
 
 import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
+
+import {
+  declaresMountIdPrefixProp,
+  declaresPropsIdFallback,
+  derivesIdFromMountPrefix,
+  FEATURED_EXAMPLES,
+} from './featured-examples.ts';
 
 const EXAMPLES_DIR = join(import.meta.dir);
 
@@ -46,163 +58,6 @@ const EXAMPLES_DIR = join(import.meta.dir);
 async function readExample(relativePath: string): Promise<string> {
   return Bun.file(join(EXAMPLES_DIR, relativePath)).text();
 }
-
-/** True when the source declares a `mountIdPrefix` prop via `$props()`. */
-function declaresMountIdPrefixProp(source: string): boolean {
-  return /let\s*\{[^}]*\bmountIdPrefix\b[^}]*\}\s*:\s*\{[^}]*\}\s*=\s*\$props\(\)/.test(source);
-}
-
-/**
- * True when the source reads its per-instance `$props.id()` fallback. `mountIdPrefix`
- * cannot default to `$props.id()` inside the destructure (Svelte's placement rule),
- * so the idiom is a separate `const uid = $props.id()` and `mountIdPrefix ?? uid` at
- * every id site. Without the fallback, a standalone copy (no injected prefix) would
- * emit `undefined`-based ids and two standalone copies would still collide.
- */
-function declaresPropsIdFallback(source: string): boolean {
-  return (
-    /const\s+uid\s*=\s*\$props\.id\(\)/.test(source) && /mountIdPrefix\s*\?\?\s*uid/.test(source)
-  );
-}
-
-/** True when the source derives at least one id from the `mountIdPrefix ?? uid` base. */
-function derivesIdFromMountPrefix(source: string): boolean {
-  return /\$derived\([^)]*mountIdPrefix\s*\?\?\s*uid/.test(source);
-}
-
-/**
- * Every featured (alphabetically-first, or `featured = true`) example the doc
- * page double-mounts. Each emitted at least one hardcoded element id before the
- * #399 fix; those literals are recorded so the guard asserts they are gone from
- * the call sites. Keep this list in sync with the example set — every example
- * whose first scenario reaches the DOM with an `id`/`name` belongs here.
- */
-export const FEATURED_EXAMPLES = [
-  {
-    component: 'accordion',
-    file: 'accordion/basic.example.svelte',
-    oldHardcodedIds: ['item-1', 'item-2', 'item-3'],
-  },
-  {
-    component: 'autocomplete',
-    file: 'autocomplete/async.example.svelte',
-    oldHardcodedIds: ['autocomplete-async'],
-  },
-  {
-    component: 'chat',
-    file: 'chat/basic.example.svelte',
-    oldHardcodedIds: ['playground-basic-chat'],
-  },
-  {
-    component: 'checkbox',
-    file: 'checkbox/basic.example.svelte',
-    oldHardcodedIds: ['checkbox-terms', 'checkbox-newsletter'],
-  },
-  {
-    component: 'color-field',
-    file: 'color-field/basic.example.svelte',
-    oldHardcodedIds: ['color-field-basic'],
-  },
-  {
-    component: 'combobox',
-    file: 'combobox/basic.example.svelte',
-    oldHardcodedIds: ['combobox-fruit'],
-  },
-  {
-    component: 'command-menu',
-    file: 'command-menu/slash-in-textarea.example.svelte',
-    oldHardcodedIds: ['command-menu-textarea'],
-  },
-  {
-    component: 'date-range-field',
-    file: 'date-range-field/basic.example.svelte',
-    oldHardcodedIds: ['basic-date-range'],
-  },
-  {
-    component: 'drawer',
-    file: 'drawer/basic.example.svelte',
-    oldHardcodedIds: ['drawer-side', 'drawer-size', 'drawer-use-trigger-ref'],
-  },
-  {
-    component: 'dropdown',
-    file: 'dropdown/basic.example.svelte',
-    oldHardcodedIds: ['dropdown-basic'],
-  },
-  {
-    component: 'form-field',
-    file: 'form-field/basic.example.svelte',
-    oldHardcodedIds: ['full-name'],
-  },
-  {
-    component: 'form-section',
-    file: 'form-section/account-settings.example.svelte',
-    oldHardcodedIds: ['display-name', 'account-email', 'public-profile', 'marketing-emails'],
-  },
-  { component: 'input', file: 'input/basic.example.svelte', oldHardcodedIds: ['name'] },
-  {
-    component: 'json-schema-editor',
-    file: 'json-schema-editor/basic.example.svelte',
-    oldHardcodedIds: ['basic-jse'],
-  },
-  {
-    component: 'markdown-editor',
-    file: 'markdown-editor/basic.example.svelte',
-    oldHardcodedIds: ['playground-markdown-editor'],
-  },
-  {
-    component: 'modal',
-    file: 'modal/basic.example.svelte',
-    oldHardcodedIds: ['invite-name', 'invite-email'],
-  },
-  {
-    component: 'phone-input',
-    file: 'phone-input/basic.example.svelte',
-    oldHardcodedIds: ['basic-phone'],
-  },
-  {
-    component: 'pin-input',
-    file: 'pin-input/alphanumeric.example.svelte',
-    oldHardcodedIds: ['invite-code'],
-  },
-  {
-    component: 'radio-group',
-    file: 'radio-group/basic.example.svelte',
-    oldHardcodedIds: ['basic-plan', 'basic-plan-free', 'basic-plan-pro', 'basic-plan-team'],
-  },
-  { component: 'rating', file: 'rating/basic.example.svelte', oldHardcodedIds: ['basic-rating'] },
-  {
-    component: 'review-editor',
-    file: 'review-editor/basic.example.svelte',
-    oldHardcodedIds: ['playground-review-editor-basic'],
-  },
-  {
-    component: 'search-field',
-    file: 'search-field/basic.example.svelte',
-    oldHardcodedIds: ['search-field-basic'],
-  },
-  {
-    component: 'segmented-control',
-    file: 'segmented-control/basic.example.svelte',
-    oldHardcodedIds: ['playground-view'],
-  },
-  { component: 'select', file: 'select/basic.example.svelte', oldHardcodedIds: ['country'] },
-  {
-    component: 'skip-link',
-    file: 'skip-link/basic.example.svelte',
-    oldHardcodedIds: ['skip-link-example-main'],
-  },
-  {
-    component: 'tag-input',
-    file: 'tag-input/basic.example.svelte',
-    oldHardcodedIds: ['basic-tag-input'],
-  },
-  { component: 'textarea', file: 'textarea/basic.example.svelte', oldHardcodedIds: ['bio'] },
-  {
-    component: 'toggle',
-    file: 'toggle/basic.example.svelte',
-    oldHardcodedIds: ['email-notifications'],
-  },
-] as const;
 
 describe('featured example mounts — no duplicate element IDs (#399)', () => {
   for (const { component, file, oldHardcodedIds } of FEATURED_EXAMPLES) {

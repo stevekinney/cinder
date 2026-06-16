@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic input",
       "description": "Text input with label and bound value.",
-      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);\n\n  let name = $state('');\n</script>\n\n<Input id={fieldId} bind:value={name} label=\"Full name\" placeholder=\"Jane Smith\" />\n{#if name}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Hello, {name}!</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let name = $state('');\n</script>\n\n<Input id=\"field\" bind:value={name} label=\"Full name\" placeholder=\"Jane Smith\" />\n{#if name}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Hello, {name}!</p>\n{/if}\n"
     },
     {
       "id": "sign-in",

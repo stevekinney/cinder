@@ -72,12 +72,12 @@ import {
 } from './shell-app/color-token-registry.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 
+import { stripExampleHarness } from '../../components/scripts/lib/strip-example-harness.ts';
 import {
   isSnapshotMode,
   snapshotModeHtmlAttribute,
   snapshotModeStyleTag,
 } from './snapshot-mode.ts';
-import { stripExampleHarness } from './strip-example-harness.ts';
 import type { ComponentManifest } from './types.ts';
 
 export const PORT = 5555;

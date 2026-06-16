@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic select",
       "description": "Native select with label and bound string value.",
-      "code": "<script lang=\"ts\">\n  import { Select } from '@lostgradient/cinder/select';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);\n\n  const options = [\n    { value: 'us', label: 'United States' },\n    { value: 'ca', label: 'Canada' },\n    { value: 'gb', label: 'United Kingdom' },\n    { value: 'au', label: 'Australia' },\n  ];\n\n  let country = $state(options[0]?.value ?? 'us');\n</script>\n\n<Select id={fieldId} bind:value={country} {options} label=\"Country\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Selected: {country}</p>\n"
+      "code": "<script lang=\"ts\">\n  import { Select } from '@lostgradient/cinder/select';\n\n  const options = [\n    { value: 'us', label: 'United States' },\n    { value: 'ca', label: 'Canada' },\n    { value: 'gb', label: 'United Kingdom' },\n    { value: 'au', label: 'Australia' },\n  ];\n\n  let country = $state(options[0]?.value ?? 'us');\n</script>\n\n<Select id=\"field\" bind:value={country} {options} label=\"Country\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Selected: {country}</p>\n"
     },
     {
       "id": "disabled-option",

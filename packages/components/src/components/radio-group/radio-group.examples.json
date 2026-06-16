@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic radio group",
       "description": "Three options with a group legend; arrow keys move selection.",
-      "code": "<script lang=\"ts\">\n  import { RadioGroup } from '@lostgradient/cinder/radio-group';\n\n  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();\n  const uid = $props.id();\n  let groupName = $derived(`${mountIdPrefix ?? uid}-plan`);\n  let freeId = $derived(`${mountIdPrefix ?? uid}-plan-free`);\n  let proId = $derived(`${mountIdPrefix ?? uid}-plan-pro`);\n  let teamId = $derived(`${mountIdPrefix ?? uid}-plan-team`);\n\n  let plan = $state('pro');\n</script>\n\n<RadioGroup name={groupName} legend=\"Pricing tier\" bind:value={plan}>\n  <RadioGroup.Option id={freeId} value=\"free\" label=\"Free — for individuals exploring Cinder\" />\n  <RadioGroup.Option id={proId} value=\"pro\" label=\"Pro — small teams, includes private support\" />\n  <RadioGroup.Option id={teamId} value=\"team\" label=\"Team — SSO, audit logs, role-based access\" />\n</RadioGroup>\n"
+      "code": "<script lang=\"ts\">\n  import { RadioGroup } from '@lostgradient/cinder/radio-group';\n\n  let plan = $state('pro');\n</script>\n\n<RadioGroup name=\"plan\" legend=\"Pricing tier\" bind:value={plan}>\n  <RadioGroup.Option id=\"plan-free\" value=\"free\" label=\"Free — for individuals exploring Cinder\" />\n  <RadioGroup.Option id=\"plan-pro\" value=\"pro\" label=\"Pro — small teams, includes private support\" />\n  <RadioGroup.Option id=\"plan-team\" value=\"team\" label=\"Team — SSO, audit logs, role-based access\" />\n</RadioGroup>\n"
     },
     {
       "id": "disabled",
