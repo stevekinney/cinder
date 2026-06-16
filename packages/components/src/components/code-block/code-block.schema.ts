@@ -16,7 +16,7 @@ const schema = {
     highlight: {
       type: 'boolean',
       description:
-        'Whether to highlight. Defaults to `true` whenever `language` is set.\n\n`highlight={false}` is an absolute off switch: it disables ALL\nhighlighting — including an explicit `highlighter` prop — and triggers no\nShiki import. The block renders the escaped plain `<pre><code>` fallback\nwhile keeping the `language` header label.',
+        'Whether to highlight. Defaults to `true` whenever `language` is set.\n\n`highlight={false}` is an absolute off switch: it disables ALL\nhighlighting — including an explicit `highlighter` prop — and triggers no\nShiki import. The block renders the escaped plain `<pre><code>` fallback\nwhile keeping the `language` header label. When highlighting is enabled,\nclient-side colorization may appear after first paint, but the block keeps\nstable layout metrics.',
     },
     copyable: {
       type: 'boolean',

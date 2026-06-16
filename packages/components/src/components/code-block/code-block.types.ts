@@ -9,11 +9,12 @@ import type { Highlighter } from '../../utilities/highlighter.ts';
  * Syntax highlighting is automatic: when `language` is set, CodeBlock
  * lazy-loads the bundled `@lostgradient/cinder/highlighters/shiki` adapter on the client and
  * enhances the block once it resolves. The server (and the first client paint)
- * always emits the plain `<pre><code>` fallback — highlighting is a two-phase,
- * client-only enhancement, so there is a brief flash before the highlighted
- * HTML swaps in. Pass `highlight={false}` to keep `language` semantics (the
- * header label) with zero highlighting and zero Shiki import. Pass a custom
- * `highlighter` to override the bundled default per instance.
+ * always emits the plain `<pre><code>` fallback. Highlighting is a two-phase,
+ * client-only enhancement: colorization may appear after first paint, but the
+ * stable viewport keeps the block's layout from moving. Pass
+ * `highlight={false}` to keep `language` semantics (the header label) with
+ * zero highlighting and zero Shiki import. Pass a custom `highlighter` to
+ * override the bundled default per instance.
  */
 export type CodeBlockProps = {
   /** The code to render. */
@@ -26,7 +27,9 @@ export type CodeBlockProps = {
    * `highlight={false}` is an absolute off switch: it disables ALL
    * highlighting — including an explicit `highlighter` prop — and triggers no
    * Shiki import. The block renders the escaped plain `<pre><code>` fallback
-   * while keeping the `language` header label.
+   * while keeping the `language` header label. When highlighting is enabled,
+   * client-side colorization may appear after first paint, but the block keeps
+   * stable layout metrics.
    */
   highlight?: boolean;
   /**

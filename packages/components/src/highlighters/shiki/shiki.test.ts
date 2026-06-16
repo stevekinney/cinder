@@ -1,4 +1,6 @@
 /// <reference lib="dom" />
+import { resolve as resolvePath } from 'node:path';
+
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -6,6 +8,9 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { shikiHighlighter } = await import('./index.ts');
+
+const ADAPTER_PATH = resolvePath(import.meta.dir, 'index.ts');
+const REPOSITORY_ROOT = resolvePath(import.meta.dir, '../../../../..');
 
 const originalConsoleWarn = console.warn;
 afterEach(() => {
@@ -105,6 +110,32 @@ describe('shikiHighlighter — happy path', () => {
     const dualThemeApplied =
       /class="[^"]*shiki[^"]*shiki-themes/.test(html) || html.includes('--shiki-light');
     expect(dualThemeApplied).toBe(true);
+  });
+
+  test('removes Shiki root <pre> tabindex so CodeBlock keeps a single scroll focus target', () => {
+    const script = `
+      const { mock } = await import('bun:test');
+      mock.module('shiki', () => ({
+        bundledLanguages: { javascript: {} },
+        codeToHtml: async () =>
+          '<pre class="shiki" tabindex="0" data-root="yes"><code>const x = 1;</code></pre>',
+      }));
+      const { shikiHighlighter } = await import(${JSON.stringify(ADAPTER_PATH)});
+      const highlight = shikiHighlighter();
+      process.stdout.write(await highlight('const x = 1;', 'javascript'));
+    `;
+    const result = Bun.spawnSync({
+      cmd: ['bun', '--conditions', 'browser', '--conditions', 'svelte', '-e', script],
+      cwd: REPOSITORY_ROOT,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+
+    const stdout = new TextDecoder().decode(result.stdout);
+    const stderr = new TextDecoder().decode(result.stderr);
+    expect(result.exitCode, stderr).toBe(0);
+    expect(stdout).toContain('<pre class="shiki" data-root="yes">');
+    expect(stdout).not.toMatch(/<pre[^>]*\stabindex=/);
   });
 });
 
