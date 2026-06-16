@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 import { analyzeAll, analyzeComponent } from './analyze.ts';
@@ -11,6 +11,7 @@ import {
 import type { ComponentManifest } from './types.ts';
 
 const COMPONENTS_ROOT = join(import.meta.dir, '..', '..', 'components', 'src', 'components');
+const DOCUMENTATION_VALIDATION_CHUNK_COUNT = 8;
 
 function componentManifest(componentName: string): Promise<ComponentManifest> {
   return analyzeComponent(join(COMPONENTS_ROOT, componentName, `${componentName}.svelte`));
@@ -109,6 +110,12 @@ describe('buildComponentDocumentation', () => {
 });
 
 describe('every component documentation payload passes validation', () => {
+  let manifests: ComponentManifest[] = [];
+
+  beforeAll(async () => {
+    manifests = await analyzeAll(COMPONENTS_ROOT);
+  });
+
   // The static-export deploy fetches /api/documentation/:name for every
   // component and aborts the build on any non-2xx response. That route builds
   // the same payload below and 500s when validateComponentDocumentationPayload
@@ -116,19 +123,44 @@ describe('every component documentation payload passes validation', () => {
   // (e.g. `<table>` instead of `` `<table>` ``), which the markdown sanitizer
   // strips and flags as hadUnsafeContent. Sweeping every component here catches
   // that at unit-test time (a gating job) instead of post-merge on Vercel.
-  it('builds and validates the doc payload for all components', async () => {
-    const manifests = await analyzeAll(COMPONENTS_ROOT);
+  it('finds component manifests to validate', () => {
     expect(manifests.length).toBeGreaterThan(0);
+  });
 
-    const failures: string[] = [];
-    for (const manifest of manifests) {
-      const payload = await buildComponentDocumentation(manifest.kebabName, manifest);
-      const errors = validateComponentDocumentationPayload(payload);
-      if (errors.length > 0) {
-        failures.push(`${manifest.kebabName}: ${errors.join('; ')}`);
+  for (let chunkIndex = 0; chunkIndex < DOCUMENTATION_VALIDATION_CHUNK_COUNT; chunkIndex += 1) {
+    it(`builds and validates documentation payloads, chunk ${chunkIndex + 1}`, async () => {
+      const chunk = manifests.filter(
+        (_manifest, manifestIndex) =>
+          manifestIndex % DOCUMENTATION_VALIDATION_CHUNK_COUNT === chunkIndex,
+      );
+      expect(chunk.length).toBeGreaterThan(0);
+
+      const failures: string[] = [];
+      for (const manifest of chunk) {
+        const payload = await buildComponentDocumentation(manifest.kebabName, manifest);
+        const errors = validateComponentDocumentationPayload(payload);
+        if (errors.length > 0) {
+          failures.push(`${manifest.kebabName}: ${errors.join('; ')}`);
+        }
+      }
+
+      expect(failures).toEqual([]);
+    });
+  }
+
+  it('assigns every manifest to exactly one documentation validation chunk', () => {
+    const assignedNames = new Set<string>();
+    for (let chunkIndex = 0; chunkIndex < DOCUMENTATION_VALIDATION_CHUNK_COUNT; chunkIndex += 1) {
+      const chunk = manifests.filter(
+        (_manifest, manifestIndex) =>
+          manifestIndex % DOCUMENTATION_VALIDATION_CHUNK_COUNT === chunkIndex,
+      );
+      for (const manifest of chunk) {
+        expect(assignedNames.has(manifest.kebabName)).toBe(false);
+        assignedNames.add(manifest.kebabName);
       }
     }
 
-    expect(failures).toEqual([]);
+    expect(assignedNames.size).toBe(manifests.length);
   });
 });
