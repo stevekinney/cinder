@@ -97,19 +97,22 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  test('outside click dismisses an open dial without stealing focus', async () => {
+  test('outside click dismisses an open dial and restores focus when an action is active', async () => {
     const { container } = render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
 
     await fireEvent.click(trigger);
     await flushQueuedFocus();
     expect(screen.getByTestId('open-state').textContent).toBe('open');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Create' }));
 
     await fireEvent.click(document.body);
+    await flushQueuedFocus();
     expect(screen.getByTestId('open-state').textContent).toBe('closed');
     expect(container.querySelector('.cinder-speed-dial')?.getAttribute('data-cinder-open')).toBe(
       'false',
     );
+    expect(document.activeElement).toBe(trigger);
   });
 
   test('hidden prop makes the root inert and the trigger unfocusable', () => {

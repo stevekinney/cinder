@@ -132,6 +132,24 @@ describe('TransferList', () => {
     ).toEqual(['Admin', 'Read']);
   });
 
+  test('deduplicates selected value IDs by first occurrence', () => {
+    render(TransferList, {
+      props: {
+        items,
+        value: ['admin', 'read', 'admin', 'missing', 'read'],
+        leftLabel: 'Available',
+        rightLabel: 'Selected',
+      },
+    });
+
+    const selected = screen.getByRole('listbox', { name: 'Selected' });
+    expect(
+      within(selected)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Admin', 'Read']);
+  });
+
   test('clears stale selection when a parent changes value', async () => {
     const { rerender } = render(TransferList, {
       props: { items, value: ['read'], leftLabel: 'Available', rightLabel: 'Selected' },

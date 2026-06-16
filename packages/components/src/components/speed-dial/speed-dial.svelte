@@ -124,7 +124,7 @@
   function handleDocumentClick(event: MouseEvent): void {
     if (!open) return;
     if (rootElement?.contains(event.target as Node)) return;
-    close();
+    close({ focusTrigger: rootElement?.contains(document.activeElement) ?? false });
   }
 
   $effect(() => {

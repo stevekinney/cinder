@@ -50,7 +50,14 @@
   });
 
   const itemById = $derived.by(() => new Map(uniqueItems.map((item) => [item.id, item])));
-  const knownValue = $derived(value.filter((id) => itemById.has(id)));
+  const knownValue = $derived.by(() => {
+    const seenIds = new SvelteSet<string>();
+    return value.filter((id) => {
+      if (!itemById.has(id) || seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+  });
   const rightIdSet = $derived(new Set(knownValue));
   const leftItems = $derived(uniqueItems.filter((item) => !rightIdSet.has(item.id)));
   const rightItems = $derived(
