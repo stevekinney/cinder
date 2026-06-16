@@ -72,42 +72,51 @@
   const leftSelectedSet = $derived(new Set(leftSelectedIds));
   const rightSelectedSet = $derived(new Set(rightSelectedIds));
 
+  function canMoveItem(side: 'left' | 'right', item: TransferListItem): boolean {
+    return side === 'right' || !item.disabled;
+  }
+
   const movableLeftSelectedIds = $derived(
     leftSelectedIds.filter((id) => {
       const item = itemById.get(id);
-      return item !== undefined && !item.disabled && !rightIdSet.has(id);
+      return item !== undefined && canMoveItem('left', item) && !rightIdSet.has(id);
     }),
   );
   const movableRightSelectedIds = $derived(
     rightSelectedIds.filter((id) => {
       const item = itemById.get(id);
-      return item !== undefined && !item.disabled && rightIdSet.has(id);
+      return item !== undefined && canMoveItem('right', item) && rightIdSet.has(id);
     }),
   );
   const movableLeftItemIds = $derived(
-    leftItems.filter((item) => !item.disabled).map((item) => item.id),
+    leftItems.filter((item) => canMoveItem('left', item)).map((item) => item.id),
   );
-  const movableRightItemIds = $derived(
-    rightItems.filter((item) => !item.disabled).map((item) => item.id),
-  );
+  const movableRightItemIds = $derived(rightItems.map((item) => item.id));
 
   function optionId(side: 'left' | 'right', index: number): string {
     return `${baseId}-${side}-option-${index}`;
   }
 
-  function getEnabledItems(sideItems: TransferListItem[]): TransferListItem[] {
-    return sideItems.filter((item) => !item.disabled);
+  function getEnabledItems(
+    side: 'left' | 'right',
+    sideItems: TransferListItem[],
+  ): TransferListItem[] {
+    return sideItems.filter((item) => canMoveItem(side, item));
   }
 
-  function resolveActiveId(sideItems: TransferListItem[], currentId: string | null): string | null {
-    const enabled = getEnabledItems(sideItems);
+  function resolveActiveId(
+    side: 'left' | 'right',
+    sideItems: TransferListItem[],
+    currentId: string | null,
+  ): string | null {
+    const enabled = getEnabledItems(side, sideItems);
     if (enabled.length === 0) return null;
     if (currentId && enabled.some((item) => item.id === currentId)) return currentId;
     return enabled[0]?.id ?? null;
   }
 
-  const resolvedLeftActiveId = $derived(resolveActiveId(leftItems, leftActiveId));
-  const resolvedRightActiveId = $derived(resolveActiveId(rightItems, rightActiveId));
+  const resolvedLeftActiveId = $derived(resolveActiveId('left', leftItems, leftActiveId));
+  const resolvedRightActiveId = $derived(resolveActiveId('right', rightItems, rightActiveId));
 
   $effect(() => {
     const nextLeftSelectedIds = leftSelectedIds.filter((id) => leftItemIdSet.has(id));
@@ -185,7 +194,7 @@
 
   function toggleId(side: 'left' | 'right', id: string): void {
     const item = itemById.get(id);
-    if (!item || item.disabled) return;
+    if (!item || !canMoveItem(side, item)) return;
 
     if (side === 'left') {
       leftSelectedIds = leftSelectedSet.has(id)
@@ -205,7 +214,7 @@
   }
 
   function handleOptionClick(side: 'left' | 'right', item: TransferListItem): void {
-    if (item.disabled) return;
+    if (!canMoveItem(side, item)) return;
     setActiveId(side, item.id);
     toggleId(side, item.id);
   }
@@ -238,7 +247,7 @@
   function handleListKeydown(event: KeyboardEvent, side: 'left' | 'right'): void {
     const sideItems = side === 'left' ? leftItems : rightItems;
     const activeId = side === 'left' ? resolvedLeftActiveId : resolvedRightActiveId;
-    const enabledItems = getEnabledItems(sideItems);
+    const enabledItems = getEnabledItems(side, sideItems);
     if (enabledItems.length === 0 || !activeId) return;
 
     const activeIndex = enabledItems.findIndex((item) => item.id === activeId);
@@ -367,7 +376,6 @@
           class="cinder-transfer-list__option"
           role="option"
           aria-selected={rightSelectedSet.has(item.id) ? 'true' : 'false'}
-          aria-disabled={item.disabled ? 'true' : undefined}
           data-cinder-active={resolvedRightActiveId === item.id ? 'true' : undefined}
           data-cinder-transfer-list-item-id={item.id}
         >

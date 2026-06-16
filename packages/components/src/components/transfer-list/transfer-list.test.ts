@@ -99,6 +99,49 @@ describe('TransferList', () => {
     expect(onChange).toHaveBeenCalledWith(['read', 'write', 'admin']);
   });
 
+  test('selected disabled items can be removed', async () => {
+    const onChange = mock(() => {});
+    render(TransferList, {
+      props: {
+        items,
+        value: ['billing'],
+        leftLabel: 'Available',
+        rightLabel: 'Selected',
+        onChange,
+      },
+    });
+
+    const selected = screen.getByRole('listbox', { name: 'Selected' });
+    const billing = within(selected).getByRole('option', { name: 'Billing' });
+    expect(billing.hasAttribute('aria-disabled')).toBe(false);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move all items to Available' }));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  test('selected items remain removable after becoming disabled', async () => {
+    const onChange = mock(() => {});
+    const enabledBillingItems: TransferListItem[] = items.map((item) =>
+      item.id === 'billing' ? { ...item, disabled: false } : item,
+    );
+    const { rerender } = render(TransferList, {
+      props: {
+        items: enabledBillingItems,
+        value: ['billing'],
+        leftLabel: 'Available',
+        rightLabel: 'Selected',
+        onChange,
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('option', { name: 'Billing' }));
+    await rerender({ items, value: ['billing'], leftLabel: 'Available', rightLabel: 'Selected' });
+    await fireEvent.click(screen.getByRole('button', { name: 'Move selected items to Available' }));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
   test('moves selected and all items left', async () => {
     const onChange = mock(() => {});
     render(TransferList, {

@@ -53,6 +53,23 @@ describe('SpeedDialAction', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Quick actions' }));
   });
 
+  test('visible label activates the underlying action button', async () => {
+    const onAction = mock(() => {});
+    render(SpeedDialActionFixture, {
+      props: { labelPlacement: 'start', onAction },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+    await flushQueuedFocus();
+    await fireEvent.click(screen.getByText('Create'));
+    await flushQueuedFocus();
+
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole('group', { name: 'Quick actions' }).getAttribute('data-cinder-open'),
+    ).toBe('false');
+  });
+
   test('omits the visible label when labelPlacement is none', () => {
     const { container } = render(SpeedDialActionFixture, {
       props: { labelPlacement: 'none' },

@@ -22,7 +22,10 @@
   import { getSpeedDialContext } from '../speed-dial/speed-dial.context.ts';
   import type { SpeedDialActionProps } from './speed-dial-action.types.ts';
 
+  const fallbackButtonId = $props.id();
+
   let {
+    id = fallbackButtonId,
     label,
     icon,
     onclick,
@@ -57,11 +60,18 @@
   data-cinder-open={context.isOpen ? 'true' : 'false'}
   data-cinder-direction={context.direction}
 >
-  <FloatingActionButton {...rest} size="sm" aria-label={label} {disabled} onclick={handleClick}>
+  <FloatingActionButton
+    {...rest}
+    {id}
+    size="sm"
+    aria-label={label}
+    {disabled}
+    onclick={handleClick}
+  >
     {@render icon?.()}
   </FloatingActionButton>
 
   {#if labelPlacement !== 'none'}
-    <span class="cinder-speed-dial-action__label" aria-hidden="true">{label}</span>
+    <label for={id} class="cinder-speed-dial-action__label" aria-hidden="true">{label}</label>
   {/if}
 </div>

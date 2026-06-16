@@ -2,7 +2,9 @@
 
 TransferList renders two `role="listbox"` elements with
 `aria-multiselectable="true"`. Each option exposes `aria-selected`, and disabled
-items expose `aria-disabled="true"` and are skipped by keyboard movement.
+available-side items expose `aria-disabled="true"` and are skipped by keyboard
+movement. If a disabled item is already selected, the selected-side option stays
+operable so the user can remove it.
 
 Keyboard behavior:
 
