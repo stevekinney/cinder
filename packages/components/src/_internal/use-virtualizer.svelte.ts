@@ -80,14 +80,16 @@ export class TreeVirtualizer {
   scrollToIndex(index: number, options: ScrollToOptions = { align: 'auto' }): void {
     this.#subscribe();
     this.#syncOptions();
+    const element = this.#getScrollElement();
+    const shouldUseFallbackScroll = Boolean(
+      element && (!this.#virtualizer || element.clientHeight === 0),
+    );
+
     this.#virtualizer?.scrollToIndex(index, options);
-    const element = this.options.getScrollElement();
-    if (element) {
-      if (!this.#virtualizer || element.clientHeight === 0) {
-        element.scrollTop = Math.max(0, index * Math.max(1, this.options.getEstimatedSize()));
-      }
-      element.dispatchEvent(new Event('scroll'));
-    }
+    if (!element || !shouldUseFallbackScroll) return;
+
+    element.scrollTop = Math.max(0, index * Math.max(1, this.options.getEstimatedSize()));
+    element.dispatchEvent(new Event('scroll'));
   }
 
   #syncOptions(): void {
@@ -125,15 +127,12 @@ export class TreeVirtualizer {
     if (!element) return;
 
     const top = offset + adjustments;
-    if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
-      element.scrollTo({ top, behavior });
+    if (typeof element.scrollTo === 'function') {
+      element.scrollTo(behavior ? { top, behavior } : { top });
       return;
     }
 
     element.scrollTop = top;
-    if (typeof element.scrollTo === 'function') {
-      element.scrollTo(behavior ? { top, behavior } : { top });
-    }
   };
 
   #observeElementRect = (

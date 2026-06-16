@@ -522,4 +522,54 @@ describe('Tree — virtualized data path', () => {
       ).toBe(true),
     );
   });
+
+  test('TreeRef scrollToRow delegates to scrollTo without synthetic scroll events', async () => {
+    let treeRef: TreeRef | undefined;
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: flatItems(100),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+        get ref() {
+          return treeRef;
+        },
+        set ref(value: TreeRef | undefined) {
+          treeRef = value;
+        },
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    let currentScrollTop = 0;
+    let directScrollTopWrites = 0;
+    let scrollEvents = 0;
+    let scrollToCalls = 0;
+
+    Object.defineProperty(tree, 'clientHeight', { configurable: true, value: 100 });
+    Object.defineProperty(tree, 'scrollTop', {
+      configurable: true,
+      get: () => currentScrollTop,
+      set: (value: number) => {
+        directScrollTopWrites += 1;
+        currentScrollTop = value;
+      },
+    });
+    tree.scrollTo = ((options?: ScrollToOptions | number, y?: number) => {
+      scrollToCalls += 1;
+      currentScrollTop =
+        typeof options === 'number' ? (y ?? 0) : (options?.top ?? currentScrollTop);
+    }) as typeof tree.scrollTo;
+    tree.addEventListener('scroll', () => {
+      scrollEvents += 1;
+    });
+
+    await waitFor(() => expect(treeRef).toBeDefined());
+    treeRef?.scrollToRow('item-75', { block: 'center' });
+
+    expect(scrollToCalls).toBe(1);
+    expect(directScrollTopWrites).toBe(0);
+    expect(scrollEvents).toBe(0);
+  });
 });
