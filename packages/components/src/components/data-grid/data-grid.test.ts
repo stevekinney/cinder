@@ -142,6 +142,22 @@ describe('DataGrid', () => {
     expect(cell?.id).not.toContain('-de03-');
   });
 
+  test('keeps the active descendant for empty row and column ids', () => {
+    const { container } = render(OrderDataGrid, {
+      rows: [{ id: '', customer: 'Empty Identifier', status: 'Queued', total: 0 }],
+      columns: [{ key: '', header: 'Empty key', getValue: (row: Order) => row.customer }],
+      getRowId: getOrderId,
+      'aria-label': 'Empty id orders',
+    });
+
+    const grid = container.querySelector('[role="grid"]');
+    const cell = container.querySelector('[role="gridcell"]');
+
+    expect(cell?.id.endsWith('-cell--')).toBe(true);
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(cell?.id);
+    expect(cell?.getAttribute('data-cinder-active')).toBe('true');
+  });
+
   test('renders dates with deterministic ISO strings', () => {
     const { container } = render(OrderDataGrid, {
       rows: [{ id: 'ord-3', customer: 'Alan Turing', status: 'Queued', total: 88 }],

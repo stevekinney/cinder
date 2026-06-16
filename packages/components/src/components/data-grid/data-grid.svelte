@@ -88,7 +88,7 @@
       : firstRowId,
   );
   const activeCellId = $derived(
-    activeRowId && firstColumnKey
+    activeRowId !== undefined && firstColumnKey !== undefined
       ? getCellId(activeRowId, columnModel.renderColumns[activeColumnIndex]?.key ?? firstColumnKey)
       : undefined,
   );
