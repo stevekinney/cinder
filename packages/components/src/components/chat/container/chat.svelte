@@ -136,6 +136,12 @@
 
   const messages = $derived(getMessages(conversation));
 
+  // The conversation id as a stable VALUE dependency. The subscribe effect keys
+  // on this (not on `conversation.id` read inline) so a consumer passing a fresh
+  // `conversation` snapshot on every transcript update — but with the same id —
+  // does not tear down and reopen the real-time subscription each render.
+  const conversationId = $derived(conversation.id);
+
   const messageGroups = useChatMessageGroups({
     getMessages: () => messages,
   });
@@ -257,17 +263,19 @@
   // imperative buffer (so a push-driven stream is self-contained); transcript /
   // peripheral pushes forward to the consumer (Chat never mutates `conversation`).
   //
-  // The effect re-subscribes ONLY when the adapter reference or `conversation.id`
-  // changes — the forwarding callbacks are read through `untrack` at invocation
-  // time so that a consumer passing inline arrow functions (whose identity churns
-  // every render) does not tear down and reopen the transport on every render.
-  // Each handler still calls the LATEST callback (untrack reads the live prop),
-  // it just doesn't make that prop a dependency of the subscription effect.
+  // The effect re-subscribes ONLY when the adapter reference or the
+  // `conversationId` VALUE changes — keying on the derived id value (not on
+  // `conversation.id` read inline) means a new `conversation` snapshot bearing
+  // the same id does not churn the subscription. The forwarding callbacks are
+  // read through `untrack` at invocation time so a consumer passing inline arrow
+  // functions (whose identity churns every render) does not tear down and reopen
+  // the transport on every render — each handler still calls the LATEST callback,
+  // it just isn't a dependency of the subscription effect.
   $effect(() => {
     const resolvedAdapter = adapter;
     if (!resolvedAdapter?.subscribe) return;
 
-    const conversationId = conversation.id;
+    const currentConversationId = conversationId;
     const handlers: ChatPushHandlers = {
       onMessage: (message) => untrack(() => onpushmessage)?.(message),
       onTypingChange: (isTyping) => untrack(() => ontypingchange)?.(isTyping),
@@ -279,7 +287,7 @@
 
     // Guard the teardown: an adapter that violates the contract and returns a
     // non-function must not crash Svelte's cleanup. A bad return is dropped.
-    const unsubscribe = resolvedAdapter.subscribe(conversationId, handlers);
+    const unsubscribe = resolvedAdapter.subscribe(currentConversationId, handlers);
     return typeof unsubscribe === 'function' ? unsubscribe : undefined;
   });
 
@@ -307,22 +315,32 @@
   // One internal path for every user command so callback-driven and
   // adapter-driven usage behave identically. The adapter method takes
   // precedence when present (a transport owner); otherwise the callback fires.
-  // `adapterMethod` returns the adapter's promise, or `undefined` when the
-  // adapter doesn't implement that optional method (then we fall through to the
-  // callback). The whole adapter path is wrapped in try/catch so BOTH a rejected
-  // promise AND a synchronous throw from the adapter route to `onadaptererror`
-  // rather than escaping. `onadaptererror` is scoped to ADAPTER failures only —
-  // the fallback callback path is the consumer's own code, so a throw there
+  //
+  // "Present" is decided by `runAdapterMethod` returning a value (not by the
+  // method's own return value): the call site returns `undefined` ONLY when the
+  // adapter lacks that optional method, and otherwise returns the method's
+  // result wrapped in `Promise.resolve(...)`. This means a synchronously-
+  // returning adapter method (one that resolves to `undefined` rather than a
+  // promise) is still treated as "handled" — the callback does NOT also fire, so
+  // there's no double-dispatch even for a type-violating sync method.
+  //
+  // The whole adapter path is wrapped in try/catch so BOTH a rejected promise
+  // AND a synchronous throw from the adapter route to `onadaptererror` rather
+  // than escaping. `onadaptererror` is scoped to ADAPTER failures only — the
+  // fallback callback path is the consumer's own code, so a throw there
   // propagates normally rather than being captured here.
   async function dispatchCommand(
     command: ChatCommand,
-    adapterMethod: (adapter: ChatAdapter) => Promise<void> | undefined,
+    runAdapterMethod: (adapter: ChatAdapter) => Promise<void> | undefined,
     callback: (() => void) | undefined,
   ): Promise<void> {
     if (adapter) {
       try {
-        const run = adapterMethod(adapter);
-        if (run) {
+        const run = runAdapterMethod(adapter);
+        // `undefined` means the adapter has no such method → fall through to the
+        // callback. Any other return (a promise, including one wrapping a sync
+        // `undefined` result) means the adapter handled it — never fire the callback.
+        if (run !== undefined) {
           await run;
           return;
         }
@@ -337,9 +355,12 @@
   function handleSubmit(message: MessageInput, attachments: ChatAttachment[]): void {
     // Fire-and-forget the command (the dispatcher owns awaiting + error routing);
     // scroll immediately so the round-trip latency never delays the auto-scroll.
+    // `Promise.resolve(...)` normalizes a sync-returning method to a promise so
+    // the dispatcher always treats a present method as "handled" (sendMessage is
+    // required, so it's always present here).
     void dispatchCommand(
       'sendMessage',
-      (resolvedAdapter) => resolvedAdapter.sendMessage(message, attachments),
+      (resolvedAdapter) => Promise.resolve(resolvedAdapter.sendMessage(message, attachments)),
       () => onsubmit?.({ message, attachments }),
     );
 
@@ -353,7 +374,12 @@
   function handleRetry(messageId: string): void {
     void dispatchCommand(
       'retryMessage',
-      (resolvedAdapter) => resolvedAdapter.retryMessage?.(messageId),
+      // Return `undefined` ONLY when the optional method is absent; otherwise
+      // wrap its result so a present-but-sync method still counts as handled.
+      (resolvedAdapter) =>
+        resolvedAdapter.retryMessage
+          ? Promise.resolve(resolvedAdapter.retryMessage(messageId))
+          : undefined,
       () => onretry?.(messageId),
     );
   }
@@ -361,7 +387,10 @@
   function handleEdit(event: { messageId: string; content: string }): void {
     void dispatchCommand(
       'editMessage',
-      (resolvedAdapter) => resolvedAdapter.editMessage?.(event),
+      (resolvedAdapter) =>
+        resolvedAdapter.editMessage
+          ? Promise.resolve(resolvedAdapter.editMessage(event))
+          : undefined,
       () => onedit?.(event),
     );
   }
@@ -382,7 +411,10 @@
       const targetMessageId = streamingMessage.id;
       void dispatchCommand(
         'stopGenerating',
-        (resolvedAdapter) => resolvedAdapter.stopGenerating?.(targetMessageId),
+        (resolvedAdapter) =>
+          resolvedAdapter.stopGenerating
+            ? Promise.resolve(resolvedAdapter.stopGenerating(targetMessageId))
+            : undefined,
         () => onstopgenerating?.({ messageId: targetMessageId }),
       );
     }

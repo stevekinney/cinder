@@ -168,6 +168,34 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
+  test('a SYNC adapter method (returns undefined, not a promise) still suppresses the callback', () => {
+    // Regression: a synchronously-returning adapter method must still count as
+    // "handled" — the matching callback must NOT also fire (no double-dispatch),
+    // even though the method returns `undefined` rather than a promise.
+    const adapterRetried: string[] = [];
+    const callbackRetried: string[] = [];
+    const adapter = {
+      sendMessage: async () => {},
+      // Synchronous, returns undefined (a type-violating but possible JS shape).
+      retryMessage: ((id: string) => {
+        adapterRetried.push(id);
+      }) as unknown as (id: string) => Promise<void>,
+    } satisfies ChatAdapter;
+    const { container, instance } = mountChat({
+      id: 'chat-sync-method',
+      conversation: failedConversation(),
+      adapter,
+      onretry: (id: string) => callbackRetried.push(id),
+    });
+
+    clickRetry(container);
+    flushSync();
+    expect(adapterRetried).toEqual(['failed-1']);
+    expect(callbackRetried).toEqual([]);
+
+    unmount(instance);
+  });
+
   test('an adapter command rejection routes to onadaptererror', async () => {
     const errors: Array<{ command: string; error: unknown }> = [];
     const adapter: ChatAdapter = {
@@ -433,6 +461,40 @@ describe('ChatAdapter — subscribe lifecycle', () => {
       'subscribe:conversation-b',
       'teardown:conversation-b',
     ]);
+    target.remove();
+  });
+
+  test('does NOT re-subscribe when a new conversation snapshot keeps the same id', () => {
+    // Regression: the effect keys on the conversation id VALUE, not the object,
+    // so a fresh snapshot (common on every transcript update) with an unchanged
+    // id must not tear down and reopen the transport.
+    const events: string[] = [];
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      subscribe: (conversationId) => {
+        events.push(`subscribe:${conversationId}`);
+        return () => events.push(`teardown:${conversationId}`);
+      },
+    };
+    const target = document.createElement('div');
+    document.body.append(target);
+    const instance = mount(AdapterSwitchFixture, {
+      target,
+      props: { initial: failedConversation('same-id'), adapter },
+    }) as SwitchFixtureInstance;
+    flushSync();
+    expect(events).toEqual(['subscribe:same-id']);
+
+    // A brand-new conversation object with the SAME id — no resubscription.
+    instance.setConversation(failedConversation('same-id'));
+    flushSync();
+    instance.setConversation(failedConversation('same-id'));
+    flushSync();
+    expect(events).toEqual(['subscribe:same-id']);
+
+    unmount(instance);
+    flushSync();
+    expect(events).toEqual(['subscribe:same-id', 'teardown:same-id']);
     target.remove();
   });
 
