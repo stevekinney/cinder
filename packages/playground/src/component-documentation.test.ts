@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 import { analyzeAll, analyzeComponent } from './analyze.ts';
@@ -109,6 +109,12 @@ describe('buildComponentDocumentation', () => {
 });
 
 describe('every component documentation payload passes validation', () => {
+  let componentDocumentationManifests: ComponentManifest[] = [];
+
+  beforeAll(async () => {
+    componentDocumentationManifests = await analyzeAll(COMPONENTS_ROOT);
+  });
+
   // The static-export deploy fetches /api/documentation/:name for every
   // component and aborts the build on any non-2xx response. That route builds
   // the same payload below and 500s when validateComponentDocumentationPayload
@@ -117,11 +123,10 @@ describe('every component documentation payload passes validation', () => {
   // strips and flags as hadUnsafeContent. Sweeping every component here catches
   // that at unit-test time (a gating job) instead of post-merge on Vercel.
   it('builds and validates the doc payload for all components', async () => {
-    const manifests = await analyzeAll(COMPONENTS_ROOT);
-    expect(manifests.length).toBeGreaterThan(0);
+    expect(componentDocumentationManifests.length).toBeGreaterThan(0);
 
     const failures: string[] = [];
-    for (const manifest of manifests) {
+    for (const manifest of componentDocumentationManifests) {
       const payload = await buildComponentDocumentation(manifest.kebabName, manifest);
       const errors = validateComponentDocumentationPayload(payload);
       if (errors.length > 0) {

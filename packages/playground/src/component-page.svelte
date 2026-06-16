@@ -1740,26 +1740,11 @@
   }
 
   /* ===== Doc-page code-block overrides =====
-     Fix #380: The outer .cinder-code-block has overflow:hidden (for border-radius
-     clipping). An outset focus outline on its scroll-container children is clipped,
-     producing a partial or invisible ring. Override with an inset box-shadow ring.
-     Fix #381: Ensure code-block scroll containers show a visible scrollbar track
-     and that inner pre.shiki contributes its full content width to the scroll port. */
-  .dx :global(.cinder-code-block__highlighted),
-  .dx :global(.cinder-code-block__pre) {
-    overflow-x: auto;
+     Keep the component-owned viewport visibly scrollable in documentation
+     surfaces without creating nested scroll regions inside the highlighted
+     or plain <pre> content. */
+  .dx :global(.cinder-code-block__viewport) {
     scrollbar-width: auto;
-  }
-  .dx :global(.cinder-code-block__highlighted:focus-visible),
-  .dx :global(.cinder-code-block__pre:focus-visible) {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
-  }
-  /* Allow pre.shiki to expand to its natural content width so the parent
-     .cinder-code-block__highlighted scroll port becomes scrollable. (#398
-     addresses the root in the component; this override is scoped to .dx.) */
-  .dx :global(.cinder-code-block__highlighted) :global(pre.shiki) {
-    overflow-x: visible;
   }
 
   /* ===== Preview stage ===== */
@@ -2385,10 +2370,6 @@
     color: var(--cinder-text);
     margin: 0 0 var(--cinder-space-2);
   }
-  .dx-raw__panel :global(.cinder-code-block) {
-    overflow-x: auto;
-  }
-
   /* ===== Responsive ===== */
   @media (max-width: 1080px) {
     .dx-hero__grid {
@@ -2487,13 +2468,6 @@
        the container with a negative offset — mirroring the inset `box-shadow`
        the non-forced-colors `:focus-visible` rule already uses. */
     .props-table-scroll:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: calc(var(--cinder-ring-width) * -1);
-    }
-    /* Same inset treatment for code-block scroll containers — the outer
-       overflow:hidden clips an outset outline just as it does for the props table. */
-    .dx :global(.cinder-code-block__highlighted:focus-visible),
-    .dx :global(.cinder-code-block__pre:focus-visible) {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: calc(var(--cinder-ring-width) * -1);
     }

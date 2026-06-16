@@ -73,11 +73,14 @@ describe('CodeBlock — static structure', () => {
     expect(loadDefaultHighlighter).not.toHaveBeenCalled();
   });
 
-  test('plain <pre> scroll container has tabindex="0" for keyboard access', () => {
+  test('stable viewport has tabindex="0" for keyboard scroll access', () => {
     const { container } = render(CodeBlock, { code: 'const x = 1;' });
+    const viewport = container.querySelector('.cinder-code-block__viewport');
     const pre = container.querySelector('pre.cinder-code-block__pre');
+    expect(viewport).not.toBeNull();
+    expect(viewport?.getAttribute('tabindex')).toBe('0');
     expect(pre).not.toBeNull();
-    expect(pre?.getAttribute('tabindex')).toBe('0');
+    expect(pre?.hasAttribute('tabindex')).toBe(false);
   });
 
   test('language prop renders a language label in the header', () => {
@@ -135,24 +138,19 @@ describe('CodeBlock — static structure', () => {
     expect(css).toContain('@media (prefers-color-scheme: dark)');
   });
 
-  test('highlighted and plain scroll containers carry inset focus ring (regression #398)', async () => {
+  test('stable viewport carries inset focus ring (regression #398)', async () => {
     // .cinder-code-block has overflow:hidden, so the standard outset focus ring is
-    // clipped. The fix adds an INSET box-shadow ring to both focusable scroll
-    // containers. This test locks that pattern so it cannot silently regress.
+    // clipped. The fix adds an INSET box-shadow ring to the stable focusable
+    // viewport. This test locks that pattern so it cannot silently regress.
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
-    // Both selectors must appear together in a combined rule.
-    expect(css).toContain('.cinder-code-block__highlighted:focus-visible');
-    expect(css).toContain('.cinder-code-block__pre:focus-visible');
+    expect(css).toContain('.cinder-code-block__viewport:focus-visible');
     // The rule must use an inset box-shadow (not an outset ring that would be clipped).
     expect(css).toMatch(
-      /\.cinder-code-block__highlighted:focus-visible[\s\S]*?box-shadow:\s*inset\s+0\s+0\s+0\s+var\(--cinder-ring-width\)\s+var\(--cinder-ring-color\)/,
-    );
-    expect(css).toMatch(
-      /\.cinder-code-block__pre:focus-visible[\s\S]*?box-shadow:\s*inset\s+0\s+0\s+0\s+var\(--cinder-ring-width\)\s+var\(--cinder-ring-color\)/,
+      /\.cinder-code-block__viewport:focus-visible[\s\S]*?box-shadow:\s*inset\s+0\s+0\s+0\s+var\(--cinder-ring-width\)\s+var\(--cinder-ring-color\)/,
     );
     // The outline must be set to transparent so the inset shadow is the visible ring.
     expect(css).toMatch(
-      /\.cinder-code-block__highlighted:focus-visible[\s\S]*?outline:\s*var\(--cinder-ring-width\)\s+solid\s+transparent/,
+      /\.cinder-code-block__viewport:focus-visible[\s\S]*?outline:\s*var\(--cinder-ring-width\)\s+solid\s+transparent/,
     );
   });
 });
@@ -170,13 +168,44 @@ describe('CodeBlock — automatic highlighting (bundled default)', () => {
     expect(container.querySelector('.cinder-code-block__pre')).toBeNull();
   });
 
-  test('highlighted wrapper div has tabindex="0" for keyboard scroll access', async () => {
+  test('highlighted state keeps the stable viewport as the keyboard scroll target', async () => {
     const { container } = render(CodeBlock, { code: 'const x = 1;', language: 'js' });
+    const viewportBefore = container.querySelector('.cinder-code-block__viewport');
+    expect(viewportBefore).not.toBeNull();
     await waitFor(() => {
-      const wrapper = container.querySelector('.cinder-code-block__highlighted');
-      expect(wrapper).not.toBeNull();
-      expect(wrapper?.getAttribute('tabindex')).toBe('0');
+      expect(container.querySelector('.cinder-code-block__highlighted')).not.toBeNull();
     });
+    const viewportAfter = container.querySelector('.cinder-code-block__viewport');
+    expect(viewportAfter).toBe(viewportBefore);
+    expect(viewportAfter?.getAttribute('tabindex')).toBe('0');
+    expect(container.querySelector('pre.cinder-code-block__pre')).toBeNull();
+  });
+
+  test('the same viewport remains mounted when highlighting resolves', async () => {
+    let resolveHighlight: ((html: string) => void) | undefined;
+    defaultHighlighterImpl = () =>
+      new Promise<string>((resolve) => {
+        resolveHighlight = resolve;
+      });
+
+    const { container } = render(CodeBlock, { code: 'const x = 1;', language: 'js' });
+
+    await waitFor(() => {
+      expect(resolveHighlight).toBeDefined();
+      expect(container.querySelector('pre.cinder-code-block__pre')).not.toBeNull();
+    });
+
+    const viewportBefore = container.querySelector('.cinder-code-block__viewport');
+    expect(viewportBefore).not.toBeNull();
+    resolveHighlight?.('<pre class="shiki shiki-default"><code>const x = 1;</code></pre>');
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('.cinder-code-block__highlighted .shiki-default'),
+      ).not.toBeNull();
+    });
+
+    expect(container.querySelector('.cinder-code-block__viewport')).toBe(viewportBefore);
   });
 
   test('default-load failure falls back to escaped plain code (warn names language, never code)', async () => {
