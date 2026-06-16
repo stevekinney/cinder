@@ -173,16 +173,16 @@ describe('DataGrid', () => {
     ]);
     expect(headers[2]?.getAttribute('data-cinder-pin')).toBe('right');
     expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual([
+      '1',
       '2',
       '3',
-      '1',
     ]);
     expect(firstDataCells[2]?.getAttribute('style')).toContain(
       '--_cinder-data-grid-column-width: 96px',
     );
   });
 
-  test('groups non-contiguous pinned columns at scroll edges while preserving logical indexes', () => {
+  test('groups non-contiguous pinned columns at scroll edges with monotonic ARIA indexes', () => {
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
@@ -202,8 +202,8 @@ describe('DataGrid', () => {
     ]);
     expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual([
       '1',
-      '3',
       '2',
+      '3',
     ]);
     expect(firstDataCells[0]?.getAttribute('style')).toContain(
       '--_cinder-data-grid-pin-left-offset: 0px',

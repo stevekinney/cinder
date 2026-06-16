@@ -62,7 +62,11 @@ export class DataGridColumnModel<TRow> {
   );
 
   readonly renderColumns = $derived.by(() => {
-    return [...this.leftPinnedColumns, ...this.unpinnedColumns, ...this.rightPinnedColumns];
+    return withRenderColIndexes([
+      ...this.leftPinnedColumns,
+      ...this.unpinnedColumns,
+      ...this.rightPinnedColumns,
+    ]);
   });
 }
 
@@ -152,6 +156,12 @@ function withPinOffsets<TRow>(
     offset += column.width;
   }
   return columnsWithOffsets;
+}
+
+function withRenderColIndexes<TRow>(
+  columns: readonly ResolvedDataGridColumn<TRow>[],
+): ResolvedDataGridColumn<TRow>[] {
+  return columns.map((column, index) => ({ ...column, colIndex: index + 1 }));
 }
 
 export function getDataGridColumnValue<TRow>(row: TRow, column: DataGridColumnDef<TRow>): unknown {
