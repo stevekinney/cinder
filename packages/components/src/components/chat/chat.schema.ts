@@ -127,7 +127,8 @@ const schema = {
       {
         name: 'onadaptererror',
         reason: 'function-or-snippet',
-        description: 'Called when an awaited adapter command rejects.',
+        description:
+          'Called when an adapter command fails — either a rejected promise or a synchronous throw from the method.',
       },
       {
         name: 'onattachmentadd',

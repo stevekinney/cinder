@@ -68,8 +68,9 @@ export type ChatPushHandlers = {
  *
  * Only `sendMessage` is required; everything else is optional so an adapter can
  * opt into exactly the capabilities its transport supports. Command methods
- * return `Promise<void>` — Chat awaits them and routes a rejection to
- * `onadaptererror` rather than swallowing it.
+ * return `Promise<void>` — Chat awaits them and routes any failure (a rejected
+ * promise OR a synchronous throw from the method) to `onadaptererror` rather
+ * than swallowing it.
  *
  * The optional `approveToolCall`/`denyToolCall` (consumed by the tool-approval
  * task) and `loadOlderMessages` (consumed by the load-history task) are declared
@@ -111,9 +112,9 @@ export type ChatAdapter = {
  */
 export type ChatCommand = 'sendMessage' | 'retryMessage' | 'editMessage' | 'stopGenerating';
 
-/** Error event surfaced when an awaited adapter command rejects. */
+/** Error event surfaced when an adapter command fails (rejection or sync throw). */
 export type ChatAdapterErrorEvent = {
-  /** Which command's adapter method rejected. */
+  /** Which command's adapter method failed. */
   command: ChatCommand;
   /** The thrown value. */
   error: unknown;

@@ -91,7 +91,7 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    * `onsubmit`); omit it and Chat behaves exactly as with plain callbacks.
    */
   adapter?: ChatAdapter;
-  /** Called when an awaited adapter command rejects. */
+  /** Called when an adapter command fails — either a rejected promise or a synchronous throw from the method. */
   onadaptererror?: (event: ChatAdapterErrorEvent) => void;
   /** Forwarded from the adapter's real-time `onMessage` push (consumer owns the transcript). */
   onpushmessage?: (message: Message) => void;
