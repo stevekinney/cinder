@@ -1,4 +1,7 @@
-# Design System Roadmap
+# Historical Design System Roadmap
+
+> [!NOTE]
+> This file is a historical backlog from the design-system expansion work. Many items below have already shipped or changed shape. For the current component surface, use `packages/components/components.json`, `packages/components/package.json#exports`, and the generated component READMEs under `packages/components/src/components/`.
 
 Audit of the existing Svelte component set in `packages/components/src/components` against the Tailwind UI application UI patterns. The design system is not yet in production use, so changes here can break existing APIs freely. Each section captures the pattern, best-practice notes, and a concrete checklist of work.
 
