@@ -899,6 +899,11 @@
     void focusVirtualIndex(nextIndex);
   }
 
+  function applyVirtualizedShiftSelection(currentId: string | null, event: KeyboardEvent): void {
+    if (!currentId || !event.shiftKey || selectionMode !== 'multiple') return;
+    toggleSelectedInternal(currentId, event);
+  }
+
   function handleVirtualizedKeydown(event: KeyboardEvent): boolean {
     if ((event.metaKey || event.ctrlKey) && event.key === 'a') {
       event.preventDefault();
@@ -912,10 +917,12 @@
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault();
+        applyVirtualizedShiftSelection(currentId, event);
         focusVirtualDelta(1);
         return true;
       case 'ArrowUp':
         event.preventDefault();
+        applyVirtualizedShiftSelection(currentId, event);
         focusVirtualDelta(-1);
         return true;
       case 'Home':

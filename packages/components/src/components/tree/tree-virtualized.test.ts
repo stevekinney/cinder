@@ -128,6 +128,28 @@ describe('Tree — virtualized data path', () => {
     expect(treeItems(container).some((item) => item.id === `${tree.id}-item-99`)).toBe(true);
   });
 
+  test('Shift+ArrowDown selects the active virtualized row before moving focus', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        selectionMode: 'multiple',
+        items: flatItems(10),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    tree.focus();
+    await fireEvent.keyDown(tree, { key: 'ArrowDown', shiftKey: true });
+
+    await waitFor(() => {
+      expect(tree.getAttribute('aria-activedescendant')).toBe(`${tree.id}-item-1`);
+      expect(treeItemById(container, 'item-0').getAttribute('aria-selected')).toBe('true');
+    });
+  });
+
   test('filtering retains matching descendants and ancestors without mutating expandedIds', async () => {
     let expandedIds: string[] = [];
     const { container } = render(Tree, {
