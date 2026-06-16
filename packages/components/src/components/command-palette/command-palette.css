@@ -71,7 +71,14 @@
     /* Focus indication lives on this row, anchored to its visible bottom edge,
        rather than a 3px box-shadow ring floating around the edgeless input. The
        border is 2px AT REST so focusing only changes its COLOR — no width change,
-       so the option list below never shifts. */
+       so the option list below never shifts.
+
+       :focus-within (below) is correct here precisely because this row's ONLY
+       focusable child is the text <input> — there are no buttons in the search
+       row — and a text input always merits a visible focus indication regardless
+       of input modality (the UA's :focus-visible heuristic always matches a
+       focused text field). So :focus-within and :has(input:focus-visible) behave
+       identically for this row; :focus-within is the simpler, support-safe form. */
     border-block-end: 2px solid var(--cinder-border);
     flex-shrink: 0;
     transition: border-color var(--cinder-duration-fast) var(--cinder-ease-standard);

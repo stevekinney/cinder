@@ -12,11 +12,13 @@
  *   2. sRGB gamut — every authored OKLCH color resolves inside sRGB, so the browser
  *      renders the specified chroma instead of silently clamping it.
  *   3. The 8 categorical chart series stay mutually distinguishable: min pairwise
- *      CIEDE2000 ΔE00 ≥ 12 (normal vision) AND min pairwise CIE L* ≥ 4 (a lightness
- *      ladder that survives color-vision-deficiency, where hue collapses). It also
- *      reports — as a non-blocking diagnostic — the post-simulation ΔE00 under
- *      deuteranopia/protanopia/tritanopia, since no 8-color palette can clear a
- *      meaningful ΔE00 floor there (even Tableau 10 collapses to ≈1.3).
+ *      CIEDE2000 ΔE00 ≥ 12 (normal vision) AND a min pairwise CIE L* separation ≥ 4 per
+ *      arm. The L* floor is a SECONDARY distinguishing cue — lightness stays a usable
+ *      channel for color-vision-deficient viewers when hue contrast degrades — not a
+ *      standalone CVD-safety proof and not an ordered ladder. It also reports, as a
+ *      non-blocking diagnostic, the post-simulation ΔE00 under deuteranopia/protanopia/
+ *      tritanopia, since no 8-color palette can clear a meaningful ΔE00 floor there
+ *      (even Tableau 10 collapses to ≈1.3).
  *
  * The color math (OKLCH → OKLab → linear sRGB → WCAG luminance / CIE L* / CIEDE2000)
  * is implemented here from first principles so the gate has no runtime color
@@ -119,18 +121,34 @@ function ciede2000(lab1: Lab, lab2: Lab): number {
   const a2p = (1 + g) * a2;
   const c1p = Math.hypot(a1p, b1);
   const c2p = Math.hypot(a2p, b2);
-  const h1p = (Math.atan2(b1, a1p) * 180) / Math.PI;
-  const h2p = (Math.atan2(b2, a2p) * 180) / Math.PI;
+  // Reference (Sharma et al.) normalizes hue angles to [0, 360); atan2 returns (-180, 180].
+  const h1p = c1p === 0 ? 0 : ((Math.atan2(b1, a1p) * 180) / Math.PI + 360) % 360;
+  const h2p = c2p === 0 ? 0 : ((Math.atan2(b2, a2p) * 180) / Math.PI + 360) % 360;
   const dLp = bigL2 - bigL1;
   const dCp = c2p - c1p;
-  let dhp = h2p - h1p;
-  if (Math.abs(dhp) > 180) dhp -= Math.sign(dhp) * 360;
+  // Zero-chroma branch (CIEDE2000 reference): when either adjusted chroma is zero, hue is
+  // undefined — set the hue delta to 0 and skip the ±360 wrap. Without this, atan2(0, 0)
+  // is treated as a real angle and produces a nonstandard ΔE00 for grayscale pairs.
+  const chromaProduct = c1p * c2p;
+  let dhp = 0;
+  if (chromaProduct !== 0) {
+    dhp = h2p - h1p;
+    if (dhp > 180) dhp -= 360;
+    else if (dhp < -180) dhp += 360;
+  }
   const dHp = 2 * Math.sqrt(c1p * c2p) * Math.sin((dhp * Math.PI) / 360);
   const lBarP = (bigL1 + bigL2) / 2;
   const cBarP = (c1p + c2p) / 2;
-  let hBarP = h1p + h2p;
-  if (Math.abs(h1p - h2p) > 180) hBarP += hBarP < 360 ? 360 : -360;
-  hBarP /= 2;
+  // Mean hue: again undefined at zero chroma — the reference sets it to the sum (one of the
+  // two angles is 0), with no ±360 wrap and no halving when the product is zero.
+  let hBarP: number;
+  if (chromaProduct === 0) {
+    hBarP = h1p + h2p;
+  } else if (Math.abs(h1p - h2p) <= 180) {
+    hBarP = (h1p + h2p) / 2;
+  } else {
+    hBarP = (h1p + h2p + (h1p + h2p < 360 ? 360 : -360)) / 2;
+  }
   const t =
     1 -
     0.17 * Math.cos(((hBarP - 30) * Math.PI) / 180) +
@@ -223,7 +241,15 @@ function readTokenValue(css: string, tokenName: string): string {
   throw new Error(`token ${tokenName} value never terminated (unbalanced parens?)`);
 }
 
-/** Parse a single `oklch(L% C H)` function into normalized numbers. */
+/**
+ * Parse the literal `oklch(L% C H)` subset these tokens are authored in — `L` as a percentage,
+ * `C` and `H` as bare unsigned decimals, space-separated, no alpha and no relative-color syntax.
+ * This is deliberately NOT a full CSS Color 4 OKLCH parser: it covers exactly the shapes shipped
+ * in `tokens-base.css` today and HARD-FAILS on anything else (signed/exponent numbers, `none`,
+ * `deg`, slash alpha, `oklch(from …)`), so a token that evolves past this subset trips the gate
+ * loudly instead of being silently mis-read. If the tokens ever adopt richer syntax, widen this
+ * parser (or swap in a real color parser) rather than letting it guess.
+ */
 function parseOklch(fn: string): OklchColor {
   const match = fn.match(/^oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)\s*\)$/);
   if (!match) throw new Error(`unparseable oklch literal: "${fn}"`);
@@ -296,6 +322,37 @@ const chartSeries = Array.from({ length: 8 }, (_, i) =>
 
 const AA_TEXT = 4.5;
 const NON_TEXT = 3.0;
+
+describe('ciede2000 reference correctness (zero-chroma branch)', () => {
+  // Canonical pairs from Sharma, Wu & Dalal (2005), Table 1 — the dataset used to validate
+  // CIEDE2000 implementations. These three exercise the zero-chroma branches: each pair has at
+  // least one term on the neutral axis (a*=b*=0, so adjusted chroma is 0), which is exactly the
+  // case the implementation must special-case (dhp=0, hBarP=h1p+h2p) rather than feeding
+  // atan2(0,0) through the hue math. Tolerance 1e-3 matches the table's reported precision.
+  const cases: ReadonlyArray<{ a: Lab; b: Lab; expected: number }> = [
+    // Zero-chroma branch: a neutral term (a*=b*=0) makes adjusted chroma 0.
+    { a: [50, 0, 0], b: [50, -1, 2], expected: 2.3669 }, // Sharma pair (neutral first term)
+    { a: [50, 0, 0], b: [50, 0, 0], expected: 0 }, // both neutral → identical → 0
+    { a: [50, 2.5, 0], b: [50, 0, 0], expected: 3.4582 }, // one neutral term (verified independently)
+    // Chromatic hue-wrap pairs from Sharma et al. Table 1 — guard the non-neutral path too,
+    // so the zero-chroma special-casing can't accidentally break the general formula.
+    { a: [50, 2.6772, -79.7751], b: [50, 0, -82.7485], expected: 2.0425 },
+    { a: [50, 2.5, 0], b: [50, 3.2972, 0], expected: 1.0 },
+    { a: [50, 2.5, 0], b: [73, 25, -18], expected: 27.1492 },
+  ];
+
+  for (const { a, b, expected } of cases) {
+    it(`ΔE00([${a.join(', ')}], [${b.join(', ')}]) ≈ ${expected}`, () => {
+      expect(ciede2000(a, b)).toBeCloseTo(expected, 3);
+    });
+  }
+
+  it('is symmetric for a neutral/chromatic pair', () => {
+    const a: Lab = [50, 0, 0];
+    const b: Lab = [55, 3, -4];
+    expect(ciede2000(a, b)).toBeCloseTo(ciede2000(b, a), 10);
+  });
+});
 
 describe('CSS value tokenizer', () => {
   it('captures a multiline light-dark with nested oklch as one value', () => {
@@ -444,7 +501,7 @@ function minPairwise<T>(items: readonly T[], metric: (a: T, b: T) => number): nu
   return min;
 }
 
-describe('chart palette distinguishability + CVD lightness ladder', () => {
+describe('chart palette distinguishability + secondary CVD lightness cue', () => {
   const CHART_BG_LIGHT = { l: 0.97, c: 0, h: 0 }; // near-white chart canvas
   const CHART_BG_DARK = { l: 0.2, c: 0, h: 0 }; // dark chart canvas
   const DELTA_E_FLOOR = 12;
@@ -470,7 +527,7 @@ describe('chart palette distinguishability + CVD lightness ladder', () => {
       expect(minPairwise(labs, ciede2000)).toBeGreaterThanOrEqual(DELTA_E_FLOOR);
     });
 
-    it(`${arm}: min pairwise CIE L* separation ≥ ${DELTA_L_FLOOR} (CVD safety ladder)`, () => {
+    it(`${arm}: min pairwise CIE L* separation ≥ ${DELTA_L_FLOOR} (secondary lightness cue for CVD viewers — supports ΔE00, not a standalone CVD-safety proof)`, () => {
       const minDeltaL = minPairwise(labs, (a, b) => Math.abs(a[0] - b[0]));
       expect(minDeltaL).toBeGreaterThanOrEqual(DELTA_L_FLOOR);
     });

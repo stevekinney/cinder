@@ -430,12 +430,15 @@
 
   /* Chart series palette — 8 categorical colors retuned for the indigo brand.
      Solved so the set is (a) brand-safe (no hue in 248–292), (b) mutually distinguishable
-     in normal vision (min CIEDE2000 ΔE00 ≥ 24 in both arms — well past the 12 floor), and
-     (c) colour-vision-deficiency-safe via a deliberate CIE-Lightness ladder (min pairwise
-     ΔL* ≈ 4.5–5.0, the geometric maximum for 8 colours that also keep WCAG 1.4.11 3:1 vs
-     the chart background). Every colour is in sRGB gamut, chroma ≥ 0.06, and ≥ 3:1 on its
-     theme's chart background. The light/dark arms share the same 8 hues so a series keeps
-     its identity across themes. Gated by check-token-contrast.test.ts. */
+     in normal vision (min CIEDE2000 ΔE00 ≥ 12 in both arms), and (c) carries a minimum
+     pairwise CIE L* separation ≥ 4 in each arm — lightness as a SECONDARY distinguishing
+     channel for colour-vision-deficient viewers when hue contrast degrades (a supporting
+     cue, not a standalone CVD-safety proof; post-CVD ΔE00 is tracked as a diagnostic only).
+     Every colour is in sRGB gamut, chroma ≥ 0.06, and ≥ 3:1 on its theme's chart background.
+     The light and dark arms are tuned INDEPENDENTLY for in-theme contrast and gamut, so a
+     series is not guaranteed the same hue across themes — that is a deliberate trade-off
+     (cross-theme contrast over cross-theme colour memory) for a surface rendered one theme
+     at a time. Gated by check-token-contrast.test.ts. */
   --cinder-chart-series-1: light-dark(oklch(33% 0.121 8), oklch(58% 0.089 205));
   --cinder-chart-series-2: light-dark(oklch(36% 0.069 80), oklch(67% 0.275 330));
   --cinder-chart-series-3: light-dark(oklch(40% 0.082 160), oklch(69% 0.182 44));

@@ -12,7 +12,15 @@
        the inline-start of the rail grid cell, with a margin-top of --cinder-space-1.
        Its center therefore sits at half the marker size from the cell origin (X) and
        at margin-top + half the marker size from the item's top (Y). The connector is
-       positioned from these so it always meets the dot, including custom markers. */
+       positioned from these.
+
+       This holds for custom markers because the marker box is FIXED-SIZE: the
+       `.cinder-timeline-item__marker` rule pins width/height to this variable and
+       centers content with inline-flex, so a custom `marker` snippet FILLS the box
+       (a glyph, an icon) rather than resizing it. The connector is therefore always
+       anchored to a known marker center, not to content-dependent geometry. A
+       consumer who needs a larger marker overrides --_cinder-timeline-marker-size,
+       which moves the box and the connector together. */
     --_cinder-timeline-marker-center-x: calc(var(--_cinder-timeline-marker-size) / 2);
     --_cinder-timeline-marker-center-y: calc(
       var(--cinder-space-1) + var(--_cinder-timeline-marker-size) / 2
