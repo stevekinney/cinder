@@ -15,6 +15,8 @@
 </script>
 
 <script lang="ts">
+  import { SvelteSet } from 'svelte/reactivity';
+
   import { classNames } from '../../utilities/class-names.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
   import type { TransferListItem, TransferListProps } from './transfer-list.types.ts';
@@ -39,10 +41,10 @@
   const announcer = useAnnouncer({ clearDelay: 5000 });
 
   const uniqueItems = $derived.by(() => {
-    const seenIds: string[] = [];
+    const seenIds = new SvelteSet<string>();
     return items.filter((item) => {
-      if (seenIds.includes(item.id)) return false;
-      seenIds.push(item.id);
+      if (seenIds.has(item.id)) return false;
+      seenIds.add(item.id);
       return true;
     });
   });

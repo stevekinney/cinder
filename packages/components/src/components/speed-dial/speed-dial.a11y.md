@@ -2,8 +2,8 @@
 
 SpeedDial renders a named `role="group"` around a `FloatingActionButton` trigger
 and a `role="toolbar"` action cluster. The trigger exposes `aria-expanded`,
-`aria-haspopup`, and `aria-controls`; action buttons use their visible `label`
-as the `aria-label`.
+and `aria-controls`; action buttons use their visible `label` as the
+`aria-label`.
 
 Keyboard behavior:
 
