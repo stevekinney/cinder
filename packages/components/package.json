@@ -4099,7 +4099,7 @@
     "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 --coverage --coverage-reporter=lcov && bun run scripts/check-coverage-ratchet.ts",
     "tokens:audit": "bun run scripts/check-component-css-token-usage.ts",
     "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
-    "validate": "bun run lint && bun run typecheck && bun run check:placeholder-docs && bun run test:coverage && bun run platform:audit -- --strict && bun run colors:audit -- --strict && bun run tokens:audit -- --strict && bun run aggregator:check && bun run validate:workflow && bun run validate:svelte-peer && bun run validate:consumer && bun run package:weight:check -- --existing-tarball",
+    "validate": "bun run lint && bun run typecheck && bun run check:placeholder-docs && bun run test:coverage && bun run platform:audit -- --strict && bun run colors:audit -- --strict && bun run tokens:audit -- --strict && bun run aggregator:check && bun run components:check && bun run validate:workflow && bun run validate:svelte-peer && bun run validate:consumer && bun run package:weight:check -- --existing-tarball",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
     "validate:release-workflow": "bun run scripts/validate-release-workflow.ts",
     "validate:svelte-peer": "bun run scripts/validate-svelte-peer-contract.ts",
