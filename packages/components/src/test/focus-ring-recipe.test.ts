@@ -44,7 +44,6 @@ function loadSvelteStyle(relativePath: string): string {
 
 const copyButtonCss = loadCss('../components/copy-button/copy-button.css');
 const dropdownCss = loadCss('../components/dropdown/dropdown.css');
-const commandPaletteCss = loadCss('../components/command-palette/command-palette.css');
 const navigationItemCss = loadCss('../components/navigation-item/navigation-item.css');
 const numberInputCss = loadCss('../components/number-input/number-input.css');
 const selectionPopoverCss = loadCss('../components/selection-popover/selection-popover.css');
@@ -190,11 +189,10 @@ const recipes: Array<{
   selector: string;
   forcedColorsSelector?: string;
 }> = [
-  {
-    name: 'command-palette search input',
-    css: commandPaletteCss,
-    selector: '.cinder-command-palette__input:focus-visible',
-  },
+  // NOTE: the command-palette search input intentionally does NOT use this shared
+  // transparent-outline + box-shadow recipe. An edgeless input floats that ring as
+  // a stray box, so its keyboard focus is indicated by the search row's
+  // :focus-within bottom-border recolor instead (verified in command-palette.test.ts).
   {
     name: 'slider thumb',
     css: sliderCss,

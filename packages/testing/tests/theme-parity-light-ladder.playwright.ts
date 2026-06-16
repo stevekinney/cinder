@@ -263,27 +263,28 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
     }
   });
 
-  // 3. Primary accent legibility floor + AA safety.
+  // 3. Primary accent legibility band + AA safety.
   //
-  //    Design decision (89d25073, revised): the light accent is now a darker,
-  //    more ink-like cyan oklch(0.66 0.16 195) that reads more like ink than a
-  //    glow. The previous bright cyan (L=0.72, C=0.20) reached only ~2:1 as a
-  //    foreground; the darkened fill improves that to ~2.7:1 but still does NOT
-  //    clear the 3:1 UI floor, so foreground text/icon use keeps the dedicated
-  //    --cinder-accent-text token while --cinder-accent stays a fill. The calmed
-  //    chroma stops the cyan from vibrating against the white page. The
-  //    dark-mode arm stays bright (L=0.78) for energy parity across themes; the
-  //    on-accent text flips to a dark ink (--cinder-accent-contrast light arm)
-  //    so it stays readable. These floors read the PAINTED components (after
-  //    Chromium's sRGB gamut clipping), so they sit a clipping margin BELOW the
-  //    authored value — painted L/C can dip under the authored numbers:
-  //      - L ≥ 0.60   (clipping margin; authored 0.66) — darker, ink-like fill.
-  //      - C ≥ 0.14   (clipping margin; authored 0.16) — moderately saturated.
-  //    The painted fill must NOT break on-accent contrast: whatever
-  //    --cinder-accent-contrast resolves to (dark ink on the fill) must clear
-  //    WCAG AA (≥ 4.5:1). The assertion reads the PAINTED bg + text, so it stays
-  //    correct regardless of which way the text flips.
-  test('primary accent is a darker, ink-like cyan that still clears WCAG AA on its label', async ({
+  //    Design decision (indigo retune): the light accent is now a dark indigo
+  //    brand fill oklch(0.50 0.22 270) carrying WHITE label text
+  //    (--cinder-accent-contrast light arm = white). This INVERTS the old cyan
+  //    band's direction: with white text, a HIGHER OKLCH lightness REDUCES
+  //    on-label contrast, so the fill must stay relatively dark. The previous
+  //    cyan design (L≈0.66, dark ink on a lightish fill) wanted L ≥ 0.60; that
+  //    floor is a stale visual heuristic for the OLD foreground polarity, not an
+  //    accessibility invariant, and keeping it would FORCE the indigo lighter
+  //    until white text fell below AA (at L=0.66 white-on-fill is only ~3.2:1).
+  //
+  //    The real accessibility invariant is the white-label AA check below
+  //    (≥ 4.5:1) — that stays authoritative. The L value is bounded to a BAND so
+  //    "brand-colored, not muddy-black and not so light white text fails":
+  //      - 0.44 ≤ L ≤ 0.57 — dark indigo fill for a white label. Below 0.44 the
+  //        indigo muddies toward black; above ~0.57 the white label drops under
+  //        AA (L=0.58 C=0.22 measures only ~4.55:1 — too thin a margin).
+  //      - C ≥ 0.14 — moderately saturated, still recognizably indigo.
+  //    These floors read the PAINTED components (after Chromium's sRGB gamut
+  //    clipping), so the measured numbers are what ships, not the authored OKLCH.
+  test('primary accent is a dark, ink-like indigo that still clears WCAG AA on its white label', async ({
     browser,
   }) => {
     const context = await browser.newContext({ colorScheme: 'light', reducedMotion: 'reduce' });
@@ -296,8 +297,12 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
 
       expect(
         accent.L,
-        'primary accent must be a darker, ink-like fill in light mode',
-      ).toBeGreaterThanOrEqual(0.6);
+        'primary accent must be a dark, ink-like indigo fill (not muddy-black) in light mode',
+      ).toBeGreaterThanOrEqual(0.44);
+      expect(
+        accent.L,
+        'primary accent must stay dark enough that its white label clears AA (L too high breaks white-text contrast)',
+      ).toBeLessThanOrEqual(0.57);
       expect(accent.C, 'primary accent must be moderately saturated').toBeGreaterThanOrEqual(0.14);
 
       // The label color IS the --cinder-accent-contrast token (dark ink on the

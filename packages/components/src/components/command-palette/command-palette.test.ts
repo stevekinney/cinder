@@ -705,39 +705,42 @@ describe('CommandPalette — attachment registration', () => {
 // ── Visual contract ───────────────────────────────────────────────────────
 
 describe('CommandPalette — visual contract', () => {
-  test(':focus-visible provides a WCAG-compliant keyboard focus indicator on the search input', async () => {
+  test('keyboard focus is indicated by the search row bottom border, not a ring on the input', async () => {
     const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
 
-    // `:focus-visible` must carry the full focus-ring box-shadow.
+    // The search row reserves a 2px bottom border AT REST so focusing only changes
+    // its color (no width change → no layout shift of the option list below).
     expect(css).toMatch(
-      /\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid transparent;[\s\S]*?box-shadow:\s*var\(--_cinder-focus-ring-shadow\);/,
+      /\.cinder-command-palette__search\s*\{[\s\S]*?border-block-end:\s*2px solid var\(--cinder-border\);/,
     );
-
-    // forced-colors fallback must use :focus-visible (not plain :focus) so the
-    // ring is only visible when keyboard-triggered, matching the standard pattern.
+    // :focus-within recolors that border to the ring color — the focus indicator.
     expect(css).toMatch(
-      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid ButtonText;/,
+      /\.cinder-command-palette__search:focus-within\s*\{[\s\S]*?border-block-end-color:\s*var\(--cinder-ring-color\);/,
+    );
+    // forced-colors fallback maps the same border to the system Highlight color.
+    expect(css).toMatch(
+      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__search:focus-within\s*\{[\s\S]*?border-block-end-color:\s*Highlight;/,
     );
   });
 
-  test('plain :focus on the search input must NOT carry a box-shadow or heavy outline (no always-on ring)', async () => {
+  test('the search input carries NO ring of its own (the edgeless input must not float a box)', async () => {
     const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
 
-    // Regression guard: plain :focus must not reintroduce the persistent open-state ring.
-    expect(css).not.toMatch(/\.cinder-command-palette__input:focus\s*\{[\s\S]*?box-shadow\s*:/);
+    // The user-reported "terrible" ring was the input's own 3px box-shadow ring.
+    // The input must not reintroduce any box-shadow/heavy-outline focus ring.
     expect(css).not.toMatch(
-      /\.cinder-command-palette__input:focus\s*\{[\s\S]*?outline\s*:\s*var\(--cinder-ring-width\)\s+solid\s+(?!none)/,
+      /\.cinder-command-palette__input:focus(?:-visible)?\s*\{[\s\S]*?box-shadow\s*:/,
     );
-
-    // forced-colors must not reintroduce the ring under plain :focus either.
     expect(css).not.toMatch(
-      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__input:focus\s*\{[\s\S]*?outline\s*:/,
+      /\.cinder-command-palette__input:focus(?:-visible)?\s*\{[\s\S]*?outline\s*:\s*var\(--cinder-ring-width\)\s+solid\s+(?!none)/,
     );
   });
 
-  test('search wrapper must not carry a focus ring via :focus-within', async () => {
+  test('search wrapper must not carry a heavy box-shadow/outline focus ring (a border recolor is fine)', async () => {
     const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
 
+    // The old #159-era inset box-shadow ring on the row read as a heavy floating box;
+    // it must not return. A border-color recolor (the current approach) is allowed.
     expect(css).not.toMatch(
       /\.cinder-command-palette__search:focus-within\s*\{[^}]*(?:box-shadow|outline)\s*:/,
     );

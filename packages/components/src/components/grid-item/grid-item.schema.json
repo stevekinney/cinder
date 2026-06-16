@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "span": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Number of columns this item spans."
+    },
+    "columnStart": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Explicit `grid-column-start` value."
+    },
+    "columnEnd": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Explicit `grid-column-end` value."
+    },
+    "rowSpan": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Number of rows this item spans."
+    },
+    "rowStart": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Explicit `grid-row-start` value."
+    },
+    "as": {
+      "type": "string",
+      "description": "Rendered HTML tag."
+    },
+    "class": {
+      "type": "string",
+      "description": "Custom class merged with `.cinder-grid-item`."
+    }
+  },
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet",
+        "required": true,
+        "description": "Grid item contents."
+      }
+    ]
+  }
+}

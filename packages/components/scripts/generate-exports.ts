@@ -254,8 +254,6 @@ export const DEPRECATED_EXPERIMENTAL_ALIASES: readonly DeprecatedExperimentalAli
   { name: 'connection-indicator', hasCss: true, hasExamples: false },
   { name: 'json-viewer', hasCss: true, hasExamples: false },
   { name: 'message', hasCss: true, hasExamples: false },
-  { name: 'timeline', hasCss: true, hasExamples: true },
-  { name: 'timeline-item', hasCss: true, hasExamples: false },
 ];
 
 /**

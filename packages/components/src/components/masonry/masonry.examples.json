@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "masonry",
+  "import": "@lostgradient/cinder/masonry",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Variable-height cards",
+      "description": "CSS columns pack uneven cards into a masonry-style waterfall while keeping DOM order intact.",
+      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n  import { Masonry } from '@lostgradient/cinder/masonry';\n</script>\n\n<Masonry columns=\"3\" gap=\"var(--cinder-space-4)\" aria-label=\"Editorial cards\">\n  <Card>Short note.</Card>\n  <Card>\n    Longer content with enough copy to create a taller card. CSS columns balance the available\n    vertical space without JavaScript measurement.\n  </Card>\n  <Card>Medium content with a couple of lines.</Card>\n  <Card>Another taller item that demonstrates variable height placement across columns.</Card>\n</Masonry>\n"
+    }
+  ]
+}

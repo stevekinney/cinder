@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 import { analyzeAll, analyzeComponent } from './analyze.ts';
@@ -11,10 +11,25 @@ import {
 import type { ComponentManifest } from './types.ts';
 
 const COMPONENTS_ROOT = join(import.meta.dir, '..', '..', 'components', 'src', 'components');
+const BULK_VALIDATION_CHUNK_SIZE = 20;
 
 function componentManifest(componentName: string): Promise<ComponentManifest> {
   return analyzeComponent(join(COMPONENTS_ROOT, componentName, `${componentName}.svelte`));
 }
+
+function chunkManifests(
+  manifests: readonly ComponentManifest[],
+  chunkSize: number,
+): ComponentManifest[][] {
+  const chunks: ComponentManifest[][] = [];
+  for (let index = 0; index < manifests.length; index += chunkSize) {
+    chunks.push(manifests.slice(index, index + chunkSize));
+  }
+  return chunks;
+}
+
+const bulkValidationManifests = await analyzeAll(COMPONENTS_ROOT);
+const bulkValidationPackageManifest = await loadPackageManifestForDocumentation();
 
 describe('buildComponentDocumentation', () => {
   it('returns Button purpose, README HTML, schema, constraints, examples, and raw artifacts', async () => {
@@ -109,12 +124,6 @@ describe('buildComponentDocumentation', () => {
 });
 
 describe('every component documentation payload passes validation', () => {
-  let componentDocumentationManifests: ComponentManifest[] = [];
-
-  beforeAll(async () => {
-    componentDocumentationManifests = await analyzeAll(COMPONENTS_ROOT);
-  });
-
   // The static-export deploy fetches /api/documentation/:name for every
   // component and aborts the build on any non-2xx response. That route builds
   // the same payload below and 500s when validateComponentDocumentationPayload
@@ -122,18 +131,31 @@ describe('every component documentation payload passes validation', () => {
   // (e.g. `<table>` instead of `` `<table>` ``), which the markdown sanitizer
   // strips and flags as hadUnsafeContent. Sweeping every component here catches
   // that at unit-test time (a gating job) instead of post-merge on Vercel.
-  it('builds and validates the doc payload for all components', async () => {
-    expect(componentDocumentationManifests.length).toBeGreaterThan(0);
-
-    const failures: string[] = [];
-    for (const manifest of componentDocumentationManifests) {
-      const payload = await buildComponentDocumentation(manifest.kebabName, manifest);
-      const errors = validateComponentDocumentationPayload(payload);
-      if (errors.length > 0) {
-        failures.push(`${manifest.kebabName}: ${errors.join('; ')}`);
-      }
-    }
-
-    expect(failures).toEqual([]);
+  it('finds component manifests to validate', () => {
+    expect(bulkValidationManifests.length).toBeGreaterThan(0);
   });
+
+  for (const [chunkIndex, chunk] of chunkManifests(
+    bulkValidationManifests,
+    BULK_VALIDATION_CHUNK_SIZE,
+  ).entries()) {
+    const start = chunkIndex * BULK_VALIDATION_CHUNK_SIZE + 1;
+    const end = start + chunk.length - 1;
+    it(`builds and validates component doc payloads ${start}-${end}`, async () => {
+      const failures: string[] = [];
+      for (const manifest of chunk) {
+        const payload = await buildComponentDocumentation(
+          manifest.kebabName,
+          manifest,
+          bulkValidationPackageManifest,
+        );
+        const errors = validateComponentDocumentationPayload(payload);
+        if (errors.length > 0) {
+          failures.push(`${manifest.kebabName}: ${errors.join('; ')}`);
+        }
+      }
+
+      expect(failures).toEqual([]);
+    });
+  }
 });

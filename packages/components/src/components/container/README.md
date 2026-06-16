@@ -1,6 +1,6 @@
 # Container
 
-Centered, max-width-capped wrapper for the narrow-column reading pattern. Distinct from `PageLayout`, which scaffolds an app shell with header, breadcrumbs, and actions — Container composes no chrome, it just constrains and centers content.
+Centered, max-width-capped wrapper for the narrow-column reading pattern. Container composes no app shell chrome; it just constrains and centers content.
 
 ## Usage
 
@@ -19,7 +19,7 @@ Centered, max-width-capped wrapper for the narrow-column reading pattern. Distin
 
 The v1 inline gutter is a single non-responsive value (`--cinder-space-5`). Disable it with `padded={false}`, or override `.cinder-container` (or the `--cinder-content-width-*` tokens) per scope if you need different padding or widths.
 
-For an app shell with header and action regions, use [`PageLayout`](../page-layout/README.md) instead.
+For an app shell with header and action regions, write the shell directly from `Container`, `SectionHeading`, navigation, and action primitives.
 
 ## Props
 

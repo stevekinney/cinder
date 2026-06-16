@@ -98,39 +98,34 @@ describe('light-mode border parity floor', () => {
   });
 });
 
-describe('light-mode accent vividness floor', () => {
+describe('light-mode indigo accent design floor', () => {
   const accent = lightArmOklch('--cinder-accent');
   const accentContrast = lightArmOklch('--cinder-accent-contrast');
 
-  test('accent is darkened toward an ink-like cyan, not collapsed to a dark teal', () => {
-    // Design decision (89d25073, revised): the light accent was darkened from
-    // the bright cyan (L=0.72) to a more ink-like L=0.66. As a FOREGROUND its
-    // contrast improves (~2:1 → ~2.7:1) but still does not clear the 3:1 UI
-    // floor, so --cinder-accent-text remains the foreground token; --cinder-accent
-    // is a FILL (it carries the dark-ink label at ~7.2:1). Dark accent stays
-    // L=0.78. The 0.65 floor still passes at 0.66; pre-fix darken-direction
-    // values (L≈0.42-0.45) still fail it, so the accent cannot silently collapse
-    // back toward a dark-teal.
-    expect(accent.L).toBeGreaterThanOrEqual(0.65);
+  test('accent is a deep indigo fill — dark enough to carry white labels at AA', () => {
+    // Design decision: the brand is an indigo whose light arm sits at L=0.50,
+    // dark enough that WHITE clears WCAG AA on it (6.45:1) so primary buttons /
+    // accent fills carry white text. Guard the upper bound so the accent can't
+    // drift bright again (a bright fill would fail white-on-accent). The exact
+    // contrast pairing is verified comprehensively in check-token-contrast.test.ts.
+    expect(accent.L).toBeLessThanOrEqual(0.55);
+    expect(accent.L).toBeGreaterThanOrEqual(0.42);
   });
 
-  test('accent chroma stays at the design vividness floor', () => {
-    // Design vividness floor (ticket 89d25073) -- light accent C=0.16, an
-    // ink-like cyan. THIS task lowered the floor from 0.18 to 0.16: that was a
-    // deliberate vividness floor, NOT a contrast guarantee, and the neon-pop
-    // reduction (cyan no longer vibrates against the page) is intentional.
-    // Pre-fix nominal C=0.14 still fails.
-    expect(accent.C).toBeGreaterThanOrEqual(0.16);
+  test('accent stays vivid (chroma at the design floor)', () => {
+    // Indigo at hue 270 supports c≈0.22 in sRGB at L=0.50; keep a vividness floor
+    // so the brand can't wash out to a muddy grey-purple.
+    expect(accent.C).toBeGreaterThanOrEqual(0.18);
   });
 
-  test('accent hue is preserved (cyan, hue 195)', () => {
-    expect(accent.H).toBe(195);
+  test('accent hue is indigo (hue 270)', () => {
+    expect(accent.H).toBe(270);
   });
 
-  test('the light accent flips its on-accent text to dark for readability', () => {
-    // The ink-like L=0.66 fill cannot carry white text at AA, so the light arm of
-    // --cinder-accent-contrast must be a dark ink. Guard the pairing so a future
-    // accent edit can't silently leave white-on-cyan (a contrast failure).
-    expect(accentContrast.L).toBeLessThanOrEqual(0.3);
+  test('the light accent flips its on-accent label to WHITE', () => {
+    // The deep indigo fill (L=0.50) is dark enough for white text, so the light
+    // arm of --cinder-accent-contrast must be white (L≈1.0). Guard the pairing so
+    // a future accent edit can't silently leave dark-on-indigo (a contrast failure).
+    expect(accentContrast.L).toBeGreaterThanOrEqual(0.95);
   });
 });

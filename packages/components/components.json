@@ -1277,6 +1277,36 @@
       }
     },
     {
+      "name": "DataGrid",
+      "id": "data-grid",
+      "import": "@lostgradient/cinder/data-grid",
+      "exportName": "DataGrid",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Static ARIA data grid foundation for spreadsheet-like datasets with explicit row identity, column sizing, keyboard navigation, and pinning metadata.",
+      "tags": ["grid", "data", "spreadsheet"],
+      "useWhen": [
+        "Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.",
+        "You need role=grid semantics instead of native table semantics."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You only need a semantic read-only table — use DataTable or the Table family instead."
+        },
+        {
+          "reason": "You need sorting, selection, virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet."
+        }
+      ],
+      "related": ["data-table", "table"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/data-grid/schema",
+        "variables": "@lostgradient/cinder/data-grid/variables",
+        "examples": "@lostgradient/cinder/data-grid/examples"
+      }
+    },
+    {
       "name": "DataList",
       "id": "data-list",
       "import": "@lostgradient/cinder/data-list",
@@ -1479,7 +1509,7 @@
           "reason": "The split between sections deserves a heading — use section-heading instead."
         },
         {
-          "reason": "Wrapping the entire viewport edge — use surface or page-layout instead."
+          "reason": "Wrapping the entire viewport edge — use surface or a hand-rolled page scaffold instead."
         }
       ],
       "related": ["surface", "section-heading"],
@@ -2018,6 +2048,62 @@
       }
     },
     {
+      "name": "Grid",
+      "id": "grid",
+      "import": "@lostgradient/cinder/grid",
+      "exportName": "Grid",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "CSS grid container for explicit columns, intrinsic auto-fill layouts, and two-dimensional placement.",
+      "tags": ["layout", "grid"],
+      "useWhen": [
+        "Building form layouts, card grids, or dashboards that need two-dimensional placement.",
+        "Creating intrinsic responsive grids by passing minItemWidth."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Presenting homogeneous gallery tiles - use grid-list instead.",
+          "alternative": "grid-list"
+        },
+        {
+          "reason": "Packing variable-height content into waterfall columns - use masonry instead.",
+          "alternative": "masonry"
+        }
+      ],
+      "related": ["grid-item", "grid-list", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/grid/schema",
+        "variables": "@lostgradient/cinder/grid/variables",
+        "examples": "@lostgradient/cinder/grid/examples"
+      }
+    },
+    {
+      "name": "GridItem",
+      "id": "grid-item",
+      "import": "@lostgradient/cinder/grid-item",
+      "exportName": "GridItem",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Optional placement child for Grid that controls column and row spans or explicit track placement.",
+      "tags": ["layout", "grid"],
+      "useWhen": ["A child in a grid needs to span tracks or start at a specific track."],
+      "avoidWhen": [
+        {
+          "reason": "Every child can use default grid auto-placement - render plain children inside Grid instead.",
+          "alternative": "grid"
+        }
+      ],
+      "related": ["grid"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/grid-item/schema",
+        "variables": "@lostgradient/cinder/grid-item/variables"
+      }
+    },
+    {
       "name": "GridList",
       "id": "grid-list",
       "import": "@lostgradient/cinder/grid-list",
@@ -2464,6 +2550,37 @@
         "schema": "@lostgradient/cinder/markdown-editor/schema",
         "variables": "@lostgradient/cinder/markdown-editor/variables",
         "examples": "@lostgradient/cinder/markdown-editor/examples"
+      }
+    },
+    {
+      "name": "Masonry",
+      "id": "masonry",
+      "import": "@lostgradient/cinder/masonry",
+      "exportName": "Masonry",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Pure CSS waterfall layout that packs variable-height children into balanced columns.",
+      "tags": ["layout", "masonry"],
+      "useWhen": [
+        "Displaying cards, images, or panels with uneven heights where CSS column order is acceptable."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Items have equal heights - use grid-list instead.",
+          "alternative": "grid-list"
+        },
+        {
+          "reason": "Left-to-right row reading order matters - use grid instead.",
+          "alternative": "grid"
+        }
+      ],
+      "related": ["grid", "grid-list"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/masonry/schema",
+        "variables": "@lostgradient/cinder/masonry/variables",
+        "examples": "@lostgradient/cinder/masonry/examples"
       }
     },
     {
@@ -3722,6 +3839,61 @@
       }
     },
     {
+      "name": "SpeedDial",
+      "id": "speed-dial",
+      "import": "@lostgradient/cinder/speed-dial",
+      "exportName": "SpeedDial",
+      "category": "action",
+      "status": "beta",
+      "purpose": "Floating action cluster that reveals secondary quick actions around a primary FloatingActionButton trigger.",
+      "tags": ["action", "floating"],
+      "useWhen": [
+        "One primary floating action needs a small set of closely related quick actions."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "The actions are equally important and always visible - use toolbar instead.",
+          "alternative": "toolbar"
+        },
+        {
+          "reason": "The trigger should open rich contextual content - use popover instead.",
+          "alternative": "popover"
+        }
+      ],
+      "related": ["floating-action-button", "toolbar", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/speed-dial/schema",
+        "variables": "@lostgradient/cinder/speed-dial/variables",
+        "examples": "@lostgradient/cinder/speed-dial/examples"
+      }
+    },
+    {
+      "name": "SpeedDialAction",
+      "id": "speed-dial-action",
+      "import": "@lostgradient/cinder/speed-dial-action",
+      "exportName": "SpeedDialAction",
+      "category": "action",
+      "status": "beta",
+      "purpose": "Quick-action leaf for SpeedDial that closes the owning dial after activation.",
+      "tags": ["action", "floating"],
+      "useWhen": ["Rendering a secondary quick action inside SpeedDial."],
+      "avoidWhen": [
+        {
+          "reason": "Rendering an action outside SpeedDial - use floating-action-button directly.",
+          "alternative": "floating-action-button"
+        }
+      ],
+      "related": ["speed-dial", "floating-action-button"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/speed-dial-action/schema",
+        "variables": "@lostgradient/cinder/speed-dial-action/variables"
+      }
+    },
+    {
       "name": "Spinner",
       "id": "spinner",
       "import": "@lostgradient/cinder/spinner",
@@ -4458,6 +4630,36 @@
         "schema": "@lostgradient/cinder/tooltip/schema",
         "variables": "@lostgradient/cinder/tooltip/variables",
         "examples": "@lostgradient/cinder/tooltip/examples"
+      }
+    },
+    {
+      "name": "TransferList",
+      "id": "transfer-list",
+      "import": "@lostgradient/cinder/transfer-list",
+      "exportName": "TransferList",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Dual-list assignment control for moving items between an available pool and a selected set.",
+      "tags": ["form", "selection"],
+      "useWhen": [
+        "Letting users build a subset from a fixed pool such as permissions, tags, or visible columns."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "The pool needs inline search or filtering - compose search controls around the lists instead."
+        },
+        {
+          "reason": "The user only needs independent checkbox choices - use checkbox-group instead.",
+          "alternative": "checkbox-group"
+        }
+      ],
+      "related": ["checkbox-group", "selection-popover", "sortable-list"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/transfer-list/schema",
+        "variables": "@lostgradient/cinder/transfer-list/variables",
+        "examples": "@lostgradient/cinder/transfer-list/examples"
       }
     },
     {
