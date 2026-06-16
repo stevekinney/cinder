@@ -110,10 +110,10 @@ describe('buildComponentDocumentation', () => {
 });
 
 describe('every component documentation payload passes validation', () => {
-  let manifests: ComponentManifest[] = [];
+  let componentDocumentationManifests: ComponentManifest[] = [];
 
   beforeAll(async () => {
-    manifests = await analyzeAll(COMPONENTS_ROOT);
+    componentDocumentationManifests = await analyzeAll(COMPONENTS_ROOT);
   });
 
   // The static-export deploy fetches /api/documentation/:name for every
@@ -124,12 +124,12 @@ describe('every component documentation payload passes validation', () => {
   // strips and flags as hadUnsafeContent. Sweeping every component here catches
   // that at unit-test time (a gating job) instead of post-merge on Vercel.
   it('finds component manifests to validate', () => {
-    expect(manifests.length).toBeGreaterThan(0);
+    expect(componentDocumentationManifests.length).toBeGreaterThan(0);
   });
 
   for (let chunkIndex = 0; chunkIndex < DOCUMENTATION_VALIDATION_CHUNK_COUNT; chunkIndex += 1) {
     it(`builds and validates documentation payloads, chunk ${chunkIndex + 1}`, async () => {
-      const chunk = manifests.filter(
+      const chunk = componentDocumentationManifests.filter(
         (_manifest, manifestIndex) =>
           manifestIndex % DOCUMENTATION_VALIDATION_CHUNK_COUNT === chunkIndex,
       );
@@ -151,7 +151,7 @@ describe('every component documentation payload passes validation', () => {
   it('assigns every manifest to exactly one documentation validation chunk', () => {
     const assignedNames = new Set<string>();
     for (let chunkIndex = 0; chunkIndex < DOCUMENTATION_VALIDATION_CHUNK_COUNT; chunkIndex += 1) {
-      const chunk = manifests.filter(
+      const chunk = componentDocumentationManifests.filter(
         (_manifest, manifestIndex) =>
           manifestIndex % DOCUMENTATION_VALIDATION_CHUNK_COUNT === chunkIndex,
       );
@@ -161,6 +161,6 @@ describe('every component documentation payload passes validation', () => {
       }
     }
 
-    expect(assignedNames.size).toBe(manifests.length);
+    expect(assignedNames.size).toBe(componentDocumentationManifests.length);
   });
 });

@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { CodeBlock } from '@lostgradient/cinder/code-block';\n  const code = `function greet(name: string): string {\n  return \\`Hello, \\${name}!\\`;\n}\n\nconst message = greet('world');`;\n</script>\n\n<CodeBlock {code} />\n"
     },
     {
+      "id": "delayed-highlighting",
+      "title": "Delayed highlighting",
+      "description": "Colorization can resolve after first paint while the code block keeps its dimensions.",
+      "code": "<script lang=\"ts\">\n  import { CodeBlock } from '@lostgradient/cinder';\n\n  const code = `SELECT id, name, created_at, email_address, account_status, last_seen_at, billing_plan, feature_flags\nFROM users\nWHERE active = true\nORDER BY created_at DESC\nLIMIT 10;`;\n\n  const highlightedHtml = `<pre class=\"shiki\" style=\"background-color:#fff;color:#24292e\"><code>${escapeHtml(\n    code,\n  )}</code></pre>`;\n\n  type LayoutHighlighterWindow = Window & {\n    cinderCodeBlockLayoutHighlighterReady?: boolean;\n    resolveCinderCodeBlockLayoutHighlight?: () => void;\n  };\n\n  if (typeof window !== 'undefined') {\n    (window as LayoutHighlighterWindow).cinderCodeBlockLayoutHighlighterReady = false;\n  }\n\n  function escapeHtml(value: string): string {\n    return value\n      .replaceAll('&', '&amp;')\n      .replaceAll('<', '&lt;')\n      .replaceAll('>', '&gt;')\n      .replaceAll('\"', '&quot;')\n      .replaceAll(\"'\", '&#39;');\n  }\n\n  function highlighter(): Promise<string> {\n    return new Promise((resolve) => {\n      if (typeof window === 'undefined') return;\n      const target = window as LayoutHighlighterWindow;\n      target.resolveCinderCodeBlockLayoutHighlight = () => resolve(highlightedHtml);\n      target.cinderCodeBlockLayoutHighlighterReady = true;\n    });\n  }\n</script>\n\n<CodeBlock {code} language=\"sql\" {highlighter} />\n"
+    },
+    {
       "id": "with-language",
       "title": "With language label and copy",
       "description": "Header shows the language and a copy-to-clipboard button. Setting a language is all it takes — CodeBlock lazy-loads the bundled Shiki highlighter on the client and highlights automatically, no extra wiring.",

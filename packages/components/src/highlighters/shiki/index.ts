@@ -108,6 +108,15 @@ function plaintextBlock(code: string): string {
   return `<pre class="shiki shiki-plaintext"><code>${escapeHtml(code)}</code></pre>`;
 }
 
+function stripRootPreTabIndex(html: string): string {
+  const openingPre = /^<pre\b[^>]*>/i.exec(html);
+  if (openingPre === null) return html;
+  return (
+    openingPre[0].replace(/\s+tabindex=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, '') +
+    html.slice(openingPre[0].length)
+  );
+}
+
 type CodeToHtmlFunction = typeof import('shiki').codeToHtml;
 type BundledLanguages = typeof import('shiki').bundledLanguages;
 
@@ -188,10 +197,11 @@ export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlig
     }
 
     try {
-      return await shiki.codeToHtml(code, {
+      const html = await shiki.codeToHtml(code, {
         lang: normalizedLang,
         ...buildThemeOption(theme),
       });
+      return stripRootPreTabIndex(html);
     } catch (error) {
       // Grammar load failure, theme miss, etc. — log once per language and
       // fall back to plaintext.
