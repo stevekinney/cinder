@@ -62,7 +62,8 @@ const schema = {
     },
     gapThresholdMinutes: {
       type: 'number',
-      description: 'Hide the following connector when adjacent valid timestamps exceed this gap.',
+      description:
+        'Hide the following connector when adjacent valid timestamps exceed this gap (in minutes).',
     },
     label: {
       type: 'string',

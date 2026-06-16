@@ -3069,6 +3069,10 @@
     "./stacked-list-item/styles": {
       "default": "./dist/components/stacked-list-item/stacked-list-item.css"
     },
+    "./stacked-list-item/examples": {
+      "import": "./src/components/stacked-list-item/stacked-list-item.examples.json",
+      "default": "./src/components/stacked-list-item/stacked-list-item.examples.json"
+    },
     "./stat": {
       "types": "./dist/components/stat/index.d.ts",
       "svelte": "./src/components/stat/index.ts",

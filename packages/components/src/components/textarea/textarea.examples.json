@@ -10,6 +10,24 @@
       "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let bio = $state('');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={bio}\n  label=\"Bio\"\n  description=\"Tell us a little about yourself.\"\n  placeholder=\"I'm a designer who…\"\n/>\n{#if bio.length > 0}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">{bio.length} characters</p>\n{/if}\n"
     },
     {
+      "id": "disabled",
+      "title": "Disabled textarea",
+      "description": "A disabled textarea is dimmed and non-editable; its value is still shown so context is preserved while editing is locked.",
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n</script>\n\n<Textarea\n  id=\"field\"\n  value=\"This account note is read-only and managed by your administrator.\"\n  label=\"Account note\"\n  description=\"Contact an administrator to change this.\"\n  disabled\n/>\n"
+    },
+    {
+      "id": "required",
+      "title": "Required textarea",
+      "description": "Setting `required` forwards the native `required` attribute, which browsers expose as `aria-required=\"true\"` and enforce during form submission.",
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let message = $state('');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={message}\n  label=\"Message\"\n  description=\"This field is required.\"\n  required\n/>\n"
+    },
+    {
+      "id": "with-character-count",
+      "title": "Live character counter",
+      "description": "Set `showCount` together with `maxlength` to render a live `{used}/{limit}` counter below the field that updates as the user types.",
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let summary = $state('A short product summary.');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={summary}\n  label=\"Summary\"\n  description=\"Keep it under 200 characters.\"\n  showCount\n  maxlength={200}\n/>\n"
+    },
+    {
       "id": "with-error",
       "title": "Textarea with error",
       "description": "Validation error wired via aria-invalid and aria-describedby.",

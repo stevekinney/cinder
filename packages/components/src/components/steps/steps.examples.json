@@ -4,10 +4,22 @@
   "import": "@lostgradient/cinder/steps",
   "examples": [
     {
+      "id": "completed",
+      "title": "Completed (terminal state)",
+      "description": "Passing `currentStep={steps.length}` advances past the final step, marking every step complete — the terminal \"done\" state shown after a flow finishes.",
+      "code": "<script lang=\"ts\">\n  import { Steps } from '@lostgradient/cinder/steps';\n  import type { StepItem } from '@lostgradient/cinder/steps';\n\n  const steps: StepItem[] = [\n    { id: 'account', label: 'Account', description: 'Create your login' },\n    { id: 'profile', label: 'Profile', description: 'Add your details' },\n    { id: 'review', label: 'Review', description: 'Confirm and submit' },\n  ];\n</script>\n\n<Steps {steps} currentStep={steps.length} label=\"Onboarding\" />\n"
+    },
+    {
       "id": "interactive",
       "title": "Interactive steps",
       "description": "A step becomes navigable when its `StepItem` carries an `href` (renders the body as a link) or an `onclick` (renders it as a button). The marker and connector stay decorative — only the body region is the focusable, clickable target.",
       "code": "<script lang=\"ts\">\n  import { Steps } from '@lostgradient/cinder/steps';\n  import type { StepItem } from '@lostgradient/cinder/steps';\n\n  let current = $state(1);\n\n  const steps: StepItem[] = [\n    { id: 'account', label: 'Account', description: 'Create your login', href: '#account' },\n    {\n      id: 'profile',\n      label: 'Profile',\n      description: 'Jump back to edit',\n      onclick: () => (current = 1),\n    },\n    { id: 'review', label: 'Review', description: 'Confirm and submit' },\n  ];\n</script>\n\n<Steps {steps} currentStep={current} label=\"Onboarding\" />\n"
+    },
+    {
+      "id": "vertical",
+      "title": "Vertical orientation",
+      "description": "Set `orientation=\"vertical\"` to stack the steps top-to-bottom with the connector running down the side — useful in narrow side panels or wizards.",
+      "code": "<script lang=\"ts\">\n  import { Steps } from '@lostgradient/cinder/steps';\n  import type { StepItem } from '@lostgradient/cinder/steps';\n\n  const steps: StepItem[] = [\n    { id: 'account', label: 'Account', description: 'Create your login' },\n    { id: 'profile', label: 'Profile', description: 'Add your details' },\n    { id: 'review', label: 'Review', description: 'Confirm and submit' },\n  ];\n</script>\n\n<Steps {steps} currentStep={1} orientation=\"vertical\" label=\"Onboarding\" />\n"
     }
   ]
 }

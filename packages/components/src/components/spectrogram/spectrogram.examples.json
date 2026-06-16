@@ -4,6 +4,18 @@
   "import": "@lostgradient/cinder/spectrogram",
   "examples": [
     {
+      "id": "empty",
+      "title": "Empty state",
+      "description": "When no `frames` are available, supply an `empty` snippet to explain the absence instead of rendering a blank heatmap.",
+      "code": "<script lang=\"ts\">\n  import { Spectrogram } from '@lostgradient/cinder/spectrogram';\n</script>\n\n<Spectrogram label=\"Voice spectrogram\" frames={[]} height={220}>\n  {#snippet empty()}\n    No audio analyzed yet.\n  {/snippet}\n</Spectrogram>\n"
+    },
+    {
+      "id": "loading",
+      "title": "Loading state",
+      "description": "While frames are still being analyzed, set `loading` and supply a `loadingContent` snippet to render a placeholder over the heatmap.",
+      "code": "<script lang=\"ts\">\n  import { Spectrogram } from '@lostgradient/cinder/spectrogram';\n</script>\n\n<Spectrogram label=\"Voice spectrogram\" frames={[]} height={220} loading>\n  {#snippet loadingContent()}\n    Analyzing frequencies…\n  {/snippet}\n</Spectrogram>\n"
+    },
+    {
       "id": "voice-spectrogram",
       "title": "Voice spectrogram",
       "description": "Time × frequency heatmap showing how frequency content changes over time.",

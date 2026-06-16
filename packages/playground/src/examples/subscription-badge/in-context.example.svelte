@@ -13,6 +13,8 @@
     { name: 'Team — Annual', state: 'trialing' },
     { name: 'Starter — Monthly', state: 'past-due' },
     { name: 'Enterprise', state: 'canceled' },
+    { name: 'Starter — Legacy', state: 'expired' },
+    { name: 'Hobby — Monthly', state: 'refunded' },
   ] as const;
 </script>
 

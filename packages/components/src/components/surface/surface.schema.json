@@ -17,7 +17,8 @@
     "unsupportedProps": [
       {
         "name": "children",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Content rendered inside the surface container."
       }
     ]
   }

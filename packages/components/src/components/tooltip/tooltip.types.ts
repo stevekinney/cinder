@@ -9,5 +9,6 @@ export type TooltipProps = {
   describe?: boolean;
   /** Additional class names merged with the component's root class. */
   class?: string;
+  /** The trigger element that the tooltip is anchored to. */
   children: Snippet;
 };

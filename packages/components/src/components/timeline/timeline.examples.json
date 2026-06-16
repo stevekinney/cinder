@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import Timeline from '@lostgradient/cinder/timeline';\n\n  const entries = [\n    {\n      id: 'green',\n      datetime: '2026-05-23T13:00:00Z',\n      timestamp: '8:00 AM',\n      title: 'Health check passed',\n      tone: 'success' as const,\n    },\n    {\n      id: 'yellow',\n      datetime: '2026-05-23T13:05:00Z',\n      timestamp: '8:05 AM',\n      title: 'Capacity warning',\n      tone: 'warning' as const,\n    },\n    {\n      id: 'red',\n      datetime: '2026-05-23T13:12:00Z',\n      timestamp: '8:12 AM',\n      title: 'Rollback triggered',\n      tone: 'error' as const,\n    },\n  ];\n</script>\n\n<Timeline {entries} label=\"Incident timeline\">\n  {#snippet marker(entry)}\n    {entry.tone === 'success' ? '+' : entry.tone === 'warning' ? '!' : 'x'}\n  {/snippet}\n\n  {#snippet children(entry)}\n    {entry.title}\n  {/snippet}\n</Timeline>\n"
     },
     {
+      "id": "gap-threshold",
+      "title": "Gap threshold",
+      "description": "With `gapThresholdMinutes`, the connector after an entry is hidden when the next entry is more than that many minutes away — visually breaking the line across large time gaps.",
+      "code": "<script lang=\"ts\">\n  import Timeline from '@lostgradient/cinder/timeline';\n\n  const entries = [\n    {\n      id: 'deploy-start',\n      datetime: '2026-05-18T09:00:00Z',\n      timestamp: '9:00 AM',\n      title: 'Deploy started',\n      tone: 'info' as const,\n    },\n    {\n      id: 'deploy-done',\n      datetime: '2026-05-18T09:12:00Z',\n      timestamp: '9:12 AM',\n      title: 'Deploy completed',\n      tone: 'success' as const,\n    },\n    {\n      id: 'incident',\n      datetime: '2026-05-18T14:45:00Z',\n      timestamp: '2:45 PM',\n      title: 'Incident reported',\n      tone: 'warning' as const,\n    },\n  ];\n</script>\n\n<Timeline {entries} gapThresholdMinutes={60} label=\"Release timeline\">\n  {#snippet children(entry)}\n    {entry.title}\n  {/snippet}\n</Timeline>\n"
+    },
+    {
       "id": "grouped-by-day",
       "title": "Grouped by day",
       "description": "A timeline grouped by UTC day while preserving source order.",

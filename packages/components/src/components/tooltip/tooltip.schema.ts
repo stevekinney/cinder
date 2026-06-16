@@ -29,6 +29,7 @@ const schema = {
         name: 'children',
         reason: 'function-or-snippet',
         required: true,
+        description: 'The trigger element that the tooltip is anchored to.',
       },
     ],
   },

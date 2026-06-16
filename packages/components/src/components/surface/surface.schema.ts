@@ -20,6 +20,7 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description: 'Content rendered inside the surface container.',
       },
     ],
   },

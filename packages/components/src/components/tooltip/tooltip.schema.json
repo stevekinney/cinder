@@ -26,7 +26,8 @@
       {
         "name": "children",
         "reason": "function-or-snippet",
-        "required": true
+        "required": true,
+        "description": "The trigger element that the tooltip is anchored to."
       }
     ]
   }

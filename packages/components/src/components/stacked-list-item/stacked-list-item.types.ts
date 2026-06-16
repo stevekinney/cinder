@@ -37,6 +37,7 @@ type StackedListItemStatic = StackedListItemBase & {
 type StackedListItemLinked = StackedListItemBase & {
   /** Destination URL that turns the `title` snippet into an `<a>` link for the row. */
   href: string;
+  /** Browsing context for the title anchor (`_blank`, `_self`, `_parent`, `_top`, or a named frame). */
   target?: HTMLAnchorAttributes['target'];
   /** `rel` attribute forwarded to the title anchor; `noopener noreferrer` is merged automatically when `target="_blank"`. */
   rel?: HTMLAnchorAttributes['rel'];

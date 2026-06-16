@@ -63,6 +63,8 @@ const schema = {
       {
         name: 'target',
         reason: 'unknown-shape',
+        description:
+          'Browsing context for the title anchor (`_blank`, `_self`, `_parent`, `_top`, or a named frame).',
       },
       {
         name: 'title',

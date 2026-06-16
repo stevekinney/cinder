@@ -6,10 +6,17 @@ Horizontal or vertical step indicator for multi-step wizards and onboarding flow
 
 ```svelte
 <script lang="ts">
-  import Steps from '@lostgradient/cinder/steps';
+  import { Steps } from '@lostgradient/cinder/steps';
+  import type { StepItem } from '@lostgradient/cinder/steps';
+
+  const steps: StepItem[] = [
+    { id: 'account', label: 'Account' },
+    { id: 'profile', label: 'Profile' },
+    { id: 'review', label: 'Review' },
+  ];
 </script>
 
-<Steps />
+<Steps {steps} currentStep={0} label="Onboarding" />
 ```
 
 ## Interactive steps
