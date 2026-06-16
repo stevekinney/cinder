@@ -33,9 +33,11 @@ test.describe('Tree — virtualized data path', () => {
     await expect.poll(() => rows.count()).toBeLessThan(200);
     await expect(rows.first()).toHaveAttribute('aria-setsize', '10000');
 
-    await tree.evaluate((element) => {
-      element.scrollTo({ top: 5_000 * 32 });
-    });
+    const rowHeight = await rows.first().evaluate((row) => row.getBoundingClientRect().height);
+    expect(rowHeight).toBeGreaterThan(0);
+    await tree.evaluate((element, measuredRowHeight) => {
+      element.scrollTo({ top: 5_000 * measuredRowHeight });
+    }, rowHeight);
 
     await expect
       .poll(

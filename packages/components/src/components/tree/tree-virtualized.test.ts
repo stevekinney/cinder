@@ -78,6 +78,26 @@ describe('Tree — virtualized data path', () => {
     expect(first.getAttribute('aria-setsize')).toBe('100');
   });
 
+  test('custom virtualized rows keep stable treeitem accessible names', async () => {
+    const iconOnlyRow = createRawSnippet(() => ({
+      render: () => '<span aria-hidden="true">*</span>',
+    }));
+
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: flatItems(10),
+        virtualizedItem: iconOnlyRow,
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+      },
+    });
+
+    await waitFor(() => expect(treeItemById(container, 'item-0')).toBeDefined());
+    expect(treeItemById(container, 'item-0').getAttribute('aria-label')).toBe('Item 0');
+  });
+
   test('virtualizationOverscan can intentionally disable extra rows', async () => {
     const { container } = render(Tree, {
       props: {

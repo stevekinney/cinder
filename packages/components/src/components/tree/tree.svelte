@@ -1234,6 +1234,7 @@
         aria-disabled={item.disabled || undefined}
         aria-setsize={item.setSize}
         aria-posinset={item.posInSet}
+        aria-label={item.label}
         tabindex="-1"
         data-cinder-tree-item-id={item.id}
         data-cinder-expanded={item.branch && virtualizedItemExpanded(item) ? '' : undefined}
