@@ -341,6 +341,43 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
+  test('sendMessage: a throwing callback prevents submit auto-scroll', async () => {
+    const conversation: ConversationHistory = {
+      schemaVersion: 4,
+      id: 'send-callback-throw',
+      status: 'active',
+      metadata: {},
+      ids: [],
+      messages: {},
+      createdAt: '2026-06-02T00:00:00.000Z',
+      updatedAt: '2026-06-02T00:00:00.000Z',
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-send-callback-throw',
+      conversation,
+      emptyPrompts: ['Rejected send'],
+      onsubmit: () => {
+        throw new Error('consumer rejected send');
+      },
+    });
+
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline');
+    expect(timeline).not.toBeNull();
+    let scrollCount = 0;
+    timeline!.scrollTo = (() => {
+      scrollCount += 1;
+    }) as HTMLElement['scrollTo'];
+
+    container.querySelector<HTMLButtonElement>('.chat-empty-prompt')!.click();
+    flushSync();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(scrollCount).toBe(0);
+
+    unmount(instance);
+  });
+
   test('stopGenerating: routes to the adapter while streaming', async () => {
     const stopped: string[] = [];
     const adapter = {

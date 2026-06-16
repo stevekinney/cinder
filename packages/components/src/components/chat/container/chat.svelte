@@ -332,16 +332,16 @@
   // promise) is still treated as "handled" — the callback does NOT also fire, so
   // there's no double-dispatch even for a type-violating sync method.
   //
-  // The whole adapter path is wrapped in try/catch so BOTH a rejected promise
-  // AND a synchronous throw from the adapter route to `onadaptererror` rather
-  // than escaping. `onadaptererror` is scoped to ADAPTER failures only — the
-  // fallback callback path is the consumer's own code, so a throw there
-  // propagates normally rather than being captured here.
-  async function dispatchCommand(
+  // The whole adapter path is wrapped so BOTH a rejected promise AND a
+  // synchronous throw from the adapter route to `onadaptererror` rather than
+  // escaping. `onadaptererror` is scoped to ADAPTER failures only — the fallback
+  // callback path is the consumer's own code, so a throw there propagates
+  // synchronously rather than being converted into a rejected dispatcher promise.
+  function dispatchCommand(
     command: ChatCommand,
     runAdapterMethod: (adapter: ChatAdapter) => Promise<void> | undefined,
     callback: (() => void) | undefined,
-  ): Promise<void> {
+  ): Promise<void> | void {
     if (adapter) {
       try {
         const run = runAdapterMethod(adapter);
@@ -349,8 +349,9 @@
         // callback. Any other return (a promise, including one wrapping a sync
         // `undefined` result) means the adapter handled it — never fire the callback.
         if (run !== undefined) {
-          await run;
-          return;
+          return run.catch((error: unknown) => {
+            onadaptererror?.({ command, error });
+          });
         }
       } catch (error) {
         onadaptererror?.({ command, error });
