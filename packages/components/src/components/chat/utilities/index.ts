@@ -6,8 +6,19 @@
  */
 
 export { getMessages, pairToolCallsWithResults } from './conversation';
-export { type ChatExportOptions, type DeliveryStatus } from './types';
 export {
+  type ChatExportOptions,
+  type ChatMessagePart,
+  type DeliveryStatus,
+  type ImageMessagePart,
+  type MarkdownMessagePart,
+  type MessagePartDerivationContext,
+  type TextMessagePart,
+  type ToolCallMessagePart,
+  type ToolResultMessagePart,
+} from './types';
+export {
+  deriveMessageParts,
   formatMessageAsMarkdown,
   getMessageParts,
   getMessageRoleLabel,

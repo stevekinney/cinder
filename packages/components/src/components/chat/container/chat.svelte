@@ -1,109 +1,21 @@
 <script lang="ts" module>
-  import type { Snippet } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
-  import type { HTMLAttributes } from 'svelte/elements';
-  import type { ConversationHistory, Message, MessageInput } from '../conversation-model.ts';
+  import type { ChatAdapter, ChatCommand, ChatPushHandlers } from '../adapter/chat-adapter.ts';
+  import type { Message, MessageInput } from '../conversation-model.ts';
   import type { ChatAttachment } from '../input/chat-attachment.ts';
-  import type {
-    ChatScrollStateChangeEvent,
-    ChatStopGeneratingEvent,
-    ChatSubmitEvent,
-    ChatUnreadIndicatorChangeEvent,
-  } from './chat-events.ts';
 
+  // `ChatProps` is owned by `../chat.types.ts` (the analyzer + schema generator
+  // read that symbol). The implementation imports it from there rather than
+  // redeclaring it, so the public type and the `$props()` shape can never drift.
+  import type { ChatProps } from '../chat.types.ts';
+
+  export type { ChatProps };
   export type {
     ChatScrollStateChangeEvent,
     ChatStopGeneratingEvent,
     ChatSubmitEvent,
     ChatUnreadIndicatorChangeEvent,
   } from './chat-events.ts';
-
-  // ==========================================================================
-  // Props Type
-  // ==========================================================================
-
-  export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> & {
-    /** Unique ID for accessibility (required) */
-    id: string;
-    /** The conversation to render */
-    conversation: ConversationHistory;
-    /** Whether the viewport is at bottom (bindable) */
-    isAtBottom?: boolean;
-    /** Count of unread messages (bindable) */
-    unreadCount?: number;
-    /** Whether the new message indicator is visible (bindable) */
-    hasNewMessageIndicator?: boolean;
-    /** Additional CSS class */
-    class?: string;
-    /** Surface rendering mode for embedded contexts */
-    surfaceMode?: 'default' | 'transparent';
-
-    // Configuration
-    /**
-     * Pixels from bottom to consider "at bottom" (default: 150).
-     * NOTE: This value should remain constant after initialization.
-     * Changing it dynamically may cause unexpected behavior with IntersectionObserver.
-     */
-    bottomThreshold?: number;
-    /**
-     * Pixels scrolled before showing jump button (default: 200).
-     * NOTE: This value should remain constant after initialization.
-     * Changing it dynamically may cause unexpected behavior.
-     */
-    jumpThreshold?: number;
-    /** Whether streaming is in progress (shows stop button) */
-    isStreaming?: boolean;
-    /** Contextual status label during streaming (e.g., "Thinking...", "Analyzing file...") */
-    streamingStatus?: string;
-    /** Whether file attachments are allowed (default: true). When false, drag-and-drop is suppressed. */
-    allowAttachments?: boolean;
-    /** Whether in-conversation search (Ctrl+F) is enabled (default: true) */
-    allowSearch?: boolean;
-    /** Whether per-message copy buttons are shown (default: true) */
-    allowCopy?: boolean;
-    /** Whether user messages can be edited (default: true) */
-    allowEditing?: boolean;
-    /** Whether failed messages show a retry button (default: true) */
-    allowRetry?: boolean;
-
-    // Snippets for extensibility
-    /** Custom header above messages */
-    header?: Snippet;
-    /** Custom empty state when no messages */
-    empty?: Snippet;
-    /** Suggested starter prompts shown in the empty state */
-    emptyPrompts?: string[];
-    /** Custom message actions snippet */
-    messageActions?: Snippet<[Message]>;
-    /** Custom message status snippet */
-    messageStatus?: Snippet<[Message]>;
-    /** Attachment for the viewport element */
-    viewportAttachment?: Attachment<HTMLElement>;
-
-    // Event handlers
-    /** Called when a message is submitted */
-    onsubmit?: (event: ChatSubmitEvent) => void;
-    /** Called when retry is requested for a failed message */
-    onretry?: (messageId: string) => void;
-    /** Called when a user message is edited */
-    onedit?: (event: { messageId: string; content: string }) => void;
-    /** Called when stop generating is requested */
-    onstopgenerating?: (event: ChatStopGeneratingEvent) => void;
-    /** Called when jump-to-latest is clicked */
-    onjumptolatest?: () => void;
-    /** Called when scroll state changes */
-    onscrollstatechange?: (event: ChatScrollStateChangeEvent) => void;
-    /** Called when unread indicator state changes */
-    onunreadindicatorchange?: (event: ChatUnreadIndicatorChangeEvent) => void;
-    /** Called when a message's expanded state changes */
-    onexpandedchange?: (expanded: boolean) => void;
-    /** Called when an attachment is added to the input */
-    onattachmentadd?: (attachment: ChatAttachment) => void;
-    /** Called when an attachment is removed from the input */
-    onattachmentremove?: (attachment: ChatAttachment) => void;
-    /** Called when an attachment fails validation */
-    onattachmentfailure?: (file: File, error: string) => void;
-  };
 </script>
 
 <script lang="ts">
@@ -147,7 +59,14 @@
     emptyPrompts,
     messageActions,
     messageStatus,
+    row,
+    messagePart,
     viewportAttachment,
+    adapter,
+    onadaptererror,
+    onpushmessage,
+    ontypingchange,
+    onreadreceipt,
     onsubmit,
     onretry,
     onedit,
@@ -230,6 +149,12 @@
   // ==========================================================================
 
   const viewportAttach = $derived(viewportAttachment ?? noopAttachment);
+
+  // A retry/edit affordance shows when EITHER a callback OR the adapter can
+  // handle it — so an adapter-only consumer (no `onretry`/`onedit`) still gets
+  // working buttons, and a callback-only consumer is unchanged.
+  const canRetry = $derived(onretry !== undefined || adapter?.retryMessage !== undefined);
+  const canEdit = $derived(onedit !== undefined || adapter?.editMessage !== undefined);
 
   // Stable bottom-sentinel attachment. Wrapping useIntersection in $derived (matching
   // load-more) means the IntersectionObserver is only torn down + recreated when
@@ -323,6 +248,35 @@
   });
 
   // ==========================================================================
+  // Adapter Real-Time Subscription
+  // ==========================================================================
+
+  // When an adapter exposes `subscribe`, open a real-time subscription keyed on
+  // the conversation id and tear it down on cleanup. `$effect` never runs on the
+  // server, so no browser guard is needed. Streaming pushes drive Chat's own
+  // imperative buffer (so a push-driven stream is self-contained); transcript /
+  // peripheral pushes forward to the consumer (Chat never mutates `conversation`).
+  // The effect re-subscribes when the adapter reference or `conversation.id`
+  // changes; it also re-subscribes if a forwarded callback reference changes,
+  // which is harmless (teardown + re-subscribe).
+  $effect(() => {
+    const resolvedAdapter = adapter;
+    if (!resolvedAdapter?.subscribe) return;
+
+    const conversationId = conversation.id;
+    const handlers: ChatPushHandlers = {
+      onMessage: (message) => onpushmessage?.(message),
+      onTypingChange: (isTyping) => ontypingchange?.(isTyping),
+      onReadReceipt: (event) => onreadreceipt?.(event),
+      onStreamBegin: (messageId) => beginStreaming(messageId),
+      onTokenPush: (token) => pushToken(token),
+      onStreamEnd: () => endStreaming(),
+    };
+
+    return resolvedAdapter.subscribe(conversationId, handlers);
+  });
+
+  // ==========================================================================
   // Create Scroll Attachment
   // ==========================================================================
 
@@ -339,14 +293,62 @@
     });
   }
 
+  // ==========================================================================
+  // Command Dispatch (callbacks + optional adapter, one path)
+  // ==========================================================================
+
+  // One internal path for every user command so callback-driven and
+  // adapter-driven usage behave identically. The adapter method takes
+  // precedence when present (a transport owner); otherwise the callback fires.
+  // Adapter methods are awaited and a rejection is routed to `onadaptererror`
+  // rather than swallowed — a sync callback never rejects, so it needs no guard.
+  async function dispatchCommand<C extends ChatCommand>(
+    command: C,
+    adapterMethod: ((adapter: ChatAdapter) => Promise<void> | undefined) | undefined,
+    callback: (() => void) | undefined,
+  ): Promise<void> {
+    const run = adapter && adapterMethod ? adapterMethod(adapter) : undefined;
+    if (run) {
+      try {
+        await run;
+      } catch (error) {
+        onadaptererror?.({ command, error });
+      }
+      return;
+    }
+    callback?.();
+  }
+
   function handleSubmit(message: MessageInput, attachments: ChatAttachment[]): void {
-    onsubmit?.({ message, attachments });
+    // Fire-and-forget the command (the dispatcher owns awaiting + error routing);
+    // scroll immediately so the round-trip latency never delays the auto-scroll.
+    void dispatchCommand(
+      'sendMessage',
+      (resolvedAdapter) => resolvedAdapter.sendMessage(message, attachments),
+      () => onsubmit?.({ message, attachments }),
+    );
 
     // Auto-scroll after sending
     scrollState.setIsAtBottom(true);
     tick().then(() => {
       viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
     });
+  }
+
+  function handleRetry(messageId: string): void {
+    void dispatchCommand(
+      'retryMessage',
+      (resolvedAdapter) => resolvedAdapter.retryMessage?.(messageId),
+      () => onretry?.(messageId),
+    );
+  }
+
+  function handleEdit(event: { messageId: string; content: string }): void {
+    void dispatchCommand(
+      'editMessage',
+      (resolvedAdapter) => resolvedAdapter.editMessage?.(event),
+      () => onedit?.(event),
+    );
   }
 
   function handleStopGenerating(): void {
@@ -361,7 +363,13 @@
       }
     }
     if (streamingMessage) {
-      onstopgenerating?.({ messageId: streamingMessage.id });
+      // Local name avoids shadowing the module-level `streamingMessageId` $state.
+      const targetMessageId = streamingMessage.id;
+      void dispatchCommand(
+        'stopGenerating',
+        (resolvedAdapter) => resolvedAdapter.stopGenerating?.(targetMessageId),
+        () => onstopgenerating?.({ messageId: targetMessageId }),
+      );
     }
   }
 
@@ -633,29 +641,43 @@
             searchState.isOpen &&
             searchState.currentMatch !== null &&
             searchState.currentMatch.message.id === message.id}
-          <ChatMessage
-            {message}
-            toolCallPairs={pairs}
-            onretry={allowRetry ? onretry : undefined}
-            onedit={allowEditing ? onedit : undefined}
-            showDefaultActions={allowCopy}
-            {onexpandedchange}
-            streaming={isStreamingMessage}
-            overrideContent={isStreamingMessage ? streamingContent : undefined}
-            searchMatch={isCurrentSearchMatch}
-            tabindex={-1}
-          >
-            {#snippet actions()}
-              {#if messageActions}
-                {@render messageActions(message)}
-              {/if}
-            {/snippet}
-            {#snippet status()}
-              {#if messageStatus}
-                {@render messageStatus(message)}
-              {/if}
-            {/snippet}
-          </ChatMessage>
+
+          <!-- The built-in row. Wrapped in a snippet so the optional `row`
+               override can render it (inversion of control) or replace it. The
+               per-part `messagePart` override flows through into the message's
+               parts renderer. -->
+          {#snippet renderDefaultRow()}
+            <ChatMessage
+              {message}
+              toolCallPairs={pairs}
+              {messagePart}
+              onretry={allowRetry && canRetry ? handleRetry : undefined}
+              onedit={allowEditing && canEdit ? handleEdit : undefined}
+              showDefaultActions={allowCopy}
+              {onexpandedchange}
+              streaming={isStreamingMessage}
+              overrideContent={isStreamingMessage ? streamingContent : undefined}
+              searchMatch={isCurrentSearchMatch}
+              tabindex={-1}
+            >
+              {#snippet actions()}
+                {#if messageActions}
+                  {@render messageActions(message)}
+                {/if}
+              {/snippet}
+              {#snippet status()}
+                {#if messageStatus}
+                  {@render messageStatus(message)}
+                {/if}
+              {/snippet}
+            </ChatMessage>
+          {/snippet}
+
+          {#if row}
+            {@render row(message, renderDefaultRow)}
+          {:else}
+            {@render renderDefaultRow()}
+          {/if}
         {/if}
       {/each}
 

@@ -90,6 +90,12 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'adapter',
+        reason: 'unknown-shape',
+        description:
+          'Optional command/transport boundary around `conversation`. Its methods take\nprecedence over the matching callback props (e.g. `sendMessage` over\n`onsubmit`); omit it and Chat behaves exactly as with plain callbacks.',
+      },
+      {
         name: 'conversation',
         reason: 'unknown-shape',
         required: true,
@@ -109,8 +115,19 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
+        name: 'messagePart',
+        reason: 'function-or-snippet',
+        description:
+          'Per-message-part override. Replaces the rendering of an individual body part\n(text, markdown, tool call, tool result) while delegating the rest to the\nbuilt-ins via the `renderDefault` snippet it receives.',
+      },
+      {
         name: 'messageStatus',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'onadaptererror',
+        reason: 'function-or-snippet',
+        description: 'Called when an awaited adapter command rejects.',
       },
       {
         name: 'onattachmentadd',
@@ -137,6 +154,17 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
+        name: 'onpushmessage',
+        reason: 'function-or-snippet',
+        description:
+          "Forwarded from the adapter's real-time `onMessage` push (consumer owns the transcript).",
+      },
+      {
+        name: 'onreadreceipt',
+        reason: 'function-or-snippet',
+        description: "Forwarded from the adapter's real-time `onReadReceipt` push.",
+      },
+      {
         name: 'onretry',
         reason: 'function-or-snippet',
       },
@@ -153,8 +181,19 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
+        name: 'ontypingchange',
+        reason: 'function-or-snippet',
+        description: "Forwarded from the adapter's real-time `onTypingChange` push.",
+      },
+      {
         name: 'onunreadindicatorchange',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'row',
+        reason: 'function-or-snippet',
+        description:
+          'Full-row override. Renders an entire message row; receives the message and\na `renderDefault` snippet for the built-in row (inversion of control), so a\nconsumer can wrap or fully replace specific rows.',
       },
       {
         name: 'viewportAttachment',

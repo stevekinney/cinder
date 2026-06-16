@@ -15,6 +15,15 @@ export default Chat;
 export type { ChatProps } from './chat.types.ts';
 export { Chat };
 
+// Adapter seam — the optional event/transport boundary around <Chat>. Type-only.
+export type {
+  ChatAdapter,
+  ChatAdapterErrorEvent,
+  ChatCommand,
+  ChatPushHandlers,
+  ChatReadReceiptEvent,
+} from './adapter';
+
 // Conversation builders — an ergonomic, immutable way to construct the
 // ConversationHistory Chat renders, for apps without their own conversation state.
 export {

@@ -3,6 +3,11 @@ import type { Attachment } from 'svelte/attachments';
 import type { HTMLAttributes } from 'svelte/elements';
 
 import type {
+  ChatAdapter,
+  ChatAdapterErrorEvent,
+  ChatReadReceiptEvent,
+} from './adapter/chat-adapter.ts';
+import type {
   ChatScrollStateChangeEvent,
   ChatStopGeneratingEvent,
   ChatSubmitEvent,
@@ -10,6 +15,16 @@ import type {
 } from './container/chat-events.ts';
 import type { ConversationHistory, Message } from './conversation-model.ts';
 import type { ChatAttachment } from './input/chat-attachment.ts';
+import type { MessagePartOverride } from './message/chat-message-parts.ts';
+
+/**
+ * Full-row override snippet. Inversion of control: receives the message AND a
+ * `renderDefault` snippet that renders the built-in row, so a consumer can wrap
+ * or replace a row while still delegating to the default when it chooses.
+ */
+export type ChatRowOverride = import('svelte').Snippet<
+  [message: Message, renderDefault: import('svelte').Snippet]
+>;
 
 /** Props for the Chat component. */
 // `onsubmit` is redefined below with a ChatSubmitEvent payload, so strip the
@@ -58,7 +73,33 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   emptyPrompts?: string[];
   messageActions?: Snippet<[Message]>;
   messageStatus?: Snippet<[Message]>;
+  /**
+   * Full-row override. Renders an entire message row; receives the message and
+   * a `renderDefault` snippet for the built-in row (inversion of control), so a
+   * consumer can wrap or fully replace specific rows.
+   */
+  row?: ChatRowOverride;
+  /**
+   * Per-message-part override. Replaces the rendering of an individual body part
+   * (text, markdown, tool call, tool result) while delegating the rest to the
+   * built-ins via the `renderDefault` snippet it receives.
+   */
+  messagePart?: MessagePartOverride;
   viewportAttachment?: Attachment<HTMLElement>;
+  /**
+   * Optional command/transport boundary around `conversation`. Its methods take
+   * precedence over the matching callback props (e.g. `sendMessage` over
+   * `onsubmit`); omit it and Chat behaves exactly as with plain callbacks.
+   */
+  adapter?: ChatAdapter;
+  /** Called when an awaited adapter command rejects. */
+  onadaptererror?: (event: ChatAdapterErrorEvent) => void;
+  /** Forwarded from the adapter's real-time `onMessage` push (consumer owns the transcript). */
+  onpushmessage?: (message: Message) => void;
+  /** Forwarded from the adapter's real-time `onTypingChange` push. */
+  ontypingchange?: (isTyping: boolean) => void;
+  /** Forwarded from the adapter's real-time `onReadReceipt` push. */
+  onreadreceipt?: (event: ChatReadReceiptEvent) => void;
   onsubmit?: (event: ChatSubmitEvent) => void;
   onretry?: (messageId: string) => void;
   onedit?: (event: { messageId: string; content: string }) => void;

@@ -6,6 +6,7 @@
  */
 
 import type { Message, MultiModalContent } from '../conversation-model.ts';
+import type { ChatMessagePart, ImageMessagePart, MessagePartDerivationContext } from './types.ts';
 
 /**
  * Normalizes content to a multi-modal array.
@@ -72,6 +73,116 @@ export function getMessageText(message: Message): string {
     .filter(isTextPart)
     .map((part) => part.text)
     .join('\n');
+}
+
+/**
+ * Derives image render parts from a message's content array.
+ *
+ * One {@link ImageMessagePart} per image segment, keyed by the image's index in
+ * the original content array so identity is stable as a streaming text body
+ * grows alongside it. A string body has no images and yields an empty array.
+ */
+function deriveImageParts(message: Message): ImageMessagePart[] {
+  if (typeof message.content === 'string') return [];
+
+  const parts: ImageMessagePart[] = [];
+  message.content.forEach((segment, index) => {
+    if (segment.type === 'image') {
+      parts.push({
+        type: 'image',
+        key: `${message.id}:image:${index}`,
+        image: segment,
+      });
+    }
+  });
+  return parts;
+}
+
+/**
+ * Derives the ordered render parts for a single message.
+ *
+ * This is the cinder-OWNED bridge from the compatible {@link Message} mirror to
+ * the {@link ChatMessagePart} render layer. It is pure: every part is computed
+ * from the message plus the per-message {@link MessagePartDerivationContext}
+ * (the resolved tool-call pair and the live streaming buffer), never from
+ * conversation-global state or any runtime library. UI-only parts are never
+ * written back to the transcript.
+ *
+ * Body derivation mirrors the historical role-branch rendering exactly:
+ * - `tool-call` messages emit a single `tool-call` part ONLY when the container
+ *   resolved a pair for them (`context.toolCallPair`). This matches the original
+ *   `isToolCall && toolPair` guard: the real container always supplies a pair
+ *   for a tool-call message (with `result: undefined` while the result is still
+ *   pending), so a pending call still renders as a card; a standalone
+ *   `<ChatMessage>` given no pair falls through to the text body, exactly as
+ *   before.
+ * - `tool-result` messages with a `toolResult` emit a single `tool-result`
+ *   part (the container hides results already folded into a paired card).
+ * - every other role emits a `markdown` body part carrying the effective text
+ *   (streaming `overrideContent` resolved in).
+ *
+ * Every branch then appends one `image` part per image segment in the content,
+ * so attachments render below the body for all roles — exactly as the historical
+ * unconditional `MessageAttachments` did.
+ *
+ * A `tool-call` message with no resolved pair, or a `tool-result` message with
+ * no `toolResult`, falls back to the markdown path rather than producing nothing.
+ *
+ * @param message - The message to derive parts for
+ * @param context - Per-message pairing + streaming context (optional)
+ * @returns The ordered render parts (stable `key` on each for keyed iteration)
+ */
+export function deriveMessageParts(
+  message: Message,
+  context: MessagePartDerivationContext = {},
+): ChatMessagePart[] {
+  // Images render below the body for every role (the historical attachment view
+  // was unconditional), so each branch appends them after its body part.
+  const imageParts = deriveImageParts(message);
+
+  // Tool-call body: emit a tool-call part only when the container resolved a
+  // pair for this message (mirrors the original `isToolCall && toolPair`
+  // guard). With no pair, fall through to the markdown body below — the same
+  // text rendering the original showed for an unpaired tool-call message.
+  if (message.role === 'tool-call' && message.toolCall && context.toolCallPair) {
+    return [
+      {
+        type: 'tool-call',
+        key: `${message.id}:tool-call:${message.toolCall.id}`,
+        pair: context.toolCallPair,
+      },
+      ...imageParts,
+    ];
+  }
+
+  // Tool-result body: emit one tool-result part. The renderer branches on
+  // `result.outcome` for error / action-required / success styling.
+  if (message.role === 'tool-result' && message.toolResult) {
+    return [
+      {
+        type: 'tool-result',
+        key: `${message.id}:tool-result:${message.toolResult.callId}`,
+        result: message.toolResult,
+      },
+      ...imageParts,
+    ];
+  }
+
+  // Default body: markdown text (streaming override resolved in) followed by
+  // images. `body` is a representation-independent key, so a streaming body
+  // never remounts as its text grows, and an attachment landing after it keeps
+  // its own index-based key.
+  const content = context.overrideContent ?? getMessageText(message);
+  return [
+    {
+      type: 'markdown',
+      key: `${message.id}:body`,
+      content,
+      streaming: context.streaming ?? false,
+      expanded: context.expanded ?? true,
+    },
+    ...imageParts,
+  ];
 }
 
 /**
