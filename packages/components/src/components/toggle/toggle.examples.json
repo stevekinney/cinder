@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { Toggle } from '@lostgradient/cinder/toggle';\n\n  let emailNotifications = $state(false);\n</script>\n\n<Toggle id=\"email-notifications\" bind:checked={emailNotifications} label=\"Email notifications\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">\n  {emailNotifications ? 'Notifications enabled' : 'Notifications disabled'}\n</p>\n"
     },
     {
+      "id": "disabled",
+      "title": "Disabled toggle",
+      "description": "A disabled switch is dimmed and non-interactive — clicks and keyboard activation are ignored while the visible label keeps it readable.",
+      "code": "<script lang=\"ts\">\n  import { Toggle } from '@lostgradient/cinder/toggle';\n</script>\n\n<Toggle id=\"beta-features\" checked={false} label=\"Beta features\" disabled />\n"
+    },
+    {
       "id": "group",
       "title": "Multiple switches",
       "description": "Several independent on/off settings inside a fieldset. Each Toggle renders its own visible label, so no external <label for> wrapper is needed.",

@@ -8,6 +8,7 @@ export type SurfaceProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   tone?: SurfaceTone;
   /** Additional CSS classes */
   class?: string;
+  /** Content rendered inside the surface container. */
   children?: Snippet;
 };
 

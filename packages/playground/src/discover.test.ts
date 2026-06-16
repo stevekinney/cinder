@@ -240,8 +240,19 @@ describe('discoverSidebarComponents', () => {
     // and invocation-rule-builder — plus json-viewer, which was absent from the
     // sidebar on main (it had no examples) and newly appears because #358 adds its
     // first examples. So 109 (prior) + 7 new + 1 newly-surfaced json-viewer = 117.
+    // The #394 example-coverage backfill adds the first examples for
+    // stacked-list-item, which had none on main (it was absent from the sidebar
+    // for the same reason json-viewer was) and now newly surfaces — landing the
+    // sidebar at 118, measured empirically via discoverSidebarComponents(). The
+    // other components the backfill touches already shipped examples, so they
+    // were already counted and do not move the total.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(117);
+    expect(sidebar.length).toBeLessThanOrEqual(118);
+    // Positive anchor for the +1: stacked-list-item is the family the #394
+    // backfill newly surfaces, so it must actually be present. Without this the
+    // upper-bound alone would silently pass if the regression that dropped it
+    // from the sidebar also dropped some other family in its place.
+    expect(sidebar).toContain('stacked-list-item');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

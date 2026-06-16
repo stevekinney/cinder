@@ -1,6 +1,6 @@
 <script lang="ts" module>
   export const title = 'Status dot statuses';
-  export const description = 'All six semantic status values.';
+  export const description = 'All eight semantic status values.';
 </script>
 
 <script lang="ts">
@@ -14,4 +14,6 @@
   <StatusDot status="error" label="Error" />
   <StatusDot status="pending" label="Pending" />
   <StatusDot status="neutral" label="Neutral" />
+  <StatusDot status="success" label="Success" />
+  <StatusDot status="accent" label="Accent" />
 </div>

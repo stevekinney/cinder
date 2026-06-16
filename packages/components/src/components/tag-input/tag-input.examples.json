@@ -28,6 +28,12 @@
       "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from '@lostgradient/cinder';\n</script>\n\n<FormField\n  id=\"prepopulated-tag-input\"\n  label=\"Technologies\"\n  description=\"Review the initial stack and remove anything that does not apply.\"\n>\n  <TagInput defaultValue={['Svelte', 'Bun', 'TypeScript']} placeholder=\"Add a technology…\" />\n</FormField>\n"
     },
     {
+      "id": "readonly",
+      "title": "Read-only tags",
+      "description": "With `readonly`, the committed tags stay visible but cannot be removed and the pending-tag input rejects new entries — distinct from `disabled`, which also dims the whole control.",
+      "code": "<script lang=\"ts\">\n  import { FormField, TagInput } from '@lostgradient/cinder';\n</script>\n\n<FormField\n  id=\"readonly-tag-input\"\n  label=\"Applied filters\"\n  description=\"These filters are fixed for this report and cannot be edited.\"\n>\n  <TagInput readonly defaultValue={['Svelte', 'Bun', 'TypeScript']} />\n</FormField>\n"
+    },
+    {
       "id": "validation",
       "title": "Validated email tags",
       "description": "Keep the value controlled and reject entries that are not email addresses.",

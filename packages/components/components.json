@@ -3774,10 +3774,11 @@
       ],
       "related": ["grid-list-item", "table-row", "avatar"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/stacked-list-item/schema",
-        "variables": "@lostgradient/cinder/stacked-list-item/variables"
+        "variables": "@lostgradient/cinder/stacked-list-item/variables",
+        "examples": "@lostgradient/cinder/stacked-list-item/examples"
       }
     },
     {

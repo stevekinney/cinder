@@ -6,10 +6,20 @@ Single row within a stacked list, typically pairing a label with metadata or an 
 
 ```svelte
 <script lang="ts">
-  import StackedListItem from '@lostgradient/cinder/stacked-list-item';
+  import { DataList } from '@lostgradient/cinder/data-list';
+  import { StackedListItem } from '@lostgradient/cinder/stacked-list-item';
+
+  const members = [{ id: 'alice', name: 'Alice Chen', role: 'Engineer' }];
 </script>
 
-<StackedListItem />
+<DataList items={members} key={(member) => member.id}>
+  {#snippet children(member)}
+    <StackedListItem>
+      {#snippet title()}{member.name}{/snippet}
+      {#snippet meta()}{member.role}{/snippet}
+    </StackedListItem>
+  {/snippet}
+</DataList>
 ```
 
 ## Props
@@ -26,7 +36,7 @@ Single row within a stacked list, typically pairing a label with metadata or an 
 | `description` | `(opaque)`                       | no       | —       | Secondary description below the title. Not expressible in JSON Schema; see the component types for the signature.                                                                                                           |
 | `leading`     | `(opaque)`                       | no       | —       | Leading visual (avatar, icon, status dot). Not expressible in JSON Schema; see the component types for the signature.                                                                                                       |
 | `meta`        | `(opaque)`                       | no       | —       | Tertiary metadata (timestamp, badge, system label). Not expressible in JSON Schema; see the component types for the signature.                                                                                              |
-| `target`      | `(opaque)`                       | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                     |
+| `target`      | `(opaque)`                       | no       | —       | Browsing context for the title anchor (`_blank`, `_self`, `_parent`, `_top`, or a named frame). Not expressible in JSON Schema; see the component types for the signature.                                                  |
 | `title`       | `(opaque)`                       | yes      | —       | Primary label. Required. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                         |
 | `trailing`    | `(opaque)`                       | no       | —       | Trailing region (chevron, action button, dropdown trigger). Not expressible in JSON Schema; see the component types for the signature.                                                                                      |
 

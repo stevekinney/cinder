@@ -44,7 +44,7 @@ export type TimelineProps = Omit<
   weekStartsOn?: TimelineWeekStartsOn | undefined;
   /** Heading level applied to rendered group headers. @default 3 */
   groupHeaderLevel?: TimelineHeadingLevel | undefined;
-  /** Hide the following connector when adjacent valid timestamps exceed this gap. */
+  /** Hide the following connector when adjacent valid timestamps exceed this gap (in minutes). */
   gapThresholdMinutes?: number | undefined;
   /** Fallback accessible label used only when aria-label and aria-labelledby are absent. */
   label?: string | undefined;
@@ -71,7 +71,7 @@ export interface TimelineSchemaProps {
   weekStartsOn?: TimelineWeekStartsOn | undefined;
   /** Heading level applied to rendered group headers. @default 3 */
   groupHeaderLevel?: TimelineHeadingLevel | undefined;
-  /** Hide the following connector when adjacent valid timestamps exceed this gap. */
+  /** Hide the following connector when adjacent valid timestamps exceed this gap (in minutes). */
   gapThresholdMinutes?: number | undefined;
   /** Fallback accessible label used only when aria-label and aria-labelledby are absent. */
   label?: string | undefined;

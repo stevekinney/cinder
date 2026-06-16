@@ -10,6 +10,18 @@
       "code": "<script lang=\"ts\">\n  import { Waveform } from '@lostgradient/cinder/waveform';\n\n  // Simulate a voice recording envelope (louder in the middle) with deterministic noise\n  const voiceData = Array.from({ length: 128 }, (_, index) => {\n    const envelope = Math.sin((index / 128) * Math.PI);\n    // Deterministic pseudo-noise using multiple harmonics\n    const noise = (Math.sin(index * 7.3) + Math.sin(index * 13.7) + Math.sin(index * 23.1)) / 7.5;\n    return Math.max(-1, Math.min(1, envelope * 0.8 + noise));\n  });\n</script>\n\n<Waveform\n  label=\"Voice recording waveform\"\n  description=\"Simulated voice recording amplitude envelope displayed as bars.\"\n  data={voiceData}\n  renderMode=\"bars\"\n  height={80}\n/>\n"
     },
     {
+      "id": "empty",
+      "title": "Empty state",
+      "description": "When `data` is empty, supply an `empty` snippet to explain the absence instead of rendering a flat, meaningless plot.",
+      "code": "<script lang=\"ts\">\n  import { Waveform } from '@lostgradient/cinder/waveform';\n</script>\n\n<Waveform label=\"Voice recording waveform\" data={[]} height={80}>\n  {#snippet empty()}\n    No recording captured yet.\n  {/snippet}\n</Waveform>\n"
+    },
+    {
+      "id": "loading",
+      "title": "Loading state",
+      "description": "While audio is being decoded, set `loading` and supply a `loadingContent` snippet to render a placeholder over the viewport instead of the plot.",
+      "code": "<script lang=\"ts\">\n  import { Waveform } from '@lostgradient/cinder/waveform';\n</script>\n\n<Waveform label=\"Voice recording waveform\" data={[]} height={80} loading>\n  {#snippet loadingContent()}\n    Decoding audio…\n  {/snippet}\n</Waveform>\n"
+    },
+    {
       "id": "sine-wave-path",
       "title": "Sine wave (path mode)",
       "description": "A time-domain sine wave rendered as a continuous SVG path.",

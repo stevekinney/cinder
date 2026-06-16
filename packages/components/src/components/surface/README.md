@@ -9,18 +9,18 @@ A themed container that publishes its tone to descendant components through Svel
   import Surface from '@lostgradient/cinder/surface';
 </script>
 
-<Surface tone="raised">Content</Surface>
+<Surface>Content</Surface>
 ```
 
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop       | Type                                                      | Required | Default     | Description                                                                                                                |
-| ---------- | --------------------------------------------------------- | -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`                                                  | no       | —           | Additional CSS classes                                                                                                     |
-| `tone`     | `"default"` \| `"raised"` \| `"inset"` \| `"transparent"` | no       | `"default"` | Surface tone.                                                                                                              |
-| `children` | `(opaque)`                                                | no       | —           | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| Prop       | Type                                                      | Required | Default     | Description                                                                                                               |
+| ---------- | --------------------------------------------------------- | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `class`    | `string`                                                  | no       | —           | Additional CSS classes                                                                                                    |
+| `tone`     | `"default"` \| `"raised"` \| `"inset"` \| `"transparent"` | no       | `"default"` | Surface tone.                                                                                                             |
+| `children` | `(opaque)`                                                | no       | —           | Content rendered inside the surface container. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 
