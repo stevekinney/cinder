@@ -498,6 +498,90 @@ describe('ChatAdapter — subscribe lifecycle', () => {
     target.remove();
   });
 
+  test('switching conversation mid-stream clears the streaming buffer (no leak into the new transcript)', () => {
+    // Regression: the subscribe effect's teardown clears the imperative streaming
+    // state, so a conversation switch while a push-stream is live does not leave a
+    // stale stream driving a row in the new transcript.
+    let captured: ChatPushHandlers | undefined;
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      subscribe: (_conversationId, handlers) => {
+        captured = handlers;
+        return () => {};
+      },
+    };
+
+    const frames: FrameRequestCallback[] = [];
+    const originalRaf = globalThis.requestAnimationFrame;
+    const originalCancelRaf = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = ((handle: number) => {
+      if (handle >= 1 && handle <= frames.length) frames[handle - 1] = () => {};
+    }) as typeof cancelAnimationFrame;
+    const flushFrames = (): void => {
+      const pending = frames.splice(0);
+      for (const frame of pending) frame(performance.now());
+      flushSync();
+    };
+
+    // Both conversations carry an assistant message with the SAME id ('a1') so a
+    // leaked stream would visibly drive the new transcript's matching row.
+    const now = '2026-06-02T00:00:00.000Z';
+    const withAssistant = (id: string): ConversationHistory => ({
+      schemaVersion: 4,
+      id,
+      status: 'active',
+      metadata: {},
+      ids: ['a1'],
+      messages: {
+        a1: {
+          id: 'a1',
+          role: 'assistant',
+          content: 'final content',
+          position: 0,
+          createdAt: now,
+          metadata: {},
+          hidden: false,
+        },
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const target = document.createElement('div');
+    document.body.append(target);
+    try {
+      const instance = mount(AdapterSwitchFixture, {
+        target,
+        props: { initial: withAssistant('conversation-a'), adapter },
+      }) as SwitchFixtureInstance;
+      flushSync();
+
+      // Start a push-stream into a1 (no onStreamEnd — the stream is still live).
+      captured!.onStreamBegin('a1');
+      captured!.onTokenPush('streaming…');
+      flushFrames();
+      expect(target.querySelector('.message-content-cursor')).not.toBeNull();
+
+      // Switch to a different conversation whose a1 is NOT streaming. The effect
+      // teardown must clear the stream so the cursor is gone and the new row shows
+      // its own content, not the leaked stream buffer.
+      instance.setConversation(withAssistant('conversation-b'));
+      flushSync();
+      expect(target.querySelector('.message-content-cursor')).toBeNull();
+      expect(target.textContent).toContain('final content');
+
+      unmount(instance);
+    } finally {
+      globalThis.requestAnimationFrame = originalRaf;
+      globalThis.cancelAnimationFrame = originalCancelRaf;
+      target.remove();
+    }
+  });
+
   test('mounts cleanly when the adapter has no subscribe method', () => {
     const adapter: ChatAdapter = { sendMessage: async () => {} };
     const { instance } = mountChat({

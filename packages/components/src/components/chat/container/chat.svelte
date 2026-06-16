@@ -285,10 +285,18 @@
       onStreamEnd: () => endStreaming(),
     };
 
-    // Guard the teardown: an adapter that violates the contract and returns a
-    // non-function must not crash Svelte's cleanup. A bad return is dropped.
     const unsubscribe = resolvedAdapter.subscribe(currentConversationId, handlers);
-    return typeof unsubscribe === 'function' ? unsubscribe : undefined;
+
+    // Teardown: close the transport (guarding a contract-violating non-function
+    // return so a bad adapter can't crash Svelte's cleanup) AND clear the
+    // imperative streaming buffer. Without the `endStreaming()`, a resubscribe or
+    // conversation switch mid-stream (no `onStreamEnd` fired) would leave
+    // `streamingMessageId`/`streamingContent` driving a row — and a same-id
+    // message in the new transcript would pick up the stale stream.
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+      endStreaming();
+    };
   });
 
   // ==========================================================================
