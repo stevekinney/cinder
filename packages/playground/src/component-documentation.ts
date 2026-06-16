@@ -330,32 +330,34 @@ export async function buildComponentDocumentation(
     );
   }
 
-  const readmeMarkdown = await readRequiredText(
+  const readmeMarkdownPromise = readRequiredText(
     readmePath(componentName),
     `${componentName} README.md`,
   );
-  await initializeHighlighter();
-  const readme = renderReadmeDocumentation(readmeMarkdown);
-  const schema = await readRequiredJson(
+  const schemaPromise = readRequiredJson(
     artifactPath(componentName, 'schema'),
     `${componentName} schema`,
   );
-  const variables = await readRequiredJson(
+  const variablesPromise = readRequiredJson(
     artifactPath(componentName, 'variables'),
     `${componentName} variables`,
   );
-  const constraints = entry.hasConstraints
-    ? await readRequiredJson(
-        artifactPath(componentName, 'constraints'),
-        `${componentName} constraints`,
-      )
-    : await readOptionalJson(
-        artifactPath(componentName, 'constraints'),
-        `${componentName} constraints`,
-      );
-  const examples = entry.hasExamples
-    ? await readRequiredJson(artifactPath(componentName, 'examples'), `${componentName} examples`)
-    : await readOptionalJson(artifactPath(componentName, 'examples'), `${componentName} examples`);
+  const constraintsPromise = entry.hasConstraints
+    ? readRequiredJson(artifactPath(componentName, 'constraints'), `${componentName} constraints`)
+    : readOptionalJson(artifactPath(componentName, 'constraints'), `${componentName} constraints`);
+  const examplesPromise = entry.hasExamples
+    ? readRequiredJson(artifactPath(componentName, 'examples'), `${componentName} examples`)
+    : readOptionalJson(artifactPath(componentName, 'examples'), `${componentName} examples`);
+
+  const [readmeMarkdown, schema, variables, constraints, examples] = await Promise.all([
+    readmeMarkdownPromise,
+    schemaPromise,
+    variablesPromise,
+    constraintsPromise,
+    examplesPromise,
+    initializeHighlighter(),
+  ]);
+  const readme = renderReadmeDocumentation(readmeMarkdown);
   const manifestEntry: JsonValue = {
     name: entry.name,
     id: entry.id,
