@@ -2,13 +2,13 @@
 
 Generic modal shell for rich content, forms, and structured workflows. Use the more specialised components when the content fits their narrower contract.
 
-## When to use
+## Choosing this component
 
 - Presenting rich or structured content (forms, multi-step wizards, detail views) inside a blocking overlay.
 - Collecting structured input — especially when multiple fields or widgets are involved.
 - Displaying content that requires user interaction before the page can continue, but where the interaction is more than a simple yes/no.
 
-## When not to use
+## Choosing something else
 
 - Two-action confirm/cancel prompts — use [`ConfirmDialog`](../confirm-dialog/README.md) instead. It handles autofocus on the cancel button, `aria-describedby`, and the destructive-variant button automatically.
 - Urgent blocking acknowledgements that must not be dismissed by Escape or backdrop click — use [`AlertDialog`](../alert-dialog/README.md) instead.

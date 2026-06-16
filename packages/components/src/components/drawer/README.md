@@ -2,13 +2,13 @@
 
 Side-anchored overlay panel for supplementary content without leaving the current page.
 
-## When to use
+## Choosing this component
 
 - Showing detail or edit forms alongside a list or table where the user needs to stay in context.
 - Navigation trees, filter panels, or settings that the user may want to keep open while interacting with the page.
 - Secondary workflows that complement the current view rather than replacing it.
 
-## When not to use
+## Choosing something else
 
 - Full-screen workflows that require the user's full attention — use a [`Modal`](../modal/README.md) or navigate to a new page.
 - Mobile-style bottom sheets — use [`Sheet`](../sheet/README.md) for the bottom-anchored variant.

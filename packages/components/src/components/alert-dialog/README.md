@@ -15,13 +15,13 @@ The key distinction between AlertDialog and ConfirmDialog is _who initiates_ the
 - ConfirmDialog is for user-initiated actions that need a safety gate. Pressing Escape means "never mind" — a safe, expected exit. This includes high-impact destructive actions the user initiated, even ones that affect other people.
 - AlertDialog is for conditions the _system_ surfaces that require the user to acknowledge before continuing. Pressing Escape would bypass acknowledgement, which is unsafe because the session state has already changed and proceeding without reading the message is incorrect.
 
-## When to use
+## Choosing this component
 
 - Session expiry, authentication loss, or network disconnection that requires the user to re-authenticate before continuing.
 - System-level errors or process failures where the user must acknowledge the condition before taking any other action.
 - Any situation where the dialog is triggered by a system event — not a user click — and dismissal by Escape or backdrop click would be incorrect because the user _must_ read and respond.
 
-## When not to use
+## Choosing something else
 
 - User-initiated destructive actions (including high-impact ones like "Delete workspace" or "Remove all collaborators") — use [`ConfirmDialog`](../confirm-dialog/README.md). Even when the action is irreversible or affects other people, Escape is a valid "never mind" because the _user_ chose to open the dialog. ConfirmDialog's cancel-button autofocus is the right affordance.
 - Rich body content (markup, lists, multiple paragraphs) — `description` is a plain-text string. For rich body, compose [`Modal`](../modal/README.md) with `role="alertdialog"` directly (see Modal's `role` prop documentation for the required companion props).

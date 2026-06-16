@@ -2,12 +2,12 @@
 
 Bottom-anchored overlay panel optimised for mobile-style drawer interactions.
 
-## When to use
+## Choosing this component
 
 - Action sheets and option pickers on mobile or touch-first layouts where a bottom-up slide feels natural.
 - Quick-select panels (share, sort, filter) that need to feel native on small screens.
 
-## When not to use
+## Choosing something else
 
 - Desktop-first side panels — use [`Drawer`](../drawer/README.md) for left/right edge placement.
 - Full-attention blocking dialogs — use [`Modal`](../modal/README.md) when the user must act before continuing.

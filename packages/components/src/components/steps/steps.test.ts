@@ -359,12 +359,15 @@ describe('Steps — horizontal layout geometry (CSS contract)', () => {
     expect(body).toMatch(/z-index:\s*0;/);
   });
 
-  test('horizontal marker stacks above the connector line passing behind it', () => {
+  test('horizontal marker stacks above both the connector line and the focusable body', () => {
     const body = ruleBody(
       /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__marker\s*\{/,
     );
     expect(body).toMatch(/position:\s*relative;/);
-    expect(body).toMatch(/z-index:\s*1;/);
+    // z-index: 2 — one level above the focusable body (z-index: 1), whose box
+    // overlaps the marker and whose :hover background is opaque, so the marker
+    // must out-rank it to avoid being occluded on hover.
+    expect(body).toMatch(/z-index:\s*2;/);
   });
 
   test('horizontal body centers its label and description under the marker', () => {
@@ -404,6 +407,43 @@ describe('Steps — horizontal layout geometry (CSS contract)', () => {
     expect(body).toMatch(
       /padding-block-start:\s*calc\(var\(--_marker-size\) \+ var\(--cinder-space-2\)\);/,
     );
+  });
+
+  test('horizontal interactive body lifts its focus ring above the connector line', () => {
+    // The focusable body must be positioned with a z-index so its :focus-visible
+    // box-shadow ring paints ABOVE the connector (z-index: 0) instead of being
+    // bisected by it. Regression guard for #401 (connector bisects focus ring).
+    const body = ruleBody(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{[^}]*margin-block-start/,
+    );
+    expect(body).toMatch(/position:\s*relative;/);
+    expect(body).toMatch(/z-index:\s*1;/);
+  });
+
+  test('horizontal stacking order is connector < focusable body < marker', () => {
+    // The three painted layers in a horizontal step overlap geometrically (the
+    // connector runs through the marker center; the body's negative block-start
+    // margin pulls its box up over the marker). The required paint order is:
+    //   connector (behind) < focusable body (focus ring above the line) < marker.
+    // The marker must out-rank the body specifically because the body paints
+    // LATER in DOM order and its :hover background is opaque, so equal z-index
+    // would let the body occlude the marker on hover (#401 committee finding).
+    const zIndexOf = (selector: RegExp): number => {
+      const match = ruleBody(selector).match(/z-index:\s*(-?\d+);/);
+      expect(match, `z-index not found for ${selector}`).not.toBeNull();
+      return Number(match?.[1]);
+    };
+    const connector = zIndexOf(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__connector\s*\{/,
+    );
+    const interactiveBody = zIndexOf(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{[^}]*margin-block-start/,
+    );
+    const marker = zIndexOf(
+      /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__marker\s*\{/,
+    );
+    expect(connector).toBeLessThan(interactiveBody);
+    expect(interactiveBody).toBeLessThan(marker);
   });
 });
 

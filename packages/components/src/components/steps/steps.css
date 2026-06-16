@@ -57,9 +57,15 @@
   }
 
   .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__marker {
-    /* Lift the marker above the connector line that passes behind it. */
+    /* Lift the marker above BOTH the connector line (z-index: 0) that passes
+       behind it AND the focusable body (z-index: 1) whose box overlaps the
+       marker via a negative block-start margin. The body must out-rank the
+       connector so its focus ring paints above the line, but it must stay
+       below the marker: the body paints LATER in flow and its :hover background
+       is opaque (--cinder-surface-hover), so at equal z-index it would occlude
+       the marker on hover. z-index: 2 keeps the marker on top in every state. */
     position: relative;
-    z-index: 1;
+    z-index: 2;
   }
 
   .cinder-steps[data-cinder-orientation='horizontal'] .cinder-steps__connector {
@@ -101,9 +107,10 @@
    *      `anchor.contains(marker) === false`), so instead of nesting it we raise
    *      the box's top edge up to the marker's top with a negative block-start
    *      margin, and add an equal block-start padding so the label/description
-   *      stay exactly where they were. The marker keeps `z-index: 1` and the body
-   *      background is transparent, so the marker paints over the (transparent)
-   *      box with no occlusion. Net: the ring encloses marker + body as one unit,
+   *      stay exactly where they were. The body takes `z-index: 1` so its focus
+   *      ring paints above the connector, while the marker takes `z-index: 2` so
+   *      it stays above the body's overlapping box even when the body's :hover
+   *      background is opaque. Net: the ring encloses marker + body as one unit,
    *      the connector (pinned to the marker center) now sits inside the ring's
    *      vertical span, and the visible content y/x position is invariant.
    *
@@ -117,6 +124,12 @@
     align-self: center;
     margin-block-start: calc(-1 * var(--_marker-size));
     padding-block-start: calc(var(--_marker-size) + var(--cinder-space-2));
+    /* Lift the focusable body above the connector line (z-index: 0) so its
+       :focus-visible box-shadow ring paints ABOVE the line instead of being
+       bisected by it. The marker sits one level higher (z-index: 2) so it is
+       never occluded by the body's overlapping box — see the marker rule. */
+    position: relative;
+    z-index: 1;
   }
 
   /* ----------------------------------------
