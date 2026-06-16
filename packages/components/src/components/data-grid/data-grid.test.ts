@@ -3,6 +3,7 @@ import { describe, expect, mock, test } from 'bun:test';
 import type { Component } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { getDataGridColumnValue } from './_internal/column-model.svelte.ts';
 import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
 
 setupHappyDom();
@@ -308,6 +309,18 @@ describe('DataGrid', () => {
     expect(container.querySelector('[role="gridcell"]')?.textContent).toBe(
       '2026-06-16T12:00:00.000Z',
     );
+  });
+
+  test('ignores inherited row properties when getValue is omitted', () => {
+    const row = { id: 'ord-4' } as Record<string, unknown>;
+    const inheritedColumn: DataGridColumnDef = {
+      key: 'toString',
+      header: 'String',
+    };
+    const ownPropertyRow = { toString: 'owned value' } as Record<string, unknown>;
+
+    expect(getDataGridColumnValue(row, inheritedColumn)).toBeUndefined();
+    expect(getDataGridColumnValue(ownPropertyRow, inheritedColumn)).toBe('owned value');
   });
 
   test('applies density, row class, column order, sizing, and pinning metadata', () => {

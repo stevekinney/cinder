@@ -166,7 +166,7 @@ function withRenderColIndexes<TRow>(
 
 export function getDataGridColumnValue<TRow>(row: TRow, column: DataGridColumnDef<TRow>): unknown {
   if (column.getValue) return column.getValue(row);
-  if (row !== null && typeof row === 'object' && column.key in row) {
+  if (row !== null && typeof row === 'object' && Object.hasOwn(row, column.key)) {
     const value: unknown = Reflect.get(row, column.key);
     return value;
   }
