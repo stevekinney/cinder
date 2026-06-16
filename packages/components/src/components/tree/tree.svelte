@@ -981,8 +981,8 @@
         void focusVirtualIndex(visibleIds.length - 1);
         return true;
       case 'ArrowRight':
-        if (!currentItem?.branch) return false;
         event.preventDefault();
+        if (!currentItem?.branch) return true;
         if (!virtualizedItemExpanded(currentItem)) {
           setExpandedInternal(currentItem.id, true);
         } else {

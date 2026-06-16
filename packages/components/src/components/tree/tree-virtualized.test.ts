@@ -169,6 +169,31 @@ describe('Tree — virtualized data path', () => {
     expect(treeItems(container).some((item) => item.id === `${tree.id}-item-99`)).toBe(true);
   });
 
+  test('ArrowRight on a virtualized leaf is a prevented no-op', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: flatItems(10),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    tree.focus();
+    const event = new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      bubbles: true,
+      cancelable: true,
+    });
+
+    tree.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(tree.getAttribute('aria-activedescendant')).toBe(`${tree.id}-item-0`);
+  });
+
   test('Shift+ArrowDown selects the active virtualized row before moving focus', async () => {
     const { container } = render(Tree, {
       props: {
