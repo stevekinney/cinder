@@ -499,6 +499,10 @@
         event.preventDefault();
         event.stopPropagation();
         return true;
+      case 'Tab':
+        event.stopPropagation();
+        controller.cancel();
+        return true;
       case ' ':
       case 'Enter':
         event.preventDefault();

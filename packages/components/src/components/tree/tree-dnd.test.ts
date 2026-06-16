@@ -297,6 +297,30 @@ describe('Tree — drag-and-drop reorder', () => {
     });
   });
 
+  test('Tab cancels an active keyboard drag without trapping focus', async () => {
+    const onReorder = mock();
+    const { container } = renderTree({ onReorder });
+    const handle = dragHandle(container, 'Alpha');
+
+    handle.focus();
+    await fireEvent.keyDown(handle, { key: ' ' });
+    expect(handle.getAttribute('aria-pressed')).toBe('true');
+
+    const tabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    const defaultAllowed = handle.dispatchEvent(tabEvent);
+
+    expect(defaultAllowed).toBe(true);
+    expect(onReorder).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(handle.getAttribute('aria-pressed')).toBe('false');
+      expect(treeItem(container, 'Alpha').hasAttribute('data-cinder-dragging')).toBe(false);
+    });
+  });
+
   test('dropping immediately after lift does not emit a self-target reorder', async () => {
     const onReorder = mock();
     const { container } = renderTree({ onReorder });
