@@ -17,7 +17,7 @@ const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/c
  * directories and are exported flat from `@lostgradient/cinder`, but they have no meaningful
  * standalone usage — they are always rendered inside a parent compound
  * (`Tabs`, `Table`, `Dropdown`, `Accordion`, `Tree`, `Feed`, `GridList`,
- * `StatGroup`, `SideNavigation`). They are excluded from the playground
+ * `Grid`, `SpeedDial`, `StatGroup`, `SideNavigation`). They are excluded from the playground
  * sidebar so a single parent entry covers the family, but they remain in
  * `discoverComponents()` so direct `/c/<leaf>` routing still works.
  */
@@ -41,7 +41,9 @@ export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
   'context-menu-trigger',
   'tree-item',
   'feed-event',
+  'grid-item',
   'grid-list-item',
+  'speed-dial-action',
   'stat',
   'side-navigation-group',
   'side-navigation-item',

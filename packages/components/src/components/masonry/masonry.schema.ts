@@ -1,0 +1,37 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    columns: {
+      type: 'string',
+      description: 'CSS column count value.',
+    },
+    gap: {
+      type: 'string',
+      description: 'Gap between columns and between direct children.',
+    },
+    as: {
+      type: 'string',
+      description: 'Rendered HTML tag.',
+    },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-masonry`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Masonry contents.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

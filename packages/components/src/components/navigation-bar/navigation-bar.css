@@ -21,6 +21,15 @@
     border-bottom: 1px solid var(--cinder-border-muted);
   }
 
+  .cinder-navigation-bar[data-cinder-placement='bottom'] {
+    justify-content: center;
+    min-height: 4rem;
+    height: auto;
+    padding-inline: var(--cinder-space-2);
+    border-bottom: none;
+    border-top: 1px solid var(--cinder-border-muted);
+  }
+
   /* ----------------------------------------
  * Sections
  * ---------------------------------------- */
@@ -44,6 +53,12 @@
     min-width: 0;
   }
 
+  .cinder-navigation-bar[data-cinder-placement='bottom'] .cinder-navigation-bar__items {
+    align-self: stretch;
+    justify-content: space-around;
+    gap: 0;
+  }
+
   .cinder-navigation-bar__actions {
     display: flex;
     align-items: center;
@@ -58,6 +73,53 @@
 
   .cinder-navigation-bar__menu-toggle {
     display: none;
+  }
+
+  .cinder-navigation-bar[data-cinder-placement='bottom']
+    .cinder-navigation-item[data-variant='mobile'] {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    min-block-size: 3.75rem;
+    padding: var(--cinder-space-2);
+    border-bottom: none;
+    border-top: 2px solid transparent;
+    border-radius: 0;
+    text-align: center;
+  }
+
+  .cinder-navigation-bar[data-cinder-placement='bottom']
+    .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
+    border-top-color: var(--cinder-accent);
+    background-color: var(--cinder-surface-inset);
+  }
+
+  .cinder-navigation-bar[data-cinder-placement='bottom']
+    .cinder-navigation-item[data-variant='mobile']
+    [data-cinder-navigation-label] {
+    max-inline-size: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cinder-navigation-bar[data-cinder-placement='bottom'][data-cinder-label-visibility='active']
+    .cinder-navigation-item[data-variant='mobile']:not([data-active='true'])
+    [data-cinder-navigation-label],
+  .cinder-navigation-bar[data-cinder-placement='bottom'][data-cinder-label-visibility='never']
+    .cinder-navigation-item[data-variant='mobile']
+    [data-cinder-navigation-label] {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* ----------------------------------------
@@ -131,6 +193,10 @@
   @media (forced-colors: active) {
     .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
       border-bottom-color: CanvasText;
+    }
+
+    .cinder-navigation-bar[data-cinder-placement='bottom'] {
+      border-top-color: CanvasText;
     }
   }
 }

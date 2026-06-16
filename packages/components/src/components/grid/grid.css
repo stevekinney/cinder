@@ -1,0 +1,24 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-grid {
+    display: grid;
+    grid-template-columns: var(--cinder-grid-columns, repeat(1, 1fr));
+    row-gap: var(--cinder-grid-row-gap, var(--cinder-space-4));
+    column-gap: var(--cinder-grid-column-gap, var(--cinder-space-4));
+  }
+
+  .cinder-grid-item {
+    grid-column-start: var(--cinder-grid-item-column-start, auto);
+    grid-column-end: var(--cinder-grid-item-column-end, auto);
+    grid-row-start: var(--cinder-grid-item-row-start, auto);
+    grid-row-end: auto;
+  }
+
+  .cinder-grid-item[data-cinder-column-span='true'] {
+    grid-column: span var(--cinder-grid-item-column-span);
+  }
+
+  .cinder-grid-item[data-cinder-row-span='true'] {
+    grid-row: span var(--cinder-grid-item-row-span);
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "speed-dial",
+  "import": "@lostgradient/cinder/speed-dial",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Quick actions",
+      "description": "A FloatingActionButton trigger reveals a directional cluster of labeled quick actions.",
+      "code": "<script lang=\"ts\">\n  import { SpeedDial } from '@lostgradient/cinder/speed-dial';\n\n  let lastAction = $state('None');\n</script>\n\n<div style=\"min-height: 12rem; display: grid; place-items: center;\">\n  <SpeedDial aria-label=\"Quick actions\">\n    {#snippet trigger()}\n      <span aria-hidden=\"true\">+</span>\n    {/snippet}\n\n    <SpeedDial.Action label=\"Create\" onclick={() => (lastAction = 'Create')}>\n      {#snippet icon()}\n        <span aria-hidden=\"true\">C</span>\n      {/snippet}\n    </SpeedDial.Action>\n\n    <SpeedDial.Action label=\"Share\" onclick={() => (lastAction = 'Share')}>\n      {#snippet icon()}\n        <span aria-hidden=\"true\">S</span>\n      {/snippet}\n    </SpeedDial.Action>\n\n    <SpeedDial.Action label=\"Archive\" disabled>\n      {#snippet icon()}\n        <span aria-hidden=\"true\">A</span>\n      {/snippet}\n    </SpeedDial.Action>\n  </SpeedDial>\n</div>\n\n<p>Last action: {lastAction}</p>\n"
+    },
+    {
+      "id": "directions",
+      "title": "Directions",
+      "description": "Actions can fan out up, down, left, or right from the trigger.",
+      "code": "<script lang=\"ts\">\n  import { SpeedDial } from '@lostgradient/cinder/speed-dial';\n</script>\n\n<div\n  style=\"min-height: 14rem; display: flex; align-items: center; justify-content: center; gap: 5rem;\"\n>\n  <SpeedDial aria-label=\"Open upward actions\" direction=\"up\">\n    {#snippet trigger()}<span aria-hidden=\"true\">U</span>{/snippet}\n    <SpeedDial.Action label=\"Create\"\n      >{#snippet icon()}<span aria-hidden=\"true\">C</span>{/snippet}</SpeedDial.Action\n    >\n    <SpeedDial.Action label=\"Share\"\n      >{#snippet icon()}<span aria-hidden=\"true\">S</span>{/snippet}</SpeedDial.Action\n    >\n  </SpeedDial>\n\n  <SpeedDial aria-label=\"Open left actions\" direction=\"left\">\n    {#snippet trigger()}<span aria-hidden=\"true\">L</span>{/snippet}\n    <SpeedDial.Action label=\"Create\"\n      >{#snippet icon()}<span aria-hidden=\"true\">C</span>{/snippet}</SpeedDial.Action\n    >\n    <SpeedDial.Action label=\"Share\"\n      >{#snippet icon()}<span aria-hidden=\"true\">S</span>{/snippet}</SpeedDial.Action\n    >\n  </SpeedDial>\n</div>\n"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    columns: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description:
+        'Number of equal-width columns or a full CSS `grid-template-columns` value.\nNumeric values render as `repeat(<columns>, 1fr)`.',
+    },
+    gap: {
+      type: 'string',
+      description: 'Uniform row and column gap.',
+    },
+    rowGap: {
+      type: 'string',
+      description: 'Row gap override. Wins over `gap` for rows.',
+    },
+    columnGap: {
+      type: 'string',
+      description: 'Column gap override. Wins over `gap` for columns.',
+    },
+    minItemWidth: {
+      type: 'string',
+      description:
+        'Minimum item width for an intrinsic auto-fill grid. When present, this takes\nprecedence over `columns`.',
+    },
+    as: {
+      type: 'string',
+      description: 'Rendered HTML tag.',
+    },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-grid`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Grid contents.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

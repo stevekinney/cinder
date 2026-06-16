@@ -1,0 +1,184 @@
+/// <reference lib="dom" />
+import { afterEach, describe, expect, mock, test } from 'bun:test';
+
+import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { TransferListItem } from './transfer-list.types.ts';
+
+setupHappyDom();
+
+const { cleanup, fireEvent, render, screen, within } = await import('@testing-library/svelte');
+const { default: TransferList } = await import('./transfer-list.svelte');
+const { default: TransferListFixture } = await import('./transfer-list.fixture.svelte');
+
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
+
+const items: TransferListItem[] = [
+  { id: 'read', label: 'Read' },
+  { id: 'write', label: 'Write' },
+  { id: 'billing', label: 'Billing', disabled: true },
+  { id: 'admin', label: 'Admin' },
+];
+
+async function waitForAnnouncement(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 10));
+}
+
+describe('TransferList', () => {
+  test('renders two labelled multiselect listboxes and transfer controls', () => {
+    render(TransferList, {
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected' },
+    });
+
+    const available = screen.getByRole('listbox', { name: 'Available' });
+    const selected = screen.getByRole('listbox', { name: 'Selected' });
+    const controls = screen.getByRole('group', { name: 'Transfer controls' });
+
+    expect(available.getAttribute('aria-multiselectable')).toBe('true');
+    expect(selected.getAttribute('aria-multiselectable')).toBe('true');
+    expect(within(available).getByRole('option', { name: 'Read' })).toBeTruthy();
+    expect(controls).toBeTruthy();
+    expect(screen.getByRole('alert')).toBeTruthy();
+  });
+
+  test('disabled items expose aria-disabled and cannot be selected', async () => {
+    const { container } = render(TransferList, {
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected' },
+    });
+
+    const billing = screen.getByRole('option', { name: 'Billing' });
+    await fireEvent.click(billing);
+
+    expect(billing.getAttribute('aria-disabled')).toBe('true');
+    expect(billing.getAttribute('aria-selected')).toBe('false');
+    const moveSelectedRightButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Move selected items to Selected"]',
+    );
+    expect(moveSelectedRightButton?.disabled).toBe(true);
+  });
+
+  test('moves selected items right and calls onChange', async () => {
+    const onChange = mock(() => {});
+    const { container } = render(TransferList, {
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected', onChange },
+    });
+
+    await fireEvent.click(screen.getByRole('option', { name: 'Read' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Move selected items to Selected' }));
+
+    const selected = screen.getByRole('listbox', { name: 'Selected' });
+    expect(within(selected).getByRole('option', { name: 'Read' })).toBeTruthy();
+    expect(onChange).toHaveBeenCalledWith(['read']);
+    const moveSelectedRightButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Move selected items to Selected"]',
+    );
+    expect(moveSelectedRightButton?.disabled).toBe(true);
+  });
+
+  test('move all right excludes disabled available items', async () => {
+    const onChange = mock(() => {});
+    render(TransferList, {
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected', onChange },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move all items to Selected' }));
+
+    const available = screen.getByRole('listbox', { name: 'Available' });
+    const selected = screen.getByRole('listbox', { name: 'Selected' });
+    expect(within(available).getByRole('option', { name: 'Billing' })).toBeTruthy();
+    expect(
+      within(selected)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Read', 'Write', 'Admin']);
+    expect(onChange).toHaveBeenCalledWith(['read', 'write', 'admin']);
+  });
+
+  test('moves selected and all items left', async () => {
+    const onChange = mock(() => {});
+    render(TransferList, {
+      props: {
+        items,
+        value: ['read', 'write', 'admin'],
+        leftLabel: 'Available',
+        rightLabel: 'Selected',
+        onChange,
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('option', { name: 'Read' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Move selected items to Available' }));
+    expect(onChange).toHaveBeenLastCalledWith(['write', 'admin']);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Move all items to Available' }));
+    expect(onChange).toHaveBeenLastCalledWith([]);
+  });
+
+  test('announces transfer results in the live region', async () => {
+    render(TransferList, {
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected' },
+    });
+
+    await fireEvent.click(screen.getByRole('option', { name: 'Read' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Move selected items to Selected' }));
+    await waitForAnnouncement();
+
+    expect(screen.getByRole('alert').textContent).toContain('1 item moved to Selected.');
+  });
+
+  test('keyboard navigation selects and transfers the active option', async () => {
+    render(TransferList, {
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected' },
+    });
+    const available = screen.getByRole('listbox', { name: 'Available' });
+
+    available.focus();
+    await fireEvent.focus(available);
+    await fireEvent.keyDown(available, { key: 'ArrowDown' });
+    const activeOptionId = available.getAttribute('aria-activedescendant');
+    const activeOption = activeOptionId ? document.getElementById(activeOptionId) : null;
+    expect(activeOption?.textContent).toBe('Write');
+
+    await fireEvent.keyDown(available, { key: ' ' });
+    expect(activeOption?.getAttribute('aria-selected')).toBe('true');
+
+    await fireEvent.keyDown(available, { key: 'Enter' });
+    const selected = screen.getByRole('listbox', { name: 'Selected' });
+    expect(within(selected).getByRole('option', { name: 'Write' })).toBeTruthy();
+  });
+
+  test('renders empty states and ignores orphaned value IDs', () => {
+    render(TransferList, {
+      props: {
+        items: [{ id: 'read', label: 'Read' }],
+        value: ['read', 'missing'],
+        leftLabel: 'Available',
+        rightLabel: 'Selected',
+      },
+    });
+
+    expect(screen.getByText('No available items')).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Read' })).toBeTruthy();
+    expect(screen.queryByText('missing')).toBeNull();
+  });
+
+  test('bind:value receives transfer updates', async () => {
+    render(TransferListFixture);
+    expect(screen.getByTestId('value').textContent).toBe('read');
+
+    await fireEvent.click(screen.getByRole('option', { name: 'Write' }));
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Move selected items to Granted permissions' }),
+    );
+
+    expect(screen.getByTestId('value').textContent).toBe('read,write');
+  });
+
+  test('index import is SSR-safe', async () => {
+    const module = await import('./index.ts');
+    expect(typeof module.default).toBe('function');
+    expect(module.TransferList).toBe(module.default);
+  });
+});

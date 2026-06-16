@@ -1,0 +1,12 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-masonry {
+    column-count: var(--cinder-masonry-columns, 3);
+    column-gap: var(--cinder-masonry-gap, var(--cinder-space-4));
+  }
+
+  .cinder-masonry > * {
+    break-inside: avoid;
+    margin-block-end: var(--cinder-masonry-gap, var(--cinder-space-4));
+  }
+}

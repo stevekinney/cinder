@@ -6,6 +6,16 @@
       "type": "string",
       "description": "Custom class merged onto the root `<nav>` element."
     },
+    "placement": {
+      "enum": ["top", "bottom"],
+      "description": "Visual placement mode. `bottom` renders a mobile tab-bar composition, but\nstill does not fix or stick itself to the viewport.",
+      "default": "top"
+    },
+    "showLabels": {
+      "enum": ["always", "active", "never"],
+      "description": "Label visibility for mobile bottom-tab compositions. Hidden labels remain in\nthe accessibility tree when wrapped in `[data-cinder-navigation-label]`.",
+      "default": "always"
+    },
     "mobileMenuOpen": {
       "type": "boolean",
       "description": "Two-way bindable open state of the mobile menu."
