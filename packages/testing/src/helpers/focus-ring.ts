@@ -6,8 +6,10 @@
  * does not engage `:focus-visible` in Chromium), so these helpers drive the
  * keyboard, resolve design tokens through the engine, and read computed style.
  *
- * This is the canonical home for the keyboard-walk idiom; `*-focus-rings`
- * specs should import from here rather than re-declaring it.
+ * These helpers are the shared home for the keyboard-walk idiom. New
+ * focus-ring specs should import them rather than re-declaring the idiom; the
+ * existing `*-focus-rings` specs predate this module and still inline their own
+ * copies.
  */
 
 import type { Locator, Page } from '@playwright/test';
@@ -39,12 +41,22 @@ export async function tabUntilFocused(
  * string by painting the token onto a probe span and reading its computed
  * color. Lets a test match the resolved token against a `box-shadow` value
  * without hard-coding the engine's serialization (rgb/oklch/etc).
+ *
+ * Throws if the token resolves to empty: an unset custom property would leave
+ * the probe at its inherited/default color, and a caller matching a
+ * `box-shadow` against that bogus color could pass vacuously. A missing token
+ * is a setup error, so fail loudly rather than silently weaken the guard.
  */
 export async function resolvedTokenColor(target: Locator, token: string): Promise<string> {
   return target.evaluate((element, tokenName) => {
     const value = getComputedStyle(element as HTMLElement)
       .getPropertyValue(tokenName)
       .trim();
+    if (value === '') {
+      throw new Error(
+        `resolvedTokenColor: custom property "${tokenName}" is unset on the target element`,
+      );
+    }
     const probe = document.createElement('span');
     probe.style.color = value;
     document.body.append(probe);
@@ -56,7 +68,13 @@ export async function resolvedTokenColor(target: Locator, token: string): Promis
   }, token);
 }
 
-/** Count comma-separated top-level box-shadow layers (commas inside fn args ignored). */
+/**
+ * Count comma-separated top-level box-shadow layers (commas inside fn args
+ * ignored). Returns 0 for the `none` keyword and the empty string so a caller
+ * cannot read a "1 layer" count off a box-shadow that paints nothing.
+ */
 export function boxShadowLayerCount(boxShadow: string): number {
-  return boxShadow.split(/,(?![^(]*\))/).length;
+  const value = boxShadow.trim();
+  if (value === '' || value === 'none') return 0;
+  return value.split(/,(?![^(]*\))/).length;
 }
