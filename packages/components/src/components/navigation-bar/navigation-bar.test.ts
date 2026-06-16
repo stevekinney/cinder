@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -221,6 +221,61 @@ describe('NavigationBar', () => {
     });
     expect(container.querySelector('.cinder-navigation-bar__menu-toggle')).toBeNull();
     expect(container.querySelector('nav')?.getAttribute('data-collapsible')).toBe('false');
+  });
+
+  test('placement defaults to top and showLabels defaults to always', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+    });
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('data-cinder-placement')).toBe('top');
+    expect(nav?.getAttribute('data-cinder-label-visibility')).toBe('always');
+  });
+
+  test('bottom placement emits bottom attributes and mobile item context without a menu toggle', () => {
+    let capturedVariant: string | undefined;
+    let capturedPlacement: string | undefined;
+    let capturedShowLabels: string | undefined;
+    const captureSnippet = createRawSnippet<
+      [{ variant: string; placement: string; showLabels: string }]
+    >((getCtx) => ({
+      render: () => `<span></span>`,
+      setup() {
+        const context = getCtx();
+        capturedVariant = context.variant;
+        capturedPlacement = context.placement;
+        capturedShowLabels = context.showLabels;
+      },
+    }));
+
+    const { container } = render(NavigationBar, {
+      items: captureSnippet as any,
+      placement: 'bottom',
+      showLabels: 'active',
+      menuToggle: toggleSnippet(),
+    });
+
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('data-cinder-placement')).toBe('bottom');
+    expect(nav?.getAttribute('data-cinder-label-visibility')).toBe('active');
+    expect(nav?.getAttribute('data-collapsible')).toBe('false');
+    expect(container.querySelector('.cinder-navigation-bar__menu-toggle')).toBeNull();
+    expect(capturedVariant).toBe('mobile');
+    expect(capturedPlacement).toBe('bottom');
+    expect(capturedShowLabels).toBe('active');
+  });
+
+  test('placement and label visibility data attributes cannot be clobbered by rest props', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      placement: 'bottom',
+      showLabels: 'never',
+      'data-cinder-placement': 'top',
+      'data-cinder-label-visibility': 'always',
+    } as any);
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('data-cinder-placement')).toBe('bottom');
+    expect(nav?.getAttribute('data-cinder-label-visibility')).toBe('never');
   });
 
   // ── mobileMenuOpen defaults ──────────────────────────────────────────────
@@ -549,5 +604,17 @@ describe('NavigationBar responsive CSS', () => {
     expect(navigationBarCss).toMatch(
       /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar__items\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?inline-size:\s*100%;/,
     );
+  });
+
+  test('bottom placement owns tab-bar geometry and label visibility without a new component directory', () => {
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar\[data-cinder-placement='bottom'\][\s\S]*?border-top:\s*1px solid var\(--cinder-border-muted\)/,
+    );
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar\[data-cinder-placement='bottom'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?flex-direction:\s*column;/,
+    );
+    expect(navigationBarCss).toContain("[data-cinder-label-visibility='active']");
+    expect(navigationBarCss).toContain('[data-cinder-navigation-label]');
+    expect(existsSync(new URL('../bottom-navigation', import.meta.url))).toBe(false);
   });
 });

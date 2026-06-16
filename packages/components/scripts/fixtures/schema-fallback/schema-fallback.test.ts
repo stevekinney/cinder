@@ -197,6 +197,13 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     ]);
   });
 
+  test('grid schema tightens numeric columns to positive integers', () => {
+    const { properties } = generateSchema('grid', 'grid');
+
+    expect(properties['columns']?.anyOf).toContainEqual({ type: 'string' });
+    expect(properties['columns']?.anyOf).toContainEqual({ type: 'integer', minimum: 1 });
+  });
+
   test('allOf schema modules preserve special characters through JSON string rendering', () => {
     const { schema, schemaModule } = generate('modal', 'modal');
     const parsedSchemaModule = parseSchemaModuleJson(schemaModule);

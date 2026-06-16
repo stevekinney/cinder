@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "grid",
+  "import": "@lostgradient/cinder/grid",
+  "examples": [
+    {
+      "id": "auto-fill",
+      "title": "Auto-fill cards",
+      "description": "Grid can create intrinsic responsive columns from a minimum item width.",
+      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n  import { Grid } from '@lostgradient/cinder/grid';\n</script>\n\n<Grid minItemWidth=\"14rem\" gap=\"var(--cinder-space-4)\">\n  <Card>Analytics</Card>\n  <Card>Integrations</Card>\n  <Card>Billing</Card>\n  <Card>Audit log</Card>\n</Grid>\n"
+    },
+    {
+      "id": "basic",
+      "title": "Explicit placement",
+      "description": "A 12-column grid using Grid.Item for spans while plain children use auto-placement.",
+      "code": "<script lang=\"ts\">\n  import { Grid } from '@lostgradient/cinder/grid';\n</script>\n\n<Grid columns={12} gap=\"var(--cinder-space-4)\" aria-label=\"Profile form layout\">\n  <Grid.Item span={6}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">First name</div>\n  </Grid.Item>\n  <Grid.Item span={6}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">Last name</div>\n  </Grid.Item>\n  <Grid.Item span={12}>\n    <div style=\"padding: 1rem; border: 1px solid var(--cinder-border-muted);\">Email address</div>\n  </Grid.Item>\n</Grid>\n"
+    }
+  ]
+}

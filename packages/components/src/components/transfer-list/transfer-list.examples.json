@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "transfer-list",
+  "import": "@lostgradient/cinder/transfer-list",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Permission assignment",
+      "description": "Move selected or all permissions between available and granted lists.",
+      "code": "<script lang=\"ts\">\n  import { TransferList } from '@lostgradient/cinder/transfer-list';\n\n  const items = [\n    { id: 'read', label: 'Read' },\n    { id: 'write', label: 'Write' },\n    { id: 'deploy', label: 'Deploy' },\n    { id: 'billing', label: 'Billing', disabled: true },\n  ];\n\n  let value = $state(['read']);\n</script>\n\n<TransferList\n  {items}\n  bind:value\n  leftLabel=\"Available permissions\"\n  rightLabel=\"Granted permissions\"\n/>\n\n<p>Granted: {value.join(', ') || 'None'}</p>\n"
+    }
+  ]
+}
