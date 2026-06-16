@@ -9,8 +9,13 @@
  *   1. WCAG contrast — every foreground/label/background pair clears its floor
  *      (AA 4.5:1 for text and labels; WCAG 1.4.11 3:1 for the focus ring and other
  *      non-text UI).
- *   2. sRGB gamut — every authored OKLCH color resolves inside sRGB, so the browser
- *      renders the specified chroma instead of silently clamping it.
+ *   2. sRGB gamut — the brand/status/chart tokens this color contract governs (and the
+ *      interactive/contrast tokens derived from them) resolve inside sRGB, so the browser
+ *      renders the specified chroma instead of silently clamping it. This is a TARGETED
+ *      gate over the governed palette, not a universal "every oklch() property" sweep —
+ *      the parser handles only the literal oklch subset these tokens use (no alpha-slash,
+ *      hex, or var()-fallback forms that neutral/surface tokens use). See the gamut
+ *      describe block for the exact scope and why a universal sweep is out of scope.
  *   3. The 8 categorical chart series stay mutually distinguishable: min pairwise
  *      CIEDE2000 ΔE00 ≥ 12 (normal vision) AND a min pairwise CIE L* separation ≥ 4 per
  *      arm. The L* floor is a SECONDARY distinguishing cue — lightness stays a usable
@@ -309,6 +314,11 @@ const danger = readOklchToken(css, '--cinder-danger');
 const successContrast = readOklchToken(css, '--cinder-success-contrast');
 const warningContrast = readOklchToken(css, '--cinder-warning-contrast');
 const dangerContrast = readOklchToken(css, '--cinder-danger-contrast');
+const infoBorder = readOklchToken(css, '--cinder-color-info-border');
+// Authored (not relative-derived) so the gamut gate can parse them directly — red (h 25)
+// clamps at low lightness, so these are pinned to their in-gamut chroma maxima.
+const dangerHover = readOklchToken(css, '--cinder-danger-hover');
+const dangerActive = readOklchToken(css, '--cinder-danger-active');
 const bg = readOklchToken(css, '--cinder-bg');
 const surface = readOklchToken(css, '--cinder-surface');
 const surfaceInset = readOklchToken(css, '--cinder-surface-inset');
@@ -459,6 +469,14 @@ describe('focus ring contrast (WCAG 1.4.11)', () => {
 });
 
 describe('sRGB gamut integrity (no silent chroma clamping)', () => {
+  // SCOPE: this is a TARGETED gamut gate over the palette tokens this design system's
+  // color contract governs — the literal `light-dark(oklch(...))` brand/status/chart
+  // tokens below, PLUS the derived interactive/contrast tokens that resolve from them
+  // (computed here from their real basis). It is deliberately NOT a universal "every
+  // oklch() custom property" sweep: the parser handles only the literal oklch subset
+  // these tokens use, not the alpha-slash (`oklch(... / a)`), hex, or `var()`-fallback
+  // forms that neutral/surface/scrollbar tokens use. A universal gate would need a real
+  // CSS Color 4 resolver; that is intentionally out of scope (see parseOklch's contract).
   const namedTokens: Record<string, TokenArms> = {
     accent,
     accentContrast,
@@ -469,6 +487,18 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     success,
     warning,
     danger,
+    // Contrast labels (dark arms carry chroma; light arms are pure white).
+    infoContrast,
+    successContrast,
+    warningContrast,
+    dangerContrast,
+    // Soft-surface info border (success/warning/danger borders parse the same way; info
+    // is the one this PR re-hued, so it anchors the border family here).
+    infoBorder,
+    // Authored danger hover/active — pinned to their in-gamut chroma maxima on the light
+    // arm because red (h 25) clamps at low lightness; this gate is what enforces that.
+    dangerHover,
+    dangerActive,
   };
   for (const [name, token] of Object.entries(namedTokens)) {
     for (const arm of ['light', 'dark'] as const) {
@@ -477,6 +507,41 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
       });
     }
   }
+
+  // Derived-from-accent interactive states resolve via relative-color syntax. Indigo
+  // (h 270) has ample gamut headroom at lower lightness, but assert it rather than
+  // assume it — these are the tokens that paint hover/pressed accent fills and the ring.
+  const derivedFromAccent: Record<string, TokenArms> = {
+    accentHover: {
+      light: deriveFromAccent(accent.light, -0.08),
+      dark: deriveFromAccent(accent.dark, -0.08),
+    },
+    accentActive: {
+      light: deriveFromAccent(accent.light, -0.15),
+      dark: deriveFromAccent(accent.dark, -0.15),
+    },
+    accentActiveOnFill: {
+      light: deriveFromAccent(accent.light, -0.11),
+      dark: deriveFromAccent(accent.dark, -0.11),
+    },
+    accentTextHover: {
+      light: deriveFromAccent(accentText.light, -0.08),
+      dark: deriveFromAccent(accentText.dark, -0.08),
+    },
+    // --cinder-ring-color: oklch(from accent <L> <C> h) — fixed L/C, accent hue only.
+    ringColor: {
+      light: { l: 0.55, c: 0.16, h: accent.light.h },
+      dark: { l: 0.7, c: 0.14, h: accent.dark.h },
+    },
+  };
+  for (const [name, token] of Object.entries(derivedFromAccent)) {
+    for (const arm of ['light', 'dark'] as const) {
+      it(`${name} ${arm} arm is in sRGB gamut`, () => {
+        expect(isInSrgbGamut(token[arm])).toBe(true);
+      });
+    }
+  }
+
   chartSeries.forEach((series, index) => {
     for (const arm of ['light', 'dark'] as const) {
       it(`chart-series-${index + 1} ${arm} arm is in sRGB gamut`, () => {

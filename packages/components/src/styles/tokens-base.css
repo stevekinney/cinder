@@ -295,8 +295,19 @@
   --cinder-success-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 145));
   --cinder-warning-contrast: light-dark(oklch(100% 0 0), oklch(20% 0.04 75));
   --cinder-info-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 230));
-  --cinder-danger-hover: oklch(from var(--cinder-danger) calc(l - 0.08) c h);
-  --cinder-danger-active: oklch(from var(--cinder-danger) calc(l - 0.15) c h);
+  /* Danger hover/active are authored explicitly rather than derived as
+     oklch(from --cinder-danger calc(l - X) c h). The relative-color form holds the
+     fill's chroma (0.202) constant while dropping lightness, but red (h 25) is near the
+     sRGB gamut boundary — at the light-arm hover/active lightnesses (l 0.50 → 0.42 → 0.35)
+     the maximum in-gamut chroma falls to ~0.171 / ~0.142, so a held 0.202 would silently
+     clamp and render desaturated. Each light-arm state is therefore pinned to its own
+     in-gamut chroma maximum (fitted, not capped on the fill — the fill keeps full 0.202),
+     keeping the darkening monotonic AND in gamut. The dark arm (base l 0.72) stays well
+     clear of the boundary, so it keeps the same l-0.08 / l-0.15 step at chroma 0.172.
+     White labels clear WCAG AA on every state (6.7 / 9.3 / 12.1 : 1). Gated by
+     check-token-contrast.test.ts. */
+  --cinder-danger-hover: light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25));
+  --cinder-danger-active: light-dark(oklch(35% 0.142 25), oklch(57% 0.172 25));
 
   /* Status — semantic triples (foreground / background / border) for soft surfaces.
      Use these in components like Alert and Toast where you need a soft tinted surface
