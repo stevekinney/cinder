@@ -8,6 +8,8 @@ export type TreeItemRowContext = {
   level: number;
   checkboxSelection: boolean;
   selectionState: TreeItemSelectionState;
+  editing: boolean;
+  beginEdit: () => void;
   toggleSelection: () => void;
 };
 
@@ -19,6 +21,8 @@ export type TreeItemProps = {
   label: string;
   /** When true, the item cannot be selected or actioned. Still keyboard-reachable. */
   disabled?: boolean;
+  /** Render a reorder handle when the parent Tree provides onReorder. */
+  draggable?: boolean;
   /**
    * Marks the node as an expandable branch. A node is a leaf unless it sets `branch`
    * or `loadChildren`; supplying a `children` snippet alone is not enough. Marking the
@@ -36,6 +40,8 @@ export type TreeItemProps = {
   loadChildren?: (context: { id: string; signal: AbortSignal }) => void | Promise<void>;
   /** Called when `loadChildren` rejects with a non-abort error. */
   onLoadError?: (error: unknown, itemId: string) => void;
+  /** Called when inline label editing commits a new label. */
+  onRename?: (itemId: string, nextLabel: string) => void | Promise<void>;
   /** Explicit selectable ids controlled by this item in cascade checkbox-selection mode. */
   selectionScopeIds?: string[];
   /** Optional row content snippet override. Default renders `label`. */

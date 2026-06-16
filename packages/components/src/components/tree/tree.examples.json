@@ -32,6 +32,18 @@
       "title": "Long labels and narrow widths",
       "description": "Long item labels truncate with an ellipsis rather than forcing the tree wider than its container. The full text stays available to assistive tech via the visually-hidden label. Resize narrow to see truncation; rows keep a comfortable touch target.",
       "code": "<script lang=\"ts\">\n  import { Tree } from '@lostgradient/cinder/tree';\n\n  let expandedIds = $state<string[]>(['reports']);\n</script>\n\n<!-- Constrained width to demonstrate truncation without needing a viewport resize. -->\n<div\n  style=\"max-inline-size: 18rem; border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-md); padding: var(--cinder-space-2, 0.5rem);\"\n>\n  <Tree aria-label=\"Documents\" bind:expandedIds>\n    <Tree.Item id=\"reports\" label=\"Quarterly financial reports and supporting appendices\" branch>\n      <Tree.Item\n        id=\"q1\"\n        label=\"Q1 2026 — revenue, expenses, and reconciliation worksheet (final, approved)\"\n      />\n      <Tree.Item id=\"q2\" label=\"Q2 2026 — preliminary figures pending audit committee sign-off\" />\n    </Tree.Item>\n    <Tree.Item id=\"readme\" label=\"A short label\" />\n  </Tree>\n</div>\n"
+    },
+    {
+      "id": "reorder",
+      "title": "Drag reorder",
+      "description": "Draggable tree items emit a consumer-owned reorder target. The example records the last drop so pointer behavior can be verified.",
+      "code": "<script lang=\"ts\">\n  import { Tree } from '@lostgradient/cinder/tree';\n\n  type ReorderTarget = {\n    id: string;\n    position: 'before' | 'after' | 'child';\n  };\n\n  const items = [\n    { id: 'alpha', label: 'Alpha' },\n    { id: 'beta', label: 'Beta', branch: true },\n    { id: 'gamma', label: 'Gamma' },\n    { id: 'delta', label: 'Delta' },\n    { id: 'epsilon', label: 'Epsilon' },\n    { id: 'zeta', label: 'Zeta' },\n  ];\n\n  let lastDrop = $state('none');\n\n  function handleReorder(draggedId: string, target: ReorderTarget): void {\n    lastDrop = `${draggedId}:${target.position}:${target.id}`;\n  }\n</script>\n\n<Tree\n  class=\"reorder-tree\"\n  aria-label=\"Reorder files\"\n  onReorder={handleReorder}\n  style=\"max-block-size: 7rem; overflow: auto; border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-md);\"\n>\n  {#each items as item (item.id)}\n    {#if item.branch}\n      <Tree.Item id={item.id} label={item.label} branch draggable />\n    {:else}\n      <Tree.Item id={item.id} label={item.label} draggable />\n    {/if}\n  {/each}\n</Tree>\n\n<p data-testid=\"last-drop\" style=\"margin-block-start: 0.75rem;\">\n  {lastDrop}\n</p>\n"
+    },
+    {
+      "id": "virtualized",
+      "title": "Virtualized tree",
+      "description": "A data-driven tree renders a small window from a 10,000-item collection while preserving full aria-posinset and aria-setsize metadata.",
+      "code": "<script lang=\"ts\">\n  import { Tree, type TreeDataItem } from '@lostgradient/cinder/tree';\n\n  const items: TreeDataItem[] = Array.from({ length: 10_000 }, (_, index) => ({\n    id: `virtual-file-${index}`,\n    label: `Virtual file ${index}`,\n  }));\n</script>\n\n<Tree\n  aria-label=\"Virtualized files\"\n  {items}\n  virtualized\n  virtualizationEstimatedRowHeight={32}\n  virtualizationHeight={320}\n  style=\"border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-md);\"\n/>\n"
     }
   ]
 }

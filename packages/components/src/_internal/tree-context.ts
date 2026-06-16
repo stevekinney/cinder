@@ -2,6 +2,7 @@ import { createContext } from 'svelte';
 
 import type { TreeSelectionState } from '../components/tree/tree-selection.ts';
 import { optionalContext } from './optional-context.ts';
+import type { TreeDragController } from './tree-drag-controller.svelte.ts';
 import type { TreeNodeRegistration } from './tree-registry.svelte.ts';
 
 // Inline the selection mode type here to avoid a circular import with
@@ -33,9 +34,19 @@ export type TreeContext = {
   readonly selectedIds: readonly string[];
   /** Reactive getter — reading inside $derived registers cross-component dependency. */
   readonly focusedId: string | null;
+  readonly filtering: boolean;
+  readonly filterValue: string;
+  readonly hasRegisteredItems: boolean;
+  readonly expandableBranchCount: number;
+  readonly hasExpandedItems: boolean;
+  readonly dragController: TreeDragController | null;
+  readonly dragInstructionsId: string;
   isExpanded(id: string): boolean;
   isSelected(id: string): boolean;
   isFocused(id: string): boolean;
+  isVisible(id: string): boolean;
+  hasVisibleDescendant(id: string): boolean;
+  matchesFilter(label: string, id: string): boolean;
   checkboxSelectionActive(): boolean;
   selectionStateFor(id: string): TreeItemSelectionState;
   toggleSelectionScope(id: string): void;
@@ -47,9 +58,16 @@ export type TreeContext = {
     includeDescendants: boolean,
   ): readonly string[];
   setExpanded(id: string, next: boolean): void;
+  expandAll(): Promise<void>;
+  collapseAll(): void;
+  expandOneLevel(): void;
+  focusItem(id: string): void;
+  expandToItem(id: string): Promise<void>;
+  scrollToRow(id: string, options?: ScrollIntoViewOptions): void;
   toggleSelected(id: string, event: KeyboardEvent | MouseEvent | null): void;
   register(node: TreeNodeRegistration): () => void;
   focusVisibleDelta(currentId: string, delta: number): void;
+  canFocusVisibleDelta(currentId: string, delta: number): boolean;
   focusFirstVisible(): void;
   focusLastVisible(): void;
   focusParent(currentId: string): void;

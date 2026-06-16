@@ -1,0 +1,261 @@
+/// <reference lib="dom" />
+import { afterEach, describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
+
+import type { TreeDataItem } from '../../_internal/tree-data.ts';
+import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { TreeRef } from './tree.types.ts';
+
+setupHappyDom();
+
+const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
+const { default: Tree } = await import('./tree.svelte');
+
+afterEach(() => cleanup());
+
+function flatItems(count: number): TreeDataItem[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `item-${index}`,
+    label: `Item ${index}`,
+  }));
+}
+
+function nestedItems(): TreeDataItem[] {
+  return [
+    {
+      id: 'projects',
+      label: 'Projects',
+      children: [
+        { id: 'apollo', label: 'Apollo' },
+        { id: 'zeus', label: 'Zeus', disabled: true },
+      ],
+    },
+    {
+      id: 'archive',
+      label: 'Archive',
+      children: [{ id: 'old-apollo', label: 'Old Apollo' }],
+    },
+  ];
+}
+
+function treeItems(container: HTMLElement): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>('[role="treeitem"]')];
+}
+
+function treeItemById(container: HTMLElement, id: string): HTMLElement {
+  const item = treeItems(container).find((element) => element.dataset['cinderTreeItemId'] === id);
+  if (!item) throw new Error(`Missing virtualized tree item: ${id}`);
+  return item;
+}
+
+function visibleItemIds(container: HTMLElement): string[] {
+  return treeItems(container).map((item) => item.dataset['cinderTreeItemId'] ?? '');
+}
+
+describe('Tree — virtualized data path', () => {
+  test('renders only a window while aria metadata reflects the full data set', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: flatItems(100),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    await waitFor(() => expect(treeItems(container).length).toBeGreaterThanOrEqual(10));
+    expect(treeItems(container).length).toBeLessThan(100);
+    expect(tree.getAttribute('aria-activedescendant')).toBe(`${tree.id}-item-0`);
+
+    const first = treeItems(container)[0]!;
+    expect(first.dataset['cinderTreeItemId']).toBe('item-0');
+    expect(first.hasAttribute('data-cinder-focused')).toBe(true);
+    expect(first.getAttribute('aria-posinset')).toBe('1');
+    expect(first.getAttribute('aria-setsize')).toBe('100');
+  });
+
+  test('scrolling shifts the rendered window and keeps full aria-posinset', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: flatItems(100),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    tree.scrollTop = 1000;
+    await fireEvent.scroll(tree);
+
+    await waitFor(() =>
+      expect(
+        treeItems(container).some((item) => item.dataset['cinderTreeItemId'] === 'item-50'),
+      ).toBe(true),
+    );
+    const row = treeItems(container).find(
+      (item) => item.dataset['cinderTreeItemId'] === 'item-50',
+    )!;
+    expect(row.getAttribute('aria-posinset')).toBe('51');
+    expect(row.getAttribute('aria-setsize')).toBe('100');
+
+    const activeId = tree.getAttribute('aria-activedescendant');
+    expect(activeId).toBe(`${tree.id}-item-0`);
+    expect(container.querySelector(`#${activeId}`)).not.toBeNull();
+  });
+
+  test('keyboard focus scrolls off-window items before updating aria-activedescendant', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: flatItems(100),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    tree.focus();
+    await fireEvent.keyDown(tree, { key: 'End' });
+
+    await waitFor(() =>
+      expect(tree.getAttribute('aria-activedescendant')).toBe(`${tree.id}-item-99`),
+    );
+    expect(treeItems(container).some((item) => item.id === `${tree.id}-item-99`)).toBe(true);
+  });
+
+  test('filtering retains matching descendants and ancestors without mutating expandedIds', async () => {
+    let expandedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: nestedItems(),
+        filterValue: 'old',
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleItemIds(container)).toEqual(['archive', 'old-apollo']);
+    });
+    expect(treeItemById(container, 'archive').getAttribute('aria-expanded')).toBe('true');
+    expect(expandedIds).toEqual([]);
+  });
+
+  test('disableTypeahead prevents virtualized typeahead focus movement', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: [
+          { id: 'alpha', label: 'Alpha' },
+          { id: 'beta', label: 'Beta' },
+        ],
+        disableTypeahead: true,
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    tree.focus();
+    await fireEvent.keyDown(tree, { key: 'b' });
+
+    expect(tree.getAttribute('aria-activedescendant')).toBe(`${tree.id}-item-0`);
+    expect(treeItemById(container, 'alpha').hasAttribute('data-cinder-focused')).toBe(true);
+    expect(treeItemById(container, 'beta').hasAttribute('data-cinder-focused')).toBe(false);
+  });
+
+  test('disabled virtualized rows receive focus but do not change selection', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        selectionMode: 'single',
+        items: [
+          { id: 'alpha', label: 'Alpha', disabled: true },
+          { id: 'beta', label: 'Beta' },
+        ],
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+      },
+    });
+
+    await fireEvent.click(treeItemById(container, 'alpha'));
+
+    expect(selectedIds).toEqual([]);
+    expect(treeItemById(container, 'alpha').hasAttribute('data-cinder-focused')).toBe(true);
+    expect(treeItemById(container, 'alpha').getAttribute('aria-selected')).toBe('false');
+  });
+
+  test('cascade selection includes virtualized descendants and skips disabled descendants', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        selectionMode: 'multiple',
+        selectionBehavior: 'cascade',
+        expandedIds: ['projects'],
+        items: nestedItems(),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 120,
+      },
+    });
+
+    expect(treeItemById(container, 'projects').getAttribute('aria-expanded')).toBe('true');
+    await fireEvent.keyDown(treeItemById(container, 'projects'), { key: ' ' });
+
+    await waitFor(() => {
+      expect(treeItemById(container, 'projects').getAttribute('aria-selected')).toBe('true');
+      expect(treeItemById(container, 'apollo').getAttribute('aria-selected')).toBe('true');
+      expect(treeItemById(container, 'zeus').getAttribute('aria-selected')).toBe('false');
+    });
+  });
+
+  test('TreeRef scrollToRow uses the virtualizer for data rows', async () => {
+    let treeRef: TreeRef | undefined;
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: flatItems(100),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+        get ref() {
+          return treeRef;
+        },
+        set ref(value: TreeRef | undefined) {
+          treeRef = value;
+        },
+      },
+    });
+
+    await tick();
+    treeRef?.scrollToRow('item-75', { block: 'center' });
+
+    await waitFor(() =>
+      expect(
+        treeItems(container).some((item) => item.dataset['cinderTreeItemId'] === 'item-75'),
+      ).toBe(true),
+    );
+  });
+});

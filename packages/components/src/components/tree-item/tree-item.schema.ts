@@ -16,6 +16,10 @@ const schema = {
       type: 'boolean',
       description: 'When true, the item cannot be selected or actioned. Still keyboard-reachable.',
     },
+    draggable: {
+      type: 'boolean',
+      description: 'Render a reorder handle when the parent Tree provides onReorder.',
+    },
     branch: {
       type: 'boolean',
       description:
@@ -53,6 +57,11 @@ const schema = {
         name: 'onLoadError',
         reason: 'function-or-snippet',
         description: 'Called when `loadChildren` rejects with a non-abort error.',
+      },
+      {
+        name: 'onRename',
+        reason: 'function-or-snippet',
+        description: 'Called when inline label editing commits a new label.',
       },
       {
         name: 'row',

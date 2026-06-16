@@ -32,6 +32,29 @@ const schema = {
       },
       description: 'Currently expanded branch ids. Bindable.',
     },
+    virtualized: {
+      type: 'boolean',
+      description: 'Use the data-driven virtualized render path for large trees. Default: false.',
+    },
+    virtualizationEstimatedRowHeight: {
+      type: 'number',
+      description: 'Estimated row height for virtualized Tree rows. Default: 36.',
+    },
+    virtualizationOverscan: {
+      type: 'number',
+      description: 'Extra rows rendered before and after the viewport. Default: 4.',
+    },
+    virtualizationHeight: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description: "Block size for the virtualized scroll viewport. Default: '20rem'.",
+    },
     'aria-label': {
       type: 'string',
       description:
@@ -46,6 +69,20 @@ const schema = {
       type: 'boolean',
       description: 'Disable typeahead. Default: false.',
     },
+    filterValue: {
+      type: 'string',
+      description: 'Controlled filter query. When provided, matching is driven by this value.',
+    },
+    filterPlaceholder: {
+      type: 'string',
+      description:
+        "Placeholder and accessible label for the built-in search input. Default: 'Search tree'.",
+    },
+    showSearch: {
+      type: 'boolean',
+      description:
+        'Render the built-in search input before the role="tree" element. Default: false.',
+    },
     class: {
       type: 'string',
       description: 'Additional CSS class merged with `.cinder-tree`.',
@@ -57,13 +94,43 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
-        required: true,
         description: 'Tree items (snippet).',
+      },
+      {
+        name: 'filterPredicate',
+        reason: 'function-or-snippet',
+        description: 'Custom filter predicate. Default: case-insensitive label substring matching.',
+      },
+      {
+        name: 'items',
+        reason: 'unknown-shape',
+        description: 'Data-driven Tree items. Required when virtualized is true.',
+      },
+      {
+        name: 'onFilterChange',
+        reason: 'function-or-snippet',
+        description: 'Fires whenever the built-in search input changes the filter query.',
+      },
+      {
+        name: 'onReorder',
+        reason: 'function-or-snippet',
+        description:
+          'Called when a draggable item is dropped before, after, or into another tree item.',
+      },
+      {
+        name: 'ref',
+        reason: 'unknown-shape',
+        description: 'Typed programmatic handle. Use `bind:ref` to receive it.',
       },
       {
         name: 'selectionControls',
         reason: 'function-or-snippet',
         description: 'Optional selection controls rendered before the role="tree" element.',
+      },
+      {
+        name: 'virtualizedItem',
+        reason: 'function-or-snippet',
+        description: 'Optional custom virtualized row renderer.',
       },
     ],
   },

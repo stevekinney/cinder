@@ -1,9 +1,10 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 import type { Snippet } from 'svelte';
-import { createRawSnippet, mount, unmount } from 'svelte';
+import { createRawSnippet, mount, tick, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 
 setupHappyDom();
@@ -15,6 +16,10 @@ const { default: TreeSelectAll } = await import('../_tree-select-all/tree-select
 const { default: TreeTestHarness } = await import('../_tree-test-harness.svelte');
 const { default: TreeAttachFixture } =
   await import('../../test/fixtures/tree-attach-fixture.svelte');
+const treeFilterHydrationSource = new URL(
+  '../../test/fixtures/tree-filter-hydration-fixture.svelte',
+  import.meta.url,
+).pathname;
 
 afterEach(() => cleanup());
 
@@ -60,6 +65,29 @@ function treeItem(container: HTMLElement, label: string): HTMLElement | null {
   return container.querySelector<HTMLElement>(
     `[role="treeitem"][aria-labelledby="${labelElement.id}"]`,
   );
+}
+
+function visibleTreeItemLabels(container: HTMLElement): string[] {
+  return [...container.querySelectorAll<HTMLElement>('[role="treeitem"]')]
+    .filter((element) => !element.hasAttribute('data-cinder-hidden'))
+    .map((element) => {
+      const labelId = element.getAttribute('aria-labelledby');
+      const localLabel = [...container.querySelectorAll<HTMLElement>('[id]')].find(
+        (candidate) => candidate.id === labelId,
+      );
+      return labelId
+        ? (localLabel?.textContent ??
+            container.ownerDocument.getElementById(labelId)?.textContent ??
+            '')
+        : '';
+    })
+    .filter(Boolean);
+}
+
+async function flushTreeFilterStatus(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 520));
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await tick();
 }
 
 function treeItemsSnippet(
@@ -143,6 +171,32 @@ describe('Tree — structure and ARIA', () => {
     });
     expect(container.firstElementChild?.getAttribute('role')).toBe('tree');
     expect(container.querySelector('.cinder-tree-root')).toBeNull();
+  });
+
+  test('native attributes are forwarded to the role tree element', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Test tree',
+        'data-testid': 'tree-root',
+        style: 'max-block-size: 7rem; overflow: auto;',
+        children: textSnippet(''),
+      },
+    });
+    const tree = container.querySelector('[role="tree"]');
+    expect(tree?.getAttribute('data-testid')).toBe('tree-root');
+    expect(tree?.getAttribute('style')).toContain('max-block-size: 7rem');
+  });
+
+  test('provided id is used for the role tree element', () => {
+    const { container } = render(Tree, {
+      props: {
+        id: 'custom-tree-id',
+        'aria-label': 'Test tree',
+        children: textSnippet(''),
+      },
+    });
+
+    expect(container.querySelector('[role="tree"]')?.id).toBe('custom-tree-id');
   });
 
   test('aria-multiselectable="true" only in multiple mode', () => {
@@ -338,6 +392,305 @@ describe('Tree — structure and ARIA', () => {
     } finally {
       console.warn = originalWarn;
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Filtering
+// ---------------------------------------------------------------------------
+
+describe('Tree — filter/search', () => {
+  test('renders the search input outside role="tree" with aria-controls', () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        children: treeItemsSnippet([{ id: 'apollo', label: 'Apollo' }]),
+      },
+    });
+
+    const root = container.querySelector('.cinder-tree-root');
+    const tree = container.querySelector<HTMLElement>('[role="tree"]');
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]');
+
+    expect(root).not.toBeNull();
+    expect(root?.firstElementChild?.contains(search)).toBe(true);
+    expect(tree?.contains(search)).toBe(false);
+    expect(search?.getAttribute('aria-controls')).toBe(tree?.id);
+    expect(search?.getAttribute('aria-label')).toBe('Search tree');
+    expect(search?.autocomplete).toBe('off');
+    expect(search?.getAttribute('spellcheck')).toBe('false');
+  });
+
+  test('hides non-matching items while retaining ancestors of deep matches', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'apollo',
+        children: treeItemsSnippet([
+          {
+            id: 'projects',
+            label: 'Projects',
+            branch: true,
+            children: [
+              { id: 'apollo', label: 'Apollo' },
+              { id: 'borealis', label: 'Borealis' },
+            ],
+          },
+          { id: 'archive', label: 'Archive' },
+        ]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Projects', 'Apollo']);
+    });
+    expect(treeItem(container, 'Projects')?.hasAttribute('data-cinder-hidden')).toBe(false);
+    expect(treeItem(container, 'Apollo')?.hasAttribute('data-cinder-hidden')).toBe(false);
+    expect(treeItem(container, 'Borealis')?.hasAttribute('data-cinder-hidden')).toBe(true);
+    expect(treeItem(container, 'Archive')?.hasAttribute('data-cinder-hidden')).toBe(true);
+  });
+
+  test('shows matching descendants through a view-only expansion without mutating expandedIds', async () => {
+    let expandedIds = ['existing'];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'apollo',
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'projects',
+            label: 'Projects',
+            branch: true,
+            children: [{ id: 'apollo', label: 'Apollo' }],
+          },
+          {
+            id: 'existing',
+            label: 'Existing',
+            branch: true,
+            children: [{ id: 'already-open', label: 'Already Open' }],
+          },
+        ]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Projects', 'Apollo']);
+    });
+    expect(treeItem(container, 'Projects')?.getAttribute('aria-expanded')).toBe('true');
+    expect(expandedIds).toEqual(['existing']);
+  });
+
+  test('shows a non-interactive empty state when no items match', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'nomatch',
+        children: treeItemsSnippet([{ id: 'apollo', label: 'Apollo' }]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual([]);
+    });
+    const empty = container.querySelector<HTMLElement>('.cinder-tree__empty');
+    expect(empty?.getAttribute('role')).toBe('none');
+    expect(empty?.textContent).toContain('No results');
+  });
+
+  test('clearing the controlled filter removes stale hidden state', async () => {
+    const { container, rerender } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'apollo',
+        children: treeItemsSnippet([
+          { id: 'apollo', label: 'Apollo' },
+          { id: 'archive', label: 'Archive' },
+        ]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Apollo']);
+    });
+
+    await rerender({
+      'aria-label': 'Project tree',
+      showSearch: true,
+      filterValue: '',
+      children: treeItemsSnippet([
+        { id: 'apollo', label: 'Apollo' },
+        { id: 'archive', label: 'Archive' },
+      ]),
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Apollo', 'Archive']);
+    });
+    expect(treeItem(container, 'Archive')?.hasAttribute('data-cinder-hidden')).toBe(false);
+    expect(container.querySelector('.cinder-tree__empty')).toBeNull();
+  });
+
+  test('uncontrolled search input filters and reports changes', async () => {
+    const changes: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        onFilterChange: (value: string) => changes.push(value),
+        children: treeItemsSnippet([
+          { id: 'apollo', label: 'Apollo' },
+          { id: 'archive', label: 'Archive' },
+        ]),
+      },
+    });
+
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]')!;
+    await fireEvent.input(search, { target: { value: 'arch' } });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Archive']);
+    });
+    expect(changes).toEqual(['arch']);
+  });
+
+  test('default filter is case-insensitive but does not fold diacritics', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'cafe',
+        children: treeItemsSnippet([{ id: 'cafe', label: 'Café' }]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual([]);
+    });
+  });
+
+  test('custom filter predicate controls matching', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'a1',
+        filterPredicate: (_label: string, id: string, query: string) => id.endsWith(query),
+        children: treeItemsSnippet([
+          { id: 'project-a1', label: 'Apollo' },
+          { id: 'project-b2', label: 'Also has a1 text' },
+        ]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Apollo']);
+    });
+  });
+
+  test('ArrowDown from search focuses the first visible item and Escape clears the query', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        children: treeItemsSnippet([
+          { id: 'alpha', label: 'Alpha' },
+          { id: 'beta', label: 'Beta' },
+        ]),
+      },
+    });
+
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]')!;
+    await fireEvent.input(search, { target: { value: 'bet' } });
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Beta']);
+    });
+
+    search.focus();
+    await fireEvent.keyDown(search, { key: 'ArrowDown' });
+    const beta = treeItem(container, 'Beta') as HTMLElement;
+    expect(document.activeElement).toBe(beta);
+    expect(beta.getAttribute('tabindex')).toBe('0');
+
+    search.focus();
+    await fireEvent.keyDown(search, { key: 'Escape' });
+    await waitFor(() => {
+      expect(search.value).toBe('');
+      expect(visibleTreeItemLabels(container)).toEqual(['Alpha', 'Beta']);
+      expect(document.activeElement).toBe(search);
+    });
+  });
+
+  test('announces debounced result counts and marks the tree busy while pending', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        children: treeItemsSnippet([
+          { id: 'apollo', label: 'Apollo' },
+          { id: 'archive', label: 'Archive' },
+        ]),
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]')!;
+
+    await fireEvent.input(search, { target: { value: 'apo' } });
+    expect(tree.getAttribute('aria-busy')).toBe('true');
+
+    await flushTreeFilterStatus();
+    const liveRegion = container.querySelector('[role="status"]');
+    expect(tree.hasAttribute('aria-busy')).toBe(false);
+    expect(liveRegion?.getAttribute('aria-live')).toBe('polite');
+    expect(liveRegion?.getAttribute('aria-atomic')).toBe('true');
+    expect(liveRegion?.textContent).toContain('1 result found.');
+  });
+
+  test('renders a visual highlight without changing the treeitem accessible name', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'pol',
+        children: treeItemsSnippet([{ id: 'apollo', label: 'Apollo' }]),
+      },
+    });
+
+    await waitFor(() => {
+      const item = treeItem(container, 'Apollo');
+      const mark = item?.querySelector('mark');
+      expect(mark?.getAttribute('aria-hidden')).toBe('true');
+      expect(mark?.textContent).toBe('pol');
+      const labelId = item?.getAttribute('aria-labelledby');
+      expect(labelId).toBeTruthy();
+      expect(container.ownerDocument.getElementById(labelId!)?.textContent).toBe('Apollo');
+    });
+  });
+
+  test('filtered SSR markup is invariant for the client build', async () => {
+    const result = await checkBuildFlagHydrationSafety(treeFilterHydrationSource, {
+      filterValue: 'apollo',
+    });
+
+    const serverContainer = document.createElement('div');
+    serverContainer.innerHTML = result.serverHtml;
+    const clientContainer = document.createElement('div');
+    clientContainer.innerHTML = result.clientHtml;
+
+    expect(result.buildFlagInvariant).toBe(true);
+    expect(visibleTreeItemLabels(serverContainer)).toEqual(['Apollo']);
+    expect(visibleTreeItemLabels(clientContainer)).toEqual(['Apollo']);
   });
 });
 

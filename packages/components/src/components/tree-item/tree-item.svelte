@@ -26,6 +26,13 @@
     tryGetTreeItemParentContext,
   } from '../../_internal/tree-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
+
+  type LabelSegment = {
+    text: string;
+    highlighted: boolean;
+    start: number;
+  };
 
   // ---------------------------------------------------------------------------
   // Props
@@ -35,9 +42,11 @@
     id,
     label,
     disabled = false,
+    draggable = false,
     branch = false,
     loadChildren,
     onLoadError,
+    onRename,
     selectionScopeIds,
     row,
     children,
@@ -73,9 +82,18 @@
   let busy = $state(false);
   let loaded = $state(false);
   let activeController: AbortController | null = null;
+  let editing = $state(false);
+  let editValue = $state('');
+  let renamePending = $state(false);
+  let renameError = $state('');
+  let renameAnnouncement = $state('');
+  let renameAnnouncementSequence = $state(0);
 
   let outerElement: HTMLElement | undefined = $state();
+  let renameInputElement: HTMLInputElement | undefined = $state();
+  let dragHandleElement: HTMLButtonElement | undefined = $state();
   const treeItemElementId = $props.id();
+  const renameMessageId = $derived(`${treeItemElementId}-rename-message`);
 
   // ---------------------------------------------------------------------------
   // Derived state from context
@@ -85,8 +103,27 @@
   const isExpanded = $derived(context.expandedIds.includes(id));
   const isSelected = $derived(context.selectedIds.includes(id));
   const isFocused = $derived(context.focusedId === id);
+  const isFiltering = $derived(context.filtering);
+  const isVisible = $derived(
+    !isFiltering ||
+      context.isVisible(id) ||
+      (!context.hasRegisteredItems && (isBranch || context.matchesFilter(label, id))),
+  );
+  const hasVisibleDescendant = $derived(context.hasVisibleDescendant(id));
+  const renderedExpanded = $derived(isExpanded || (isFiltering && hasVisibleDescendant));
+  const shouldRenderChildren = $derived(isBranch && (isExpanded || isFiltering));
   const checkboxSelectionActive = $derived(context.checkboxSelectionActive());
   const selectionState = $derived(context.selectionStateFor(id));
+  const labelSegments = $derived.by(() => splitLabelForHighlight(label, context.filterValue));
+  const canRename = $derived(!disabled && onRename != null);
+  const editingLabel = $derived(`Editing: ${label}`);
+  const dragController = $derived(context.dragController);
+  const canDrag = $derived(draggable && !disabled && dragController != null);
+  const isDraggingItem = $derived(dragController?.isDragging(id) ?? false);
+  const isDropBefore = $derived(dragController?.isDropTarget(id, 'before') ?? false);
+  const isDropAfter = $derived(dragController?.isDropTarget(id, 'after') ?? false);
+  const isDropInto = $derived(dragController?.isDropTarget(id, 'child') ?? false);
+  const dragHandleLabel = $derived(`Reorder ${label}`);
   const ariaChecked = $derived.by(() => {
     if (!checkboxSelectionActive) return undefined;
     if (selectionState.indeterminate) return 'mixed';
@@ -140,6 +177,7 @@
         },
         selectionScopeIds: () => selectionScopeIds,
         isBranch: () => isBranch,
+        bulkExpandable: () => loadChildren == null,
         label: () => label,
         focus: () => outerElement?.focus(),
       });
@@ -242,6 +280,222 @@
   // Keyboard handler
   // ---------------------------------------------------------------------------
 
+  const focusRenameInput: Attachment<HTMLInputElement> = (node) => {
+    renameInputElement = node;
+    queueMicrotask(() => {
+      if (!editing || renameInputElement !== node) return;
+      node.focus();
+      node.select();
+    });
+    return () => {
+      if (renameInputElement === node) renameInputElement = undefined;
+    };
+  };
+
+  function announceRename(message: string): void {
+    renameAnnouncement = message;
+    renameAnnouncementSequence += 1;
+  }
+
+  function renameFailureMessage(error: unknown): string {
+    if (error instanceof Error && error.message) return error.message;
+    if (typeof error === 'string' && error) return error;
+    return 'Unknown error';
+  }
+
+  function focusCurrentTreeItem(): void {
+    if (outerElement?.isConnected) {
+      outerElement.focus();
+      return;
+    }
+
+    if (typeof document === 'undefined') return;
+    const current = [...document.querySelectorAll<HTMLElement>('[data-cinder-tree-item-id]')].find(
+      (element) => element.dataset['cinderTreeItemId'] === id,
+    );
+    current?.focus();
+  }
+
+  function beginEdit(): void {
+    if (!canRename || editing) return;
+    editValue = label;
+    renameError = '';
+    renamePending = false;
+    editing = true;
+    announceRename(`Editing ${label}. Press Enter to confirm, Escape to cancel.`);
+  }
+
+  function finishEdit(afterFocus?: () => void): void {
+    editing = false;
+    renameError = '';
+    renamePending = false;
+    queueMicrotask(() => {
+      focusCurrentTreeItem();
+      afterFocus?.();
+    });
+  }
+
+  function cancelEdit(): void {
+    editValue = label;
+    announceRename('Rename cancelled.');
+    finishEdit();
+  }
+
+  async function commitEdit(afterFocus?: () => void): Promise<boolean> {
+    if (!editing || renamePending) return false;
+
+    if (editValue.trim().length === 0) {
+      renameError = 'Label is required.';
+      announceRename(renameError);
+      queueMicrotask(() => renameInputElement?.focus());
+      return false;
+    }
+
+    if (!onRename) {
+      finishEdit(afterFocus);
+      return true;
+    }
+
+    renamePending = true;
+    renameError = '';
+    try {
+      await onRename(id, editValue);
+      announceRename(`${editValue}, renamed.`);
+      finishEdit(afterFocus);
+      return true;
+    } catch (error) {
+      const message = `Rename failed: ${renameFailureMessage(error)}.`;
+      renamePending = false;
+      renameError = message;
+      announceRename(message);
+      queueMicrotask(() => renameInputElement?.focus());
+      return false;
+    }
+  }
+
+  async function commitEditAndMove(direction: 1 | -1): Promise<void> {
+    await commitEdit(() => context.focusVisibleDelta(id, direction));
+  }
+
+  function handleRenameInputKeydown(event: KeyboardEvent): void {
+    event.stopPropagation();
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void commitEdit();
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      void cancelEdit();
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      const direction = event.shiftKey ? -1 : 1;
+      if (context.canFocusVisibleDelta(id, direction)) {
+        event.preventDefault();
+        void commitEditAndMove(direction);
+      } else {
+        void commitEdit();
+      }
+    }
+  }
+
+  function handleRenameInputBlur(): void {
+    void commitEdit();
+  }
+
+  let dragKeyboardReturnTarget: HTMLElement | undefined;
+
+  function restoreDragKeyboardFocus(): void {
+    const target = dragKeyboardReturnTarget ?? dragHandleElement ?? outerElement;
+    queueMicrotask(() => target?.focus());
+  }
+
+  function canLiftWithKeyboard(event: KeyboardEvent): boolean {
+    const fromDragHandle = event.currentTarget === dragHandleElement;
+    const treeItemShortcut =
+      event.key === ' ' && event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey;
+    return (fromDragHandle && (event.key === ' ' || event.key === 'Enter')) || treeItemShortcut;
+  }
+
+  function handleDragKeyboard(event: KeyboardEvent): boolean {
+    const controller = dragController;
+    if (!canDrag || !controller) return false;
+
+    if (!controller.dragging && canLiftWithKeyboard(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      dragKeyboardReturnTarget =
+        event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
+      controller.lift(id);
+      restoreDragKeyboardFocus();
+      return true;
+    }
+
+    if (!controller.isDragging(id)) return false;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        event.stopPropagation();
+        controller.moveBy(1);
+        return true;
+      case 'ArrowUp':
+        event.preventDefault();
+        event.stopPropagation();
+        controller.moveBy(-1);
+        return true;
+      case 'ArrowRight':
+        event.preventDefault();
+        event.stopPropagation();
+        controller.moveIntoPreviousBranch();
+        return true;
+      case 'ArrowLeft':
+        event.preventDefault();
+        event.stopPropagation();
+        controller.moveOut();
+        return true;
+      case 'Home':
+        event.preventDefault();
+        event.stopPropagation();
+        controller.moveToEdge('first');
+        return true;
+      case 'End':
+        event.preventDefault();
+        event.stopPropagation();
+        controller.moveToEdge('last');
+        return true;
+      case ' ':
+      case 'Enter':
+        event.preventDefault();
+        event.stopPropagation();
+        controller.drop();
+        restoreDragKeyboardFocus();
+        return true;
+      case 'Escape':
+        event.preventDefault();
+        event.stopPropagation();
+        controller.cancel();
+        restoreDragKeyboardFocus();
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  function handleDragPointerDown(event: PointerEvent): void {
+    const controller = dragController;
+    if (!canDrag || !controller || event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragHandleElement?.focus();
+    dragHandleElement?.setPointerCapture(event.pointerId);
+    controller.lift(id);
+  }
+
   function toggleKeyboardSelection(event: KeyboardEvent): void {
     if (disabled) return;
     if (checkboxSelectionActive) {
@@ -258,6 +512,14 @@
     if (isInteractiveDescendant(event.target)) return;
 
     const key = event.key;
+
+    if (handleDragKeyboard(event)) return;
+
+    if (key === 'F2') {
+      event.preventDefault();
+      beginEdit();
+      return;
+    }
 
     switch (key) {
       case 'ArrowDown':
@@ -311,6 +573,10 @@
 
       case 'Enter':
         event.preventDefault();
+        if (context.selectionMode === 'none' && canRename) {
+          beginEdit();
+          break;
+        }
         if (checkboxSelectionActive) {
           if (isBranch) {
             context.setExpanded(id, !isExpanded);
@@ -364,12 +630,20 @@
 
     outerElement?.focus();
 
+    if (event.detail > 1) return;
+
     if (!disabled && !checkboxSelectionActive) context.toggleSelected(id, event);
 
     if (isBranch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
       // Plain click on a branch row toggles expand, including disabled branches.
       context.setExpanded(id, !isExpanded);
     }
+  }
+
+  function handleLabelDoubleClick(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    beginEdit();
   }
 
   function handleCheckboxActivation(event: Event): void {
@@ -397,7 +671,39 @@
   function toggleSelectionFromRow(): void {
     if (!disabled) context.toggleSelectionScope(id);
   }
+
+  function splitLabelForHighlight(value: string, query: string): LabelSegment[] {
+    if (query.length === 0) return [{ text: value, highlighted: false, start: 0 }];
+
+    const matchIndex = value.toLowerCase().indexOf(query.toLowerCase());
+    if (matchIndex === -1) return [{ text: value, highlighted: false, start: 0 }];
+
+    const matchEnd = matchIndex + query.length;
+    const segments: LabelSegment[] = [];
+    if (matchIndex > 0) {
+      segments.push({ text: value.slice(0, matchIndex), highlighted: false, start: 0 });
+    }
+    segments.push({
+      text: value.slice(matchIndex, matchEnd),
+      highlighted: true,
+      start: matchIndex,
+    });
+    if (matchEnd < value.length) {
+      segments.push({ text: value.slice(matchEnd), highlighted: false, start: matchEnd });
+    }
+    return segments;
+  }
 </script>
+
+{#snippet visibleLabel()}
+  {#each labelSegments as segment (`${segment.start}-${segment.highlighted}-${segment.text}`)}
+    {#if segment.highlighted}
+      <mark aria-hidden="true" class="cinder-tree-item__highlight">{segment.text}</mark>
+    {:else}
+      {segment.text}
+    {/if}
+  {/each}
+{/snippet}
 
 <div
   bind:this={outerElement}
@@ -405,26 +711,50 @@
   role="treeitem"
   id={treeItemElementId}
   class={classNames('cinder-tree-item', className)}
-  aria-labelledby={`${treeItemElementId}-label`}
+  aria-label={editing ? editingLabel : undefined}
+  aria-labelledby={editing ? undefined : `${treeItemElementId}-label`}
   aria-level={level}
-  aria-expanded={isBranch ? isExpanded : undefined}
+  aria-expanded={isBranch ? renderedExpanded : undefined}
   aria-selected={context.selectionMode === 'none' || checkboxSelectionActive
     ? undefined
     : isSelected}
   aria-checked={ariaChecked}
   aria-busy={busy || undefined}
   aria-disabled={disabled || undefined}
+  aria-describedby={canDrag ? context.dragInstructionsId : undefined}
   tabindex={isFocused ? 0 : -1}
   data-cinder-expanded={isBranch && isExpanded ? '' : undefined}
   data-cinder-selected={isSelected ? '' : undefined}
   data-cinder-disabled={disabled ? '' : undefined}
   data-cinder-busy={busy ? '' : undefined}
+  data-cinder-hidden={!isVisible ? '' : undefined}
+  data-cinder-editing={editing ? '' : undefined}
+  data-cinder-tree-item-id={id}
+  data-cinder-dragging={isDraggingItem ? '' : undefined}
+  data-cinder-drop-target={isDropBefore ? 'before' : isDropAfter ? 'after' : undefined}
+  data-cinder-drop-into={isDropInto ? '' : undefined}
   onfocus={handleFocus}
   onkeydown={handleKeydown}
   onclick={handleClick}
 >
   <span id={`${treeItemElementId}-label`} class="cinder-sr-only">{label}</span>
   <div class="cinder-tree-item__row">
+    {#if canDrag}
+      <button
+        bind:this={dragHandleElement}
+        type="button"
+        class="cinder-tree-item__drag-handle"
+        aria-label={dragHandleLabel}
+        aria-pressed={isDraggingItem}
+        aria-describedby={context.dragInstructionsId}
+        tabindex="-1"
+        onpointerdown={handleDragPointerDown}
+        onkeydown={handleDragKeyboard}
+      >
+        <span aria-hidden="true">::</span>
+      </button>
+    {/if}
+
     {#if row}
       {@render row({
         expanded: isExpanded,
@@ -433,8 +763,23 @@
         level,
         checkboxSelection: checkboxSelectionActive,
         selectionState,
+        editing,
+        beginEdit,
         toggleSelection: toggleSelectionFromRow,
       })}
+    {:else if editing}
+      <input
+        {@attach focusRenameInput}
+        type="text"
+        class="cinder-tree-item__rename-input"
+        bind:value={editValue}
+        aria-label={editingLabel}
+        aria-invalid={renameError ? 'true' : undefined}
+        aria-describedby={renameError ? renameMessageId : undefined}
+        disabled={renamePending}
+        onkeydown={handleRenameInputKeydown}
+        onblur={handleRenameInputBlur}
+      />
     {:else if checkboxSelectionActive}
       <!--
         `checked` is set BOTH declaratively and imperatively, by design — the
@@ -474,19 +819,37 @@
         separately since the parent treeitem is labelled by the visually-hidden
         label span above.
       -->
-      <span aria-hidden="true" class="cinder-tree-item__label cinder-_truncate">{label}</span>
+      <span
+        aria-hidden="true"
+        class="cinder-tree-item__label cinder-_truncate"
+        ondblclick={handleLabelDoubleClick}>{@render visibleLabel()}</span
+      >
     {:else}
       <!--
         aria-hidden prevents the visible default text from being announced
         separately since the parent treeitem is labelled by the visually-hidden
         label span above.
       -->
-      <span aria-hidden="true" class="cinder-tree-item__label cinder-_truncate">{label}</span>
+      <span
+        aria-hidden="true"
+        class="cinder-tree-item__label cinder-_truncate"
+        ondblclick={handleLabelDoubleClick}>{@render visibleLabel()}</span
+      >
     {/if}
   </div>
-  {#if isBranch && isExpanded}
+  {#if renameError}
+    <span id={renameMessageId} class="cinder-sr-only">{renameError}</span>
+  {/if}
+  {#if shouldRenderChildren}
     <div role="group" aria-labelledby={treeItemElementId} class="cinder-tree-item__children">
       {@render children?.()}
     </div>
+  {/if}
+  {#if onRename}
+    <VisuallyHiddenLiveRegion
+      message={renameAnnouncement}
+      announcementSequence={renameAnnouncementSequence}
+      priority="assertive"
+    />
   {/if}
 </div>
