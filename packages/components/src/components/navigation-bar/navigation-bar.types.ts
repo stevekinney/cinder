@@ -1,6 +1,8 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 export type NavigationVariant = 'horizontal' | 'mobile';
+export type NavigationBarPlacement = 'top' | 'bottom';
+export type NavigationBarLabelVisibility = 'always' | 'active' | 'never';
 /** Attributes injected into the consumer's toggle button via the menuToggle snippet parameter. */
 export type NavigationBarToggleAttributes = {
   'aria-expanded': 'true' | 'false';
@@ -10,10 +12,26 @@ export type NavigationBarToggleAttributes = {
 /** Context passed to the items snippet so items can adapt their layout. */
 export type NavigationBarItemsContext = {
   variant: NavigationVariant;
+  placement?: NavigationBarPlacement;
+  showLabels?: NavigationBarLabelVisibility;
 };
 export type NavigationBarProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Custom class merged onto the root `<nav>` element. */
   class?: string;
+  /**
+   * Visual placement mode. `bottom` renders a mobile tab-bar composition, but
+   * still does not fix or stick itself to the viewport.
+   *
+   * @default "top"
+   */
+  placement?: NavigationBarPlacement;
+  /**
+   * Label visibility for mobile bottom-tab compositions. Hidden labels remain in
+   * the accessibility tree when wrapped in `[data-cinder-navigation-label]`.
+   *
+   * @default "always"
+   */
+  showLabels?: NavigationBarLabelVisibility;
   brand?: Snippet;
   /** Receives a context object with the current variant. */
   items: Snippet<[NavigationBarItemsContext]>;

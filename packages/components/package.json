@@ -1619,6 +1619,49 @@
       "import": "./src/components/form-section/form-section.examples.json",
       "default": "./src/components/form-section/form-section.examples.json"
     },
+    "./grid": {
+      "types": "./dist/components/grid/index.d.ts",
+      "svelte": "./src/components/grid/index.ts",
+      "node": "./dist/server/components/grid/index.js",
+      "default": "./dist/components/grid/index.js"
+    },
+    "./grid/schema": {
+      "types": "./dist/components/grid/grid.schema.d.ts",
+      "svelte": "./src/components/grid/grid.schema.ts",
+      "node": "./dist/server/components/grid/grid.schema.js",
+      "default": "./dist/components/grid/grid.schema.js"
+    },
+    "./grid/variables": {
+      "types": "./dist/components/grid/grid.variables.d.ts",
+      "svelte": "./src/components/grid/grid.variables.ts",
+      "node": "./dist/server/components/grid/grid.variables.js",
+      "default": "./dist/components/grid/grid.variables.js"
+    },
+    "./grid/styles": {
+      "default": "./dist/components/grid/grid.css"
+    },
+    "./grid/examples": {
+      "import": "./src/components/grid/grid.examples.json",
+      "default": "./src/components/grid/grid.examples.json"
+    },
+    "./grid-item": {
+      "types": "./dist/components/grid-item/index.d.ts",
+      "svelte": "./src/components/grid-item/index.ts",
+      "node": "./dist/server/components/grid-item/index.js",
+      "default": "./dist/components/grid-item/index.js"
+    },
+    "./grid-item/schema": {
+      "types": "./dist/components/grid-item/grid-item.schema.d.ts",
+      "svelte": "./src/components/grid-item/grid-item.schema.ts",
+      "node": "./dist/server/components/grid-item/grid-item.schema.js",
+      "default": "./dist/components/grid-item/grid-item.schema.js"
+    },
+    "./grid-item/variables": {
+      "types": "./dist/components/grid-item/grid-item.variables.d.ts",
+      "svelte": "./src/components/grid-item/grid-item.variables.ts",
+      "node": "./dist/server/components/grid-item/grid-item.variables.js",
+      "default": "./dist/components/grid-item/grid-item.variables.js"
+    },
     "./grid-list": {
       "types": "./dist/components/grid-list/index.d.ts",
       "svelte": "./src/components/grid-list/index.ts",
@@ -2004,6 +2047,31 @@
     "./markdown-editor/examples": {
       "import": "./src/components/markdown-editor/markdown-editor.examples.json",
       "default": "./src/components/markdown-editor/markdown-editor.examples.json"
+    },
+    "./masonry": {
+      "types": "./dist/components/masonry/index.d.ts",
+      "svelte": "./src/components/masonry/index.ts",
+      "node": "./dist/server/components/masonry/index.js",
+      "default": "./dist/components/masonry/index.js"
+    },
+    "./masonry/schema": {
+      "types": "./dist/components/masonry/masonry.schema.d.ts",
+      "svelte": "./src/components/masonry/masonry.schema.ts",
+      "node": "./dist/server/components/masonry/masonry.schema.js",
+      "default": "./dist/components/masonry/masonry.schema.js"
+    },
+    "./masonry/variables": {
+      "types": "./dist/components/masonry/masonry.variables.d.ts",
+      "svelte": "./src/components/masonry/masonry.variables.ts",
+      "node": "./dist/server/components/masonry/masonry.variables.js",
+      "default": "./dist/components/masonry/masonry.variables.js"
+    },
+    "./masonry/styles": {
+      "default": "./dist/components/masonry/masonry.css"
+    },
+    "./masonry/examples": {
+      "import": "./src/components/masonry/masonry.examples.json",
+      "default": "./src/components/masonry/masonry.examples.json"
     },
     "./matrix-chart": {
       "types": "./dist/components/matrix-chart/index.d.ts",
@@ -3023,6 +3091,49 @@
       "import": "./src/components/spectrum-chart/spectrum-chart.examples.json",
       "default": "./src/components/spectrum-chart/spectrum-chart.examples.json"
     },
+    "./speed-dial": {
+      "types": "./dist/components/speed-dial/index.d.ts",
+      "svelte": "./src/components/speed-dial/index.ts",
+      "node": "./dist/server/components/speed-dial/index.js",
+      "default": "./dist/components/speed-dial/index.js"
+    },
+    "./speed-dial/schema": {
+      "types": "./dist/components/speed-dial/speed-dial.schema.d.ts",
+      "svelte": "./src/components/speed-dial/speed-dial.schema.ts",
+      "node": "./dist/server/components/speed-dial/speed-dial.schema.js",
+      "default": "./dist/components/speed-dial/speed-dial.schema.js"
+    },
+    "./speed-dial/variables": {
+      "types": "./dist/components/speed-dial/speed-dial.variables.d.ts",
+      "svelte": "./src/components/speed-dial/speed-dial.variables.ts",
+      "node": "./dist/server/components/speed-dial/speed-dial.variables.js",
+      "default": "./dist/components/speed-dial/speed-dial.variables.js"
+    },
+    "./speed-dial/styles": {
+      "default": "./dist/components/speed-dial/speed-dial.css"
+    },
+    "./speed-dial/examples": {
+      "import": "./src/components/speed-dial/speed-dial.examples.json",
+      "default": "./src/components/speed-dial/speed-dial.examples.json"
+    },
+    "./speed-dial-action": {
+      "types": "./dist/components/speed-dial-action/index.d.ts",
+      "svelte": "./src/components/speed-dial-action/index.ts",
+      "node": "./dist/server/components/speed-dial-action/index.js",
+      "default": "./dist/components/speed-dial-action/index.js"
+    },
+    "./speed-dial-action/schema": {
+      "types": "./dist/components/speed-dial-action/speed-dial-action.schema.d.ts",
+      "svelte": "./src/components/speed-dial-action/speed-dial-action.schema.ts",
+      "node": "./dist/server/components/speed-dial-action/speed-dial-action.schema.js",
+      "default": "./dist/components/speed-dial-action/speed-dial-action.schema.js"
+    },
+    "./speed-dial-action/variables": {
+      "types": "./dist/components/speed-dial-action/speed-dial-action.variables.d.ts",
+      "svelte": "./src/components/speed-dial-action/speed-dial-action.variables.ts",
+      "node": "./dist/server/components/speed-dial-action/speed-dial-action.variables.js",
+      "default": "./dist/components/speed-dial-action/speed-dial-action.variables.js"
+    },
     "./spinner": {
       "types": "./dist/components/spinner/index.d.ts",
       "svelte": "./src/components/spinner/index.ts",
@@ -3632,6 +3743,31 @@
     "./tooltip/examples": {
       "import": "./src/components/tooltip/tooltip.examples.json",
       "default": "./src/components/tooltip/tooltip.examples.json"
+    },
+    "./transfer-list": {
+      "types": "./dist/components/transfer-list/index.d.ts",
+      "svelte": "./src/components/transfer-list/index.ts",
+      "node": "./dist/server/components/transfer-list/index.js",
+      "default": "./dist/components/transfer-list/index.js"
+    },
+    "./transfer-list/schema": {
+      "types": "./dist/components/transfer-list/transfer-list.schema.d.ts",
+      "svelte": "./src/components/transfer-list/transfer-list.schema.ts",
+      "node": "./dist/server/components/transfer-list/transfer-list.schema.js",
+      "default": "./dist/components/transfer-list/transfer-list.schema.js"
+    },
+    "./transfer-list/variables": {
+      "types": "./dist/components/transfer-list/transfer-list.variables.d.ts",
+      "svelte": "./src/components/transfer-list/transfer-list.variables.ts",
+      "node": "./dist/server/components/transfer-list/transfer-list.variables.js",
+      "default": "./dist/components/transfer-list/transfer-list.variables.js"
+    },
+    "./transfer-list/styles": {
+      "default": "./dist/components/transfer-list/transfer-list.css"
+    },
+    "./transfer-list/examples": {
+      "import": "./src/components/transfer-list/transfer-list.examples.json",
+      "default": "./src/components/transfer-list/transfer-list.examples.json"
     },
     "./tree": {
       "types": "./dist/components/tree/index.d.ts",

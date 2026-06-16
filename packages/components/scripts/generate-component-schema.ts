@@ -60,6 +60,7 @@ export interface PropertySchema {
   required?: string[];
   additionalProperties?: boolean | PropertySchema;
   anyOf?: PropertySchema[];
+  minimum?: number;
   description?: string;
   default?: unknown;
 }
@@ -261,6 +262,16 @@ function makeUnsupportedProp(
 }
 
 function applyComponentSchemaRules(componentName: string, schema: ComponentSchemaOutput): void {
+  if (componentName === 'grid') {
+    const columns = schema.properties['columns'];
+    if (columns?.anyOf) {
+      columns.anyOf = columns.anyOf.map((entry) =>
+        entry.type === 'number' ? { ...entry, type: 'integer', minimum: 1 } : entry,
+      );
+    }
+    return;
+  }
+
   if (componentName !== 'modal') return;
 
   schema.allOf = [
