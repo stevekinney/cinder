@@ -68,8 +68,23 @@
     gap: var(--cinder-space-3);
     min-block-size: 4.5rem;
     padding-inline: var(--cinder-space-5);
-    border-block-end: 1px solid var(--cinder-border);
+    /* Focus indication lives on this row, anchored to its visible bottom edge,
+       rather than a 3px box-shadow ring floating around the edgeless input. The
+       border is 2px AT REST so focusing only changes its COLOR — no width change,
+       so the option list below never shifts. */
+    border-block-end: 2px solid var(--cinder-border);
     flex-shrink: 0;
+    transition: border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-command-palette__search:focus-within {
+    border-block-end-color: var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-command-palette__search:focus-within {
+      border-block-end-color: Highlight;
+    }
   }
 
   .cinder-command-palette__search-icon {
@@ -87,18 +102,10 @@
     font-size: var(--cinder-text-base);
     line-height: var(--cinder-leading-normal);
     padding-block: var(--cinder-space-4);
+    /* No ring on the input itself — the search row's :focus-within bottom border
+       is the focus indicator (the input is edgeless, so a box ring reads as a
+       stray floating box). */
     outline: none;
-  }
-
-  .cinder-command-palette__input:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
-  }
-
-  @media (forced-colors: active) {
-    .cinder-command-palette__input:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-    }
   }
 
   .cinder-command-palette__input::placeholder {

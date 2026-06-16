@@ -248,26 +248,29 @@
   --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
   --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
 
-  /* Accent - cyan (hue 195) */
-  --cinder-accent: light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195));
-  --cinder-accent-contrast: light-dark(oklch(15% 0.035 245), oklch(15% 0.035 245));
+  /* Accent - indigo (hue 270). Light arm is a deep indigo at L=0.50 — dark enough
+     that WHITE clears WCAG AA on it (6.45:1), so the brand fill carries white labels
+     in light mode. Dark arm is a bright periwinkle-indigo (chroma clamped to 0.14 to
+     stay in sRGB gamut at L=0.72) that carries the dark-ink contrast label (7.77:1). */
+  --cinder-accent: light-dark(oklch(50% 0.22 270), oklch(72% 0.14 270));
+  /* Light arm flips to WHITE (the indigo fill is dark enough); dark arm keeps dark ink
+     against the bright dark-mode fill. */
+  --cinder-accent-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.035 245));
   --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
   --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
-  /* Pressed fill for SOLID accent surfaces that carry the dark-ink --cinder-accent-contrast
-     label (primary Button, FloatingActionButton). The general --cinder-accent-active darkens by
-     0.15; on the L=0.66 light accent that resolves to L=0.51, where the dark-ink label drops to
-     ~4.09:1 — below WCAG AA. This token darkens by a gentler 0.11 (light → L=0.55, ~4.79:1; dark →
-     L=0.67, ~7.1:1) so the pressed label stays AA-legible in both arms. Non-label-bearing
-     consumers keep using --cinder-accent-active. */
+  /* Pressed fill for SOLID accent surfaces that carry the --cinder-accent-contrast label
+     (primary Button, FloatingActionButton). The indigo accent darkens on press; the white
+     light-mode label only gets MORE legible as the fill darkens (l-0.11 → L=0.39 → white at
+     10.5:1), so this token tracks the general pressed darkening. Kept distinct from
+     --cinder-accent-active so label-bearing and non-label consumers can diverge if ever needed. */
   --cinder-accent-active-on-fill: oklch(from var(--cinder-accent) calc(l - 0.11) c h);
-  /* Accent used AS TEXT/ICON on light surfaces. The fill-accent was darkened to a more ink-like
-     cyan (now L=0.66); as a FOREGROUND its contrast improves (≈2.7:1 on raised, ≈2.4:1 on bg/inset)
-     but still does NOT clear the 3:1 UI floor, so a separate foreground token stays necessary. This
-     darker on-brand cyan clears 4.5:1 on every surface and every accent/tree/info tint (verified:
-     surface 5.43, bg 5.12, inset 4.82, accent-chip tint 4.98). --cinder-accent is a FILL (it carries
-     the dark-ink --cinder-accent-contrast label at ≈7.2:1); all foreground/icon usages adopt this
-     token. */
-  --cinder-accent-text: light-dark(oklch(47% 0.16 195), oklch(78% 0.13 195));
+  /* Accent used AS TEXT/ICON on light surfaces. The light-mode fill accent (L=0.50) reads as a
+     foreground at ~4.7:1, only just clearing AA, so a slightly darker dedicated foreground token
+     stays necessary for comfortable link/icon legibility. This deep indigo (L=0.45) clears 4.5:1
+     on every surface (verified: surface 7.73, bg 7.19, inset 7.09). The dark arm matches the
+     dark-mode accent fill. --cinder-accent is a FILL (it carries the white --cinder-accent-contrast
+     label in light mode); all foreground/icon usages adopt this token. */
+  --cinder-accent-text: light-dark(oklch(45% 0.22 270), oklch(72% 0.14 270));
   /* Hover step for text/icon links. Derived as a DARKER step of --cinder-accent-text (not the
      bright fill-derived --cinder-accent-hover, which is LIGHTER than the resting text color and
      drops to ~2.75:1 on near-white — below WCAG AA). Light arm resolves to ~oklch(0.39 0.16 195)
@@ -275,17 +278,23 @@
   --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
 
   /* Status — solid (legacy single-value tokens, retained for back-compat) */
-  --cinder-info: light-dark(oklch(50% 0.15 245), oklch(78% 0.13 245));
-  --cinder-success: light-dark(oklch(50% 0.16 145), oklch(78% 0.14 145));
-  --cinder-warning: light-dark(oklch(54% 0.165 75), oklch(82% 0.16 75));
-  --cinder-danger: light-dark(oklch(50% 0.21 25), oklch(72% 0.18 25));
+  /* Info nudged from hue 245 → 230: with the brand now indigo (h270), a 245 info sat only
+     25° away and competed with it; 230 reads as an unambiguous blue 40° off the brand.
+     Chroma fitted to 0.098 to stay in sRGB gamut at L=0.50 (white label clears 5.86:1). */
+  --cinder-info: light-dark(oklch(50% 0.098 230), oklch(78% 0.13 230));
+  /* Chroma values fitted to the sRGB gamut so the browser renders the authored color
+     instead of silently clamping it (warning-light especially was over-saturated at
+     0.165 and rendered nearer 0.113). Contrast labels re-verified by check-token-contrast. */
+  --cinder-success: light-dark(oklch(50% 0.157 145), oklch(78% 0.14 145));
+  --cinder-warning: light-dark(oklch(54% 0.113 75), oklch(82% 0.156 75));
+  --cinder-danger: light-dark(oklch(50% 0.202 25), oklch(72% 0.172 25));
   /* Text against the danger background. Dark-mode danger is ~72% lightness; pure white fails WCAG AA on it. */
   --cinder-danger-contrast: light-dark(oklch(100% 0 0), oklch(12% 0.02 25));
   /* Text against solid status backgrounds. Light-mode accents are dark enough for white; dark-mode accents are
    * high-lightness, so a dark same-hue color wins. All clear WCAG AA (≥4.5:1) — see chip pressed-state verification. */
   --cinder-success-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 145));
   --cinder-warning-contrast: light-dark(oklch(100% 0 0), oklch(20% 0.04 75));
-  --cinder-info-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 245));
+  --cinder-info-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 230));
   --cinder-danger-hover: oklch(from var(--cinder-danger) calc(l - 0.08) c h);
   --cinder-danger-active: oklch(from var(--cinder-danger) calc(l - 0.15) c h);
 
@@ -293,9 +302,12 @@
      Use these in components like Alert and Toast where you need a soft tinted surface
      with semantically-paired text and border colors. The solid `--cinder-info|success|
      warning|danger` tokens above remain for accent fills (e.g. solid badges). */
-  --cinder-color-info-bg: light-dark(oklch(96% 0.025 245), oklch(28% 0.06 245));
-  --cinder-color-info-fg: light-dark(oklch(40% 0.13 245), oklch(88% 0.1 245));
-  --cinder-color-info-border: light-dark(oklch(80% 0.05 245), oklch(45% 0.08 245));
+  /* Info soft-surface triple — moved to hue 230 with the info solid; chroma fitted to
+     sRGB gamut (fg L=0.40 → c 0.079, bg L=0.96 → c 0.023). fg-on-bg clears 8.1:1 light /
+     10.2:1 dark. */
+  --cinder-color-info-bg: light-dark(oklch(96% 0.023 230), oklch(28% 0.057 230));
+  --cinder-color-info-fg: light-dark(oklch(40% 0.079 230), oklch(88% 0.071 230));
+  --cinder-color-info-border: light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230));
 
   --cinder-color-success-bg: light-dark(oklch(96% 0.04 145), oklch(28% 0.07 145));
   --cinder-color-success-fg: light-dark(oklch(40% 0.13 145), oklch(88% 0.11 145));
@@ -338,10 +350,11 @@
   --cinder-ring-offset: 1px;
   --cinder-ring-offset-color: var(--cinder-bg);
   /* Relative to --cinder-accent so a consumer override re-derives the ring hue.
-     The light arm clamps L to 0.58 (the bright fill-accent at L 0.72 is too light
-     to clear 3:1 as a ring against near-white surfaces); `h` tracks the accent hue. */
+     The light arm clamps L to 0.55 (indigo has a lower luminance-per-lightness than the
+     old cyan, so the prior 0.58 clamp dropped to a marginal 3.0:1 against near-white;
+     0.55 gives 4.48:1, clearing WCAG 1.4.11 with margin); `h` tracks the accent hue. */
   --cinder-ring-color: light-dark(
-    oklch(from var(--cinder-accent) 0.58 0.16 h),
+    oklch(from var(--cinder-accent) 0.55 0.16 h),
     oklch(from var(--cinder-accent) 0.7 0.14 h)
   );
 
@@ -415,15 +428,22 @@
   --cinder-button-font-size-xl: var(--cinder-text-lg);
   --cinder-button-radius-xl: var(--cinder-radius-md);
 
-  /* Chart series palette */
-  --cinder-chart-series-1: light-dark(oklch(48% 0.17 255), oklch(72% 0.13 255));
-  --cinder-chart-series-2: light-dark(oklch(51% 0.16 145), oklch(74% 0.14 145));
-  --cinder-chart-series-3: light-dark(oklch(55% 0.18 35), oklch(76% 0.13 35));
-  --cinder-chart-series-4: light-dark(oklch(50% 0.15 315), oklch(73% 0.13 315));
-  --cinder-chart-series-5: light-dark(oklch(47% 0.14 205), oklch(71% 0.12 205));
-  --cinder-chart-series-6: light-dark(oklch(53% 0.15 85), oklch(75% 0.13 85));
-  --cinder-chart-series-7: light-dark(oklch(46% 0.13 15), oklch(72% 0.12 15));
-  --cinder-chart-series-8: light-dark(oklch(49% 0.13 280), oklch(72% 0.12 280));
+  /* Chart series palette — 8 categorical colors retuned for the indigo brand.
+     Solved so the set is (a) brand-safe (no hue in 248–292), (b) mutually distinguishable
+     in normal vision (min CIEDE2000 ΔE00 ≥ 24 in both arms — well past the 12 floor), and
+     (c) colour-vision-deficiency-safe via a deliberate CIE-Lightness ladder (min pairwise
+     ΔL* ≈ 4.5–5.0, the geometric maximum for 8 colours that also keep WCAG 1.4.11 3:1 vs
+     the chart background). Every colour is in sRGB gamut, chroma ≥ 0.06, and ≥ 3:1 on its
+     theme's chart background. The light/dark arms share the same 8 hues so a series keeps
+     its identity across themes. Gated by check-token-contrast.test.ts. */
+  --cinder-chart-series-1: light-dark(oklch(33% 0.121 8), oklch(58% 0.089 205));
+  --cinder-chart-series-2: light-dark(oklch(36% 0.069 80), oklch(67% 0.275 330));
+  --cinder-chart-series-3: light-dark(oklch(40% 0.082 160), oklch(69% 0.182 44));
+  --cinder-chart-series-4: light-dark(oklch(45% 0.087 235), oklch(70% 0.144 160));
+  --cinder-chart-series-5: light-dark(oklch(53% 0.218 330), oklch(78% 0.12 8));
+  --cinder-chart-series-6: light-dark(oklch(56% 0.148 44), oklch(81% 0.152 80));
+  --cinder-chart-series-7: light-dark(oklch(59% 0.126 120), oklch(85% 0.078 235));
+  --cinder-chart-series-8: light-dark(oklch(63% 0.098 205), oklch(89% 0.19 120));
 }
 
 :root[data-theme='dark'] {

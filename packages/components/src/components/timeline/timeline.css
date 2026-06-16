@@ -8,7 +8,15 @@
   .cinder-timeline {
     --_cinder-timeline-rail-size: 1.5rem;
     --_cinder-timeline-marker-size: 0.875rem;
-    --_cinder-timeline-rail-center: 0.6875rem;
+    /* The marker is an inline-flex box of --_cinder-timeline-marker-size, laid out at
+       the inline-start of the rail grid cell, with a margin-top of --cinder-space-1.
+       Its center therefore sits at half the marker size from the cell origin (X) and
+       at margin-top + half the marker size from the item's top (Y). The connector is
+       positioned from these so it always meets the dot, including custom markers. */
+    --_cinder-timeline-marker-center-x: calc(var(--_cinder-timeline-marker-size) / 2);
+    --_cinder-timeline-marker-center-y: calc(
+      var(--cinder-space-1) + var(--_cinder-timeline-marker-size) / 2
+    );
 
     list-style: none;
     margin: 0;
@@ -50,13 +58,18 @@
     text-transform: uppercase;
   }
 
-  /* Connecting line between items */
+  /* Connecting line between items. It runs from THIS item's marker center down to
+     the NEXT item's marker center: starting at the marker center Y and extending
+     past the item's bottom by the same offset (the next item's marker center sits
+     that far below its own top). This keeps the line continuous through every dot
+     instead of leaving stubby gaps. The last item suppresses the connector via the
+     [data-cinder-connector-after='hidden'] rule below. */
   .cinder-timeline-item::before {
     content: '';
     position: absolute;
-    left: var(--_cinder-timeline-rail-center);
-    top: 1rem;
-    bottom: 0;
+    left: var(--_cinder-timeline-marker-center-x);
+    top: var(--_cinder-timeline-marker-center-y);
+    bottom: calc(-1 * var(--_cinder-timeline-marker-center-y));
     width: 1px;
     background: var(--cinder-border-muted);
   }
