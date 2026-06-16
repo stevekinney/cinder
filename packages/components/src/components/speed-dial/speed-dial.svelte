@@ -27,12 +27,13 @@
   import type { SpeedDialProps } from './speed-dial.types.ts';
 
   const actionsId = $props.id();
+  const defaultAriaLabel = 'Quick actions';
 
   let {
     open = $bindable(false),
     direction = 'up',
     hidden = false,
-    'aria-label': ariaLabel = 'Quick actions',
+    'aria-label': ariaLabel = defaultAriaLabel,
     trigger,
     children,
     class: customClassName,
@@ -46,6 +47,12 @@
   const orientation = $derived(
     direction === 'left' || direction === 'right' ? 'horizontal' : 'vertical',
   );
+  const accessibleLabel = $derived(normalizeAriaLabel(ariaLabel));
+
+  function normalizeAriaLabel(label: string | null | undefined): string {
+    const trimmed = label?.trim() ?? '';
+    return trimmed.length > 0 ? trimmed : defaultAriaLabel;
+  }
 
   function getTriggerElement(): HTMLElement | null {
     return triggerWrapperElement?.querySelector<HTMLElement>('.cinder-fab') ?? null;
@@ -58,7 +65,7 @@
   function getKeyboardNavigationButtons(): HTMLButtonElement[] {
     const enabledButtons = getEnabledActionButtons();
     return direction === 'up' || direction === 'left'
-      ? enabledButtons.toReversed()
+      ? [...enabledButtons].reverse()
       : enabledButtons;
   }
 
@@ -160,7 +167,7 @@
   bind:this={rootElement}
   hidden={hidden ? true : undefined}
   role="group"
-  aria-label={ariaLabel}
+  aria-label={accessibleLabel}
   aria-hidden={hidden ? 'true' : undefined}
   inert={hidden ? true : undefined}
   class={classNames('cinder-speed-dial', customClassName)}
@@ -184,7 +191,7 @@
 
   <div bind:this={triggerWrapperElement} class="cinder-speed-dial__trigger">
     <FloatingActionButton
-      aria-label={ariaLabel}
+      aria-label={accessibleLabel}
       aria-expanded={open ? 'true' : 'false'}
       aria-controls={actionsId}
       disabled={hidden}

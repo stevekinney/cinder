@@ -233,6 +233,7 @@
     const item = itemById.get(id);
     if (!item) return;
 
+    currentTarget.focus();
     handleOptionClick(side, item);
   }
 

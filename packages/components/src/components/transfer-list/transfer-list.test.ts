@@ -80,6 +80,22 @@ describe('TransferList', () => {
     expect(moveSelectedRightButton?.disabled).toBe(true);
   });
 
+  test('clicking an option focuses its listbox for keyboard follow-up', async () => {
+    render(TransferList, {
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected' },
+    });
+    const available = screen.getByRole('listbox', { name: 'Available' });
+    const read = within(available).getByRole('option', { name: 'Read' });
+
+    await fireEvent.click(read);
+    expect(document.activeElement).toBe(available);
+
+    await fireEvent.keyDown(available, { key: 'ArrowDown' });
+    const activeOptionId = available.getAttribute('aria-activedescendant');
+    const activeOption = activeOptionId ? document.getElementById(activeOptionId) : null;
+    expect(activeOption?.textContent).toBe('Write');
+  });
+
   test('move all right excludes disabled available items', async () => {
     const onChange = mock(() => {});
     render(TransferList, {

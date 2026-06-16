@@ -33,6 +33,13 @@ describe('SpeedDial', () => {
     expect(container.querySelector('[data-cinder-open="false"]')).not.toBeNull();
   });
 
+  test('empty aria-label falls back to the default accessible name', () => {
+    render(SpeedDialFixture, { props: { ariaLabel: '   ' } });
+
+    expect(screen.getByRole('group', { name: 'Quick actions' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Quick actions' })).toBeTruthy();
+  });
+
   test('trigger click opens and closes through bind:open', async () => {
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
@@ -177,6 +184,7 @@ describe('SpeedDial', () => {
 
   test('defines a runtime accessible label fallback for generated previews', async () => {
     const source = await Bun.file(new URL('./speed-dial.svelte', import.meta.url)).text();
-    expect(source).toContain("'aria-label': ariaLabel = 'Quick actions'");
+    expect(source).toContain("const defaultAriaLabel = 'Quick actions'");
+    expect(source).toContain("'aria-label': ariaLabel = defaultAriaLabel");
   });
 });
