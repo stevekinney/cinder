@@ -148,13 +148,16 @@ jobs:
       - name: Check styles aggregator completeness
         run: bun run --filter=@lostgradient/cinder aggregator:check
 
-      # Unconditional whole-repo invariant: the generated component artifacts
-      # (component manifest, examples manifests, exports map) must match what the
-      # generator would produce from the current sources. Drift ships stale docs
-      # and packaging metadata to consumers. Runs regardless of scope because a
-      # source change (e.g. a *.example.svelte edit) can desync the committed
-      # manifest while the generator's own files are unchanged (so `test:changed`
-      # would miss it). Sub-second; mirrors the aggregator gate above.
+      # Unconditional whole-repo invariant: the generated component artifacts —
+      # per-component schemas (.schema.json/.schema.ts), constraints (.constraints.json),
+      # examples manifests (.examples.json), generated README regions, and the
+      # aggregate components.json manifest — must match what the generator would
+      # produce from the current sources. (The package exports map is a separate
+      # generator, gated by exports-drift.test.ts, not by this step.) Drift ships
+      # stale docs and metadata to consumers. Runs regardless of scope because a
+      # source change (e.g. a *.example.svelte edit) can desync a committed manifest
+      # while the generator's own files are unchanged (so `test:changed` would miss
+      # it). Sub-second; mirrors the aggregator gate above.
       - name: Check generated component artifacts are up to date
         run: bun run --filter=@lostgradient/cinder components:check
 
