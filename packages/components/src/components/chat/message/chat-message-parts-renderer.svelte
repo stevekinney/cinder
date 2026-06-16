@@ -33,9 +33,9 @@
     <ToolResultPart {part} />
   {:else}
     <!-- Unhandled part type — a new ChatMessagePart variant was added without a
-         renderer branch. `part.type` narrows to `never` here, so this also fails
-         the typecheck if the union widens, and the sentinel makes the omission
-         visible in the DOM. -->
+         renderer branch. `part` narrows to `never` here, so svelte-check flags
+         the unreachable branch when the union widens, and this sentinel makes
+         the omission visible in the DOM. -->
     <span data-cinder-unhandled-part aria-hidden="true"></span>
   {/if}
 {/snippet}

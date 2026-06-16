@@ -311,7 +311,9 @@
   // adapter doesn't implement that optional method (then we fall through to the
   // callback). The whole adapter path is wrapped in try/catch so BOTH a rejected
   // promise AND a synchronous throw from the adapter route to `onadaptererror`
-  // rather than escaping. A sync callback never rejects, so it needs no guard.
+  // rather than escaping. `onadaptererror` is scoped to ADAPTER failures only —
+  // the fallback callback path is the consumer's own code, so a throw there
+  // propagates normally rather than being captured here.
   async function dispatchCommand(
     command: ChatCommand,
     adapterMethod: (adapter: ChatAdapter) => Promise<void> | undefined,
