@@ -215,4 +215,29 @@ describe('DataGrid', () => {
       '--_cinder-data-grid-pin-right-offset: 0px',
     );
   });
+
+  test('normalizes non-finite sizing values before rendering widths', () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns: [
+        {
+          key: 'customer',
+          header: 'Customer',
+          width: Number.NaN,
+          minWidth: Number.NaN,
+          maxWidth: Number.NaN,
+        },
+        { key: 'status', header: 'Status', width: 40, minWidth: 80, maxWidth: 60 },
+      ],
+      columnSizing: { customer: Number.NaN },
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const cells = Array.from(container.querySelectorAll('[role="gridcell"]'));
+
+    expect(cells[0]?.getAttribute('style')).toContain('--_cinder-data-grid-column-width: 150px');
+    expect(cells[1]?.getAttribute('style')).toContain('--_cinder-data-grid-column-width: 80px');
+    expect(container.innerHTML).not.toContain('NaNpx');
+  });
 });

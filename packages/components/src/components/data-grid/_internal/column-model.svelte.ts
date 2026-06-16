@@ -89,9 +89,18 @@ function resolveColumn<TRow>(
   columnSizing: DataGridColumnSizing | undefined,
   columnPinning: DataGridColumnPinning | undefined,
 ): ResolvedDataGridColumn<TRow> {
-  const minWidth = column.minWidth ?? DEFAULT_DATA_GRID_COLUMN_MIN_WIDTH;
-  const baseWidth = columnSizing?.[column.key] ?? column.width ?? DEFAULT_DATA_GRID_COLUMN_WIDTH;
-  const maxWidth = column.maxWidth ?? Number.POSITIVE_INFINITY;
+  const minWidth = Math.max(
+    0,
+    finiteNumberOrFallback(column.minWidth, DEFAULT_DATA_GRID_COLUMN_MIN_WIDTH),
+  );
+  const baseWidth = finiteNumberOrFallback(
+    columnSizing?.[column.key] ?? column.width,
+    DEFAULT_DATA_GRID_COLUMN_WIDTH,
+  );
+  const maxWidth = Math.max(
+    minWidth,
+    finiteNumberOrFallback(column.maxWidth, Number.POSITIVE_INFINITY),
+  );
   const pin = resolveColumnPin(column, columnPinning);
 
   const resolvedColumn = {
@@ -106,6 +115,10 @@ function resolveColumn<TRow>(
 
   const { pin: _pin, ...unpinnedColumn } = resolvedColumn;
   return unpinnedColumn;
+}
+
+function finiteNumberOrFallback(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 function resolveColumnPin<TRow>(

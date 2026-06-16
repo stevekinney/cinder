@@ -61,13 +61,20 @@
   const gridTemplateColumns = $derived(
     columnModel.renderColumns.map((column) => `${column.width}px`).join(' '),
   );
-  const firstRowId = $derived(rows.length > 0 ? getRowId(rows[0]!) : undefined);
+  const keyedRows = $derived(
+    rows.map((row, rowIndex) => ({
+      row,
+      rowId: getRowId(row),
+      rowIndex,
+    })),
+  );
+  const firstRowId = $derived(keyedRows[0]?.rowId);
   const firstColumnKey = $derived(columnModel.renderColumns[0]?.key);
   const gridId = $props.id();
   let requestedActiveRowIndex = $state(0);
   let requestedActiveColumnKey = $state<string | undefined>();
   const activeRowIndex = $derived(
-    rows.length > 0 ? Math.min(requestedActiveRowIndex, rows.length - 1) : 0,
+    keyedRows.length > 0 ? Math.min(requestedActiveRowIndex, keyedRows.length - 1) : 0,
   );
   const activeColumnIndex = $derived.by(() => {
     const index = columnModel.renderColumns.findIndex(
@@ -76,7 +83,9 @@
     return index >= 0 ? index : 0;
   });
   const activeRowId = $derived(
-    rows.length > 0 ? getRowId(rows[Math.min(activeRowIndex, rows.length - 1)]!) : firstRowId,
+    keyedRows.length > 0
+      ? keyedRows[Math.min(activeRowIndex, keyedRows.length - 1)]?.rowId
+      : firstRowId,
   );
   const activeCellId = $derived(
     activeRowId && firstColumnKey
@@ -135,8 +144,8 @@
   }
 
   function moveActiveCell(rowIndex: number, columnIndex: number): void {
-    if (rows.length === 0 || columnModel.renderColumns.length === 0) return;
-    requestedActiveRowIndex = Math.min(Math.max(rowIndex, 0), rows.length - 1);
+    if (keyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
+    requestedActiveRowIndex = Math.min(Math.max(rowIndex, 0), keyedRows.length - 1);
     requestedActiveColumnKey =
       columnModel.renderColumns[
         Math.min(Math.max(columnIndex, 0), columnModel.renderColumns.length - 1)
@@ -144,7 +153,7 @@
   }
 
   function handleKeydown(event: KeyboardEvent): void {
-    if (rows.length === 0 || columnModel.renderColumns.length === 0) return;
+    if (keyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
 
     if (event.key === 'ArrowRight') {
       event.preventDefault();
@@ -179,7 +188,7 @@
     if (event.key === 'End') {
       event.preventDefault();
       moveActiveCell(
-        event.ctrlKey ? rows.length - 1 : activeRowIndex,
+        event.ctrlKey ? keyedRows.length - 1 : activeRowIndex,
         columnModel.renderColumns.length - 1,
       );
     }
@@ -220,8 +229,10 @@
   </div>
 
   <div class="cinder-data-grid__body" role="rowgroup">
-    {#each rows as row, rowIndex (getRowId(row))}
-      {@const rowId = getRowId(row)}
+    {#each keyedRows as keyedRow (keyedRow.rowId)}
+      {@const row = keyedRow.row}
+      {@const rowId = keyedRow.rowId}
+      {@const rowIndex = keyedRow.rowIndex}
       <div
         class={classNames('cinder-data-grid__row', getRowClass(row, rowIndex))}
         role="row"
@@ -230,14 +241,15 @@
       >
         {#each columnModel.renderColumns as column (column.key)}
           {@const value = getDataGridColumnValue(row, column)}
+          {@const cellId = getCellId(rowId, column.key)}
           <div
-            id={getCellId(rowId, column.key)}
+            id={cellId}
             class="cinder-data-grid__cell"
             role="gridcell"
             aria-colindex={column.colIndex}
             tabindex="-1"
             data-cinder-pin={column.pin}
-            data-cinder-active={activeCellId === getCellId(rowId, column.key) ? 'true' : undefined}
+            data-cinder-active={activeCellId === cellId ? 'true' : undefined}
             style={getCellStyle(column)}
           >
             {#if column.cell}
