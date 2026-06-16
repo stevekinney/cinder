@@ -191,6 +191,17 @@ export { copyToClipboard } from './utilities/clipboard.ts';
 export { default as DataList } from './components/data-list/index.ts';
 export type { DataListProps } from './components/data-list/index.ts';
 
+export { default as DataGrid } from './components/data-grid/index.ts';
+export type {
+  DataGridCellContext,
+  DataGridColumnDef,
+  DataGridColumnPin,
+  DataGridColumnPinning,
+  DataGridColumnSizing,
+  DataGridDensity,
+  DataGridProps,
+} from './components/data-grid/index.ts';
+
 export { default as DataTable } from './components/data-table/index.ts';
 export type {
   DataTableColumn,

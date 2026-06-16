@@ -44,6 +44,7 @@
 @import '../components/container/container.css';
 @import '../components/context-menu/context-menu.css';
 @import '../components/copy-button/copy-button.css';
+@import '../components/data-grid/data-grid.css';
 @import '../components/data-list/data-list.css';
 @import '../components/data-table/data-table.css';
 @import '../components/date-range-field/date-range-field.css';

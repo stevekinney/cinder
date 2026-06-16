@@ -204,7 +204,7 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
-  it('keeps the sidebar at or below the 122-entry product gate', async () => {
+  it('keeps the sidebar at or below the 123-entry product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
@@ -250,13 +250,16 @@ describe('discoverSidebarComponents', () => {
     // grid, masonry, speed-dial, and transfer-list. Its compound leaves
     // (grid-item and speed-dial-action) stay compose-only, so they do not add
     // sidebar entries. That lands the measured sidebar ceiling at 122.
+    // DataGrid adds one standalone sidebar family with its first playground
+    // example, bringing the combined measured ceiling to 123.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(122);
+    expect(sidebar.length).toBeLessThanOrEqual(123);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
     // from the sidebar also dropped some other family in its place.
     expect(sidebar).toContain('stacked-list-item');
+    expect(sidebar).toContain('data-grid');
     expect(sidebar).toContain('grid');
     expect(sidebar).toContain('masonry');
     expect(sidebar).toContain('speed-dial');
