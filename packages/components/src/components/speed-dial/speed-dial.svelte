@@ -55,6 +55,13 @@
     return actionButtons.filter((button) => !button.disabled);
   }
 
+  function getKeyboardNavigationButtons(): HTMLButtonElement[] {
+    const enabledButtons = getEnabledActionButtons();
+    return direction === 'up' || direction === 'left'
+      ? enabledButtons.toReversed()
+      : enabledButtons;
+  }
+
   function focusTrigger(): void {
     queueMicrotask(() => getTriggerElement()?.focus());
   }
@@ -107,7 +114,7 @@
     const target = event.target instanceof HTMLButtonElement ? event.target : null;
     if (!target) return;
 
-    const enabledButtons = getEnabledActionButtons();
+    const enabledButtons = getKeyboardNavigationButtons();
     const currentIndex = enabledButtons.indexOf(target);
     if (currentIndex === -1) return;
 

@@ -83,6 +83,40 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(share);
   });
 
+  test('up direction keyboard navigation follows the visual stack', async () => {
+    render(SpeedDialFixture, { props: { archiveDisabled: false } });
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    const archive = screen.getByRole('button', { name: 'Archive' });
+
+    expect(document.activeElement).toBe(create);
+    await fireEvent.keyDown(create, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(archive);
+
+    await fireEvent.keyDown(archive, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(create);
+  });
+
+  test('left direction keyboard navigation follows the visual row', async () => {
+    render(SpeedDialFixture, { props: { archiveDisabled: false, direction: 'left' } });
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    const archive = screen.getByRole('button', { name: 'Archive' });
+
+    expect(document.activeElement).toBe(create);
+    await fireEvent.keyDown(create, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(archive);
+
+    await fireEvent.keyDown(archive, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(create);
+  });
+
   test('Escape closes the dial and restores focus to the trigger', async () => {
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });

@@ -7,12 +7,14 @@
     direction = 'up',
     hidden = false,
     ariaLabel = 'Quick actions',
+    archiveDisabled = true,
     onAction,
   }: {
     open?: boolean;
     direction?: SpeedDialDirection;
     hidden?: boolean;
     ariaLabel?: string;
+    archiveDisabled?: boolean;
     onAction?: (name: string) => void;
   } = $props();
 </script>
@@ -30,7 +32,7 @@
     {/snippet}
   </SpeedDial.Action>
 
-  <SpeedDial.Action label="Archive" disabled>
+  <SpeedDial.Action label="Archive" disabled={archiveDisabled}>
     {#snippet icon()}
       <span aria-hidden="true">A</span>
     {/snippet}
