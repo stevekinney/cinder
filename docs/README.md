@@ -1,15 +1,27 @@
 # Documentation
 
-This directory holds the long-form documentation that does not live inside a component's own folder: cross-cutting policies, accessibility recipes, and internal planning notes.
+This directory holds long-form documentation that does not live inside a component's own folder: consumer references, cross-cutting policies, recipes, visual-regression notes, decisions, and historical plans.
 
-## Recipes
+## Consumer References
 
-- [Recipes](./recipes/README.md) — currently: the [skip-link recipe](./recipes/skip-link.md).
+- [Packaging contract](./packaging.md): npm tarball contents, conditional exports, and CSS consumption modes.
+- [Design tokens](./tokens.md): public `--cinder-*` tokens and their defaults.
+- [Theming and dark mode](./theming.md): the `color-scheme` / `light-dark()` contract, a Svelte toggle recipe, and Storybook integration.
+- [Recipes](./recipes/README.md): copy-paste patterns that compose existing primitives.
 
-## Policies
+## Policies and Audits
 
-- [Focus ring policy](./focus-ring-policy.md): the two approved `:focus-visible` strategies for Cinder component CSS, plus the four tokens both strategies consume.
+- [Focus ring policy](./focus-ring-policy.md): approved `:focus-visible` strategies and enforcement.
+- [Visual-regression baselines](./visual-regression/baselines.md): snapshot authoring, Docker requirements, and block-mode behavior.
+- [Visual-regression inventory](./visual-regression/phase-0-inventory.md): read-only discovery behind the visual-regression rollout.
+- [Design debt](./design-debt.md): resolved design decisions retained so future work does not reopen the same product questions.
 
-## Internal planning
+## Decisions
 
-- [Phase 6 plan](./phase-6-plan.md): historical planning document. Not a consumer-facing reference — kept here for context on past phases of work.
+- [Data grid buy-vs-build](./decisions/data-grid-buy-vs-build.md): evaluation record for data-grid dependency choices.
+- [Segmented control tablist variant](./decisions/segmented-control-tablist-variant.md): decision record for the tablist-style segmented-control follow-up.
+
+## Historical Plans
+
+- [Phase 6 plan](./phase-6-plan.md): historical implementation plan for porting the domain-suite components.
+- [Roadmap](../ROADMAP.md): historical design-system backlog. Prefer `packages/components/components.json` and the generated component READMEs for current package surface.

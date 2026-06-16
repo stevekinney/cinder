@@ -243,7 +243,7 @@ describe('MenuBar', () => {
     await fireEvent.click(file);
     await tick();
     const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
-    await fireEvent.pointerEnter(submenuTrigger);
+    submenuTrigger.dispatchEvent(new PointerEvent('pointerenter'));
     await tick();
 
     expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
