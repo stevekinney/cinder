@@ -9,7 +9,7 @@
  *
  * This test opens the basic modal example in the playground and asserts:
  *   1. the resolved value of `--cinder-ease-spring` on the modal element
- *      matches the documented `cubic-bezier(0.34, 1.56, 0.64, 1)`.
+ *      matches the documented `cubic-bezier(0.22, 1, 0.36, 1)`.
  *   2. the computed `animation-timing-function` is not `ease` — i.e. the
  *      animation declaration successfully resolved a custom timing curve
  *      rather than falling back to the browser default.
@@ -17,7 +17,7 @@
 
 import { expect, test } from '@playwright/test';
 
-const SPRING_CUBIC_BEZIER = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+const SPRING_CUBIC_BEZIER = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 test.describe('--cinder-ease-spring token', () => {
   test('resolves on the modal element and drives a non-default timing curve', async ({ page }) => {
