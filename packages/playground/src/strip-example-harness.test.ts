@@ -189,6 +189,7 @@ describe('exampleSnippetResponse — route glue', () => {
 `;
     const response = exampleSnippetResponse(source, 'broken/example');
     expect(response.status).toBe(500);
+    expect(response.headers.get('Content-Type')).toBe('text/plain');
     const body = await response.text();
     expect(body).toContain('broken/example');
     expect(body).toContain('Failed to prepare example snippet');
