@@ -61,14 +61,39 @@
   const gridTemplateColumns = $derived(
     columnModel.renderColumns.map((column) => `${column.width}px`).join(' '),
   );
-  const keyedRows = $derived(
-    rows.map((row, rowIndex) => ({
+  const keyedRows = $derived.by(() => {
+    const records = rows.map((row, rowIndex) => ({
       row,
       rowId: getRowId(row),
       rowIndex,
-    })),
-  );
-  const firstRowId = $derived(keyedRows[0]?.rowId);
+    }));
+    const rowIdCounts = new Map<string, number>();
+    for (const { rowId } of records) {
+      rowIdCounts.set(rowId, (rowIdCounts.get(rowId) ?? 0) + 1);
+    }
+    const rowIdOccurrences = new Map<string, number>();
+    return records.map((record) => {
+      const occurrence = rowIdOccurrences.get(record.rowId) ?? 0;
+      rowIdOccurrences.set(record.rowId, occurrence + 1);
+      const hasDuplicateRowId = (rowIdCounts.get(record.rowId) ?? 0) > 1;
+      const uniqueRowId = hasDuplicateRowId ? `${record.rowId}\u0000${occurrence}` : record.rowId;
+      return {
+        ...record,
+        rowDomId: uniqueRowId,
+        rowKey: uniqueRowId,
+      };
+    });
+  });
+  const duplicateRowIds = $derived.by(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const { rowId } of keyedRows) {
+      if (seen.has(rowId)) duplicates.add(rowId);
+      else seen.add(rowId);
+    }
+    return [...duplicates];
+  });
+  const firstRowDomId = $derived(keyedRows[0]?.rowDomId);
   const firstColumnKey = $derived(columnModel.renderColumns[0]?.key);
   const gridId = $props.id();
   let requestedActiveRowIndex = $state(0);
@@ -82,14 +107,17 @@
     );
     return index >= 0 ? index : 0;
   });
-  const activeRowId = $derived(
+  const activeRowDomId = $derived(
     keyedRows.length > 0
-      ? keyedRows[Math.min(activeRowIndex, keyedRows.length - 1)]?.rowId
-      : firstRowId,
+      ? keyedRows[Math.min(activeRowIndex, keyedRows.length - 1)]?.rowDomId
+      : firstRowDomId,
   );
   const activeCellId = $derived(
-    activeRowId !== undefined && firstColumnKey !== undefined
-      ? getCellId(activeRowId, columnModel.renderColumns[activeColumnIndex]?.key ?? firstColumnKey)
+    activeRowDomId !== undefined && firstColumnKey !== undefined
+      ? getCellId(
+          activeRowDomId,
+          columnModel.renderColumns[activeColumnIndex]?.key ?? firstColumnKey,
+        )
       : undefined,
   );
   const resolvedAriaLabel = $derived(
@@ -102,12 +130,30 @@
   );
 
   let hasWarnedNoLabel = false;
+  let warnedDuplicateRowIdsSignature: string | undefined;
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
       hasWarnedNoLabel = true;
       devWarn('[cinder-data-grid] DataGrid requires either aria-label or aria-labelledby.');
     }
+  });
+
+  $effect(() => {
+    if (duplicateRowIds.length === 0) {
+      warnedDuplicateRowIdsSignature = undefined;
+      return;
+    }
+
+    const signature = JSON.stringify(duplicateRowIds);
+    if (signature === warnedDuplicateRowIdsSignature) return;
+
+    warnedDuplicateRowIdsSignature = signature;
+    devWarn(
+      `[cinder-data-grid] getRowId returned duplicate row ids: ${duplicateRowIds
+        .map((rowId) => JSON.stringify(rowId))
+        .join(', ')}. Row ids must be unique.`,
+    );
   });
 
   function getCellId(rowId: string, columnKey: string): string {
@@ -130,6 +176,11 @@
   function getRowClass(row: TRow, rowIndex: number): string | undefined {
     if (typeof rowClass === 'function') return rowClass(row, rowIndex);
     return rowClass;
+  }
+
+  function getResolvedRowAriaLabel(row: TRow, rowIndex: number): string | undefined {
+    const label = getRowAriaLabel?.(row, rowIndex);
+    return typeof label === 'string' && label.trim().length > 0 ? label : undefined;
   }
 
   function getCellStyle(column: ResolvedDataGridColumn<TRow>): string {
@@ -229,15 +280,15 @@
   </div>
 
   <div class="cinder-data-grid__body" role="rowgroup">
-    {#each keyedRows as keyedRow (keyedRow.rowId)}
+    {#each keyedRows as keyedRow (keyedRow.rowKey)}
       {@const row = keyedRow.row}
-      {@const rowId = keyedRow.rowId}
+      {@const rowId = keyedRow.rowDomId}
       {@const rowIndex = keyedRow.rowIndex}
       <div
         class={classNames('cinder-data-grid__row', getRowClass(row, rowIndex))}
         role="row"
         aria-rowindex={rowIndex + 2}
-        aria-label={getRowAriaLabel?.(row, rowIndex)}
+        aria-label={getResolvedRowAriaLabel(row, rowIndex)}
       >
         {#each columnModel.renderColumns as column (column.key)}
           {@const value = getDataGridColumnValue(row, column)}

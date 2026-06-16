@@ -124,6 +124,20 @@ describe('DataGrid ARIA', () => {
     expect(grid?.hasAttribute('aria-label')).toBe(false);
   });
 
+  test('omits whitespace-only row aria labels', () => {
+    const { container } = render(IssueDataGrid, {
+      rows,
+      columns,
+      getRowId: getIssueId,
+      getRowAriaLabel: () => '   ',
+      'aria-label': 'Issues',
+    });
+
+    const firstDataRow = container.querySelector('[role="row"][aria-rowindex="2"]');
+
+    expect(firstDataRow?.hasAttribute('aria-label')).toBe(false);
+  });
+
   test('omits whitespace-only accessible-name attributes and warns', () => {
     const warningMessages: unknown[] = [];
     const warnSpy = mock((message?: unknown) => {

@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 import type { Component } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -156,6 +156,38 @@ describe('DataGrid', () => {
     expect(cell?.id.endsWith('-cell--')).toBe(true);
     expect(grid?.getAttribute('aria-activedescendant')).toBe(cell?.id);
     expect(cell?.getAttribute('data-cinder-active')).toBe('true');
+  });
+
+  test('warns about duplicate row ids and keeps generated cell ids unique', () => {
+    const warningMessages: unknown[] = [];
+    const warnSpy = mock((message?: unknown) => {
+      warningMessages.push(message);
+    });
+    const originalWarn = console.warn;
+    console.warn = warnSpy;
+
+    try {
+      const { container } = render(OrderDataGrid, {
+        rows: [
+          { id: 'duplicate', customer: 'First', status: 'Queued', total: 1 },
+          { id: 'duplicate', customer: 'Second', status: 'Queued', total: 2 },
+        ],
+        columns: [{ key: 'customer', header: 'Customer' }],
+        getRowId: getOrderId,
+        'aria-label': 'Duplicate id orders',
+      });
+
+      const cellIds = Array.from(container.querySelectorAll('[role="gridcell"]')).map(
+        (cell) => cell.id,
+      );
+
+      expect(new Set(cellIds).size).toBe(cellIds.length);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(String(warningMessages[0])).toContain('duplicate row ids');
+      expect(String(warningMessages[0])).toContain('"duplicate"');
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 
   test('renders dates with deterministic ISO strings', () => {
