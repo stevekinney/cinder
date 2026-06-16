@@ -451,7 +451,7 @@
       event.stopPropagation();
       dragKeyboardReturnTarget =
         event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
-      controller.lift(id);
+      controller.lift(id, 'keyboard');
       restoreDragKeyboardFocus();
       return true;
     }
@@ -489,6 +489,10 @@
         event.stopPropagation();
         controller.moveToEdge('last');
         return true;
+      case 'F2':
+        event.preventDefault();
+        event.stopPropagation();
+        return true;
       case ' ':
       case 'Enter':
         event.preventDefault();
@@ -514,7 +518,7 @@
     event.stopPropagation();
     dragHandleElement?.focus();
     dragHandleElement?.setPointerCapture(event.pointerId);
-    controller.lift(id);
+    controller.lift(id, 'pointer');
   }
 
   function handleDragClick(event: MouseEvent): void {

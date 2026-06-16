@@ -12,6 +12,8 @@ export type TreeReorderTarget = TreeDropTarget & {
   toParentId: string | null;
 };
 
+export type TreeDragSource = 'keyboard' | 'pointer';
+
 export type TreeMoveNode = {
   id: string;
   parentId: string | null;
@@ -40,6 +42,7 @@ export class TreeDragController {
   phase = $state<'idle' | 'dragging'>('idle');
   draggedId = $state<string | null>(null);
   dropTarget = $state<TreeDropTarget | null>(null);
+  dragSource = $state<TreeDragSource | null>(null);
 
   readonly #options: TreeDragControllerOptions;
 
@@ -51,6 +54,10 @@ export class TreeDragController {
     return this.phase === 'dragging';
   }
 
+  get pointerDragging(): boolean {
+    return this.dragging && this.dragSource === 'pointer';
+  }
+
   isDragging(id: string): boolean {
     return this.draggedId === id;
   }
@@ -60,11 +67,12 @@ export class TreeDragController {
     return position === undefined || this.dropTarget.position === position;
   }
 
-  lift(id: string): void {
+  lift(id: string, source: TreeDragSource): void {
     if (this.phase !== 'idle') return;
     this.phase = 'dragging';
     this.draggedId = id;
     this.dropTarget = null;
+    this.dragSource = source;
     const visibleIds = this.#options.getVisibleIds();
     const position = Math.max(1, visibleIds.indexOf(id) + 1);
     this.#options.announce(
@@ -77,7 +85,8 @@ export class TreeDragController {
     const visibleIds = this.#options.getVisibleIds();
     if (visibleIds.length === 0) return;
     const currentId = this.dropTarget?.id ?? this.draggedId;
-    const currentIndex = Math.max(0, visibleIds.indexOf(currentId));
+    const currentIndex = this.#currentVisibleIndex(currentId, visibleIds);
+    if (currentIndex < 0) return;
     let nextIndex = currentIndex + delta;
     while (nextIndex >= 0 && nextIndex < visibleIds.length) {
       const nextId = visibleIds[nextIndex];
@@ -116,7 +125,8 @@ export class TreeDragController {
     if (this.phase !== 'dragging' || !this.draggedId) return;
     const visibleIds = this.#options.getVisibleIds();
     const currentId = this.dropTarget?.id ?? this.draggedId;
-    const currentIndex = visibleIds.indexOf(currentId);
+    const currentIndex = this.#currentVisibleIndex(currentId, visibleIds);
+    if (currentIndex < 0) return;
     const before = reversedVisibleIds(visibleIds.slice(0, Math.max(0, currentIndex)));
     const branchId = before.find(
       (id) => this.#isValidDropTarget({ id, position: 'child' }) && this.#options.isBranch(id),
@@ -233,10 +243,17 @@ export class TreeDragController {
     return `${target.position} ${this.#labelFor(target.id)}`;
   }
 
+  #currentVisibleIndex(currentId: string, visibleIds: readonly string[]): number {
+    const currentIndex = visibleIds.indexOf(currentId);
+    if (currentIndex !== -1) return currentIndex;
+    return this.draggedId ? visibleIds.indexOf(this.draggedId) : -1;
+  }
+
   #reset(): void {
     this.phase = 'idle';
     this.draggedId = null;
     this.dropTarget = null;
+    this.dragSource = null;
   }
 }
 

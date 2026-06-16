@@ -23,6 +23,7 @@ type Item = {
   disabled?: boolean;
   branch?: boolean;
   children?: Item[];
+  onRename?: TreeItemProps['onRename'];
 };
 
 function treeItemsSnippet(items: Item[]): Snippet {
@@ -39,6 +40,7 @@ function treeItemsSnippet(items: Item[]): Snippet {
         if (item.draggable !== undefined) props.draggable = item.draggable;
         if (item.disabled !== undefined) props.disabled = item.disabled;
         if (item.branch !== undefined) props.branch = item.branch;
+        if (item.onRename !== undefined) props.onRename = item.onRename;
         if (children !== undefined) props.children = children;
         instances.push(
           mount(TreeItem, {
@@ -181,6 +183,45 @@ describe('Tree — drag-and-drop reorder', () => {
       ]);
       expect(document.activeElement).toBe(alpha);
     });
+  });
+
+  test('pointerup does not drop a keyboard drag', async () => {
+    const onReorder = mock();
+    const { container } = renderTree({ onReorder });
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    const alpha = treeItem(container, 'Alpha');
+
+    alpha.focus();
+    await fireEvent.keyDown(alpha, { key: ' ', ctrlKey: true, shiftKey: true });
+    await fireEvent.keyDown(alpha, { key: 'ArrowDown' });
+    await fireEvent.pointerUp(tree);
+
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(alpha.hasAttribute('data-cinder-dragging')).toBe(true);
+    expect(treeItem(container, 'Beta').getAttribute('data-cinder-drop-target')).toBe('after');
+
+    await fireEvent.keyDown(alpha, { key: ' ' });
+
+    expect(onReorder).toHaveBeenCalledTimes(1);
+  });
+
+  test('F2 does not enter rename mode during an active drag', async () => {
+    const onRename = mock();
+    const { container } = renderTree({
+      items: [
+        { id: 'a', label: 'Alpha', draggable: true, onRename },
+        { id: 'b', label: 'Beta', draggable: true },
+      ],
+    });
+    const alpha = treeItem(container, 'Alpha');
+
+    alpha.focus();
+    await fireEvent.keyDown(alpha, { key: ' ', ctrlKey: true, shiftKey: true });
+    await fireEvent.keyDown(alpha, { key: 'F2' });
+
+    expect(alpha.hasAttribute('data-cinder-dragging')).toBe(true);
+    expect(container.querySelector('.cinder-tree-item__rename-input')).toBeNull();
+    expect(onRename).not.toHaveBeenCalled();
   });
 
   test('Space lifts an item and announces keyboard instructions', async () => {

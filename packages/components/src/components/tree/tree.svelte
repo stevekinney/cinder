@@ -1103,7 +1103,7 @@
   function scheduleDragAutoscroll(): void {
     if (
       dragScrollAnimationFrame !== null ||
-      !dragController?.dragging ||
+      !dragController?.pointerDragging ||
       !dragScrollElement ||
       typeof requestAnimationFrame !== 'function'
     ) {
@@ -1113,7 +1113,7 @@
     dragScrollAnimationFrame = requestAnimationFrame(() => {
       dragScrollAnimationFrame = null;
       const tree = dragScrollElement;
-      if (!dragController?.dragging || !tree) return;
+      if (!dragController?.pointerDragging || !tree) return;
 
       const rect = tree.getBoundingClientRect();
       const edge = 32;
@@ -1132,7 +1132,7 @@
   }
 
   function handlePointerMove(event: PointerEvent): void {
-    if (!dragController?.dragging) return;
+    if (!dragController?.pointerDragging) return;
     event.preventDefault();
     latestDragPointerX = event.clientX;
     latestDragPointerY = event.clientY;
@@ -1142,15 +1142,16 @@
   }
 
   function handlePointerUp(event: PointerEvent): void {
-    if (!dragController?.dragging) return;
+    if (!dragController?.pointerDragging) return;
     event.preventDefault();
     stopDragAutoscroll();
     dragController.drop();
   }
 
   function handlePointerCancel(): void {
+    if (!dragController?.pointerDragging) return;
     stopDragAutoscroll();
-    dragController?.cancel();
+    dragController.cancel();
   }
 
   function handleVirtualizedItemClick(item: FlattenedTreeDataItem, event: MouseEvent): void {

@@ -1,6 +1,11 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 
-import { moveTreeNode, type TreeMoveNode } from '../../_internal/tree-drag-controller.svelte.ts';
+import {
+  moveTreeNode,
+  TreeDragController,
+  type TreeMoveNode,
+} from '../../_internal/tree-drag-controller.svelte.ts';
+import type { TreeNodeRegistration } from '../../_internal/tree-registry.svelte.ts';
 
 type Node = TreeMoveNode & { label: string };
 
@@ -68,5 +73,30 @@ describe('moveTreeNode', () => {
     ).text();
 
     expect(source).not.toContain('.toReversed(');
+  });
+});
+
+describe('TreeDragController', () => {
+  test('moveBy falls back to the lifted item when the active target is no longer visible', () => {
+    let visibleIds = ['a', 'b', 'c', 'd'];
+    const announcements: string[] = [];
+    const controller = new TreeDragController({
+      getVisibleIds: () => visibleIds,
+      getNode: (id) => ({ label: () => id.toUpperCase() }) as TreeNodeRegistration,
+      getParentId: () => null,
+      isBranch: () => false,
+      focus: mock(),
+      announce: (message) => announcements.push(message),
+      commit: mock(),
+    });
+
+    controller.lift('b', 'keyboard');
+    controller.setDropTarget({ id: 'c', position: 'after' });
+    visibleIds = ['a', 'b', 'd'];
+
+    controller.moveBy(-1);
+
+    expect(controller.dropTarget).toEqual({ id: 'a', position: 'before' });
+    expect(announcements.at(-1)).toContain('moved before A');
   });
 });
