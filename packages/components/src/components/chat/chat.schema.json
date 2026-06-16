@@ -100,7 +100,7 @@
       {
         "name": "messagePart",
         "reason": "function-or-snippet",
-        "description": "Per-message-part override. Replaces the rendering of an individual body part\n(text, markdown, tool call, tool result) while delegating the rest to the\nbuilt-ins via the `renderDefault` snippet it receives."
+        "description": "Per-message-part override. Replaces the rendering of an individual body part\n(markdown, tool call, tool result) while delegating the rest to the built-ins\nvia the `renderDefault` snippet it receives. Image parts are excluded — they\nrender through the grouped attachment grid, not this override."
       },
       {
         "name": "messageStatus",

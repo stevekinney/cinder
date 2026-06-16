@@ -256,24 +256,31 @@
   // server, so no browser guard is needed. Streaming pushes drive Chat's own
   // imperative buffer (so a push-driven stream is self-contained); transcript /
   // peripheral pushes forward to the consumer (Chat never mutates `conversation`).
-  // The effect re-subscribes when the adapter reference or `conversation.id`
-  // changes; it also re-subscribes if a forwarded callback reference changes,
-  // which is harmless (teardown + re-subscribe).
+  //
+  // The effect re-subscribes ONLY when the adapter reference or `conversation.id`
+  // changes — the forwarding callbacks are read through `untrack` at invocation
+  // time so that a consumer passing inline arrow functions (whose identity churns
+  // every render) does not tear down and reopen the transport on every render.
+  // Each handler still calls the LATEST callback (untrack reads the live prop),
+  // it just doesn't make that prop a dependency of the subscription effect.
   $effect(() => {
     const resolvedAdapter = adapter;
     if (!resolvedAdapter?.subscribe) return;
 
     const conversationId = conversation.id;
     const handlers: ChatPushHandlers = {
-      onMessage: (message) => onpushmessage?.(message),
-      onTypingChange: (isTyping) => ontypingchange?.(isTyping),
-      onReadReceipt: (event) => onreadreceipt?.(event),
+      onMessage: (message) => untrack(() => onpushmessage)?.(message),
+      onTypingChange: (isTyping) => untrack(() => ontypingchange)?.(isTyping),
+      onReadReceipt: (event) => untrack(() => onreadreceipt)?.(event),
       onStreamBegin: (messageId) => beginStreaming(messageId),
       onTokenPush: (token) => pushToken(token),
       onStreamEnd: () => endStreaming(),
     };
 
-    return resolvedAdapter.subscribe(conversationId, handlers);
+    // Guard the teardown: an adapter that violates the contract and returns a
+    // non-function must not crash Svelte's cleanup. A bad return is dropped.
+    const unsubscribe = resolvedAdapter.subscribe(conversationId, handlers);
+    return typeof unsubscribe === 'function' ? unsubscribe : undefined;
   });
 
   // ==========================================================================
@@ -300,21 +307,27 @@
   // One internal path for every user command so callback-driven and
   // adapter-driven usage behave identically. The adapter method takes
   // precedence when present (a transport owner); otherwise the callback fires.
-  // Adapter methods are awaited and a rejection is routed to `onadaptererror`
-  // rather than swallowed — a sync callback never rejects, so it needs no guard.
-  async function dispatchCommand<C extends ChatCommand>(
-    command: C,
-    adapterMethod: ((adapter: ChatAdapter) => Promise<void> | undefined) | undefined,
+  // `adapterMethod` returns the adapter's promise, or `undefined` when the
+  // adapter doesn't implement that optional method (then we fall through to the
+  // callback). The whole adapter path is wrapped in try/catch so BOTH a rejected
+  // promise AND a synchronous throw from the adapter route to `onadaptererror`
+  // rather than escaping. A sync callback never rejects, so it needs no guard.
+  async function dispatchCommand(
+    command: ChatCommand,
+    adapterMethod: (adapter: ChatAdapter) => Promise<void> | undefined,
     callback: (() => void) | undefined,
   ): Promise<void> {
-    const run = adapter && adapterMethod ? adapterMethod(adapter) : undefined;
-    if (run) {
+    if (adapter) {
       try {
-        await run;
+        const run = adapterMethod(adapter);
+        if (run) {
+          await run;
+          return;
+        }
       } catch (error) {
         onadaptererror?.({ command, error });
+        return;
       }
-      return;
     }
     callback?.();
   }

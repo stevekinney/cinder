@@ -13,7 +13,6 @@ export {
   type ImageMessagePart,
   type MarkdownMessagePart,
   type MessagePartDerivationContext,
-  type TextMessagePart,
   type ToolCallMessagePart,
   type ToolResultMessagePart,
 } from './types';

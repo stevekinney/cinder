@@ -9,46 +9,23 @@
  */
 
 /// <reference lib="dom" />
+import { resolve } from 'node:path';
+
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { importWithoutDomGlobals } from '../../../test/import-without-dom-globals.ts';
 
 setupHappyDom();
 
-/**
- * Import the given specifiers with `document`/`window` removed from the realm,
- * restoring them afterward. Returns the first "not defined" error message a
- * module throws on evaluation, or `undefined` if all imported cleanly.
- */
-async function importWithoutDomGlobals(specifiers: string[]): Promise<string | undefined> {
-  const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
-  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
-  Reflect.deleteProperty(globalThis, 'document');
-  Reflect.deleteProperty(globalThis, 'window');
-
-  try {
-    for (const specifier of specifiers) {
-      const cacheBusted = `${specifier}${specifier.includes('?') ? '&' : '?'}ssr-eval=${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      try {
-        await import(cacheBusted);
-      } catch (error) {
-        return error instanceof Error ? error.message : String(error);
-      }
-    }
-    return undefined;
-  } finally {
-    if (documentDescriptor) {
-      Object.defineProperty(globalThis, 'document', documentDescriptor);
-    }
-    if (windowDescriptor) {
-      Object.defineProperty(globalThis, 'window', windowDescriptor);
-    }
-  }
-}
-
 describe('adapter seam — SSR safety', () => {
   test('the adapter module imports with no DOM globals at module level', async () => {
-    const threwMessage = await importWithoutDomGlobals(['./chat-adapter.ts', './index.ts']);
+    // Absolute paths so the dynamic import inside the shared helper resolves them
+    // from here, not relative to the helper's own module location.
+    const threwMessage = await importWithoutDomGlobals([
+      resolve(import.meta.dir, 'chat-adapter.ts'),
+      resolve(import.meta.dir, 'index.ts'),
+    ]);
     expect(threwMessage).toBeUndefined();
   });
 });

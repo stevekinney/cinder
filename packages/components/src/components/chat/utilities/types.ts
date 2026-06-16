@@ -31,20 +31,6 @@ export type DeliveryStatus = 'draft' | 'sending' | 'sent' | 'failed';
 export type ChatExportOptions = ToMarkdownOptions;
 
 /**
- * A plain-text render part — raw text shown verbatim, no markdown pipeline.
- *
- * Distinct from {@link MarkdownMessagePart}: message bodies render as markdown
- * (matching the historical {@link Message} rendering), but a `text` part is
- * available for content that must be shown as-is.
- */
-export type TextMessagePart = {
-  type: 'text';
-  /** Stable identity for the keyed `{#each}` over parts (see `deriveMessageParts`). */
-  key: string;
-  text: string;
-};
-
-/**
  * A markdown render part — the effective body text of a message.
  *
  * `content` is always the full effective text (streaming `overrideContent` is
@@ -112,13 +98,13 @@ export type ImageMessagePart = {
  *
  * This is a UI layer derived from the compatible {@link Message} shape — it is
  * never written back to the transcript. C1 ships the renderable set
- * (`text`, `markdown`, `tool-call`, `tool-result`, `image`); the agent-specific
- * parts (tool-approval, reasoning, step, suggestion) are added by later Chat
- * tasks, which widen this union and add their renderer cases together so the
- * static part switch stays exhaustive.
+ * (`markdown`, `tool-call`, `tool-result`, `image`); the agent-specific parts
+ * (tool-approval, reasoning, step, suggestion) are added by later Chat tasks,
+ * which widen this union and add their renderer cases together so the static
+ * part switch stays exhaustive (the renderer's `{:else}` sentinel + the `never`
+ * narrowing there force the new branch to be added).
  */
 export type ChatMessagePart =
-  | TextMessagePart
   | MarkdownMessagePart
   | ToolCallMessagePart
   | ToolResultMessagePart

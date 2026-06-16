@@ -1,7 +1,9 @@
 <script lang="ts">
-  import type { ChatMessagePart } from '../utilities/types.ts';
-  import { toRenderUnits, type ChatMessagePartsRendererProps } from './chat-message-parts.ts';
-  import TextPart from './parts/text-part.svelte';
+  import {
+    toRenderUnits,
+    type BodyMessagePart,
+    type ChatMessagePartsRendererProps,
+  } from './chat-message-parts.ts';
   import MarkdownPart from './parts/markdown-part.svelte';
   import ToolCallPart from './parts/tool-call-part.svelte';
   import ToolResultPart from './parts/tool-result-part.svelte';
@@ -13,26 +15,28 @@
 </script>
 
 <!--
-  Built-in renderer for a single part. A static `{#if part.type === ...}` switch
-  (not a dynamic component map) so the bundler can tree-shake unused part
-  components and TypeScript narrows each branch. The trailing `{:else}` asserts
-  exhaustiveness: when a later Chat task widens ChatMessagePart, the missing
-  case surfaces as a visible fallback here AND a type error at the part level.
+  Built-in renderer for a single body part. A static `{#if part.type === ...}`
+  switch (not a dynamic component map) so the bundler can tree-shake unused part
+  components and TypeScript narrows each branch. Image parts never reach here —
+  they render through the grouped `{#each}` path below so the attachment grid
+  lays out by total count. The trailing `{:else}` is the exhaustiveness sentinel:
+  `part.type` narrows to `never` there, so a later Chat task that widens
+  ChatMessagePart without adding a branch surfaces a visible dev marker in the
+  DOM rather than silently rendering nothing.
 -->
-{#snippet renderDefault(part: ChatMessagePart)}
-  {#if part.type === 'text'}
-    <TextPart {part} />
-  {:else if part.type === 'markdown'}
+{#snippet renderDefault(part: BodyMessagePart)}
+  {#if part.type === 'markdown'}
     <MarkdownPart {part} />
   {:else if part.type === 'tool-call'}
     <ToolCallPart {part} {expanded} {ontoggle} />
   {:else if part.type === 'tool-result'}
     <ToolResultPart {part} />
-  {:else if part.type === 'image'}
-    <!-- Single image fallback. The grouped default path (below) is the normal
-         route; this branch only fires if an image part is rendered individually
-         (e.g. a consumer calls renderDefault on one). -->
-    <ImagePart parts={[part]} />
+  {:else}
+    <!-- Unhandled part type — a new ChatMessagePart variant was added without a
+         renderer branch. `part.type` narrows to `never` here, so this also fails
+         the typecheck if the union widens, and the sentinel makes the omission
+         visible in the DOM. -->
+    <span data-cinder-unhandled-part aria-hidden="true"></span>
   {/if}
 {/snippet}
 

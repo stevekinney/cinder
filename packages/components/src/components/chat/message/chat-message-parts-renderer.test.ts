@@ -93,13 +93,16 @@ describe('renderer — per-part rendering', () => {
     expect(container.textContent).toContain('hello body');
   });
 
-  test('renders a text part verbatim', () => {
+  test('renders the exhaustiveness sentinel for an unhandled part type', () => {
+    // Future-proofing: if ChatMessagePart is widened without adding a renderer
+    // branch, the `{:else}` sentinel makes the omission visible (and `part.type`
+    // narrows to `never` there, failing the typecheck). Simulate that future
+    // state with an unknown part type cast through `any`.
+    const unknownPart = { type: 'future-variant', key: 'm:future' } as unknown as ChatMessagePart;
     const { container } = render(ChatMessagePartsRenderer, {
-      props: { parts: [{ type: 'text', key: 'm:t', text: 'raw text here' }] },
+      props: { parts: [unknownPart] },
     });
-    const node = container.querySelector('.chat-message-text-part');
-    expect(node).not.toBeNull();
-    expect(node?.textContent).toBe('raw text here');
+    expect(container.querySelector('[data-cinder-unhandled-part]')).not.toBeNull();
   });
 
   test('renders a tool-call part through the tool-call group', () => {
@@ -266,7 +269,7 @@ describe('renderer — stable DOM identity', () => {
     target.remove();
   });
 
-  test('toggling a tool-call part expanded flag does NOT remount the card', () => {
+  test('a result arriving for a tool-call part (same key) does NOT remount the card', () => {
     const target = document.createElement('div');
     document.body.append(target);
     const pair = { call: { id: 'c1', name: 'lookup', arguments: {} } };

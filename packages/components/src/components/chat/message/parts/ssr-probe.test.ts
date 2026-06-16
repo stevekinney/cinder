@@ -13,49 +13,22 @@
  */
 
 /// <reference lib="dom" />
+import { resolve } from 'node:path';
+
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../../../test/happy-dom.ts';
+import { importWithoutDomGlobals } from '../../../../test/import-without-dom-globals.ts';
 
 setupHappyDom();
 
-/**
- * Import the given specifiers with `document`/`window` removed from the realm,
- * restoring them afterward. Returns the first "not defined" error message a
- * module throws on evaluation, or `undefined` if all imported cleanly.
- *
- * Each specifier is cache-busted so Bun re-evaluates the module body under the
- * nulled globals instead of serving a previously-cached instance.
- */
-async function importWithoutDomGlobals(specifiers: string[]): Promise<string | undefined> {
-  const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
-  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
-  Reflect.deleteProperty(globalThis, 'document');
-  Reflect.deleteProperty(globalThis, 'window');
-
-  try {
-    for (const specifier of specifiers) {
-      const cacheBusted = `${specifier}${specifier.includes('?') ? '&' : '?'}ssr-eval=${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      try {
-        await import(cacheBusted);
-      } catch (error) {
-        return error instanceof Error ? error.message : String(error);
-      }
-    }
-    return undefined;
-  } finally {
-    if (documentDescriptor) {
-      Object.defineProperty(globalThis, 'document', documentDescriptor);
-    }
-    if (windowDescriptor) {
-      Object.defineProperty(globalThis, 'window', windowDescriptor);
-    }
-  }
-}
-
 describe('parts spine — SSR safety', () => {
   test('deriveMessageParts imports with no DOM globals at module level', async () => {
-    const threwMessage = await importWithoutDomGlobals(['../../utilities/utilities.ts']);
+    // Resolve to an absolute path here (not in the shared helper) so the dynamic
+    // import inside the helper doesn't resolve the specifier relative to its own
+    // module location.
+    const utilitiesPath = resolve(import.meta.dir, '..', '..', 'utilities', 'utilities.ts');
+    const threwMessage = await importWithoutDomGlobals([utilitiesPath]);
     expect(threwMessage).toBeUndefined();
   });
 

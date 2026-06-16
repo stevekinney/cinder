@@ -22,9 +22,7 @@ import type { MessagePartOverride } from './message/chat-message-parts.ts';
  * `renderDefault` snippet that renders the built-in row, so a consumer can wrap
  * or replace a row while still delegating to the default when it chooses.
  */
-export type ChatRowOverride = import('svelte').Snippet<
-  [message: Message, renderDefault: import('svelte').Snippet]
->;
+export type ChatRowOverride = Snippet<[message: Message, renderDefault: Snippet]>;
 
 /** Props for the Chat component. */
 // `onsubmit` is redefined below with a ChatSubmitEvent payload, so strip the
@@ -81,8 +79,9 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   row?: ChatRowOverride;
   /**
    * Per-message-part override. Replaces the rendering of an individual body part
-   * (text, markdown, tool call, tool result) while delegating the rest to the
-   * built-ins via the `renderDefault` snippet it receives.
+   * (markdown, tool call, tool result) while delegating the rest to the built-ins
+   * via the `renderDefault` snippet it receives. Image parts are excluded — they
+   * render through the grouped attachment grid, not this override.
    */
   messagePart?: MessagePartOverride;
   viewportAttachment?: Attachment<HTMLElement>;

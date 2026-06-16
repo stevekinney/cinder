@@ -27,6 +27,7 @@ import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { importWithoutDomGlobals } from '../../test/import-without-dom-globals.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import.
 // testing-library reads `globalThis.document` / `window` at module-init, so we
@@ -365,52 +366,6 @@ describe('Chat — imperative API forwarding', () => {
   });
 });
 
-/**
- * Import a list of module specifiers with the realm's DOM globals removed, then
- * restore them. Returns whichever import (if any) threw a "not defined" error so
- * the caller can assert no module touched `document`/`window` at evaluation.
- *
- * The globals MUST be removed for this to mean anything. `setupHappyDom()` (run
- * at the top of this file, and again in `scripts/preload.ts`) installs live
- * `document`/`window` on `globalThis` for the whole test realm, so a module-level
- * `document.title` would otherwise resolve silently and the check would pass for
- * any compilable module. Removing them mirrors `test/hydrate.ts` (which nulls
- * `globalThis.document`/`window` around its server render for the same reason)
- * and `packages/editor/src/ssr-import.test.ts` (which deletes `document` before
- * importing the package entry).
- *
- * Each specifier is given a unique query string so Bun re-evaluates the module
- * body instead of serving the instance this file already cached when it imported
- * `Chat` at the top (with globals live). Without the cache-bust, a module-level
- * DOM access in an already-loaded sub-module would never re-run under the nulled
- * globals and the check would silently pass.
- */
-async function importWithoutDomGlobals(specifiers: string[]): Promise<string | undefined> {
-  const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
-  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
-  Reflect.deleteProperty(globalThis, 'document');
-  Reflect.deleteProperty(globalThis, 'window');
-
-  try {
-    for (const specifier of specifiers) {
-      const cacheBusted = `${specifier}${specifier.includes('?') ? '&' : '?'}ssr-eval=${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      try {
-        await import(cacheBusted);
-      } catch (error) {
-        return error instanceof Error ? error.message : String(error);
-      }
-    }
-    return undefined;
-  } finally {
-    if (documentDescriptor) {
-      Object.defineProperty(globalThis, 'document', documentDescriptor);
-    }
-    if (windowDescriptor) {
-      Object.defineProperty(globalThis, 'window', windowDescriptor);
-    }
-  }
-}
-
 describe('Chat — SSR safety', () => {
   /**
    * The chat tree must never reach for `document`/`window` at module
@@ -478,9 +433,12 @@ describe('Chat — SSR safety', () => {
    * plant makes it pass again.
    */
   test('DOM-touching chat helpers evaluate with no DOM globals at module level', async () => {
+    const { resolve } = await import('node:path');
+    // Absolute paths so the shared helper's dynamic import resolves them from
+    // here, not relative to the helper's own module location.
     const threwMessage = await importWithoutDomGlobals([
-      './container/use-chat-keyboard-nav.svelte.ts',
-      './container/use-chat-scroll-state.svelte.ts',
+      resolve(import.meta.dir, 'container', 'use-chat-keyboard-nav.svelte.ts'),
+      resolve(import.meta.dir, 'container', 'use-chat-scroll-state.svelte.ts'),
     ]);
     expect(threwMessage).toBeUndefined();
   });

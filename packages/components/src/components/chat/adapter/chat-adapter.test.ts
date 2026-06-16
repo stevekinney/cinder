@@ -21,7 +21,7 @@ import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { flushSync, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
-import type { ConversationHistory, Message } from '../conversation-model.ts';
+import type { ConversationHistory, Message, MessageInput } from '../conversation-model.ts';
 import type { ChatAdapter, ChatPushHandlers } from './chat-adapter.ts';
 
 setupHappyDom();
@@ -214,6 +214,164 @@ describe('ChatAdapter — command equivalence', () => {
     expect(container.querySelector('.chat-message-retry')).toBeNull();
     unmount(instance);
   });
+
+  test('a synchronously-throwing adapter command routes to onadaptererror', async () => {
+    // The adapter method throws synchronously (e.g. "not connected") rather than
+    // rejecting a promise. The dispatcher must still route it to onadaptererror,
+    // not let it escape.
+    const errors: Array<{ command: string; error: unknown }> = [];
+    const adapter = {
+      sendMessage: async () => {},
+      retryMessage: () => {
+        throw new Error('not connected');
+      },
+    } satisfies ChatAdapter;
+    const { container, instance } = mountChat({
+      id: 'chat-sync-throw',
+      conversation: failedConversation(),
+      adapter,
+      onadaptererror: (event: { command: string; error: unknown }) => errors.push(event),
+    });
+
+    clickRetry(container);
+    await Promise.resolve();
+    expect(errors).toHaveLength(1);
+    const errorEvent = errors[0]!;
+    expect(errorEvent.command).toBe('retryMessage');
+    expect(errorEvent.error).toBeInstanceOf(Error);
+    expect((errorEvent.error as Error).message).toBe('not connected');
+
+    unmount(instance);
+  });
+
+  test('sendMessage: the adapter takes precedence over onsubmit (via an empty-state prompt)', async () => {
+    // An empty-state prompt button submits a message — a deterministic submit
+    // path that needs no composer. Proves submit routes through the dispatcher
+    // with adapter precedence, the same as retry.
+    const sent: Array<{ content: unknown }> = [];
+    const submitted: unknown[] = [];
+    const adapter = {
+      sendMessage: async (message: MessageInput) => {
+        sent.push({ content: message.content });
+      },
+    } satisfies ChatAdapter;
+    const conversation: ConversationHistory = {
+      schemaVersion: 4,
+      id: 'send-precedence',
+      status: 'active',
+      metadata: {},
+      ids: [],
+      messages: {},
+      createdAt: '2026-06-02T00:00:00.000Z',
+      updatedAt: '2026-06-02T00:00:00.000Z',
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-send-precedence',
+      conversation,
+      adapter,
+      emptyPrompts: ['Hello there'],
+      onsubmit: (event: { message: MessageInput }) => submitted.push(event),
+    });
+
+    const prompt = container.querySelector<HTMLButtonElement>('.chat-empty-prompt');
+    expect(prompt).not.toBeNull();
+    prompt!.click();
+    flushSync();
+    await Promise.resolve();
+
+    // Adapter handled the send; onsubmit did NOT also fire.
+    expect(sent).toEqual([{ content: 'Hello there' }]);
+    expect(submitted).toEqual([]);
+
+    unmount(instance);
+  });
+
+  test('sendMessage: falls back to onsubmit when no adapter is present', () => {
+    const submitted: Array<{ message: MessageInput }> = [];
+    const conversation: ConversationHistory = {
+      schemaVersion: 4,
+      id: 'send-callback',
+      status: 'active',
+      metadata: {},
+      ids: [],
+      messages: {},
+      createdAt: '2026-06-02T00:00:00.000Z',
+      updatedAt: '2026-06-02T00:00:00.000Z',
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-send-callback',
+      conversation,
+      emptyPrompts: ['Just callback'],
+      onsubmit: (event: { message: MessageInput }) => submitted.push(event),
+    });
+
+    container.querySelector<HTMLButtonElement>('.chat-empty-prompt')!.click();
+    flushSync();
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0]?.message.content).toBe('Just callback');
+
+    unmount(instance);
+  });
+
+  test('stopGenerating: routes to the adapter while streaming', async () => {
+    const stopped: string[] = [];
+    const adapter = {
+      sendMessage: async () => {},
+      stopGenerating: async (messageId: string) => {
+        stopped.push(messageId);
+      },
+    } satisfies ChatAdapter;
+    // A streaming conversation with a trailing assistant message to stop.
+    const now = '2026-06-02T00:00:00.000Z';
+    const conversation: ConversationHistory = {
+      schemaVersion: 4,
+      id: 'stop-conversation',
+      status: 'active',
+      metadata: {},
+      ids: ['u1', 'a1'],
+      messages: {
+        u1: {
+          id: 'u1',
+          role: 'user',
+          content: 'go',
+          position: 0,
+          createdAt: now,
+          metadata: {},
+          hidden: false,
+        },
+        a1: {
+          id: 'a1',
+          role: 'assistant',
+          content: 'thinking…',
+          position: 1,
+          createdAt: now,
+          metadata: {},
+          hidden: false,
+        },
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-stop',
+      conversation,
+      adapter,
+      isStreaming: true,
+    });
+
+    // The stop affordance lives in the composer; find it by its accessible role.
+    const stopButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label*="Stop" i], button[title*="Stop" i], .chat-input-stop',
+    );
+    expect(stopButton).not.toBeNull();
+    stopButton!.click();
+    flushSync();
+    await Promise.resolve();
+
+    expect(stopped).toEqual(['a1']);
+
+    unmount(instance);
+  });
 });
 
 describe('ChatAdapter — subscribe lifecycle', () => {
@@ -278,15 +436,36 @@ describe('ChatAdapter — subscribe lifecycle', () => {
     target.remove();
   });
 
-  test('does not subscribe when the adapter has no subscribe method', () => {
+  test('mounts cleanly when the adapter has no subscribe method', () => {
     const adapter: ChatAdapter = { sendMessage: async () => {} };
     const { instance } = mountChat({
       id: 'chat-no-subscribe',
       conversation: failedConversation(),
       adapter,
     });
-    // No throw, nothing to assert beyond a clean mount; unmount cleanly.
+    // The `if (!resolvedAdapter?.subscribe) return` guard means no subscription
+    // is opened; the only observable contract is a clean mount + unmount.
     expect(() => unmount(instance)).not.toThrow();
+  });
+
+  test('a subscribe that returns a non-function teardown does not crash cleanup', () => {
+    // Contract violation by the adapter: subscribe must return an unsubscribe
+    // function. The container guards the teardown so a bad return is dropped
+    // rather than crashing Svelte's effect cleanup on unmount/re-subscribe.
+    const adapter = {
+      sendMessage: async () => {},
+      // Intentionally returns a non-function to exercise the guard.
+      subscribe: () => undefined as unknown as () => void,
+    } satisfies ChatAdapter;
+    const { instance } = mountChat({
+      id: 'chat-bad-teardown',
+      conversation: failedConversation('bad-teardown'),
+      adapter,
+    });
+    expect(() => {
+      unmount(instance);
+      flushSync();
+    }).not.toThrow();
   });
 
   test('streaming pushes through subscribe drive the imperative buffer', () => {
