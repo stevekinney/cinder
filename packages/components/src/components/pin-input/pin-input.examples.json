@@ -7,7 +7,7 @@
       "id": "alphanumeric",
       "title": "Alphanumeric code",
       "description": "Eight-character alphanumeric invite code with description text.",
-      "code": "<script lang=\"ts\">\n  import { PinInput } from '@lostgradient/cinder/pin-input';\n  let invite = $state('');\n</script>\n\n<PinInput\n  id=\"invite-code\"\n  bind:value={invite}\n  length={8}\n  mode=\"alphanumeric\"\n  label=\"Invite code\"\n  description=\"Type or paste the code from your invitation email.\"\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { PinInput } from '@lostgradient/cinder/pin-input';\n\n  let invite = $state('');\n</script>\n\n<PinInput\n  id=\"invite-code\"\n  bind:value={invite}\n  length={8}\n  mode=\"alphanumeric\"\n  label=\"Invite code\"\n  description=\"Type or paste the code from your invitation email.\"\n/>\n"
     },
     {
       "id": "basic",

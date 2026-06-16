@@ -5,6 +5,11 @@
 
 <script lang="ts">
   import { Select } from '@lostgradient/cinder/select';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);
+
   const options = [
     { value: 'us', label: 'United States' },
     { value: 'ca', label: 'Canada' },
@@ -15,5 +20,5 @@
   let country = $state(options[0]?.value ?? 'us');
 </script>
 
-<Select id="country" bind:value={country} {options} label="Country" />
+<Select id={fieldId} bind:value={country} {options} label="Country" />
 <p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">Selected: {country}</p>

@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic rating",
       "description": "Five-star rating with whole-star precision and keyboard navigation.",
-      "code": "<script lang=\"ts\">\n  import { Rating } from '@lostgradient/cinder/rating';\n  let score = $state(0);\n</script>\n\n<Rating id=\"basic-rating\" bind:value={score} label=\"Rate this article\" />\n\n{#if score > 0}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">You rated this {score} of 5.</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Rating } from '@lostgradient/cinder/rating';\n\n  let score = $state(0);\n</script>\n\n<Rating id=\"rating\" bind:value={score} label=\"Rate this article\" />\n\n{#if score > 0}\n  <p style=\"margin-top: 0.75rem; color: var(--cinder-text-muted);\">You rated this {score} of 5.</p>\n{/if}\n"
     },
     {
       "id": "half-stars",

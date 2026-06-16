@@ -169,6 +169,76 @@ describe('extractExampleFile — happy path', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Doc-page mount-isolation harness strip (#399)
+// ---------------------------------------------------------------------------
+
+describe('extractExampleFile — strips the doc-page mount-isolation harness', () => {
+  /**
+   * Builds a `.example.svelte` source carrying the `mountIdPrefix` / `$props.id()`
+   * harness the component doc page injects to scope ids across its double-mount.
+   * The harness must never reach the SHIPPED `code` field — consumers copy that
+   * verbatim, and the plumbing is meaningless (and uncopyable) in their app.
+   */
+  function buildHarnessedSource(instanceBody: string, markup: string): string {
+    return `<script lang="ts" module>
+  export const title = 'Basic';
+  export const description = 'A field.';
+</script>
+
+<script lang="ts">
+  import { Input } from '@lostgradient/cinder/input';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+${instanceBody}</script>
+
+${markup}
+`;
+  }
+
+  it('removes mountIdPrefix / $props.id() / derived ids and rewrites binding sites', () => {
+    const source = buildHarnessedSource(
+      '  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);\n',
+      '<Input id={fieldId} label="Name" />',
+    );
+
+    const result = extractExampleFile(buildInput(source, { componentId: 'input' }));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+
+    // No harness plumbing survives in the published `code`.
+    expect(result.example.code).not.toContain('mountIdPrefix');
+    expect(result.example.code).not.toContain('$props.id()');
+    expect(result.example.code).not.toContain('fieldId');
+    // The derived-id binding site is rewritten to the clean static literal.
+    expect(result.example.code).toContain('<Input id="field" label="Name" />');
+    // The non-harness instance code is preserved.
+    expect(result.example.code).toContain("import { Input } from '@lostgradient/cinder/input'");
+  });
+
+  it('fails closed when an unrecognized binding leaves a derived id dangling', () => {
+    // `data-foo={fieldId}` is not a rewritten binding form, so the strip throws.
+    // The extractor must surface that as a hard error (blocking generation /
+    // publishing) rather than crashing or shipping half-stripped code.
+    const source = buildHarnessedSource(
+      '  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);\n',
+      '<Input data-foo={fieldId} />',
+    );
+
+    const result = extractExampleFile(buildInput(source, { componentId: 'input' }));
+
+    expect(result.kind).toBe('error');
+    if (result.kind !== 'error') return;
+    expect(result.reason).toContain('mount-isolation harness');
+  });
+  // The harness-free pass-through case is covered by the `happy path` block above
+  // (a no-harness source yields a clean `example`) and by the transform's own
+  // `leaves a harness-free example untouched` unit test in
+  // `lib/strip-example-harness.test.ts`.
+});
+
+// ---------------------------------------------------------------------------
 // Exclusion cases
 // ---------------------------------------------------------------------------
 

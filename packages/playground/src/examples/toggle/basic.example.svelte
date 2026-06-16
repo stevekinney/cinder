@@ -6,10 +6,15 @@
 
 <script lang="ts">
   import { Toggle } from '@lostgradient/cinder/toggle';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-email-notifications`);
+
   let emailNotifications = $state(false);
 </script>
 
-<Toggle id="email-notifications" bind:checked={emailNotifications} label="Email notifications" />
+<Toggle id={fieldId} bind:checked={emailNotifications} label="Email notifications" />
 <p style="margin-top: 0.5rem; color: var(--cinder-text-muted);">
   {emailNotifications ? 'Notifications enabled' : 'Notifications disabled'}
 </p>

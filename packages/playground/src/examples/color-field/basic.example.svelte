@@ -7,15 +7,17 @@
 <script lang="ts">
   import { ColorField } from '@lostgradient/cinder/color-field';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);
+
   let committed = $state('');
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.5rem; max-width: 20rem;">
-  <label for="color-field-basic" style="font-size: 0.875rem; font-weight: 500;">
-    Brand color
-  </label>
+  <label for={fieldId} style="font-size: 0.875rem; font-weight: 500;"> Brand color </label>
   <ColorField
-    id="color-field-basic"
+    id={fieldId}
     defaultValue="#3b82f6"
     onchange={(value) => {
       committed = value;

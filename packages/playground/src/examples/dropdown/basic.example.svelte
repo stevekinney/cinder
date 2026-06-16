@@ -5,9 +5,13 @@
 
 <script lang="ts">
   import { Dropdown } from '@lostgradient/cinder/dropdown';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let dropdownId = $derived(`${mountIdPrefix ?? uid}-dropdown`);
 </script>
 
-<Dropdown id="dropdown-basic">
+<Dropdown id={dropdownId}>
   <Dropdown.Trigger>Options</Dropdown.Trigger>
   <Dropdown.Menu>
     <Dropdown.Item>Edit</Dropdown.Item>

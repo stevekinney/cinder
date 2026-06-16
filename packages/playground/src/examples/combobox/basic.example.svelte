@@ -6,6 +6,11 @@
 
 <script lang="ts">
   import { Combobox } from '@lostgradient/cinder/combobox';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-fruit`);
+
   const fruits = [
     { value: 'apple', label: 'Apple' },
     { value: 'apricot', label: 'Apricot' },
@@ -23,7 +28,7 @@
 </script>
 
 <Combobox
-  id="combobox-fruit"
+  id={fieldId}
   label="Favorite fruit"
   placeholder="Start typing…"
   options={fruits}

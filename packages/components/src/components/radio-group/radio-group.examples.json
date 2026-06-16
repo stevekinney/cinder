@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic radio group",
       "description": "Three options with a group legend; arrow keys move selection.",
-      "code": "<script lang=\"ts\">\n  import { RadioGroup } from '@lostgradient/cinder/radio-group';\n  let plan = $state('pro');\n</script>\n\n<RadioGroup name=\"basic-plan\" legend=\"Pricing tier\" bind:value={plan}>\n  <RadioGroup.Option\n    id=\"basic-plan-free\"\n    value=\"free\"\n    label=\"Free — for individuals exploring Cinder\"\n  />\n  <RadioGroup.Option\n    id=\"basic-plan-pro\"\n    value=\"pro\"\n    label=\"Pro — small teams, includes private support\"\n  />\n  <RadioGroup.Option\n    id=\"basic-plan-team\"\n    value=\"team\"\n    label=\"Team — SSO, audit logs, role-based access\"\n  />\n</RadioGroup>\n"
+      "code": "<script lang=\"ts\">\n  import { RadioGroup } from '@lostgradient/cinder/radio-group';\n\n  let plan = $state('pro');\n</script>\n\n<RadioGroup name=\"plan\" legend=\"Pricing tier\" bind:value={plan}>\n  <RadioGroup.Option id=\"plan-free\" value=\"free\" label=\"Free — for individuals exploring Cinder\" />\n  <RadioGroup.Option id=\"plan-pro\" value=\"pro\" label=\"Pro — small teams, includes private support\" />\n  <RadioGroup.Option id=\"plan-team\" value=\"team\" label=\"Team — SSO, audit logs, role-based access\" />\n</RadioGroup>\n"
     },
     {
       "id": "disabled",

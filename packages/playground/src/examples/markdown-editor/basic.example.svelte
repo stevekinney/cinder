@@ -5,6 +5,11 @@
 
 <script lang="ts">
   import { MarkdownEditor } from '@lostgradient/cinder/markdown-editor';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let editorId = $derived(`${mountIdPrefix ?? uid}-editor`);
+
   let value = $state(`# Release notes
 
 This editor supports **rich markdown editing**, toolbar actions, and a source mode.
@@ -15,7 +20,7 @@ This editor supports **rich markdown editing**, toolbar actions, and a source mo
 </script>
 
 <div style="display: grid; gap: 0.75rem;">
-  <MarkdownEditor id="playground-markdown-editor" bind:value showToolbar showModeToggle />
+  <MarkdownEditor id={editorId} bind:value showToolbar showModeToggle />
   <p style="margin: 0; color: var(--cinder-text-muted);">
     Characters: {value.length}
   </p>

@@ -39,6 +39,7 @@ import { basename, join } from 'node:path';
 import { allowedExampleExclusionReasons } from '../src/manifest.meta.ts';
 import { ALLOWED_EXAMPLE_PACKAGES } from './example-allowed-packages.ts';
 import { discoverDirectoryComponents } from './generate-exports.ts';
+import { stripExampleHarness } from './lib/strip-example-harness.ts';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -270,7 +271,35 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
   // Strip the module block iff it contains ONLY the metadata exports (title,
   // description, featured, and optionally component). If it has any other statements,
   // keep the module block verbatim.
-  const code = buildCodeField(source, moduleMatch[0] ?? '', moduleBlockContent, metadataExports);
+  const withoutModuleBlock = buildCodeField(
+    source,
+    moduleMatch[0] ?? '',
+    moduleBlockContent,
+    metadataExports,
+  );
+
+  // Step 7: strip the doc-page mount-isolation harness (`mountIdPrefix` /
+  // `$props.id()` / derived ids) so the SHIPPED `code` field is clean,
+  // copy-pasteable consumer usage — not the per-mount id-scoping plumbing the
+  // component doc page injects to avoid duplicate ids across its double-mount
+  // (#399). This is the same transform the playground `/example-src/` route runs,
+  // owned here in `scripts/lib/` because the generator shapes the published
+  // artifact. It fails closed: an unrecognized harness shape throws rather than
+  // ship half-stripped code, which we surface as a hard extraction error so it
+  // blocks generation (and therefore publishing) instead of crashing.
+  let code: string;
+  try {
+    code = stripExampleHarness(
+      withoutModuleBlock,
+      `${componentId}/${basename(filePath, '.example.svelte')}`,
+    );
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return {
+      kind: 'error',
+      reason: `failed to strip the doc-page mount-isolation harness from ${filePath}: ${detail}`,
+    };
+  }
 
   return {
     kind: 'example',

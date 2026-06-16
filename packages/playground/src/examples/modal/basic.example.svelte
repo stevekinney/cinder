@@ -9,6 +9,11 @@
   import { Input } from '@lostgradient/cinder/input';
   import { Modal } from '@lostgradient/cinder/modal';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let nameId = $derived(`${mountIdPrefix ?? uid}-name`);
+  let emailId = $derived(`${mountIdPrefix ?? uid}-email`);
+
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
   let email = $state('');
@@ -29,9 +34,9 @@
 
 <Modal bind:open title="Invite teammate" {triggerRef}>
   <div style="display: grid; gap: 1rem;">
-    <Input id="invite-name" label="Full name" placeholder="Alex Kim" bind:value={name} autofocus />
+    <Input id={nameId} label="Full name" placeholder="Alex Kim" bind:value={name} autofocus />
     <Input
-      id="invite-email"
+      id={emailId}
       label="Email address"
       type="email"
       placeholder="alex@example.com"

@@ -7,6 +7,10 @@
 <script lang="ts">
   import Autocomplete from '@lostgradient/cinder/autocomplete';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);
+
   const cities = [
     { value: 'Austin, Texas', description: 'United States' },
     { value: 'Auckland, New Zealand', description: 'New Zealand' },
@@ -35,7 +39,7 @@
 </script>
 
 <Autocomplete
-  id="autocomplete-async"
+  id={fieldId}
   label="Destination city"
   placeholder="Type a city"
   {suggestionSource}

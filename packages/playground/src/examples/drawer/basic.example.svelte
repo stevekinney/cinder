@@ -10,6 +10,13 @@
   import { Drawer } from '@lostgradient/cinder/drawer';
   import type { DrawerSide, DrawerSize } from '@lostgradient/cinder/drawer';
   import { Select } from '@lostgradient/cinder/select';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let sideId = $derived(`${mountIdPrefix ?? uid}-side`);
+  let sizeId = $derived(`${mountIdPrefix ?? uid}-size`);
+  let useTriggerRefId = $derived(`${mountIdPrefix ?? uid}-use-trigger-ref`);
+
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
   let side = $state<DrawerSide>('right');
@@ -30,9 +37,9 @@
 
 <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 32rem;">
   <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
-    <Select id="drawer-side" bind:value={side} options={sideOptions} label="Side" />
-    <Select id="drawer-size" bind:value={size} options={sizeOptions} label="Size" />
-    <Checkbox id="drawer-use-trigger-ref" bind:checked={useTriggerRef} label="Use triggerRef" />
+    <Select id={sideId} bind:value={side} options={sideOptions} label="Side" />
+    <Select id={sizeId} bind:value={size} options={sizeOptions} label="Size" />
+    <Checkbox id={useTriggerRefId} bind:checked={useTriggerRef} label="Use triggerRef" />
   </div>
 
   <Button

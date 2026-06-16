@@ -5,6 +5,11 @@
 
 <script lang="ts">
   import { ReviewEditor } from '@lostgradient/cinder/review-editor';
+
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let editorId = $derived(`${mountIdPrefix ?? uid}-review-editor`);
+
   const original = `# Release Plan
 
 The first release includes a dashboard, export actions, and inline review.
@@ -28,11 +33,5 @@ The first release includes a dashboard, export actions, inline review, and comme
 </script>
 
 <div style="min-height: 34rem;">
-  <ReviewEditor
-    id="playground-review-editor-basic"
-    {original}
-    bind:value
-    currentUserId="steve"
-    name="review"
-  />
+  <ReviewEditor id={editorId} {original} bind:value currentUserId="steve" name="review" />
 </div>

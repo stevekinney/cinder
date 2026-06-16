@@ -10,6 +10,13 @@
   import { Input } from '@lostgradient/cinder/input';
   import { Toggle } from '@lostgradient/cinder/toggle';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let displayNameId = $derived(`${mountIdPrefix ?? uid}-display-name`);
+  let accountEmailId = $derived(`${mountIdPrefix ?? uid}-account-email`);
+  let publicProfileId = $derived(`${mountIdPrefix ?? uid}-public-profile`);
+  let marketingEmailsId = $derived(`${mountIdPrefix ?? uid}-marketing-emails`);
+
   let displayName = $state('');
   let email = $state('');
   let publicProfile = $state(true);
@@ -23,11 +30,11 @@
     description="Update your display name and email address."
     columns={2}
   >
-    <FormField id="display-name" label="Display name">
-      <Input id="display-name" bind:value={displayName} placeholder="Jane Smith" />
+    <FormField id={displayNameId} label="Display name">
+      <Input id={displayNameId} bind:value={displayName} placeholder="Jane Smith" />
     </FormField>
-    <FormField id="account-email" label="Email address">
-      <Input id="account-email" bind:value={email} type="email" placeholder="jane@example.com" />
+    <FormField id={accountEmailId} label="Email address">
+      <Input id={accountEmailId} bind:value={email} type="email" placeholder="jane@example.com" />
     </FormField>
   </FormSection>
 
@@ -36,7 +43,7 @@
     headingLevel={2}
     description="Control who can see your profile and what communications you receive."
   >
-    <Toggle id="public-profile" bind:checked={publicProfile} label="Public profile" />
-    <Toggle id="marketing-emails" bind:checked={marketingEmails} label="Marketing emails" />
+    <Toggle id={publicProfileId} bind:checked={publicProfile} label="Public profile" />
+    <Toggle id={marketingEmailsId} bind:checked={marketingEmails} label="Marketing emails" />
   </FormSection>
 </div>

@@ -8,6 +8,10 @@
   import { CommandMenu, detectTrigger } from '@lostgradient/cinder/command-menu';
   import { Textarea } from '@lostgradient/cinder/textarea';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);
+
   type Command = {
     value: string;
     label: string;
@@ -77,7 +81,7 @@
 
 <div style="display: grid; gap: var(--cinder-space-3); max-inline-size: 42rem;">
   <Textarea
-    id="command-menu-textarea"
+    id={fieldId}
     label="Notes"
     rows={8}
     bind:value

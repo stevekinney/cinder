@@ -8,7 +8,11 @@
   import { DateRangeField } from '@lostgradient/cinder/date-range-field';
   import type { DateRangeValue } from '@lostgradient/cinder/date-range-field';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-date-range-field`);
+
   let range: DateRangeValue = $state({ start: undefined, end: undefined });
 </script>
 
-<DateRangeField id="basic-date-range" label="Time window" bind:value={range} />
+<DateRangeField id={fieldId} label="Time window" bind:value={range} />
