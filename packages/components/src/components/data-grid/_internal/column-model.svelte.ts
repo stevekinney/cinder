@@ -62,12 +62,7 @@ export class DataGridColumnModel<TRow> {
   );
 
   readonly renderColumns = $derived.by(() => {
-    const leftPinnedByKey = new Map(this.leftPinnedColumns.map((column) => [column.key, column]));
-    const rightPinnedByKey = new Map(this.rightPinnedColumns.map((column) => [column.key, column]));
-
-    return this.orderedColumns.map(
-      (column) => leftPinnedByKey.get(column.key) ?? rightPinnedByKey.get(column.key) ?? column,
-    );
+    return [...this.leftPinnedColumns, ...this.unpinnedColumns, ...this.rightPinnedColumns];
   });
 }
 

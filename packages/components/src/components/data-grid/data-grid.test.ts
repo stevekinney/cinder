@@ -167,18 +167,52 @@ describe('DataGrid', () => {
     expect(grid?.getAttribute('data-cinder-density')).toBe('compact');
     expect(firstDataRow?.classList.contains('order-ord-1')).toBe(true);
     expect(headers.map((headerCell) => headerCell.textContent?.trim())).toEqual([
-      'Total',
       'Customer',
       'Status',
+      'Total',
     ]);
-    expect(headers[0]?.getAttribute('data-cinder-pin')).toBe('right');
+    expect(headers[2]?.getAttribute('data-cinder-pin')).toBe('right');
     expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual([
-      '1',
       '2',
       '3',
+      '1',
+    ]);
+    expect(firstDataCells[2]?.getAttribute('style')).toContain(
+      '--_cinder-data-grid-column-width: 96px',
+    );
+  });
+
+  test('groups non-contiguous pinned columns at scroll edges while preserving logical indexes', () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      columnPinning: { left: ['total', 'customer'], right: ['status'] },
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const headers = Array.from(container.querySelectorAll('[role="columnheader"]'));
+    const firstDataRow = container.querySelector('[role="row"][aria-rowindex="2"]');
+    const firstDataCells = Array.from(firstDataRow?.querySelectorAll('[role="gridcell"]') ?? []);
+
+    expect(headers.map((headerCell) => headerCell.textContent?.trim())).toEqual([
+      'Customer',
+      'Total',
+      'Status',
+    ]);
+    expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual([
+      '1',
+      '3',
+      '2',
     ]);
     expect(firstDataCells[0]?.getAttribute('style')).toContain(
-      '--_cinder-data-grid-column-width: 96px',
+      '--_cinder-data-grid-pin-left-offset: 0px',
+    );
+    expect(firstDataCells[1]?.getAttribute('style')).toContain(
+      '--_cinder-data-grid-pin-left-offset: 180px',
+    );
+    expect(firstDataCells[2]?.getAttribute('style')).toContain(
+      '--_cinder-data-grid-pin-right-offset: 0px',
     );
   });
 });
