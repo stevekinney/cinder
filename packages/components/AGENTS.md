@@ -103,8 +103,10 @@ highlighter to wire:
 
 Highlighting is a two-phase, client-only enhancement: the server (and the
 first client paint) emit the plain `<pre><code>` fallback, and CodeBlock swaps
-in the highlighted HTML once Shiki resolves — there is a brief flash before
-that swap. Shiki is dynamic-imported the first time any `<CodeBlock>` actually
+in the highlighted HTML once Shiki resolves. Colorization may appear after
+first paint, but the plain and highlighted states share one stable scroll
+viewport and identical box metrics, so highlighting must not move surrounding
+layout. Shiki is dynamic-imported the first time any `<CodeBlock>` actually
 highlights, so it never lands in the SSR bundle and a page that renders no
 highlighted code ships zero Shiki bytes in its entry chunk.
 
