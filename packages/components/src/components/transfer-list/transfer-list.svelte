@@ -51,7 +51,14 @@
   const knownValue = $derived(value.filter((id) => itemById.has(id)));
   const rightIdSet = $derived(new Set(knownValue));
   const leftItems = $derived(uniqueItems.filter((item) => !rightIdSet.has(item.id)));
-  const rightItems = $derived(uniqueItems.filter((item) => rightIdSet.has(item.id)));
+  const rightItems = $derived(
+    knownValue.flatMap((id) => {
+      const item = itemById.get(id);
+      return item ? [item] : [];
+    }),
+  );
+  const leftItemIdSet = $derived(new Set(leftItems.map((item) => item.id)));
+  const rightItemIdSet = $derived(new Set(rightItems.map((item) => item.id)));
 
   const leftSelectedSet = $derived(new Set(leftSelectedIds));
   const rightSelectedSet = $derived(new Set(rightSelectedIds));
@@ -92,6 +99,19 @@
 
   const resolvedLeftActiveId = $derived(resolveActiveId(leftItems, leftActiveId));
   const resolvedRightActiveId = $derived(resolveActiveId(rightItems, rightActiveId));
+
+  $effect(() => {
+    const nextLeftSelectedIds = leftSelectedIds.filter((id) => leftItemIdSet.has(id));
+    const nextRightSelectedIds = rightSelectedIds.filter((id) => rightItemIdSet.has(id));
+
+    if (nextLeftSelectedIds.length !== leftSelectedIds.length) {
+      leftSelectedIds = nextLeftSelectedIds;
+    }
+
+    if (nextRightSelectedIds.length !== rightSelectedIds.length) {
+      rightSelectedIds = nextRightSelectedIds;
+    }
+  });
 
   const leftActiveOptionId = $derived.by(() => {
     if (!resolvedLeftActiveId) return undefined;

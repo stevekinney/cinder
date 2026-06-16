@@ -15,6 +15,10 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+async function flushQueuedFocus(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('SpeedDialAction', () => {
   test('throws a clear error outside a SpeedDial parent', () => {
     const icon = createRawSnippet(() => ({
@@ -38,12 +42,15 @@ describe('SpeedDialAction', () => {
     });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+    await flushQueuedFocus();
     await fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await flushQueuedFocus();
 
     const action = container.querySelector('.cinder-speed-dial-action');
     expect(action?.getAttribute('data-cinder-label-placement')).toBe('start');
     expect(action?.getAttribute('data-cinder-open')).toBe('false');
     expect(onAction).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Quick actions' }));
   });
 
   test('omits the visible label when labelPlacement is none', () => {

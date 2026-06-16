@@ -38,7 +38,7 @@
   function handleClick(event: MouseEvent): void {
     if (disabled) return;
     onclick?.(event);
-    context.close();
+    context.close({ focusTrigger: true });
   }
 
   $effect(() => {
