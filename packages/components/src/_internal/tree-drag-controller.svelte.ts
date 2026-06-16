@@ -241,17 +241,17 @@ export class TreeDragController {
 }
 
 export function moveTreeNode<Node extends TreeMoveNode>(
-  nodes: readonly Node[],
+  nodes: Node[],
   draggedId: string,
   target: TreeDropTarget,
 ): Node[] {
   const dragged = nodes.find((node) => node.id === draggedId);
   const targetNode = nodes.find((node) => node.id === target.id);
-  if (!dragged || !targetNode) return [...nodes];
+  if (!dragged || !targetNode) return unchangedMoveResult(nodes);
 
   const subtreeIds = descendantIds(nodes, draggedId);
   subtreeIds.add(draggedId);
-  if (subtreeIds.has(target.id)) return [...nodes];
+  if (subtreeIds.has(target.id)) return unchangedMoveResult(nodes);
 
   const withoutSubtree = nodes.filter((node) => !subtreeIds.has(node.id));
   const subtree = nodes.filter((node) => subtreeIds.has(node.id));
@@ -261,15 +261,29 @@ export function moveTreeNode<Node extends TreeMoveNode>(
   );
 
   const insertionIndex = insertionIndexFor(withoutSubtree, target);
-  const currentWithoutSubtreeIndex = withoutSubtree.findIndex((node) => node.id === draggedId);
-  if (currentWithoutSubtreeIndex === insertionIndex && dragged.parentId === nextParentId) {
-    return [...nodes];
-  }
-  return [
+  const nextNodes = [
     ...withoutSubtree.slice(0, insertionIndex),
     ...movedSubtree,
     ...withoutSubtree.slice(insertionIndex),
   ];
+  if (dragged.parentId === nextParentId && hasSameNodeOrder(nodes, nextNodes)) {
+    return unchangedMoveResult(nodes);
+  }
+  return nextNodes;
+}
+
+function unchangedMoveResult<Node extends TreeMoveNode>(nodes: Node[]): Node[] {
+  return nodes;
+}
+
+function hasSameNodeOrder(
+  currentNodes: readonly TreeMoveNode[],
+  nextNodes: readonly TreeMoveNode[],
+): boolean {
+  return (
+    currentNodes.length === nextNodes.length &&
+    currentNodes.every((node, index) => node.id === nextNodes[index]?.id)
+  );
 }
 
 function descendantIds(nodes: readonly TreeMoveNode[], id: string): Set<string> {

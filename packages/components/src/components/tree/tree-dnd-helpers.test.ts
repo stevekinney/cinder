@@ -47,13 +47,19 @@ describe('moveTreeNode', () => {
   test('rejects moving a branch into its own descendant', () => {
     const result = moveTreeNode(nodes, 'a', { id: 'a1', position: 'child' });
 
-    expect(result).toEqual(nodes);
+    expect(result).toBe(nodes);
+  });
+
+  test('moving an item before its next sibling is a same-position no-op', () => {
+    const result = moveTreeNode(nodes, 'a1', { id: 'a2', position: 'before' });
+
+    expect(result).toBe(nodes);
   });
 
   test('moving an item after itself is a no-op', () => {
     const result = moveTreeNode(nodes, 'b', { id: 'b', position: 'after' });
 
-    expect(result).toEqual(nodes);
+    expect(result).toBe(nodes);
   });
 
   test('drag controller avoids ES2023 array reversal helpers', async () => {

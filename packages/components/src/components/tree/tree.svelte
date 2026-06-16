@@ -590,11 +590,15 @@
     return [id, ...registry.descendantsOf(id)];
   }
 
+  function childDataItemIds(parentId: string | null): string[] {
+    return visibleDataItems.filter((item) => item.parentId === parentId).map((item) => item.id);
+  }
+
   function selectionTargetsForChildren(
     parentId: string | null,
     includeDescendants: boolean,
   ): string[] {
-    const childIds = registry.childrenOf(parentId);
+    const childIds = isVirtualizedTree ? childDataItemIds(parentId) : registry.childrenOf(parentId);
     if (!includeDescendants) return childIds;
 
     const targets: string[] = [];

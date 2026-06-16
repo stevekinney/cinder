@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
-import { tick } from 'svelte';
+import { createRawSnippet, mount, tick, unmount } from 'svelte';
 
 import type { TreeDataItem } from '../../_internal/tree-data.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -10,6 +10,7 @@ setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Tree } = await import('./tree.svelte');
+const { default: TreeSelectAll } = await import('../_tree-select-all/tree-select-all.svelte');
 
 afterEach(() => cleanup());
 
@@ -251,6 +252,49 @@ describe('Tree — virtualized data path', () => {
       expect(treeItemById(container, 'apollo').getAttribute('aria-selected')).toBe('true');
       expect(treeItemById(container, 'zeus').getAttribute('aria-selected')).toBe('false');
     });
+  });
+
+  test('TreeSelectAll includeDescendants selects virtualized data children', async () => {
+    let selectedIds: string[] = [];
+    const selectionControls = createRawSnippet(() => ({
+      render: () => `<div class="controls"></div>`,
+      setup: (node: Element) => {
+        const instance = mount(TreeSelectAll, {
+          target: node,
+          props: { parentId: null, includeDescendants: true },
+        });
+        return () => unmount(instance);
+      },
+    }));
+
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        selectionMode: 'multiple',
+        selectionBehavior: 'cascade',
+        expandedIds: ['projects'],
+        items: nestedItems(),
+        selectionControls,
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 120,
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+      },
+    });
+
+    const selectAllButton = container.querySelector<HTMLButtonElement>(
+      '.cinder-tree-select-all__button',
+    );
+    expect(selectAllButton?.disabled).toBe(false);
+
+    await fireEvent.click(selectAllButton as HTMLButtonElement);
+
+    expect(selectedIds).toEqual(['projects', 'apollo', 'archive', 'old-apollo']);
   });
 
   test('TreeRef scrollToRow uses the virtualizer for data rows', async () => {
