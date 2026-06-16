@@ -74,6 +74,7 @@ function orderColumns<TRow>(
   columns: readonly DataGridColumnDef<TRow>[],
   columnOrder: readonly string[] | undefined,
 ): readonly DataGridColumnDef<TRow>[] {
+  assertUniqueColumnKeys(columns);
   if (!columnOrder || columnOrder.length === 0) return columns;
 
   const byKey = new Map(columns.map((column) => [column.key, column]));
@@ -85,6 +86,18 @@ function orderColumns<TRow>(
   });
 
   return [...ordered, ...byKey.values()];
+}
+
+function assertUniqueColumnKeys<TRow>(columns: readonly DataGridColumnDef<TRow>[]): void {
+  const seenColumnKeys = new Set<string>();
+  for (const column of columns) {
+    if (seenColumnKeys.has(column.key)) {
+      throw new Error(
+        `[cinder-data-grid] DataGrid column keys must be unique. Duplicate column key: ${JSON.stringify(column.key)}.`,
+      );
+    }
+    seenColumnKeys.add(column.key);
+  }
 }
 
 function resolveColumn<TRow>(

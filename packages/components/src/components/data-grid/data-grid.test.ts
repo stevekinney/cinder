@@ -323,6 +323,20 @@ describe('DataGrid', () => {
     expect(getDataGridColumnValue(ownPropertyRow, inheritedColumn)).toBe('owned value');
   });
 
+  test('throws a clear error for duplicate column keys', () => {
+    expect(() =>
+      render(OrderDataGrid, {
+        rows,
+        columns: [
+          { key: 'customer', header: 'Customer' },
+          { key: 'customer', header: 'Customer duplicate' },
+        ],
+        getRowId: getOrderId,
+        'aria-label': 'Orders',
+      }),
+    ).toThrow('Duplicate column key: "customer"');
+  });
+
   test('applies density, row class, column order, sizing, and pinning metadata', () => {
     const { container } = render(OrderDataGrid, {
       rows,
