@@ -1,4 +1,5 @@
 /// <reference lib="dom" />
+import { Virtualizer } from '@tanstack/virtual-core';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, tick, unmount } from 'svelte';
 
@@ -66,7 +67,7 @@ describe('Tree — virtualized data path', () => {
     });
 
     const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
-    await waitFor(() => expect(treeItems(container).length).toBeGreaterThanOrEqual(10));
+    await waitFor(() => expect(treeItems(container).length).toBeGreaterThanOrEqual(9));
     expect(treeItems(container).length).toBeLessThan(100);
     expect(tree.getAttribute('aria-activedescendant')).toBe(`${tree.id}-item-0`);
 
@@ -75,6 +76,45 @@ describe('Tree — virtualized data path', () => {
     expect(first.hasAttribute('data-cinder-focused')).toBe(true);
     expect(first.getAttribute('aria-posinset')).toBe('1');
     expect(first.getAttribute('aria-setsize')).toBe('100');
+  });
+
+  test('virtualizationOverscan can intentionally disable extra rows', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: flatItems(100),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+        virtualizationOverscan: 0,
+      },
+    });
+
+    await waitFor(() => expect(treeItems(container).length).toBeGreaterThan(0));
+    expect(treeItems(container).length).toBeLessThanOrEqual(6);
+  });
+
+  test('falls back to calculated rows when virtual-core returns an empty measured window', async () => {
+    const originalGetVirtualItems = Virtualizer.prototype.getVirtualItems;
+    Virtualizer.prototype.getVirtualItems = Object.assign(() => [], {
+      updateDeps: () => {},
+    }) as typeof Virtualizer.prototype.getVirtualItems;
+    try {
+      const { container } = render(Tree, {
+        props: {
+          'aria-label': 'Virtual files',
+          virtualized: true,
+          items: flatItems(100),
+          virtualizationEstimatedRowHeight: 20,
+          virtualizationHeight: 100,
+        },
+      });
+
+      await waitFor(() => expect(treeItems(container).length).toBeGreaterThan(0));
+      expect(treeItemById(container, 'item-0').getAttribute('aria-posinset')).toBe('1');
+    } finally {
+      Virtualizer.prototype.getVirtualItems = originalGetVirtualItems;
+    }
   });
 
   test('scrolling shifts the rendered window and keeps full aria-posinset', async () => {
@@ -339,6 +379,52 @@ describe('Tree — virtualized data path', () => {
     expect(treeItemById(container, 'apollo').getAttribute('aria-checked')).toBe('true');
     expect(treeItemById(container, 'zeus').getAttribute('aria-checked')).toBe('false');
     expect(projects.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('Enter on a virtualized checkbox branch toggles expansion without selection', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        items: nestedItems(),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 120,
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+
+    tree.focus();
+    await fireEvent.keyDown(tree, { key: 'Enter' });
+    await waitFor(() =>
+      expect(treeItemById(container, 'projects').getAttribute('aria-expanded')).toBe('true'),
+    );
+    expect(selectedIds).toEqual([]);
+    expect(treeItemById(container, 'projects').getAttribute('aria-checked')).toBe('false');
+
+    await fireEvent.keyDown(tree, { key: 'Enter' });
+    await waitFor(() =>
+      expect(treeItemById(container, 'projects').getAttribute('aria-expanded')).toBe('false'),
+    );
+    expect(selectedIds).toEqual([]);
+    expect(treeItemById(container, 'projects').getAttribute('aria-checked')).toBe('false');
+
+    await fireEvent.keyDown(treeItemById(container, 'projects'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(treeItemById(container, 'projects').getAttribute('aria-expanded')).toBe('true'),
+    );
+    expect(selectedIds).toEqual([]);
+    expect(treeItemById(container, 'projects').getAttribute('aria-checked')).toBe('false');
   });
 
   test('TreeSelectAll includeDescendants selects virtualized data children', async () => {

@@ -1001,10 +1001,7 @@
       case ' ':
         if (!currentItem) return false;
         event.preventDefault();
-        if (currentItem.branch && event.key === 'Enter') {
-          setExpandedInternal(currentItem.id, !expandedIds.includes(currentItem.id));
-        }
-        toggleSelectedInternal(currentItem.id, event);
+        activateVirtualizedItemFromKeyboard(currentItem, event);
         return true;
       case '*':
         event.preventDefault();
@@ -1183,16 +1180,29 @@
     }
   }
 
+  function activateVirtualizedItemFromKeyboard(
+    item: FlattenedTreeDataItem,
+    event: KeyboardEvent,
+  ): void {
+    if (item.branch && event.key === 'Enter') {
+      setExpandedInternal(item.id, !expandedIds.includes(item.id));
+      if (checkboxSelectionActive()) return;
+    }
+
+    if (checkboxSelectionActive()) {
+      toggleSelectionScopeInternal(item.id);
+    } else {
+      toggleSelectedInternal(item.id, event);
+    }
+  }
+
   function handleVirtualizedItemKeydown(item: FlattenedTreeDataItem, event: KeyboardEvent): void {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     event.stopPropagation();
     focusedId = item.id;
     treeElement?.focus();
-    if (item.branch && event.key === 'Enter') {
-      setExpandedInternal(item.id, !expandedIds.includes(item.id));
-    }
-    toggleSelectedInternal(item.id, event);
+    activateVirtualizedItemFromKeyboard(item, event);
   }
 </script>
 

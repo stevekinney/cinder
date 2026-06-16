@@ -105,7 +105,7 @@ export class TreeVirtualizer {
       getScrollElement: this.#getScrollElement,
       getItemKey: this.options.getItemKey,
       estimateSize: () => this.options.getEstimatedSize(),
-      overscan: Math.max(this.options.getOverscan(), this.options.getCount() > 10 ? 5 : 0),
+      overscan: this.#overscan(),
       initialRect: { width: 0, height: this.options.getInitialHeight() },
       observeElementRect: this.#observeElementRect,
       observeElementOffset: this.#observeElementOffset,
@@ -169,7 +169,7 @@ export class TreeVirtualizer {
     if (count === 0) return [];
 
     const size = Math.max(1, this.options.getEstimatedSize());
-    const overscan = Math.max(this.options.getOverscan(), count > 10 ? 5 : 0);
+    const overscan = this.#overscan();
     const scrollTop = this.#getScrollElement()?.scrollTop ?? 0;
     const visibleCount = Math.ceil(this.options.getInitialHeight() / size);
     const startIndex = Math.max(0, Math.floor(scrollTop / size) - overscan);
@@ -191,9 +191,11 @@ export class TreeVirtualizer {
     virtualizerItems: readonly VirtualItem[] | undefined,
     fallbackItems: readonly VirtualItem[],
   ): boolean {
-    if (!virtualizerItems || virtualizerItems.length === 0 || fallbackItems.length === 0) {
+    if (!virtualizerItems || fallbackItems.length === 0) {
       return false;
     }
+
+    if (virtualizerItems.length === 0) return true;
 
     const scrollTop = this.#getScrollElement()?.scrollTop ?? 0;
     if (scrollTop <= 0) return false;
@@ -201,6 +203,10 @@ export class TreeVirtualizer {
     const firstVirtualizerIndex = virtualizerItems[0]?.index ?? 0;
     const firstFallbackIndex = fallbackItems[0]?.index ?? 0;
     return Math.abs(firstVirtualizerIndex - firstFallbackIndex) > 1;
+  }
+
+  #overscan(): number {
+    return Math.max(0, this.options.getOverscan());
   }
 
   #observeElementOffset = (
