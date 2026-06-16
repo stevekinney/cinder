@@ -549,7 +549,7 @@
       case 'ArrowRight':
         event.preventDefault();
         if (!isBranch) break;
-        if (!isExpanded) {
+        if (!renderedExpanded) {
           context.setExpanded(id, true);
         } else {
           context.focusFirstChild(id);

@@ -386,6 +386,15 @@
     );
   }
 
+  function firstVisibleVirtualizedChildIndex(parentId: string): number {
+    return visibleDataItems.findIndex((item) => item.parentId === parentId);
+  }
+
+  function focusFirstVirtualizedChild(parentId: string): void {
+    const index = firstVisibleVirtualizedChildIndex(parentId);
+    if (index !== -1) void focusVirtualIndex(index);
+  }
+
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
@@ -845,7 +854,7 @@
       if (parentId) focusNode(parentId);
     },
     focusFirstChild(currentId) {
-      const childId = registry.firstChildOf(currentId);
+      const childId = registry.childrenOf(currentId).find((id) => visibleIdSet.has(id));
       if (childId) focusNode(childId);
     },
     handleTypeahead(char, currentId) {
@@ -961,10 +970,10 @@
       case 'ArrowRight':
         if (!currentItem?.branch) return false;
         event.preventDefault();
-        if (!expandedIds.includes(currentItem.id)) {
+        if (!virtualizedItemExpanded(currentItem)) {
           setExpandedInternal(currentItem.id, true);
         } else {
-          focusVirtualDelta(1);
+          focusFirstVirtualizedChild(currentItem.id);
         }
         return true;
       case 'ArrowLeft':

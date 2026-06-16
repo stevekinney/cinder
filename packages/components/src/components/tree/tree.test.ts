@@ -532,6 +532,73 @@ describe('Tree — filter/search', () => {
     expect(expandedIds).toEqual(['existing']);
   });
 
+  test('ArrowRight on a filter-revealed branch focuses the visible child without mutating expandedIds', async () => {
+    let expandedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'apollo',
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'projects',
+            label: 'Projects',
+            branch: true,
+            children: [{ id: 'apollo', label: 'Apollo' }],
+          },
+        ]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Projects', 'Apollo']);
+    });
+    const projects = treeItem(container, 'Projects')!;
+    projects.focus();
+    await fireEvent.keyDown(projects, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(treeItem(container, 'Apollo'));
+    expect(expandedIds).toEqual([]);
+  });
+
+  test('ArrowRight on an expanded filtered branch skips hidden children', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'apollo',
+        expandedIds: ['projects'],
+        children: treeItemsSnippet([
+          {
+            id: 'projects',
+            label: 'Projects',
+            branch: true,
+            children: [
+              { id: 'borealis', label: 'Borealis' },
+              { id: 'apollo', label: 'Apollo' },
+            ],
+          },
+        ]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Projects', 'Apollo']);
+    });
+    const projects = treeItem(container, 'Projects')!;
+    projects.focus();
+    await fireEvent.keyDown(projects, { key: 'ArrowRight' });
+
+    expect(treeItem(container, 'Borealis')?.hasAttribute('data-cinder-hidden')).toBe(true);
+    expect(document.activeElement).toBe(treeItem(container, 'Apollo'));
+  });
+
   test('shows a non-interactive empty state when no items match', async () => {
     const { container } = render(Tree, {
       props: {

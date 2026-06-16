@@ -177,6 +177,38 @@ describe('Tree — virtualized data path', () => {
     expect(expandedIds).toEqual([]);
   });
 
+  test('ArrowRight on a filter-revealed virtualized branch focuses the visible child without mutating expandedIds', async () => {
+    let expandedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: nestedItems(),
+        filterValue: 'old',
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    await waitFor(() => {
+      expect(visibleItemIds(container)).toEqual(['archive', 'old-apollo']);
+    });
+    tree.focus();
+    await fireEvent.keyDown(tree, { key: 'ArrowRight' });
+
+    await waitFor(() => {
+      expect(treeItemById(container, 'old-apollo').hasAttribute('data-cinder-focused')).toBe(true);
+    });
+    expect(expandedIds).toEqual([]);
+  });
+
   test('disableTypeahead prevents virtualized typeahead focus movement', async () => {
     const { container } = render(Tree, {
       props: {
