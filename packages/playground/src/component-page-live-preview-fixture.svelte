@@ -87,12 +87,13 @@
   const liveMountFailed = $derived(mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined);
   const mountLivePreview = createLivePreviewMount({ mountErrors });
 
-  // The featured-example fallback is a plain no-props mount keyed by container id
-  // (mirrors `mountScenario`'s shape). Kept inline because it is trivial and not
-  // the behavior under test — the live-preview path is. It narrows with the SAME
-  // `isMountableComponent` guard, records errors with the SAME `toMountErrorDetail`
-  // helper, and tears down with the SAME `void unmount` as the production code, so
-  // the fallback path here can't diverge from the real error-keying contract.
+  // The featured-example fallback is a deliberately minimal no-props mount keyed by
+  // container id (mirrors `mountScenario`'s shape). Kept inline because it is trivial
+  // and not the behavior under test — the live-preview path is. It is NOT a full copy
+  // of `createLivePreviewMount`: it shares the `isMountableComponent` guard, the
+  // `toMountErrorDetail` error shape, and the `void unmount` teardown, but skips the
+  // production path's `console.error` side effect on mount failure. Tests that need
+  // real error-keying parity exercise the live-preview path, not this fallback.
   function mountFeatured(Component: unknown): (element: HTMLElement) => () => void {
     return (element: HTMLElement) => {
       const mountKey = element.id;

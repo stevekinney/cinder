@@ -1564,7 +1564,7 @@
     align-items: center;
     justify-content: center;
     inline-size: 2.25rem;
-    min-block-size: 1.75rem;
+    min-block-size: 2.25rem;
     padding: 0 var(--cinder-space-2);
     border: none;
     border-inline-start: 1px solid var(--cinder-border);

@@ -12,8 +12,11 @@
  *   1. The bare component is resolved from its module namespace by the documented
  *      export name, falling back to the default export.
  *   2. Each `playgroundValues` change re-mounts the bare component with the NEW
- *      values (the attachment reads `playgroundValues` inside its body, so
- *      Svelte tears down and remounts on change).
+ *      values. The reactive read lives in the attach EXPRESSION
+ *      (`mountLivePreview(component, $state.snapshot(playgroundValues))`), so the
+ *      snapshot is tracked and Svelte tears down + remounts on change. Reading the
+ *      values inside the attachment body — the original bug — would run once at
+ *      mount and never react.
  *   3. Props arrive as a plain object (`$state.snapshot`), never the reactive
  *      `$state` proxy — that's what a real consumer would receive.
  *   4. When the bare component can't be resolved, or its live mount FAILS while a
@@ -184,6 +187,9 @@ describe('component-page live preview (#405)', () => {
     expect(liveProbeCount()).toBe(1);
 
     unmount();
+    // Flush the attachment teardown so its ledger write lands inside this test
+    // rather than racing the next row's `beforeEach` reset.
+    await tick();
   });
 
   test('passes a plain object, not the reactive $state proxy', async () => {
