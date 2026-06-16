@@ -77,24 +77,25 @@ Playground examples live at `packages/playground/src/examples/<name>/`. Pilots:
 - `button` — has a route (`packages/playground/src/examples/button/`).
 - `accordion` — has a route.
 - `accordion-item` — no top-level route (rendered inside the `accordion` examples).
-- `experimental/timeline` — no route.
-- `experimental/timeline-item` — no route.
+- `experimental/timeline` — historical pilot only; no route, and the alias is no longer active.
+- `experimental/timeline-item` — historical pilot only; no route, and the alias is no longer active.
 
 Verification path:
 
 - `button`, `accordion` → Chrome MCP browser visit.
-- `accordion-item`, `experimental/timeline`, `experimental/timeline-item` → consumer-fixture imports only (per §Verification step 8).
+- `accordion-item` → consumer-fixture imports only (per §Verification step 8).
+- `experimental/timeline`, `experimental/timeline-item` → historical consumer-fixture baselines from the pre-removal source; they do not describe active exports after OQ#5.
 
 ## OQ#7 — Pre-migration runtime-import baseline
 
-Each pilot imported successfully in a clean Bun process from the current (pre-migration) source. Recorded results:
+Each pilot imported successfully in a clean Bun process from the then-current pre-migration source. The `experimental/timeline*` rows are historical baselines from before the aliases were removed, not active exports.
 
-| Component                    | Baseline |
-| ---------------------------- | -------- |
-| `button`                     | green    |
-| `accordion`                  | green    |
-| `accordion-item`             | green    |
-| `experimental/timeline`      | green    |
-| `experimental/timeline-item` | green    |
+| Component                    | Baseline           |
+| ---------------------------- | ------------------ |
+| `button`                     | green              |
+| `accordion`                  | green              |
+| `accordion-item`             | green              |
+| `experimental/timeline`      | green (historical) |
+| `experimental/timeline-item` | green (historical) |
 
-All five pilots therefore get runtime-import assertions in the consumer fixture post-migration. Baselines for the remaining ~140 components are taken at the start of each later phase.
+The three still-active pilots therefore get runtime-import assertions in the consumer fixture post-migration. Baselines for the remaining components are taken at the start of each later phase.

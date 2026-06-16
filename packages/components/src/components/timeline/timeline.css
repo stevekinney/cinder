@@ -54,6 +54,7 @@
     display: grid;
     grid-template-columns: var(--_cinder-timeline-rail-size) 1fr;
     gap: var(--cinder-space-3);
+    position: relative;
   }
 
   .cinder-timeline__group-header {
@@ -66,23 +67,21 @@
     text-transform: uppercase;
   }
 
-  /* Connecting line between items. It runs from THIS item's marker center down to
-     the NEXT item's marker center: starting at the marker center Y and extending
-     past the item's bottom by the same offset (the next item's marker center sits
-     that far below its own top). This keeps the line continuous through every dot
-     instead of leaving stubby gaps. The last item suppresses the connector via the
-     [data-cinder-connector-after='hidden'] rule below. */
-  .cinder-timeline-item::before {
+  /* Connecting line between items. It is anchored to the event row, not the
+     list item, so optional group headers above the event cannot offset it away
+     from the marker. The line extends through this item's bottom padding to the
+     next event marker center. */
+  .cinder-timeline-item__event::before {
     content: '';
     position: absolute;
     left: var(--_cinder-timeline-marker-center-x);
     top: var(--_cinder-timeline-marker-center-y);
-    bottom: calc(-1 * var(--_cinder-timeline-marker-center-y));
+    bottom: calc(-1 * (var(--cinder-space-4) + var(--_cinder-timeline-marker-center-y)));
     width: 1px;
     background: var(--cinder-border-muted);
   }
 
-  .cinder-timeline-item[data-cinder-connector-after='hidden']::before {
+  .cinder-timeline-item[data-cinder-connector-after='hidden'] .cinder-timeline-item__event::before {
     display: none;
   }
 
@@ -157,7 +156,7 @@
     margin: 0 0 var(--cinder-space-2);
   }
 
-  .cinder-timeline[data-cinder-orientation='horizontal'] .cinder-timeline-item::before {
+  .cinder-timeline[data-cinder-orientation='horizontal'] .cinder-timeline-item__event::before {
     left: calc(var(--_cinder-timeline-marker-size) / 2);
     right: calc(-1 * var(--cinder-space-4));
     top: calc(var(--_cinder-timeline-marker-size) / 2 + var(--cinder-space-1));
