@@ -496,6 +496,10 @@
     controller.lift(id);
   }
 
+  function handleDragClick(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
   function toggleKeyboardSelection(event: KeyboardEvent): void {
     if (disabled) return;
     if (checkboxSelectionActive) {
@@ -749,6 +753,7 @@
         aria-describedby={context.dragInstructionsId}
         tabindex="-1"
         onpointerdown={handleDragPointerDown}
+        onclickcapture={handleDragClick}
         onkeydown={handleDragKeyboard}
       >
         <span aria-hidden="true">::</span>

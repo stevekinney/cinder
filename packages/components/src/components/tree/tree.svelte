@@ -919,6 +919,16 @@
     toggleSelectedInternal(currentId, event);
   }
 
+  function expandVirtualizedSiblings(currentId: string | null): void {
+    const currentItem = currentId ? flattenedDataItemById.get(currentId) : undefined;
+    if (!currentItem) return;
+    const siblingBranchIds = flattenedDataItems
+      .filter((item) => item.parentId === currentItem.parentId && item.branch)
+      .map((item) => item.id);
+    const nextIds = withExpandedIds(siblingBranchIds);
+    if (nextIds.length !== expandedIds.length) expandedIds = nextIds;
+  }
+
   function handleVirtualizedKeydown(event: KeyboardEvent): boolean {
     if ((event.metaKey || event.ctrlKey) && event.key === 'a') {
       event.preventDefault();
@@ -973,6 +983,10 @@
           setExpandedInternal(currentItem.id, !expandedIds.includes(currentItem.id));
         }
         toggleSelectedInternal(currentItem.id, event);
+        return true;
+      case '*':
+        event.preventDefault();
+        expandVirtualizedSiblings(currentId);
         return true;
       default:
         return handleVirtualizedTypeahead(event);

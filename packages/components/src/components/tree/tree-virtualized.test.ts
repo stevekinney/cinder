@@ -201,6 +201,27 @@ describe('Tree — virtualized data path', () => {
     expect(treeItemById(container, 'beta').hasAttribute('data-cinder-focused')).toBe(false);
   });
 
+  test('star key expands virtualized sibling branches', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: nestedItems(),
+        expandedIds: ['projects'],
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 120,
+      },
+    });
+
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    tree.focus();
+    await fireEvent.keyDown(tree, { key: '*' });
+
+    await waitFor(() => {
+      expect(treeItemById(container, 'old-apollo').getAttribute('aria-level')).toBe('2');
+    });
+  });
+
   test('disabled virtualized rows receive focus but do not change selection', async () => {
     let selectedIds: string[] = [];
     const { container } = render(Tree, {

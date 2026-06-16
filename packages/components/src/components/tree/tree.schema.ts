@@ -32,10 +32,6 @@ const schema = {
       },
       description: 'Currently expanded branch ids. Bindable.',
     },
-    virtualized: {
-      type: 'boolean',
-      description: 'Use the data-driven virtualized render path for large trees. Default: false.',
-    },
     virtualizationEstimatedRowHeight: {
       type: 'number',
       description: 'Estimated row height for virtualized Tree rows. Default: 36.',
@@ -86,6 +82,10 @@ const schema = {
     class: {
       type: 'string',
       description: 'Additional CSS class merged with `.cinder-tree`.',
+    },
+    virtualized: {
+      type: 'boolean',
+      description: 'Use the data-driven virtualized render path for large trees. Default: false.',
     },
   },
   additionalProperties: false,

@@ -125,6 +125,21 @@ describe('Tree — drag-and-drop reorder', () => {
     expect(treeItem(container, 'Gamma').querySelector('.cinder-tree-item__drag-handle')).toBeNull();
   });
 
+  test('drag handle click does not bubble to the tree item', async () => {
+    const { container } = renderTree({ selectionMode: 'single' });
+    const alpha = treeItem(container, 'Alpha');
+    const handle = dragHandle(container, 'Alpha');
+    let bubbledClicks = 0;
+    alpha.addEventListener('click', () => {
+      bubbledClicks += 1;
+    });
+
+    await fireEvent.click(handle);
+
+    expect(bubbledClicks).toBe(0);
+    expect(alpha.getAttribute('aria-selected')).toBe('false');
+  });
+
   test('Space and Enter on a draggable selectable item keep their selection behavior', async () => {
     const onReorder = mock();
     const { container } = renderTree({ selectionMode: 'single', onReorder });

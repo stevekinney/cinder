@@ -30,8 +30,7 @@ export type TreeVirtualizedItemRenderState = {
   selected: boolean;
   focused: boolean;
 };
-/** Props for the Tree component. */
-export type TreeProps = Omit<
+type TreeSharedProps = Omit<
   HTMLAttributes<HTMLDivElement>,
   | 'children'
   | 'class'
@@ -53,10 +52,6 @@ export type TreeProps = Omit<
   expandedIds?: string[];
   /** Typed programmatic handle. Use `bind:ref` to receive it. */
   ref?: TreeRef | undefined;
-  /** Data-driven Tree items. Required when virtualized is true. */
-  items?: readonly TreeDataItem[];
-  /** Use the data-driven virtualized render path for large trees. Default: false. */
-  virtualized?: boolean;
   /** Estimated row height for virtualized Tree rows. Default: 36. */
   virtualizationEstimatedRowHeight?: number;
   /** Extra rows rendered before and after the viewport. Default: 4. */
@@ -87,6 +82,25 @@ export type TreeProps = Omit<
   class?: string;
   /** Optional selection controls rendered before the role="tree" element. */
   selectionControls?: Snippet;
-  /** Tree items (snippet). */
-  children?: Snippet;
 };
+
+type TreeSnippetProps = {
+  /** Tree items (snippet). */
+  children: Snippet;
+  /** Use the data-driven virtualized render path for large trees. Default: false. */
+  virtualized?: false | undefined;
+  /** Data-driven Tree items. Required when virtualized is true. */
+  items?: never;
+};
+
+type TreeVirtualizedProps = {
+  /** Use the data-driven virtualized render path for large trees. */
+  virtualized: true;
+  /** Data-driven Tree items. Required when virtualized is true. */
+  items: readonly TreeDataItem[];
+  /** Virtualized trees render from `items` rather than snippet children. */
+  children?: never;
+};
+
+/** Props for the Tree component. */
+export type TreeProps = TreeSharedProps & (TreeSnippetProps | TreeVirtualizedProps);
