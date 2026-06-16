@@ -599,6 +599,37 @@ describe('Tree — filter/search', () => {
     expect(document.activeElement).toBe(treeItem(container, 'Apollo'));
   });
 
+  test('filtering unmounts unrelated collapsed branch children after probing', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'apollo',
+        children: treeItemsSnippet([
+          {
+            id: 'projects',
+            label: 'Projects',
+            branch: true,
+            children: [{ id: 'apollo', label: 'Apollo' }],
+          },
+          {
+            id: 'archive',
+            label: 'Archive',
+            branch: true,
+            children: [{ id: 'zeus', label: 'Zeus' }],
+          },
+        ]),
+      },
+    });
+
+    await tick();
+    await tick();
+
+    expect(visibleTreeItemLabels(container)).toEqual(['Projects', 'Apollo']);
+    expect(treeItem(container, 'Zeus')).toBeNull();
+    expect(treeItem(container, 'Archive')?.hasAttribute('data-cinder-hidden')).toBe(true);
+  });
+
   test('shows a non-interactive empty state when no items match', async () => {
     const { container } = render(Tree, {
       props: {

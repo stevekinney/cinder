@@ -85,18 +85,18 @@ type TreeSharedProps = Omit<
 };
 
 type TreeSnippetProps = {
-  /** Tree items (snippet). */
+  /** Tree items (snippet). Required when virtualized is false or omitted; mutually exclusive with items. */
   children: Snippet;
   /** Use the data-driven virtualized render path for large trees. Default: false. */
   virtualized?: false | undefined;
-  /** Data-driven Tree items. Required when virtualized is true. */
+  /** Data-driven Tree items. Required when virtualized is true; mutually exclusive with children. */
   items?: never;
 };
 
 type TreeVirtualizedProps = {
   /** Use the data-driven virtualized render path for large trees. */
   virtualized: true;
-  /** Data-driven Tree items. Required when virtualized is true. */
+  /** Data-driven Tree items. Required when virtualized is true; mutually exclusive with children. */
   items: readonly TreeDataItem[];
   /** Virtualized trees render from `items` rather than snippet children. */
   children?: never;

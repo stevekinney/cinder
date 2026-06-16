@@ -307,6 +307,40 @@ describe('Tree — virtualized data path', () => {
     });
   });
 
+  test('checkbox selection renders checkbox state for virtualized rows', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        selectionMode: 'multiple',
+        checkboxSelection: true,
+        selectionBehavior: 'cascade',
+        selectedIds: ['apollo'],
+        expandedIds: ['projects'],
+        items: nestedItems(),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 120,
+      },
+    });
+
+    const projects = treeItemById(container, 'projects');
+    const projectsCheckbox = projects.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    expect(projects.getAttribute('aria-selected')).toBeNull();
+    expect(projects.getAttribute('aria-checked')).toBe('mixed');
+    expect(projectsCheckbox.indeterminate).toBe(true);
+    expect(treeItemById(container, 'apollo').getAttribute('aria-checked')).toBe('true');
+
+    await fireEvent.click(projectsCheckbox);
+
+    await waitFor(() => {
+      expect(projects.getAttribute('aria-checked')).toBe('true');
+      expect(projectsCheckbox.checked).toBe(true);
+    });
+    expect(treeItemById(container, 'apollo').getAttribute('aria-checked')).toBe('true');
+    expect(treeItemById(container, 'zeus').getAttribute('aria-checked')).toBe('false');
+    expect(projects.getAttribute('aria-expanded')).toBe('true');
+  });
+
   test('TreeSelectAll includeDescendants selects virtualized data children', async () => {
     let selectedIds: string[] = [];
     const selectionControls = createRawSnippet(() => ({

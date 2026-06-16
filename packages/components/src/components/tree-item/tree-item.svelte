@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { TreeItemProps } from './tree-item.types.ts';
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import type { TreeContext } from '../../_internal/tree-context.ts';
@@ -88,6 +88,7 @@
   let renameError = $state('');
   let renameAnnouncement = $state('');
   let renameAnnouncementSequence = $state(0);
+  let probedFilterValue = $state<string | null>(null);
 
   let outerElement: HTMLElement | undefined = $state();
   let renameInputElement: HTMLInputElement | undefined = $state();
@@ -111,7 +112,12 @@
   );
   const hasVisibleDescendant = $derived(context.hasVisibleDescendant(id));
   const renderedExpanded = $derived(isExpanded || (isFiltering && hasVisibleDescendant));
-  const shouldRenderChildren = $derived(isBranch && (isExpanded || isFiltering));
+  const shouldProbeFilterChildren = $derived(
+    isBranch && isFiltering && !isExpanded && probedFilterValue !== context.filterValue,
+  );
+  const shouldRenderChildren = $derived(
+    isBranch && (isExpanded || hasVisibleDescendant || shouldProbeFilterChildren),
+  );
   const checkboxSelectionActive = $derived(context.checkboxSelectionActive());
   const selectionState = $derived(context.selectionStateFor(id));
   const labelSegments = $derived.by(() => splitLabelForHighlight(label, context.filterValue));
@@ -128,6 +134,21 @@
     if (!checkboxSelectionActive) return undefined;
     if (selectionState.indeterminate) return 'mixed';
     return selectionState.checked ? 'true' : 'false';
+  });
+
+  $effect(() => {
+    if (!isFiltering) {
+      probedFilterValue = null;
+      return;
+    }
+    if (!shouldProbeFilterChildren) return;
+
+    const filterValueAtProbeStart = context.filterValue;
+    tick().then(() => {
+      if (context.filtering && context.filterValue === filterValueAtProbeStart) {
+        probedFilterValue = filterValueAtProbeStart;
+      }
+    });
   });
 
   let checkboxElement: HTMLInputElement | undefined = $state();

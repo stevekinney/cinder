@@ -585,6 +585,12 @@
     return checkboxSelection && selectionMode === 'multiple';
   }
 
+  function ariaCheckedForSelectionState(state: ReturnType<typeof selectionStateForId>) {
+    if (!checkboxSelectionActive()) return undefined;
+    if (state.indeterminate) return 'mixed';
+    return state.checked ? 'true' : 'false';
+  }
+
   function selectionTargetsFor(id: string): string[] {
     if (isVirtualizedTree) {
       const item = flattenedDataItemById.get(id);
@@ -634,6 +640,21 @@
         : next === false
           ? deselectIds(selectedIds, targets, disabledIds)
           : toggleSelectionScope(selectedIds, targets, disabledIds);
+  }
+
+  function toggleSelectionScopeInternal(id: string): void {
+    if (selectionMode !== 'multiple') return;
+    const disabled = isVirtualizedTree
+      ? (flattenedDataItemById.get(id)?.disabled ?? true)
+      : (registry.getNode(id)?.disabled ?? true);
+    if (disabled) return;
+
+    if (selectionBehavior === 'cascade') {
+      applySelectionScope(selectionTargetsFor(id));
+    } else {
+      selectedIds = toggleIndependentId(selectedIds, id, disabledIdsFor([id]));
+    }
+    selectionAnchorId = id;
   }
 
   function toggleSelectedInternal(id: string, event: KeyboardEvent | MouseEvent | null): void {
@@ -789,15 +810,7 @@
     checkboxSelectionActive,
     selectionStateFor: selectionStateForId,
     toggleSelectionScope(id) {
-      if (selectionMode !== 'multiple') return;
-      const node = registry.getNode(id);
-      if (!node || node.disabled) return;
-      if (selectionBehavior === 'cascade') {
-        applySelectionScope(selectionTargetsFor(id));
-      } else {
-        selectedIds = toggleIndependentId(selectedIds, id, disabledIdsFor([id]));
-      }
-      selectionAnchorId = id;
+      toggleSelectionScopeInternal(id);
     },
     selectSelectionScope(parentId, next, includeDescendants) {
       if (selectionMode !== 'multiple') return;
@@ -1152,6 +1165,24 @@
     }
   }
 
+  function syncVirtualizedCheckboxElement(element: HTMLInputElement, id: string): void {
+    const state = selectionStateForId(id);
+    element.checked = state.checked;
+    element.indeterminate = state.indeterminate && !state.checked;
+  }
+
+  function handleVirtualizedCheckboxClick(item: FlattenedTreeDataItem, event: MouseEvent): void {
+    event.stopPropagation();
+    focusedId = item.id;
+    treeElement?.focus();
+    toggleSelectionScopeInternal(item.id);
+
+    const checkbox = event.currentTarget;
+    if (checkbox instanceof HTMLInputElement) {
+      syncVirtualizedCheckboxElement(checkbox, item.id);
+    }
+  }
+
   function handleVirtualizedItemKeydown(item: FlattenedTreeDataItem, event: KeyboardEvent): void {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
@@ -1170,6 +1201,7 @@
     {#each virtualRows as row (row.item.id)}
       {@const virtualItem = row.virtualItem}
       {@const item = row.item}
+      {@const itemSelectionState = selectionStateForId(item.id)}
       <div
         {@attach virtualizer.measureElement}
         id={virtualItemElementId(item)}
@@ -1177,7 +1209,10 @@
         class="cinder-tree-item cinder-tree-item--virtual"
         aria-level={item.level}
         aria-expanded={item.branch ? virtualizedItemExpanded(item) : undefined}
-        aria-selected={selectionMode === 'none' ? undefined : selectedIds.includes(item.id)}
+        aria-selected={selectionMode === 'none' || checkboxSelectionActive()
+          ? undefined
+          : selectedIds.includes(item.id)}
+        aria-checked={ariaCheckedForSelectionState(itemSelectionState)}
         aria-disabled={item.disabled || undefined}
         aria-setsize={item.setSize}
         aria-posinset={item.posInSet}
@@ -1193,6 +1228,22 @@
         onkeydown={(event) => handleVirtualizedItemKeydown(item, event)}
       >
         <div class="cinder-tree-item__row" style={`padding-inline-start: ${item.level * 1.25}rem;`}>
+          {#if checkboxSelectionActive()}
+            <input
+              type="checkbox"
+              class="cinder-tree-item__checkbox"
+              checked={itemSelectionState.checked}
+              disabled={item.disabled}
+              tabindex="-1"
+              aria-hidden="true"
+              onclick={(event) => handleVirtualizedCheckboxClick(item, event)}
+              {@attach (node: HTMLInputElement) => {
+                $effect(() => {
+                  syncVirtualizedCheckboxElement(node, item.id);
+                });
+              }}
+            />
+          {/if}
           {#if virtualizedItem}
             {@render virtualizedItem({
               item,

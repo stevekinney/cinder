@@ -94,7 +94,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
-        description: 'Tree items (snippet).',
+        description:
+          'Tree items (snippet). Required when virtualized is false or omitted; mutually exclusive with items.',
       },
       {
         name: 'filterPredicate',
@@ -104,7 +105,8 @@ const schema = {
       {
         name: 'items',
         reason: 'unknown-shape',
-        description: 'Data-driven Tree items. Required when virtualized is true.',
+        description:
+          'Data-driven Tree items. Required when virtualized is true; mutually exclusive with children.',
       },
       {
         name: 'onFilterChange',
