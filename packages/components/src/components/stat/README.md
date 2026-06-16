@@ -2,13 +2,13 @@
 
 Single metric tile displaying a labelled numeric value with optional trend or unit.
 
-## When to use
+## Choosing this component
 
 - Surfacing a single KPI or headline number in a dashboard or summary card (revenue, users, uptime).
 - Pairing related figures — wrap multiple `Stat` tiles in [`StatGroup`](../stat-group/README.md) for consistent grid layout.
 - Showing a trend or change value alongside the primary number via the `change` prop.
 
-## When not to use
+## Choosing something else
 
 - Code-change line counts (+/- additions and removals) — use [`DiffStatistics`](../diff-statistics/README.md), which is purpose-built for that display.
 - Long lists of data points — use a [`Table`](../table/README.md) or [`DataList`](../data-list/README.md) instead.

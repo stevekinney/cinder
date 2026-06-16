@@ -2,7 +2,7 @@
 
 A floating toolbar that appears near a text selection and offers a comment-on-selection action with an inline composer. The component uses fixed-position Floating UI geometry, so the supplied selection anchor can flip or shift when it is near a viewport edge.
 
-## When to use
+## Choosing this component
 
 Use `SelectionPopover` when you want readers to annotate or comment on a highlighted range of text — for example, in a document editor, review tool, or article surface. It is designed specifically for selection-scoped actions. For generic floating content or popovers unrelated to text selection, use the `Popover` component instead.
 

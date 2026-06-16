@@ -15,13 +15,13 @@ The key distinction between ConfirmDialog and AlertDialog is _who initiates_ the
 - ConfirmDialog is for user-initiated actions that need a safety gate ("You clicked Delete — are you sure?"). Escape is a safe exit; cancel is the default focus.
 - AlertDialog is for system-initiated or out-of-band urgency ("Your session expired", "This action affects others"). Escape is blocked; acknowledgement is mandatory.
 
-## When to use
+## Choosing this component
 
 - Asking the user to confirm before deleting, discarding, or publishing something that cannot easily be undone.
 - Any two-action flow where the only choices are "proceed" and "cancel" — ConfirmDialog saves you from composing Modal + two Buttons manually.
 - Destructive actions: set `destructive` to apply the danger variant to the confirm button.
 
-## When not to use
+## Choosing something else
 
 - When the dialog body needs rich content (lists, markup, multiple paragraphs) — compose [`Modal`](../modal/README.md) directly instead, since `aria-describedby` collapses to a single continuous string for screen readers.
 - When more than two actions are needed — use [`Modal`](../modal/README.md) with a custom `footer` snippet.

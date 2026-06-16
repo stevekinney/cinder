@@ -23,7 +23,7 @@ Non-blocking floating panel anchored to a trigger element for contextual content
 </Popover>
 ```
 
-## When to use
+## Choosing this component
 
 Use Popover for rich, interactive contextual content anchored to a trigger — help panels, color pickers, settings cards, and similar surfaces that do not need to interrupt the user.
 
