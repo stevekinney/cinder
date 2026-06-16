@@ -6,11 +6,12 @@ const schema = {
   properties: {
     density: {
       enum: ['compact', 'comfortable', 'spacious'],
-      description: 'Controls body row padding density.',
+      description: "Controls body row padding density. Defaults to `'comfortable'`.",
     },
     stickyHeader: {
       type: 'boolean',
-      description: 'Keeps the column header row pinned to the top edge while scrolling.',
+      description:
+        'Keeps the column header row pinned to the top edge while scrolling. Defaults to `true`.',
     },
     columnOrder: {
       type: 'array',

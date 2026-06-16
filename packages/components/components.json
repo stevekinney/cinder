@@ -1509,7 +1509,7 @@
           "reason": "The split between sections deserves a heading — use section-heading instead."
         },
         {
-          "reason": "Wrapping the entire viewport edge — use surface or page-layout instead."
+          "reason": "Wrapping the entire viewport edge — use surface or a hand-rolled page scaffold instead."
         }
       ],
       "related": ["surface", "section-heading"],

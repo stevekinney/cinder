@@ -59,9 +59,9 @@ export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   columns: readonly DataGridColumnDef<TRow>[];
   /** Stable row identity used for ARIA ids and row-scoped state. */
   getRowId: (row: TRow) => string;
-  /** Controls body row padding density. */
+  /** Controls body row padding density. Defaults to `'comfortable'`. */
   density?: DataGridDensity;
-  /** Keeps the column header row pinned to the top edge while scrolling. */
+  /** Keeps the column header row pinned to the top edge while scrolling. Defaults to `true`. */
   stickyHeader?: boolean;
   /** Applies a supplied column order. */
   columnOrder?: readonly string[];

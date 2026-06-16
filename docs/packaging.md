@@ -7,13 +7,15 @@ in CSS.
 ## Conditional exports — resolution table
 
 Every component subpath is published with the same conditional shape. The
-component JS lives behind two conditions; the CSS sidecar lives behind its own
-`/styles` subpath:
+component JavaScript entry carries `types`, `svelte`, `node`, and `default`
+conditions; the CSS sidecar lives behind its own `/styles` subpath:
 
 ```jsonc
 "./button": {
+  "types": "./dist/components/button/index.d.ts",
   "svelte": "./src/components/button/index.ts",
-  "types": "./dist/components/button/index.d.ts"
+  "node": "./dist/server/components/button/index.js",
+  "default": "./dist/components/button/index.js"
 },
 "./button/styles": {
   "default": "./dist/components/button/button.css"
@@ -24,24 +26,20 @@ Which file a given consumer actually loads depends on the resolver and its
 condition set. Resolvers stop at the first condition they match. The table below
 captures what wins where.
 
-| Consumer / resolver                       | Subpath                              | Condition matched | File loaded                           |
-| ----------------------------------------- | ------------------------------------ | ----------------- | ------------------------------------- |
-| TypeScript (`moduleResolution: nodenext`) | `@lostgradient/cinder/button`        | `types`           | `./dist/components/button/index.d.ts` |
-| TypeScript (`moduleResolution: bundler`)  | `@lostgradient/cinder/button`        | `types`           | `./dist/components/button/index.d.ts` |
-| Vite / SvelteKit dev + build              | `@lostgradient/cinder/button`        | `svelte`          | `./src/components/button/index.ts`    |
-| `svelte-package` / Svelte-aware tooling   | `@lostgradient/cinder/button`        | `svelte`          | `./src/components/button/index.ts`    |
-| Any resolver                              | `@lostgradient/cinder/button/styles` | `default`         | `./dist/components/button/button.css` |
+| Consumer / resolver                             | Subpath                              | Condition matched | File loaded                                |
+| ----------------------------------------------- | ------------------------------------ | ----------------- | ------------------------------------------ |
+| TypeScript (`moduleResolution: nodenext`)       | `@lostgradient/cinder/button`        | `types`           | `./dist/components/button/index.d.ts`      |
+| TypeScript (`moduleResolution: bundler`)        | `@lostgradient/cinder/button`        | `types`           | `./dist/components/button/index.d.ts`      |
+| Vite / SvelteKit dev + build                    | `@lostgradient/cinder/button`        | `svelte`          | `./src/components/button/index.ts`         |
+| `svelte-package` / Svelte-aware tooling         | `@lostgradient/cinder/button`        | `svelte`          | `./src/components/button/index.ts`         |
+| Plain Node SSR                                  | `@lostgradient/cinder/button`        | `node`            | `./dist/server/components/button/index.js` |
+| Generic ESM resolver without `svelte` or `node` | `@lostgradient/cinder/button`        | `default`         | `./dist/components/button/index.js`        |
+| Any resolver                                    | `@lostgradient/cinder/button/styles` | `default`         | `./dist/components/button/button.css`      |
 
 The `svelte` condition is the public contract for Svelte-aware tooling. Source
 paths it names are stable. Any other path under `src/` is implementation detail
 and may move at any time. `dist/` is the contract for all non-Svelte tooling
 and for every CSS sidecar.
-
-Consumers using Bun, Node SSR, or a browser bundler without Svelte tooling
-will resolve via `types` for typechecking, but the component subpaths do not
-currently expose a runtime `node` or `default` JS condition. Track 4 ships
-the underlying per-component browser-ESM and SSR builds; wiring those into
-the exports map is a follow-up track.
 
 ## Styles — two consumption modes
 

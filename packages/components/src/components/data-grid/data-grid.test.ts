@@ -127,6 +127,21 @@ describe('DataGrid', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  test('generates deterministic cell ids for astral-plane characters', () => {
+    const { container } = render(OrderDataGrid, {
+      rows: [{ id: 'ord 😃', customer: 'Katherine Johnson', status: 'Queued', total: 512 }],
+      columns: [{ key: 'emoji 💰', header: 'Emoji', getValue: () => 'value' }],
+      getRowId: getOrderId,
+      'aria-label': 'Emoji orders',
+    });
+
+    const cell = container.querySelector('[role="gridcell"]');
+
+    expect(cell?.id).toContain('-1f603-');
+    expect(cell?.id).toContain('-1f4b0-');
+    expect(cell?.id).not.toContain('-de03-');
+  });
+
   test('renders dates with deterministic ISO strings', () => {
     const { container } = render(OrderDataGrid, {
       rows: [{ id: 'ord-3', customer: 'Alan Turing', status: 'Queued', total: 88 }],

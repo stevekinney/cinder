@@ -115,7 +115,7 @@
   }
 
   function toDomIdSegment(value: string): string {
-    return value.replace(/[^A-Za-z0-9_-]/g, (character) => {
+    return value.replace(/[^A-Za-z0-9_-]/gu, (character) => {
       const codePoint = character.codePointAt(0)?.toString(16) ?? '0';
       return `-${codePoint}-`;
     });
