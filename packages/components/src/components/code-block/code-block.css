@@ -3,9 +3,9 @@
   /* ========================================
  * CODE BLOCK
  * Preformatted code with optional language label and copy button.
- * Syntax highlighting is opt-in via the `highlighter` prop. Highlighter
- * output replaces the __pre/__code markup entirely. Shiki pre output is
- * normalized here so highlighted and plain blocks share the same chrome.
+ * Syntax highlighting lazy-loads on the client when a language is set.
+ * Highlighted and plain states share one scroll viewport and identical
+ * inner <pre> metrics so colorization does not move surrounding layout.
  * ======================================== */
 
   .cinder-code-block {
@@ -34,15 +34,22 @@
     letter-spacing: var(--cinder-tracking-wide);
   }
 
+  /* Stable scroll viewport shared by the first-paint plain fallback and the
+   * client-side highlighted state. It owns keyboard focus and overflow so the
+   * inner pre elements can stay metrically identical. */
+  .cinder-code-block__viewport {
+    display: block;
+    overflow-x: auto;
+    background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset));
+  }
+
   .cinder-code-block__pre,
-/* Highlighter output (e.g. Shiki) replaces __pre with its own markup
- * (typically <pre class="shiki ...">). Match it so the highlighted variant
- * inherits the same padding / font / line-height as the plain variant —
- * this is what Issue 6 was supposed to fix originally. */
-.cinder-code-block > pre {
+  .cinder-code-block :where(pre.shiki) {
     margin: 0;
     padding: var(--cinder-space-4);
-    overflow-x: auto;
+    width: max-content;
+    min-width: 100%;
+    overflow-x: clip;
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-relaxed);
@@ -53,25 +60,19 @@
     background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset));
   }
 
-  .cinder-code-block__code {
-    font-family: inherit;
-    font-size: inherit;
-  }
-
+  /* Shiki writes inline background styles on its generated <pre>; keep the
+   * highlighted state visually and metrically identical to the plain fallback. */
   .cinder-code-block :where(pre.shiki) {
     margin: 0 !important;
-    padding: var(--cinder-space-3) var(--cinder-space-4) !important;
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
-    line-height: var(--cinder-leading-relaxed);
-    /* Same light/dark split as the plain __pre — near-white in light for
-     * github-light contrast, deep inset in dark for github-dark contrast. */
+    padding: var(--cinder-space-4) !important;
     background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset)) !important;
   }
 
+  .cinder-code-block__code,
   .cinder-code-block :where(pre.shiki code) {
     font-family: inherit;
     font-size: inherit;
+    line-height: inherit;
   }
 
   /* ── Dark-theme Shiki dual-theme fix ─────────────────────────────────────
@@ -158,51 +159,26 @@
 
   /* Stable wrapper that anchors {@html highlighted} for Svelte 5 reconciliation —
    Svelte appends new nodes alongside the old when an `{@html}` value changes
-   between two non-null strings unless it sits inside a stable parent element.
-   This div is also the keyboard-accessible scroll container for the highlighted
-   code (tabindex="0" is set in the template). The inner shiki <pre> must NOT
-   independently scroll — overflow is owned here so keyboard users reach the
-   scroll region via a single focusable element. */
+   between two non-null strings unless it sits inside a stable parent element. */
   .cinder-code-block__highlighted {
     display: block;
-    overflow-x: auto;
   }
 
   /* .cinder-code-block has `overflow: hidden`, so an OUTSET ring from the
    * foundation.css :focus-visible fallback is clipped to the top edge only.
    * Use Strategy B-inset: single-band inset box-shadow contained within the
    * element's own border box so the parent overflow can never clip it.
-   * tabindex="0" is set in code-block.svelte on this div (highlighted variant)
-   * and on .cinder-code-block__pre (plain variant). */
-  .cinder-code-block__highlighted:focus-visible,
-  .cinder-code-block__pre:focus-visible {
+   * tabindex="0" is set in code-block.svelte on the stable viewport. */
+  .cinder-code-block__viewport:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
   @media (forced-colors: active) {
-    .cinder-code-block__highlighted:focus-visible,
-    .cinder-code-block__pre:focus-visible {
+    .cinder-code-block__viewport:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: calc(var(--cinder-ring-width) * -1);
       box-shadow: none;
     }
-  }
-
-  /* The shiki <pre> must NOT own a scroll port — the parent
-   .cinder-code-block__highlighted is the single keyboard-reachable scroll
-   region (axe scrollable-region-focusable wants one, not a nested pair). But it
-   MUST still contribute its full content width to the parent's scrollable
-   overflow, or long lines get clipped and become unreachable. So: let the pre
-   grow to its intrinsic width (`width: max-content`, floored at `min-width:
-   100%` so short code still fills the box) and clip its own (now non-existent)
-   overflow. Because the element is sized to its content, `clip` is a no-op on
-   the pre itself, while the wider-than-viewport pre makes the PARENT scroll.
-   (Plain `overflow-x: clip` alone clipped the overflow out of existence so the
-   parent never became scrollable — verified in-browser.) */
-  .cinder-code-block__highlighted :where(pre.shiki) {
-    width: max-content;
-    min-width: 100%;
-    overflow-x: clip;
   }
 }

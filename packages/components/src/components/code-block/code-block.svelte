@@ -36,9 +36,10 @@
   // Two-phase render contract: the server (and the first client paint) emits
   // the plain `<pre><code>` fallback because `$effect` never runs during SSR.
   // The effect below — client-only by definition — enhances the block to the
-  // highlighted HTML once the highlighter resolves. Keeping the Shiki boundary
-  // a dynamic import inside this effect is what keeps Shiki out of the SSR
-  // bundle and the consumer's entry chunk.
+  // highlighted HTML once the highlighter resolves. The outer viewport stays
+  // mounted across both phases so syntax colorization cannot move surrounding
+  // layout. Keeping the Shiki boundary a dynamic import inside this effect is
+  // what keeps Shiki out of the SSR bundle and the consumer's entry chunk.
   $effect(() => {
     // `highlight={false}` is an absolute off switch: it disables ALL
     // highlighting — including an explicit `highlighter` prop — and triggers
@@ -109,48 +110,32 @@
       {/if}
     </header>
   {/if}
-  <!-- The svelte:boundary catches errors thrown during render of {@html highlighted}
-       (e.g. a malformed HTML string that breaks Svelte's reconciliation). Sync/async
-       errors from the highlighter ITSELF are caught above; this is the secondary net. -->
-  <!-- `{@html}` reconciliation across string→string transitions strands the
-       previous DOM nodes when they're emitted as direct children of an
-       `{#if}` branch (Svelte 5: the prior nodes share the same parent and
-       no anchor scopes them). Wrap the `{@html}` output in a stable
-       container `<div>` so the previous render is contained inside an
-       element Svelte can replace in place. -->
-  <svelte:boundary>
-    {#if highlighted !== null}
-      <!-- tabindex="0" makes this scroll container keyboard-reachable so
-           keyboard-only users can scroll long highlighted code snippets
-           (WCAG 2.1 SC 2.1.1; axe scrollable-region-focusable). The div
-           owns overflow-x: auto in CSS; the inner shiki <pre> is clipped
-           so there is exactly one focusable scroll region. No role="region":
-           a landmark per code block would flood landmark navigation with
-           identically-named "Code" regions on docs pages with many snippets —
-           tabindex alone satisfies the keyboard-scroll requirement.
-
-           The tabindex is UNCONDITIONAL on purpose (see #380). Making it
-           conditional on actual overflow (scrollWidth > clientWidth) would drop
-           the empty tab stop on short, non-overflowing snippets — but any
-           "start non-focusable, add tabindex after measuring" scheme races
-           font-load reflow and hydration: an overflowing block could be briefly
-           keyboard-unreachable, a hard WCAG 2.1.1 failure. axe only flags
-           scrollable-region-focusable on elements that actually scroll, so the
-           always-on tabindex adds NO axe exposure on short blocks. An extra tab
-           stop on a short snippet is the lesser failure mode; keep it always-on. -->
-      <div class="cinder-code-block__highlighted" tabindex="0">
-        {@html highlighted}
-      </div>
-    {:else}
-      <!-- tabindex="0" makes the plain-code scroll container keyboard-reachable. -->
-      <pre class="cinder-code-block__pre" tabindex="0"><code class="cinder-code-block__code"
-          >{code}</code
-        ></pre>
-    {/if}
-    {#snippet failed()}
-      <pre class="cinder-code-block__pre" tabindex="0"><code class="cinder-code-block__code"
-          >{code}</code
-        ></pre>
-    {/snippet}
-  </svelte:boundary>
+  <!-- One stable, focusable scroll viewport is shared by plain, highlighted,
+       and fallback states. Keep tabindex unconditional so overflowing snippets
+       are keyboard-scrollable before measurement. -->
+  <div class="cinder-code-block__viewport" tabindex="0">
+    <!-- The svelte:boundary catches errors thrown during render of {@html highlighted}
+         (e.g. a malformed HTML string that breaks Svelte's reconciliation). Sync/async
+         errors from the highlighter ITSELF are caught above; this is the secondary net. -->
+    <!-- `{@html}` reconciliation across string→string transitions strands the
+         previous DOM nodes when they're emitted as direct children of an
+         `{#if}` branch (Svelte 5: the prior nodes share the same parent and
+         no anchor scopes them). Wrap the `{@html}` output in a stable
+         container `<div>` so the previous render is contained inside an
+         element Svelte can replace in place. -->
+    <svelte:boundary>
+      {#if highlighted !== null}
+        <div class="cinder-code-block__highlighted">
+          {@html highlighted}
+        </div>
+      {:else}
+        <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code
+          ></pre>
+      {/if}
+      {#snippet failed()}
+        <pre class="cinder-code-block__pre"><code class="cinder-code-block__code">{code}</code
+          ></pre>
+      {/snippet}
+    </svelte:boundary>
+  </div>
 </div>
