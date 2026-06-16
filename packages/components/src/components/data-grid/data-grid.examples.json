@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "data-grid",
+  "import": "@lostgradient/cinder/data-grid",
+  "examples": [
+    {
+      "id": "orders",
+      "title": "Pinned order grid",
+      "description": "A static ARIA grid with stable row ids, explicit column widths, and a pinned identifier column.",
+      "code": "<script lang=\"ts\">\n  import { DataGrid, type DataGridColumnDef } from '@lostgradient/cinder/data-grid';\n\n  type Order = {\n    id: string;\n    customer: string;\n    status: string;\n    total: number;\n    updated: string;\n  };\n\n  const orders: Order[] = [\n    { id: 'ORD-1001', customer: 'Ada Lovelace', status: 'Packed', total: 124, updated: 'Today' },\n    {\n      id: 'ORD-1002',\n      customer: 'Grace Hopper',\n      status: 'Shipped',\n      total: 256,\n      updated: 'Yesterday',\n    },\n    { id: 'ORD-1003', customer: 'Alan Turing', status: 'Queued', total: 88, updated: 'Monday' },\n    {\n      id: 'ORD-1004',\n      customer: 'Margaret Hamilton',\n      status: 'Delivered',\n      total: 318,\n      updated: 'Friday',\n    },\n  ];\n\n  const columns: DataGridColumnDef<Order>[] = [\n    { key: 'id', header: 'Order', width: 120, pin: 'left' },\n    { key: 'customer', header: 'Customer', width: 220 },\n    { key: 'status', header: 'Status', width: 140 },\n    { key: 'total', header: 'Total', width: 120, getValue: (order) => `$${order.total}` },\n    { key: 'updated', header: 'Updated', width: 160 },\n  ];\n</script>\n\n<DataGrid\n  rows={orders}\n  {columns}\n  getRowId={(order) => order.id}\n  aria-label=\"Orders\"\n  getRowAriaLabel={(order) => `${order.id}, ${order.customer}, ${order.status}`}\n/>\n"
+    }
+  ]
+}

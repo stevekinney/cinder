@@ -1053,6 +1053,31 @@
       "import": "./src/components/copy-button/copy-button.examples.json",
       "default": "./src/components/copy-button/copy-button.examples.json"
     },
+    "./data-grid": {
+      "types": "./dist/components/data-grid/index.d.ts",
+      "svelte": "./src/components/data-grid/index.ts",
+      "node": "./dist/server/components/data-grid/index.js",
+      "default": "./dist/components/data-grid/index.js"
+    },
+    "./data-grid/schema": {
+      "types": "./dist/components/data-grid/data-grid.schema.d.ts",
+      "svelte": "./src/components/data-grid/data-grid.schema.ts",
+      "node": "./dist/server/components/data-grid/data-grid.schema.js",
+      "default": "./dist/components/data-grid/data-grid.schema.js"
+    },
+    "./data-grid/variables": {
+      "types": "./dist/components/data-grid/data-grid.variables.d.ts",
+      "svelte": "./src/components/data-grid/data-grid.variables.ts",
+      "node": "./dist/server/components/data-grid/data-grid.variables.js",
+      "default": "./dist/components/data-grid/data-grid.variables.js"
+    },
+    "./data-grid/styles": {
+      "default": "./dist/components/data-grid/data-grid.css"
+    },
+    "./data-grid/examples": {
+      "import": "./src/components/data-grid/data-grid.examples.json",
+      "default": "./src/components/data-grid/data-grid.examples.json"
+    },
     "./data-list": {
       "types": "./dist/components/data-list/index.d.ts",
       "svelte": "./src/components/data-list/index.ts",

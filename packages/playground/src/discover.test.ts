@@ -204,7 +204,7 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
-  it('keeps the sidebar at or below the 117-entry product gate', async () => {
+  it('keeps the sidebar at or below the 119-entry product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
@@ -246,13 +246,16 @@ describe('discoverSidebarComponents', () => {
     // sidebar at 118, measured empirically via discoverSidebarComponents(). The
     // other components the backfill touches already shipped examples, so they
     // were already counted and do not move the total.
+    // DataGrid adds one standalone sidebar family with its first playground
+    // example, bringing the measured ceiling to 119.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(118);
+    expect(sidebar.length).toBeLessThanOrEqual(119);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
     // from the sidebar also dropped some other family in its place.
     expect(sidebar).toContain('stacked-list-item');
+    expect(sidebar).toContain('data-grid');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {
