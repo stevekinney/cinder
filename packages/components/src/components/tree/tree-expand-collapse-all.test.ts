@@ -309,4 +309,38 @@ describe('Tree — expand/collapse all', () => {
       HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
     }
   });
+
+  test('TreeRef expandAll announces without optional tree chrome', async () => {
+    let treeRef: TreeRef | undefined;
+    const props = {
+      'aria-label': 'Files',
+      children: treeItemsSnippet([
+        {
+          id: 'projects',
+          label: 'Projects',
+          branch: true,
+          children: [{ id: 'apollo', label: 'Apollo' }],
+        },
+      ]),
+    };
+    Object.defineProperty(props, 'ref', {
+      enumerable: true,
+      get() {
+        return treeRef;
+      },
+      set(value: TreeRef | undefined) {
+        treeRef = value;
+      },
+    });
+    const { container } = render(Tree, {
+      props: props as typeof props & { ref: TreeRef | undefined },
+    });
+
+    await tick();
+    expect(container.querySelector('.cinder-tree-root')).toBeNull();
+
+    await treeRef?.expandAll();
+
+    await waitFor(() => expect(container.textContent).toContain('All items expanded.'));
+  });
 });

@@ -1338,12 +1338,6 @@
       priority="polite"
     />
 
-    <VisuallyHiddenLiveRegion
-      message={expansionAnnouncement}
-      announcementSequence={expansionAnnouncementSequence}
-      priority="polite"
-    />
-
     {#if onReorder}
       <VisuallyHiddenLiveRegion
         message={dragAnnouncement}
@@ -1355,3 +1349,9 @@
 {:else}
   {@render treeBody()}
 {/if}
+
+<VisuallyHiddenLiveRegion
+  message={expansionAnnouncement}
+  announcementSequence={expansionAnnouncementSequence}
+  priority="polite"
+/>
