@@ -19,7 +19,8 @@ const schema = {
           },
           disabled: {
             type: 'boolean',
-            description: 'Prevents selecting or transferring the item.',
+            description:
+              'Prevents selecting or transferring the item from the available list. Already-selected disabled items remain removable.',
           },
         },
         additionalProperties: false,

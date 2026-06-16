@@ -10,7 +10,8 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          minimum: 1,
         },
       ],
       description:

@@ -8,7 +8,7 @@ export type TransferListItem = {
   id: string;
   /** Visible option label. */
   label: string;
-  /** Prevents selecting or transferring the item. */
+  /** Prevents selecting or transferring the item from the available list. Already-selected disabled items remain removable. */
   disabled?: boolean;
 };
 
