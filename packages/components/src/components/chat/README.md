@@ -37,7 +37,7 @@ Chat's root (`.chat-container`) is `height: 100%`. When no ancestor on the
 chain resolves to a definite height, that `100%` resolves against `auto` and
 Chat collapses to the intrinsic height of its empty state plus composer. There
 is no browser error: it just silently shrinks to a small card. Give Chat a
-sized ancestor with one of the two patterns below.
+sized ancestor with one of the three patterns below.
 
 **Fixed-height container.** The simplest option—wrap Chat in an element with
 an explicit height. This is what every example in this component uses.
