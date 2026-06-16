@@ -518,9 +518,16 @@
   }
 
   function expandOneLevel(): void {
+    const expandedIdSet = new Set(expandedIds);
     const visibleBranchIds = isVirtualizedTree
-      ? visibleDataItems.filter((item) => item.branch).map((item) => item.id)
-      : visibleIds.filter((id) => registry.isBulkExpandableBranch(id));
+      ? visibleDataItems
+          .filter((item) => item.branch && item.ancestorIds.every((id) => expandedIdSet.has(id)))
+          .map((item) => item.id)
+      : visibleIds.filter(
+          (id) =>
+            registry.isBulkExpandableBranch(id) &&
+            registry.ancestorsOf(id).every((ancestorId) => expandedIdSet.has(ancestorId)),
+        );
     const nextIds = withExpandedIds(visibleBranchIds);
     if (nextIds.length === expandedIds.length) return;
     expandedIds = nextIds;

@@ -253,6 +253,70 @@ describe('Tree — expand/collapse all', () => {
     expect(treeItem(container, 'Apollo').getAttribute('aria-expanded')).toBe('false');
   });
 
+  test('expand one level ignores nested branches only revealed by filtering', async () => {
+    const captured = { expandedIds: [] as string[] };
+    const { container, getByRole } = render(Tree, {
+      props: withExpandedIdsBinding(captured, {
+        'aria-label': 'Files',
+        filterValue: 'notes',
+        selectionControls: expansionControlsSnippet({ safetyThreshold: 0 }),
+        children: treeItemsSnippet([
+          {
+            id: 'projects',
+            label: 'Projects',
+            branch: true,
+            children: [
+              {
+                id: 'apollo',
+                label: 'Apollo',
+                branch: true,
+                children: [{ id: 'notes', label: 'Notes' }],
+              },
+            ],
+          },
+        ]),
+      }),
+    });
+
+    await waitFor(() =>
+      expect(treeItem(container, 'Apollo').getAttribute('aria-expanded')).toBe('true'),
+    );
+    await fireEvent.click(getByRole('button', { name: 'Expand one level: Files' }));
+
+    expect(captured.expandedIds).toEqual(['projects']);
+  });
+
+  test('virtualized expand one level ignores nested branches only revealed by filtering', async () => {
+    const captured = { expandedIds: [] as string[] };
+    const { getByRole } = render(Tree, {
+      props: withExpandedIdsBinding(captured, {
+        'aria-label': 'Files',
+        virtualized: true as const,
+        filterValue: 'notes',
+        selectionControls: expansionControlsSnippet({ safetyThreshold: 0 }),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 120,
+        items: [
+          {
+            id: 'projects',
+            label: 'Projects',
+            children: [
+              {
+                id: 'apollo',
+                label: 'Apollo',
+                children: [{ id: 'notes', label: 'Notes' }],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Expand one level: Files' }));
+
+    expect(captured.expandedIds).toEqual(['projects']);
+  });
+
   test('TreeRef focuses registered items, expands to registered items, and scrolls rows', async () => {
     let treeRef: TreeRef | undefined;
     const captured = { expandedIds: ['projects'] as string[] };
