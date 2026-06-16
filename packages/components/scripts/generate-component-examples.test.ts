@@ -169,6 +169,206 @@ describe('extractExampleFile — happy path', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Escape-aware metadata extraction (#420)
+// ---------------------------------------------------------------------------
+
+describe('extractExampleFile — escape-aware metadata literals (#420)', () => {
+  /**
+   * Builds a minimal valid source whose `title`/`description` are the GIVEN
+   * literal texts (delimiters and escapes intact), inserted verbatim into the
+   * module block. This lets each case exercise a specific delimiter + escape
+   * combination that the shared `buildSource` helper (single-quote-only) cannot
+   * express. `extraModuleContent` is appended inside the module block so a case
+   * can introduce a non-metadata export and assert the block is preserved.
+   */
+  function buildSourceWithLiterals({
+    titleLiteral = `'Auto columns'`,
+    descriptionLiteral,
+    extraModuleContent = '',
+  }: {
+    titleLiteral?: string;
+    descriptionLiteral: string;
+    extraModuleContent?: string;
+  }): string {
+    return `<script lang="ts" module>
+  export const title = ${titleLiteral};
+  export const description = ${descriptionLiteral};
+${extraModuleContent}</script>
+
+<script lang="ts">
+  import { Button } from '@lostgradient/cinder/button';
+</script>
+
+<Button label="Click" />
+`;
+  }
+
+  /** Convenience wrapper for cases that only vary the `description` literal. */
+  function buildSourceWithDescriptionLiteral(descriptionLiteral: string): string {
+    return buildSourceWithLiterals({ descriptionLiteral });
+  }
+
+  // Before the fix, the extraction regex stopped at the first RAW delimiter
+  // character even when it was backslash-escaped, truncating the description and
+  // leaving the (now-unmatched) export statement in place — which made the
+  // module block look non-metadata-only and leaked it into the published `code`.
+  const cases: Array<{ name: string; literal: string; expected: string }> = [
+    {
+      name: 'escaped double-quote inside a double-quote literal',
+      literal: String.raw`"Set \"auto\" mode."`,
+      expected: 'Set "auto" mode.',
+    },
+    {
+      name: 'escaped single-quote inside a single-quote literal',
+      literal: String.raw`'It\'s auto.'`,
+      expected: "It's auto.",
+    },
+    {
+      name: 'escaped backtick inside a backtick literal',
+      literal: '`Use \\`columns\\` with "auto".`',
+      expected: 'Use `columns` with "auto".',
+    },
+  ];
+
+  for (const { name, literal, expected } of cases) {
+    it(`round-trips the description and strips the module block for ${name}`, () => {
+      const source = buildSourceWithDescriptionLiteral(literal);
+      const result = extractExampleFile(buildInput(source));
+
+      expect(result.kind).toBe('example');
+      if (result.kind !== 'example') return;
+
+      // The description is the true unescaped string, not the truncated prefix.
+      expect(result.example.description).toBe(expected);
+      // The metadata-only module block is still recognized and stripped.
+      expect(result.example.code).not.toContain('export const title');
+      expect(result.example.code).not.toContain('export const description');
+      expect(result.example.code).not.toMatch(/<script[^>]*\bmodule\b/);
+      // The instance code is preserved.
+      expect(result.example.code).toContain("import { Button } from '@lostgradient/cinder/button'");
+    });
+  }
+
+  it('preserves a raw embedded double-quote in a single-quote literal (no regression)', () => {
+    const source = buildSourceWithDescriptionLiteral(`'Set "auto" mode.'`);
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('Set "auto" mode.');
+    expect(result.example.code).not.toContain('export const description');
+  });
+
+  it('decodes common escape sequences (newline) in metadata', () => {
+    const source = buildSourceWithDescriptionLiteral(String.raw`'Line one.\nLine two.'`);
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('Line one.\nLine two.');
+  });
+
+  it('cooks a line continuation (backslash + newline) away to nothing', () => {
+    // A `\` immediately followed by a line terminator is a JS line continuation:
+    // both characters are discarded, so the two source lines join with no gap.
+    const source = buildSourceWithDescriptionLiteral("'one \\\ntwo'");
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('one two');
+    // The metadata-only block is still recognized and stripped despite the
+    // embedded newline in the source statement.
+    expect(result.example.code).not.toContain('export const description');
+    expect(result.example.code).not.toMatch(/<script[^>]*\bmodule\b/);
+  });
+
+  it('cooks a CRLF line continuation away to nothing', () => {
+    // The CRLF alternative must precede the single-terminator branch so `\r\n`
+    // is consumed as one continuation rather than `\r` alone.
+    const source = buildSourceWithDescriptionLiteral("'one \\\r\ntwo'");
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('one two');
+  });
+
+  it('decodes a \\uHHHH unicode escape in metadata', () => {
+    // The SOURCE literal must carry the real six-character escape sequence
+    // (backslash, u, 0, 0, e, 9), NOT a literal é — otherwise the extraction
+    // regex matches it via [^\\] and never exercises unescapeStringLiteral's
+    // \u branch. Build it from an explicit backslash so the on-disk bytes are
+    // unambiguous.
+    const escape = String.fromCharCode(92); // single backslash
+    const source = buildSourceWithDescriptionLiteral(`'caf${escape}u00e9 au lait'`);
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('caf' + String.fromCodePoint(0xe9) + ' au lait');
+  });
+
+  it('decodes a \\u{...} unicode code-point escape in metadata', () => {
+    const escape = String.fromCharCode(92);
+    const source = buildSourceWithDescriptionLiteral(`'caf${escape}u{e9} au lait'`);
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('caf' + String.fromCodePoint(0xe9) + ' au lait');
+  });
+
+  it('decodes a \\xHH hex escape in metadata', () => {
+    const escape = String.fromCharCode(92);
+    const source = buildSourceWithDescriptionLiteral(`'caf${escape}xe9 au lait'`);
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    expect(result.example.description).toBe('caf' + String.fromCodePoint(0xe9) + ' au lait');
+  });
+
+  it('round-trips an escaped delimiter in title and strips the module block', () => {
+    const source = buildSourceWithLiterals({
+      titleLiteral: String.raw`"Set \"auto\" columns"`,
+      descriptionLiteral: `'A description.'`,
+    });
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    // `title` goes through the same extraction + strip path as `description`.
+    expect(result.example.title).toBe('Set "auto" columns');
+    expect(result.example.code).not.toContain('export const title');
+    expect(result.example.code).not.toMatch(/<script[^>]*\bmodule\b/);
+  });
+
+  it('keeps the module block verbatim when a non-metadata export sits beside an escaped literal', () => {
+    // The invariant the bug broke: an escaped literal must not make a
+    // non-metadata-only block look metadata-only (or vice versa). The structural
+    // strip-detection must remove the escaped metadata statement so the block is
+    // correctly classified — here as NON-metadata-only (it has an extra export),
+    // so the whole module block is preserved verbatim in `code`.
+    const source = buildSourceWithLiterals({
+      descriptionLiteral: String.raw`"Set \"auto\" mode."`,
+      extraModuleContent: `  export type Mode = 'auto' | 'manual';\n`,
+    });
+    const result = extractExampleFile(buildInput(source));
+
+    expect(result.kind).toBe('example');
+    if (result.kind !== 'example') return;
+    // The description still decodes correctly.
+    expect(result.example.description).toBe('Set "auto" mode.');
+    // The block has a non-metadata export, so it is kept verbatim.
+    expect(result.example.code).toContain('export const title');
+    expect(result.example.code).toContain('export const description');
+    expect(result.example.code).toContain("export type Mode = 'auto' | 'manual'");
+    expect(result.example.code).toMatch(/<script[^>]*\bmodule\b/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Doc-page mount-isolation harness strip (#399)
 // ---------------------------------------------------------------------------
 
