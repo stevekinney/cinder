@@ -20,6 +20,12 @@
       "title": "Typed options with as const",
       "description": "Use `as const` on the options array to infer a precise literal-union type for `T`. TypeScript then rejects any `value` that is not a member of the union at compile time.",
       "code": "<script lang=\"ts\">\n  import { Select } from '@lostgradient/cinder/select';\n\n  // `as const` narrows value types to the literal union 'us' | 'ca' | 'gb' | 'au'.\n  // T is inferred from `options`; passing value=\"invalid\" would be a compile error.\n  const options = [\n    { value: 'us', label: 'United States' },\n    { value: 'ca', label: 'Canada' },\n    { value: 'gb', label: 'United Kingdom' },\n    { value: 'au', label: 'Australia' },\n  ] as const;\n\n  type CountryCode = (typeof options)[number]['value'];\n  let country = $state<CountryCode>('us');\n</script>\n\n<Select id=\"country-typed\" bind:value={country} {options} label=\"Country\" />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Selected: {country}</p>\n"
+    },
+    {
+      "id": "with-error",
+      "title": "Select with an error",
+      "description": "A required Select whose placeholder is still selected is invalid: pass a non-empty `error` string to mark it. The control gets `aria-invalid=\"true\"`, the message is wired via `aria-describedby`, and a danger ring replaces the focus ring when the invalid control is focused.",
+      "code": "<script lang=\"ts\">\n  import { Select } from '@lostgradient/cinder/select';\n\n  // A `disabled` placeholder paired with `required` is the accessible pattern for\n  // a \"must pick one\" Select: the empty value can be the initial state but cannot\n  // be re-selected, and native constraint validation agrees with the `error` prop.\n  const options = [\n    { value: '', label: 'Select a plan…', disabled: true },\n    { value: 'free', label: 'Free' },\n    { value: 'pro', label: 'Pro' },\n    { value: 'enterprise', label: 'Enterprise' },\n  ];\n\n  let plan = $state('');\n</script>\n\n<Select\n  id=\"plan-error\"\n  bind:value={plan}\n  {options}\n  label=\"Plan\"\n  required\n  error=\"Choose a plan to continue.\"\n/>\n"
     }
   ]
 }
