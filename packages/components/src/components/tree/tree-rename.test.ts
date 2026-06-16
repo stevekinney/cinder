@@ -113,6 +113,26 @@ describe('Tree — inline label rename', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  test('remount focus restoration is scoped to the edited tree', async () => {
+    const { container: firstTree } = render(TreeRenameFixture, {
+      props: { initialLabel: 'First' },
+    });
+    const { container: secondTree } = render(TreeRenameFixture, {
+      props: { initialLabel: 'Second' },
+    });
+
+    const input = await beginRenameWithF2(secondTree);
+    await fireEvent.input(input, { target: { value: 'Second Renamed' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      const renamedItem = itemById(secondTree, 'alpha');
+      expect(treeItem(secondTree, 'Second Renamed')).toBe(renamedItem);
+      expect(document.activeElement).toBe(renamedItem);
+    });
+    expect(document.activeElement).not.toBe(itemById(firstTree, 'alpha'));
+  });
+
   test('Escape cancels without calling onRename and restores focus to the item', async () => {
     const calls: Array<[string, string]> = [];
     const { container } = render(TreeRenameFixture, {

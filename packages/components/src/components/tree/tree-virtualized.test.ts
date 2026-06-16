@@ -368,6 +368,27 @@ describe('Tree — virtualized data path', () => {
     expect(treeItemById(container, 'alpha').getAttribute('aria-selected')).toBe('false');
   });
 
+  test('virtualized rows ignore double-click follow-up activation', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: nestedItems(),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 120,
+      },
+    });
+
+    await fireEvent.click(treeItemById(container, 'projects'), { detail: 1 });
+    await waitFor(() => {
+      expect(treeItemById(container, 'projects').getAttribute('aria-expanded')).toBe('true');
+    });
+
+    await fireEvent.click(treeItemById(container, 'projects'), { detail: 2 });
+
+    expect(treeItemById(container, 'projects').getAttribute('aria-expanded')).toBe('true');
+  });
+
   test('cascade selection includes virtualized descendants and skips disabled descendants', async () => {
     const { container } = render(Tree, {
       props: {

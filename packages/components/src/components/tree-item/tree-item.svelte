@@ -93,6 +93,7 @@
   let outerElement: HTMLElement | undefined = $state();
   let renameInputElement: HTMLInputElement | undefined = $state();
   let dragHandleElement: HTMLButtonElement | undefined = $state();
+  let renameOwningTreeElement: HTMLElement | undefined;
   const treeItemElementId = $props.id();
   const renameMessageId = $derived(`${treeItemElementId}-rename-message`);
 
@@ -327,14 +328,18 @@
   function focusCurrentTreeItem(): void {
     if (outerElement?.isConnected) {
       outerElement.focus();
+      renameOwningTreeElement = undefined;
       return;
     }
 
     if (typeof document === 'undefined') return;
-    const current = [...document.querySelectorAll<HTMLElement>('[data-cinder-tree-item-id]')].find(
+    const root: ParentNode =
+      renameOwningTreeElement?.isConnected === true ? renameOwningTreeElement : document;
+    const current = [...root.querySelectorAll<HTMLElement>('[data-cinder-tree-item-id]')].find(
       (element) => element.dataset['cinderTreeItemId'] === id,
     );
     current?.focus();
+    renameOwningTreeElement = undefined;
   }
 
   function beginEdit(): void {
@@ -342,6 +347,7 @@
     editValue = label;
     renameError = '';
     renamePending = false;
+    renameOwningTreeElement = outerElement?.closest<HTMLElement>('[role="tree"]') ?? undefined;
     editing = true;
     announceRename(`Editing ${label}. Press Enter to confirm, Escape to cancel.`);
   }
