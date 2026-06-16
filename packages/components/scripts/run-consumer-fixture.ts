@@ -32,8 +32,6 @@ const ALL_RUNTIME_BASELINE = new Set([
   'button',
   'accordion',
   'accordion-item',
-  'experimental/timeline',
-  'experimental/timeline-item',
   // Phase 2 batch — all eight had green pre-migration runtime imports.
   'badge',
   'kbd',

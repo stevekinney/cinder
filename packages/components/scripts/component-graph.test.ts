@@ -248,7 +248,7 @@ describe('slugForFile', () => {
     // `experimental/<name>/index.ts` re-exports the promoted top-level component;
     // it is not a slug of its own (no .svelte, no test suite).
     expect(
-      slugForFile('packages/components/src/components/experimental/timeline/index.ts'),
+      slugForFile('packages/components/src/components/experimental/connection-indicator/index.ts'),
     ).toBeNull();
   });
 });

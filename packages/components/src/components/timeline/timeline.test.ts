@@ -156,6 +156,19 @@ describe('Timeline', () => {
     expect(lis[1]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
   });
 
+  test('timeline css anchors vertical connectors to the event row for grouped headers', async () => {
+    const css = await Bun.file(new URL('./timeline.css', import.meta.url).pathname).text();
+
+    expect(css).toContain('.cinder-timeline-item__event::before');
+    expect(css).toContain(
+      ".cinder-timeline-item[data-cinder-connector-after='hidden'] .cinder-timeline-item__event::before",
+    );
+    expect(css).toContain(
+      'bottom: calc(-1 * (var(--cinder-space-4) + var(--_cinder-timeline-marker-center-y)))',
+    );
+    expect(css).not.toContain('.cinder-timeline-item::before {');
+  });
+
   test('timeline css contains horizontal flow and connector rules', async () => {
     const css = await Bun.file(new URL('./timeline.css', import.meta.url).pathname).text();
     const horizontalBlock = css.match(
@@ -166,7 +179,7 @@ describe('Timeline', () => {
     expect(horizontalBlock).toContain('grid-auto-columns');
     expect(horizontalBlock).toContain('overflow-x: auto');
     expect(css).toContain(
-      ".cinder-timeline[data-cinder-orientation='horizontal'] .cinder-timeline-item::before",
+      ".cinder-timeline[data-cinder-orientation='horizontal'] .cinder-timeline-item__event::before",
     );
     expect(css).toContain('right: calc(-1 * var(--cinder-space-4))');
   });

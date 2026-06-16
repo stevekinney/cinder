@@ -4126,52 +4126,6 @@
     },
     "./experimental/message/styles": {
       "default": "./dist/components/message/message.css"
-    },
-    "./experimental/timeline": {
-      "types": "./dist/components/experimental/timeline/index.d.ts",
-      "svelte": "./src/components/experimental/timeline/index.ts",
-      "node": "./dist/server/components/experimental/timeline/index.js",
-      "default": "./dist/components/experimental/timeline/index.js"
-    },
-    "./experimental/timeline/schema": {
-      "types": "./dist/components/timeline/timeline.schema.d.ts",
-      "svelte": "./src/components/timeline/timeline.schema.ts",
-      "node": "./dist/server/components/timeline/timeline.schema.js",
-      "default": "./dist/components/timeline/timeline.schema.js"
-    },
-    "./experimental/timeline/variables": {
-      "types": "./dist/components/timeline/timeline.variables.d.ts",
-      "svelte": "./src/components/timeline/timeline.variables.ts",
-      "node": "./dist/server/components/timeline/timeline.variables.js",
-      "default": "./dist/components/timeline/timeline.variables.js"
-    },
-    "./experimental/timeline/styles": {
-      "default": "./dist/components/timeline/timeline.css"
-    },
-    "./experimental/timeline/examples": {
-      "import": "./src/components/timeline/timeline.examples.json",
-      "default": "./src/components/timeline/timeline.examples.json"
-    },
-    "./experimental/timeline-item": {
-      "types": "./dist/components/experimental/timeline-item/index.d.ts",
-      "svelte": "./src/components/experimental/timeline-item/index.ts",
-      "node": "./dist/server/components/experimental/timeline-item/index.js",
-      "default": "./dist/components/experimental/timeline-item/index.js"
-    },
-    "./experimental/timeline-item/schema": {
-      "types": "./dist/components/timeline-item/timeline-item.schema.d.ts",
-      "svelte": "./src/components/timeline-item/timeline-item.schema.ts",
-      "node": "./dist/server/components/timeline-item/timeline-item.schema.js",
-      "default": "./dist/components/timeline-item/timeline-item.schema.js"
-    },
-    "./experimental/timeline-item/variables": {
-      "types": "./dist/components/timeline-item/timeline-item.variables.d.ts",
-      "svelte": "./src/components/timeline-item/timeline-item.variables.ts",
-      "node": "./dist/server/components/timeline-item/timeline-item.variables.js",
-      "default": "./dist/components/timeline-item/timeline-item.variables.js"
-    },
-    "./experimental/timeline-item/styles": {
-      "default": "./dist/components/timeline-item/timeline-item.css"
     }
   },
   "main": "./dist/server/index.js",
@@ -4214,6 +4168,7 @@
     "check:test-cleanup": "bun run scripts/check-test-cleanup.ts",
     "clean": "rm -rf dist coverage tsconfig.tsbuildinfo lostgradient-cinder-*.tgz cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build fixtures/manifest-consumer/node_modules fixtures/typescript-consumer/node_modules fixtures/typescript-consumer/src/generated fixtures/examples-consumer/node_modules fixtures/examples-consumer/.svelte-kit fixtures/examples-consumer/build fixtures/examples-consumer/src/generated fixtures/examples-consumer/src/routes/+page.svelte",
     "colors:audit": "bun run scripts/check-component-css-raw-colors.ts",
+    "colors:contrast": "bun test src/styles/check-token-contrast.test.ts",
     "components:check": "bun run scripts/generate-component-artifacts.ts --check",
     "components:create": "bun run scripts/create-component.ts",
     "components:fixture": "bun run scripts/run-consumer-fixture.ts",

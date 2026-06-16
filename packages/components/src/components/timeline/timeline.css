@@ -8,7 +8,23 @@
   .cinder-timeline {
     --_cinder-timeline-rail-size: 1.5rem;
     --_cinder-timeline-marker-size: 0.875rem;
-    --_cinder-timeline-rail-center: 0.6875rem;
+    /* The marker is an inline-flex box of --_cinder-timeline-marker-size, laid out at
+       the inline-start of the rail grid cell, with a margin-top of --cinder-space-1.
+       Its center therefore sits at half the marker size from the cell origin (X) and
+       at margin-top + half the marker size from the item's top (Y). The connector is
+       positioned from these.
+
+       This holds for custom markers because the marker box is FIXED-SIZE: the
+       `.cinder-timeline-item__marker` rule pins width/height to this variable and
+       centers content with inline-flex, so a custom `marker` snippet FILLS the box
+       (a glyph, an icon) rather than resizing it. The connector is therefore always
+       anchored to a known marker center, not to content-dependent geometry. A
+       consumer who needs a larger marker overrides --_cinder-timeline-marker-size,
+       which moves the box and the connector together. */
+    --_cinder-timeline-marker-center-x: calc(var(--_cinder-timeline-marker-size) / 2);
+    --_cinder-timeline-marker-center-y: calc(
+      var(--cinder-space-1) + var(--_cinder-timeline-marker-size) / 2
+    );
 
     list-style: none;
     margin: 0;
@@ -38,6 +54,7 @@
     display: grid;
     grid-template-columns: var(--_cinder-timeline-rail-size) 1fr;
     gap: var(--cinder-space-3);
+    position: relative;
   }
 
   .cinder-timeline__group-header {
@@ -50,18 +67,21 @@
     text-transform: uppercase;
   }
 
-  /* Connecting line between items */
-  .cinder-timeline-item::before {
+  /* Connecting line between items. It is anchored to the event row, not the
+     list item, so optional group headers above the event cannot offset it away
+     from the marker. The line extends through this item's bottom padding to the
+     next event marker center. */
+  .cinder-timeline-item__event::before {
     content: '';
     position: absolute;
-    left: var(--_cinder-timeline-rail-center);
-    top: 1rem;
-    bottom: 0;
+    left: var(--_cinder-timeline-marker-center-x);
+    top: var(--_cinder-timeline-marker-center-y);
+    bottom: calc(-1 * (var(--cinder-space-4) + var(--_cinder-timeline-marker-center-y)));
     width: 1px;
     background: var(--cinder-border-muted);
   }
 
-  .cinder-timeline-item[data-cinder-connector-after='hidden']::before {
+  .cinder-timeline-item[data-cinder-connector-after='hidden'] .cinder-timeline-item__event::before {
     display: none;
   }
 
@@ -136,7 +156,7 @@
     margin: 0 0 var(--cinder-space-2);
   }
 
-  .cinder-timeline[data-cinder-orientation='horizontal'] .cinder-timeline-item::before {
+  .cinder-timeline[data-cinder-orientation='horizontal'] .cinder-timeline-item__event::before {
     left: calc(var(--_cinder-timeline-marker-size) / 2);
     right: calc(-1 * var(--cinder-space-4));
     top: calc(var(--_cinder-timeline-marker-size) / 2 + var(--cinder-space-1));
