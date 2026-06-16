@@ -266,7 +266,7 @@ Every `--cinder-*` custom property a component references falls into one of four
 
 Two build-time audits keep component CSS honest so the override contract above holds. Both run in `validate` and gate against _regressions_ from a checked-in baseline — existing debt is grandfathered, new debt fails.
 
-- **`tokens:audit`** ([`check-component-css-token-usage.ts`](../packages/components/scripts/check-component-css-token-usage.ts)) classifies every `var(--cinder-*)` reference into the four categories above and reports any that resolve to nothing — a typo, a stale rename, or an undeclared "looks-like-a-token" name. Those references silently fall back to their inline default, so the component stops tracking the token system without any error. Run `bun run --filter=cinder tokens:audit` for the full inventory.
+- **`tokens:audit`** ([`check-component-css-token-usage.ts`](../packages/components/scripts/check-component-css-token-usage.ts)) classifies every `var(--cinder-*)` reference into the four categories above and reports any that resolve to nothing — a typo, a stale rename, or an undeclared "looks-like-a-token" name. Those references silently fall back to their inline default, so the component stops tracking the token system without any error. Run `bun run --filter=@lostgradient/cinder tokens:audit` for the full inventory.
 
 - **`colors:audit`** ([`check-component-css-raw-colors.ts`](../packages/components/scripts/check-component-css-raw-colors.ts)) reports raw color values (`#hex`, `rgb()`, `hsl()`, `oklch()`, `light-dark()`) in component CSS — values that don't track token overrides. Not every raw color is debt: a color-domain control (a color picker's hue spectrum) or a structural pattern (a transparency checkerboard) is intrinsic. Mark those intentional sites inline so the audit classifies them correctly:
 
@@ -278,7 +278,7 @@ Two build-time audits keep component CSS honest so the override contract above h
 
   Anything unmarked counts as **migration debt** — a color that should become a token or a shared recipe.
 
-When you fix debt (replace a raw color with a token, rename a stale reference), the baseline shrinks: run `bun run --filter=cinder colors:audit -- --update-baseline` (or `tokens:audit --update-baseline`) to record the new, lower floor.
+When you fix debt (replace a raw color with a token, rename a stale reference), the baseline shrinks: run `bun run --filter=@lostgradient/cinder colors:audit -- --update-baseline` (or `tokens:audit --update-baseline`) to record the new, lower floor.
 
 ### Proving it at paint time
 

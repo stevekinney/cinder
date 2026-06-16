@@ -320,8 +320,9 @@ function toComponentSummary(
 export async function buildComponentDocumentation(
   componentName: string,
   propsManifest: ComponentManifest,
+  packageManifestOverride?: PackageManifest,
 ): Promise<ComponentDocumentationPayload> {
-  const packageManifest = await loadPackageManifestForDocumentation();
+  const packageManifest = packageManifestOverride ?? (await loadPackageManifestForDocumentation());
   const entry = packageManifest.components.find((component) => component.id === componentName);
   if (entry === undefined) {
     throw new ComponentDocumentationError(

@@ -9,7 +9,7 @@
    * @useWhen Visually separating sections of a card, list, or toolbar without adding heading-level structure.
    * @useWhen Splitting a row of inline controls (e.g. a button-group toolbar) with a vertical rule.
    * @avoidWhen The split between sections deserves a heading — use section-heading instead.
-   * @avoidWhen Wrapping the entire viewport edge — use surface or page-layout instead.
+   * @avoidWhen Wrapping the entire viewport edge — use surface or a hand-rolled page scaffold instead.
    * @related surface, section-heading
    */
   export type { DividerOrientation, DividerProps, DividerTone } from './divider.types.ts';
