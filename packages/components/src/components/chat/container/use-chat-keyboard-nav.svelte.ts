@@ -23,6 +23,8 @@ export interface UseChatKeyboardNavOptions {
   getScrollBehavior: () => ScrollBehavior;
   /** Optional load-earlier trigger focus target. */
   getHistoryTrigger?: () => { focus: () => void } | null | undefined;
+  /** Optional virtualized message navigation hook for off-window rows. */
+  onVirtualMessageNavigation?: (direction: 'next' | 'previous') => boolean;
 }
 
 /** Return type for the keyboard navigation helper */
@@ -64,7 +66,13 @@ export interface UseChatKeyboardNavReturn {
  * ```
  */
 export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatKeyboardNavReturn {
-  const { onJumpToLatest, onJumpToStart, getScrollBehavior, getHistoryTrigger } = options;
+  const {
+    onJumpToLatest,
+    onJumpToStart,
+    getScrollBehavior,
+    getHistoryTrigger,
+    onVirtualMessageNavigation,
+  } = options;
 
   /**
    * Navigate to next or previous message.
@@ -165,14 +173,18 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
       case 'ArrowDown':
         if (document.activeElement?.classList.contains('chat-message')) {
           event.preventDefault();
-          navigateMessages(viewport, 'next');
+          if (!onVirtualMessageNavigation?.('next')) {
+            navigateMessages(viewport, 'next');
+          }
         }
         break;
 
       case 'ArrowUp':
         if (document.activeElement?.classList.contains('chat-message')) {
           event.preventDefault();
-          navigateMessages(viewport, 'previous');
+          if (!onVirtualMessageNavigation?.('previous')) {
+            navigateMessages(viewport, 'previous');
+          }
         }
         break;
     }

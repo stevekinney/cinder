@@ -139,14 +139,41 @@ describe('ChatVirtualizer', () => {
     expect(virtualizer.virtualItems).toEqual([]);
   });
 
-  test('measurement compatibility hooks are stable no-ops', () => {
-    const { virtualizer } = createVirtualizer();
+  test('measures variable row heights and uses cumulative offsets', () => {
+    const { virtualizer } = createVirtualizer({ count: 4, size: 80, overscan: 0 });
+    const tallRow = document.createElement('div');
+    tallRow.dataset['cinderVirtualIndex'] = '1';
+    tallRow.getBoundingClientRect = () => ({ height: 160 }) as DOMRect;
+    const shortRow = document.createElement('div');
+    shortRow.dataset['cinderVirtualIndex'] = '2';
+    shortRow.getBoundingClientRect = () => ({ height: 40 }) as DOMRect;
+
+    expect(virtualizer.totalSize).toBe(320);
+    expect(virtualizer.measureElementNode(tallRow)).toBeUndefined();
+    expect(virtualizer.measureElementNode(shortRow)).toBeUndefined();
+    expect(virtualizer.totalSize).toBe(360);
+
+    expect(virtualizer.getVirtualItem(2)).toMatchObject({
+      index: 2,
+      start: 240,
+      end: 280,
+      size: 40,
+    });
+
+    virtualizer.scrollToIndex(3, { align: 'start' });
+    expect(virtualizer.scrollOffset).toBe(40);
+  });
+
+  test('measurement attachment records cached sizes', () => {
+    const { virtualizer } = createVirtualizer({ count: 2, size: 80 });
     const element = scrollableElement();
+    element.dataset['cinderVirtualIndex'] = '0';
+    element.getBoundingClientRect = () => ({ height: 120 }) as DOMRect;
 
     expect(virtualizer.measureElement(element)).toBeUndefined();
-    expect(virtualizer.measureElementNode(element)).toBeUndefined();
+
+    expect(virtualizer.totalSize).toBe(200);
     expect(virtualizer.measureElementNode(null)).toBeUndefined();
     expect(virtualizer.syncOptions()).toBeUndefined();
-    expect(virtualizer.scrollOffset).toBe(0);
   });
 });

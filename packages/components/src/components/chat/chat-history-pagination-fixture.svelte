@@ -3,6 +3,7 @@
 
   export type ChatHistoryPaginationFixtureProps = {
     conversation: ConversationHistory;
+    virtualized?: boolean;
     loadHistory: (
       conversation: ConversationHistory,
     ) => ConversationHistory | Promise<ConversationHistory>;
@@ -12,7 +13,11 @@
 <script lang="ts">
   import Chat from './chat.svelte';
 
-  let { conversation = $bindable(), loadHistory }: ChatHistoryPaginationFixtureProps = $props();
+  let {
+    conversation = $bindable(),
+    virtualized = false,
+    loadHistory,
+  }: ChatHistoryPaginationFixtureProps = $props();
 
   async function handleLoadHistory(): Promise<void> {
     conversation = await loadHistory(conversation);
@@ -22,7 +27,7 @@
 <Chat
   id="virtual-chat"
   {conversation}
-  virtualized={false}
+  {virtualized}
   virtualizationEstimatedRowHeight={20}
   virtualizationInitialHeight={100}
   virtualizationOverscan={0}

@@ -682,7 +682,10 @@ describe('Chat — SSR safety', () => {
     // Absolute paths so the shared helper's dynamic import resolves them from
     // here, not relative to the helper's own module location.
     const threwMessage = await importWithoutDomGlobals([
+      resolve(import.meta.dir, 'container', 'chat.svelte'),
+      resolve(import.meta.dir, 'container', 'chat-history-trigger.svelte'),
       resolve(import.meta.dir, 'container', 'use-chat-keyboard-nav.svelte.ts'),
+      resolve(import.meta.dir, 'container', 'use-chat-message-groups.svelte.ts'),
       resolve(import.meta.dir, 'container', 'use-chat-scroll-state.svelte.ts'),
       resolve(import.meta.dir, 'container', 'use-chat-virtualizer.svelte.ts'),
     ]);

@@ -15,6 +15,7 @@ export type ChatVirtualizerOptions = {
   getEstimatedSize: () => number;
   getOverscan: () => number;
   getInitialHeight: () => number;
+  getScrollPaddingStart?: () => number;
 };
 
 export type ChatVirtualWindowInput = {
@@ -52,6 +53,8 @@ export function calculateChatVirtualWindow(input: ChatVirtualWindowInput): ChatV
 export class ChatVirtualizer {
   #scrollElement: HTMLElement | null = null;
   #scrollOffset = $state(0);
+  #measurementVersion = $state(0);
+  #measuredSizes = new Map<string | number, number>();
 
   constructor(readonly options: ChatVirtualizerOptions) {}
 
@@ -60,7 +63,16 @@ export class ChatVirtualizer {
   }
 
   get totalSize(): number {
-    return this.options.getCount() * Math.max(1, this.options.getEstimatedSize());
+    const offsets = this.#offsets();
+    return offsets[offsets.length - 1] ?? 0;
+  }
+
+  get scrollPaddingStart(): number {
+    return this.#scrollPaddingStart();
+  }
+
+  get scrollSize(): number {
+    return this.scrollPaddingStart + this.totalSize;
   }
 
   get scrollOffset(): number {
@@ -86,39 +98,81 @@ export class ChatVirtualizer {
     };
   };
 
-  measureElement: Attachment<HTMLElement> = () => {};
+  measureElement: Attachment<HTMLElement> = (node) => {
+    this.measureElementNode(node);
+  };
 
-  measureElementNode(_node: HTMLElement | null): void {}
+  measureElementNode(node: HTMLElement | null): void {
+    if (!node) return;
 
-  syncOptions(): void {}
+    this.#measureNode(node);
+  }
+
+  syncOptions(): void {
+    const count = this.options.getCount();
+    const currentKeys = new Set<string | number>();
+    for (let index = 0; index < count; index += 1) {
+      currentKeys.add(this.options.getItemKey(index));
+    }
+
+    let changed = false;
+    for (const key of this.#measuredSizes.keys()) {
+      if (!currentKeys.has(key)) {
+        this.#measuredSizes.delete(key);
+        changed = true;
+      }
+    }
+    if (changed) this.#measurementVersion += 1;
+  }
 
   scrollToIndex(index: number, options: ChatScrollToOptions = { align: 'auto' }): void {
-    const itemSize = Math.max(1, this.options.getEstimatedSize());
     const count = this.options.getCount();
     if (count === 0) return;
 
     const clampedIndex = Math.max(0, Math.min(Math.trunc(index), count - 1));
+    const offsets = this.#offsets();
+    const itemStart = offsets[clampedIndex] ?? 0;
+    const itemEnd = offsets[clampedIndex + 1] ?? itemStart + this.#estimatedSize();
+    const itemSize = itemEnd - itemStart;
     const viewportHeight = this.#containerHeight();
-    let offset = clampedIndex * itemSize;
+    const paddingStart = this.#scrollPaddingStart();
+    const viewportStart = Math.max(0, this.scrollOffset - paddingStart);
+    const viewportEnd = viewportStart + viewportHeight;
+    let offset = itemStart + paddingStart;
 
     if (options.align === 'end') {
-      offset = (clampedIndex + 1) * itemSize - viewportHeight;
+      offset = itemEnd + paddingStart - viewportHeight;
     } else if (options.align === 'center') {
-      offset = clampedIndex * itemSize - (viewportHeight - itemSize) / 2;
+      offset = itemStart + paddingStart - (viewportHeight - itemSize) / 2;
+    } else if (options.align === 'auto') {
+      if (itemStart >= viewportStart && itemEnd <= viewportEnd) return;
+      offset =
+        itemStart < viewportStart
+          ? itemStart + paddingStart
+          : itemEnd + paddingStart - viewportHeight;
     }
 
     this.scrollToOffset(offset, options);
   }
 
+  getVirtualItem(index: number): VirtualItem | null {
+    const count = this.options.getCount();
+    if (count === 0) return null;
+
+    const clampedIndex = Math.max(0, Math.min(Math.trunc(index), count - 1));
+    return this.#virtualItemAt(clampedIndex, this.#offsets());
+  }
+
   scrollToOffset(offset: number, options?: ChatScrollToOptions): void {
     const element = this.#getScrollElement();
-    const top = Math.max(0, offset);
+    const maximumOffset = Math.max(0, this.scrollSize - this.#containerHeight());
+    const top = Math.min(maximumOffset, Math.max(0, offset));
     this.#scrollOffset = top;
 
     if (element) {
-      if (typeof element.scrollTo === 'function') {
-        const behavior = options?.behavior === 'instant' ? 'auto' : options?.behavior;
-        element.scrollTo(behavior ? { top, behavior } : { top });
+      const behavior = options?.behavior === 'instant' ? 'auto' : options?.behavior;
+      if (typeof element.scrollTo === 'function' && behavior && behavior !== 'auto') {
+        element.scrollTo({ top, behavior });
       } else {
         element.scrollTop = top;
       }
@@ -140,29 +194,112 @@ export class ChatVirtualizer {
     return element?.clientHeight || this.options.getInitialHeight();
   }
 
+  #scrollPaddingStart(): number {
+    return Math.max(0, this.options.getScrollPaddingStart?.() ?? 0);
+  }
+
+  #estimatedSize(): number {
+    return Math.max(1, this.options.getEstimatedSize());
+  }
+
+  #itemSize(index: number): number {
+    const key = this.options.getItemKey(index);
+    return this.#measuredSizes.get(key) ?? this.#estimatedSize();
+  }
+
+  #offsets(): number[] {
+    void this.#measurementVersion;
+    const count = this.options.getCount();
+    const offsets = Array.from<number>({ length: count + 1 });
+    let offset = 0;
+    offsets[0] = 0;
+
+    for (let index = 0; index < count; index += 1) {
+      offset += this.#itemSize(index);
+      offsets[index + 1] = offset;
+    }
+
+    return offsets;
+  }
+
+  #readElementSize(node: HTMLElement): number {
+    const rectHeight = node.getBoundingClientRect().height;
+    return Math.ceil(rectHeight || node.scrollHeight || node.offsetHeight || 0);
+  }
+
+  #measureNode(node: HTMLElement): void {
+    const index = Number(node.dataset['cinderVirtualIndex']);
+    if (!Number.isInteger(index) || index < 0 || index >= this.options.getCount()) return;
+
+    const measuredSize = this.#readElementSize(node);
+    if (measuredSize <= 0) return;
+
+    const key = this.options.getItemKey(index);
+    if (this.#measuredSizes.get(key) === measuredSize) return;
+
+    this.#measuredSizes.set(key, measuredSize);
+    this.#measurementVersion += 1;
+  }
+
+  #startIndex(offsets: readonly number[], scrollTop: number): number {
+    const count = Math.max(0, offsets.length - 1);
+    let low = 0;
+    let high = count;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if ((offsets[mid + 1] ?? 0) <= scrollTop) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    return low;
+  }
+
+  #endIndex(offsets: readonly number[], viewportEnd: number): number {
+    const count = Math.max(0, offsets.length - 1);
+    let low = 0;
+    let high = count;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if ((offsets[mid] ?? 0) < viewportEnd) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    return low;
+  }
+
+  #virtualItemAt(index: number, offsets: readonly number[]): VirtualItem {
+    const start = offsets[index] ?? 0;
+    const end = offsets[index + 1] ?? start + this.#estimatedSize();
+    return {
+      key: this.options.getItemKey(index),
+      index,
+      start,
+      end,
+      size: end - start,
+      lane: 0,
+    };
+  }
+
   #virtualItems(): VirtualItem[] {
     const count = this.options.getCount();
     if (count === 0) return [];
 
-    const size = Math.max(1, this.options.getEstimatedSize());
-    const { startIndex, endIndex } = calculateChatVirtualWindow({
-      scrollTop: this.scrollOffset,
-      containerHeight: this.#containerHeight(),
-      itemCount: count,
-      itemSize: size,
-      overscan: this.options.getOverscan(),
-    });
+    const offsets = this.#offsets();
+    const overscan = Math.max(0, Math.trunc(this.options.getOverscan()));
+    const scrollTop = Math.max(0, this.scrollOffset - this.#scrollPaddingStart());
+    const viewportEnd = scrollTop + Math.max(0, this.#containerHeight());
+    const visibleStartIndex = this.#startIndex(offsets, scrollTop);
+    const visibleEndIndex = Math.max(visibleStartIndex + 1, this.#endIndex(offsets, viewportEnd));
+    const startIndex = Math.max(0, visibleStartIndex - overscan);
+    const endIndex = Math.min(count, visibleEndIndex + overscan);
 
     return Array.from({ length: endIndex - startIndex }, (_, offset) => {
       const index = startIndex + offset;
-      return {
-        key: this.options.getItemKey(index),
-        index,
-        start: index * size,
-        end: (index + 1) * size,
-        size,
-        lane: 0,
-      };
+      return this.#virtualItemAt(index, offsets);
     });
   }
 }

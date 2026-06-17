@@ -1,4 +1,8 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* ChatConversationHeader renders ConversationExportActions, which composes Dropdown
+ * leaves. Keep the header style subpath self-sufficient for a-la-carte imports. */
+@import '../dropdown/dropdown.css';
+
 @layer cinder.components {
   .cinder-chat-conversation-header {
     display: flex;

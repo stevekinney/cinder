@@ -77,9 +77,20 @@ function isTransientTestArtifact(file: string): boolean {
   // shape.
   if (/(?:^|\/)\.cinder-ssr-(?:chat|parts|test)-\d+-\d+\.mjs$/.test(file)) return true;
 
-  // hydration-safety.ts writes paired server/client bundles into
-  // `tmp/hydration-safety`, imports them once, then unlinks them.
-  return /(?:^|\/)tmp\/hydration-safety\/(?:client|server)-\d+-\d+-[a-z0-9]+\.mjs$/.test(file);
+  // hydration-safety.ts writes paired server/client bundles into the package
+  // root's `tmp/hydration-safety`, imports them once, then unlinks them.
+  const normalizedFile = file.replaceAll('\\', '/');
+  const normalizedPackageRoot = packageRoot.replaceAll('\\', '/');
+  const artifactPrefix = 'tmp/hydration-safety/';
+  const packageArtifactPrefix = `${normalizedPackageRoot}/tmp/hydration-safety/`;
+  let artifactFileName = '';
+  if (normalizedFile.startsWith(packageArtifactPrefix)) {
+    artifactFileName = normalizedFile.slice(packageArtifactPrefix.length);
+  } else if (normalizedFile.startsWith(artifactPrefix)) {
+    artifactFileName = normalizedFile.slice(artifactPrefix.length);
+  }
+
+  return /^(?:client|server)-\d+-\d+-[a-z0-9]+\.mjs$/.test(artifactFileName);
 }
 
 export function parseLcovRecords(source: string): CoverageRecord[] {

@@ -58,23 +58,41 @@
       {#each sortedConversations as conversation (conversation.id)}
         {@const isActive = conversation.id === activeConversationId}
         <li class="cinder-chat-conversation-list__item">
-          <button
-            type="button"
-            class="cinder-chat-conversation-list__button"
-            aria-pressed={isActive ? 'true' : 'false'}
-            data-cinder-conversation-item
-            data-cinder-conversation-selected={isActive ? '' : undefined}
-            onclick={() => onselectconversation?.(conversation.id)}
-          >
-            <span class="cinder-chat-conversation-list__title">{conversation.title}</span>
-            <span class="cinder-chat-conversation-list__preview">{preview(conversation)}</span>
-            {#if conversation.unreadCount > 0}
-              <span class="cinder-chat-conversation-list__badge" aria-hidden="true">
-                {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
-              </span>
-              <span class="sr-only">, {conversation.unreadCount} unread messages</span>
-            {/if}
-          </button>
+          {#if onselectconversation}
+            <button
+              type="button"
+              class="cinder-chat-conversation-list__button"
+              aria-current={isActive ? 'page' : undefined}
+              data-cinder-conversation-item
+              data-cinder-conversation-selected={isActive ? '' : undefined}
+              onclick={() => onselectconversation(conversation.id)}
+            >
+              <span class="cinder-chat-conversation-list__title">{conversation.title}</span>
+              <span class="cinder-chat-conversation-list__preview">{preview(conversation)}</span>
+              {#if conversation.unreadCount > 0}
+                <span class="cinder-chat-conversation-list__badge" aria-hidden="true">
+                  {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                </span>
+                <span class="sr-only">, {conversation.unreadCount} unread messages</span>
+              {/if}
+            </button>
+          {:else}
+            <div
+              class="cinder-chat-conversation-list__button"
+              aria-current={isActive ? 'page' : undefined}
+              data-cinder-conversation-item
+              data-cinder-conversation-selected={isActive ? '' : undefined}
+            >
+              <span class="cinder-chat-conversation-list__title">{conversation.title}</span>
+              <span class="cinder-chat-conversation-list__preview">{preview(conversation)}</span>
+              {#if conversation.unreadCount > 0}
+                <span class="cinder-chat-conversation-list__badge" aria-hidden="true">
+                  {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                </span>
+                <span class="sr-only">, {conversation.unreadCount} unread messages</span>
+              {/if}
+            </div>
+          {/if}
         </li>
       {/each}
     </ul>

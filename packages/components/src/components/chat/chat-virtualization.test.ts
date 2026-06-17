@@ -138,6 +138,7 @@ function virtualizedProps(conversation: ConversationHistory) {
 describe('Chat virtualization', () => {
   test('renders a window from a complete compatible transcript', async () => {
     const conversation = longConversation(80);
+    const originalConversation = structuredClone(conversation);
     const { container } = render(Chat, {
       props: virtualizedProps(conversation),
     });
@@ -151,6 +152,7 @@ describe('Chat virtualization', () => {
     expect(container.textContent).toContain('80 messages in conversation');
     expect(conversation.ids).toHaveLength(80);
     expect(Object.keys(conversation.messages).toSorted()).toEqual([...conversation.ids].toSorted());
+    expect(conversation).toEqual(originalConversation);
   });
 
   test('scrolling shifts the rendered message window', async () => {
@@ -166,6 +168,58 @@ describe('Chat virtualization', () => {
 
     await waitFor(() => expect(container.textContent).toContain('Message 50'));
     expect(container.textContent).not.toContain('Message 0');
+  });
+
+  test('search scrolls virtualized off-window matches into the rendered window', async () => {
+    const conversation = longConversation(80);
+    const { container } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      timeline.scrollTop =
+        typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
+      timeline.dispatchEvent(new Event('scroll'));
+    };
+
+    await waitFor(() => expect(container.textContent).toContain('Message 79'));
+    await fireEvent.keyDown(container.querySelector('.chat-container')!, {
+      key: 'f',
+      ctrlKey: true,
+    });
+    const input = container.querySelector<HTMLInputElement>('.chat-search-input')!;
+    await fireEvent.input(input, { target: { value: 'Message 20' } });
+
+    await waitFor(() => expect(container.querySelector('#message-message-20')).not.toBeNull());
+    expect(timeline.scrollTop).toBeGreaterThan(0);
+  });
+
+  test('arrow navigation crosses virtualized window boundaries', async () => {
+    const conversation = longConversation(80);
+    const { container } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      timeline.scrollTop =
+        typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
+      timeline.dispatchEvent(new Event('scroll'));
+    };
+
+    await waitFor(() => expect(container.textContent).toContain('Message 79'));
+    timeline.scrollTop = 0;
+    await fireEvent.scroll(timeline);
+    await waitFor(() => expect(container.querySelector('#message-message-0')).not.toBeNull());
+    const renderedMessages = [...container.querySelectorAll<HTMLElement>('.chat-message')];
+    const lastRenderedMessage = renderedMessages[renderedMessages.length - 1]!;
+    const lastRenderedId = lastRenderedMessage.id;
+    lastRenderedMessage.focus();
+
+    await fireEvent.keyDown(timeline, { key: 'ArrowDown' });
+
+    await waitFor(() => expect(document.activeElement?.id).not.toBe(lastRenderedId));
+    expect(document.activeElement?.classList.contains('chat-message')).toBe(true);
+    expect(timeline.scrollTop).toBeGreaterThan(0);
   });
 });
 
@@ -199,6 +253,79 @@ describe('Chat history pagination', () => {
     expect(loadCalls).toEqual(['load']);
     expect(conversation.ids[0]).toBe('older-message');
     expect(conversation.messages['older-message']?.role).toBe('assistant');
+  });
+
+  test('callback history loading preserves non-virtualized scroll position after prepend', async () => {
+    let conversation = longConversation(20);
+    let timeline: HTMLElement;
+    const { container } = render(ChatHistoryPaginationFixture, {
+      props: {
+        conversation,
+        loadHistory: async (currentConversation: ConversationHistory) => {
+          conversation = prependMessage(
+            currentConversation,
+            'assistant',
+            'older-message',
+            'Earlier context',
+          );
+          Object.defineProperty(timeline, 'scrollHeight', { configurable: true, value: 1240 });
+          return conversation;
+        },
+      },
+    });
+    timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    Object.defineProperty(timeline, 'scrollHeight', { configurable: true, value: 1000 });
+    timeline.scrollTop = 120;
+    const scrollTops: number[] = [];
+    timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      const top =
+        typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
+      scrollTops.push(top);
+      timeline.scrollTop = top;
+    };
+
+    await fireEvent.click(
+      container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
+    );
+
+    await waitFor(() => expect(scrollTops).toContain(360));
+    expect(container.textContent).toContain('Earlier context');
+  });
+
+  test('callback history loading preserves virtualized scroll position after prepend', async () => {
+    let conversation = longConversation(20);
+    const { container } = render(ChatHistoryPaginationFixture, {
+      props: {
+        conversation,
+        virtualized: true,
+        loadHistory: async (currentConversation: ConversationHistory) => {
+          conversation = prependMessage(
+            currentConversation,
+            'assistant',
+            'older-virtual-message',
+            'Earlier virtual context',
+          );
+          return conversation;
+        },
+      },
+    });
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+    timeline.scrollTop = 120;
+    timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      const top =
+        typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
+      timeline.scrollTop = top;
+      timeline.dispatchEvent(new Event('scroll'));
+    };
+
+    await fireEvent.click(
+      container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
+    );
+
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(120));
+    expect(conversation.ids[0]).toBe('older-virtual-message');
+    await waitFor(() => expect(container.textContent).toContain('1 earlier message loaded'));
   });
 
   test('routes history loading through the adapter and hides the trigger when exhausted', async () => {
@@ -236,6 +363,48 @@ describe('Chat history pagination', () => {
     await waitFor(() =>
       expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
     );
+  });
+
+  test('resets adapter history exhaustion when the active conversation changes', async () => {
+    const loadCalls: string[] = [];
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async (conversationId: string) => {
+        loadCalls.push(conversationId);
+        return { hasMore: false };
+      },
+    };
+    const firstConversation = longConversation(3);
+    const secondConversation = longConversation(3);
+    const secondConversationWithId = { ...secondConversation, id: 'second-conversation' };
+    const { container, rerender } = render(Chat, {
+      props: {
+        id: 'adapter-history-switch-chat',
+        conversation: firstConversation,
+        adapter,
+      },
+    });
+
+    await fireEvent.click(
+      container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
+    );
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
+    );
+
+    await rerender({
+      id: 'adapter-history-switch-chat',
+      conversation: secondConversationWithId,
+      adapter,
+    });
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-history-trigger]')).not.toBeNull(),
+    );
+    await fireEvent.click(
+      container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
+    );
+
+    await waitFor(() => expect(loadCalls).toEqual(['virtual-conversation', 'second-conversation']));
   });
 
   test('reports adapter history loading failures without removing the trigger', async () => {

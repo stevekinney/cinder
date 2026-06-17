@@ -40,6 +40,7 @@ describe('ChatConversationList', () => {
     const { container } = render(ChatConversationList, {
       props: {
         activeConversationId: 'newer',
+        onselectconversation: () => {},
         conversations: [
           summary({
             id: 'older',
@@ -65,7 +66,8 @@ describe('ChatConversationList', () => {
       'Newer Newer preview 2 , 2 unread messages',
       'Older Older preview',
     ]);
-    expect(buttons[0]?.getAttribute('aria-pressed')).toBe('true');
+    expect(buttons[0]?.getAttribute('aria-current')).toBe('page');
+    expect(buttons[0]?.hasAttribute('aria-pressed')).toBe(false);
     expect(buttons[0]?.hasAttribute('data-cinder-conversation-selected')).toBe(true);
   });
 
@@ -98,10 +100,26 @@ describe('ChatConversationList', () => {
     expect(container.querySelector('[role="status"]')?.textContent).toBe('Nothing here yet');
   });
 
+  test('renders non-interactive rows when no selection handler is supplied', () => {
+    const { container } = render(ChatConversationList, {
+      props: {
+        activeConversationId: 'alpha',
+        conversations: [summary({ id: 'alpha', title: 'Alpha' })],
+      },
+    });
+
+    expect(container.querySelector('button')).toBeNull();
+    const item = container.querySelector<HTMLElement>('[data-cinder-conversation-item]');
+    expect(item?.tagName).toBe('DIV');
+    expect(item?.getAttribute('aria-current')).toBe('page');
+    expect(normalizedText(item!)).toContain('Alpha');
+  });
+
   test('falls back to message count previews and caps large unread badges', () => {
     const longPreview = `${'Long preview '.repeat(12)}tail`;
     const { container } = render(ChatConversationList, {
       props: {
+        onselectconversation: () => {},
         conversations: [
           summary({ id: 'count-only', messageCount: 4, updatedAt: '2026-06-01T00:02:00.000Z' }),
           summary({

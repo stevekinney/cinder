@@ -33,8 +33,8 @@
     };
   };
 
-  export function focus(): void {
-    buttonElement?.focus();
+  export function focus(options?: FocusOptions): void {
+    buttonElement?.focus(options);
   }
 </script>
 

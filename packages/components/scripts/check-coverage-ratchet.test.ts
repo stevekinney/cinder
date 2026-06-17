@@ -198,6 +198,22 @@ end_of_record
     );
   });
 
+  test('does not exclude source files that end like hydration-safety bundles outside package tmp', () => {
+    const lookalike = `${lcovFixture}TN:
+SF:src/tmp/hydration-safety/client-12345-1780000000000-abc123.mjs
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(lookalike);
+    expect(records.map((record) => record.file)).toContain(
+      'src/tmp/hydration-safety/client-12345-1780000000000-abc123.mjs',
+    );
+  });
+
   test('reports no failures when the aggregate ratchet is met', () => {
     const averages = computeCoverageAverages(parseLcovRecords(lcovFixture));
     expect(coverageFailures(averages, { functions: 0.7, lines: 0.7 })).toEqual([]);
