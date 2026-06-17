@@ -10,7 +10,7 @@ test.describe('playground landing page', () => {
   test('renders README content at the root and returns to it with browser history', async ({
     page,
   }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     await expect(
       page.getByRole('heading', { name: 'Svelte 5 components for product interfaces' }),

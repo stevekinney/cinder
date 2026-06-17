@@ -1413,8 +1413,12 @@ function repositoryReadmeHref(href: string): string {
 }
 
 export function rewriteRepositoryRelativeReadmeLinks(html: string): string {
-  return html.replace(/\shref="([^"]+)"/g, (match, href: string) =>
-    isRepositoryRelativeHref(href) ? ` href="${repositoryReadmeHref(href)}"` : match,
+  return html.replace(
+    /<a\b([^>]*?)\shref="([^"]+)"([^>]*)>/gi,
+    (match: string, before: string, href: string, after: string) =>
+      isRepositoryRelativeHref(href)
+        ? `<a${before} href="${repositoryReadmeHref(href)}"${after}>`
+        : match,
   );
 }
 

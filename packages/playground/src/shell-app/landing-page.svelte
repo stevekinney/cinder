@@ -31,7 +31,7 @@
     </p>
     {#if firstComponent !== ''}
       <Button
-        href="/c/{firstComponent}"
+        href={`/c/${firstComponent}`}
         variant="primary"
         label="Browse components"
         onclick={handleBrowseClick}

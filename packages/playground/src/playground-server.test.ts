@@ -259,6 +259,11 @@ describe('rewriteRepositoryRelativeReadmeLinks', () => {
       '<a href="https://example.com">external</a><a href="mailto:test@example.com">email</a>';
     expect(rewriteRepositoryRelativeReadmeLinks(html)).toBe(html);
   });
+
+  it('does not rewrite href text outside anchor tags', () => {
+    const html = '<code>&lt;a href="docs/tokens.md"&gt;tokens&lt;/a&gt;</code>';
+    expect(rewriteRepositoryRelativeReadmeLinks(html)).toBe(html);
+  });
 });
 
 describe('/c/:name', () => {
