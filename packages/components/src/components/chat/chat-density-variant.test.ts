@@ -51,7 +51,8 @@ afterAll(() => {
   globalThis.IntersectionObserver = originalIntersectionObserver;
 });
 
-const { render, cleanup } = await import('@testing-library/svelte');
+const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
+const { flushSync } = await import('svelte');
 const { default: Chat } = await import('./chat.svelte');
 
 afterEach(() => {
@@ -171,28 +172,41 @@ describe('Chat — density prop', () => {
     expect(root?.getAttribute('data-cinder-density')).toBe('comfortable');
   });
 
-  test('density change preserves message list ARIA structure (no remount)', () => {
-    const conversation = twoMessageConversation();
-    const { container } = render(Chat, {
-      props: { id: 'chat-density-aria', conversation, density: 'comfortable' },
-    });
+  test('density change preserves message list ARIA structure and node identity (no remount)', async () => {
+    const { default: DensityFixture } = await import('./chat-density-fixture.svelte');
+    const { container } = render(DensityFixture);
 
+    // The fixture starts at comfortable with one user message.
     const root = container.querySelector('.chat-container');
+    expect(root?.getAttribute('data-cinder-density')).toBe('comfortable');
 
-    // Collect message element references BEFORE density change
-    const messagesBefore = Array.from(container.querySelectorAll('.chat-message'));
-    expect(messagesBefore).toHaveLength(2);
-
-    // Verify ARIA structure: role=region + role=log
+    // Verify ARIA structure before the toggle.
     expect(root?.getAttribute('role')).toBe('region');
     const timeline = container.querySelector('.chat-timeline');
     expect(timeline?.getAttribute('role')).toBe('log');
 
-    // Message roles are unchanged
-    const roles = Array.from(container.querySelectorAll('[data-role]')).map((element) =>
-      element.getAttribute('data-role'),
-    );
-    expect(roles).toEqual(['user', 'assistant']);
+    // Capture element references BEFORE the density change.
+    const messagesBefore = Array.from(container.querySelectorAll('.chat-message'));
+    expect(messagesBefore.length).toBeGreaterThanOrEqual(1);
+
+    // Toggle density: comfortable → compact.
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="toggle-density"]');
+    await fireEvent.click(button!);
+    flushSync();
+
+    // Density attribute updated.
+    expect(root?.getAttribute('data-cinder-density')).toBe('compact');
+
+    // Collect the same message nodes AFTER the change.
+    const messagesAfter = Array.from(container.querySelectorAll('.chat-message'));
+    expect(messagesAfter).toHaveLength(messagesBefore.length);
+
+    // Node identity preserved — keyed #each must NOT remount the message elements.
+    expect(messagesBefore[0]!.isSameNode(messagesAfter[0]!)).toBe(true);
+
+    // ARIA structure is unchanged after the toggle.
+    expect(root?.getAttribute('role')).toBe('region');
+    expect(timeline?.getAttribute('role')).toBe('log');
   });
 
   test('density change does not alter message role structure', () => {
@@ -287,27 +301,41 @@ describe('Chat — variant prop', () => {
     expect(root?.getAttribute('data-cinder-variant')).toBe('bubble');
   });
 
-  test('variant change preserves message ARIA structure (no remount)', () => {
-    const conversation = twoMessageConversation();
-    const { container } = render(Chat, {
-      props: { id: 'chat-variant-aria', conversation, variant: 'flat' },
-    });
+  test('variant change preserves message ARIA structure and node identity (no remount)', async () => {
+    const { default: VariantFixture } = await import('./chat-variant-fixture.svelte');
+    const { container } = render(VariantFixture);
 
-    // Messages still render
-    const messages = container.querySelectorAll('.chat-message');
-    expect(messages).toHaveLength(2);
-
-    // ARIA structure is unchanged
+    // The fixture starts at bubble with one user message.
     const root = container.querySelector('.chat-container');
-    expect(root?.getAttribute('role')).toBe('region');
+    expect(root?.getAttribute('data-cinder-variant')).toBe('bubble');
 
+    // Verify ARIA structure before the toggle.
+    expect(root?.getAttribute('role')).toBe('region');
     const timeline = container.querySelector('.chat-timeline');
     expect(timeline?.getAttribute('role')).toBe('log');
 
-    const roles = Array.from(container.querySelectorAll('[data-role]')).map((element) =>
-      element.getAttribute('data-role'),
-    );
-    expect(roles).toEqual(['user', 'assistant']);
+    // Capture element references BEFORE the variant change.
+    const messagesBefore = Array.from(container.querySelectorAll('.chat-message'));
+    expect(messagesBefore.length).toBeGreaterThanOrEqual(1);
+
+    // Toggle variant: bubble → flat.
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="toggle-variant"]');
+    await fireEvent.click(button!);
+    flushSync();
+
+    // Variant attribute updated.
+    expect(root?.getAttribute('data-cinder-variant')).toBe('flat');
+
+    // Collect the same message nodes AFTER the change.
+    const messagesAfter = Array.from(container.querySelectorAll('.chat-message'));
+    expect(messagesAfter).toHaveLength(messagesBefore.length);
+
+    // Node identity preserved — keyed #each must NOT remount the message elements.
+    expect(messagesBefore[0]!.isSameNode(messagesAfter[0]!)).toBe(true);
+
+    // ARIA structure is unchanged after the toggle.
+    expect(root?.getAttribute('role')).toBe('region');
+    expect(timeline?.getAttribute('role')).toBe('log');
   });
 
   test('plain conversationalist transcript renders correctly with variant=flat', () => {
@@ -344,5 +372,34 @@ describe('Chat — variant prop', () => {
     // Still renders messages correctly
     const messages = container.querySelectorAll('.chat-message');
     expect(messages).toHaveLength(2);
+  });
+
+  test('compact density: action buttons have no inline min-height override (CSS-level 44px guard by inspection)', () => {
+    // happy-dom cannot compute CSS custom property values, so we cannot assert the
+    // resolved pixel size of --cinder-touch-target-min here. What we CAN assert:
+    //   1. The action buttons exist in the DOM (the footer renders with a user message).
+    //   2. No inline style attribute overrides min-height to a smaller value — the
+    //      44px touch-target floor is applied via the CSS class, not removed by compact.
+    // A Playwright follow-up should pixel-diff the rendered touch targets.
+    let conversation = createConversation();
+    conversation = appendMessage(conversation, 'user', 'Hello compact');
+
+    const { container } = render(Chat, {
+      props: { id: 'chat-compact-touch', conversation, density: 'compact' },
+    });
+
+    const root = container.querySelector('.chat-container');
+    expect(root?.getAttribute('data-cinder-density')).toBe('compact');
+
+    // The action buttons must exist — a user message always shows the copy button
+    // (showDefaultActions defaults to true and the message has non-empty text).
+    const actionButtons = container.querySelectorAll('.chat-message-action-button');
+    expect(actionButtons.length).toBeGreaterThanOrEqual(1);
+
+    // No inline min-height that could shrink the touch target below the CSS value.
+    for (const button of Array.from(actionButtons)) {
+      const inlineMinHeight = (button as HTMLElement).style.minHeight;
+      expect(inlineMinHeight).toBe('');
+    }
   });
 });

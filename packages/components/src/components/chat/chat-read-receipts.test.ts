@@ -128,7 +128,32 @@ describe('Chat — readReceipts prop', () => {
     unmount(instance);
   });
 
-  test('"sent" receipt: aria-label="Sent" and data-cinder-receipt-status=sent', () => {
+  test('receipt wrapper has role="img" (accessible name via aria-label, not subtree text)', () => {
+    // Regression guard: role=img makes the badge a single named widget so
+    // screen readers announce the FULL "Read by Alice, Bob" label.
+    // Without it, the computed name would be just "Read" (the visible span).
+    let conversation = createConversation();
+    conversation = appendMessage(conversation, 'user', 'Role check', 'user-role-img');
+
+    const readReceipts = new Map<string, ReadReceipt>([
+      ['user-role-img', { status: 'read', readBy: ['Alice', 'Bob'] }],
+    ]);
+
+    const { container, instance } = mountChat({
+      id: 'chat-receipt-role-img',
+      conversation,
+      readReceipts,
+    });
+
+    const badge = container.querySelector('[data-cinder-receipt-status]');
+    expect(badge).not.toBeNull();
+    expect(badge?.getAttribute('role')).toBe('img');
+    expect(badge?.getAttribute('aria-label')).toBe('Read by Alice, Bob');
+
+    unmount(instance);
+  });
+
+  test('"sent" receipt: aria-label="Sent", role="img", and data-cinder-receipt-status=sent', () => {
     let conversation = createConversation();
     conversation = appendMessage(conversation, 'user', 'Hello', 'user-1');
 
@@ -143,6 +168,7 @@ describe('Chat — readReceipts prop', () => {
     const badge = container.querySelector('[data-cinder-receipt-status]');
     expect(badge).not.toBeNull();
     expect(badge?.getAttribute('data-cinder-receipt-status')).toBe('sent');
+    expect(badge?.getAttribute('role')).toBe('img');
     expect(badge?.getAttribute('aria-label')).toBe('Sent');
     // Text content includes the label
     expect(badge?.textContent).toContain('Sent');
@@ -471,6 +497,114 @@ describe('Chat — adapter onReadReceipt push → receipt state', () => {
 
     const badge = container.querySelector('[data-cinder-receipt-status]');
     expect(badge?.getAttribute('aria-label')).toBe('Read by Alice, Bob');
+
+    unmount(instance);
+  });
+
+  test('readBy dedup: two adapter pushes carrying same name → name appears once', () => {
+    // Regression guard: if the dedup Set in handleAdapterReadReceipt is missing,
+    // two pushes each with ['Alice'] would produce aria-label "Read by Alice, Alice".
+    let capturedHandlers: ChatPushHandlers | undefined;
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      subscribe: (_conversationId, handlers) => {
+        capturedHandlers = handlers;
+        return () => {};
+      },
+    };
+
+    let conversation = createConversation('receipt-dedup-conv');
+    conversation = appendMessage(conversation, 'user', 'Dedup message', 'user-dedup-1');
+
+    const { container, instance } = mountChat({
+      id: 'chat-receipt-dedup',
+      conversation,
+      adapter,
+    });
+
+    capturedHandlers!.onReadReceipt({
+      messageId: 'user-dedup-1',
+      readAt: '2026-06-17T12:00:00.000Z',
+      readBy: ['Alice'],
+    });
+    flushSync();
+
+    // Second push with the same name — must be deduplicated.
+    capturedHandlers!.onReadReceipt({
+      messageId: 'user-dedup-1',
+      readAt: '2026-06-17T12:01:00.000Z',
+      readBy: ['Alice'],
+    });
+    flushSync();
+
+    const badge = container.querySelector('[data-cinder-receipt-status]');
+    expect(badge?.getAttribute('aria-label')).toBe('Read by Alice');
+
+    unmount(instance);
+  });
+
+  test('defined empty readReceipts prop suppresses an adapter-pushed receipt (prop authority)', () => {
+    // Regression guard for prop-authority semantics: when the consumer passes
+    // readReceipts={new Map()} (a DEFINED but empty Map), it must win over any
+    // adapter-accumulated state. This lets the consumer "clear" receipts by
+    // passing an empty Map — useful when switching conversations.
+    let capturedHandlers: ChatPushHandlers | undefined;
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      subscribe: (_conversationId, handlers) => {
+        capturedHandlers = handlers;
+        return () => {};
+      },
+    };
+
+    let conversation = createConversation('receipt-suppress-conv');
+    conversation = appendMessage(conversation, 'user', 'Suppressed message', 'user-suppress-1');
+
+    // Pass an empty Map — DEFINED but empty, authoritative.
+    const readReceipts = new Map<string, ReadReceipt>();
+
+    const { container, instance } = mountChat({
+      id: 'chat-receipt-suppress',
+      conversation,
+      adapter,
+      readReceipts,
+    });
+
+    // Push a receipt via the adapter.
+    capturedHandlers!.onReadReceipt({
+      messageId: 'user-suppress-1',
+      readAt: '2026-06-17T12:00:00.000Z',
+    });
+    flushSync();
+
+    // The prop (empty Map) is authoritative — no badge should appear because
+    // the prop Map has no entry for 'user-suppress-1'.
+    expect(container.querySelector('[data-cinder-receipt-status]')).toBeNull();
+
+    unmount(instance);
+  });
+
+  test('defined partial readReceipts prop with missing key returns no badge for that message', () => {
+    // When the readReceipts prop is defined (not undefined), getReceipt returns
+    // only prop entries. A message id absent from the Map → undefined → no badge.
+    let conversation = createConversation('receipt-missing-key-conv');
+    conversation = appendMessage(conversation, 'user', 'Has receipt', 'user-has');
+    conversation = appendMessage(conversation, 'user', 'No receipt', 'user-none');
+
+    // Only 'user-has' has an entry; 'user-none' is absent.
+    const readReceipts = new Map<string, ReadReceipt>([['user-has', { status: 'read' }]]);
+
+    const { container, instance } = mountChat({
+      id: 'chat-receipt-missing-key',
+      conversation,
+      readReceipts,
+    });
+
+    const badges = container.querySelectorAll('[data-cinder-receipt-status]');
+    // Exactly one badge — the missing-key message gets no badge even though the
+    // prop is defined.
+    expect(badges.length).toBe(1);
+    expect(badges[0]?.getAttribute('aria-label')).toBe('Read');
 
     unmount(instance);
   });

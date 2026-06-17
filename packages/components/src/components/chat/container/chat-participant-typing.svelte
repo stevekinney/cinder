@@ -80,17 +80,11 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    /* Suppress the entrance animation entirely (matching the AI-streaming
+       indicator in chat.svelte) rather than swapping in an opacity fade — any
+       animated appearance can affect vestibular-sensitive users. */
     .chat-participant-typing-indicator {
-      animation: participant-typing-fade var(--cinder-duration) ease;
-    }
-
-    @keyframes participant-typing-fade {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
+      animation: none;
     }
   }
 
@@ -147,6 +141,16 @@
       50% {
         opacity: 1;
       }
+    }
+  }
+
+  /* Forced-colors: the dots' background fill is overridden by the system and
+     would vanish against the container. Pin them to a system color. The visible
+     text label conveys the typing state, so this is a visual enhancement. */
+  @media (forced-colors: active) {
+    .chat-typing-dot {
+      background: CanvasText;
+      forced-color-adjust: none;
     }
   }
 </style>

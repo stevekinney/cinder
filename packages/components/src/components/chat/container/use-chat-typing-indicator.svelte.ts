@@ -63,6 +63,12 @@ export type UseChatTypingIndicatorResult = {
    * Internally maps it to/from the synthetic `__adapter__` participant.
    */
   handleAdapterTypingChange: (isTyping: boolean) => void;
+  /**
+   * Clear all adapter-derived typing state and any pending debounce. Called by
+   * the container on conversation change / subscription teardown so a typing
+   * event from one conversation cannot leak into the next.
+   */
+  reset: () => void;
 };
 
 /**
@@ -108,19 +114,16 @@ export function useChatTypingIndicator(
   let announcedLabel = $state('');
   let debounceHandle: ReturnType<typeof setTimeout> | undefined;
 
-  // Merged participant list: prop participants + synthetic adapter participant
-  const mergedParticipants = $derived.by<TypingParticipant[]>(() => {
-    const propParticipants = options.getTypingParticipants() ?? [];
-    if (!adapterIsTyping) return propParticipants;
-
-    // Check whether the adapter synthetic participant is already represented in
-    // the prop list (consumer might pass their own participant with the same id).
-    const hasAdapter = propParticipants.some(
-      (participant) => participant.id === ADAPTER_PARTICIPANT_ID,
-    );
-    if (hasAdapter) return propParticipants;
-
-    return [...propParticipants, { id: ADAPTER_PARTICIPANT_ID, name: ADAPTER_PARTICIPANT_NAME }];
+  // Merged participant list. When the consumer passes a DEFINED `typingParticipants`
+  // prop (even an empty array), it is AUTHORITATIVE — the adapter's synthetic
+  // participant is ignored so a controlled consumer can clear stale typing state
+  // with `typingParticipants={[]}`. The adapter path only contributes when the
+  // prop is omitted (undefined).
+  const mergedParticipants = $derived.by(() => {
+    const propParticipants = options.getTypingParticipants();
+    if (propParticipants !== undefined) return propParticipants;
+    if (!adapterIsTyping) return [];
+    return [{ id: ADAPTER_PARTICIPANT_ID, name: ADAPTER_PARTICIPANT_NAME }];
   });
 
   const typingLabel = $derived(deriveTypingLabel(mergedParticipants));
@@ -170,6 +173,13 @@ export function useChatTypingIndicator(
     adapterIsTyping = isTyping;
   }
 
+  function reset(): void {
+    adapterIsTyping = false;
+    clearTimeout(debounceHandle);
+    debounceHandle = undefined;
+    announcedLabel = '';
+  }
+
   return {
     get typingLabel() {
       return typingLabel;
@@ -181,5 +191,6 @@ export function useChatTypingIndicator(
       return participantCount;
     },
     handleAdapterTypingChange,
+    reset,
   };
 }

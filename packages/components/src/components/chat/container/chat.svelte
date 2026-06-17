@@ -185,16 +185,19 @@
     },
   });
 
-  // Reset UI-only approval/reasoning state on conversation change so stale
-  // approved/denied sets and expanded reasoning blocks from the previous
-  // conversation are cleared. The void reference to `conversationId` at the
-  // start of the effect body is the Svelte 5 pattern for declaring a reactive
-  // dependency on a derived without reading its value.
+  // Reset UI-only approval/reasoning/typing/receipt state on conversation change
+  // so stale approved/denied sets, expanded reasoning blocks, adapter-derived
+  // typing state, and accumulated read receipts from the previous conversation
+  // are cleared (their message ids can collide). The void reference to
+  // `conversationId` at the start of the effect body is the Svelte 5 pattern for
+  // declaring a reactive dependency on a derived without reading its value.
   $effect(() => {
     conversationId;
     approvedToolCallIds = new Set();
     deniedToolCallIds = new Set();
     reasoningState.reset();
+    typingIndicatorState.reset();
+    readReceiptsState.reset();
   });
 
   let isLoadingHistory = $state(false);

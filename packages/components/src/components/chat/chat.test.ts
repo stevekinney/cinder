@@ -690,6 +690,8 @@ describe('Chat — SSR safety', () => {
       resolve(import.meta.dir, 'container', 'use-chat-message-groups.svelte.ts'),
       resolve(import.meta.dir, 'container', 'use-chat-scroll-state.svelte.ts'),
       resolve(import.meta.dir, 'container', 'use-chat-virtualizer.svelte.ts'),
+      resolve(import.meta.dir, 'container', 'use-chat-typing-indicator.svelte.ts'),
+      resolve(import.meta.dir, 'container', 'use-chat-read-receipts.svelte.ts'),
     ]);
     expect(threwMessage).toBeUndefined();
   });

@@ -190,6 +190,11 @@ describe('deriveAnnouncedLabel — no ellipsis', () => {
     );
   });
 
+  test('4 participants → "4 people are typing"', () => {
+    const participants = [participant('A'), participant('B'), participant('C'), participant('D')];
+    expect(deriveAnnouncedLabel(participants)).toBe('4 people are typing');
+  });
+
   test('5+ participants → "Several people are typing"', () => {
     const participants = Array.from({ length: 6 }, (_, index) => participant(`P${index}`));
     expect(deriveAnnouncedLabel(participants)).toBe('Several people are typing');
@@ -498,7 +503,12 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
     capturedHandlers().onTypingChange(true);
     flushSync();
 
-    // The visible label appears immediately but the announced text is still empty.
+    // The VISIBLE label updates immediately (no debounce on the typing text itself).
+    // The adapter synthetic participant has name 'Someone', producing "Someone is typing…".
+    const visibleLabel = container.querySelector('.chat-participant-typing-label');
+    expect(visibleLabel?.textContent).toBe('Someone is typing…');
+
+    // The announced aria-live text is still empty — the 400ms debounce has not fired.
     const announcer = getTypingAnnouncer(container);
     expect(announcer?.textContent?.trim()).toBe('');
 

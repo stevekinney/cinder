@@ -22,13 +22,6 @@
 import type { ChatReadReceiptEvent } from '../adapter/chat-adapter.ts';
 import type { ReadReceipt } from '../chat.types.ts';
 
-/** Numeric rank for receipt status — used to enforce upgrade-only semantics. */
-const STATUS_RANK: Record<ReadReceipt['status'], number> = {
-  sent: 0,
-  delivered: 1,
-  read: 2,
-};
-
 export type UseChatReadReceiptsOptions = {
   /**
    * Getter returning the current `readReceipts` prop value. Called reactively via
@@ -39,35 +32,38 @@ export type UseChatReadReceiptsOptions = {
 
 export type UseChatReadReceiptsResult = {
   /**
-   * Look up the effective receipt for a message id. Returns the prop value when
-   * one exists (prop takes precedence), falling back to any adapter-accumulated
-   * state. Returns `undefined` when no receipt is known.
+   * Look up the effective receipt for a message id. When the `readReceipts` prop
+   * is DEFINED it is authoritative: only `readReceipts.get(messageId)` is returned
+   * (so a consumer can suppress adapter-accumulated receipts with an empty Map).
+   * Adapter-accumulated state is the fallback ONLY when the prop is omitted.
    */
   getReceipt: (messageId: string) => ReadReceipt | undefined;
   /**
    * Receive a read-receipt push from the adapter's `onReadReceipt` handler.
-   * Accumulates incrementally; upgrades status but never downgrades.
+   * Adapter events imply "read" status; repeat pushes accumulate `readBy` names.
    */
   handleAdapterReadReceipt: (event: ChatReadReceiptEvent) => void;
+  /**
+   * Clear all adapter-accumulated receipts. Called by the container on
+   * conversation change / subscription teardown so a receipt from one
+   * conversation cannot leak into the next (message ids can collide).
+   */
+  reset: () => void;
 };
 
 export function useChatReadReceipts(
   options: UseChatReadReceiptsOptions,
 ): UseChatReadReceiptsResult {
   // Receipts accumulated from the adapter's onReadReceipt push events.
-  // Keyed by message id; status only ever upgraded (sent → delivered → read).
-  // We store as a plain reactive object (record) rather than a Map so that
-  // property assignments trigger Svelte 5's fine-grained reactivity without
-  // needing to replace the whole Map.
+  // Keyed by message id. Stored as a plain reactive object (record) rather than a
+  // Map so property assignments trigger Svelte 5's fine-grained reactivity.
   let adapterReceipts = $state<Record<string, ReadReceipt>>({});
 
   function getReceipt(messageId: string): ReadReceipt | undefined {
-    // Prop map takes precedence — the consumer's authoritative state wins.
+    // A defined prop map is authoritative — return exactly its value (or
+    // undefined) so a consumer's empty/partial Map can suppress adapter state.
     const propReceipts = options.getReadReceipts();
-    if (propReceipts) {
-      const propReceipt = propReceipts.get(messageId);
-      if (propReceipt !== undefined) return propReceipt;
-    }
+    if (propReceipts !== undefined) return propReceipts.get(messageId);
 
     return adapterReceipts[messageId];
   }
@@ -75,42 +71,32 @@ export function useChatReadReceipts(
   function handleAdapterReadReceipt(event: ChatReadReceiptEvent): void {
     const existing = adapterReceipts[event.messageId];
 
-    // All adapter read-receipt events imply at least "read" status. The
-    // ChatReadReceiptEvent type does not currently carry 'sent' or 'delivered',
-    // so the STATUS_RANK upgrade guard below is only reachable if the event type
-    // is extended in the future to carry optional lower-rank statuses.
-    const incomingStatus: ReadReceipt['status'] = 'read';
-
+    // Adapter read-receipt events imply "read" status (the event type carries no
+    // lower-rank status). A new message gets a fresh "read" receipt; a repeat push
+    // for an already-read message accumulates the `readBy` names (deduplicated).
     if (existing === undefined) {
       // Conditional spread: under exactOptionalPropertyTypes, omit `readBy`
       // entirely when the event carries none (don't set it to `undefined`).
       adapterReceipts[event.messageId] = {
-        status: incomingStatus,
+        status: 'read',
         ...(event.readBy !== undefined ? { readBy: event.readBy } : {}),
       };
       return;
     }
 
-    // Upgrade only — never downgrade. The upgrade branch is currently unreachable
-    // from adapter events (all carry 'read'), but is preserved for future extension.
-    if (STATUS_RANK[incomingStatus] > STATUS_RANK[existing.status]) {
-      adapterReceipts[event.messageId] = {
-        ...existing,
-        status: incomingStatus,
-        ...(event.readBy !== undefined ? { readBy: event.readBy } : {}),
-      };
-      return;
-    }
-
-    // Same status: accumulate readBy names (deduplicated).
-    if (event.readBy && event.readBy.length > 0) {
+    if (event.readBy !== undefined && event.readBy.length > 0) {
       const merged = Array.from(new Set([...(existing.readBy ?? []), ...event.readBy]));
       adapterReceipts[event.messageId] = { ...existing, readBy: merged };
     }
   }
 
+  function reset(): void {
+    adapterReceipts = {};
+  }
+
   return {
     getReceipt,
     handleAdapterReadReceipt,
+    reset,
   };
 }

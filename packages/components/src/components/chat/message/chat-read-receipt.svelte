@@ -53,7 +53,19 @@
   const isDoubleCheck = $derived(status === 'delivered' || status === 'read');
 </script>
 
-<span class="chat-read-receipt" data-cinder-receipt-status={status} aria-label={ariaLabel}>
+<!--
+  role="img" + aria-label makes the badge a single named, opaque widget so screen
+  readers announce the FULL status ("Read by Alice, Bob") authoritatively. Without
+  the role, a generic span's accessible name is computed from its subtree text —
+  only the short "Read"/"Delivered"/"Sent" visible label — and the readBy names
+  are silently dropped. The icon + visible label remain the visual representation.
+-->
+<span
+  class="chat-read-receipt"
+  role="img"
+  data-cinder-receipt-status={status}
+  aria-label={ariaLabel}
+>
   <span class="chat-read-receipt-icon" aria-hidden="true">
     {#if isDoubleCheck}
       <CheckCheck size={12} />
