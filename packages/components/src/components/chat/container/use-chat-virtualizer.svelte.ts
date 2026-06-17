@@ -54,6 +54,9 @@ export class ChatVirtualizer {
   #scrollElement: HTMLElement | null = null;
   #scrollOffset = $state(0);
   #measurementVersion = $state(0);
+  #offsetsCache: number[] | null = null;
+  #offsetsCacheCount = -1;
+  #offsetsCacheMeasurementVersion = -1;
   #measuredSizes = new Map<string | number, number>();
 
   constructor(readonly options: ChatVirtualizerOptions) {}
@@ -217,8 +220,16 @@ export class ChatVirtualizer {
   }
 
   #offsets(): number[] {
-    void this.#measurementVersion;
     const count = this.options.getCount();
+    const measurementVersion = this.#measurementVersion;
+    if (
+      this.#offsetsCache &&
+      this.#offsetsCacheCount === count &&
+      this.#offsetsCacheMeasurementVersion === measurementVersion
+    ) {
+      return this.#offsetsCache;
+    }
+
     const offsets = Array.from<number>({ length: count + 1 });
     let offset = 0;
     offsets[0] = 0;
@@ -228,6 +239,9 @@ export class ChatVirtualizer {
       offsets[index + 1] = offset;
     }
 
+    this.#offsetsCache = offsets;
+    this.#offsetsCacheCount = count;
+    this.#offsetsCacheMeasurementVersion = measurementVersion;
     return offsets;
   }
 

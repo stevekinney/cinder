@@ -452,6 +452,62 @@ describe('Chat history pagination', () => {
     );
   });
 
+  test('adapter history loading preserves non-virtualized scroll position after prepend', async () => {
+    let conversation = longConversation(20);
+    const loadCalls: string[] = [];
+    let resolveLoad: ((result: { hasMore: boolean }) => void) | undefined;
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async (conversationId: string) => {
+        loadCalls.push(conversationId);
+        return await new Promise<{ hasMore: boolean }>((resolve) => {
+          resolveLoad = resolve;
+        });
+      },
+    };
+    const { container, rerender } = render(Chat, {
+      props: {
+        id: 'adapter-non-virtual-history-chat',
+        conversation,
+        adapter,
+      },
+    });
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    Object.defineProperty(timeline, 'scrollHeight', { configurable: true, value: 1000 });
+    timeline.scrollTop = 120;
+    const scrollTops: number[] = [];
+    timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      const top =
+        typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
+      scrollTops.push(top);
+      timeline.scrollTop = top;
+    };
+
+    await fireEvent.click(
+      container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
+    );
+
+    conversation = prependMessage(
+      conversation,
+      'assistant',
+      'older-adapter-message',
+      'Earlier adapter context',
+    );
+    Object.defineProperty(timeline, 'scrollHeight', { configurable: true, value: 1240 });
+    await rerender({
+      id: 'adapter-non-virtual-history-chat',
+      conversation,
+      adapter,
+    });
+    resolveLoad?.({ hasMore: false });
+
+    expect(loadCalls).toEqual(['virtual-conversation']);
+    await waitFor(() => expect(scrollTops).toContain(360));
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
+    );
+  });
+
   test('keeps exhausted adapter trigger mounted until virtualized scroll restoration settles', async () => {
     let conversation = longConversation(20);
     const loadCalls: string[] = [];

@@ -146,6 +146,7 @@
   let adapterHasMoreHistory = $state<boolean | undefined>(undefined);
   let historyAnnouncement = $state('');
   let pendingHistoryScroll: PendingHistoryScroll | null = $state(null);
+  let deferredAdapterHasMoreHistory: boolean | null = null;
   let historyAnchorMessageId = $state<string | null>(null);
   let historyAnchorViewportOffset = $state<number | null>(null);
   let historyAnchorRestoredScrollTop: number | null = null;
@@ -341,6 +342,7 @@
     ) {
       adapterHasMoreHistory = undefined;
       pendingHistoryScroll = null;
+      deferredAdapterHasMoreHistory = null;
       clearHistoryAnchor();
     }
     previousHistoryConversationId = currentConversationId;
@@ -488,6 +490,7 @@
 
     const prependedCount = currentCount - pending.previousCount;
     pendingHistoryScroll = null;
+    finishDeferredAdapterHistoryLoading();
     if (isVirtualized) {
       setHistoryAnchor(pending);
     }
@@ -804,7 +807,16 @@
 
     if (pendingHistoryScroll === pending) {
       pendingHistoryScroll = null;
+      finishDeferredAdapterHistoryLoading();
     }
+  }
+
+  function finishDeferredAdapterHistoryLoading(): void {
+    if (deferredAdapterHasMoreHistory === null) return;
+
+    adapterHasMoreHistory = deferredAdapterHasMoreHistory;
+    deferredAdapterHasMoreHistory = null;
+    isLoadingHistory = false;
   }
 
   async function handleLoadHistory(): Promise<void> {
@@ -830,7 +842,15 @@
         return;
       }
 
-      if (isVirtualized) {
+      const transcriptChanged =
+        messages.length > pending.previousCount ||
+        messages[0]?.id !== pending.previousFirstTranscriptMessageId;
+      if (isVirtualized && !transcriptChanged) {
+        deferredAdapterHasMoreHistory = nextHasMoreHistory ?? null;
+        return;
+      }
+
+      if (isVirtualized || transcriptChanged) {
         await settlePendingHistoryScroll(pending);
       } else {
         pendingHistoryScroll = null;

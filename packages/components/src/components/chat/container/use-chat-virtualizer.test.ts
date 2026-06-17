@@ -187,6 +187,41 @@ describe('ChatVirtualizer', () => {
     expect(virtualizer.virtualItems).toEqual([]);
   });
 
+  test('caches cumulative offsets until count or measurements change', () => {
+    let count = 3;
+    let estimatedSizeCalls = 0;
+    const virtualizer = new ChatVirtualizer({
+      getCount: () => count,
+      getItemKey: (index) => `message-${index}`,
+      getEstimatedSize: () => {
+        estimatedSizeCalls += 1;
+        return 10;
+      },
+      getScrollElement: () => null,
+      getOverscan: () => 0,
+      getInitialHeight: () => 30,
+    });
+
+    expect(virtualizer.totalSize).toBe(30);
+    expect(virtualizer.virtualItems.map((item) => item.index)).toEqual([0, 1, 2]);
+    expect(virtualizer.totalSize).toBe(30);
+    expect(estimatedSizeCalls).toBe(3);
+
+    count = 4;
+    expect(virtualizer.totalSize).toBe(40);
+    expect(estimatedSizeCalls).toBe(7);
+
+    const row = document.createElement('div');
+    row.dataset['cinderVirtualIndex'] = '0';
+    Object.defineProperty(row, 'scrollHeight', { configurable: true, value: 15 });
+    const detach = virtualizer.measureElement(row);
+
+    expect(virtualizer.totalSize).toBe(45);
+    expect(estimatedSizeCalls).toBe(10);
+
+    detach?.();
+  });
+
   test('measures variable row heights and uses cumulative offsets', () => {
     const { virtualizer } = createVirtualizer({ count: 4, size: 80, overscan: 0 });
     const tallRow = document.createElement('div');
