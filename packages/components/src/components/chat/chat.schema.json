@@ -50,6 +50,34 @@
       "type": "boolean",
       "description": "Whether in-conversation search is enabled. When `true`, pressing Ctrl+F / Cmd+F opens a search bar that highlights matching messages. Default `true`."
     },
+    "virtualized": {
+      "type": "boolean",
+      "description": "Use the virtualized message render path for long transcripts. The complete `ConversationHistory` remains unchanged; only the DOM window is reduced. Default `false`."
+    },
+    "virtualizationEstimatedRowHeight": {
+      "type": "number",
+      "description": "Estimated row height in pixels for virtualized message rows. Default `88`."
+    },
+    "virtualizationOverscan": {
+      "type": "number",
+      "description": "Number of extra virtual rows rendered before and after the viewport. Default `3`."
+    },
+    "virtualizationInitialHeight": {
+      "type": "number",
+      "description": "Initial virtualized viewport height used before measurement. Default `640`."
+    },
+    "hasMoreHistory": {
+      "type": "boolean",
+      "description": "Whether the explicit \"Load earlier messages\" trigger is shown when a load handler exists. Default `true`."
+    },
+    "loadEarlierLabel": {
+      "type": "string",
+      "description": "Label for the history pagination trigger. Default `\"Load earlier messages\"`."
+    },
+    "loadingEarlierLabel": {
+      "type": "string",
+      "description": "Status text while older messages are loading. Default `\"Loading earlier messages\"`."
+    },
     "allowCopy": {
       "type": "boolean",
       "description": "Whether per-message copy buttons are shown in the message action bar. Default `true`."
@@ -134,6 +162,11 @@
       {
         "name": "onjumptolatest",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "onloadhistory",
+        "reason": "function-or-snippet",
+        "description": "Called when the explicit history trigger is activated. The consumer prepends compatible messages into `conversation`."
       },
       {
         "name": "onpushmessage",

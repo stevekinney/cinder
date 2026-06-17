@@ -55,15 +55,14 @@ function isRatchetThreshold(value: number): boolean {
 }
 
 /**
- * Transient SSR test modules written by `src/test/server-render.ts` and
- * `src/test/hydrate.ts`. They compile a component in `generate: 'server'` mode
- * to a `.cinder-ssr-<pid>-<time>-<rand>.mjs` file next to the source, import it
- * for one render, then delete it. Bun still instruments these modules while
- * they are imported, so they land in the LCOV report even though they are not
- * library source — and because they exercise only a fraction of each
- * component's functions, they drag the aggregate below the real number. They
- * are not shippable code and carry no coverage obligation, so exclude them from
- * the ratchet aggregate.
+ * Transient SSR test modules written by component SSR and hydration helpers.
+ * They compile source into temporary `.mjs` files, import the files for one
+ * render, then delete them. Bun still instruments these modules while they are
+ * imported, so they land in the LCOV report even though they are not library
+ * source — and because they exercise only a fraction of each component's
+ * functions, they drag the aggregate below the real number. They are not
+ * shippable code and carry no coverage obligation, so exclude them from the
+ * ratchet aggregate.
  */
 function isTransientTestArtifact(file: string): boolean {
   // Matches the generated contract from server-render.ts / hydrate.ts:
@@ -71,7 +70,16 @@ function isTransientTestArtifact(file: string): boolean {
   // the trailing `$` anchor the match to the final path segment, so a real
   // source file that merely has the prefix inside a directory name (e.g.
   // `.cinder-ssr-…mjs/real.ts`) is never excluded.
-  return /(?:^|\/)\.cinder-ssr-\d+-\d+-[a-z0-9]+\.mjs$/.test(file);
+  if (/(?:^|\/)\.cinder-ssr-\d+-\d+-[a-z0-9]+\.mjs$/.test(file)) return true;
+
+  // A few older SSR probes generate named `.cinder-ssr-*-<pid>-<epoch-ms>.mjs`
+  // files next to the source. They have the same one-render temporary-module
+  // shape.
+  if (/(?:^|\/)\.cinder-ssr-(?:chat|parts|test)-\d+-\d+\.mjs$/.test(file)) return true;
+
+  // hydration-safety.ts writes paired server/client bundles into
+  // `tmp/hydration-safety`, imports them once, then unlinks them.
+  return /(?:^|\/)tmp\/hydration-safety\/(?:client|server)-\d+-\d+-[a-z0-9]+\.mjs$/.test(file);
 }
 
 export function parseLcovRecords(source: string): CoverageRecord[] {

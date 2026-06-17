@@ -1,7 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 import type { Message } from '../conversation-model.ts';
 
-import { useChatMessageGroups, type MessageItem } from './use-chat-message-groups.svelte.ts';
+import {
+  buildChatRenderRows,
+  buildMessagesWithDateSeparators,
+  chatRenderRowKey,
+  findPairedToolResultIds,
+  findRenderRowIndexByMessageId,
+  useChatMessageGroups,
+  type MessageItem,
+} from './use-chat-message-groups.svelte.ts';
 
 const baseTimestamp = new Date('2026-05-08T12:00:00Z').toISOString();
 
@@ -116,5 +124,89 @@ describe('useChatMessageGroups paired tool-result filtering', () => {
     );
 
     expect(messages(messageItems)).toEqual(['m1']);
+  });
+
+  test('reactive helper groups multiple visible tool calls by call id', () => {
+    const conversation = [
+      toolUseMessage('call-a', 'shared-call'),
+      toolUseMessage('call-b', 'shared-call'),
+      toolResultMessage('result', 'shared-call'),
+    ];
+
+    const groups = useChatMessageGroups({ getMessages: () => conversation });
+
+    expect(groups.toolCallPairsByCallId.get('shared-call')).toHaveLength(2);
+    expect(groups.pairedToolResultIds.has('result')).toBe(true);
+    expect(groups.renderRows.map((row) => row.type)).toEqual(['date', 'message', 'message']);
+  });
+
+  test('render rows add unread and typing state without mutating message order', () => {
+    const first = userMessage('first');
+    const second = { ...userMessage('second'), role: 'assistant' as const };
+    const third = {
+      ...userMessage('third'),
+      createdAt: '2026-05-09T12:00:00.000Z',
+    };
+    const items = buildMessagesWithDateSeparators(
+      [first, second, third],
+      findPairedToolResultIds([first, second, third]),
+    );
+
+    const rows = buildChatRenderRows(items, {
+      firstUnreadId: 'second',
+      showTypingIndicator: true,
+    });
+
+    expect(rows.map((row) => row.type)).toEqual([
+      'date',
+      'message',
+      'unread-divider',
+      'message',
+      'date',
+      'message',
+      'typing',
+    ]);
+    expect(rows.filter((row) => row.type === 'message').map((row) => row.message.id)).toEqual([
+      'first',
+      'second',
+      'third',
+    ]);
+    expect(rows.map(chatRenderRowKey)).toEqual([
+      'date-2026-05-08T12:00:00.000Z',
+      'msg-first',
+      'unread-first',
+      'msg-second',
+      'date-2026-05-09T12:00:00.000Z',
+      'msg-third',
+      'typing',
+    ]);
+    expect(findRenderRowIndexByMessageId(rows, 'third')).toBe(5);
+    expect(findRenderRowIndexByMessageId(rows, 'missing')).toBe(-1);
+  });
+
+  test('invalid timestamps and explicit start unread rows stay render-only', () => {
+    const invalid = { ...userMessage('invalid'), createdAt: 'not-a-date' };
+    const valid = {
+      ...userMessage('valid'),
+      createdAt: '2026-05-10T12:00:00.000Z',
+    };
+    const items = buildMessagesWithDateSeparators([invalid, valid], new Set());
+    const rows = buildChatRenderRows(items, { firstUnreadId: 'invalid' });
+    const startRows = buildChatRenderRows(buildMessagesWithDateSeparators([valid], new Set()), {
+      firstUnreadId: 'valid',
+    });
+
+    expect(items.map((item) => item.type)).toEqual(['message', 'date', 'message']);
+    expect(rows.map(chatRenderRowKey)).toEqual([
+      'msg-invalid',
+      'date-2026-05-10T12:00:00.000Z',
+      'msg-valid',
+    ]);
+    expect(startRows.map(chatRenderRowKey)).toEqual([
+      'date-2026-05-10T12:00:00.000Z',
+      'unread-start',
+      'msg-valid',
+    ]);
+    expect(chatRenderRowKey({ type: 'unread-divider', afterMessageId: null })).toBe('unread-start');
   });
 });

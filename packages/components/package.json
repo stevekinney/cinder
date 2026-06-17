@@ -558,6 +558,56 @@
       "import": "./src/components/chat/chat.examples.json",
       "default": "./src/components/chat/chat.examples.json"
     },
+    "./chat-conversation-header": {
+      "types": "./dist/components/chat-conversation-header/index.d.ts",
+      "svelte": "./src/components/chat-conversation-header/index.ts",
+      "node": "./dist/server/components/chat-conversation-header/index.js",
+      "default": "./dist/components/chat-conversation-header/index.js"
+    },
+    "./chat-conversation-header/schema": {
+      "types": "./dist/components/chat-conversation-header/chat-conversation-header.schema.d.ts",
+      "svelte": "./src/components/chat-conversation-header/chat-conversation-header.schema.ts",
+      "node": "./dist/server/components/chat-conversation-header/chat-conversation-header.schema.js",
+      "default": "./dist/components/chat-conversation-header/chat-conversation-header.schema.js"
+    },
+    "./chat-conversation-header/variables": {
+      "types": "./dist/components/chat-conversation-header/chat-conversation-header.variables.d.ts",
+      "svelte": "./src/components/chat-conversation-header/chat-conversation-header.variables.ts",
+      "node": "./dist/server/components/chat-conversation-header/chat-conversation-header.variables.js",
+      "default": "./dist/components/chat-conversation-header/chat-conversation-header.variables.js"
+    },
+    "./chat-conversation-header/styles": {
+      "default": "./dist/components/chat-conversation-header/chat-conversation-header.css"
+    },
+    "./chat-conversation-header/examples": {
+      "import": "./src/components/chat-conversation-header/chat-conversation-header.examples.json",
+      "default": "./src/components/chat-conversation-header/chat-conversation-header.examples.json"
+    },
+    "./chat-conversation-list": {
+      "types": "./dist/components/chat-conversation-list/index.d.ts",
+      "svelte": "./src/components/chat-conversation-list/index.ts",
+      "node": "./dist/server/components/chat-conversation-list/index.js",
+      "default": "./dist/components/chat-conversation-list/index.js"
+    },
+    "./chat-conversation-list/schema": {
+      "types": "./dist/components/chat-conversation-list/chat-conversation-list.schema.d.ts",
+      "svelte": "./src/components/chat-conversation-list/chat-conversation-list.schema.ts",
+      "node": "./dist/server/components/chat-conversation-list/chat-conversation-list.schema.js",
+      "default": "./dist/components/chat-conversation-list/chat-conversation-list.schema.js"
+    },
+    "./chat-conversation-list/variables": {
+      "types": "./dist/components/chat-conversation-list/chat-conversation-list.variables.d.ts",
+      "svelte": "./src/components/chat-conversation-list/chat-conversation-list.variables.ts",
+      "node": "./dist/server/components/chat-conversation-list/chat-conversation-list.variables.js",
+      "default": "./dist/components/chat-conversation-list/chat-conversation-list.variables.js"
+    },
+    "./chat-conversation-list/styles": {
+      "default": "./dist/components/chat-conversation-list/chat-conversation-list.css"
+    },
+    "./chat-conversation-list/examples": {
+      "import": "./src/components/chat-conversation-list/chat-conversation-list.examples.json",
+      "default": "./src/components/chat-conversation-list/chat-conversation-list.examples.json"
+    },
     "./checkbox": {
       "types": "./dist/components/checkbox/index.d.ts",
       "svelte": "./src/components/checkbox/index.ts",

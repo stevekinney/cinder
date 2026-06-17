@@ -17,8 +17,12 @@ import { tick } from 'svelte';
 export interface UseChatKeyboardNavOptions {
   /** Callback when jump-to-latest is triggered (End key) */
   onJumpToLatest: () => void;
+  /** Optional callback for virtualized top scrolling. */
+  onJumpToStart?: () => void;
   /** Function that returns the appropriate scroll behavior based on user preference */
   getScrollBehavior: () => ScrollBehavior;
+  /** Optional load-earlier trigger focus target. */
+  getHistoryTrigger?: () => { focus: () => void } | null | undefined;
 }
 
 /** Return type for the keyboard navigation helper */
@@ -60,7 +64,7 @@ export interface UseChatKeyboardNavReturn {
  * ```
  */
 export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatKeyboardNavReturn {
-  const { onJumpToLatest, getScrollBehavior } = options;
+  const { onJumpToLatest, onJumpToStart, getScrollBehavior, getHistoryTrigger } = options;
 
   /**
    * Navigate to next or previous message.
@@ -125,12 +129,22 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
 
       case 'Home':
         event.preventDefault();
-        viewport.scrollTo({ top: 0, behavior });
-        // Focus first message
+        if (onJumpToStart) {
+          onJumpToStart();
+        } else {
+          viewport.scrollTo({ top: 0, behavior });
+        }
+        // Focus the explicit history trigger first when present; otherwise focus
+        // the first rendered message.
         void tick().then(
           () => {
-            const firstMessage = viewport.querySelector<HTMLElement>('.chat-message');
-            firstMessage?.focus();
+            const historyTrigger = getHistoryTrigger?.();
+            if (historyTrigger) {
+              historyTrigger.focus();
+            } else {
+              const firstMessage = viewport.querySelector<HTMLElement>('.chat-message');
+              firstMessage?.focus();
+            }
             return undefined;
           },
           () => undefined,

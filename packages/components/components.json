@@ -681,6 +681,66 @@
       }
     },
     {
+      "name": "ChatConversationHeader",
+      "id": "chat-conversation-header",
+      "import": "@lostgradient/cinder/chat-conversation-header",
+      "exportName": "ChatConversationHeader",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Header primitive for the active Chat conversation, composed as a sibling above Chat rather than inside it.",
+      "tags": ["chat", "conversation", "header"],
+      "useWhen": [
+        "Showing the active conversation title, participants, status, and export controls above a Chat transcript.",
+        "Building a multi-conversation chat layout where the list, header, and Chat surface are composed as siblings."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering the conversation switcher — use chat-conversation-list."
+        },
+        {
+          "reason": "Rendering the transcript body and composer — use chat."
+        }
+      ],
+      "related": ["chat", "chat-conversation-list"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/chat-conversation-header/schema",
+        "variables": "@lostgradient/cinder/chat-conversation-header/variables",
+        "examples": "@lostgradient/cinder/chat-conversation-header/examples"
+      }
+    },
+    {
+      "name": "ChatConversationList",
+      "id": "chat-conversation-list",
+      "import": "@lostgradient/cinder/chat-conversation-list",
+      "exportName": "ChatConversationList",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Conversation navigation list for switching among Chat transcripts without embedding the list inside Chat.",
+      "tags": ["chat", "conversation", "navigation"],
+      "useWhen": [
+        "Rendering a multi-conversation chat sidebar beside one active Chat transcript.",
+        "Showing unread counts and last-message previews for compatible conversation snapshots."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering the message transcript itself — use chat for the active conversation surface."
+        },
+        {
+          "reason": "Building app-wide primary navigation — use side-navigation or navigation-bar."
+        }
+      ],
+      "related": ["chat", "chat-conversation-header", "side-navigation"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/chat-conversation-list/schema",
+        "variables": "@lostgradient/cinder/chat-conversation-list/variables",
+        "examples": "@lostgradient/cinder/chat-conversation-list/examples"
+      }
+    },
+    {
       "name": "Checkbox",
       "id": "checkbox",
       "import": "@lostgradient/cinder/checkbox",

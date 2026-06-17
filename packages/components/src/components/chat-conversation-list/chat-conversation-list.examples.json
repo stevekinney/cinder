@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "chat-conversation-list",
+  "import": "@lostgradient/cinder/chat-conversation-list",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic conversation list",
+      "description": "Conversation summaries with an active conversation and unread count.",
+      "code": "<script lang=\"ts\">\n  import { ChatConversationList, type ConversationSummary } from '@lostgradient/cinder';\n\n  const conversations: ConversationSummary[] = [\n    {\n      id: 'launch',\n      title: 'Launch support',\n      status: 'active',\n      messageCount: 12,\n      unreadCount: 2,\n      createdAt: '2026-06-01T08:00:00.000Z',\n      updatedAt: '2026-06-01T08:45:00.000Z',\n      lastMessageId: 'launch-last',\n      lastMessageRole: 'assistant',\n      lastMessageText: 'I drafted the launch checklist.',\n      lastMessageAt: '2026-06-01T08:45:00.000Z',\n      participantNames: ['Ada', 'Grace'],\n    },\n    {\n      id: 'billing',\n      title: 'Billing question',\n      status: 'active',\n      messageCount: 4,\n      unreadCount: 0,\n      createdAt: '2026-06-01T07:00:00.000Z',\n      updatedAt: '2026-06-01T07:20:00.000Z',\n      lastMessageId: 'billing-last',\n      lastMessageRole: 'user',\n      lastMessageText: 'Can you resend the invoice?',\n      lastMessageAt: '2026-06-01T07:20:00.000Z',\n      participantNames: ['Lin'],\n    },\n  ];\n</script>\n\n<ChatConversationList {conversations} activeConversationId=\"launch\" />\n"
+    }
+  ]
+}

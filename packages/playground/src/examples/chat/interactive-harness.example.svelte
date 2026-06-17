@@ -46,6 +46,9 @@
   let transparentSurface = $state(false);
   let withEmptyPrompts = $state(true);
   let autoReply = $state(true);
+  let virtualized = $state(false);
+  let historyEnabled = $state(false);
+  let historyPage = 0;
 
   // --- Reply controls ---
   let replyText = $state('Here is the answer, delivered in a few deliberate chunks.');
@@ -169,6 +172,35 @@
 
   function lastMessageId(current: ConversationHistory): string {
     return current.ids[current.ids.length - 1] ?? '';
+  }
+
+  function prependHistoryMessages(current: ConversationHistory): ConversationHistory {
+    historyPage += 1;
+    const olderMessages: Message[] = Array.from({ length: 6 }, (_, index) => {
+      const id = `older-${historyPage}-${index}`;
+      return {
+        id,
+        role: index % 2 === 0 ? 'user' : 'assistant',
+        content: `Earlier context ${historyPage}.${index + 1}`,
+        position: index,
+        createdAt: `2026-05-${String(30 - historyPage).padStart(2, '0')}T12:${String(index).padStart(2, '0')}:00.000Z`,
+        metadata: {},
+        hidden: false,
+      };
+    });
+    const messages = Object.fromEntries(olderMessages.map((message) => [message.id, message]));
+    for (const [index, id] of current.ids.entries()) {
+      const message = current.messages[id];
+      if (message) {
+        messages[id] = { ...message, position: olderMessages.length + index };
+      }
+    }
+    return {
+      ...current,
+      ids: [...olderMessages.map((message) => message.id), ...current.ids],
+      messages,
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   // --- Reply as the other side ---
@@ -329,6 +361,7 @@
   function clearConversation(): void {
     cancelPending('discard');
     conversation = createConversation({ id: 'harness-cleared' });
+    historyPage = 0;
   }
 
   // --- Chat callbacks ---
@@ -347,6 +380,11 @@
     conversation = replaceMessageContent(conversation, event.messageId, event.content);
   }
 
+  async function handleLoadHistory(): Promise<void> {
+    conversation = prependHistoryMessages(conversation);
+    record('onloadhistory', historyPage);
+  }
+
   onDestroy(() => cancelPending('destroy'));
 
   const surfaceMode = $derived<'default' | 'transparent'>(
@@ -357,6 +395,9 @@
   // conditionally rather than passing `emptyPrompts={undefined}`.
   const emptyPromptsProp = $derived(
     withEmptyPrompts ? { emptyPrompts: ['Tell me about alpha', 'Summarize the thread'] } : {},
+  );
+  const historyProps = $derived(
+    historyEnabled ? { hasMoreHistory: true, onloadhistory: handleLoadHistory } : {},
   );
 </script>
 
@@ -447,6 +488,8 @@
       <Toggle id="t-surface" label="transparent surface" bind:checked={transparentSurface} />
       <Toggle id="t-prompts" label="emptyPrompts" bind:checked={withEmptyPrompts} />
       <Toggle id="t-autoreply" label="auto-reply on submit" bind:checked={autoReply} />
+      <Toggle id="t-virtualized" label="virtualized transcript" bind:checked={virtualized} />
+      <Toggle id="t-history" label="history pagination" bind:checked={historyEnabled} />
     </section>
 
     <section style="display: grid; gap: 0.4rem;">
@@ -504,7 +547,12 @@
       {allowEditing}
       {allowRetry}
       {surfaceMode}
+      {virtualized}
+      virtualizationEstimatedRowHeight={72}
+      virtualizationInitialHeight={480}
+      virtualizationOverscan={2}
       {...emptyPromptsProp}
+      {...historyProps}
       onsubmit={handleSubmit}
       onedit={handleEdit}
       onretry={(messageId: string) => record('onretry', messageId)}

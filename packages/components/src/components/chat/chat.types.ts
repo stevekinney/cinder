@@ -59,6 +59,20 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   allowAttachments?: boolean;
   /** Whether in-conversation search is enabled. When `true`, pressing Ctrl+F / Cmd+F opens a search bar that highlights matching messages. Default `true`. */
   allowSearch?: boolean;
+  /** Use the virtualized message render path for long transcripts. The complete `ConversationHistory` remains unchanged; only the DOM window is reduced. Default `false`. */
+  virtualized?: boolean;
+  /** Estimated row height in pixels for virtualized message rows. Default `88`. */
+  virtualizationEstimatedRowHeight?: number;
+  /** Number of extra virtual rows rendered before and after the viewport. Default `3`. */
+  virtualizationOverscan?: number;
+  /** Initial virtualized viewport height used before measurement. Default `640`. */
+  virtualizationInitialHeight?: number;
+  /** Whether the explicit "Load earlier messages" trigger is shown when a load handler exists. Default `true`. */
+  hasMoreHistory?: boolean;
+  /** Label for the history pagination trigger. Default `"Load earlier messages"`. */
+  loadEarlierLabel?: string;
+  /** Status text while older messages are loading. Default `"Loading earlier messages"`. */
+  loadingEarlierLabel?: string;
   /** Whether per-message copy buttons are shown in the message action bar. Default `true`. */
   allowCopy?: boolean;
   /** Whether user messages can be edited inline. Default `true`. */
@@ -102,6 +116,8 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   onsubmit?: (event: ChatSubmitEvent) => void;
   onretry?: (messageId: string) => void;
   onedit?: (event: { messageId: string; content: string }) => void;
+  /** Called when the explicit history trigger is activated. The consumer prepends compatible messages into `conversation`. */
+  onloadhistory?: () => void | Promise<void>;
   onstopgenerating?: (event: ChatStopGeneratingEvent) => void;
   onjumptolatest?: () => void;
   onscrollstatechange?: (event: ChatScrollStateChangeEvent) => void;

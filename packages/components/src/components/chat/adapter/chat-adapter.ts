@@ -110,7 +110,12 @@ export type ChatAdapter = {
  * (`approveToolCall`/`denyToolCall`/`loadOlderMessages`) through the dispatcher,
  * so its error events carry the right `command` tag.
  */
-export type ChatCommand = 'sendMessage' | 'retryMessage' | 'editMessage' | 'stopGenerating';
+export type ChatCommand =
+  | 'sendMessage'
+  | 'retryMessage'
+  | 'editMessage'
+  | 'stopGenerating'
+  | 'loadOlderMessages';
 
 /** Error event surfaced when an adapter command fails (rejection or sync throw). */
 export type ChatAdapterErrorEvent = {
