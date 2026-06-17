@@ -136,6 +136,9 @@
   const firstColumnKey = $derived(columnModel.renderColumns[0]?.key);
   const rowDomIds = $derived(sortedKeyedRows.map((row) => row.rowDomId));
   const columnKeys = $derived(columnModel.renderColumns.map((column) => column.key));
+  const selectionGeometrySignature = $derived(
+    `${rowDomIds.join('\u0001')}\u0002${columnKeys.join('\u0001')}`,
+  );
   const gridId = $props.id();
   let requestedActiveRowIndex = $state(0);
   let requestedActiveColumnKey = $state<string | undefined>();
@@ -184,6 +187,7 @@
   let hasWarnedNoLabel = false;
   let warnedDuplicateRowIdsSignature: string | undefined;
   let previousActiveCellId: string | undefined;
+  let previousSelectionGeometrySignature: string | undefined;
   let gridElement: HTMLDivElement | undefined;
 
   $effect(() => {
@@ -231,7 +235,11 @@
   });
 
   $effect(() => {
-    selectionState.reconcile(activeCellCoordinates);
+    const shouldPreferFallback =
+      previousSelectionGeometrySignature !== undefined &&
+      previousSelectionGeometrySignature !== selectionGeometrySignature;
+    previousSelectionGeometrySignature = selectionGeometrySignature;
+    selectionState.reconcile(activeCellCoordinates, { preferFallback: shouldPreferFallback });
   });
 
   function getCellId(rowId: string, columnKey: string): string {

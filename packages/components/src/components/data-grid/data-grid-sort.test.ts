@@ -273,12 +273,16 @@ describe('DataGrid sort rendering', () => {
     expect(grid?.getAttribute('aria-activedescendant')).toBe(
       firstSortedRowCells[0]?.getAttribute('id'),
     );
+    expect(firstSortedRowCells[0]?.getAttribute('data-cinder-active')).toBe('true');
+    expect(firstSortedRowCells[0]?.getAttribute('aria-selected')).toBe('true');
 
     await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
 
     expect(grid?.getAttribute('aria-activedescendant')).toBe(
       secondSortedRowCells[0]?.getAttribute('id'),
     );
+    expect(secondSortedRowCells[0]?.getAttribute('data-cinder-active')).toBe('true');
+    expect(secondSortedRowCells[0]?.getAttribute('aria-selected')).toBe('true');
   });
 
   test('header button arrow keys do not move the grid active descendant', async () => {
