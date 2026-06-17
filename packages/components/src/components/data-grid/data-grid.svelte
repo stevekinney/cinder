@@ -167,6 +167,7 @@
     getInitialWidth: () => measuredGridWidth ?? 1_000,
     getScrollPaddingStart: () => getHeaderHeight(),
     getScrollPaddingInlineStart: () => columnModel.leftPinnedWidth,
+    getScrollPaddingInlineEnd: () => columnModel.rightPinnedWidth,
   });
   const observeHeaderSize: Attachment<HTMLElement> = (node) => {
     if (typeof ResizeObserver === 'undefined') return;
