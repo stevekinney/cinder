@@ -19,23 +19,43 @@
 </script>
 
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
-  import { getMessages } from '../utilities';
+  import { getMessages, pairToolCallsWithResults } from '../utilities';
   import { ChatMessage, ChatDateSeparator } from '../message';
   import { ChatInput } from '../input';
   import { DEFAULT_SCROLL_CONFIGURATION } from './scroll-utilities';
   import { useChatScrollState } from './use-chat-scroll-state.svelte';
   import { useChatUnreadState } from './use-chat-unread-state.svelte';
   import { useChatKeyboardNav } from './use-chat-keyboard-nav.svelte';
-  import { useChatMessageGroups } from './use-chat-message-groups.svelte';
   import { useChatSearch } from './use-chat-search.svelte';
   import { useIntersection } from '../../../utilities/use-intersection.svelte.ts';
   import ChatJumpControls from './chat-jump-controls.svelte';
+  import ChatHistoryTrigger from './chat-history-trigger.svelte';
   import ChatStatusAnnouncer from './chat-status-announcer.svelte';
   import ChatSearchBar from './chat-search-bar.svelte';
+  import {
+    buildChatRenderRows,
+    buildMessagesWithDateSeparators,
+    chatRenderRowKey,
+    findPairedToolResultIds,
+    findRenderRowIndexByMessageId,
+    type ChatRenderRow,
+  } from './use-chat-message-groups.svelte.ts';
+  import { ChatVirtualizer } from './use-chat-virtualizer.svelte.ts';
+  import type { VirtualItem } from '../../../_internal/virtual-item.ts';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
+  type ChatMessageRenderRow = Extract<ChatRenderRow, { type: 'message' }>;
+  type PendingHistoryScroll = {
+    previousFirstMessageId: string | null;
+    previousFirstTranscriptMessageId: string | null;
+    previousFirstMessageViewportOffset: number;
+    previousCount: number;
+    previousScrollTop: number;
+    previousScrollHeight: number;
+    previousTotalSize: number;
+  };
 
   let {
     id,
@@ -51,6 +71,13 @@
     streamingStatus,
     allowAttachments = true,
     allowSearch = true,
+    virtualized = false,
+    virtualizationEstimatedRowHeight = 88,
+    virtualizationOverscan = 3,
+    virtualizationInitialHeight = 640,
+    hasMoreHistory = true,
+    loadEarlierLabel = 'Load earlier messages',
+    loadingEarlierLabel = 'Loading earlier messages',
     allowCopy = true,
     allowEditing = true,
     allowRetry = true,
@@ -70,6 +97,7 @@
     onsubmit,
     onretry,
     onedit,
+    onloadhistory,
     onstopgenerating,
     onjumptolatest,
     onscrollstatechange,
@@ -96,6 +124,9 @@
       }
     | undefined;
   let searchBarRef = $state<{ focusInput: () => void } | undefined>(undefined);
+  let historyTriggerRef = $state<{ focus: (options?: FocusOptions) => void } | undefined>(
+    undefined,
+  );
 
   // Container-level drag-and-drop state for full-window drop zone
   let isContainerDragOver = $state(false);
@@ -103,12 +134,24 @@
   // Streaming state: separate from the Conversation to avoid re-rendering the message list
   let streamingContent = $state('');
   let streamingMessageId = $state<string | null>(null);
+  let streamingRowElement = $state<HTMLElement | null>(null);
 
   // Token buffer: accumulate tokens as an array; joined and flushed once per animation frame
   // to avoid O(n²) string work from calling join() on every push.
   let tokenBuffer: string[] = [];
   // rAF handle for batching token flushes and scroll throttling during streaming
   let streamingScrollRaf: number | undefined;
+
+  let isLoadingHistory = $state(false);
+  let adapterHasMoreHistory = $state<boolean | undefined>(undefined);
+  let historyAnnouncement = $state('');
+  let pendingHistoryScroll: PendingHistoryScroll | null = $state(null);
+  let deferredAdapterHasMoreHistory: boolean | null = null;
+  let historyAnchorMessageId = $state<string | null>(null);
+  let historyAnchorViewportOffset = $state<number | null>(null);
+  let historyAnchorRestoredScrollTop: number | null = null;
+  let previousHistoryConversationId: string | undefined;
+  let previousHistoryAdapter: ChatAdapter | undefined;
 
   // ==========================================================================
   // Initialize Helpers
@@ -117,7 +160,7 @@
   const scrollState = useChatScrollState({
     getBottomThreshold: () => bottomThreshold,
     getJumpThreshold: () => jumpThreshold,
-    onScrollStateChange: (event) => onscrollstatechange?.(event),
+    onScrollStateChange: handleScrollStateChange,
     onReachBottom: () => {
       if (unreadState.unreadCount > 0 || unreadState.hasNewMessageIndicator) {
         unreadState.markAllAsRead();
@@ -131,10 +174,18 @@
 
   const keyboardNav = useChatKeyboardNav({
     onJumpToLatest: handleJumpToLatest,
+    onJumpToStart: () => {
+      if (isVirtualized) {
+        chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
+      }
+    },
     getScrollBehavior: scrollState.getScrollBehavior,
+    getHistoryTrigger: () => (showHistoryTrigger ? historyTriggerRef : null),
+    onVirtualMessageNavigation: (direction) => navigateVirtualMessage(direction),
   });
 
   const messages = $derived(getMessages(conversation));
+  let previousAutoScrollMessageCount = getMessages(conversation).length;
 
   // The conversation id as a stable VALUE dependency. The subscribe effect keys
   // on this (not on `conversation.id` read inline) so a consumer passing a fresh
@@ -142,9 +193,113 @@
   // does not tear down and reopen the real-time subscription each render.
   const conversationId = $derived(conversation.id);
 
-  const messageGroups = useChatMessageGroups({
-    getMessages: () => messages,
+  const showTypingIndicator = $derived(isStreaming && !streamingMessageId);
+  const toolCallPairsByCallId = $derived.by(() => {
+    const toolCallPairs = pairToolCallsWithResults(messages);
+    const map = new Map<string, ReturnType<typeof pairToolCallsWithResults>>();
+    for (const pair of toolCallPairs) {
+      const existing = map.get(pair.call.id);
+      if (existing) {
+        existing.push(pair);
+      } else {
+        map.set(pair.call.id, [pair]);
+      }
+    }
+    return map;
   });
+  const renderRows = $derived.by(() => {
+    const pairedToolResultIds = findPairedToolResultIds(messages);
+    const messagesWithDates = buildMessagesWithDateSeparators(messages, pairedToolResultIds);
+    return buildChatRenderRows(messagesWithDates, {
+      firstUnreadId: unreadState.firstUnreadId,
+      showTypingIndicator,
+    });
+  });
+  let hasMounted = $state(false);
+  onMount(() => {
+    hasMounted = true;
+  });
+
+  const isVirtualized = $derived(virtualized && hasMounted && messages.length > 0);
+  const timelineResetIdentity = $derived(
+    `${conversationId}:${isVirtualized ? 'virtualized' : 'full'}`,
+  );
+  const staticRowsResetIdentity = $derived(messages[0]?.id ?? '');
+
+  const chatVirtualizer = new ChatVirtualizer({
+    getScrollElement: () => viewport,
+    getCount: () => (isVirtualized ? renderRows.length : 0),
+    getItemKey: (index) => chatRenderRowKey(renderRows[index] ?? { type: 'typing' }),
+    getEstimatedSize: () => virtualizationEstimatedRowHeight,
+    getOverscan: () => virtualizationOverscan,
+    getInitialHeight: () => virtualizationInitialHeight,
+    getScrollPaddingStart: () => virtualSpacerOffsetTop(),
+  });
+
+  const virtualRows = $derived.by(() => {
+    if (!isVirtualized) return [];
+
+    const renderedIndexes = new Set<number>();
+    const rows: { row: ChatRenderRow; virtualItem: VirtualItem }[] = [];
+    for (const virtualItem of chatVirtualizer.virtualItems) {
+      const row = renderRows[virtualItem.index];
+      if (!row) continue;
+      renderedIndexes.add(virtualItem.index);
+      rows.push({ row, virtualItem: pinHistoryAnchorVirtualItem(row, virtualItem) });
+    }
+
+    if (streamingMessageId) {
+      const streamingIndex = findRenderRowIndexByMessageId(renderRows, streamingMessageId);
+      if (streamingIndex >= 0 && !renderedIndexes.has(streamingIndex)) {
+        const virtualItem = chatVirtualizer.getVirtualItem(streamingIndex);
+        if (!virtualItem) return rows;
+        rows.push({
+          row: renderRows[streamingIndex]!,
+          virtualItem,
+        });
+      }
+    }
+
+    if (historyAnchorMessageId) {
+      const historyAnchorIndex = findRenderRowIndexByMessageId(renderRows, historyAnchorMessageId);
+      if (historyAnchorIndex >= 0 && !renderedIndexes.has(historyAnchorIndex)) {
+        const virtualItem = chatVirtualizer.getVirtualItem(historyAnchorIndex);
+        if (!virtualItem) return rows;
+        const row = renderRows[historyAnchorIndex];
+        if (row) {
+          rows.push({
+            row,
+            virtualItem: pinHistoryAnchorVirtualItem(row, virtualItem),
+          });
+        }
+      }
+    }
+
+    rows.sort((a, b) => a.virtualItem.index - b.virtualItem.index);
+    return rows;
+  });
+
+  function pinHistoryAnchorVirtualItem(row: ChatRenderRow, virtualItem: VirtualItem): VirtualItem {
+    if (
+      historyAnchorViewportOffset === null ||
+      row.type !== 'message' ||
+      row.message.id !== historyAnchorMessageId
+    ) {
+      return virtualItem;
+    }
+
+    const start = Math.max(
+      0,
+      chatVirtualizer.scrollOffset -
+        chatVirtualizer.scrollPaddingStart +
+        historyAnchorViewportOffset,
+    );
+    return {
+      ...virtualItem,
+      start,
+      end: start + virtualItem.size,
+    };
+  }
 
   const searchState = useChatSearch({
     getMessages: () => messages,
@@ -155,6 +310,44 @@
   // ==========================================================================
 
   const viewportAttach = $derived(viewportAttachment ?? noopAttachment);
+  const effectiveHasMoreHistory = $derived(adapterHasMoreHistory ?? hasMoreHistory);
+  const hasHistoryLoader = $derived(
+    onloadhistory !== undefined || adapter?.loadOlderMessages !== undefined,
+  );
+  const showHistoryTrigger = $derived(hasHistoryLoader && effectiveHasMoreHistory);
+
+  $effect(() => {
+    chatVirtualizer.setScrollElement(isVirtualized ? viewport : null);
+  });
+
+  $effect(() => {
+    for (const renderRow of renderRows) {
+      chatRenderRowKey(renderRow);
+    }
+    chatVirtualizer.syncOptions();
+  });
+
+  $effect(() => {
+    const currentConversationId = conversationId;
+    const currentAdapter = adapter;
+    if (previousHistoryConversationId === undefined) {
+      previousHistoryConversationId = currentConversationId;
+      previousHistoryAdapter = currentAdapter;
+      return;
+    }
+
+    if (
+      currentConversationId !== previousHistoryConversationId ||
+      currentAdapter !== previousHistoryAdapter
+    ) {
+      adapterHasMoreHistory = undefined;
+      pendingHistoryScroll = null;
+      deferredAdapterHasMoreHistory = null;
+      clearHistoryAnchor();
+    }
+    previousHistoryConversationId = currentConversationId;
+    previousHistoryAdapter = currentAdapter;
+  });
 
   // A retry/edit affordance shows when EITHER a callback OR the adapter can
   // handle it — so an adapter-only consumer (no `onretry`/`onedit`) still gets
@@ -167,10 +360,12 @@
   // `viewport` or `bottomThreshold` actually change — NOT on every chat re-render
   // (which is frequent during streaming and would otherwise make bottom detection flicker).
   const sentinelAttach = $derived(
-    useIntersection(scrollState.handleSentinelEntry, {
-      root: viewport,
-      rootMargin: `0px 0px ${bottomThreshold}px 0px`,
-    }),
+    isVirtualized
+      ? noopAttachment
+      : useIntersection(scrollState.handleSentinelEntry, {
+          root: viewport,
+          rootMargin: `0px 0px ${bottomThreshold}px 0px`,
+        }),
   );
 
   // Accessibility IDs
@@ -209,24 +404,195 @@
    * then use `tick()` to wait for DOM updates before scrolling.
    */
   $effect.pre(() => {
-    if (!viewport) return;
+    if (!viewport) return undefined;
 
     // Register dependency on message count
     const currentCount = messages.length;
+    const isTranscriptAppend = currentCount > previousAutoScrollMessageCount;
+    previousAutoScrollMessageCount = currentCount;
+    // Keep the scroll extent as a dependency so virtual row measurement can
+    // trigger one final bottom correction after the appended row is measured.
+    const currentScrollExtent = isVirtualized ? chatVirtualizer.scrollSize : viewport.scrollHeight;
+    void currentScrollExtent;
 
     // Read isAtBottom without making it a dependency (prevents loops)
     const atBottom = untrack(() => scrollState.isAtBottom);
 
     // Skip if user initiated a smooth scroll (e.g., via jump button)
-    if (scrollState.isUserScrolling) return;
+    if (scrollState.isUserScrolling) return undefined;
+
+    // Explicit history anchoring owns scroll restoration while a prepend is pending
+    // and until the user scrolls away from the restored anchor.
+    const hasActiveHistoryAnchor = untrack(
+      () => pendingHistoryScroll !== null || historyAnchorMessageId !== null,
+    );
+    if (hasActiveHistoryAnchor) return undefined;
 
     if (atBottom && currentCount > 0) {
-      // Schedule scroll after DOM updates
-      tick().then(() => {
-        viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
+      let cancelled = false;
+      const waitForBottomTarget = isTranscriptAppend ? waitForLayoutFrame() : tick();
+      void waitForBottomTarget.then(() => {
+        if (cancelled || !viewport || pendingHistoryScroll || historyAnchorMessageId !== null) {
+          return;
+        }
+        if (isVirtualized) {
+          chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
+        } else {
+          viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
+        }
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    return undefined;
+  });
+
+  $effect.pre(() => {
+    if (!viewport || !pendingHistoryScroll) return;
+
+    const pending = pendingHistoryScroll;
+    messages.length;
+    messages[0]?.id;
+    void restorePendingHistoryScrollAfterLayout(pending);
+  });
+
+  async function waitForLayoutFrame(): Promise<void> {
+    await tick();
+    if (typeof requestAnimationFrame !== 'function') return;
+
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  }
+
+  async function restorePendingHistoryScrollAfterLayout(
+    pending: PendingHistoryScroll,
+  ): Promise<boolean> {
+    await waitForLayoutFrame();
+    if (pendingHistoryScroll !== pending) return false;
+    return restoreHistoryScroll(pending);
+  }
+
+  function restoreHistoryScroll(pending: PendingHistoryScroll): boolean {
+    if (!viewport) return false;
+
+    const currentFirstMessageId = messages[0]?.id ?? null;
+    const currentCount = messages.length;
+    if (
+      currentCount <= pending.previousCount ||
+      currentFirstMessageId === pending.previousFirstTranscriptMessageId
+    ) {
+      return false;
+    }
+
+    const prependedCount = currentCount - pending.previousCount;
+    pendingHistoryScroll = null;
+    finishDeferredAdapterHistoryLoading();
+    if (isVirtualized) {
+      setHistoryAnchor(pending);
+    }
+
+    if (isVirtualized) {
+      const newTotalSize = chatVirtualizer.scrollSize;
+      const delta = newTotalSize - pending.previousTotalSize;
+      const targetScrollTop = pending.previousScrollTop + delta;
+      chatVirtualizer.scrollToOffset(targetScrollTop, { behavior: 'instant' });
+      historyAnchorRestoredScrollTop = chatVirtualizer.scrollOffset;
+    } else {
+      clearHistoryAnchor();
+      const newTotalSize = viewport.scrollHeight;
+      const delta = newTotalSize - pending.previousScrollHeight;
+      viewport.scrollTo({
+        top: pending.previousScrollTop + delta,
+        behavior: 'instant',
       });
     }
-  });
+    const announcement =
+      prependedCount === 1
+        ? '1 earlier message loaded.'
+        : `${prependedCount} earlier messages loaded.`;
+    historyAnnouncement = announcement;
+    setTimeout(() => {
+      if (historyAnnouncement === announcement) {
+        historyAnnouncement = '';
+      }
+    }, 1000);
+    void tick().then(() => {
+      focusAfterHistoryRestore(pending);
+    });
+    return true;
+  }
+
+  function setHistoryAnchor(pending: PendingHistoryScroll): void {
+    historyAnchorMessageId = pending.previousFirstMessageId;
+    historyAnchorViewportOffset = pending.previousFirstMessageViewportOffset;
+    historyAnchorRestoredScrollTop = null;
+  }
+
+  function clearHistoryAnchor(): void {
+    historyAnchorMessageId = null;
+    historyAnchorViewportOffset = null;
+    historyAnchorRestoredScrollTop = null;
+  }
+
+  function clearHistoryAnchorAfterScroll(scrollTop: number): void {
+    if (
+      historyAnchorMessageId !== null &&
+      historyAnchorRestoredScrollTop !== null &&
+      Math.abs(scrollTop - historyAnchorRestoredScrollTop) > 2
+    ) {
+      clearHistoryAnchor();
+    }
+  }
+
+  function handleScrollStateChange(event: {
+    isAtBottom: boolean;
+    scrollTop: number;
+    scrollHeight: number;
+  }): void {
+    clearHistoryAnchorAfterScroll(event.scrollTop);
+
+    onscrollstatechange?.(event);
+  }
+
+  function virtualSpacerOffsetTop(): number {
+    if (!viewport) return 0;
+
+    const spacer = viewport.querySelector<HTMLElement>('.chat-virtual-spacer');
+    if (!spacer) return 0;
+
+    const offsetTop = spacer.offsetTop;
+    const rectOffset =
+      spacer.getBoundingClientRect().top -
+      viewport.getBoundingClientRect().top +
+      viewport.scrollTop;
+
+    if (offsetTop === 0 && Math.abs(rectOffset - viewport.scrollTop) < 1) {
+      return 0;
+    }
+
+    return Math.max(0, offsetTop || rectOffset);
+  }
+
+  function focusAfterHistoryRestore(pending: PendingHistoryScroll): void {
+    if (!viewport) return;
+
+    if (showHistoryTrigger && historyTriggerRef) {
+      historyTriggerRef.focus({ preventScroll: true });
+      return;
+    }
+
+    const anchor = pending.previousFirstMessageId
+      ? viewport.querySelector<HTMLElement>(
+          `#message-${CSS.escape(pending.previousFirstMessageId)}`,
+        )
+      : null;
+    const target = anchor ?? viewport.querySelector<HTMLElement>('.chat-message');
+    target?.focus({ preventScroll: true });
+  }
 
   // ==========================================================================
   // Process Messages for Unread Detection
@@ -304,12 +670,37 @@
   // ==========================================================================
 
   const scrollAttachment = scrollState.createScrollAttachment();
+  const historyAnchorScrollAttachment = $derived<Attachment<HTMLElement>>(
+    historyAnchorMessageId === null || historyAnchorRestoredScrollTop === null
+      ? noopAttachment
+      : (node) => {
+          const handleScroll = () => clearHistoryAnchorAfterScroll(node.scrollTop);
+          node.addEventListener('scroll', handleScroll, { passive: true });
 
+          return () => node.removeEventListener('scroll', handleScroll);
+        },
+  );
   // ==========================================================================
   // Actions
   // ==========================================================================
 
   function handleJumpToLatest(): void {
+    if (isVirtualized) {
+      chatVirtualizer.scrollToIndex(Math.max(0, renderRows.length - 1), {
+        align: 'end',
+        behavior: scrollState.getScrollBehavior(),
+      });
+      unreadState.markAllAsRead();
+      onjumptolatest?.();
+      tick().then(() => {
+        const lastMessage = viewport?.querySelector<HTMLElement>(
+          `.chat-message-wrapper:last-of-type .chat-message`,
+        );
+        lastMessage?.focus();
+      });
+      return;
+    }
+
     scrollState.jumpToLatest(viewport, () => {
       unreadState.markAllAsRead();
       onjumptolatest?.();
@@ -376,8 +767,122 @@
     // Auto-scroll after sending
     scrollState.setIsAtBottom(true);
     tick().then(() => {
-      viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
+      if (isVirtualized) {
+        chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
+      } else {
+        viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
+      }
     });
+  }
+
+  function captureHistoryScroll(): void {
+    const previousFirstTranscriptMessageId = messages[0]?.id ?? null;
+    const visibleAnchor = firstVisibleRenderedMessage();
+    const previousFirstMessageId = visibleAnchor?.messageId ?? previousFirstTranscriptMessageId;
+    const previousScrollTop = viewport?.scrollTop ?? chatVirtualizer.scrollOffset;
+    const previousFirstMessageElement =
+      previousFirstMessageId !== null ? renderedMessageById(previousFirstMessageId) : null;
+    const previousFirstMessageViewportOffset =
+      visibleAnchor?.viewportOffset ??
+      (previousFirstMessageElement && viewport
+        ? previousFirstMessageElement.getBoundingClientRect().top -
+          viewport.getBoundingClientRect().top
+        : 0);
+    pendingHistoryScroll = {
+      previousFirstMessageId,
+      previousFirstTranscriptMessageId,
+      previousFirstMessageViewportOffset,
+      previousCount: messages.length,
+      previousScrollTop,
+      previousScrollHeight: viewport?.scrollHeight ?? 0,
+      previousTotalSize: chatVirtualizer.scrollSize,
+    };
+  }
+
+  async function settlePendingHistoryScroll(pending: PendingHistoryScroll): Promise<void> {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      if (pendingHistoryScroll !== pending) return;
+      if (await restorePendingHistoryScrollAfterLayout(pending)) return;
+    }
+
+    if (pendingHistoryScroll === pending) {
+      pendingHistoryScroll = null;
+      finishDeferredAdapterHistoryLoading();
+    }
+  }
+
+  function finishDeferredAdapterHistoryLoading(): void {
+    if (deferredAdapterHasMoreHistory === null) return;
+
+    adapterHasMoreHistory = deferredAdapterHasMoreHistory;
+    deferredAdapterHasMoreHistory = null;
+    isLoadingHistory = false;
+  }
+
+  function historyTranscriptChanged(pending: PendingHistoryScroll): boolean {
+    return (
+      messages.length > pending.previousCount ||
+      messages[0]?.id !== pending.previousFirstTranscriptMessageId
+    );
+  }
+
+  async function handleLoadHistory(): Promise<void> {
+    if (isLoadingHistory || !showHistoryTrigger) return;
+
+    isLoadingHistory = true;
+    captureHistoryScroll();
+    const pending = pendingHistoryScroll;
+    if (pending === null) {
+      isLoadingHistory = false;
+      return;
+    }
+
+    if (adapter?.loadOlderMessages) {
+      let nextHasMoreHistory: boolean | undefined;
+      try {
+        const result = await adapter.loadOlderMessages(conversationId);
+        nextHasMoreHistory = result.hasMore;
+      } catch (error) {
+        pendingHistoryScroll = null;
+        isLoadingHistory = false;
+        onadaptererror?.({ command: 'loadOlderMessages', error });
+        return;
+      }
+
+      const transcriptChanged = historyTranscriptChanged(pending);
+      if (isVirtualized && !transcriptChanged) {
+        deferredAdapterHasMoreHistory = nextHasMoreHistory ?? null;
+        await tick();
+        if (historyTranscriptChanged(pending)) {
+          await settlePendingHistoryScroll(pending);
+        } else if (pendingHistoryScroll === pending) {
+          pendingHistoryScroll = null;
+          finishDeferredAdapterHistoryLoading();
+        } else {
+          finishDeferredAdapterHistoryLoading();
+        }
+        return;
+      }
+
+      if (isVirtualized || transcriptChanged) {
+        await settlePendingHistoryScroll(pending);
+      } else {
+        pendingHistoryScroll = null;
+      }
+      adapterHasMoreHistory = nextHasMoreHistory;
+      isLoadingHistory = false;
+      return;
+    }
+
+    try {
+      await onloadhistory?.();
+      await settlePendingHistoryScroll(pending);
+    } catch (error) {
+      pendingHistoryScroll = null;
+      throw error;
+    } finally {
+      isLoadingHistory = false;
+    }
   }
 
   function handleRetry(messageId: string): void {
@@ -460,18 +965,108 @@
     keyboardNav.handleKeyDown(event, viewport);
   }
 
+  function messageIdFromElement(element: HTMLElement): string | null {
+    if (!element.id.startsWith('message-')) return null;
+    return element.id.slice('message-'.length);
+  }
+
+  function renderedMessageById(messageId: string): HTMLElement | null {
+    return viewport?.querySelector<HTMLElement>(`#message-${CSS.escape(messageId)}`) ?? null;
+  }
+
+  function firstVisibleRenderedMessage(): { messageId: string; viewportOffset: number } | null {
+    if (!viewport) return null;
+
+    const viewportRect = viewport.getBoundingClientRect();
+    for (const message of viewport.querySelectorAll<HTMLElement>('.chat-message')) {
+      const messageId = messageIdFromElement(message);
+      if (!messageId) continue;
+
+      const rect = message.getBoundingClientRect();
+      if (rect.bottom <= viewportRect.top || rect.top >= viewportRect.bottom) continue;
+
+      return {
+        messageId,
+        viewportOffset: rect.top - viewportRect.top,
+      };
+    }
+
+    return null;
+  }
+
+  async function focusVirtualMessage(messageId: string): Promise<void> {
+    const existing = renderedMessageById(messageId);
+    if (existing) {
+      existing.focus();
+      existing.scrollIntoView({ behavior: scrollState.getScrollBehavior(), block: 'nearest' });
+      return;
+    }
+
+    const targetIndex = findRenderRowIndexByMessageId(renderRows, messageId);
+    if (targetIndex < 0) return;
+
+    chatVirtualizer.scrollToIndex(targetIndex, {
+      align: 'auto',
+      behavior: scrollState.getScrollBehavior(),
+    });
+    await tick();
+    const target = renderedMessageById(messageId);
+    target?.focus();
+    target?.scrollIntoView({ behavior: scrollState.getScrollBehavior(), block: 'nearest' });
+  }
+
+  function navigateVirtualMessage(direction: 'next' | 'previous'): boolean {
+    if (!isVirtualized || !viewport) return false;
+    const activeElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!activeElement?.classList.contains('chat-message')) return false;
+
+    const currentMessageId = messageIdFromElement(activeElement);
+    if (!currentMessageId) return false;
+
+    const currentIndex = findRenderRowIndexByMessageId(renderRows, currentMessageId);
+    if (currentIndex < 0) return false;
+
+    const step = direction === 'next' ? 1 : -1;
+    for (
+      let targetIndex = currentIndex + step;
+      targetIndex >= 0 && targetIndex < renderRows.length;
+      targetIndex += step
+    ) {
+      const targetRow = renderRows[targetIndex];
+      if (targetRow?.type !== 'message') continue;
+
+      void focusVirtualMessage(targetRow.message.id);
+      return true;
+    }
+
+    return true;
+  }
+
   // Scroll to the currently matched message when the current match changes
   $effect(() => {
     const match = searchState.currentMatch;
     if (!match || !viewport) return;
 
-    const messageElement = viewport.querySelector<HTMLElement>(
-      `#message-${CSS.escape(match.message.id)}`,
-    );
+    void scrollCurrentSearchMatch(match.message.id);
+  });
+
+  async function scrollCurrentSearchMatch(messageId: string): Promise<void> {
+    if (!viewport) return;
+
+    if (isVirtualized) {
+      const targetIndex = findRenderRowIndexByMessageId(renderRows, messageId);
+      if (targetIndex >= 0) {
+        chatVirtualizer.scrollToIndex(targetIndex, { align: 'center', behavior: 'auto' });
+        await tick();
+      }
+    }
+
+    const messageElement = viewport.querySelector<HTMLElement>(`#message-${CSS.escape(messageId)}`);
     if (messageElement) {
       messageElement.scrollIntoView({ behavior: 'auto', block: 'nearest' });
     }
-  });
+  }
 
   // ==========================================================================
   // Container-Level Drag and Drop
@@ -531,11 +1126,21 @@
   // ==========================================================================
 
   export function scrollToBottom(): void {
-    scrollState.scrollToBottom(viewport);
+    if (isVirtualized) {
+      chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, {
+        behavior: scrollState.getScrollBehavior(),
+      });
+    } else {
+      scrollState.scrollToBottom(viewport);
+    }
   }
 
   export function scrollToTop(): void {
-    scrollState.scrollToTop(viewport);
+    if (isVirtualized) {
+      chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
+    } else {
+      scrollState.scrollToTop(viewport);
+    }
   }
 
   export function focusInput(): void {
@@ -576,9 +1181,20 @@
         streamingScrollRaf = undefined;
         // Flush: join the entire buffer once per frame
         streamingContent = tokenBuffer.join('');
+        if (streamingRowElement) {
+          tick().then(() => {
+            if (streamingRowElement) {
+              chatVirtualizer.measureElementNode(streamingRowElement);
+            }
+          });
+        }
         // Auto-scroll if at bottom
         if (scrollState.isAtBottom && viewport) {
-          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
+          if (isVirtualized) {
+            chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
+          } else {
+            viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
+          }
         }
       });
     }
@@ -597,6 +1213,30 @@
     streamingMessageId = null;
     streamingContent = '';
     tokenBuffer = [];
+  }
+
+  function virtualizedSpacerStyle(): string {
+    return `height: ${chatVirtualizer.totalSize}px; position: relative; width: 100%;`;
+  }
+
+  function virtualizedRowStyle(virtualItem: VirtualItem): string {
+    return `position: absolute; inset-inline: 0; top: 0; transform: translateY(${virtualItem.start}px);`;
+  }
+
+  function virtualRowAttachment(row: ChatRenderRow): Attachment<HTMLElement> {
+    return (node) => {
+      const detachMeasurement = chatVirtualizer.measureElement(node);
+      if (row.type === 'message' && row.message.id === streamingMessageId) {
+        streamingRowElement = node;
+      }
+
+      return () => {
+        detachMeasurement?.();
+        if (streamingRowElement === node) {
+          streamingRowElement = null;
+        }
+      };
+    };
   }
 </script>
 
@@ -638,126 +1278,162 @@
     />
   {/if}
 
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <div
-    bind:this={viewport}
-    id={timelineId}
-    class="chat-timeline"
-    role="log"
-    aria-label="Messages"
-    aria-describedby={statusId}
-    aria-live="polite"
-    aria-relevant="additions"
-    tabindex="0"
-    {@attach scrollAttachment}
-    {@attach viewportAttach}
-  >
-    {#if messages.length === 0}
-      {#if empty}
-        {@render empty()}
+  {#snippet renderTypingIndicator()}
+    <div
+      class="chat-typing-indicator"
+      role="status"
+      aria-label={streamingStatus ?? 'Assistant is typing'}
+    >
+      {#if streamingStatus}
+        <span class="chat-typing-status">{streamingStatus}</span>
       {:else}
-        <div class="chat-empty" role="status">
-          <p>No messages yet</p>
-          {#if emptyPrompts && emptyPrompts.length > 0}
-            <div class="chat-empty-prompts" role="group" aria-label="Suggested prompts">
-              {#each emptyPrompts as prompt, index (index)}
-                <button
-                  type="button"
-                  class="chat-empty-prompt"
-                  onclick={() => handlePromptClick(prompt)}
-                >
-                  {prompt}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
+        <span class="chat-typing-dot" aria-hidden="true"></span>
+        <span class="chat-typing-dot" aria-hidden="true"></span>
+        <span class="chat-typing-dot" aria-hidden="true"></span>
       {/if}
+    </div>
+  {/snippet}
+
+  {#snippet renderMessageRow(messageRow: ChatMessageRenderRow)}
+    {@const message = messageRow.message}
+    {@const pairs = message.toolCall?.id
+      ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
+      : []}
+    {@const isStreamingMessage = streamingMessageId === message.id}
+    {@const isCurrentSearchMatch =
+      searchState.isOpen &&
+      searchState.currentMatch !== null &&
+      searchState.currentMatch.message.id === message.id}
+
+    <!-- The built-in row. Wrapped in a snippet so the optional `row`
+         override can render it (inversion of control) or replace it. The
+         per-part `messagePart` override flows through into the message's
+         parts renderer. -->
+    {#snippet renderDefaultRow()}
+      <ChatMessage
+        {message}
+        toolCallPairs={pairs}
+        {messagePart}
+        onretry={allowRetry && canRetry ? handleRetry : undefined}
+        onedit={allowEditing && canEdit ? handleEdit : undefined}
+        showDefaultActions={allowCopy}
+        {onexpandedchange}
+        streaming={isStreamingMessage}
+        overrideContent={isStreamingMessage ? streamingContent : undefined}
+        searchMatch={isCurrentSearchMatch}
+        tabindex={-1}
+      >
+        {#snippet actions()}
+          {#if messageActions}
+            {@render messageActions(message)}
+          {/if}
+        {/snippet}
+        {#snippet status()}
+          {#if messageStatus}
+            {@render messageStatus(message)}
+          {/if}
+        {/snippet}
+      </ChatMessage>
+    {/snippet}
+
+    {#if row}
+      {@render row(message, renderDefaultRow)}
     {:else}
-      {#each messageGroups.messagesWithDates as item, index (item.type === 'date' ? `date-${item.date.toISOString()}` : `msg-${item.message.id}`)}
-        {#if item.type === 'date'}
-          <ChatDateSeparator date={item.date} />
-        {:else}
-          {@const message = item.message}
-          {@const isFirstUnread = message.id === unreadState.firstUnreadId}
-          {@const pairs = message.toolCall?.id
-            ? (messageGroups.toolCallPairsByCallId.get(message.toolCall.id) ?? [])
-            : []}
+      {@render renderDefaultRow()}
+    {/if}
+  {/snippet}
 
-          {#if isFirstUnread && index > 0}
-            <div class="chat-unread-divider" role="separator" aria-label="New messages below">
-              <span class="chat-unread-divider-line" aria-hidden="true"></span>
-              <span class="chat-unread-divider-label">New</span>
-              <span class="chat-unread-divider-line" aria-hidden="true"></span>
-            </div>
-          {/if}
+  {#snippet renderChatRow(renderRow: ChatRenderRow)}
+    {#if renderRow.type === 'date'}
+      <ChatDateSeparator date={renderRow.date} />
+    {:else if renderRow.type === 'unread-divider'}
+      <div class="chat-unread-divider" role="separator" aria-label="New messages below">
+        <span class="chat-unread-divider-line" aria-hidden="true"></span>
+        <span class="chat-unread-divider-label">New</span>
+        <span class="chat-unread-divider-line" aria-hidden="true"></span>
+      </div>
+    {:else if renderRow.type === 'typing'}
+      {@render renderTypingIndicator()}
+    {:else}
+      {@render renderMessageRow(renderRow)}
+    {/if}
+  {/snippet}
 
-          {@const isStreamingMessage = streamingMessageId === message.id}
-          {@const isCurrentSearchMatch =
-            searchState.isOpen &&
-            searchState.currentMatch !== null &&
-            searchState.currentMatch.message.id === message.id}
-
-          <!-- The built-in row. Wrapped in a snippet so the optional `row`
-               override can render it (inversion of control) or replace it. The
-               per-part `messagePart` override flows through into the message's
-               parts renderer. -->
-          {#snippet renderDefaultRow()}
-            <ChatMessage
-              {message}
-              toolCallPairs={pairs}
-              {messagePart}
-              onretry={allowRetry && canRetry ? handleRetry : undefined}
-              onedit={allowEditing && canEdit ? handleEdit : undefined}
-              showDefaultActions={allowCopy}
-              {onexpandedchange}
-              streaming={isStreamingMessage}
-              overrideContent={isStreamingMessage ? streamingContent : undefined}
-              searchMatch={isCurrentSearchMatch}
-              tabindex={-1}
-            >
-              {#snippet actions()}
-                {#if messageActions}
-                  {@render messageActions(message)}
-                {/if}
-              {/snippet}
-              {#snippet status()}
-                {#if messageStatus}
-                  {@render messageStatus(message)}
-                {/if}
-              {/snippet}
-            </ChatMessage>
-          {/snippet}
-
-          {#if row}
-            {@render row(message, renderDefaultRow)}
-          {:else}
-            {@render renderDefaultRow()}
-          {/if}
-        {/if}
-      {/each}
-
-      <!-- Typing indicator when streaming but no content yet, or status label -->
-      {#if isStreaming && !streamingMessageId}
-        <div
-          class="chat-typing-indicator"
-          role="status"
-          aria-label={streamingStatus ?? 'Assistant is typing'}
-        >
-          {#if streamingStatus}
-            <span class="chat-typing-status">{streamingStatus}</span>
-          {:else}
-            <span class="chat-typing-dot" aria-hidden="true"></span>
-            <span class="chat-typing-dot" aria-hidden="true"></span>
-            <span class="chat-typing-dot" aria-hidden="true"></span>
-          {/if}
-        </div>
+  {#key timelineResetIdentity}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div
+      bind:this={viewport}
+      id={timelineId}
+      class="chat-timeline"
+      role="log"
+      aria-label="Messages"
+      aria-describedby={statusId}
+      aria-live={isVirtualized ? 'off' : 'polite'}
+      aria-relevant={isVirtualized ? undefined : 'additions'}
+      data-cinder-virtualized={isVirtualized ? '' : undefined}
+      tabindex="0"
+      {@attach scrollAttachment}
+      {@attach historyAnchorScrollAttachment}
+      {@attach viewportAttach}
+    >
+      {#if showHistoryTrigger}
+        <ChatHistoryTrigger
+          bind:this={historyTriggerRef}
+          loading={isLoadingHistory}
+          label={loadEarlierLabel}
+          loadingLabel={loadingEarlierLabel}
+          onload={() => void handleLoadHistory()}
+        />
       {/if}
 
-      <!-- Bottom sentinel for IntersectionObserver -->
-      <div class="chat-bottom-sentinel" aria-hidden="true" {@attach sentinelAttach}></div>
-    {/if}
-  </div>
+      {#if messages.length === 0}
+        {#if empty}
+          {@render empty()}
+        {:else}
+          <div class="chat-empty" role="status">
+            <p>No messages yet</p>
+            {#if emptyPrompts && emptyPrompts.length > 0}
+              <div class="chat-empty-prompts" role="group" aria-label="Suggested prompts">
+                {#each emptyPrompts as prompt, index (index)}
+                  <button
+                    type="button"
+                    class="chat-empty-prompt"
+                    onclick={() => handlePromptClick(prompt)}
+                  >
+                    {prompt}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
+      {:else}
+        {#if isVirtualized}
+          <div class="chat-virtual-spacer" style={virtualizedSpacerStyle()}>
+            {#each virtualRows as virtualRow (chatRenderRowKey(virtualRow.row))}
+              <div
+                class="chat-virtual-row"
+                data-cinder-virtual-index={virtualRow.virtualItem.index}
+                style={virtualizedRowStyle(virtualRow.virtualItem)}
+                {@attach virtualRowAttachment(virtualRow.row)}
+              >
+                {@render renderChatRow(virtualRow.row)}
+              </div>
+            {/each}
+          </div>
+        {:else}
+          {#key staticRowsResetIdentity}
+            {#each renderRows as renderRow (chatRenderRowKey(renderRow))}
+              {@render renderChatRow(renderRow)}
+            {/each}
+          {/key}
+        {/if}
+
+        <!-- Bottom sentinel for IntersectionObserver -->
+        <div class="chat-bottom-sentinel" aria-hidden="true" {@attach sentinelAttach}></div>
+      {/if}
+    </div>
+  {/key}
 
   <!-- Input Area with Jump Buttons -->
   <div class="chat-input-wrapper">
@@ -790,7 +1466,7 @@
   <ChatStatusAnnouncer
     {statusId}
     messageCount={messages.length}
-    announcerMessage={unreadState.announcerMessage}
+    announcerMessage={historyAnnouncement || unreadState.announcerMessage}
   />
 </div>
 
@@ -845,6 +1521,25 @@
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-3);
+  }
+
+  .chat-timeline[data-cinder-virtualized] {
+    display: block;
+    overflow-anchor: none;
+  }
+
+  .chat-timeline[data-cinder-virtualized] > :global(.chat-history-trigger) {
+    margin-block-end: var(--cinder-space-3);
+  }
+
+  .chat-virtual-spacer {
+    flex-shrink: 0;
+  }
+
+  .chat-virtual-row {
+    box-sizing: border-box;
+    width: 100%;
+    padding-block-end: var(--cinder-space-3);
   }
 
   /* Inset surface separates assistant bubbles (--cinder-surface) from the

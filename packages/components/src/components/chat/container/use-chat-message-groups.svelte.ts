@@ -28,6 +28,17 @@ export type MessageItem = {
 /** Union type for items in the messages-with-dates list */
 export type MessageWithDateItem = DateItem | MessageItem;
 
+export type UnreadDividerItem = {
+  type: 'unread-divider';
+  afterMessageId: string | null;
+};
+
+export type TypingItem = {
+  type: 'typing';
+};
+
+export type ChatRenderRow = MessageWithDateItem | UnreadDividerItem | TypingItem;
+
 // Re-export ToolCallPair type for convenience.
 export type { ToolCallPair } from '../conversation-model.ts';
 
@@ -41,6 +52,8 @@ export interface UseChatMessageGroupsOptions {
 export interface UseChatMessageGroupsReturn {
   /** Messages interleaved with date separators */
   readonly messagesWithDates: MessageWithDateItem[];
+  /** Render rows derived from messagesWithDates; call buildChatRenderRows with options for UI-only rows. */
+  readonly renderRows: ChatRenderRow[];
   /** Map of tool call ID to tool call pairs for O(1) lookup */
   readonly toolCallPairsByCallId: Map<string, ToolCallPair[]>;
   /** Tool result message IDs already represented inside a paired tool call group */
@@ -107,6 +120,54 @@ export function buildMessagesWithDateSeparators(
   return result;
 }
 
+export function buildChatRenderRows(
+  items: readonly MessageWithDateItem[],
+  options?: {
+    firstUnreadId?: string | null;
+    showTypingIndicator?: boolean;
+  },
+): ChatRenderRow[] {
+  const rows: ChatRenderRow[] = [];
+  const firstUnreadId = options?.firstUnreadId ?? null;
+  let previousMessageId: string | null = null;
+
+  for (const item of items) {
+    if (item.type === 'message') {
+      if (item.message.id === firstUnreadId) {
+        rows.push({ type: 'unread-divider', afterMessageId: previousMessageId });
+      }
+      previousMessageId = item.message.id;
+    }
+    rows.push(item);
+  }
+
+  if (options?.showTypingIndicator) {
+    rows.push({ type: 'typing' });
+  }
+
+  return rows;
+}
+
+export function chatRenderRowKey(row: ChatRenderRow): string {
+  switch (row.type) {
+    case 'date':
+      return `date-${row.date.toISOString()}`;
+    case 'message':
+      return `msg-${row.message.id}`;
+    case 'unread-divider':
+      return `unread-${row.afterMessageId ?? 'start'}`;
+    case 'typing':
+      return 'typing';
+  }
+}
+
+export function findRenderRowIndexByMessageId(
+  rows: readonly ChatRenderRow[],
+  messageId: string,
+): number {
+  return rows.findIndex((row) => row.type === 'message' && row.message.id === messageId);
+}
+
 /**
  * Creates reactive derived values for message grouping and tool call pairing.
  *
@@ -157,9 +218,14 @@ export function useChatMessageGroups(
     return buildMessagesWithDateSeparators(getMessages(), pairedToolResultIds);
   });
 
+  const renderRows = $derived.by(() => buildChatRenderRows(messagesWithDates));
+
   return {
     get messagesWithDates() {
       return messagesWithDates;
+    },
+    get renderRows() {
+      return renderRows;
     },
     get toolCallPairsByCallId() {
       return toolCallPairsByCallId;

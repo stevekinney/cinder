@@ -61,7 +61,7 @@ afterAll(() => {
   globalThis.IntersectionObserver = originalIntersectionObserver;
 });
 
-const { render, cleanup } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -76,6 +76,7 @@ const { default: Chat } = await import('./chat.svelte');
 // renders directly. Mirrors the immutable-append pattern (each call returns a
 // new snapshot with the message appended in order).
 type TestConversation = import('./conversation-model.ts').ConversationHistory;
+type TestMessage = import('./conversation-model.ts').Message;
 type TestRole = import('./conversation-model.ts').MessageRole;
 
 let testMessageCounter = 0;
@@ -131,6 +132,50 @@ function textSnippet(text: string) {
     render: () => `<span>${text}</span>`,
     setup: () => {},
   }));
+}
+
+function messageIdSnippet(attributeName: string) {
+  return createRawSnippet<[TestMessage]>((message) => ({
+    render: () => `<span data-${attributeName}="${message().id}">${message().id}</span>`,
+    setup: () => {},
+  }));
+}
+
+function replacingRowSnippet() {
+  return createRawSnippet<[TestMessage]>((message) => ({
+    render: () =>
+      `<article data-custom-row="${message().id}">Custom ${message().role} row</article>`,
+    setup: () => {},
+  }));
+}
+
+function createFileList(files: File[]): FileList {
+  const fileList = {
+    length: files.length,
+    item: (index: number) => files[index] ?? null,
+    [Symbol.iterator]: function* iterator() {
+      for (const file of files) yield file;
+    },
+  } as FileList & { [index: number]: File };
+
+  files.forEach((file, index) => {
+    fileList[index] = file;
+  });
+
+  return fileList;
+}
+
+function createDragEvent(type: string, files: File[], types: string[] = ['Files']): DragEvent {
+  const event = new Event(type, { bubbles: true, cancelable: true }) as DragEvent;
+  Object.defineProperty(event, 'dataTransfer', {
+    configurable: true,
+    value: {
+      files: createFileList(files),
+      types,
+      dropEffect: 'none',
+    },
+  });
+  return event;
 }
 
 describe('Chat — basic render', () => {
@@ -284,6 +329,173 @@ describe('Chat — slot composition', () => {
       'Explain like I am five',
     ]);
   });
+
+  test('starter prompts submit through the normal message path', async () => {
+    const submitted: string[] = [];
+    const conversation = createConversation({ id: 'conversation-prompt-submit' });
+    const { container } = render(Chat, {
+      props: {
+        id: 'chat-prompt-submit',
+        conversation,
+        emptyPrompts: ['Summarize this'],
+        onsubmit: (event: { message: { content: unknown } }) => {
+          submitted.push(String(event.message.content));
+        },
+      },
+    });
+
+    await fireEvent.click(container.querySelector<HTMLButtonElement>('.chat-empty-prompt')!);
+
+    expect(submitted).toEqual(['Summarize this']);
+  });
+
+  test('renders message action and status snippets inside the default row', () => {
+    let conversation = createConversation({ id: 'conversation-message-slots' });
+    conversation = appendAssistantMessage(conversation, 'Message with extra controls');
+    const messageId = conversation.ids.at(-1)!;
+
+    const { container } = render(Chat, {
+      props: {
+        id: 'chat-message-slots',
+        conversation,
+        messageActions: messageIdSnippet('message-action'),
+        messageStatus: messageIdSnippet('message-status'),
+      },
+    });
+
+    expect(container.querySelector(`[data-message-action="${messageId}"]`)).not.toBeNull();
+    expect(container.querySelector(`[data-message-status="${messageId}"]`)).not.toBeNull();
+    expect(container.textContent).toContain('Message with extra controls');
+  });
+
+  test('a row override can replace the built-in message row', () => {
+    let conversation = createConversation({ id: 'conversation-row-override' });
+    conversation = appendUserMessage(conversation, 'Original message text');
+    const messageId = conversation.ids.at(-1)!;
+
+    const { container } = render(Chat, {
+      props: {
+        id: 'chat-row-override',
+        conversation,
+        row: replacingRowSnippet(),
+      },
+    });
+
+    expect(container.querySelector(`[data-custom-row="${messageId}"]`)?.textContent).toBe(
+      'Custom user row',
+    );
+    expect(container.querySelector('.chat-message')).toBeNull();
+  });
+});
+
+describe('Chat — interactions', () => {
+  test('Ctrl+F opens in-chat search and refocuses it when already open', async () => {
+    let conversation = createConversation({ id: 'conversation-search' });
+    conversation = appendUserMessage(conversation, 'alpha one');
+    conversation = appendAssistantMessage(conversation, 'beta two');
+    const { container } = render(Chat, {
+      props: { id: 'chat-search', conversation },
+    });
+    const root = container.querySelector<HTMLElement>('.chat-container')!;
+
+    await fireEvent.keyDown(root, { key: 'f', ctrlKey: true });
+    const input = await waitFor(() => {
+      const searchInput = container.querySelector<HTMLInputElement>('.chat-search-input');
+      expect(searchInput).not.toBeNull();
+      return searchInput!;
+    });
+    expect(document.activeElement).toBe(input);
+
+    container.querySelector<HTMLElement>('.chat-timeline')?.focus();
+    expect(document.activeElement).not.toBe(input);
+    await fireEvent.keyDown(root, { key: 'f', ctrlKey: true });
+    expect(document.activeElement).toBe(input);
+  });
+
+  test('file drag overlay appears only for allowed file drags and clears on drop', async () => {
+    const conversation = createConversation({ id: 'conversation-drag' });
+    const { container } = render(Chat, {
+      props: { id: 'chat-drag', conversation },
+    });
+    const root = container.querySelector<HTMLElement>('.chat-container')!;
+    const file = new File(['hello'], 'note.txt', { type: 'text/plain' });
+
+    await fireEvent(root, createDragEvent('dragover', [], ['text/plain']));
+    expect(container.querySelector('.chat-drop-overlay')).toBeNull();
+
+    await fireEvent(root, createDragEvent('dragover', [file]));
+    expect(container.querySelector('.chat-drop-overlay')).not.toBeNull();
+
+    await fireEvent(root, createDragEvent('drop', [file]));
+    await waitFor(() => expect(container.querySelector('.chat-drop-overlay')).toBeNull());
+  });
+
+  test('file drag overlay stays hidden when attachments are disabled', async () => {
+    const conversation = createConversation({ id: 'conversation-drag-disabled' });
+    const { container } = render(Chat, {
+      props: { id: 'chat-drag-disabled', conversation, allowAttachments: false },
+    });
+    const root = container.querySelector<HTMLElement>('.chat-container')!;
+    const file = new File(['hello'], 'note.txt', { type: 'text/plain' });
+
+    await fireEvent(root, createDragEvent('dragover', [file]));
+
+    expect(container.querySelector('.chat-drop-overlay')).toBeNull();
+  });
+
+  test('non-file drops are ignored by the container-level file drop handler', async () => {
+    const conversation = createConversation({ id: 'conversation-non-file-drop' });
+    const { container } = render(Chat, {
+      props: { id: 'chat-non-file-drop', conversation },
+    });
+    const root = container.querySelector<HTMLElement>('.chat-container')!;
+    const file = new File(['hello'], 'note.txt', { type: 'text/plain' });
+    const dropEvent = createDragEvent('drop', [file], ['text/plain']);
+
+    await fireEvent(root, dropEvent);
+
+    expect(container.querySelector('.chat-drop-overlay')).toBeNull();
+    expect(dropEvent.defaultPrevented).toBe(false);
+  });
+
+  test('renders streaming status text while waiting for a streaming message id', () => {
+    let conversation = createConversation({ id: 'conversation-streaming-status' });
+    conversation = appendUserMessage(conversation, 'Can you help?');
+    const { container } = render(Chat, {
+      props: {
+        id: 'chat-streaming-status',
+        conversation,
+        isStreaming: true,
+        streamingStatus: 'Thinking through the answer',
+      },
+    });
+
+    const indicator = container.querySelector('.chat-typing-indicator');
+    expect(indicator?.getAttribute('aria-label')).toBe('Thinking through the answer');
+    expect(indicator?.textContent).toContain('Thinking through the answer');
+  });
+
+  test('stop generating targets the latest assistant message', async () => {
+    let conversation = createConversation({ id: 'conversation-stop' });
+    conversation = appendAssistantMessage(conversation, 'Earlier assistant message');
+    conversation = appendUserMessage(conversation, 'Follow up');
+    conversation = appendAssistantMessage(conversation, 'Latest assistant message');
+    const latestAssistantId = conversation.ids.at(-1)!;
+    const stopped: string[] = [];
+
+    const { getByLabelText } = render(Chat, {
+      props: {
+        id: 'chat-stop',
+        conversation,
+        isStreaming: true,
+        onstopgenerating: (event: { messageId: string }) => stopped.push(event.messageId),
+      },
+    });
+
+    await fireEvent.click(getByLabelText('Stop generating'));
+
+    expect(stopped).toEqual([latestAssistantId]);
+  });
 });
 
 describe('Chat — imperative API forwarding', () => {
@@ -364,6 +576,41 @@ describe('Chat — imperative API forwarding', () => {
       api.focusInput();
     }).not.toThrow();
   });
+
+  test('forwarded scroll methods use the virtualized scroll path when enabled', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    let conversation = createConversation({ id: 'conversation-imperative-virtualized' });
+    for (let index = 0; index < 40; index += 1) {
+      conversation = appendAssistantMessage(conversation, `Virtualized message ${index}`);
+    }
+    const instance = mount(Chat, {
+      target,
+      props: {
+        id: 'chat-imperative-virtualized',
+        conversation,
+        virtualized: true,
+        virtualizationInitialHeight: 160,
+        virtualizationEstimatedRowHeight: 40,
+      },
+    });
+    const api = instance as unknown as ChatImperative;
+
+    try {
+      await waitFor(() =>
+        expect(
+          target.querySelector('.chat-timeline')?.hasAttribute('data-cinder-virtualized'),
+        ).toBe(true),
+      );
+      expect(() => {
+        api.scrollToBottom();
+        api.scrollToTop();
+      }).not.toThrow();
+    } finally {
+      unmount(instance);
+      target.remove();
+    }
+  });
 });
 
 describe('Chat — SSR safety', () => {
@@ -437,9 +684,24 @@ describe('Chat — SSR safety', () => {
     // Absolute paths so the shared helper's dynamic import resolves them from
     // here, not relative to the helper's own module location.
     const threwMessage = await importWithoutDomGlobals([
+      resolve(import.meta.dir, 'container', 'chat.svelte'),
+      resolve(import.meta.dir, 'container', 'chat-history-trigger.svelte'),
       resolve(import.meta.dir, 'container', 'use-chat-keyboard-nav.svelte.ts'),
+      resolve(import.meta.dir, 'container', 'use-chat-message-groups.svelte.ts'),
       resolve(import.meta.dir, 'container', 'use-chat-scroll-state.svelte.ts'),
+      resolve(import.meta.dir, 'container', 'use-chat-virtualizer.svelte.ts'),
     ]);
     expect(threwMessage).toBeUndefined();
+  });
+
+  test('virtualization is gated behind mount state for SSR/client parity', async () => {
+    const { resolve } = await import('node:path');
+    const source = await Bun.file(resolve(import.meta.dir, 'container', 'chat.svelte')).text();
+
+    expect(source).toContain('let hasMounted = $state(false);');
+    expect(source).toContain('onMount(() => {');
+    expect(source).toContain(
+      'const isVirtualized = $derived(virtualized && hasMounted && messages.length > 0);',
+    );
   });
 });

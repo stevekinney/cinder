@@ -121,6 +121,49 @@ end_of_record
     expect(computeCoverageAverages(records).functions).toBe(75);
   });
 
+  test('excludes hydration-safety and legacy SSR probe artifacts from the aggregate', () => {
+    const withArtifacts = `${lcovFixture}TN:
+SF:tmp/hydration-safety/client-12345-1780000000000-abc123.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:tmp/hydration-safety/server-12345-1780000000000-def456.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/resizable-panels/.cinder-ssr-test-12345-1780000000000.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/chat/.cinder-ssr-chat-12345-1780000000000.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/chat/message/.cinder-ssr-parts-12345-1780000000000.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+`;
+
+    const records = parseLcovRecords(withArtifacts);
+    expect(records.map((record) => record.file)).toEqual(['covered.ts', 'partial.ts']);
+    expect(computeCoverageAverages(records).functions).toBe(75);
+  });
+
   test('does not exclude real source whose path merely contains the artifact prefix', () => {
     // The exclusion is anchored to the final path segment with the generated
     // `<pid>-<epoch>-<rand>.mjs` shape — a real `.ts` file under a directory that
@@ -136,6 +179,38 @@ end_of_record
     const records = parseLcovRecords(lookalike);
     expect(records.map((record) => record.file)).toContain(
       'src/.cinder-ssr-12345-1780000000000-abc123.mjs/real-module.ts',
+    );
+  });
+
+  test('does not exclude real source under lookalike hydration-safety directories', () => {
+    const lookalike = `${lcovFixture}TN:
+SF:src/tmp/hydration-safety/client-12345-1780000000000-abc123.mjs/real-module.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(lookalike);
+    expect(records.map((record) => record.file)).toContain(
+      'src/tmp/hydration-safety/client-12345-1780000000000-abc123.mjs/real-module.ts',
+    );
+  });
+
+  test('does not exclude source files that end like hydration-safety bundles outside package tmp', () => {
+    const lookalike = `${lcovFixture}TN:
+SF:src/tmp/hydration-safety/client-12345-1780000000000-abc123.mjs
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(lookalike);
+    expect(records.map((record) => record.file)).toContain(
+      'src/tmp/hydration-safety/client-12345-1780000000000-abc123.mjs',
     );
   });
 

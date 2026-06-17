@@ -18,7 +18,7 @@
 
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
-import { flushSync, mount, unmount } from 'svelte';
+import { createRawSnippet, flushSync, mount, tick, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 import type { ConversationHistory, Message, MessageInput } from '../conversation-model.ts';
@@ -51,9 +51,18 @@ afterAll(() => {
 });
 
 const { default: Chat } = await import('../chat.svelte');
+const { default: ChatHistoryPaginationFixture } =
+  await import('../chat-history-pagination-fixture.svelte');
 const { default: AdapterSwitchFixture } = await import('./chat-adapter-switch-fixture.svelte');
 
 type SwitchFixtureInstance = { setConversation: (next: ConversationHistory) => void };
+type ChatImperative = {
+  beginStreaming: (messageId: string) => void;
+  pushToken: (token: string) => void;
+  endStreaming: () => void;
+  scrollToBottom: () => void;
+  scrollToTop: () => void;
+};
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -104,6 +113,116 @@ function clickRetry(container: HTMLElement): void {
   if (!retry) throw new Error('retry button not found');
   retry.click();
   flushSync();
+}
+
+function message(
+  id: string,
+  role: Message['role'],
+  content: string,
+  position: number,
+  createdAt = '2026-06-02T00:00:00.000Z',
+): Message {
+  return {
+    id,
+    role,
+    content,
+    position,
+    createdAt,
+    metadata: {},
+    hidden: false,
+  };
+}
+
+function conversationFromMessages(id: string, messages: Message[]): ConversationHistory {
+  const createdAt = messages[0]?.createdAt ?? '2026-06-02T00:00:00.000Z';
+  return {
+    schemaVersion: 4,
+    id,
+    status: 'active',
+    metadata: {},
+    ids: messages.map((item) => item.id),
+    messages: Object.fromEntries(messages.map((item) => [item.id, item])),
+    createdAt,
+    updatedAt: messages.at(-1)?.createdAt ?? createdAt,
+  };
+}
+
+function manyMessages(count: number): Message[] {
+  return Array.from({ length: count }, (_item, index) =>
+    message(
+      `message-${index}`,
+      index % 2 === 0 ? 'user' : 'assistant',
+      `Message ${index}`,
+      index,
+      `2026-06-02T00:${String(index).padStart(2, '0')}:00.000Z`,
+    ),
+  );
+}
+
+function prependMessageToConversation(
+  conversation: ConversationHistory,
+  id: string,
+  content: string,
+): ConversationHistory {
+  const olderMessage = message(id, 'assistant', content, 0, '2026-06-01T11:59:00.000Z');
+  return {
+    ...conversation,
+    ids: [id, ...conversation.ids],
+    messages: {
+      [id]: olderMessage,
+      ...Object.fromEntries(
+        conversation.ids.map((messageId, index) => {
+          const existing = conversation.messages[messageId]!;
+          return [messageId, { ...existing, position: index + 1 }];
+        }),
+      ),
+    },
+  };
+}
+
+function messageIdSnippet(attributeName: string) {
+  return createRawSnippet<[Message]>((currentMessage) => ({
+    render: () =>
+      `<span data-${attributeName}="${currentMessage().id}">${currentMessage().id}</span>`,
+    setup: () => {},
+  }));
+}
+
+function replacingRowSnippet() {
+  return createRawSnippet<[Message]>((currentMessage) => ({
+    render: () =>
+      `<article data-custom-row="${currentMessage().id}">Custom ${currentMessage().role} row</article>`,
+    setup: () => {},
+  }));
+}
+
+function createFileList(files: File[]): FileList {
+  const fileList = {
+    length: files.length,
+    item: (index: number) => files[index] ?? null,
+    [Symbol.iterator]: function* iterator() {
+      for (const file of files) yield file;
+    },
+  } as FileList & { [index: number]: File };
+
+  files.forEach((file, index) => {
+    fileList[index] = file;
+  });
+
+  return fileList;
+}
+
+function createDragEvent(type: string, files: File[], types: string[] = ['Files']): DragEvent {
+  const event = new Event(type, { bubbles: true, cancelable: true }) as DragEvent;
+  Object.defineProperty(event, 'dataTransfer', {
+    configurable: true,
+    value: {
+      files: createFileList(files),
+      types,
+      dropEffect: 'none',
+    },
+  });
+  return event;
 }
 
 describe('ChatAdapter — command equivalence', () => {
@@ -436,6 +555,350 @@ describe('ChatAdapter — command equivalence', () => {
     expect(stopped).toEqual(['a1']);
 
     unmount(instance);
+  });
+
+  test('message action and status snippets render through the adapter-backed Chat surface', () => {
+    const conversation = conversationFromMessages('adapter-message-snippets', [
+      message('assistant-1', 'assistant', 'Message with adapter actions', 0),
+    ]);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-message-snippets',
+      conversation,
+      adapter: { sendMessage: async () => {} },
+      messageActions: messageIdSnippet('message-action'),
+      messageStatus: messageIdSnippet('message-status'),
+    });
+
+    expect(container.querySelector('[data-message-action="assistant-1"]')).not.toBeNull();
+    expect(container.querySelector('[data-message-status="assistant-1"]')).not.toBeNull();
+    expect(container.textContent).toContain('Message with adapter actions');
+
+    unmount(instance);
+  });
+
+  test('row override can replace a message row without changing the transcript snapshot', () => {
+    const conversation = conversationFromMessages('adapter-row-override', [
+      message('user-1', 'user', 'Original message text', 0),
+    ]);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-row-override',
+      conversation,
+      adapter: { sendMessage: async () => {} },
+      row: replacingRowSnippet(),
+    });
+
+    expect(container.querySelector('[data-custom-row="user-1"]')?.textContent).toBe(
+      'Custom user row',
+    );
+    expect(container.querySelector('.chat-message')).toBeNull();
+    expect(conversation.ids).toEqual(['user-1']);
+
+    unmount(instance);
+  });
+
+  test('virtualized rendering windows the DOM without shrinking the compatible transcript', () => {
+    const transcript = manyMessages(80);
+    const conversation = conversationFromMessages('adapter-virtualized', transcript);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-virtualized',
+      conversation,
+      adapter: { sendMessage: async () => {} },
+      virtualized: true,
+      virtualizationInitialHeight: 160,
+      virtualizationEstimatedRowHeight: 40,
+      virtualizationOverscan: 1,
+    });
+
+    expect(container.querySelector('.chat-timeline')?.hasAttribute('data-cinder-virtualized')).toBe(
+      true,
+    );
+    expect(container.querySelector('.chat-virtual-spacer')).not.toBeNull();
+    expect(container.querySelectorAll('.chat-message').length).toBeLessThan(transcript.length);
+    expect(conversation.ids).toHaveLength(80);
+
+    unmount(instance);
+  });
+
+  test('virtualized imperative streaming keeps the active stream mounted even when offscreen', () => {
+    const frames: FrameRequestCallback[] = [];
+    const originalRaf = globalThis.requestAnimationFrame;
+    const originalCancelRaf = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = ((handle: number) => {
+      if (handle >= 1 && handle <= frames.length) frames[handle - 1] = () => {};
+    }) as typeof cancelAnimationFrame;
+
+    const conversation = conversationFromMessages('adapter-virtualized-stream', manyMessages(60));
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-virtualized-stream',
+      conversation,
+      adapter: { sendMessage: async () => {} },
+      virtualized: true,
+      virtualizationInitialHeight: 120,
+      virtualizationEstimatedRowHeight: 36,
+      virtualizationOverscan: 1,
+    });
+    const api = instance as unknown as ChatImperative;
+
+    try {
+      expect(container.querySelector('#message-message-59')).toBeNull();
+
+      api.beginStreaming('message-59');
+      flushSync();
+      expect(container.querySelector('#message-message-59')).not.toBeNull();
+
+      api.pushToken('offscreen stream');
+      for (const frame of frames.splice(0)) frame(performance.now());
+      flushSync();
+      expect(container.textContent).toContain('offscreen stream');
+
+      api.scrollToBottom();
+      api.scrollToTop();
+      api.endStreaming();
+    } finally {
+      globalThis.requestAnimationFrame = originalRaf;
+      globalThis.cancelAnimationFrame = originalCancelRaf;
+      unmount(instance);
+    }
+  });
+
+  test('adapter history loading hides the trigger when the transport is exhausted', async () => {
+    const calls: string[] = [];
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async (conversationId) => {
+        calls.push(conversationId);
+        return { hasMore: false };
+      },
+    };
+    const conversation = conversationFromMessages('adapter-history', manyMessages(4));
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-history',
+      conversation,
+      adapter,
+      hasMoreHistory: true,
+      loadEarlierLabel: 'Load previous page',
+    });
+
+    const trigger = container.querySelector<HTMLButtonElement>('.chat-history-trigger-button');
+    expect(trigger).not.toBeNull();
+    trigger!.click();
+    flushSync();
+    await Promise.resolve();
+    await tick();
+    flushSync();
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      if (!container.querySelector('.chat-history-trigger')) break;
+      await tick();
+      flushSync();
+    }
+
+    expect(calls).toEqual(['adapter-history']);
+    expect(container.querySelector('.chat-history-trigger') === null).toBe(true);
+    expect(conversation.ids).toHaveLength(4);
+
+    unmount(instance);
+  });
+
+  test('callback history loading prepends compatible messages without changing the model contract', async () => {
+    let conversation = conversationFromMessages('adapter-callback-history', manyMessages(3));
+    const loadCalls: string[] = [];
+    const target = document.createElement('div');
+    document.body.append(target);
+    const instance = mount(ChatHistoryPaginationFixture, {
+      target,
+      props: {
+        conversation,
+        loadHistory: async (currentConversation: ConversationHistory) => {
+          loadCalls.push(currentConversation.id);
+          conversation = prependMessageToConversation(
+            currentConversation,
+            'older-message',
+            'Earlier compatible context',
+          );
+          return conversation;
+        },
+      },
+    });
+    flushSync();
+
+    target.querySelector<HTMLButtonElement>('.chat-history-trigger-button')!.click();
+    flushSync();
+    await Promise.resolve();
+    await tick();
+    flushSync();
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      if (target.textContent?.includes('Earlier compatible context')) break;
+      await tick();
+      flushSync();
+    }
+
+    expect(loadCalls).toEqual(['adapter-callback-history']);
+    expect(target.textContent).toContain('Earlier compatible context');
+    expect(conversation.ids[0]).toBe('older-message');
+    expect(Object.keys(conversation.messages).toSorted()).toEqual([...conversation.ids].toSorted());
+
+    unmount(instance);
+    target.remove();
+  });
+
+  test('streaming status and non-file drops stay render-only container state', () => {
+    const conversation = conversationFromMessages('adapter-container-state', [
+      message('user-1', 'user', 'Can you help?', 0),
+    ]);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-container-state',
+      conversation,
+      adapter: { sendMessage: async () => {} },
+      isStreaming: true,
+      streamingStatus: 'Thinking through the adapter response',
+    });
+    const root = container.querySelector<HTMLElement>('.chat-container')!;
+    const file = new File(['hello'], 'note.txt', { type: 'text/plain' });
+    const dropEvent = createDragEvent('drop', [file], ['text/plain']);
+
+    expect(container.querySelector('.chat-typing-indicator')?.textContent).toContain(
+      'Thinking through the adapter response',
+    );
+    root.dispatchEvent(dropEvent);
+    flushSync();
+
+    expect(dropEvent.defaultPrevented).toBe(false);
+    expect(container.querySelector('.chat-drop-overlay')).toBeNull();
+    expect(conversation.ids).toEqual(['user-1']);
+
+    unmount(instance);
+  });
+
+  test('editMessage routes through the adapter without mutating the transcript snapshot', async () => {
+    const edited: Array<{ messageId: string; content: string }> = [];
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      editMessage: async (event) => {
+        edited.push(event);
+      },
+    };
+    const conversation = conversationFromMessages('adapter-edit', [
+      message('user-1', 'user', 'Original text', 0),
+    ]);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-edit',
+      conversation,
+      adapter,
+    });
+
+    container.querySelector<HTMLButtonElement>('.chat-message-edit-button')!.click();
+    flushSync();
+    const editor = container.querySelector<HTMLTextAreaElement>('.chat-message-edit-textarea');
+    expect(editor).not.toBeNull();
+    editor!.value = 'Updated text';
+    editor!.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    container.querySelector<HTMLButtonElement>('.chat-message-edit-save')!.click();
+    flushSync();
+    await Promise.resolve();
+
+    expect(edited).toEqual([{ messageId: 'user-1', content: 'Updated text' }]);
+    expect(conversation.messages['user-1']?.content).toBe('Original text');
+
+    unmount(instance);
+  });
+
+  test('file drag overlay is container state and empty file drops do not touch the transcript', () => {
+    const conversation = conversationFromMessages('adapter-file-drag', [
+      message('user-1', 'user', 'Keep this transcript stable', 0),
+    ]);
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-file-drag',
+      conversation,
+      adapter: { sendMessage: async () => {} },
+      allowAttachments: true,
+    });
+    const root = container.querySelector<HTMLElement>('.chat-container')!;
+    const dragOver = createDragEvent('dragover', []);
+
+    root.dispatchEvent(dragOver);
+    flushSync();
+
+    expect(dragOver.defaultPrevented).toBe(true);
+    expect(dragOver.dataTransfer?.dropEffect).toBe('copy');
+    expect(container.querySelector('.chat-drop-overlay')).not.toBeNull();
+
+    const drop = createDragEvent('drop', []);
+    root.dispatchEvent(drop);
+    flushSync();
+
+    expect(drop.defaultPrevented).toBe(true);
+    expect(container.querySelector('.chat-drop-overlay')).toBeNull();
+    expect(conversation.ids).toEqual(['user-1']);
+
+    unmount(instance);
+  });
+
+  test('imperative streaming cancels stale animation frames on restart and end', async () => {
+    const frames: FrameRequestCallback[] = [];
+    const cancelled: number[] = [];
+    const originalRaf = globalThis.requestAnimationFrame;
+    const originalCancelRaf = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = ((handle: number) => {
+      cancelled.push(handle);
+      if (handle >= 1 && handle <= frames.length) frames[handle - 1] = () => {};
+    }) as typeof cancelAnimationFrame;
+
+    const conversation = conversationFromMessages('adapter-stream-cancel', manyMessages(60));
+    const { container, instance } = mountChat({
+      id: 'chat-adapter-stream-cancel',
+      conversation,
+      adapter: { sendMessage: async () => {} },
+      virtualized: true,
+      virtualizationInitialHeight: 120,
+      virtualizationEstimatedRowHeight: 36,
+      virtualizationOverscan: 1,
+    });
+    const api = instance as unknown as ChatImperative;
+
+    try {
+      api.beginStreaming('message-59');
+      flushSync();
+      api.pushToken('stale frame');
+      const staleFrameHandle = frames.length;
+      api.beginStreaming('message-59');
+      flushSync();
+      frames[staleFrameHandle - 1]?.(performance.now());
+      flushSync();
+      expect(cancelled).toContain(staleFrameHandle);
+      expect(container.textContent).not.toContain('stale frame');
+
+      api.pushToken('fresh frame');
+      const freshFrameHandle = frames.length;
+      frames[freshFrameHandle - 1]?.(performance.now());
+      flushSync();
+      await tick();
+      flushSync();
+      expect(container.textContent).toContain('fresh frame');
+
+      api.pushToken('cancelled frame');
+      const cancelledFrameHandle = frames.length;
+      api.endStreaming();
+      flushSync();
+      frames[cancelledFrameHandle - 1]?.(performance.now());
+      flushSync();
+      await tick();
+      flushSync();
+      expect(cancelled).toContain(cancelledFrameHandle);
+      expect(container.textContent).not.toContain('cancelled frame');
+    } finally {
+      globalThis.requestAnimationFrame = originalRaf;
+      globalThis.cancelAnimationFrame = originalCancelRaf;
+      unmount(instance);
+    }
   });
 });
 
