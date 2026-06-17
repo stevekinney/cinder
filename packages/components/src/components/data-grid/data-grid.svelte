@@ -10,7 +10,7 @@
    * @useWhen Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.
    * @useWhen You need role=grid semantics instead of native table semantics.
    * @avoidWhen You only need a semantic read-only table — use DataTable or the Table family instead.
-   * @avoidWhen You need sorting, selection, virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
+   * @avoidWhen You need selection, virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
    * @related data-table, table
    */
   export type {
@@ -36,7 +36,11 @@
     getDataGridColumnValue,
     type ResolvedDataGridColumn,
   } from './_internal/column-model.svelte.ts';
-  import { getNextDataGridSortModel, getSortedDataGridRowIndices } from './_internal/sort-model.ts';
+  import {
+    getActiveDataGridSortModel,
+    getNextDataGridSortModel,
+    getSortedDataGridRowIndices,
+  } from './_internal/sort-model.ts';
   import type { DataGridProps, DataGridSortModelItem } from './data-grid.types.ts';
 
   let {
@@ -66,8 +70,11 @@
     columnPinning: () => columnPinning,
   });
 
+  const activeSortModel = $derived(
+    getActiveDataGridSortModel(columnModel.orderedColumns, sortModel),
+  );
   const sortedRowIndices = $derived(
-    getSortedDataGridRowIndices(rows, columnModel.orderedColumns, sortModel),
+    getSortedDataGridRowIndices(rows, columnModel.orderedColumns, activeSortModel),
   );
   const gridTemplateColumns = $derived(
     columnModel.renderColumns.map((column) => `${column.width}px`).join(' '),
@@ -91,7 +98,7 @@
       return {
         ...record,
         rowDomId: uniqueRowId,
-        rowKey: uniqueRowId,
+        rowKey: `${uniqueRowId}\u0000${record.rowIndex}`,
       };
     });
   });
@@ -224,18 +231,34 @@
   }
 
   function getColumnSortModelItem(columnKey: string): DataGridSortModelItem | undefined {
-    return sortModel.find((item) => item.key === columnKey);
+    return activeSortModel.find((item) => item.key === columnKey);
   }
 
   function getColumnSortPriority(columnKey: string): number | undefined {
-    const index = sortModel.findIndex((item) => item.key === columnKey);
-    return index >= 0 && sortModel.length > 1 ? index + 1 : undefined;
+    const index = activeSortModel.findIndex((item) => item.key === columnKey);
+    return index >= 0 && activeSortModel.length > 1 ? index + 1 : undefined;
+  }
+
+  function getHeaderAriaSort(
+    column: ResolvedDataGridColumn<TRow>,
+    sortItem: DataGridSortModelItem | undefined,
+  ): DataGridSortModelItem['direction'] | undefined {
+    return activeSortModel[0]?.key === column.key ? sortItem?.direction : undefined;
+  }
+
+  function getSortStateDescription(
+    sortItem: DataGridSortModelItem | undefined,
+    sortPriority: number | undefined,
+  ): string {
+    if (!sortItem) return 'not sorted';
+    if (sortPriority === undefined) return `sorted ${sortItem.direction}`;
+    return `sorted ${sortItem.direction}, priority ${sortPriority}`;
   }
 
   function handleColumnHeaderClick(column: ResolvedDataGridColumn<TRow>, event: MouseEvent): void {
     if (!column.sortable) return;
 
-    const nextSortModel = getNextDataGridSortModel(sortModel, column.key, event.shiftKey);
+    const nextSortModel = getNextDataGridSortModel(activeSortModel, column.key, event.shiftKey);
     sortModel = nextSortModel;
     onSortModelChange?.(nextSortModel);
   }
@@ -254,6 +277,9 @@
       (consumerOnKeydown as (event: KeyboardEvent) => void)(event);
     }
     if (event.defaultPrevented) return;
+    if (event.target instanceof Element && event.target.closest('.cinder-data-grid__sort-button')) {
+      return;
+    }
 
     if (sortedKeyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
 
@@ -320,7 +346,7 @@
         class="cinder-data-grid__header-cell"
         role="columnheader"
         aria-colindex={column.colIndex}
-        aria-sort={column.sortable ? (sortItem?.direction ?? 'none') : undefined}
+        aria-sort={column.sortable ? getHeaderAriaSort(column, sortItem) : undefined}
         data-cinder-pin={column.pin}
         data-cinder-sortable={column.sortable ? 'true' : undefined}
         data-cinder-sort-direction={sortItem?.direction}
@@ -341,11 +367,9 @@
             </span>
             <span class="cinder-data-grid__sort-indicator" aria-hidden="true">
               {#if sortItem?.direction === 'ascending'}
-                A
+                Asc
               {:else if sortItem?.direction === 'descending'}
-                D
-              {:else}
-                -
+                Desc
               {/if}
             </span>
             {#if sortPriority !== undefined}
@@ -353,6 +377,7 @@
                 {sortPriority}
               </span>
             {/if}
+            <span class="cinder-sr-only">{getSortStateDescription(sortItem, sortPriority)}</span>
           </button>
         {:else if typeof column.header === 'function'}
           {@render column.header()}

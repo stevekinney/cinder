@@ -30,7 +30,12 @@ const rows: Order[] = [
 
 const columns: DataGridColumnDef<Order>[] = [
   { key: 'customer', header: 'Customer', sortable: true },
-  { key: 'total', header: 'Total', sortable: true },
+  {
+    key: 'total',
+    header: 'Total',
+    sortable: true,
+    sortComparator: (left: number, right: number) => left - right,
+  },
   { key: 'createdAt', header: 'Created', sortable: true },
   { key: 'id', header: 'Identifier' },
 ];
@@ -49,21 +54,29 @@ function getColumnText(container: HTMLElement, columnIndex: number): string[] {
 describe('DataGrid sort model', () => {
   test('compares numbers, dates, and strings with nullish values last', () => {
     expect(compareDataGridValues(2, 10)).toBeLessThan(0);
+    expect(compareDataGridValues(2, 10, 'descending')).toBeGreaterThan(0);
     expect(compareDataGridValues(new Date('2026-01-01'), new Date('2026-02-01'))).toBeLessThan(0);
     expect(compareDataGridValues('item 2', 'item 10')).toBeLessThan(0);
     expect(compareDataGridValues(undefined, 'value')).toBeGreaterThan(0);
+    expect(compareDataGridValues(undefined, 'value', 'descending')).toBeGreaterThan(0);
+    expect(compareDataGridValues(new Date('invalid'), new Date('2026-01-01'))).toBeGreaterThan(0);
   });
 
-  test('toggles single and multi-sort models without mutating the current model', () => {
+  test('toggles single and multi-sort models without mutating or reordering the current model', () => {
     const original: DataGridSortModel = [{ key: 'customer', direction: 'ascending' }];
     const descending = getNextDataGridSortModel(original, 'customer', false);
     const multi = getNextDataGridSortModel(descending, 'total', true);
+    const toggledMulti = getNextDataGridSortModel(multi, 'total', true);
 
     expect(original).toEqual([{ key: 'customer', direction: 'ascending' }]);
     expect(descending).toEqual([{ key: 'customer', direction: 'descending' }]);
     expect(multi).toEqual([
       { key: 'customer', direction: 'descending' },
       { key: 'total', direction: 'ascending' },
+    ]);
+    expect(toggledMulti).toEqual([
+      { key: 'customer', direction: 'descending' },
+      { key: 'total', direction: 'descending' },
     ]);
   });
 
@@ -78,21 +91,38 @@ describe('DataGrid sort model', () => {
   });
 
   test('uses column comparators when supplied', () => {
-    const sortedIndices = getSortedDataGridRowIndices(
-      rows,
-      [
-        {
-          key: 'customer',
-          header: 'Customer',
-          sortable: true,
-          sortComparator: (leftValue, rightValue) =>
-            String(leftValue).length - String(rightValue).length,
-        },
-      ],
-      [{ key: 'customer', direction: 'ascending' }],
-    );
+    const comparatorColumns: DataGridColumnDef<Order>[] = [
+      {
+        key: 'customer',
+        header: 'Customer',
+        sortable: true,
+        sortComparator: (leftValue: string, rightValue: string) =>
+          leftValue.length - rightValue.length,
+      },
+    ];
+
+    const sortedIndices = getSortedDataGridRowIndices(rows, comparatorColumns, [
+      { key: 'customer', direction: 'ascending' },
+    ]);
 
     expect(sortedIndices).toEqual([2, 0, 1]);
+  });
+
+  test('keeps nullish values last when sorting descending', () => {
+    const nullableRows: Array<{ id: string; total: number | null }> = [
+      { id: 'a', total: null },
+      { id: 'b', total: 10 },
+      { id: 'c', total: 20 },
+    ];
+    const nullableColumns: DataGridColumnDef<(typeof nullableRows)[number]>[] = [
+      { key: 'total', header: 'Total', sortable: true },
+    ];
+
+    const sortedIndices = getSortedDataGridRowIndices(nullableRows, nullableColumns, [
+      { key: 'total', direction: 'descending' },
+    ]);
+
+    expect(sortedIndices).toEqual([2, 1, 0]);
   });
 });
 
@@ -115,7 +145,7 @@ describe('DataGrid sort rendering', () => {
     );
     const customerButton = customerHeader?.querySelector('button');
 
-    expect(customerHeader?.getAttribute('aria-sort')).toBe('none');
+    expect(customerHeader?.hasAttribute('aria-sort')).toBe(false);
     expect(getColumnText(container, 1)).toEqual(['Grace Hopper', 'Ada Lovelace', 'Alan Turing']);
 
     await fireEvent.click(customerButton!);
@@ -127,7 +157,7 @@ describe('DataGrid sort rendering', () => {
     expect(getColumnText(container, 1)).toEqual(['Grace Hopper', 'Alan Turing', 'Ada Lovelace']);
 
     await fireEvent.click(customerButton!);
-    expect(customerHeader?.getAttribute('aria-sort')).toBe('none');
+    expect(customerHeader?.hasAttribute('aria-sort')).toBe(false);
     expect(getColumnText(container, 1)).toEqual(['Grace Hopper', 'Ada Lovelace', 'Alan Turing']);
     expect(changes).toEqual([
       [{ key: 'customer', direction: 'ascending' }],
@@ -136,7 +166,7 @@ describe('DataGrid sort rendering', () => {
     ]);
   });
 
-  test('supports shift-click multi-sort priority and omits aria-sort on non-sortable columns', async () => {
+  test('supports shift-click multi-sort priority with one active aria-sort column', async () => {
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
@@ -158,11 +188,113 @@ describe('DataGrid sort rendering', () => {
     await fireEvent.click(customerHeader!.querySelector('button')!, { shiftKey: true });
 
     expect(totalHeader?.getAttribute('aria-sort')).toBe('ascending');
-    expect(customerHeader?.getAttribute('aria-sort')).toBe('ascending');
+    expect(customerHeader?.hasAttribute('aria-sort')).toBe(false);
     expect(identifierHeader?.hasAttribute('aria-sort')).toBe(false);
+    expect(
+      container.querySelectorAll(
+        '[role="columnheader"][aria-sort="ascending"], [role="columnheader"][aria-sort="descending"]',
+      ).length,
+    ).toBe(1);
     expect(totalHeader?.textContent).toContain('1');
     expect(customerHeader?.textContent).toContain('2');
     expect(getColumnText(container, 1)).toEqual(['Ada Lovelace', 'Alan Turing', 'Grace Hopper']);
     expect(getColumnText(container, 2)).toEqual(['124', '124', '256']);
+  });
+
+  test('renders an initial controlled sort model', () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      sortModel: [{ key: 'total', direction: 'descending' }],
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const totalHeader = container.querySelector<HTMLElement>(
+      '[role="columnheader"][aria-colindex="2"]',
+    );
+
+    expect(totalHeader?.getAttribute('aria-sort')).toBe('descending');
+    expect(getColumnText(container, 2)).toEqual(['256', '124', '124']);
+  });
+
+  test('keeps active descendant aligned with the sorted visual row order', async () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const customerHeader = container.querySelector<HTMLElement>(
+      '[role="columnheader"][aria-colindex="1"]',
+    );
+
+    await fireEvent.click(customerHeader!.querySelector('button')!);
+
+    const firstSortedRowCells = Array.from(
+      container.querySelectorAll('[role="row"][aria-rowindex="2"] [role="gridcell"]'),
+    );
+    const secondSortedRowCells = Array.from(
+      container.querySelectorAll('[role="row"][aria-rowindex="3"] [role="gridcell"]'),
+    );
+
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(
+      firstSortedRowCells[0]?.getAttribute('id'),
+    );
+
+    await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
+
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(
+      secondSortedRowCells[0]?.getAttribute('id'),
+    );
+  });
+
+  test('header button arrow keys do not move the grid active descendant', async () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const totalButton = container.querySelector<HTMLElement>(
+      '[role="columnheader"][aria-colindex="2"] button',
+    );
+    const initialActiveCellId = grid?.getAttribute('aria-activedescendant');
+
+    await fireEvent.keyDown(totalButton!, { key: 'ArrowDown' });
+
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(initialActiveCellId);
+  });
+
+  test('sorts duplicate row ids without reusing keyed DOM rows', () => {
+    const { container } = render(OrderDataGrid, {
+      rows: [
+        {
+          id: 'duplicate',
+          customer: 'Grace Hopper',
+          total: 256,
+          createdAt: new Date('2026-02-01'),
+        },
+        {
+          id: 'duplicate',
+          customer: 'Ada Lovelace',
+          total: 124,
+          createdAt: new Date('2026-01-01'),
+        },
+      ],
+      columns,
+      sortModel: [{ key: 'customer', direction: 'ascending' }],
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const cells = Array.from(container.querySelectorAll('[role="gridcell"][aria-colindex="1"]'));
+    const cellIds = cells.map((cell) => cell.id);
+
+    expect(cells.map((cell) => cell.textContent?.trim())).toEqual(['Ada Lovelace', 'Grace Hopper']);
+    expect(new Set(cellIds).size).toBe(cellIds.length);
   });
 });

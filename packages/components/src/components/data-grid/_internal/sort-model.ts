@@ -1,9 +1,5 @@
-import type {
-  DataGridColumnDef,
-  DataGridSortDirection,
-  DataGridSortModel,
-} from '../data-grid.types.ts';
-import { getDataGridColumnValue } from './column-model.svelte.ts';
+import type { DataGridSortDirection, DataGridSortModel } from '../data-grid.types.ts';
+import { getDataGridColumnValue, type DataGridValueColumn } from './column-model.svelte.ts';
 
 const sortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
@@ -12,28 +8,39 @@ export function getNextDataGridSortModel(
   columnKey: string,
   multiSort: boolean,
 ): DataGridSortModel {
-  const currentItem = currentSortModel.find((item) => item.key === columnKey);
+  const currentIndex = currentSortModel.findIndex((item) => item.key === columnKey);
+  const currentItem = currentIndex >= 0 ? currentSortModel[currentIndex] : undefined;
   const nextDirection = getNextSortDirection(currentItem?.direction);
 
   if (!multiSort) {
     return nextDirection === undefined ? [] : [{ key: columnKey, direction: nextDirection }];
   }
 
-  const modelWithoutColumn = currentSortModel.filter((item) => item.key !== columnKey);
-  if (nextDirection === undefined) return modelWithoutColumn;
-  return [...modelWithoutColumn, { key: columnKey, direction: nextDirection }];
+  if (currentIndex < 0) return [...currentSortModel, { key: columnKey, direction: 'ascending' }];
+  if (nextDirection === undefined) return currentSortModel.filter((item) => item.key !== columnKey);
+  return currentSortModel.map((item, index) =>
+    index === currentIndex ? { key: columnKey, direction: nextDirection } : item,
+  );
+}
+
+export function getActiveDataGridSortModel<TRow>(
+  columns: readonly DataGridValueColumn<TRow>[],
+  sortModel: DataGridSortModel,
+): DataGridSortModel {
+  return sortModel.filter((item) =>
+    columns.some((column) => column.sortable && column.key === item.key),
+  );
 }
 
 export function getSortedDataGridRowIndices<TRow>(
   rows: readonly TRow[],
-  columns: readonly DataGridColumnDef<TRow>[],
+  columns: readonly DataGridValueColumn<TRow>[],
   sortModel: DataGridSortModel,
 ): number[] {
   const rowIndices = rows.map((_, index) => index);
-  const activeSortItems = sortModel.flatMap((item) => {
+  const activeSortItems = getActiveDataGridSortModel(columns, sortModel).flatMap((item) => {
     const column = columns.find((candidate) => candidate.key === item.key);
-    if (!column?.sortable) return [];
-    return [{ column, direction: item.direction }];
+    return column === undefined ? [] : [{ column, direction: item.direction }];
   });
 
   if (activeSortItems.length === 0) return rowIndices;
@@ -48,10 +55,10 @@ export function getSortedDataGridRowIndices<TRow>(
       const rightValue = getDataGridColumnValue(rightRow, column);
       const comparison = column.sortComparator
         ? column.sortComparator(leftValue, rightValue, leftRow, rightRow)
-        : compareDataGridValues(leftValue, rightValue);
+        : compareDataGridValues(leftValue, rightValue, direction);
 
       if (comparison !== 0) {
-        return direction === 'ascending' ? comparison : -comparison;
+        return column.sortComparator && direction === 'descending' ? -comparison : comparison;
       }
     }
 
@@ -59,18 +66,26 @@ export function getSortedDataGridRowIndices<TRow>(
   });
 }
 
-export function compareDataGridValues(leftValue: unknown, rightValue: unknown): number {
+export function compareDataGridValues(
+  leftValue: unknown,
+  rightValue: unknown,
+  direction: DataGridSortDirection = 'ascending',
+): number {
   if (Object.is(leftValue, rightValue)) return 0;
-  if (leftValue === null || leftValue === undefined) return 1;
-  if (rightValue === null || rightValue === undefined) return -1;
+  if (isNullishSortValue(leftValue)) return 1;
+  if (isNullishSortValue(rightValue)) return -1;
 
   const leftNumber = getComparableNumber(leftValue);
   const rightNumber = getComparableNumber(rightValue);
   if (leftNumber !== undefined && rightNumber !== undefined) {
-    return leftNumber - rightNumber;
+    return direction === 'ascending' ? leftNumber - rightNumber : rightNumber - leftNumber;
   }
 
-  return sortCollator.compare(getComparableLabel(leftValue), getComparableLabel(rightValue));
+  const comparison = sortCollator.compare(
+    getComparableLabel(leftValue),
+    getComparableLabel(rightValue),
+  );
+  return direction === 'ascending' ? comparison : -comparison;
 }
 
 function getNextSortDirection(
@@ -83,7 +98,10 @@ function getNextSortDirection(
 
 function getComparableNumber(value: unknown): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (value instanceof Date) return value.getTime();
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isFinite(time) ? time : undefined;
+  }
   return undefined;
 }
 
@@ -94,10 +112,13 @@ function getComparableLabel(value: unknown): string {
   }
   if (typeof value === 'symbol') return value.description ?? '';
   if (value instanceof Date) return value.toISOString();
+  return Object.prototype.toString.call(value);
+}
 
-  try {
-    return JSON.stringify(value) ?? '';
-  } catch {
-    return Object.prototype.toString.call(value);
-  }
+function isNullishSortValue(value: unknown): boolean {
+  return (
+    value === null ||
+    value === undefined ||
+    (value instanceof Date && !Number.isFinite(value.getTime()))
+  );
 }

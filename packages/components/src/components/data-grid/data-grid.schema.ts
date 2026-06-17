@@ -59,7 +59,7 @@ const schema = {
       {
         name: 'onSortModelChange',
         reason: 'function-or-snippet',
-        description: 'Called after DataGrid writes a user-initiated sort model change.',
+        description: 'Called after the user changes sort order and DataGrid updates `sortModel`.',
       },
       {
         name: 'rowClass',
@@ -74,7 +74,7 @@ const schema = {
       {
         name: 'sortModel',
         reason: 'unknown-shape',
-        description: 'Bound sort model. DataGrid reorders rendered rows from this model.',
+        description: 'Controls the row sort order used to render rows.',
       },
     ],
   },
