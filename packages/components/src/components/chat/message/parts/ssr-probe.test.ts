@@ -60,4 +60,108 @@ describe('parts spine — SSR safety', () => {
       await rm(ssrFile, { force: true });
     }
   });
+
+  test('(C4) reasoning-part.svelte imports with no DOM globals at module level', async () => {
+    const { compile } = await import('svelte/compiler');
+    const { dirname, join, resolve } = await import('node:path');
+    const { writeFile, rm } = await import('node:fs/promises');
+
+    const sourcePath = resolve(import.meta.dir, 'reasoning-part.svelte');
+    const source = await Bun.file(sourcePath).text();
+    const compiled = compile(source, {
+      filename: sourcePath,
+      generate: 'server',
+      css: 'external',
+      dev: false,
+    });
+
+    const ssrFileName = `.cinder-ssr-reasoning-${process.pid}-${Date.now()}.mjs`;
+    const ssrFile = join(dirname(sourcePath), ssrFileName);
+    await writeFile(ssrFile, compiled.js.code, 'utf-8');
+
+    try {
+      const threwMessage = await importWithoutDomGlobals([ssrFile]);
+      expect(threwMessage).toBeUndefined();
+    } finally {
+      await rm(ssrFile, { force: true });
+    }
+  });
+
+  test('(C4) step-part.svelte imports with no DOM globals at module level', async () => {
+    const { compile } = await import('svelte/compiler');
+    const { dirname, join, resolve } = await import('node:path');
+    const { writeFile, rm } = await import('node:fs/promises');
+
+    const sourcePath = resolve(import.meta.dir, 'step-part.svelte');
+    const source = await Bun.file(sourcePath).text();
+    const compiled = compile(source, {
+      filename: sourcePath,
+      generate: 'server',
+      css: 'external',
+      dev: false,
+    });
+
+    const ssrFileName = `.cinder-ssr-step-${process.pid}-${Date.now()}.mjs`;
+    const ssrFile = join(dirname(sourcePath), ssrFileName);
+    await writeFile(ssrFile, compiled.js.code, 'utf-8');
+
+    try {
+      const threwMessage = await importWithoutDomGlobals([ssrFile]);
+      expect(threwMessage).toBeUndefined();
+    } finally {
+      await rm(ssrFile, { force: true });
+    }
+  });
+
+  test('tool-approval-part.svelte imports with no DOM globals at module level', async () => {
+    const { compile } = await import('svelte/compiler');
+    const { dirname, join, resolve } = await import('node:path');
+    const { writeFile, rm } = await import('node:fs/promises');
+
+    const sourcePath = resolve(import.meta.dir, 'tool-approval-part.svelte');
+    const source = await Bun.file(sourcePath).text();
+    const compiled = compile(source, {
+      filename: sourcePath,
+      generate: 'server',
+      css: 'external',
+      dev: false,
+    });
+
+    const ssrFileName = `.cinder-ssr-tool-approval-${process.pid}-${Date.now()}.mjs`;
+    const ssrFile = join(dirname(sourcePath), ssrFileName);
+    await writeFile(ssrFile, compiled.js.code, 'utf-8');
+
+    try {
+      const threwMessage = await importWithoutDomGlobals([ssrFile]);
+      expect(threwMessage).toBeUndefined();
+    } finally {
+      await rm(ssrFile, { force: true });
+    }
+  });
+
+  test('(C5) suggestion-part.svelte imports with no DOM globals at module level', async () => {
+    const { compile } = await import('svelte/compiler');
+    const { dirname, join, resolve } = await import('node:path');
+    const { writeFile, rm } = await import('node:fs/promises');
+
+    const sourcePath = resolve(import.meta.dir, 'suggestion-part.svelte');
+    const source = await Bun.file(sourcePath).text();
+    const compiled = compile(source, {
+      filename: sourcePath,
+      generate: 'server',
+      css: 'external',
+      dev: false,
+    });
+
+    const ssrFileName = `.cinder-ssr-suggestion-${process.pid}-${Date.now()}.mjs`;
+    const ssrFile = join(dirname(sourcePath), ssrFileName);
+    await writeFile(ssrFile, compiled.js.code, 'utf-8');
+
+    try {
+      const threwMessage = await importWithoutDomGlobals([ssrFile]);
+      expect(threwMessage).toBeUndefined();
+    } finally {
+      await rm(ssrFile, { force: true });
+    }
+  });
 });

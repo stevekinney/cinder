@@ -16,6 +16,7 @@ import type {
 import type { ConversationHistory, Message } from './conversation-model.ts';
 import type { ChatAttachment } from './input/chat-attachment.ts';
 import type { MessagePartOverride } from './message/chat-message-parts.ts';
+import type { StepInfo } from './utilities/types.ts';
 
 /**
  * Full-row override snippet. Inversion of control: receives the message AND a
@@ -116,6 +117,45 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   onsubmit?: (event: ChatSubmitEvent) => void;
   onretry?: (messageId: string) => void;
   onedit?: (event: { messageId: string; content: string }) => void;
+  /**
+   * Called when the user approves an action-required tool call. The
+   * consumer is responsible for updating its transcript (e.g. calling
+   * conversationalist to unblock the pending tool) and triggering a new
+   * generation. When an adapter is also wired, Chat calls
+   * `adapter.approveToolCall(toolCallId)` first and then this callback.
+   */
+  onapprove?: (toolCallId: string) => void;
+  /**
+   * Called when the user denies an action-required tool call. When an
+   * adapter is also wired, Chat calls `adapter.denyToolCall(toolCallId)` first
+   * and then this callback.
+   */
+  ondeny?: (toolCallId: string) => void;
+  /**
+   * Override or supplement the reasoning text for a message. Called per-message;
+   * return a non-empty string to show a reasoning block, `undefined` to fall back
+   * to `message.metadata['cinder:reasoning']`, empty string to suppress reasoning.
+   */
+  messageReasoning?: (message: Message) => string | undefined;
+  /**
+   * Override or supplement the step list for a message. Called per-message;
+   * return an array to show step indicators, `undefined` to fall back to
+   * `message.metadata['cinder:steps']`. An empty array suppresses steps.
+   */
+  messageSteps?: (message: Message) => StepInfo[] | undefined;
+  /**
+   * Override or supplement the suggestion list for a message. Called
+   * per-message; return an array of label strings to show suggestion chips,
+   * `undefined` to fall back to `message.metadata['cinder:suggestions']`. An
+   * empty array suppresses suggestions.
+   */
+  messageSuggestions?: (message: Message) => string[] | undefined;
+  /**
+   * Called when the user selects a suggestion chip. The label string is
+   * passed back. The consumer is responsible for submitting it as a new user
+   * message.
+   */
+  onsuggestionselect?: (label: string) => void;
   /** Called when the explicit history trigger is activated. The consumer prepends compatible messages into `conversation`. */
   onloadhistory?: () => void | Promise<void>;
   onstopgenerating?: (event: ChatStopGeneratingEvent) => void;

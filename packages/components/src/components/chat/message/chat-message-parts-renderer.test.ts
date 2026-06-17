@@ -143,6 +143,34 @@ describe('renderer — per-part rendering', () => {
     expect(alert?.textContent).toContain('it failed');
   });
 
+  test('renders a tool-approval part with alertdialog role and action buttons', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: {
+        parts: [
+          {
+            type: 'tool-approval',
+            key: 'm:tool-approval:c1',
+            toolCallId: 'c1',
+            toolName: 'deploy_to_production',
+            action: { type: 'approval', message: 'Deploy to production?' },
+            approved: undefined,
+          },
+        ],
+        onapprove: () => {},
+        ondeny: () => {},
+      },
+    });
+    const dialog = container.querySelector('[role="alertdialog"]');
+    expect(dialog).not.toBeNull();
+    expect(container.textContent).toContain('deploy_to_production');
+    expect(container.textContent).toContain('Deploy to production?');
+    // Approve and Reject buttons appear for pending state
+    const buttons = container.querySelectorAll('button');
+    const labels = Array.from(buttons).map((button) => button.textContent?.trim());
+    expect(labels).toContain('Approve');
+    expect(labels).toContain('Reject');
+  });
+
   test('renders an image group through the attachments grid with the right count', () => {
     const { container } = render(ChatMessagePartsRenderer, {
       props: {

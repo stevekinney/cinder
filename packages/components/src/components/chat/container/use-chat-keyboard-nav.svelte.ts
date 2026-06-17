@@ -169,7 +169,14 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
         viewport.scrollBy({ top: -viewport.clientHeight * 0.9, behavior });
         break;
 
-      // Arrow key navigation between messages
+      // Arrow key navigation between messages. Suppressed whenever the focused
+      // element is NOT the `.chat-message` article itself (tabindex=-1). This
+      // means focus inside any child interactive element (tool-approval buttons,
+      // suggestion chips, etc.) is already excluded because those elements do
+      // not have the `chat-message` class. The previous `.closest()` guards
+      // were dead code: `closest()` traverses upward to ancestors, but
+      // `[data-cinder-tool-approval]` and `[data-cinder-suggested-replies]` are
+      // descendants — so they always returned null, making `!null` always true.
       case 'ArrowDown':
         if (document.activeElement?.classList.contains('chat-message')) {
           event.preventDefault();

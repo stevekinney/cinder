@@ -105,17 +105,15 @@ export type ChatAdapter = {
 /**
  * The set of commands the internal dispatcher routes. Used to tag an
  * {@link ChatAdapterErrorEvent} so a consumer can tell which command failed.
- *
- * Widen this when a later Chat task wires another adapter method
- * (`approveToolCall`/`denyToolCall`/`loadOlderMessages`) through the dispatcher,
- * so its error events carry the right `command` tag.
  */
 export type ChatCommand =
   | 'sendMessage'
   | 'retryMessage'
   | 'editMessage'
   | 'stopGenerating'
-  | 'loadOlderMessages';
+  | 'loadOlderMessages'
+  | 'approveToolCall'
+  | 'denyToolCall';
 
 /** Error event surfaced when an adapter command fails (rejection or sync throw). */
 export type ChatAdapterErrorEvent = {

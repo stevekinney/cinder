@@ -155,14 +155,42 @@ export function deriveMessageParts(
     ];
   }
 
-  // Tool-result body: emit one tool-result part. The renderer branches on
-  // `result.outcome` for error / action-required / success styling.
+  // Tool-result body: when the outcome is `action_required` and an action is
+  // present, emit a `tool-approval` part instead of the plain `tool-result`
+  // part. The approval part carries the action, the tool call id (used to
+  // look up the tool name from the paired tool-call), and the resolved
+  // approval state from the container's approved/denied id sets. A plain
+  // `success` or `error` result falls through to the standard `tool-result`
+  // part, so this branch is a strict superset that adds zero visual change
+  // for non-approval results.
   if (message.role === 'tool-result' && message.toolResult) {
+    const result = message.toolResult;
+    if (result.outcome === 'action_required' && result.action) {
+      const approved = context.approvedToolCallIds?.has(result.callId)
+        ? true
+        : context.deniedToolCallIds?.has(result.callId)
+          ? false
+          : undefined;
+      return [
+        {
+          type: 'tool-approval',
+          key: `${message.id}:tool-approval:${result.callId}`,
+          toolCallId: result.callId,
+          // Resolve the human-readable tool name from the paired tool-call when
+          // available via context. Fall back to the call id as a safe label
+          // when no pair is present (e.g. standalone ChatMessage usage).
+          toolName: context.toolCallPair?.call.name ?? result.callId,
+          action: result.action,
+          approved,
+        },
+        ...imageParts,
+      ];
+    }
     return [
       {
         type: 'tool-result',
-        key: `${message.id}:tool-result:${message.toolResult.callId}`,
-        result: message.toolResult,
+        key: `${message.id}:tool-result:${result.callId}`,
+        result,
       },
       ...imageParts,
     ];
@@ -172,17 +200,63 @@ export function deriveMessageParts(
   // images. `body` is a representation-independent key, so a streaming body
   // never remounts as its text grows, and an attachment landing after it keeps
   // its own index-based key.
+  //
+  // C4: Composition order is steps → reasoning → markdown → images.
+  // Steps surface the plan, reasoning surfaces extended thinking, markdown is
+  // the final answer. When neither is present the branch is identical to today.
   const content = context.overrideContent ?? getMessageText(message);
-  return [
-    {
-      type: 'markdown',
-      key: `${message.id}:body`,
-      content,
+
+  const bodyParts: ChatMessagePart[] = [];
+
+  // C4: Step parts — one per entry in context.steps[], in order.
+  if (context.steps && context.steps.length > 0) {
+    for (let index = 0; index < context.steps.length; index++) {
+      const step = context.steps[index]!;
+      bodyParts.push({
+        type: 'step',
+        key: `${message.id}:step:${index}`,
+        index,
+        title: step.title,
+        content: step.content,
+        status: step.status,
+      });
+    }
+  }
+
+  // C4: Reasoning part — emitted before the markdown body when present.
+  if (context.reasoning && context.reasoning.length > 0) {
+    bodyParts.push({
+      type: 'reasoning',
+      key: `${message.id}:reasoning`,
+      content: context.reasoning,
       streaming: context.streaming ?? false,
-      expanded: context.expanded ?? true,
-    },
-    ...imageParts,
-  ];
+    });
+  }
+
+  bodyParts.push({
+    type: 'markdown',
+    key: `${message.id}:body`,
+    content,
+    streaming: context.streaming ?? false,
+    expanded: context.expanded ?? true,
+  });
+
+  // C5: Suggestion parts — one per entry in context.suggestions[], after the
+  // markdown body but before images. An empty or absent array adds nothing,
+  // keeping the plain-transcript path identical to before.
+  if (context.suggestions && context.suggestions.length > 0) {
+    for (let index = 0; index < context.suggestions.length; index++) {
+      const label = context.suggestions[index]!;
+      bodyParts.push({
+        type: 'suggestion',
+        key: `${message.id}:suggestion:${index}`,
+        index,
+        label,
+      });
+    }
+  }
+
+  return [...bodyParts, ...imageParts];
 }
 
 /**

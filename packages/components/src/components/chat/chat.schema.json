@@ -131,13 +131,33 @@
         "description": "Per-message-part override. Replaces the rendering of an individual body part\n(markdown, tool call, tool result) while delegating the rest to the built-ins\nvia the `renderDefault` snippet it receives. Image parts are excluded — they\nrender through the grouped attachment grid, not this override."
       },
       {
+        "name": "messageReasoning",
+        "reason": "function-or-snippet",
+        "description": "Override or supplement the reasoning text for a message. Called per-message;\nreturn a non-empty string to show a reasoning block, `undefined` to fall back\nto `message.metadata['cinder:reasoning']`, empty string to suppress reasoning."
+      },
+      {
         "name": "messageStatus",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "messageSteps",
+        "reason": "function-or-snippet",
+        "description": "Override or supplement the step list for a message. Called per-message;\nreturn an array to show step indicators, `undefined` to fall back to\n`message.metadata['cinder:steps']`. An empty array suppresses steps."
+      },
+      {
+        "name": "messageSuggestions",
+        "reason": "function-or-snippet",
+        "description": "Override or supplement the suggestion list for a message. Called\nper-message; return an array of label strings to show suggestion chips,\n`undefined` to fall back to `message.metadata['cinder:suggestions']`. An\nempty array suppresses suggestions."
       },
       {
         "name": "onadaptererror",
         "reason": "function-or-snippet",
         "description": "Called when an adapter command fails — either a rejected promise or a synchronous throw from the method."
+      },
+      {
+        "name": "onapprove",
+        "reason": "function-or-snippet",
+        "description": "Called when the user approves an action-required tool call. The\nconsumer is responsible for updating its transcript (e.g. calling\nconversationalist to unblock the pending tool) and triggering a new\ngeneration. When an adapter is also wired, Chat calls\n`adapter.approveToolCall(toolCallId)` first and then this callback."
       },
       {
         "name": "onattachmentadd",
@@ -150,6 +170,11 @@
       {
         "name": "onattachmentremove",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "ondeny",
+        "reason": "function-or-snippet",
+        "description": "Called when the user denies an action-required tool call. When an\nadapter is also wired, Chat calls `adapter.denyToolCall(toolCallId)` first\nand then this callback."
       },
       {
         "name": "onedit",
@@ -193,6 +218,11 @@
       {
         "name": "onsubmit",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "onsuggestionselect",
+        "reason": "function-or-snippet",
+        "description": "Called when the user selects a suggestion chip. The label string is\npassed back. The consumer is responsible for submitting it as a new user\nmessage."
       },
       {
         "name": "ontypingchange",

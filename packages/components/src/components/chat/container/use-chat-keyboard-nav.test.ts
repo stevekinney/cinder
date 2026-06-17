@@ -140,6 +140,47 @@ describe('useChatKeyboardNav', () => {
     expect(scrollIntoViewCalls).toEqual(['third', 'second']);
   });
 
+  test('arrow nav is suppressed when focus is inside a child element (not the message article itself)', () => {
+    // Regression for the dead .closest() guard bug: when focus is on a child
+    // element (e.g. a button inside tool-approval or a suggestion chip), the
+    // `classList.contains('chat-message')` check is already false for that child,
+    // so arrow nav is suppressed without any .closest() call needed.
+    const { messages, scrollIntoViewCalls, viewport } = createViewport();
+    const nav = useChatKeyboardNav({
+      onJumpToLatest: () => {},
+      getScrollBehavior: () => 'auto',
+    });
+
+    // Simulate focus on a button inside the second message (not the article itself)
+    const childButton = document.createElement('button');
+    messages[1]!.append(childButton);
+    childButton.focus();
+
+    const down = keyEvent('ArrowDown');
+    nav.handleKeyDown(down, viewport);
+    // Arrow nav must NOT fire — focus is on a child, not the message article
+    expect(down.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(childButton);
+    expect(scrollIntoViewCalls).toEqual([]);
+  });
+
+  test('arrow nav fires only when the message article itself holds focus', () => {
+    const { messages, scrollIntoViewCalls, viewport } = createViewport();
+    const nav = useChatKeyboardNav({
+      onJumpToLatest: () => {},
+      getScrollBehavior: () => 'auto',
+    });
+
+    // Focus the message article directly (tabindex=-1)
+    messages[0]!.focus();
+
+    const down = keyEvent('ArrowDown');
+    nav.handleKeyDown(down, viewport);
+    expect(down.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(messages[1]!);
+    expect(scrollIntoViewCalls).toEqual(['second']);
+  });
+
   test('text editing targets keep native keyboard behavior', () => {
     const { viewport } = createViewport();
     const input = document.createElement('input');
