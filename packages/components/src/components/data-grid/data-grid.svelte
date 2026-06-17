@@ -98,7 +98,7 @@
       return {
         ...record,
         rowDomId: uniqueRowId,
-        rowKey: `${uniqueRowId}\u0000${record.rowIndex}`,
+        rowKey: uniqueRowId,
       };
     });
   });
