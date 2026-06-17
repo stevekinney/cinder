@@ -3698,27 +3698,6 @@
       "import": "./src/components/timeline/timeline.examples.json",
       "default": "./src/components/timeline/timeline.examples.json"
     },
-    "./timeline-item": {
-      "types": "./dist/components/timeline-item/index.d.ts",
-      "svelte": "./src/components/timeline-item/index.ts",
-      "node": "./dist/server/components/timeline-item/index.js",
-      "default": "./dist/components/timeline-item/index.js"
-    },
-    "./timeline-item/schema": {
-      "types": "./dist/components/timeline-item/timeline-item.schema.d.ts",
-      "svelte": "./src/components/timeline-item/timeline-item.schema.ts",
-      "node": "./dist/server/components/timeline-item/timeline-item.schema.js",
-      "default": "./dist/components/timeline-item/timeline-item.schema.js"
-    },
-    "./timeline-item/variables": {
-      "types": "./dist/components/timeline-item/timeline-item.variables.d.ts",
-      "svelte": "./src/components/timeline-item/timeline-item.variables.ts",
-      "node": "./dist/server/components/timeline-item/timeline-item.variables.js",
-      "default": "./dist/components/timeline-item/timeline-item.variables.js"
-    },
-    "./timeline-item/styles": {
-      "default": "./dist/components/timeline-item/timeline-item.css"
-    },
     "./toast-region": {
       "types": "./dist/components/toast-region/index.d.ts",
       "svelte": "./src/components/toast-region/index.ts",

@@ -4541,39 +4541,13 @@
           "reason": "Guiding users through a numbered procedural flow — steps conveys progress more clearly."
         }
       ],
-      "related": ["timeline-item", "feed", "steps"],
+      "related": ["feed", "steps"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/timeline/schema",
         "variables": "@lostgradient/cinder/timeline/variables",
         "examples": "@lostgradient/cinder/timeline/examples"
-      }
-    },
-    {
-      "name": "TimelineItem",
-      "id": "timeline-item",
-      "import": "@lostgradient/cinder/timeline-item",
-      "exportName": "TimelineItem",
-      "category": "data-display",
-      "status": "stable",
-      "purpose": "Single event inside a timeline rail with a decorative tone marker, timestamp-first header, optional group header, and body content.",
-      "tags": ["timeline", "event"],
-      "useWhen": [
-        "Rendering one event along a timeline rail with consistent marker, header, connector, and body structure.",
-        "Coloring decorative markers by tone (info, success, warning, error) while keeping the meaningful status in title or content."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "The entry lives in a social activity stream rather than a workflow rail — feed-event fits better."
-        }
-      ],
-      "related": ["timeline", "feed-event"],
-      "hasConstraints": false,
-      "hasExamples": false,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/timeline-item/schema",
-        "variables": "@lostgradient/cinder/timeline-item/variables"
       }
     },
     {

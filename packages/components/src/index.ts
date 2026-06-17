@@ -802,9 +802,6 @@ export type { Highlighter } from './utilities/highlighter.ts';
 export { default as Timeline } from './components/timeline/index.ts';
 export type { TimelineProps } from './components/timeline/index.ts';
 
-export { default as TimelineItem } from './components/timeline-item/index.ts';
-export type { TimelineItemProps } from './components/timeline-item/index.ts';
-
 export { default as Toggle } from './components/toggle/index.ts';
 export type { ToggleProps } from './components/toggle/index.ts';
 

@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  /** Test-only fixture composing Timeline + TimelineItem. */
+  /** Test-only fixture driving Timeline via its `entries` + snippet API. */
   export type TimelineFixtureProps = {
     items: Array<{
       id: string;
