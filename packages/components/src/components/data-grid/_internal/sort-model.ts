@@ -54,6 +54,11 @@ export function getSortedDataGridRowIndices<TRow>(
     for (const { column, direction } of activeSortItems) {
       const leftValue = getDataGridColumnValue(leftRow, column);
       const rightValue = getDataGridColumnValue(rightRow, column);
+      if (isNullishSortValue(leftValue) || isNullishSortValue(rightValue)) {
+        const comparison = compareDataGridValues(leftValue, rightValue, direction);
+        if (comparison !== 0) return comparison;
+        continue;
+      }
       const comparison = column.sortComparator
         ? column.sortComparator(leftValue, rightValue, leftRow, rightRow)
         : compareDataGridValues(leftValue, rightValue, direction);

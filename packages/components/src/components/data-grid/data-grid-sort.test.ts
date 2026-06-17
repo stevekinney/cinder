@@ -126,6 +126,34 @@ describe('DataGrid sort model', () => {
 
     expect(sortedIndices).toEqual([2, 1, 0]);
   });
+
+  test('keeps nullish values last before applying custom comparators', () => {
+    const nullableRows: Array<{ id: string; total: number | null }> = [
+      { id: 'a', total: null },
+      { id: 'b', total: 10 },
+      { id: 'c', total: 20 },
+    ];
+    const nullableColumns: DataGridColumnDef<(typeof nullableRows)[number]>[] = [
+      {
+        key: 'total',
+        header: 'Total',
+        sortable: true,
+        sortComparator: (left: number | null, right: number | null) =>
+          (left ?? Number.NEGATIVE_INFINITY) - (right ?? 0),
+      },
+    ];
+
+    expect(
+      getSortedDataGridRowIndices(nullableRows, nullableColumns, [
+        { key: 'total', direction: 'ascending' },
+      ]),
+    ).toEqual([1, 2, 0]);
+    expect(
+      getSortedDataGridRowIndices(nullableRows, nullableColumns, [
+        { key: 'total', direction: 'descending' },
+      ]),
+    ).toEqual([2, 1, 0]);
+  });
 });
 
 describe('DataGrid sort rendering', () => {
