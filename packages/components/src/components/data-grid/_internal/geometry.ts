@@ -77,6 +77,7 @@ export function clampCellCoordinate(
 
   const rowIndex = rowIds.indexOf(cell.rowId);
   const columnIndex = columnKeys.indexOf(cell.columnKey);
+  if (rowIndex < 0 || columnIndex < 0) return undefined;
 
   return {
     rowId: rowIds[Math.min(Math.max(rowIndex, 0), rowIds.length - 1)] ?? rowIds[0]!,

@@ -416,7 +416,12 @@
 
     if (action.type === 'select-all') {
       selectionState.selectAll();
-      if (selectionMode !== 'none') setSelectionModel(keyedRows.map((row) => row.rowId));
+      if (selectionMode === 'multiple') {
+        setSelectionModel(keyedRows.map((row) => row.rowId));
+      } else if (selectionMode === 'single') {
+        const row = keyedRows[activeRowIndex];
+        setSelectionModel(row ? [row.rowId] : []);
+      }
       return;
     }
 

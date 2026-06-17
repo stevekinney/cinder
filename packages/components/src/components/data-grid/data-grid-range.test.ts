@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import {
+  clampCellCoordinate,
   computeCellRange,
   getCellsInRange,
   isCellInRange,
@@ -37,6 +38,21 @@ describe('DataGrid range geometry', () => {
         columnKeys,
       ),
     ).toBeUndefined();
+  });
+
+  test('does not clamp missing cell coordinates to the first cell', () => {
+    expect(
+      clampCellCoordinate({ rowId: 'missing', columnKey: 'customer' }, rowIds, columnKeys),
+    ).toBeUndefined();
+    expect(
+      clampCellCoordinate({ rowId: 'row-1', columnKey: 'missing' }, rowIds, columnKeys),
+    ).toBeUndefined();
+    expect(
+      clampCellCoordinate({ rowId: 'row-2', columnKey: 'status' }, rowIds, columnKeys),
+    ).toEqual({
+      rowId: 'row-2',
+      columnKey: 'status',
+    });
   });
 });
 

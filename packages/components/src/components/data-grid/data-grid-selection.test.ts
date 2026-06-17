@@ -123,6 +123,29 @@ describe('DataGrid selection', () => {
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(1);
   });
 
+  test('Ctrl+A keeps row selection singular in single selection mode', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'single',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
+    await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
+
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-2']);
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(1);
+    expect(
+      container.querySelector('[role="row"][aria-rowindex="3"]')?.getAttribute('aria-selected'),
+    ).toBe('true');
+  });
+
   test('Enter selects the active cell while focus stays on the grid', async () => {
     const onSelectionModelChange = mock();
     const { container } = render(OrderDataGrid, {
