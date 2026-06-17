@@ -402,4 +402,29 @@ describe('DataGrid selection', () => {
     expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(1);
     expect(grid?.getAttribute('aria-activedescendant')).toBe(getDataCell(container, 0, 0).id);
   });
+
+  test('keeps selection on the active cell when reconciliation drops the old anchor', async () => {
+    const { container, rerender } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'End', ctrlKey: true, shiftKey: true });
+
+    await rerender({
+      rows: [rows[2]!],
+      columns: [columns[2]!],
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const remainingCell = getDataCell(container, 0, 0);
+    expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(1);
+    expect(remainingCell.getAttribute('data-cinder-anchor')).toBe('true');
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(remainingCell.id);
+  });
 });

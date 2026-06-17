@@ -121,13 +121,14 @@ export class DataGridSelectionModel {
     }
 
     const hadActiveCell = this.activeCell !== undefined;
+    const hadAnchorCell = this.anchorCell !== undefined;
     const nextActiveCell =
       (this.activeCell && clampCellCoordinate(this.activeCell, rowIds, columnKeys)) ?? fallbackCell;
     if (!areCellsEqual(this.activeCell, nextActiveCell)) this.activeCell = nextActiveCell;
 
     const nextAnchorCell =
       (this.anchorCell && clampCellCoordinate(this.anchorCell, rowIds, columnKeys)) ??
-      (!hadActiveCell ? nextActiveCell : undefined);
+      (hadAnchorCell || !hadActiveCell ? nextActiveCell : undefined);
     if (!areCellsEqual(this.anchorCell, nextAnchorCell)) this.anchorCell = nextAnchorCell;
 
     const nextToggledCells = this.toggledCells.filter((cell) =>
