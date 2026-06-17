@@ -667,13 +667,16 @@
   // ==========================================================================
 
   const scrollAttachment = scrollState.createScrollAttachment();
-  const historyAnchorScrollAttachment: Attachment<HTMLElement> = (node) => {
-    const handleScroll = () => clearHistoryAnchorAfterScroll(node.scrollTop);
-    node.addEventListener('scroll', handleScroll, { passive: true });
+  const historyAnchorScrollAttachment = $derived<Attachment<HTMLElement>>(
+    historyAnchorMessageId === null || historyAnchorRestoredScrollTop === null
+      ? noopAttachment
+      : (node) => {
+          const handleScroll = () => clearHistoryAnchorAfterScroll(node.scrollTop);
+          node.addEventListener('scroll', handleScroll, { passive: true });
 
-    return () => node.removeEventListener('scroll', handleScroll);
-  };
-
+          return () => node.removeEventListener('scroll', handleScroll);
+        },
+  );
   // ==========================================================================
   // Actions
   // ==========================================================================
@@ -1325,7 +1328,7 @@
       role="log"
       aria-label="Messages"
       aria-describedby={statusId}
-      aria-live={isVirtualized ? undefined : 'polite'}
+      aria-live={isVirtualized ? 'off' : 'polite'}
       aria-relevant={isVirtualized ? undefined : 'additions'}
       data-cinder-virtualized={isVirtualized ? '' : undefined}
       tabindex="0"

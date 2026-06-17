@@ -165,6 +165,19 @@ describe('Chat virtualization', () => {
     expect(conversation).toEqual(originalConversation);
   });
 
+  test('turns off the timeline live region when the transcript is virtualized', async () => {
+    const conversation = longConversation(80);
+    const { container } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+
+    const timeline = await waitForVirtualizedTimeline(container);
+
+    expect(timeline.getAttribute('role')).toBe('log');
+    expect(timeline.getAttribute('aria-live')).toBe('off');
+    expect(timeline.hasAttribute('aria-relevant')).toBe(false);
+  });
+
   test('scrolling shifts the rendered message window', async () => {
     const conversation = longConversation(80);
     const { container } = render(Chat, {
@@ -395,8 +408,10 @@ describe('Chat history pagination', () => {
     const originalFirstMessageRow = container
       .querySelector('#message-message-0')
       ?.closest<HTMLElement>('.chat-virtual-row');
-    expect(originalFirstMessageRow?.style.transform).not.toBe(
-      `translateY(${timeline.scrollTop}px)`,
+    await waitFor(() =>
+      expect(originalFirstMessageRow?.style.transform).not.toBe(
+        `translateY(${timeline.scrollTop}px)`,
+      ),
     );
   });
 

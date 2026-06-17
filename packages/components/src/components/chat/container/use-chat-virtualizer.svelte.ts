@@ -186,7 +186,6 @@ export class ChatVirtualizer {
         return;
       }
       element.scrollTop = top;
-      element.dispatchEvent(new Event('scroll'));
       return;
     }
   }

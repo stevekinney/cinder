@@ -124,6 +124,24 @@ describe('ChatVirtualizer', () => {
     expect(virtualizer.scrollOffset).toBe(0);
   });
 
+  test('does not synthesize scroll events when setting an instant offset', () => {
+    const { virtualizer } = createVirtualizer();
+    const element = scrollableElement();
+    let scrollEvents = 0;
+    element.addEventListener('scroll', () => {
+      scrollEvents += 1;
+    });
+    const detach = virtualizer.scrollElement(element);
+
+    virtualizer.scrollToOffset(800, { behavior: 'instant' });
+
+    expect(element.scrollTop).toBe(800);
+    expect(virtualizer.scrollOffset).toBe(800);
+    expect(scrollEvents).toBe(0);
+
+    detach?.();
+  });
+
   test('keeps a smooth scroll target while waiting for real scroll events', () => {
     const { virtualizer } = createVirtualizer();
     const element = scrollableElement();
