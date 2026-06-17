@@ -213,6 +213,19 @@ function shouldEmit(control: PlaygroundControl, current: PlaygroundValue): boole
  * @param values - Current value per control name.
  * @returns A single-element Svelte snippet string.
  */
+/**
+ * Escape a string for a Svelte text-content context. The live mount sets the
+ * children via `textContent` (so typed markup is inert there), but the COPYABLE
+ * snippet string interpolates this value as element content — if the user types
+ * `<`, `&`, or `{`, the pasted snippet would be invalid or different Svelte
+ * (`<` opens a tag, `&` starts an entity, `{` opens an expression). Escaping
+ * those three keeps the copied code rendering the same literal text the live
+ * preview shows. `>` is left as-is — it is literal in element text content.
+ */
+function escapeSnippetText(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\{/g, '&lbrace;');
+}
+
 export function buildSnippet(
   exportName: string,
   controls: PlaygroundControl[],
@@ -231,17 +244,21 @@ export function buildSnippet(
     .filter((control) => shouldEmit(control, values[control.name] ?? control.value))
     .map((control) => attributeFor(control.name, values[control.name] ?? control.value));
 
+  // One attribute fragment shared by both the self-closing and open/close forms,
+  // so children is a single suffix concern rather than a parallel set of paths.
+  const attributePart =
+    attributes.length === 0
+      ? ''
+      : attributes.length === 1
+        ? ` ${attributes[0]}`
+        : `\n  ${attributes.join('\n  ')}\n`;
+
   // With children content, emit an open/close pair so the snippet copy-pastes as
   // a real labelled instance; otherwise keep the minimal self-closing form.
   if (childrenText !== '') {
-    if (attributes.length === 0) return `<${exportName}>${childrenText}</${exportName}>`;
-    if (attributes.length === 1) {
-      return `<${exportName} ${attributes[0]}>${childrenText}</${exportName}>`;
-    }
-    return `<${exportName}\n  ${attributes.join('\n  ')}\n>${childrenText}</${exportName}>`;
+    return `<${exportName}${attributePart}>${escapeSnippetText(childrenText)}</${exportName}>`;
   }
-
-  if (attributes.length === 0) return `<${exportName} />`;
-  if (attributes.length === 1) return `<${exportName} ${attributes[0]} />`;
-  return `<${exportName}\n  ${attributes.join('\n  ')}\n/>`;
+  return attributes.length > 1
+    ? `<${exportName}${attributePart}/>`
+    : `<${exportName}${attributePart} />`;
 }

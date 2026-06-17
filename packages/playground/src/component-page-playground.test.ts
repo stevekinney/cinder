@@ -407,6 +407,25 @@ describe('buildSnippet', () => {
     expect(buildSnippet('Badge', withChildren, { children: '' })).toBe('<Badge />');
   });
 
+  test('escapes children text so the copied snippet stays valid Svelte', () => {
+    const withChildren = buildPlaygroundModel(
+      manifest([
+        { name: 'children', control: { kind: 'snippet' }, bindable: false, optional: false },
+      ]),
+    ).controls;
+    // `<`, `&`, and `{` are special in Svelte text content; escape them so the
+    // pasted snippet renders the literal text the live preview shows.
+    expect(buildSnippet('Badge', withChildren, { children: '<strong>x</strong>' })).toBe(
+      '<Badge>&lt;strong>x&lt;/strong></Badge>',
+    );
+    expect(buildSnippet('Badge', withChildren, { children: 'a & b' })).toBe(
+      '<Badge>a &amp; b</Badge>',
+    );
+    expect(buildSnippet('Badge', withChildren, { children: '{count}' })).toBe(
+      '<Badge>&lbrace;count}</Badge>',
+    );
+  });
+
   test('combines attribute controls with children content', () => {
     const mixed = buildPlaygroundModel(
       manifest([
