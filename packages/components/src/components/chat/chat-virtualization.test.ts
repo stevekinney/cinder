@@ -249,6 +249,37 @@ describe('Chat virtualization', () => {
     await waitFor(() => expect(container.textContent).toContain('Message 20'));
     expect(container.querySelector('#message-message-19')).toBe(existingRow);
   });
+
+  test('appending at the virtualized bottom corrects scroll after row measurement expands', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function getVirtualRowRect() {
+      if (this instanceof HTMLElement && this.classList.contains('chat-virtual-row')) {
+        const height = this.textContent?.includes('Message 20') ? 120 : 20;
+        return new DOMRect(0, 0, 100, height);
+      }
+      return originalGetBoundingClientRect.call(this);
+    };
+
+    try {
+      let conversation = longConversation(20);
+      const { container, rerender } = render(Chat, {
+        props: virtualizedProps(conversation),
+      });
+      const timeline = await waitForVirtualizedTimeline(container);
+      Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+
+      await waitFor(() => expect(container.textContent).toContain('Message 19'));
+      await waitFor(() => expect(timeline.scrollTop).toBeGreaterThanOrEqual(300));
+
+      conversation = appendMessage(conversation, 'assistant', 'message-20', 'Message 20');
+      await rerender(virtualizedProps(conversation));
+
+      await waitFor(() => expect(container.textContent).toContain('Message 20'));
+      await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(340));
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
 });
 
 describe('Chat history pagination', () => {
@@ -352,6 +383,7 @@ describe('Chat history pagination', () => {
     );
 
     await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(120));
+    expect(container.querySelector('.chat-timeline')).toBe(timeline);
     expect(conversation.ids[0]).toBe('older-virtual-message');
     await waitFor(() => expect(container.textContent).toContain('1 earlier message loaded'));
     await waitFor(() => expect(container.textContent).toContain('Message 0'));

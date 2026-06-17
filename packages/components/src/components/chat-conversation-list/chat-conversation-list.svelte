@@ -44,12 +44,16 @@
     if (!text) return summary.messageCount === 1 ? '1 message' : `${summary.messageCount} messages`;
     return text.length > 96 ? `${text.slice(0, 93)}...` : text;
   }
+
+  const resolvedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
+  );
 </script>
 
 <nav
-  class={classNames('cinder-chat-conversation-list', className)}
-  aria-label={ariaLabel}
   {...rest}
+  class={classNames('cinder-chat-conversation-list', className)}
+  aria-label={resolvedAriaLabel}
 >
   {#if sortedConversations.length === 0}
     <p class="cinder-chat-conversation-list__empty" role="status">{emptyText}</p>

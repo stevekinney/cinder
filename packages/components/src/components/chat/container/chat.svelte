@@ -184,6 +184,7 @@
   });
 
   const messages = $derived(getMessages(conversation));
+  let previousAutoScrollMessageCount = getMessages(conversation).length;
 
   // The conversation id as a stable VALUE dependency. The subscribe effect keys
   // on this (not on `conversation.id` read inline) so a consumer passing a fresh
@@ -220,9 +221,7 @@
 
   const isVirtualized = $derived(virtualized && hasMounted && messages.length > 0);
   const timelineResetIdentity = $derived(
-    `${conversationId}:${isVirtualized ? (messages[0]?.id ?? '') : ''}:${
-      isVirtualized ? 'virtualized' : 'full'
-    }`,
+    `${conversationId}:${isVirtualized ? 'virtualized' : 'full'}`,
   );
   const staticRowsResetIdentity = $derived(messages[0]?.id ?? '');
 
@@ -403,28 +402,50 @@
    * then use `tick()` to wait for DOM updates before scrolling.
    */
   $effect.pre(() => {
-    if (!viewport) return;
+    if (!viewport) return undefined;
 
     // Register dependency on message count
     const currentCount = messages.length;
-    const currentTotalSize = isVirtualized ? chatVirtualizer.scrollSize : viewport.scrollHeight;
+    const isTranscriptAppend = currentCount > previousAutoScrollMessageCount;
+    previousAutoScrollMessageCount = currentCount;
+    // Keep the scroll extent as a dependency so virtual row measurement can
+    // trigger one final bottom correction after the appended row is measured.
+    const currentScrollExtent = isVirtualized ? chatVirtualizer.scrollSize : viewport.scrollHeight;
+    void currentScrollExtent;
 
     // Read isAtBottom without making it a dependency (prevents loops)
     const atBottom = untrack(() => scrollState.isAtBottom);
 
     // Skip if user initiated a smooth scroll (e.g., via jump button)
-    if (scrollState.isUserScrolling) return;
+    if (scrollState.isUserScrolling) return undefined;
+
+    // Explicit history anchoring owns scroll restoration while a prepend is pending
+    // and until the user scrolls away from the restored anchor.
+    const hasActiveHistoryAnchor = untrack(
+      () => pendingHistoryScroll !== null || historyAnchorMessageId !== null,
+    );
+    if (hasActiveHistoryAnchor) return undefined;
 
     if (atBottom && currentCount > 0) {
-      // Schedule scroll after DOM updates
-      tick().then(() => {
+      let cancelled = false;
+      const waitForBottomTarget = isTranscriptAppend ? waitForLayoutFrame() : tick();
+      void waitForBottomTarget.then(() => {
+        if (cancelled || !viewport || pendingHistoryScroll || historyAnchorMessageId !== null) {
+          return;
+        }
         if (isVirtualized) {
-          chatVirtualizer.scrollToOffset(currentTotalSize, { behavior: 'instant' });
+          chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
         } else {
           viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
         }
       });
+
+      return () => {
+        cancelled = true;
+      };
     }
+
+    return undefined;
   });
 
   $effect.pre(() => {
@@ -514,18 +535,22 @@
     historyAnchorRestoredScrollTop = null;
   }
 
+  function clearHistoryAnchorAfterScroll(scrollTop: number): void {
+    if (
+      historyAnchorMessageId !== null &&
+      historyAnchorRestoredScrollTop !== null &&
+      Math.abs(scrollTop - historyAnchorRestoredScrollTop) > 2
+    ) {
+      clearHistoryAnchor();
+    }
+  }
+
   function handleScrollStateChange(event: {
     isAtBottom: boolean;
     scrollTop: number;
     scrollHeight: number;
   }): void {
-    if (
-      historyAnchorMessageId !== null &&
-      historyAnchorRestoredScrollTop !== null &&
-      Math.abs(event.scrollTop - historyAnchorRestoredScrollTop) > 2
-    ) {
-      clearHistoryAnchor();
-    }
+    clearHistoryAnchorAfterScroll(event.scrollTop);
 
     onscrollstatechange?.(event);
   }
@@ -642,6 +667,12 @@
   // ==========================================================================
 
   const scrollAttachment = scrollState.createScrollAttachment();
+  const historyAnchorScrollAttachment: Attachment<HTMLElement> = (node) => {
+    const handleScroll = () => clearHistoryAnchorAfterScroll(node.scrollTop);
+    node.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => node.removeEventListener('scroll', handleScroll);
+  };
 
   // ==========================================================================
   // Actions
@@ -1299,6 +1330,7 @@
       data-cinder-virtualized={isVirtualized ? '' : undefined}
       tabindex="0"
       {@attach scrollAttachment}
+      {@attach historyAnchorScrollAttachment}
       {@attach viewportAttach}
     >
       {#if showHistoryTrigger}

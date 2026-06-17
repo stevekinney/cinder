@@ -101,6 +101,27 @@ describe('ChatConversationList', () => {
     expect(container.querySelector('[role="status"]')?.textContent).toBe('Nothing here yet');
   });
 
+  test('keeps the component-owned landmark name ahead of forwarded attributes', async () => {
+    const { container, rerender } = render(ChatConversationList, {
+      props: {
+        conversations: [],
+        ariaLabel: 'Support conversations',
+        'aria-label': 'Caller override',
+      },
+    });
+
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('aria-label')).toBe('Support conversations');
+
+    await rerender({
+      conversations: [],
+      ariaLabel: '',
+      'aria-label': 'Caller override',
+    });
+
+    expect(nav?.hasAttribute('aria-label')).toBe(false);
+  });
+
   test('renders non-interactive rows when no selection handler is supplied', () => {
     const { container } = render(ChatConversationList, {
       props: {
