@@ -61,7 +61,6 @@ test.describe('playground shell styles', () => {
     const viewportOption = viewportControl.locator('.cinder-segmented-control-option').first();
     const sidebarList = page.locator('.cinder-side-navigation__list');
     const filterInput = page.locator('#sidebar-filter.cinder-input');
-    const previewFrameWrapper = page.locator('.preview-frame-wrapper');
 
     const viewportMetrics = await computedMetrics(viewportControl);
     expect(['flex', 'inline-flex']).toContain(viewportMetrics.display);
@@ -84,8 +83,10 @@ test.describe('playground shell styles', () => {
     expect(filterMetrics.borderRadius).toBeGreaterThan(0);
     expect(filterMetrics.height).toBeGreaterThan(30);
 
-    const previewFrameMetrics = await computedMetrics(previewFrameWrapper);
-    expect(previewFrameMetrics.borderBlockStartWidth).toBeGreaterThan(0);
+    const previewPage = page.frameLocator('iframe[data-cinder-preview]').locator('.dx');
+    await expect(previewPage).toBeVisible();
+    const previewPageMetrics = await computedMetrics(previewPage);
+    expect(previewPageMetrics.borderBlockStartWidth).toBeGreaterThan(0);
 
     await page.getByRole('radio', { name: 'Tablet (768 pixels)' }).click();
     await expect(viewportControl.locator('[data-cinder-selected]')).toContainText('Tablet');
