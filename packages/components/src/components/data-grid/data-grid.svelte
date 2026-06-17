@@ -339,6 +339,7 @@
     }
 
     const isToggle = event.ctrlKey || event.metaKey;
+    if (event.shiftKey) return;
     if (!isToggle) {
       setSelectionModel([rowId]);
       return;

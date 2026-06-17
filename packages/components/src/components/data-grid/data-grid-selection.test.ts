@@ -227,6 +227,49 @@ describe('DataGrid selection', () => {
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(3);
   });
 
+  test('Shift+Click range extension keeps multiple row selection intact', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
+    await fireEvent.click(getDataCell(container, 1, 1), { shiftKey: true });
+
+    expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(3);
+  });
+
+  test('Shift+Enter range extension keeps multiple row selection intact', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
+    await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
+    await fireEvent.keyDown(grid!, { key: 'Enter', shiftKey: true });
+
+    expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(3);
+  });
+
   test('Ctrl+Click toggles non-contiguous cells', async () => {
     const { container } = render(OrderDataGrid, {
       rows,
