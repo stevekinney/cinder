@@ -1248,3 +1248,199 @@ describe('ChatAdapter — push forwarding', () => {
     unmount(instance);
   });
 });
+
+/**
+ * A compatible transcript whose latest tool-result requests approval
+ * (outcome === 'action_required' with an action). This is exactly how a plain
+ * conversationalist transcript carries an action-required tool call — no
+ * Cinder-only fields. C3 derives the approval prompt from it.
+ */
+function actionRequiredConversation(id = 'approval-conversation'): ConversationHistory {
+  const now = '2026-06-02T00:00:00.000Z';
+  const result: Message = {
+    id: 'tr-1',
+    role: 'tool-result',
+    content: '',
+    position: 0,
+    createdAt: now,
+    metadata: {},
+    hidden: false,
+    toolResult: {
+      callId: 'call-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'Deploy to production?' },
+    },
+  };
+  return {
+    schemaVersion: 4,
+    id,
+    status: 'active',
+    metadata: {},
+    ids: ['tr-1'],
+    messages: { 'tr-1': result },
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function approvalButton(container: HTMLElement, label: 'Approve' | 'Reject'): HTMLButtonElement {
+  const buttons = Array.from(
+    container.querySelectorAll<HTMLButtonElement>('.chat-tool-approval-btn'),
+  );
+  const match = buttons.find((button) => button.textContent?.trim() === label);
+  if (!match) throw new Error(`approval button "${label}" not found`);
+  return match;
+}
+
+describe('ChatAdapter — tool approval', () => {
+  test('approve commits and, on adapter SUCCESS, fires the onapprove callback (adapter-then-callback)', async () => {
+    const approvedViaAdapter: string[] = [];
+    const approvedViaCallback: string[] = [];
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      approveToolCall: async (callId) => {
+        approvedViaAdapter.push(callId);
+      },
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-approve-success',
+      conversation: actionRequiredConversation(),
+      adapter,
+      onapprove: (callId: string) => approvedViaCallback.push(callId),
+    });
+
+    approvalButton(container, 'Approve').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(approvedViaAdapter).toEqual(['call-1']);
+    // Callback fires AFTER the adapter resolves — not skipped.
+    expect(approvedViaCallback).toEqual(['call-1']);
+    // The prompt is resolved (no Approve button remains).
+    expect(container.querySelector('.chat-tool-approval-btn-approve')).toBeNull();
+
+    unmount(instance);
+  });
+
+  test('approve rolls back and surfaces onadaptererror when the adapter REJECTS', async () => {
+    const errors: Array<{ command: string; error: unknown }> = [];
+    const approvedViaCallback: string[] = [];
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      approveToolCall: async () => {
+        throw new Error('transport down');
+      },
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-approve-reject',
+      conversation: actionRequiredConversation(),
+      adapter,
+      onapprove: (callId: string) => approvedViaCallback.push(callId),
+      onadaptererror: (event: { command: string; error: unknown }) => errors.push(event),
+    });
+
+    approvalButton(container, 'Approve').click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]!.command).toBe('approveToolCall');
+    // The callback must NOT fire on adapter failure.
+    expect(approvedViaCallback).toEqual([]);
+    // The optimistic resolution rolled back — the prompt is pending again.
+    expect(container.querySelector('.chat-tool-approval-btn-approve')).not.toBeNull();
+
+    unmount(instance);
+  });
+
+  test('deny rolls back on a synchronously-throwing adapter command', async () => {
+    const errors: Array<{ command: string; error: unknown }> = [];
+    const adapter = {
+      sendMessage: async () => {},
+      denyToolCall: () => {
+        throw new Error('not connected');
+      },
+    } satisfies ChatAdapter;
+    const { container, instance } = mountChat({
+      id: 'chat-deny-sync-throw',
+      conversation: actionRequiredConversation(),
+      adapter,
+      onadaptererror: (event: { command: string; error: unknown }) => errors.push(event),
+    });
+
+    approvalButton(container, 'Reject').click();
+    await Promise.resolve();
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]!.command).toBe('denyToolCall');
+    // Rolled back — Reject button is still present (prompt pending).
+    expect(container.querySelector('.chat-tool-approval-btn-deny')).not.toBeNull();
+
+    unmount(instance);
+  });
+
+  test('approve routes to the callback when no adapter method is supplied', () => {
+    const approved: string[] = [];
+    const { container, instance } = mountChat({
+      id: 'chat-approve-callback',
+      conversation: actionRequiredConversation(),
+      onapprove: (callId: string) => approved.push(callId),
+    });
+
+    approvalButton(container, 'Approve').click();
+    expect(approved).toEqual(['call-1']);
+
+    unmount(instance);
+  });
+
+  test('the approval buttons are disabled when NEITHER an adapter method NOR a callback can handle it', () => {
+    const { container, instance } = mountChat({
+      id: 'chat-approve-no-handler',
+      conversation: actionRequiredConversation(),
+    });
+
+    expect(approvalButton(container, 'Approve').disabled).toBe(true);
+    expect(approvalButton(container, 'Reject').disabled).toBe(true);
+
+    unmount(instance);
+  });
+});
+
+describe('Chat — suggested replies (C5) are a last-turn affordance', () => {
+  function suggestionMessage(id: string, position: number, labels: string[]): Message {
+    return {
+      id,
+      role: 'assistant',
+      content: `reply ${id}`,
+      position,
+      createdAt: `2026-06-02T00:0${position}:00.000Z`,
+      metadata: { 'cinder:suggestions': labels },
+      hidden: false,
+    };
+  }
+
+  test('only the LAST message renders suggestion chips, even when earlier ones carry the metadata', () => {
+    // Two assistant turns both carry cinder:suggestions metadata. Suggestions are
+    // a per-turn affordance — only the latest turn should show chips, not every
+    // historical message that still carries the metadata. (Cursor Bugbot.)
+    const conversation = conversationFromMessages('chat-suggestions', [
+      suggestionMessage('older', 0, ['Stale one', 'Stale two']),
+      suggestionMessage('latest', 1, ['Fresh one', 'Fresh two']),
+    ]);
+    const { container, instance } = mountChat({ id: 'chat-suggestions', conversation });
+
+    const toolbars = container.querySelectorAll('[role="toolbar"][aria-label="Suggested replies"]');
+    expect(toolbars).toHaveLength(1);
+
+    const chipText = Array.from(toolbars[0]!.querySelectorAll('[data-cinder-suggestion]')).map(
+      (chip) => chip.textContent?.trim(),
+    );
+    expect(chipText).toEqual(['Fresh one', 'Fresh two']);
+    // The stale earlier-turn suggestions must NOT render.
+    expect(container.textContent).not.toContain('Stale one');
+
+    unmount(instance);
+  });
+});

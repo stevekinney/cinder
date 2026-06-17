@@ -3,6 +3,7 @@
   import type { HTMLAttributes } from 'svelte/elements';
   import type { Message, ToolCallPair } from '../conversation-model.ts';
   import type { MessagePartOverride } from './chat-message-parts.ts';
+  import type { StepInfo } from '../utilities/types.ts';
 
   /**
    * Role labels for display purposes.
@@ -51,6 +52,35 @@
     onretry?: ((messageId: string) => void) | undefined;
     /** Called when user edits a message (fires with new content). Only applies to user messages. */
     onedit?: ((event: { messageId: string; content: string }) => void) | undefined;
+    /** The set of approved tool call IDs for deriving approval state. */
+    approvedToolCallIds?: ReadonlySet<string> | undefined;
+    /** The set of denied tool call IDs for deriving denial state. */
+    deniedToolCallIds?: ReadonlySet<string> | undefined;
+    /** Called when the user approves an action-required tool call. */
+    onapprove?: ((toolCallId: string) => void) | undefined;
+    /** Called when the user denies an action-required tool call. */
+    ondeny?: ((toolCallId: string) => void) | undefined;
+    /**
+     * Reasoning text to surface as a collapsible block before the body.
+     * When present and non-empty, a `reasoning` part is prepended to the derived parts.
+     */
+    reasoning?: string | undefined;
+    /**
+     * Step list to surface as a stepper before the body.
+     * Each entry maps to one `step` part in the derived parts.
+     */
+    steps?: ReadonlyArray<StepInfo> | undefined;
+    /** Whether the reasoning disclosure is expanded. Owned by the container's reasoning state. */
+    reasoningExpanded?: boolean | undefined;
+    /** Called when the reasoning disclosure toggle is activated. */
+    onreasoning?: (() => void) | undefined;
+    /**
+     * Suggestion labels to surface as clickable chips after the body.
+     * Each entry maps to one `suggestion` part in the derived parts.
+     */
+    suggestions?: ReadonlyArray<string> | undefined;
+    /** Called when the user selects a suggestion chip. */
+    onsuggestionselect?: ((label: string) => void) | undefined;
   };
 </script>
 
@@ -77,6 +107,16 @@
     onexpandedchange,
     onretry,
     onedit,
+    approvedToolCallIds,
+    deniedToolCallIds,
+    onapprove,
+    ondeny,
+    reasoning,
+    steps,
+    suggestions,
+    reasoningExpanded = false,
+    onreasoning,
+    onsuggestionselect,
     tabindex,
     ...rest
   }: ChatMessageProps = $props();
@@ -143,12 +183,22 @@
   // The cinder-owned render parts for this message. The streaming override and
   // expanded state are resolved into the parts here so the renderer + part
   // components stay dumb (no override/streaming plumbing leaks into them).
+  // C3: approval id sets are threaded in so tool-approval parts derive their
+  // `approved` state without mutating the transcript.
   const messageParts = $derived(
     deriveMessageParts(message, {
       toolCallPair: toolPair ?? undefined,
       overrideContent,
       streaming,
       expanded,
+      approvedToolCallIds,
+      deniedToolCallIds,
+      // C4: reasoning and steps are UI-only overlays derived from metadata or
+      // explicit per-message props; never written back to the transcript.
+      reasoning,
+      steps,
+      // C5: suggestions are UI-only overlays; never written back to the transcript.
+      suggestions,
     }),
   );
 
@@ -237,6 +287,11 @@
           {messagePart}
           {expanded}
           ontoggle={toggleExpanded}
+          {onapprove}
+          {ondeny}
+          {reasoningExpanded}
+          {onreasoning}
+          {onsuggestionselect}
         />
 
         {#if hasMarkdownBody && textContent.length > TRUNCATE_THRESHOLD}

@@ -5,8 +5,123 @@
  * content for copy/export operations.
  */
 
-import type { Message, MultiModalContent } from '../conversation-model.ts';
-import type { ChatMessagePart, ImageMessagePart, MessagePartDerivationContext } from './types.ts';
+import type { Message, MultiModalContent, ToolResult } from '../conversation-model.ts';
+import type {
+  ChatMessagePart,
+  ImageMessagePart,
+  MessagePartDerivationContext,
+  StepInfo,
+  StepStatus,
+  ToolApprovalMessagePart,
+} from './types.ts';
+
+/** Namespaced metadata keys the overlay parts read (ignorable by plain rendering). */
+export const CINDER_REASONING_METADATA_KEY = 'cinder:reasoning';
+export const CINDER_STEPS_METADATA_KEY = 'cinder:steps';
+export const CINDER_SUGGESTIONS_METADATA_KEY = 'cinder:suggestions';
+
+const STEP_STATUSES: ReadonlySet<string> = new Set<StepStatus>([
+  'pending',
+  'running',
+  'done',
+  'error',
+]);
+
+/**
+ * Narrows an unknown value to a valid {@link StepInfo}. Uses `in`-operator
+ * narrowing (no `as` assertion) so each accessed field is type-safe.
+ */
+function isStepInfo(value: unknown): value is StepInfo {
+  if (value === null || typeof value !== 'object') return false;
+  if (!('title' in value) || !('content' in value) || !('status' in value)) return false;
+  return (
+    typeof value.title === 'string' &&
+    typeof value.content === 'string' &&
+    typeof value.status === 'string' &&
+    STEP_STATUSES.has(value.status)
+  );
+}
+
+/**
+ * Runs a per-message overlay callback, guarding a consumer throw (a buggy
+ * callback can never break the chat render). Returns the sentinel `undefined`
+ * for "no opinion — fall back to metadata", distinguished from a callback that
+ * returns a real (possibly empty) value meaning "this is authoritative".
+ */
+function runOverlayCallback<T>(
+  message: Message,
+  fromProp: ((message: Message) => T | undefined) | undefined,
+): { handled: boolean; value: T | undefined } {
+  if (fromProp === undefined) return { handled: false, value: undefined };
+  try {
+    const value = fromProp(message);
+    // `undefined` means "fall back to metadata"; any other return (incl. an
+    // empty string/array, which suppresses the overlay) is authoritative.
+    return value === undefined ? { handled: false, value: undefined } : { handled: true, value };
+  } catch {
+    // A throwing callback is treated as "no opinion" — fall back to metadata
+    // rather than letting the error escape and break the render.
+    return { handled: false, value: undefined };
+  }
+}
+
+/**
+ * Resolves the reasoning overlay for a message. An explicit per-message callback
+ * is consulted first; when it returns `undefined` (or throws) the resolution
+ * falls back to `cinder:reasoning` namespaced metadata. An empty string from the
+ * callback is authoritative and suppresses the overlay. Returns `undefined` when
+ * no reasoning applies — a plain transcript renders the feature absent.
+ */
+export function resolveMessageReasoning(
+  message: Message,
+  fromProp?: (message: Message) => string | undefined,
+): string | undefined {
+  const fromCallback = runOverlayCallback(message, fromProp);
+  const candidate: unknown = fromCallback.handled
+    ? fromCallback.value
+    : message.metadata[CINDER_REASONING_METADATA_KEY];
+  return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
+}
+
+/**
+ * Resolves the step overlay for a message. An explicit per-message callback is
+ * consulted first; when it returns `undefined` (or throws) the resolution falls
+ * back to `cinder:steps` namespaced metadata. An empty array from the callback is
+ * authoritative and suppresses the overlay. Invalid entries are dropped. Returns
+ * `undefined` when no valid steps apply.
+ */
+export function resolveMessageSteps(
+  message: Message,
+  fromProp?: (message: Message) => StepInfo[] | undefined,
+): StepInfo[] | undefined {
+  const fromCallback = runOverlayCallback(message, fromProp);
+  const candidate: unknown = fromCallback.handled
+    ? fromCallback.value
+    : message.metadata[CINDER_STEPS_METADATA_KEY];
+  if (!Array.isArray(candidate)) return undefined;
+  const steps = candidate.filter(isStepInfo);
+  return steps.length > 0 ? steps : undefined;
+}
+
+/**
+ * Resolves the suggestion overlay for a message. An explicit per-message callback
+ * is consulted first; when it returns `undefined` (or throws) the resolution
+ * falls back to `cinder:suggestions` namespaced metadata. An empty array from the
+ * callback is authoritative and suppresses the overlay. Non-string entries are
+ * dropped. Returns `undefined` when no valid suggestions apply.
+ */
+export function resolveMessageSuggestions(
+  message: Message,
+  fromProp?: (message: Message) => string[] | undefined,
+): string[] | undefined {
+  const fromCallback = runOverlayCallback(message, fromProp);
+  const candidate: unknown = fromCallback.handled
+    ? fromCallback.value
+    : message.metadata[CINDER_SUGGESTIONS_METADATA_KEY];
+  if (!Array.isArray(candidate)) return undefined;
+  const suggestions = candidate.filter((entry): entry is string => typeof entry === 'string');
+  return suggestions.length > 0 ? suggestions : undefined;
+}
 
 /**
  * Normalizes content to a multi-modal array.
@@ -99,6 +214,35 @@ function deriveImageParts(message: Message): ImageMessagePart[] {
 }
 
 /**
+ * Builds a {@link ToolApprovalMessagePart} from an `action_required` tool result.
+ *
+ * Shared by both the standalone `tool-result` branch and the paired `tool-call`
+ * branch of {@link deriveMessageParts} so the approval prompt renders for either
+ * transcript shape. The human-readable tool name resolves from the paired
+ * tool-call when available (else the call id); the approval state comes from the
+ * container's approved/denied id sets. Caller guarantees `result.action` exists.
+ */
+function deriveToolApprovalPart(
+  messageId: string,
+  result: ToolResult,
+  context: MessagePartDerivationContext,
+): ToolApprovalMessagePart {
+  const approved = context.approvedToolCallIds?.has(result.callId)
+    ? true
+    : context.deniedToolCallIds?.has(result.callId)
+      ? false
+      : undefined;
+  return {
+    type: 'tool-approval',
+    key: `${messageId}:tool-approval:${result.callId}`,
+    toolCallId: result.callId,
+    toolName: context.toolCallPair?.call.name ?? result.callId,
+    action: result.action!,
+    approved,
+  };
+}
+
+/**
  * Derives the ordered render parts for a single message.
  *
  * This is the cinder-OWNED bridge from the compatible {@link Message} mirror to
@@ -144,25 +288,48 @@ export function deriveMessageParts(
   // pair for this message (mirrors the original `isToolCall && toolPair`
   // guard). With no pair, fall through to the markdown body below — the same
   // text rendering the original showed for an unpaired tool-call message.
+  //
+  // When that pair's result is `action_required` with an action, ALSO emit a
+  // tool-approval part after the call card. In the common paired transcript the
+  // standalone `tool-result` row is folded into this card (the container hides
+  // paired results), so without this the approval prompt would never render for
+  // the call-plus-result shape — only for a rare standalone action_required
+  // result. The card shows what is being called; the approval gates consent.
   if (message.role === 'tool-call' && message.toolCall && context.toolCallPair) {
+    const result = context.toolCallPair.result;
+    const approvalPart =
+      result && result.outcome === 'action_required' && result.action
+        ? deriveToolApprovalPart(message.id, result, context)
+        : undefined;
     return [
       {
         type: 'tool-call',
         key: `${message.id}:tool-call:${message.toolCall.id}`,
         pair: context.toolCallPair,
       },
+      ...(approvalPart ? [approvalPart] : []),
       ...imageParts,
     ];
   }
 
-  // Tool-result body: emit one tool-result part. The renderer branches on
-  // `result.outcome` for error / action-required / success styling.
+  // Tool-result body: when the outcome is `action_required` and an action is
+  // present, emit a `tool-approval` part instead of the plain `tool-result`
+  // part. The approval part carries the action, the tool call id (used to
+  // look up the tool name from the paired tool-call), and the resolved
+  // approval state from the container's approved/denied id sets. A plain
+  // `success` or `error` result falls through to the standard `tool-result`
+  // part, so this branch is a strict superset that adds zero visual change
+  // for non-approval results.
   if (message.role === 'tool-result' && message.toolResult) {
+    const result = message.toolResult;
+    if (result.outcome === 'action_required' && result.action) {
+      return [deriveToolApprovalPart(message.id, result, context), ...imageParts];
+    }
     return [
       {
         type: 'tool-result',
-        key: `${message.id}:tool-result:${message.toolResult.callId}`,
-        result: message.toolResult,
+        key: `${message.id}:tool-result:${result.callId}`,
+        result,
       },
       ...imageParts,
     ];
@@ -172,17 +339,63 @@ export function deriveMessageParts(
   // images. `body` is a representation-independent key, so a streaming body
   // never remounts as its text grows, and an attachment landing after it keeps
   // its own index-based key.
+  //
+  // C4: Composition order is steps → reasoning → markdown → images.
+  // Steps surface the plan, reasoning surfaces extended thinking, markdown is
+  // the final answer. When neither is present the branch is identical to today.
   const content = context.overrideContent ?? getMessageText(message);
-  return [
-    {
-      type: 'markdown',
-      key: `${message.id}:body`,
-      content,
+
+  const bodyParts: ChatMessagePart[] = [];
+
+  // C4: Step parts — one per entry in context.steps[], in order.
+  if (context.steps && context.steps.length > 0) {
+    for (let index = 0; index < context.steps.length; index++) {
+      const step = context.steps[index]!;
+      bodyParts.push({
+        type: 'step',
+        key: `${message.id}:step:${index}`,
+        index,
+        title: step.title,
+        content: step.content,
+        status: step.status,
+      });
+    }
+  }
+
+  // C4: Reasoning part — emitted before the markdown body when present.
+  if (context.reasoning && context.reasoning.length > 0) {
+    bodyParts.push({
+      type: 'reasoning',
+      key: `${message.id}:reasoning`,
+      content: context.reasoning,
       streaming: context.streaming ?? false,
-      expanded: context.expanded ?? true,
-    },
-    ...imageParts,
-  ];
+    });
+  }
+
+  bodyParts.push({
+    type: 'markdown',
+    key: `${message.id}:body`,
+    content,
+    streaming: context.streaming ?? false,
+    expanded: context.expanded ?? true,
+  });
+
+  // C5: Suggestion parts — one per entry in context.suggestions[], after the
+  // markdown body but before images. An empty or absent array adds nothing,
+  // keeping the plain-transcript path identical to before.
+  if (context.suggestions && context.suggestions.length > 0) {
+    for (let index = 0; index < context.suggestions.length; index++) {
+      const label = context.suggestions[index]!;
+      bodyParts.push({
+        type: 'suggestion',
+        key: `${message.id}:suggestion:${index}`,
+        index,
+        label,
+      });
+    }
+  }
+
+  return [...bodyParts, ...imageParts];
 }
 
 /**

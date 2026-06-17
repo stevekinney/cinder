@@ -22,7 +22,7 @@ import { toRenderUnits } from './chat-message-parts.ts';
 // setupHappyDom() MUST run before any `@testing-library/svelte` import.
 setupHappyDom();
 
-const { render, cleanup } = await import('@testing-library/svelte');
+const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: ChatMessagePartsRenderer } = await import('./chat-message-parts-renderer.svelte');
 const { default: PartsRendererFixture } =
   await import('./chat-message-parts-renderer-fixture.svelte');
@@ -71,6 +71,59 @@ describe('toRenderUnits', () => {
     const b = imagePart(2, 'https://example.test/b.png');
     const units = toRenderUnits([a, body, b]);
     expect(units.map((unit) => unit.kind)).toEqual(['images', 'part', 'images']);
+  });
+
+  function stepPart(index: number): ChatMessagePart {
+    return {
+      type: 'step',
+      key: `m:step:${index}`,
+      index,
+      title: `Step ${index}`,
+      content: '',
+      status: 'pending',
+    };
+  }
+
+  function suggestionPart(index: number): ChatMessagePart {
+    return { type: 'suggestion', key: `m:suggestion:${index}`, index, label: `S${index}` };
+  }
+
+  test('groups a contiguous run of step parts into one steps unit', () => {
+    const units = toRenderUnits([stepPart(0), stepPart(1), stepPart(2)]);
+    expect(units).toHaveLength(1);
+    expect(units[0]).toMatchObject({ kind: 'steps' });
+    expect(units[0]).toHaveProperty(['steps', 'length'], 3);
+  });
+
+  test('groups a contiguous run of suggestion parts into one suggestions unit', () => {
+    const units = toRenderUnits([suggestionPart(0), suggestionPart(1)]);
+    expect(units).toHaveLength(1);
+    expect(units[0]).toMatchObject({ kind: 'suggestions' });
+    expect(units[0]).toHaveProperty(['suggestions', 'length'], 2);
+  });
+
+  test('flushes a step run before a following non-step part', () => {
+    const body: ChatMessagePart = {
+      type: 'markdown',
+      key: 'm:body',
+      content: 'answer',
+      streaming: false,
+      expanded: true,
+    };
+    const units = toRenderUnits([stepPart(0), stepPart(1), body]);
+    expect(units.map((unit) => unit.kind)).toEqual(['steps', 'part']);
+  });
+
+  test('keeps interleaved runs in order (steps → markdown → suggestions)', () => {
+    const body: ChatMessagePart = {
+      type: 'markdown',
+      key: 'm:body',
+      content: 'answer',
+      streaming: false,
+      expanded: true,
+    };
+    const units = toRenderUnits([stepPart(0), body, suggestionPart(0), suggestionPart(1)]);
+    expect(units.map((unit) => unit.kind)).toEqual(['steps', 'part', 'suggestions']);
   });
 });
 
@@ -143,6 +196,35 @@ describe('renderer — per-part rendering', () => {
     expect(alert?.textContent).toContain('it failed');
   });
 
+  test('renders a tool-approval part with group role (not alertdialog) and action buttons', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: {
+        parts: [
+          {
+            type: 'tool-approval',
+            key: 'm:tool-approval:c1',
+            toolCallId: 'c1',
+            toolName: 'deploy_to_production',
+            action: { type: 'approval', message: 'Deploy to production?' },
+            approved: undefined,
+          },
+        ],
+        onapprove: () => {},
+        ondeny: () => {},
+      },
+    });
+    const dialog = container.querySelector('[data-cinder-tool-approval]');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.getAttribute('role')).toBe('group');
+    expect(container.textContent).toContain('deploy_to_production');
+    expect(container.textContent).toContain('Deploy to production?');
+    // Approve and Reject buttons appear for pending state
+    const buttons = container.querySelectorAll('button');
+    const labels = Array.from(buttons).map((button) => button.textContent?.trim());
+    expect(labels).toContain('Approve');
+    expect(labels).toContain('Reject');
+  });
+
   test('renders an image group through the attachments grid with the right count', () => {
     const { container } = render(ChatMessagePartsRenderer, {
       props: {
@@ -187,6 +269,118 @@ describe('renderer — messagePart override (inversion of control)', () => {
     expect(container.textContent).toContain('overridden: markdown');
     // The built-in markdown view is gone — the override fully replaced it.
     expect(container.querySelector('.message-content')).toBeNull();
+  });
+});
+
+describe('renderer — suggestion toolbar roving tabindex (APG)', () => {
+  function suggestionParts(labels: string[]): ChatMessagePart[] {
+    return labels.map((label, index) => ({
+      type: 'suggestion' as const,
+      key: `m:suggestion:${index}`,
+      index,
+      label,
+    }));
+  }
+
+  function chips(container: HTMLElement): HTMLElement[] {
+    return Array.from(container.querySelectorAll<HTMLElement>('[data-cinder-suggestion]'));
+  }
+
+  test('first chip is the tab entry point (tabindex=0), rest are -1', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: { parts: suggestionParts(['A', 'B', 'C']) },
+    });
+    const els = chips(container);
+    expect(els.map((c) => c.getAttribute('tabindex'))).toEqual(['0', '-1', '-1']);
+  });
+
+  test('ArrowRight moves the roving tabindex (and focus) to the next chip, wrapping', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: { parts: suggestionParts(['A', 'B', 'C']) },
+    });
+    const toolbar = container.querySelector<HTMLElement>('[role="toolbar"]')!;
+    const els = chips(container);
+    els[0]!.focus();
+
+    fireEvent.keyDown(toolbar, { key: 'ArrowRight' });
+    flushSync();
+    expect(chips(container).map((c) => c.getAttribute('tabindex'))).toEqual(['-1', '0', '-1']);
+    expect(document.activeElement).toBe(chips(container)[1]!);
+
+    // Wrap past the end back to the first chip.
+    fireEvent.keyDown(toolbar, { key: 'ArrowRight' });
+    fireEvent.keyDown(toolbar, { key: 'ArrowRight' });
+    flushSync();
+    expect(chips(container).map((c) => c.getAttribute('tabindex'))).toEqual(['0', '-1', '-1']);
+  });
+
+  test('ArrowLeft wraps backwards from the first chip to the last', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: { parts: suggestionParts(['A', 'B', 'C']) },
+    });
+    const toolbar = container.querySelector<HTMLElement>('[role="toolbar"]')!;
+    fireEvent.keyDown(toolbar, { key: 'ArrowLeft' });
+    flushSync();
+    expect(chips(container).map((c) => c.getAttribute('tabindex'))).toEqual(['-1', '-1', '0']);
+  });
+
+  test('Home and End jump to the first and last chip', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: { parts: suggestionParts(['A', 'B', 'C']) },
+    });
+    const toolbar = container.querySelector<HTMLElement>('[role="toolbar"]')!;
+    fireEvent.keyDown(toolbar, { key: 'End' });
+    flushSync();
+    expect(chips(container).map((c) => c.getAttribute('tabindex'))).toEqual(['-1', '-1', '0']);
+    fireEvent.keyDown(toolbar, { key: 'Home' });
+    flushSync();
+    expect(chips(container).map((c) => c.getAttribute('tabindex'))).toEqual(['0', '-1', '-1']);
+  });
+
+  test('a stale active index is clamped so a shorter chip set still has a tabindex=0 entry', () => {
+    // Move the active index to the last of three chips, then re-render with only
+    // one chip. Without clamping NO chip would hold tabindex=0 and the toolbar
+    // would be unreachable by Tab. The applied index is clamped into range.
+    const { container, rerender } = render(ChatMessagePartsRenderer, {
+      props: { parts: suggestionParts(['A', 'B', 'C']) },
+    });
+    const toolbar = container.querySelector<HTMLElement>('[role="toolbar"]')!;
+    fireEvent.keyDown(toolbar, { key: 'End' });
+    flushSync();
+    expect(chips(container).map((c) => c.getAttribute('tabindex'))).toEqual(['-1', '-1', '0']);
+
+    rerender({ parts: suggestionParts(['Only']) });
+    flushSync();
+    const els = chips(container);
+    expect(els).toHaveLength(1);
+    expect(els[0]!.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('non-navigation keys (Tab) pass through without preventing default', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: { parts: suggestionParts(['A', 'B']) },
+    });
+    const toolbar = container.querySelector<HTMLElement>('[role="toolbar"]')!;
+    const defaultPrevented = !fireEvent.keyDown(toolbar, { key: 'Tab' });
+    expect(defaultPrevented).toBe(false);
+  });
+});
+
+describe('renderer — C3 compatibility (plain tool results render no approval UI)', () => {
+  test('a success tool-result renders the tool-result view, not a tool-approval group', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: {
+        parts: [
+          {
+            type: 'tool-result',
+            key: 'm:tool-result:c1',
+            result: { callId: 'c1', outcome: 'success', content: 'done' },
+          },
+        ],
+      },
+    });
+    expect(container.querySelector('[data-cinder-tool-approval]')).toBeNull();
+    expect(container.querySelector('[role="group"]')).toBeNull();
   });
 });
 

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'bun:test';
 
 import type { Message, MultiModalContent } from '../conversation-model.ts';
-import { getMessageParts, getMessageRoleLabel, toMultiModalArray } from './utilities.ts';
+import {
+  getMessageParts,
+  getMessageRoleLabel,
+  resolveMessageReasoning,
+  resolveMessageSteps,
+  resolveMessageSuggestions,
+  toMultiModalArray,
+} from './utilities.ts';
 
 function message(overrides: Partial<Message> & Pick<Message, 'role'>): Message {
   return {
@@ -69,5 +76,147 @@ describe('getMessageRoleLabel', () => {
     ['snapshot', 'Snapshot'],
   ] as const)('maps role %s to label %s', (role, label) => {
     expect(getMessageRoleLabel(message({ role }))).toBe(label);
+  });
+});
+
+describe('resolveMessageReasoning', () => {
+  it('returns undefined for a plain message (no prop, no metadata) — feature absent', () => {
+    expect(resolveMessageReasoning(message({ role: 'assistant' }))).toBeUndefined();
+  });
+
+  it('reads non-empty cinder:reasoning metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'I thought hard' } });
+    expect(resolveMessageReasoning(m)).toBe('I thought hard');
+  });
+
+  it('treats empty-string metadata as absent', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': '' } });
+    expect(resolveMessageReasoning(m)).toBeUndefined();
+  });
+
+  it('ignores non-string metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 42 } });
+    expect(resolveMessageReasoning(m)).toBeUndefined();
+  });
+
+  it('prefers an explicit prop over metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
+    expect(resolveMessageReasoning(m, () => 'prop')).toBe('prop');
+  });
+
+  it('a throwing callback never breaks render and falls back to metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
+    // A buggy/throwing callback is treated as "no opinion" — it must not crash
+    // the render, and it must not suppress valid metadata.
+    expect(
+      resolveMessageReasoning(m, () => {
+        throw new Error('consumer bug');
+      }),
+    ).toBe('meta');
+  });
+
+  it('a callback returning undefined falls back to cinder:reasoning metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
+    expect(resolveMessageReasoning(m, () => undefined)).toBe('meta');
+  });
+
+  it('a callback returning an empty string suppresses reasoning (does NOT fall back)', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
+    expect(resolveMessageReasoning(m, () => '')).toBeUndefined();
+  });
+});
+
+describe('resolveMessageSteps', () => {
+  const validStep = { title: 'Plan', content: 'Do it', status: 'done' as const };
+
+  it('returns undefined for a plain message', () => {
+    expect(resolveMessageSteps(message({ role: 'assistant' }))).toBeUndefined();
+  });
+
+  it('reads and validates cinder:steps metadata, dropping invalid entries', () => {
+    const m = message({
+      role: 'assistant',
+      metadata: {
+        'cinder:steps': [
+          validStep,
+          { title: 'bad', content: 'x', status: 'nope' },
+          { title: 'no-content', status: 'done' },
+        ],
+      },
+    });
+    expect(resolveMessageSteps(m)).toEqual([validStep]);
+  });
+
+  it('returns undefined when all entries are invalid', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:steps': [{ bogus: true }] } });
+    expect(resolveMessageSteps(m)).toBeUndefined();
+  });
+
+  it('prefers an explicit prop over metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:steps': [validStep] } });
+    const other = { title: 'Prop', content: 'c', status: 'running' as const };
+    expect(resolveMessageSteps(m, () => [other])).toEqual([other]);
+  });
+
+  it('a throwing callback falls back to metadata (never breaks render)', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:steps': [validStep] } });
+    expect(
+      resolveMessageSteps(m, () => {
+        throw new Error('consumer bug');
+      }),
+    ).toEqual([validStep]);
+  });
+
+  it('a callback returning undefined falls back to cinder:steps metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:steps': [validStep] } });
+    expect(resolveMessageSteps(m, () => undefined)).toEqual([validStep]);
+  });
+
+  it('a prop returning an empty array suppresses steps even when metadata has valid entries', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:steps': [validStep] } });
+    expect(resolveMessageSteps(m, () => [])).toBeUndefined();
+  });
+});
+
+describe('resolveMessageSuggestions', () => {
+  it('returns undefined for a plain message', () => {
+    expect(resolveMessageSuggestions(message({ role: 'assistant' }))).toBeUndefined();
+  });
+
+  it('reads cinder:suggestions metadata, dropping non-strings', () => {
+    const m = message({
+      role: 'assistant',
+      metadata: { 'cinder:suggestions': ['Yes', 7, 'No', null] },
+    });
+    expect(resolveMessageSuggestions(m)).toEqual(['Yes', 'No']);
+  });
+
+  it('returns undefined for an all-invalid array', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:suggestions': [1, 2, 3] } });
+    expect(resolveMessageSuggestions(m)).toBeUndefined();
+  });
+
+  it('prefers an explicit prop over metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:suggestions': ['meta'] } });
+    expect(resolveMessageSuggestions(m, () => ['prop'])).toEqual(['prop']);
+  });
+
+  it('a throwing callback falls back to metadata (never breaks render)', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:suggestions': ['meta'] } });
+    expect(
+      resolveMessageSuggestions(m, () => {
+        throw new Error('consumer bug');
+      }),
+    ).toEqual(['meta']);
+  });
+
+  it('a callback returning undefined falls back to cinder:suggestions metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:suggestions': ['meta'] } });
+    expect(resolveMessageSuggestions(m, () => undefined)).toEqual(['meta']);
+  });
+
+  it('a callback returning an empty array suppresses suggestions (does NOT fall back)', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:suggestions': ['meta'] } });
+    expect(resolveMessageSuggestions(m, () => [])).toBeUndefined();
   });
 });

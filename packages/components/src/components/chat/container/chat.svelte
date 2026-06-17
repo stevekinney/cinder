@@ -21,7 +21,13 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
-  import { getMessages, pairToolCallsWithResults } from '../utilities';
+  import {
+    getMessages,
+    pairToolCallsWithResults,
+    resolveMessageReasoning,
+    resolveMessageSteps,
+    resolveMessageSuggestions,
+  } from '../utilities';
   import { ChatMessage, ChatDateSeparator } from '../message';
   import { ChatInput } from '../input';
   import { DEFAULT_SCROLL_CONFIGURATION } from './scroll-utilities';
@@ -43,6 +49,7 @@
     type ChatRenderRow,
   } from './use-chat-message-groups.svelte.ts';
   import { ChatVirtualizer } from './use-chat-virtualizer.svelte.ts';
+  import { useChatReasoningState } from './use-chat-reasoning-state.svelte.ts';
   import type { VirtualItem } from '../../../_internal/virtual-item.ts';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
@@ -97,6 +104,12 @@
     onsubmit,
     onretry,
     onedit,
+    onapprove,
+    ondeny,
+    messageReasoning,
+    messageSteps,
+    messageSuggestions,
+    onsuggestionselect,
     onloadhistory,
     onstopgenerating,
     onjumptolatest,
@@ -142,6 +155,40 @@
   // rAF handle for batching token flushes and scroll throttling during streaming
   let streamingScrollRaf: number | undefined;
 
+  // C3 — tool approval state. Keyed by tool call id. Both sets are UI-only and
+  // are never written back to the transcript. A pending tool-approval part has
+  // its call id in neither set (approved === undefined). Once the consumer or
+  // adapter resolves the approval, the id moves into one of the sets and the
+  // part re-derives to show the resolved state.
+  let approvedToolCallIds = $state(new Set<string>());
+  let deniedToolCallIds = $state(new Set<string>());
+
+  // C4 — reasoning expansion state. UI-only; not written to the transcript.
+  // Collapsed by default; toggling triggers a virtualizer remeasure when wired.
+  const reasoningState = useChatReasoningState({
+    onRemeasureRow: (messageId) => {
+      if (!isVirtualized || !viewport) return;
+      // Find the message row DOM node via the stable id and re-measure it so
+      // the virtualizer updates the row's height after the disclosure transitions.
+      const rowNode = viewport.querySelector<HTMLElement>(`#message-${CSS.escape(messageId)}`);
+      if (rowNode) {
+        chatVirtualizer.measureElementNode(rowNode);
+      }
+    },
+  });
+
+  // Reset UI-only approval/reasoning state on conversation change so stale
+  // approved/denied sets and expanded reasoning blocks from the previous
+  // conversation are cleared. The void reference to `conversationId` at the
+  // start of the effect body is the Svelte 5 pattern for declaring a reactive
+  // dependency on a derived without reading its value.
+  $effect(() => {
+    conversationId;
+    approvedToolCallIds = new Set();
+    deniedToolCallIds = new Set();
+    reasoningState.reset();
+  });
+
   let isLoadingHistory = $state(false);
   let adapterHasMoreHistory = $state<boolean | undefined>(undefined);
   let historyAnnouncement = $state('');
@@ -185,6 +232,9 @@
   });
 
   const messages = $derived(getMessages(conversation));
+  // C5 — suggested replies are a per-TURN affordance shown only beneath the last
+  // message, not on every historical message that still carries the metadata.
+  const lastMessageId = $derived(messages.at(-1)?.id);
   let previousAutoScrollMessageCount = getMessages(conversation).length;
 
   // The conversation id as a stable VALUE dependency. The subscribe effect keys
@@ -372,6 +422,28 @@
   const timelineId = $derived(`${id}-timeline`);
   const inputId = $derived(`${id}-input`);
   const statusId = $derived(`${id}-status`);
+
+  // C3 — assertive announcement for action-required tool approvals. Derived from
+  // the first pending tool-approval part in the current transcript. When a new
+  // tool-approval part appears (outcome === 'action_required' + action present),
+  // this updates and the assertive live region interrupts screen readers.
+  const toolApprovalAssertiveMessage = $derived.by(() => {
+    for (const message of messages) {
+      if (
+        message.role === 'tool-result' &&
+        message.toolResult?.outcome === 'action_required' &&
+        message.toolResult.action &&
+        !approvedToolCallIds.has(message.toolResult.callId) &&
+        !deniedToolCallIds.has(message.toolResult.callId)
+      ) {
+        const actionMessage =
+          message.toolResult.action.message ??
+          'This tool call requires your approval before it can continue.';
+        return `Action required: ${actionMessage}`;
+      }
+    }
+    return '';
+  });
 
   // ==========================================================================
   // Sync Bindable Props with Helper State
@@ -909,6 +981,103 @@
     );
   }
 
+  // C5 — suggestion selection handler. Calls the consumer callback then
+  // moves focus to the composer so keyboard users are not left stranded on a
+  // chip button that gets removed from the DOM when the suggestion set clears.
+  function handleSuggestionSelect(label: string): void {
+    onsuggestionselect?.(label);
+    inputRef?.focus();
+  }
+
+  // C3 — an approve/deny affordance only resolves when SOMETHING can handle it —
+  // the adapter command OR the consumer callback. `canApprove`/`canDeny` gate
+  // both the button-enabled state (passed to ToolApprovalPart) and the resolve
+  // guard, so a consumer that wires neither path gets disabled buttons rather
+  // than a click that commits UI-only state to nowhere (matches canRetry/canEdit).
+  const canApprove = $derived(onapprove !== undefined || adapter?.approveToolCall !== undefined);
+  const canDeny = $derived(ondeny !== undefined || adapter?.denyToolCall !== undefined);
+
+  // C3 — tool approval handlers. The resolution is recorded optimistically in the
+  // UI-only id sets for immediate feedback, then the adapter command (if present)
+  // runs and, on SUCCESS, the consumer callback fires (adapter-first-then-callback
+  // contract). Guard double-resolution: if the call id is already in either set,
+  // skip so a second tap/Escape cannot flip a resolved state. If the ADAPTER
+  // command REJECTS (or throws), the optimistic resolution is rolled back so the
+  // prompt returns to pending instead of being stuck "approved"/"denied" on a
+  // transport failure — the error routes to onadaptererror and the callback does
+  // NOT fire. With no adapter method, the callback fires synchronously.
+  function resolveToolApproval(
+    toolCallId: string,
+    command: 'approveToolCall' | 'denyToolCall',
+    canHandle: boolean,
+    commit: (id: string) => void,
+    rollback: (id: string) => void,
+    runAdapter: (adapter: ChatAdapter) => Promise<void> | undefined,
+    callback: (() => void) | undefined,
+  ): void {
+    if (!canHandle) return;
+    if (approvedToolCallIds.has(toolCallId) || deniedToolCallIds.has(toolCallId)) return;
+    commit(toolCallId);
+
+    if (adapter) {
+      let run: Promise<void> | undefined;
+      try {
+        run = runAdapter(adapter);
+      } catch (error) {
+        rollback(toolCallId);
+        onadaptererror?.({ command, error });
+        return;
+      }
+      if (run !== undefined) {
+        void run.then(
+          () => callback?.(),
+          (error: unknown) => {
+            rollback(toolCallId);
+            onadaptererror?.({ command, error });
+          },
+        );
+        return;
+      }
+    }
+    callback?.();
+  }
+
+  function handleApprove(toolCallId: string): void {
+    resolveToolApproval(
+      toolCallId,
+      'approveToolCall',
+      canApprove,
+      (id) => (approvedToolCallIds = new Set([...approvedToolCallIds, id])),
+      (id) => (approvedToolCallIds = removeFromSet(approvedToolCallIds, id)),
+      (resolvedAdapter) =>
+        resolvedAdapter.approveToolCall
+          ? Promise.resolve(resolvedAdapter.approveToolCall(toolCallId))
+          : undefined,
+      () => onapprove?.(toolCallId),
+    );
+  }
+
+  function handleDeny(toolCallId: string): void {
+    resolveToolApproval(
+      toolCallId,
+      'denyToolCall',
+      canDeny,
+      (id) => (deniedToolCallIds = new Set([...deniedToolCallIds, id])),
+      (id) => (deniedToolCallIds = removeFromSet(deniedToolCallIds, id)),
+      (resolvedAdapter) =>
+        resolvedAdapter.denyToolCall
+          ? Promise.resolve(resolvedAdapter.denyToolCall(toolCallId))
+          : undefined,
+      () => ondeny?.(toolCallId),
+    );
+  }
+
+  function removeFromSet(set: Set<string>, value: string): Set<string> {
+    const next = new Set(set);
+    next.delete(value);
+    return next;
+  }
+
   function handleStopGenerating(): void {
     // Find the streaming message (last assistant message)
     // Using backwards loop instead of findLast() for broader browser compatibility
@@ -1304,6 +1473,17 @@
       searchState.isOpen &&
       searchState.currentMatch !== null &&
       searchState.currentMatch.message.id === message.id}
+    <!-- C4/C5: resolve reasoning/steps/suggestions overlays. Each prefers an
+         explicit per-message prop over `cinder:`-namespaced metadata, validates
+         both paths identically, and guards consumer-callback throws — so a
+         malformed callback can never break the chat render (see resolve* in
+         chat/utilities). A plain transcript yields `undefined` for all three. -->
+    {@const derivedReasoning = resolveMessageReasoning(message, messageReasoning)}
+    {@const derivedSteps = resolveMessageSteps(message, messageSteps)}
+    {@const derivedSuggestions =
+      message.id === lastMessageId
+        ? resolveMessageSuggestions(message, messageSuggestions)
+        : undefined}
 
     <!-- The built-in row. Wrapped in a snippet so the optional `row`
          override can render it (inversion of control) or replace it. The
@@ -1322,6 +1502,16 @@
         overrideContent={isStreamingMessage ? streamingContent : undefined}
         searchMatch={isCurrentSearchMatch}
         tabindex={-1}
+        approvedToolCallIds={approvedToolCallIds.size > 0 ? approvedToolCallIds : undefined}
+        deniedToolCallIds={deniedToolCallIds.size > 0 ? deniedToolCallIds : undefined}
+        onapprove={canApprove ? handleApprove : undefined}
+        ondeny={canDeny ? handleDeny : undefined}
+        reasoning={derivedReasoning}
+        steps={derivedSteps}
+        suggestions={derivedSuggestions}
+        reasoningExpanded={reasoningState.isExpanded(message.id)}
+        onreasoning={() => reasoningState.toggle(message.id)}
+        onsuggestionselect={handleSuggestionSelect}
       >
         {#snippet actions()}
           {#if messageActions}
@@ -1467,6 +1657,7 @@
     {statusId}
     messageCount={messages.length}
     announcerMessage={historyAnnouncement || unreadState.announcerMessage}
+    assertiveMessage={toolApprovalAssertiveMessage}
   />
 </div>
 
