@@ -19,7 +19,8 @@ const schema = {
     },
     rowHeight: {
       type: 'number',
-      description: 'Fixed body-row pixel height used by row virtualization.',
+      description:
+        'Fixed body-row pixel height used by row virtualization. Defaults to 44 when omitted or invalid.',
     },
     columnOrder: {
       type: 'array',

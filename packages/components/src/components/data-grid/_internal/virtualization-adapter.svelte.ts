@@ -6,6 +6,8 @@ import {
 import type { Attachment } from 'svelte/attachments';
 import { createSubscriber } from 'svelte/reactivity';
 
+const defaultDataGridVirtualRowHeight = 44;
+
 export type DataGridVirtualItem = {
   readonly index: number;
   readonly start: number;
@@ -221,7 +223,7 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     const rowHeight = this.#rowHeight();
     const overscan = this.#overscan();
     const scrollTop = this.#getScrollElement()?.scrollTop ?? 0;
-    const visibleCount = Math.ceil(this.options.getInitialHeight() / rowHeight);
+    const visibleCount = Math.ceil(this.#viewportHeight() / rowHeight);
     const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
     const itemCount = Math.min(count - startIndex, visibleCount + overscan * 2);
     return Array.from({ length: itemCount }, (_, offset) => {
@@ -253,7 +255,18 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
   }
 
   #rowHeight(): number {
-    return Math.max(1, this.options.getRowHeight());
+    const rowHeight = this.options.getRowHeight();
+    return Number.isFinite(rowHeight) && rowHeight > 0
+      ? rowHeight
+      : defaultDataGridVirtualRowHeight;
+  }
+
+  #viewportHeight(): number {
+    const element = this.#getScrollElement();
+    if (!element) return this.options.getInitialHeight();
+
+    const rect = element.getBoundingClientRect();
+    return rect.height || element.clientHeight || this.options.getInitialHeight();
   }
 
   #overscan(): number {

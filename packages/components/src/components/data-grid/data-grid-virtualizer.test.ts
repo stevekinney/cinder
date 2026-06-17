@@ -114,8 +114,15 @@ describe('DataGrid row virtualization', () => {
         container.querySelector(`#${grid.getAttribute('aria-activedescendant')}`),
       ).not.toBeNull(),
     );
-    expect(grid.getAttribute('aria-activedescendant')).toContain('72_6f_77_2d_39_39');
-    expect(dataRows(container).some((row) => row.textContent?.includes('Message 99'))).toBe(true);
+    const activeCell = container.querySelector<HTMLElement>(
+      `#${grid.getAttribute('aria-activedescendant')}`,
+    );
+    const activeRow = dataRows(container).find((row) => row.textContent?.includes('Message 99'));
+
+    expect(activeCell).not.toBeNull();
+    expect(activeCell?.getAttribute('data-cinder-active')).toBe('true');
+    expect(activeRow).not.toBeUndefined();
+    expect(activeRow?.getAttribute('aria-rowindex')).toBe('101');
   });
 
   test('warns and falls back when row virtualization omits fixed rowHeight', () => {
@@ -136,8 +143,45 @@ describe('DataGrid row virtualization', () => {
       });
 
       expect(dataRows(container).length).toBeGreaterThan(0);
+      expect(dataRows(container).length).toBeLessThanOrEqual(25);
+      expect(
+        container
+          .querySelector<HTMLElement>('.cinder-data-grid__body')
+          ?.style.getPropertyValue('height'),
+      ).toBe('4400px');
       expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(String(warnings[0])).toContain('rowHeight');
+      expect(String(warnings[0])).toContain('default rowHeight of 44px');
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warns and falls back when row virtualization receives invalid rowHeight', () => {
+    const warnings: unknown[] = [];
+    const warnSpy = mock((message?: unknown) => {
+      warnings.push(message);
+    });
+    const originalWarn = console.warn;
+    console.warn = warnSpy;
+
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeRows(100),
+        columns,
+        getRowId: getLogRowId,
+        virtualizeRows: true,
+        rowHeight: Number.NaN,
+        'aria-label': 'Logs',
+      });
+
+      expect(dataRows(container).length).toBeGreaterThan(0);
+      expect(
+        container
+          .querySelector<HTMLElement>('.cinder-data-grid__body')
+          ?.style.getPropertyValue('height'),
+      ).toBe('4400px');
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(String(warnings[0])).toContain('positive finite rowHeight');
     } finally {
       console.warn = originalWarn;
     }
@@ -157,6 +201,7 @@ describe('DataGrid row virtualization', () => {
       expect(result.ssrHtml).toContain('role="grid"');
       expect(result.ssrHtml).toContain('aria-rowcount="101"');
       expect(result.ssrHtml).toContain('aria-colcount="2"');
+      expect(result.ssrHtml).not.toContain('aria-activedescendant');
       expect(result.ssrHtml).not.toContain('role="gridcell"');
 
       const grid = result.container.querySelector('[role="grid"]');

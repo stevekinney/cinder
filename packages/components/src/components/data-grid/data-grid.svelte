@@ -65,6 +65,8 @@
     '[tabindex]:not([tabindex="-1"])',
   ].join(',');
 
+  const defaultVirtualRowHeight = 44;
+
   let {
     rows,
     columns,
@@ -136,7 +138,10 @@
   const sortedKeyedRows = $derived(
     sortedRowIndices.flatMap((rowIndex) => keyedRows[rowIndex] ?? []),
   );
-  const resolvedRowHeight = $derived(rowHeight ?? 44);
+  const resolvedRowHeight = $derived(resolveVirtualRowHeight(rowHeight));
+  const shouldWarnVirtualRowHeightFallback = $derived(
+    virtualizeRows && !isValidVirtualRowHeight(rowHeight),
+  );
   const shouldVirtualizeRows = $derived(virtualizeRows && sortedKeyedRows.length > 0);
   const rowVirtualizer = new DataGridVirtualizationAdapter({
     getScrollElement: () => gridElement ?? null,
@@ -211,8 +216,9 @@
       : firstRowDomId,
   );
   const activeColumnKey = $derived(columnModel.renderColumns[activeColumnIndex]?.key);
+  const canExposeActiveCell = $derived(!(shouldVirtualizeRows && typeof window === 'undefined'));
   const activeCellId = $derived(
-    activeRowDomId !== undefined && firstColumnKey !== undefined
+    canExposeActiveCell && activeRowDomId !== undefined && firstColumnKey !== undefined
       ? getCellId(activeRowDomId, activeColumnKey ?? firstColumnKey)
       : undefined,
   );
@@ -242,7 +248,7 @@
   let gridElement: HTMLDivElement | undefined;
   let liveRegionTimeoutId: ReturnType<typeof setTimeout> | undefined;
   let liveRegionVersion = 0;
-  let warnedMissingVirtualRowHeight = false;
+  let warnedVirtualRowHeightFallback = false;
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
@@ -269,11 +275,11 @@
   });
 
   $effect(() => {
-    if (!virtualizeRows || rowHeight !== undefined || warnedMissingVirtualRowHeight) return;
+    if (!shouldWarnVirtualRowHeightFallback || warnedVirtualRowHeightFallback) return;
 
-    warnedMissingVirtualRowHeight = true;
+    warnedVirtualRowHeightFallback = true;
     devWarn(
-      '[cinder-data-grid] DataGrid row virtualization requires a fixed rowHeight. Falling back to 44px.',
+      '[cinder-data-grid] DataGrid row virtualization is using the default rowHeight of 44px. Pass a positive finite rowHeight to match your row layout.',
     );
   });
 
@@ -369,6 +375,14 @@
   function toDomIdSegment(value: string): string {
     const segment = Array.from(value, (character) => character.codePointAt(0)?.toString(16) ?? '0');
     return segment.length > 0 ? segment.join('_') : 'empty';
+  }
+
+  function isValidVirtualRowHeight(value: number | undefined): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0;
+  }
+
+  function resolveVirtualRowHeight(value: number | undefined): number {
+    return isValidVirtualRowHeight(value) ? value : defaultVirtualRowHeight;
   }
 
   function formatDataGridValue(value: unknown): string {
