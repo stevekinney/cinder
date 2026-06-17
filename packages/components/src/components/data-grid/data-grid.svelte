@@ -34,11 +34,7 @@
     getDataGridColumnValue,
     type ResolvedDataGridColumn,
   } from './_internal/column-model.svelte.ts';
-  import {
-    getCellCoordinateKey,
-    getCellsInRange,
-    type DataGridCellCoordinate,
-  } from './_internal/geometry.ts';
+  import type { DataGridCellCoordinate } from './_internal/geometry.ts';
   import { dataGridKeyToAction } from './_internal/keyboard-model.ts';
   import { DataGridSelectionModel as InternalDataGridSelectionModel } from './_internal/selection-model.svelte.ts';
   import type { DataGridProps, DataGridSelectionModel } from './data-grid.types.ts';
@@ -160,6 +156,7 @@
   let hasWarnedNoLabel = false;
   let warnedDuplicateRowIdsSignature: string | undefined;
   let previousActiveCellId: string | undefined;
+  let gridElement: HTMLDivElement | undefined;
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
@@ -307,34 +304,29 @@
   }
 
   async function copySelectedCells(): Promise<void> {
-    const rangeCells = getCellsInRange(selectionState.range);
-    const toggledCells = rowDomIds.flatMap((rowId) =>
-      columnKeys.flatMap((columnKey) => {
-        const cell = { rowId, columnKey };
-        return selectionState.selectedCells.has(getCellCoordinateKey(cell)) ? [cell] : [];
-      }),
-    );
     const cells =
-      rangeCells.length > 0
-        ? rangeCells
-        : toggledCells.length > 0
-          ? toggledCells
-          : activeCellCoordinates
-            ? [activeCellCoordinates]
-            : [];
+      selectionState.selectedCellCoordinates.length > 0
+        ? sortCellsByGridOrder(selectionState.selectedCellCoordinates)
+        : activeCellCoordinates
+          ? [activeCellCoordinates]
+          : [];
     if (cells.length === 0) return;
 
     const rowsByDomId = new Map(keyedRows.map((row) => [row.rowDomId, row.row]));
     const columnsByKey = new Map(columnModel.renderColumns.map((column) => [column.key, column]));
-    const rowOrder = [...new Set(cells.map((cell) => cell.rowId))];
-    const columnOrderForCopy = [...new Set(cells.map((cell) => cell.columnKey))];
-    const text = rowOrder
-      .map((rowId) => {
+    const cellsByRow = new Map<string, DataGridCellCoordinate[]>();
+    for (const cell of cells) {
+      const rowCells = cellsByRow.get(cell.rowId);
+      if (rowCells) rowCells.push(cell);
+      else cellsByRow.set(cell.rowId, [cell]);
+    }
+    const text = [...cellsByRow.entries()]
+      .map(([rowId, rowCells]) => {
         const row = rowsByDomId.get(rowId);
         if (!row) return '';
-        return columnOrderForCopy
-          .map((columnKey) => {
-            const column = columnsByKey.get(columnKey);
+        return rowCells
+          .map((cell) => {
+            const column = columnsByKey.get(cell.columnKey);
             if (!column) return '';
             return formatDataGridValue(getDataGridColumnValue(row, column));
           })
@@ -355,6 +347,22 @@
     }
   }
 
+  function sortCellsByGridOrder(
+    cells: readonly DataGridCellCoordinate[],
+  ): DataGridCellCoordinate[] {
+    const rowIndexes = new Map(rowDomIds.map((rowId, index) => [rowId, index]));
+    const columnIndexes = new Map(columnKeys.map((columnKey, index) => [columnKey, index]));
+    return [...cells].sort((left, right) => {
+      const leftRowIndex = rowIndexes.get(left.rowId) ?? Number.POSITIVE_INFINITY;
+      const rightRowIndex = rowIndexes.get(right.rowId) ?? Number.POSITIVE_INFINITY;
+      if (leftRowIndex !== rightRowIndex) return leftRowIndex - rightRowIndex;
+
+      const leftColumnIndex = columnIndexes.get(left.columnKey) ?? Number.POSITIVE_INFINITY;
+      const rightColumnIndex = columnIndexes.get(right.columnKey) ?? Number.POSITIVE_INFINITY;
+      return leftColumnIndex - rightColumnIndex;
+    });
+  }
+
   function handleCellClick(
     event: MouseEvent,
     rowId: string,
@@ -369,6 +377,7 @@
       { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey },
     );
     updateRowSelection(rowId, event);
+    gridElement?.focus({ preventScroll: true });
   }
 
   function handleCellKeydown(
@@ -380,6 +389,7 @@
   ): void {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
+    event.stopPropagation();
     requestedActiveRowIndex = rowIndex;
     requestedActiveColumnKey = columnKey;
     selectionState.setActiveCell(
@@ -443,6 +453,7 @@
 
 <div
   {...rest}
+  bind:this={gridElement}
   class={classNames('cinder-data-grid', className)}
   role="grid"
   aria-rowcount={rows.length + 1}

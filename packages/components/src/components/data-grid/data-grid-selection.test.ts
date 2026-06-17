@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import type { Component } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -7,8 +7,12 @@ import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
 
 setupHappyDom();
 
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: DataGrid } = await import('./data-grid.svelte');
+
+afterEach(() => {
+  cleanup();
+});
 
 type Order = {
   id: string;
@@ -166,6 +170,26 @@ describe('DataGrid selection', () => {
     expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-2']);
   });
 
+  test('cell Enter handling does not bubble into duplicate grid selection handling', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'single',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const firstCell = getDataCell(container, 0, 0);
+
+    firstCell.focus();
+    await fireEvent.keyDown(firstCell, { key: 'Enter' });
+
+    expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1']);
+  });
+
   test('Ctrl+Click toggles non-contiguous cells', async () => {
     const { container } = render(OrderDataGrid, {
       rows,
@@ -191,6 +215,70 @@ describe('DataGrid selection', () => {
     expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(1);
   });
 
+  test('click selection returns focus to the grid host', async () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const firstCell = getDataCell(container, 0, 0);
+
+    firstCell.focus();
+    await fireEvent.click(firstCell);
+
+    expect(document.activeElement).toBe(grid);
+  });
+
+  test('Ctrl+Click preserves an existing range as part of a multi-selection', async () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const lastCell = getDataCell(container, 2, 2);
+
+    await fireEvent.keyDown(grid!, { key: 'ArrowRight', shiftKey: true });
+    await fireEvent.keyDown(grid!, { key: 'ArrowDown', shiftKey: true });
+    await fireEvent.click(lastCell, { ctrlKey: true });
+
+    expect(getDataCell(container, 0, 0).getAttribute('aria-selected')).toBe('true');
+    expect(getDataCell(container, 0, 1).getAttribute('aria-selected')).toBe('true');
+    expect(getDataCell(container, 1, 0).getAttribute('aria-selected')).toBe('true');
+    expect(getDataCell(container, 1, 1).getAttribute('aria-selected')).toBe('true');
+    expect(lastCell.getAttribute('aria-selected')).toBe('true');
+    expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(5);
+  });
+
+  test('Shift extension after Ctrl+Click keeps prior toggled cells selected', async () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const firstCell = getDataCell(container, 0, 0);
+    const lastCell = getDataCell(container, 2, 2);
+
+    await fireEvent.click(firstCell, { ctrlKey: true });
+    await fireEvent.click(lastCell, { ctrlKey: true });
+    await fireEvent.keyDown(container.querySelector<HTMLElement>('[role="grid"]')!, {
+      key: 'ArrowLeft',
+      shiftKey: true,
+    });
+
+    expect(firstCell.getAttribute('aria-selected')).toBe('true');
+    expect(lastCell.getAttribute('aria-selected')).toBe('true');
+    expect(getDataCell(container, 2, 1).getAttribute('aria-selected')).toBe('true');
+    expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(3);
+  });
+
   test('copies the selected range as tab-delimited text', async () => {
     const writeText = mock(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', {
@@ -211,6 +299,31 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
 
     expect(writeText).toHaveBeenCalledWith('Ada Lovelace\tPacked');
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Copied 2 cells');
+  });
+
+  test('copies non-contiguous selected cells without filling the bounding box', async () => {
+    const writeText = mock(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    await fireEvent.click(getDataCell(container, 0, 0), { ctrlKey: true });
+    await fireEvent.click(getDataCell(container, 2, 2), { ctrlKey: true });
+    await fireEvent.keyDown(container.querySelector<HTMLElement>('[role="grid"]')!, {
+      key: 'c',
+      ctrlKey: true,
+    });
+
+    expect(writeText).toHaveBeenCalledWith('Ada Lovelace\n512');
     expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Copied 2 cells');
   });
 

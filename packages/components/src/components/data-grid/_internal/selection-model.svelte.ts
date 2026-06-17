@@ -18,7 +18,7 @@ export class DataGridSelectionModel {
 
   activeCell = $state<DataGridCellCoordinate | undefined>();
   anchorCell = $state<DataGridCellCoordinate | undefined>();
-  toggledCellKeys = $state.raw<readonly string[]>([]);
+  toggledCells = $state.raw<readonly DataGridCellCoordinate[]>([]);
 
   constructor(options: DataGridSelectionModelOptions) {
     this.rowIds = options.rowIds;
@@ -30,9 +30,21 @@ export class DataGridSelectionModel {
     return computeCellRange(this.anchorCell, this.activeCell, this.rowIds(), this.columnKeys());
   });
 
+  readonly selectedCellCoordinates = $derived.by(() => {
+    const cellsByKey = new Map<string, DataGridCellCoordinate>();
+    for (const cell of getCellsInRange(this.range))
+      cellsByKey.set(getCellCoordinateKey(cell), cell);
+    for (const cell of this.toggledCells) {
+      if (clampCellCoordinate(cell, this.rowIds(), this.columnKeys())) {
+        cellsByKey.set(getCellCoordinateKey(cell), cell);
+      }
+    }
+    return [...cellsByKey.values()];
+  });
+
   readonly selectedCells = $derived.by(() => {
-    const keys = new Set(this.toggledCellKeys);
-    for (const cell of getCellsInRange(this.range)) keys.add(getCellCoordinateKey(cell));
+    const keys = new Set<string>();
+    for (const cell of this.selectedCellCoordinates) keys.add(getCellCoordinateKey(cell));
     return keys;
   });
 
@@ -43,15 +55,22 @@ export class DataGridSelectionModel {
     options: { extend?: boolean; toggle?: boolean } = {},
   ): void {
     if (options.toggle) {
+      this.materializeRangeSelection();
       this.toggleCell(cell);
       this.activeCell = cell;
       this.anchorCell = undefined;
       return;
     }
 
+    if (options.extend) {
+      if (!this.anchorCell) this.anchorCell = this.activeCell ?? cell;
+      this.activeCell = cell;
+      return;
+    }
+
     if (!options.extend || !this.anchorCell) {
       this.anchorCell = cell;
-      this.toggledCellKeys = [];
+      this.toggledCells = [];
     }
 
     this.activeCell = cell;
@@ -72,13 +91,13 @@ export class DataGridSelectionModel {
     }
     this.anchorCell = { rowId: firstRowId, columnKey: firstColumnKey };
     this.activeCell = { rowId: lastRowId, columnKey: lastColumnKey };
-    this.toggledCellKeys = [];
+    this.toggledCells = [];
   }
 
   collapseToActiveCell(): void {
     if (!this.activeCell) return;
     this.anchorCell = this.activeCell;
-    this.toggledCellKeys = [];
+    this.toggledCells = [];
   }
 
   isCellSelected(cell: DataGridCellCoordinate): boolean {
@@ -97,7 +116,7 @@ export class DataGridSelectionModel {
     if (rowIds.length === 0 || columnKeys.length === 0) {
       this.activeCell = undefined;
       this.anchorCell = undefined;
-      this.toggledCellKeys = [];
+      this.toggledCells = [];
       return;
     }
 
@@ -111,23 +130,33 @@ export class DataGridSelectionModel {
       (!hadActiveCell ? nextActiveCell : undefined);
     if (!areCellsEqual(this.anchorCell, nextAnchorCell)) this.anchorCell = nextAnchorCell;
 
-    const validCellKeys = new Set(
-      rowIds.flatMap((rowId) =>
-        columnKeys.map((columnKey) => getCellCoordinateKey({ rowId, columnKey })),
-      ),
+    const nextToggledCells = this.toggledCells.filter((cell) =>
+      clampCellCoordinate(cell, rowIds, columnKeys),
     );
-    const nextToggledCellKeys = this.toggledCellKeys.filter((key) => validCellKeys.has(key));
-    if (nextToggledCellKeys.length !== this.toggledCellKeys.length) {
-      this.toggledCellKeys = nextToggledCellKeys;
+    if (nextToggledCells.length !== this.toggledCells.length) {
+      this.toggledCells = nextToggledCells;
     }
+  }
+
+  private materializeRangeSelection(): void {
+    const rangeCells = getCellsInRange(this.range);
+    if (rangeCells.length <= 1) return;
+
+    const cellsByKey = new Map(
+      this.toggledCells.map((toggledCell) => [getCellCoordinateKey(toggledCell), toggledCell]),
+    );
+    for (const cell of rangeCells) cellsByKey.set(getCellCoordinateKey(cell), cell);
+    this.toggledCells = [...cellsByKey.values()];
   }
 
   private toggleCell(cell: DataGridCellCoordinate): void {
     const key = getCellCoordinateKey(cell);
-    const keys = new Set(this.toggledCellKeys);
-    if (keys.has(key)) keys.delete(key);
-    else keys.add(key);
-    this.toggledCellKeys = [...keys];
+    const cellsByKey = new Map(
+      this.toggledCells.map((toggledCell) => [getCellCoordinateKey(toggledCell), toggledCell]),
+    );
+    if (cellsByKey.has(key)) cellsByKey.delete(key);
+    else cellsByKey.set(key, cell);
+    this.toggledCells = [...cellsByKey.values()];
   }
 }
 

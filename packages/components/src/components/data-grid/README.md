@@ -1,6 +1,6 @@
 # DataGrid
 
-Static ARIA data grid foundation for spreadsheet-like datasets with stable row identity, explicit column widths, keyboard navigation, and pinned-column metadata.
+ARIA data grid foundation for spreadsheet-like datasets with stable row identity, explicit column widths, keyboard navigation, row selection, cell/range selection, and pinned-column metadata.
 
 ## Usage
 
@@ -28,12 +28,12 @@ Static ARIA data grid foundation for spreadsheet-like datasets with stable row i
 ### Use When
 
 - Rendering an interactive tabular surface that needs grid semantics instead of native table semantics.
-- Preparing for follow-up DataGrid capabilities such as selection, virtualization, resizing, reordering, or editing.
+- You need built-in row selection, cell focus, range selection, and copy behavior before adding virtualization or editing.
 
 ### Avoid When
 
 - You only need a semantic read-only table — use DataTable or the Table family instead.
-- You need sorting, selection, virtualization, resize handles, drag-to-reorder controls, or editing today.
+- You need sorting, virtualization, resize handles, drag-to-reorder controls, or editing today.
 
 ## Props
 
