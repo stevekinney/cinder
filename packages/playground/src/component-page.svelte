@@ -52,6 +52,7 @@
     createLivePreviewMount,
     LIVE_MOUNT_CONTAINER_ID,
     resolveBareComponent,
+    toMountProps,
   } from './component-page-live-preview.ts';
 
   type CinderExampleDescriptor = {
@@ -881,7 +882,10 @@
                             id={LIVE_MOUNT_CONTAINER_ID}
                             {@attach mountLivePreview(
                               bareComponent,
-                              $state.snapshot(playgroundValues),
+                              toMountProps(
+                                playgroundModel.controls,
+                                $state.snapshot(playgroundValues),
+                              ),
                             )}
                           ></div>
                         </div>

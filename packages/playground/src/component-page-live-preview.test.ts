@@ -45,9 +45,47 @@ import {
   createLivePreviewMount,
   LIVE_MOUNT_CONTAINER_ID,
   type MountErrorRecord,
+  toMountProps,
 } from './component-page-live-preview.ts';
+import type { PlaygroundControl } from './component-page-playground.ts';
 
 setupHappyDom();
+
+describe('toMountProps', () => {
+  test('passes non-children controls through unchanged', () => {
+    const controls: PlaygroundControl[] = [
+      {
+        name: 'variant',
+        kind: 'select',
+        options: ['neutral', 'danger'],
+        value: 'neutral',
+        hasDefault: true,
+      },
+      { name: 'mono', kind: 'boolean', value: false, hasDefault: true },
+    ];
+    expect(toMountProps(controls, { variant: 'danger', mono: true })).toEqual({
+      variant: 'danger',
+      mono: true,
+    });
+  });
+
+  test('converts a children text control into a children snippet', () => {
+    const controls: PlaygroundControl[] = [
+      { name: 'children', kind: 'text', isChildren: true, value: 'Badge', hasDefault: false },
+    ];
+    const props = toMountProps(controls, { children: 'Beta' });
+    // `children` becomes a Svelte snippet (a function), never the raw string.
+    expect(typeof props['children']).toBe('function');
+    expect(props['children']).not.toBe('Beta');
+  });
+
+  test('omits children entirely when the text is empty (component default renders)', () => {
+    const controls: PlaygroundControl[] = [
+      { name: 'children', kind: 'text', isChildren: true, value: '', hasDefault: false },
+    ];
+    expect('children' in toMountProps(controls, { children: '' })).toBe(false);
+  });
+});
 
 const { render } = await import('@testing-library/svelte');
 const { default: Fixture } = await import('./component-page-live-preview-fixture.svelte');

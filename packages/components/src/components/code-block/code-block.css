@@ -73,6 +73,17 @@
     font-family: inherit;
     font-size: inherit;
     line-height: inherit;
+    /* Shiki paints a surface on the generated <code> (and can on line spans)
+     * that differs from the <pre> we force to the inset surface, so in dark mode
+     * each highlighted region reads as its own lighter band over the panel.
+     * Keep the code element and any line wrapper transparent so the single
+     * <pre> surface shows through as one uniform field. (Token foreground colors
+     * are handled separately by the dual-theme `color` swap below.) */
+    background: transparent !important;
+  }
+
+  .cinder-code-block :where(pre.shiki code .line, pre.shiki code span) {
+    background: transparent !important;
   }
 
   /* ── Dark-theme Shiki dual-theme fix ─────────────────────────────────────
@@ -123,17 +134,34 @@
     }
   }
 
-  /* Compact, borderless copy button when nested inside a code block header.
+  /* Compact copy button when nested inside a code block header. It reads as a
+ * real button — a square hit target with a subtle resting chip background — not
+ * a bare floating glyph crammed against the panel edge. The chip is a faint
+ * raised surface so the button is discoverable at rest without competing with
+ * the code content; hover deepens it (rule below).
+ *
+ * Hit target: 1.75rem (28px) square clears the WCAG 2.5.8 AA 24px floor with
+ * margin. The icon stays centered via inline-flex.
+ *
  * Specificity bump (`.cinder-code-block .cinder-code-block__header .cinder-copy-button`)
  * is required because copy-button.css imports AFTER code-block.css in components.css;
  * with equal specificity the later import would win and the bordered default would
  * leak through. Scoped so the standalone CopyButton keeps its bordered default
  * everywhere else in the app. */
   .cinder-code-block .cinder-code-block__header .cinder-copy-button {
-    border: none;
-    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1.75rem;
+    min-block-size: 1.75rem;
+    border: 1px solid transparent;
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-raised);
     padding: var(--cinder-space-1);
-    color: var(--cinder-text-subtle);
+    color: var(--cinder-text-muted);
+    transition:
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   .cinder-code-block .cinder-code-block__header .cinder-copy-button:focus-visible {
