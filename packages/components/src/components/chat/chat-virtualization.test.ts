@@ -135,6 +135,13 @@ function virtualizedProps(conversation: ConversationHistory) {
   };
 }
 
+async function waitForVirtualizedTimeline(container: HTMLElement): Promise<HTMLElement> {
+  const timeline = container.querySelector<HTMLElement>('.chat-timeline');
+  expect(timeline).not.toBeNull();
+  await waitFor(() => expect(timeline?.hasAttribute('data-cinder-virtualized')).toBe(true));
+  return timeline!;
+}
+
 describe('Chat virtualization', () => {
   test('renders a window from a complete compatible transcript', async () => {
     const conversation = longConversation(80);
@@ -143,8 +150,11 @@ describe('Chat virtualization', () => {
       props: virtualizedProps(conversation),
     });
 
+    await waitForVirtualizedTimeline(container);
     await waitFor(() =>
-      expect(container.querySelectorAll('.chat-message').length).toBeGreaterThan(0),
+      expect(container.querySelectorAll('.chat-message').length).toBeLessThan(
+        conversation.ids.length,
+      ),
     );
     const renderedMessages = container.querySelectorAll('.chat-message');
 
@@ -160,14 +170,14 @@ describe('Chat virtualization', () => {
     const { container } = render(Chat, {
       props: virtualizedProps(conversation),
     });
-    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const timeline = await waitForVirtualizedTimeline(container);
 
     await waitFor(() => expect(container.textContent).toContain('Message 79'));
     timeline.scrollTop = 1000;
     await fireEvent.scroll(timeline);
 
-    await waitFor(() => expect(container.textContent).toContain('Message 50'));
-    expect(container.textContent).not.toContain('Message 0');
+    await waitFor(() => expect(container.textContent).not.toContain('Message 0'));
+    expect(container.textContent).toContain('Message 50');
   });
 
   test('search scrolls virtualized off-window matches into the rendered window', async () => {
@@ -175,7 +185,7 @@ describe('Chat virtualization', () => {
     const { container } = render(Chat, {
       props: virtualizedProps(conversation),
     });
-    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const timeline = await waitForVirtualizedTimeline(container);
     timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
       timeline.scrollTop =
         typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
@@ -191,7 +201,7 @@ describe('Chat virtualization', () => {
     await fireEvent.input(input, { target: { value: 'Message 20' } });
 
     await waitFor(() => expect(container.querySelector('#message-message-20')).not.toBeNull());
-    expect(timeline.scrollTop).toBeGreaterThan(0);
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(0));
   });
 
   test('arrow navigation crosses virtualized window boundaries', async () => {
@@ -199,7 +209,7 @@ describe('Chat virtualization', () => {
     const { container } = render(Chat, {
       props: virtualizedProps(conversation),
     });
-    const timeline = container.querySelector<HTMLElement>('.chat-timeline')!;
+    const timeline = await waitForVirtualizedTimeline(container);
     timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
       timeline.scrollTop =
         typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
@@ -220,6 +230,24 @@ describe('Chat virtualization', () => {
     await waitFor(() => expect(document.activeElement?.id).not.toBe(lastRenderedId));
     expect(document.activeElement?.classList.contains('chat-message')).toBe(true);
     expect(timeline.scrollTop).toBeGreaterThan(0);
+  });
+
+  test('appending to a virtualized conversation preserves existing rendered rows', async () => {
+    let conversation = longConversation(20);
+    const { container, rerender } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+
+    await waitForVirtualizedTimeline(container);
+    await waitFor(() => expect(container.textContent).toContain('Message 19'));
+    const existingRow = container.querySelector<HTMLElement>('#message-message-19');
+    expect(existingRow).not.toBeNull();
+
+    conversation = appendMessage(conversation, 'assistant', 'message-20', 'Message 20');
+    await rerender(virtualizedProps(conversation));
+
+    await waitFor(() => expect(container.textContent).toContain('Message 20'));
+    expect(container.querySelector('#message-message-19')).toBe(existingRow);
   });
 });
 

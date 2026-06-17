@@ -577,7 +577,7 @@ describe('Chat — imperative API forwarding', () => {
     }).not.toThrow();
   });
 
-  test('forwarded scroll methods use the virtualized scroll path when enabled', () => {
+  test('forwarded scroll methods use the virtualized scroll path when enabled', async () => {
     const target = document.createElement('div');
     document.body.append(target);
     let conversation = createConversation({ id: 'conversation-imperative-virtualized' });
@@ -597,8 +597,10 @@ describe('Chat — imperative API forwarding', () => {
     const api = instance as unknown as ChatImperative;
 
     try {
-      expect(target.querySelector('.chat-timeline')?.hasAttribute('data-cinder-virtualized')).toBe(
-        true,
+      await waitFor(() =>
+        expect(
+          target.querySelector('.chat-timeline')?.hasAttribute('data-cinder-virtualized'),
+        ).toBe(true),
       );
       expect(() => {
         api.scrollToBottom();
@@ -690,5 +692,16 @@ describe('Chat — SSR safety', () => {
       resolve(import.meta.dir, 'container', 'use-chat-virtualizer.svelte.ts'),
     ]);
     expect(threwMessage).toBeUndefined();
+  });
+
+  test('virtualization is gated behind mount state for SSR/client parity', async () => {
+    const { resolve } = await import('node:path');
+    const source = await Bun.file(resolve(import.meta.dir, 'container', 'chat.svelte')).text();
+
+    expect(source).toContain('let hasMounted = $state(false);');
+    expect(source).toContain('onMount(() => {');
+    expect(source).toContain(
+      'const isVirtualized = $derived(virtualized && hasMounted && messages.length > 0);',
+    );
   });
 });

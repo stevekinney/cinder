@@ -19,7 +19,7 @@
 </script>
 
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
   import { getMessages, pairToolCallsWithResults } from '../utilities';
   import { ChatMessage, ChatDateSeparator } from '../message';
@@ -213,13 +213,18 @@
       showTypingIndicator,
     });
   });
-  const transcriptIdentity = $derived(
-    `${messages.length}:${messages[0]?.id ?? ''}:${messages.at(-1)?.id ?? ''}`,
-  );
+  let hasMounted = $state(false);
+  onMount(() => {
+    hasMounted = true;
+  });
 
-  const isVirtualized = $derived(
-    virtualized && messages.length > 0 && typeof window !== 'undefined',
+  const isVirtualized = $derived(virtualized && hasMounted && messages.length > 0);
+  const timelineResetIdentity = $derived(
+    `${conversationId}:${isVirtualized ? (messages[0]?.id ?? '') : ''}:${
+      isVirtualized ? 'virtualized' : 'full'
+    }`,
   );
+  const staticRowsResetIdentity = $derived(messages[0]?.id ?? '');
 
   const chatVirtualizer = new ChatVirtualizer({
     getScrollElement: () => viewport,
@@ -1278,54 +1283,54 @@
     {/if}
   {/snippet}
 
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <div
-    bind:this={viewport}
-    id={timelineId}
-    class="chat-timeline"
-    role="log"
-    aria-label="Messages"
-    aria-describedby={statusId}
-    aria-live={isVirtualized ? undefined : 'polite'}
-    aria-relevant={isVirtualized ? undefined : 'additions'}
-    data-cinder-virtualized={isVirtualized ? '' : undefined}
-    tabindex="0"
-    {@attach scrollAttachment}
-    {@attach viewportAttach}
-  >
-    {#if showHistoryTrigger}
-      <ChatHistoryTrigger
-        bind:this={historyTriggerRef}
-        loading={isLoadingHistory}
-        label={loadEarlierLabel}
-        loadingLabel={loadingEarlierLabel}
-        onload={() => void handleLoadHistory()}
-      />
-    {/if}
-
-    {#if messages.length === 0}
-      {#if empty}
-        {@render empty()}
-      {:else}
-        <div class="chat-empty" role="status">
-          <p>No messages yet</p>
-          {#if emptyPrompts && emptyPrompts.length > 0}
-            <div class="chat-empty-prompts" role="group" aria-label="Suggested prompts">
-              {#each emptyPrompts as prompt, index (index)}
-                <button
-                  type="button"
-                  class="chat-empty-prompt"
-                  onclick={() => handlePromptClick(prompt)}
-                >
-                  {prompt}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
+  {#key timelineResetIdentity}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div
+      bind:this={viewport}
+      id={timelineId}
+      class="chat-timeline"
+      role="log"
+      aria-label="Messages"
+      aria-describedby={statusId}
+      aria-live={isVirtualized ? undefined : 'polite'}
+      aria-relevant={isVirtualized ? undefined : 'additions'}
+      data-cinder-virtualized={isVirtualized ? '' : undefined}
+      tabindex="0"
+      {@attach scrollAttachment}
+      {@attach viewportAttach}
+    >
+      {#if showHistoryTrigger}
+        <ChatHistoryTrigger
+          bind:this={historyTriggerRef}
+          loading={isLoadingHistory}
+          label={loadEarlierLabel}
+          loadingLabel={loadingEarlierLabel}
+          onload={() => void handleLoadHistory()}
+        />
       {/if}
-    {:else}
-      {#key transcriptIdentity}
+
+      {#if messages.length === 0}
+        {#if empty}
+          {@render empty()}
+        {:else}
+          <div class="chat-empty" role="status">
+            <p>No messages yet</p>
+            {#if emptyPrompts && emptyPrompts.length > 0}
+              <div class="chat-empty-prompts" role="group" aria-label="Suggested prompts">
+                {#each emptyPrompts as prompt, index (index)}
+                  <button
+                    type="button"
+                    class="chat-empty-prompt"
+                    onclick={() => handlePromptClick(prompt)}
+                  >
+                    {prompt}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
+      {:else}
         {#if isVirtualized}
           <div class="chat-virtual-spacer" style={virtualizedSpacerStyle()}>
             {#each virtualRows as virtualRow (chatRenderRowKey(virtualRow.row))}
@@ -1340,16 +1345,18 @@
             {/each}
           </div>
         {:else}
-          {#each renderRows as renderRow (chatRenderRowKey(renderRow))}
-            {@render renderChatRow(renderRow)}
-          {/each}
+          {#key staticRowsResetIdentity}
+            {#each renderRows as renderRow (chatRenderRowKey(renderRow))}
+              {@render renderChatRow(renderRow)}
+            {/each}
+          {/key}
         {/if}
-      {/key}
 
-      <!-- Bottom sentinel for IntersectionObserver -->
-      <div class="chat-bottom-sentinel" aria-hidden="true" {@attach sentinelAttach}></div>
-    {/if}
-  </div>
+        <!-- Bottom sentinel for IntersectionObserver -->
+        <div class="chat-bottom-sentinel" aria-hidden="true" {@attach sentinelAttach}></div>
+      {/if}
+    </div>
+  {/key}
 
   <!-- Input Area with Jump Buttons -->
   <div class="chat-input-wrapper">
