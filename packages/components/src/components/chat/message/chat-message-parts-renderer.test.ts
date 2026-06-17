@@ -72,6 +72,59 @@ describe('toRenderUnits', () => {
     const units = toRenderUnits([a, body, b]);
     expect(units.map((unit) => unit.kind)).toEqual(['images', 'part', 'images']);
   });
+
+  function stepPart(index: number): ChatMessagePart {
+    return {
+      type: 'step',
+      key: `m:step:${index}`,
+      index,
+      title: `Step ${index}`,
+      content: '',
+      status: 'pending',
+    };
+  }
+
+  function suggestionPart(index: number): ChatMessagePart {
+    return { type: 'suggestion', key: `m:suggestion:${index}`, index, label: `S${index}` };
+  }
+
+  test('groups a contiguous run of step parts into one steps unit', () => {
+    const units = toRenderUnits([stepPart(0), stepPart(1), stepPart(2)]);
+    expect(units).toHaveLength(1);
+    expect(units[0]).toMatchObject({ kind: 'steps' });
+    expect(units[0]).toHaveProperty(['steps', 'length'], 3);
+  });
+
+  test('groups a contiguous run of suggestion parts into one suggestions unit', () => {
+    const units = toRenderUnits([suggestionPart(0), suggestionPart(1)]);
+    expect(units).toHaveLength(1);
+    expect(units[0]).toMatchObject({ kind: 'suggestions' });
+    expect(units[0]).toHaveProperty(['suggestions', 'length'], 2);
+  });
+
+  test('flushes a step run before a following non-step part', () => {
+    const body: ChatMessagePart = {
+      type: 'markdown',
+      key: 'm:body',
+      content: 'answer',
+      streaming: false,
+      expanded: true,
+    };
+    const units = toRenderUnits([stepPart(0), stepPart(1), body]);
+    expect(units.map((unit) => unit.kind)).toEqual(['steps', 'part']);
+  });
+
+  test('keeps interleaved runs in order (steps → markdown → suggestions)', () => {
+    const body: ChatMessagePart = {
+      type: 'markdown',
+      key: 'm:body',
+      content: 'answer',
+      streaming: false,
+      expanded: true,
+    };
+    const units = toRenderUnits([stepPart(0), body, suggestionPart(0), suggestionPart(1)]);
+    expect(units.map((unit) => unit.kind)).toEqual(['steps', 'part', 'suggestions']);
+  });
 });
 
 describe('renderer — per-part rendering', () => {
@@ -143,7 +196,7 @@ describe('renderer — per-part rendering', () => {
     expect(alert?.textContent).toContain('it failed');
   });
 
-  test('renders a tool-approval part with alertdialog role and action buttons', () => {
+  test('renders a tool-approval part with group role (not alertdialog) and action buttons', () => {
     const { container } = render(ChatMessagePartsRenderer, {
       props: {
         parts: [

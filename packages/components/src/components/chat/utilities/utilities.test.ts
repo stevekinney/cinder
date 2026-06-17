@@ -153,6 +153,11 @@ describe('resolveMessageSteps', () => {
       }),
     ).toBeUndefined();
   });
+
+  it('a prop returning an empty array suppresses steps even when metadata has valid entries', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:steps': [validStep] } });
+    expect(resolveMessageSteps(m, () => [])).toBeUndefined();
+  });
 });
 
 describe('resolveMessageSuggestions', () => {

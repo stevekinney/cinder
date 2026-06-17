@@ -247,7 +247,8 @@
   }
 
   /* Forced-colors: the decorative pulse dot and the accent rail use background/
-     border colors the system overrides, so pin them to a system color. */
+     border colors the system overrides, so pin them to a system color. The
+     box-shadow focus ring also disappears, so fall back to a system outline. */
   @media (forced-colors: active) {
     .chat-reasoning {
       border-inline-start-color: ButtonText;
@@ -256,6 +257,11 @@
     .chat-reasoning-dot {
       background: ButtonText;
       forced-color-adjust: none;
+    }
+
+    .chat-reasoning-toggle:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: -2px;
     }
   }
 

@@ -79,6 +79,15 @@
       box-shadow: var(--_cinder-focus-ring-shadow);
     }
 
+    /* box-shadow is forced to none in forced-colors mode, so the focus ring
+       would vanish — fall back to a system-color outline. */
+    @media (forced-colors: active) {
+      &:focus-visible {
+        outline: var(--cinder-ring-width) solid ButtonText;
+        outline-offset: 2px;
+      }
+    }
+
     /* Hover only on pointer devices to avoid sticky hover on touch. */
     @media (hover: hover) {
       &:hover {

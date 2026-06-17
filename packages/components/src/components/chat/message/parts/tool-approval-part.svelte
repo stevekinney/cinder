@@ -282,7 +282,8 @@
 
   /* Forced-colors: the resolved-state border color is overridden by the system.
      The title text ("Approved:"/"Denied:") is the primary non-color signal, but
-     keep a visible distinction by pinning the border to a system color. */
+     keep a visible distinction by pinning the border to a system color. The
+     box-shadow focus ring also vanishes, so fall back to a system outline. */
   @media (forced-colors: active) {
     .chat-tool-approval[data-cinder-status='approved'] {
       border-color: Highlight;
@@ -290,6 +291,11 @@
 
     .chat-tool-approval[data-cinder-status='denied'] {
       border-color: GrayText;
+    }
+
+    .chat-tool-approval-btn:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
     }
   }
 </style>

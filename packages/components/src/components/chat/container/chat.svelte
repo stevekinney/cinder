@@ -986,22 +986,33 @@
     inputRef?.focus();
   }
 
+  // C3 — an approve/deny affordance only resolves when SOMETHING can handle it —
+  // the adapter command OR the consumer callback. `canApprove`/`canDeny` gate
+  // both the button-enabled state (passed to ToolApprovalPart) and the resolve
+  // guard, so a consumer that wires neither path gets disabled buttons rather
+  // than a click that commits UI-only state to nowhere (matches canRetry/canEdit).
+  const canApprove = $derived(onapprove !== undefined || adapter?.approveToolCall !== undefined);
+  const canDeny = $derived(ondeny !== undefined || adapter?.denyToolCall !== undefined);
+
   // C3 — tool approval handlers. The resolution is recorded optimistically in the
   // UI-only id sets for immediate feedback, then the adapter command (if present)
-  // or the consumer callback fires. Guard double-resolution: if the call id is
-  // already in either set, skip so a second tap/Escape cannot flip a resolved
-  // state. If the ADAPTER command REJECTS, the optimistic resolution is rolled
-  // back so the prompt returns to pending instead of being stuck permanently
-  // "approved"/"denied" on a transport failure — the error still routes to
-  // onadaptererror. The callback-only path resolves synchronously (no rejection).
+  // runs and, on SUCCESS, the consumer callback fires (adapter-first-then-callback
+  // contract). Guard double-resolution: if the call id is already in either set,
+  // skip so a second tap/Escape cannot flip a resolved state. If the ADAPTER
+  // command REJECTS (or throws), the optimistic resolution is rolled back so the
+  // prompt returns to pending instead of being stuck "approved"/"denied" on a
+  // transport failure — the error routes to onadaptererror and the callback does
+  // NOT fire. With no adapter method, the callback fires synchronously.
   function resolveToolApproval(
     toolCallId: string,
     command: 'approveToolCall' | 'denyToolCall',
+    canHandle: boolean,
     commit: (id: string) => void,
     rollback: (id: string) => void,
     runAdapter: (adapter: ChatAdapter) => Promise<void> | undefined,
     callback: (() => void) | undefined,
   ): void {
+    if (!canHandle) return;
     if (approvedToolCallIds.has(toolCallId) || deniedToolCallIds.has(toolCallId)) return;
     commit(toolCallId);
 
@@ -1015,10 +1026,13 @@
         return;
       }
       if (run !== undefined) {
-        void run.catch((error: unknown) => {
-          rollback(toolCallId);
-          onadaptererror?.({ command, error });
-        });
+        void run.then(
+          () => callback?.(),
+          (error: unknown) => {
+            rollback(toolCallId);
+            onadaptererror?.({ command, error });
+          },
+        );
         return;
       }
     }
@@ -1029,6 +1043,7 @@
     resolveToolApproval(
       toolCallId,
       'approveToolCall',
+      canApprove,
       (id) => (approvedToolCallIds = new Set([...approvedToolCallIds, id])),
       (id) => (approvedToolCallIds = removeFromSet(approvedToolCallIds, id)),
       (resolvedAdapter) =>
@@ -1043,6 +1058,7 @@
     resolveToolApproval(
       toolCallId,
       'denyToolCall',
+      canDeny,
       (id) => (deniedToolCallIds = new Set([...deniedToolCallIds, id])),
       (id) => (deniedToolCallIds = removeFromSet(deniedToolCallIds, id)),
       (resolvedAdapter) =>
@@ -1482,8 +1498,8 @@
         tabindex={-1}
         approvedToolCallIds={approvedToolCallIds.size > 0 ? approvedToolCallIds : undefined}
         deniedToolCallIds={deniedToolCallIds.size > 0 ? deniedToolCallIds : undefined}
-        onapprove={handleApprove}
-        ondeny={handleDeny}
+        onapprove={canApprove ? handleApprove : undefined}
+        ondeny={canDeny ? handleDeny : undefined}
         reasoning={derivedReasoning}
         steps={derivedSteps}
         suggestions={derivedSuggestions}
