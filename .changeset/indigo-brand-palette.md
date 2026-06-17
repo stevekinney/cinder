@@ -1,5 +1,5 @@
 ---
-'@lostgradient/cinder': major
+'@lostgradient/cinder': minor
 ---
 
 Retune the color palette around an indigo brand, polish the command-palette and timeline, and remove the deprecated experimental-timeline aliases (a breaking export-map change — see below).
