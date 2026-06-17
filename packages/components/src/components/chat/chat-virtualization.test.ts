@@ -452,6 +452,74 @@ describe('Chat history pagination', () => {
     );
   });
 
+  test('keeps exhausted adapter trigger mounted until virtualized scroll restoration settles', async () => {
+    let conversation = longConversation(20);
+    const loadCalls: string[] = [];
+    let resolveLoad: ((result: { hasMore: boolean }) => void) | undefined;
+    let adapterResolved = false;
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async (conversationId: string) => {
+        loadCalls.push(conversationId);
+        const result = await new Promise<{ hasMore: boolean }>((resolve) => {
+          resolveLoad = resolve;
+        });
+        adapterResolved = true;
+        return result;
+      },
+    };
+    const { container, rerender } = render(Chat, {
+      props: {
+        id: 'adapter-virtual-history-chat',
+        conversation,
+        adapter,
+        virtualized: true,
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationInitialHeight: 100,
+        virtualizationOverscan: 0,
+        loadingEarlierLabel: 'Loading earlier',
+      },
+    });
+    const timeline = await waitForVirtualizedTimeline(container);
+    Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+    timeline.scrollTop = 120;
+
+    await fireEvent.click(
+      container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
+    );
+
+    expect(loadCalls).toEqual(['virtual-conversation']);
+    resolveLoad?.({ hasMore: false });
+    await waitFor(() => expect(adapterResolved).toBe(true));
+
+    const loadingTrigger = container.querySelector<HTMLButtonElement>(
+      '[data-cinder-history-trigger] button',
+    );
+    expect(loadingTrigger?.textContent).toContain('Loading earlier');
+
+    conversation = prependMessage(
+      conversation,
+      'assistant',
+      'older-adapter-virtual-message',
+      'Earlier adapter virtual context',
+    );
+    await rerender({
+      id: 'adapter-virtual-history-chat',
+      conversation,
+      adapter,
+      virtualized: true,
+      virtualizationEstimatedRowHeight: 20,
+      virtualizationInitialHeight: 100,
+      virtualizationOverscan: 0,
+      loadingEarlierLabel: 'Loading earlier',
+    });
+
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(120));
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
+    );
+  });
+
   test('resets adapter history exhaustion when the active conversation changes', async () => {
     const loadCalls: string[] = [];
     const adapter = {

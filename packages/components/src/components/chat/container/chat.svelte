@@ -819,18 +819,24 @@
     }
 
     if (adapter?.loadOlderMessages) {
-      let loaded = false;
+      let nextHasMoreHistory: boolean | undefined;
       try {
         const result = await adapter.loadOlderMessages(conversationId);
-        adapterHasMoreHistory = result.hasMore;
-        loaded = true;
+        nextHasMoreHistory = result.hasMore;
       } catch (error) {
         pendingHistoryScroll = null;
-        onadaptererror?.({ command: 'loadOlderMessages', error });
-      } finally {
         isLoadingHistory = false;
+        onadaptererror?.({ command: 'loadOlderMessages', error });
+        return;
       }
-      if (loaded) void settlePendingHistoryScroll(pending);
+
+      if (isVirtualized) {
+        await settlePendingHistoryScroll(pending);
+      } else {
+        pendingHistoryScroll = null;
+      }
+      adapterHasMoreHistory = nextHasMoreHistory;
+      isLoadingHistory = false;
       return;
     }
 
