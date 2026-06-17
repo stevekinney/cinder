@@ -200,10 +200,57 @@ describe('ChatVirtualizer', () => {
     element.dataset['cinderVirtualIndex'] = '0';
     element.getBoundingClientRect = () => ({ height: 120 }) as DOMRect;
 
-    expect(virtualizer.measureElement(element)).toBeUndefined();
+    const detach = virtualizer.measureElement(element);
 
     expect(virtualizer.totalSize).toBe(200);
     expect(virtualizer.measureElementNode(null)).toBeUndefined();
     expect(virtualizer.syncOptions()).toBeUndefined();
+    detach?.();
+  });
+
+  test('measurement attachment updates cached sizes after resize observations', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let resizeCallback: ResizeObserverCallback | undefined;
+    let observedElement: Element | undefined;
+    let disconnected = false;
+
+    class TestResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+
+      observe(element: Element): void {
+        observedElement = element;
+      }
+
+      unobserve(): void {}
+
+      disconnect(): void {
+        disconnected = true;
+      }
+    }
+
+    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      const { virtualizer } = createVirtualizer({ count: 2, size: 80 });
+      const element = scrollableElement();
+      let height = 120;
+      element.dataset['cinderVirtualIndex'] = '0';
+      element.getBoundingClientRect = () => ({ height }) as DOMRect;
+
+      const detach = virtualizer.measureElement(element);
+      expect(observedElement).toBe(element);
+      expect(virtualizer.totalSize).toBe(200);
+
+      height = 180;
+      resizeCallback?.([], {} as ResizeObserver);
+      expect(virtualizer.totalSize).toBe(260);
+
+      detach?.();
+      expect(disconnected).toBe(true);
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
   });
 });

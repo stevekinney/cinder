@@ -100,6 +100,16 @@ export class ChatVirtualizer {
 
   measureElement: Attachment<HTMLElement> = (node) => {
     this.measureElementNode(node);
+    if (typeof ResizeObserver !== 'function') return undefined;
+
+    const resizeObserver = new ResizeObserver(() => {
+      this.measureElementNode(node);
+    });
+    resizeObserver.observe(node);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   };
 
   measureElementNode(node: HTMLElement | null): void {
