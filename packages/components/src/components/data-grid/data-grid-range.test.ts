@@ -9,6 +9,7 @@ import {
   type DataGridCellCoordinate,
 } from './_internal/geometry.ts';
 import { dataGridKeyToAction } from './_internal/keyboard-model.ts';
+import { areCellsEqual } from './_internal/selection-model.svelte.ts';
 
 setupHappyDom();
 
@@ -53,6 +54,18 @@ describe('DataGrid range geometry', () => {
       rowId: 'row-2',
       columnKey: 'status',
     });
+  });
+});
+
+describe('DataGrid selection model', () => {
+  test('compares absent and present cell coordinates without forcing reconciliation churn', () => {
+    const cell: DataGridCellCoordinate = { rowId: 'row-1', columnKey: 'customer' };
+
+    expect(areCellsEqual(undefined, undefined)).toBe(true);
+    expect(areCellsEqual(undefined, cell)).toBe(false);
+    expect(areCellsEqual(cell, undefined)).toBe(false);
+    expect(areCellsEqual(cell, { rowId: 'row-1', columnKey: 'customer' })).toBe(true);
+    expect(areCellsEqual(cell, { rowId: 'row-1', columnKey: 'status' })).toBe(false);
   });
 });
 

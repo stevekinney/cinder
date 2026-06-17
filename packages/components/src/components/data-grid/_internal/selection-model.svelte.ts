@@ -167,10 +167,11 @@ export class DataGridSelectionModel {
   }
 }
 
-function areCellsEqual(
+export function areCellsEqual(
   left: DataGridCellCoordinate | undefined,
   right: DataGridCellCoordinate | undefined,
 ): boolean {
+  if (left === undefined && right === undefined) return true;
   if (!left || !right) return false;
   return left.rowId === right.rowId && left.columnKey === right.columnKey;
 }
