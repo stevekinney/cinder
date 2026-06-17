@@ -51,6 +51,10 @@
   import { ChatVirtualizer } from './use-chat-virtualizer.svelte.ts';
   import { useChatReasoningState } from './use-chat-reasoning-state.svelte.ts';
   import type { VirtualItem } from '../../../_internal/virtual-item.ts';
+  import { useChatTypingIndicator } from './use-chat-typing-indicator.svelte.ts';
+  import { useChatReadReceipts } from './use-chat-read-receipts.svelte.ts';
+  import ChatParticipantTyping from './chat-participant-typing.svelte';
+  import ChatReadReceipt from '../message/chat-read-receipt.svelte';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
   type ChatMessageRenderRow = Extract<ChatRenderRow, { type: 'message' }>;
@@ -72,6 +76,8 @@
     hasNewMessageIndicator = $bindable(false),
     class: className,
     surfaceMode = 'default',
+    density = 'comfortable',
+    variant = 'bubble',
     bottomThreshold = DEFAULT_SCROLL_CONFIGURATION.bottomThreshold,
     jumpThreshold = DEFAULT_SCROLL_CONFIGURATION.jumpThreshold,
     isStreaming = false,
@@ -96,6 +102,8 @@
     row,
     messagePart,
     viewportAttachment,
+    typingParticipants,
+    readReceipts,
     adapter,
     onadaptererror,
     onpushmessage,
@@ -353,6 +361,18 @@
 
   const searchState = useChatSearch({
     getMessages: () => messages,
+  });
+
+  // ==========================================================================
+  // C6 — Per-participant typing indicators + read receipts (out-of-band state)
+  // ==========================================================================
+
+  const typingIndicatorState = useChatTypingIndicator({
+    getTypingParticipants: () => typingParticipants,
+  });
+
+  const readReceiptsState = useChatReadReceipts({
+    getReadReceipts: () => readReceipts,
   });
 
   // ==========================================================================
@@ -716,8 +736,16 @@
     const currentConversationId = conversationId;
     const handlers: ChatPushHandlers = {
       onMessage: (message) => untrack(() => onpushmessage)?.(message),
-      onTypingChange: (isTyping) => untrack(() => ontypingchange)?.(isTyping),
-      onReadReceipt: (event) => untrack(() => onreadreceipt)?.(event),
+      onTypingChange: (isTyping) => {
+        // Drive the C6 per-participant typing indicator via the adapter path.
+        typingIndicatorState.handleAdapterTypingChange(isTyping);
+        untrack(() => ontypingchange)?.(isTyping);
+      },
+      onReadReceipt: (event) => {
+        // Accumulate the receipt into C6 read receipt state.
+        readReceiptsState.handleAdapterReadReceipt(event);
+        untrack(() => onreadreceipt)?.(event);
+      },
       onStreamBegin: (messageId) => beginStreaming(messageId),
       onTokenPush: (token) => pushToken(token),
       onStreamEnd: () => endStreaming(),
@@ -1414,6 +1442,8 @@
   {id}
   class={classNames('chat-container', className)}
   data-surface-mode={surfaceMode}
+  data-cinder-density={density}
+  data-cinder-variant={variant}
   role="region"
   aria-label="Chat conversation"
   onkeydown={handleKeyDown}
@@ -1490,6 +1520,8 @@
          per-part `messagePart` override flows through into the message's
          parts renderer. -->
     {#snippet renderDefaultRow()}
+      {@const receipt =
+        message.role === 'user' ? readReceiptsState.getReceipt(message.id) : undefined}
       <ChatMessage
         {message}
         toolCallPairs={pairs}
@@ -1521,6 +1553,8 @@
         {#snippet status()}
           {#if messageStatus}
             {@render messageStatus(message)}
+          {:else if receipt}
+            <ChatReadReceipt {receipt} />
           {/if}
         {/snippet}
       </ChatMessage>
@@ -1597,31 +1631,43 @@
             {/if}
           </div>
         {/if}
+      {:else if isVirtualized}
+        <div class="chat-virtual-spacer" style={virtualizedSpacerStyle()}>
+          {#each virtualRows as virtualRow (chatRenderRowKey(virtualRow.row))}
+            <div
+              class="chat-virtual-row"
+              data-cinder-virtual-index={virtualRow.virtualItem.index}
+              style={virtualizedRowStyle(virtualRow.virtualItem)}
+              {@attach virtualRowAttachment(virtualRow.row)}
+            >
+              {@render renderChatRow(virtualRow.row)}
+            </div>
+          {/each}
+        </div>
       {:else}
-        {#if isVirtualized}
-          <div class="chat-virtual-spacer" style={virtualizedSpacerStyle()}>
-            {#each virtualRows as virtualRow (chatRenderRowKey(virtualRow.row))}
-              <div
-                class="chat-virtual-row"
-                data-cinder-virtual-index={virtualRow.virtualItem.index}
-                style={virtualizedRowStyle(virtualRow.virtualItem)}
-                {@attach virtualRowAttachment(virtualRow.row)}
-              >
-                {@render renderChatRow(virtualRow.row)}
-              </div>
-            {/each}
-          </div>
-        {:else}
-          {#key staticRowsResetIdentity}
-            {#each renderRows as renderRow (chatRenderRowKey(renderRow))}
-              {@render renderChatRow(renderRow)}
-            {/each}
-          {/key}
-        {/if}
-
-        <!-- Bottom sentinel for IntersectionObserver -->
-        <div class="chat-bottom-sentinel" aria-hidden="true" {@attach sentinelAttach}></div>
+        {#key staticRowsResetIdentity}
+          {#each renderRows as renderRow (chatRenderRowKey(renderRow))}
+            {@render renderChatRow(renderRow)}
+          {/each}
+        {/key}
       {/if}
+
+      <!-- Per-participant typing indicator: above the bottom sentinel.
+           Always in DOM regardless of message count — the aria-live region must
+           exist before the first update fires so screen readers receive the
+           announcement even in an empty chat. The outer wrapper is always rendered;
+           the inner indicator mounts/unmounts via {#if isActive} inside the
+           component to replay the entrance animation on each typing start.
+           Virtualized path: sits outside the virtual spacer so it does not affect
+           row measurement. The sentinel remains the last element so
+           IntersectionObserver fires correctly when the typing region gains height. -->
+      <ChatParticipantTyping
+        typingLabel={typingIndicatorState.typingLabel}
+        participantCount={typingIndicatorState.participantCount}
+      />
+
+      <!-- Bottom sentinel for IntersectionObserver -->
+      <div class="chat-bottom-sentinel" aria-hidden="true" {@attach sentinelAttach}></div>
     </div>
   {/key}
 
@@ -1659,6 +1705,13 @@
     announcerMessage={historyAnnouncement || unreadState.announcerMessage}
     assertiveMessage={toolApprovalAssertiveMessage}
   />
+
+  <!-- Typing-participant live region: outside role="log" to avoid double announcement.
+       (ChatStatusAnnouncer is similarly placed outside the log for the same reason.)
+       Text is empty when nobody is typing, debounced for brief-burst suppression. -->
+  <div class="cinder-sr-only" aria-live="polite" aria-atomic="true">
+    {typingIndicatorState.announcedLabel}
+  </div>
 </div>
 
 <style>
@@ -1673,6 +1726,31 @@
 
   .chat-container[data-surface-mode='transparent'] {
     background: transparent;
+  }
+
+  /* ==========================================================================
+   * Density tokens — intermediate contract between container and its children.
+   * ONLY the container reads `data-cinder-density`; children consume the
+   * custom properties below. The defaults match the historical hard-coded
+   * --cinder-space values (comfortable = no visual change from before).
+   * ========================================================================== */
+
+  .chat-container {
+    --cinder-chat-message-gap: var(--cinder-space-3);
+    --cinder-chat-message-padding-inline: var(--cinder-space-4);
+    --cinder-chat-timeline-padding: var(--cinder-space-4);
+    /* Narrow-viewport tokens: tighter padding/gap at ≤480px (comfortable density). */
+    --cinder-chat-narrow-padding: var(--cinder-space-3);
+    --cinder-chat-narrow-gap: var(--cinder-space-2);
+  }
+
+  .chat-container[data-cinder-density='compact'] {
+    --cinder-chat-message-gap: var(--cinder-space-1-5);
+    --cinder-chat-message-padding-inline: var(--cinder-space-2);
+    --cinder-chat-timeline-padding: var(--cinder-space-2);
+    /* Narrow-viewport tokens: proportionally tighter for compact density. */
+    --cinder-chat-narrow-padding: var(--cinder-space-1-5);
+    --cinder-chat-narrow-gap: var(--cinder-space-1);
   }
 
   /* Full-window drop zone overlay */
@@ -1708,10 +1786,10 @@
     flex: 1;
     overflow-y: auto;
     overflow-anchor: auto;
-    padding: var(--cinder-space-4);
+    padding: var(--cinder-chat-timeline-padding);
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-3);
+    gap: var(--cinder-chat-message-gap);
   }
 
   .chat-timeline[data-cinder-virtualized] {
@@ -1720,7 +1798,7 @@
   }
 
   .chat-timeline[data-cinder-virtualized] > :global(.chat-history-trigger) {
-    margin-block-end: var(--cinder-space-3);
+    margin-block-end: var(--cinder-chat-message-gap);
   }
 
   .chat-virtual-spacer {
@@ -1730,7 +1808,7 @@
   .chat-virtual-row {
     box-sizing: border-box;
     width: 100%;
-    padding-block-end: var(--cinder-space-3);
+    padding-block-end: var(--cinder-chat-message-gap);
   }
 
   /* Inset surface separates assistant bubbles (--cinder-surface) from the
@@ -1936,7 +2014,7 @@
   /* Input Area */
   .chat-input-area {
     flex-shrink: 0;
-    padding: var(--cinder-space-4);
+    padding: var(--cinder-chat-timeline-padding);
     border-top: 1px solid var(--cinder-border);
     background: var(--cinder-surface);
   }
@@ -1945,15 +2023,65 @@
     background: transparent;
   }
 
-  /* Responsive adjustments */
+  /* Responsive adjustments: tighten padding at narrow widths.
+     Uses --cinder-chat-narrow-* tokens so each density gets an appropriate
+     reduced value (comfortable → space-3/space-2; compact → space-1-5/space-1). */
   @container (max-width: 480px) {
     .chat-timeline {
-      padding: var(--cinder-space-3);
-      gap: var(--cinder-space-2);
+      padding: var(--cinder-chat-narrow-padding);
+      gap: var(--cinder-chat-narrow-gap);
     }
 
     .chat-input-area {
-      padding: var(--cinder-space-3);
+      padding: var(--cinder-chat-narrow-padding);
     }
+  }
+
+  /* ==========================================================================
+   * Variant — flat: remove bubble backgrounds; role is communicated via
+   * alignment and role label only. Text renders on --cinder-surface-inset
+   * (the timeline background in default surfaceMode), which meets WCAG AA
+   * for --cinder-text. The `:global()` reach is required because bubble CSS
+   * lives in chat-message.svelte (a child component).
+   * ========================================================================== */
+
+  /* Strip user bubble background + distinctive border radius */
+  .chat-container[data-cinder-variant='flat']
+    :global(.chat-message-wrapper[data-role='user'] .chat-message) {
+    background: transparent;
+    border-radius: var(--cinder-radius-lg);
+  }
+
+  /* Strip assistant bubble background + border + shadow */
+  .chat-container[data-cinder-variant='flat']
+    :global(.chat-message-wrapper[data-role='assistant'] .chat-message) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: var(--cinder-radius-lg);
+  }
+
+  /* In flat mode, the user header must flow in-document (not absolutely
+     positioned) so the role label appears above the message content.
+     The label itself is un-clipped below so it reads as visible text. */
+  .chat-container[data-cinder-variant='flat']
+    :global(.chat-message-wrapper[data-role='user'] .chat-message-header) {
+    position: static;
+    inset: unset;
+  }
+
+  /* Un-hide the role label for user messages: in bubble mode alignment
+     communicates role; in flat mode there is no colored background, so the
+     label is the primary visible role signal. */
+  .chat-container[data-cinder-variant='flat']
+    :global(.chat-message-wrapper[data-role='user'] .chat-message-role) {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
   }
 </style>

@@ -32,6 +32,11 @@ export type ChatReadReceiptEvent = {
   messageId: string;
   /** ISO-8601 timestamp at which the message was read. */
   readAt: string;
+  /**
+   * Optional list of reader display names. When present, the read receipt badge
+   * will show "Read by Alice, Bob" in its accessible label.
+   */
+  readBy?: string[];
 };
 
 /**
