@@ -757,14 +757,19 @@
     const unsubscribe = resolvedAdapter.subscribe(currentConversationId, handlers);
 
     // Teardown: close the transport (guarding a contract-violating non-function
-    // return so a bad adapter can't crash Svelte's cleanup) AND clear the
-    // imperative streaming buffer. Without the `endStreaming()`, a resubscribe or
-    // conversation switch mid-stream (no `onStreamEnd` fired) would leave
-    // `streamingMessageId`/`streamingContent` driving a row — and a same-id
-    // message in the new transcript would pick up the stale stream.
+    // return so a bad adapter can't crash Svelte's cleanup), clear the imperative
+    // streaming buffer, AND clear the adapter-derived C6 typing/receipt state.
+    // Without the `endStreaming()`, a resubscribe or conversation switch mid-stream
+    // (no `onStreamEnd` fired) would leave `streamingMessageId`/`streamingContent`
+    // driving a row. Without the typing/receipt resets, an adapter that changed or
+    // was removed for the SAME conversation would leave a synthetic typing
+    // participant, a pending live-region timer, and accumulated receipts alive
+    // (the conversation-change effect above only fires on an id change).
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
       endStreaming();
+      typingIndicatorState.reset();
+      readReceiptsState.reset();
     };
   });
 

@@ -7,9 +7,10 @@
  *   2. The adapter's `onReadReceipt` push handler, forwarded by the container
  *      via the `handleAdapterReadReceipt` callback below.
  *
- * The adapter path accumulates receipts incrementally: each incoming event either
- * upgrades an existing receipt's status or inserts a new one. The status order is
- * sent → delivered → read (upgrades only; never downgrade).
+ * The adapter path accumulates receipts incrementally: each incoming event inserts
+ * a fresh `'read'` receipt for a new message id, or accumulates (deduplicated)
+ * `readBy` names on a repeat push for an already-recorded message. Adapter events
+ * always imply `'read'` status, so there is no status ordering or downgrade.
  *
  * Render rules (enforced in the component, not here):
  *   - Only shown on `user`-role messages (gated by the caller).

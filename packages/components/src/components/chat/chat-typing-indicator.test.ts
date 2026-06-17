@@ -27,6 +27,7 @@ import {
   deriveAnnouncedLabel,
   deriveTypingLabel,
 } from './container/use-chat-typing-indicator.svelte.ts';
+import type { ConversationHistory } from './conversation-model.ts';
 
 // setupHappyDom() MUST run before any @testing-library/svelte import.
 setupHappyDom();
@@ -57,9 +58,12 @@ afterAll(() => {
 });
 
 const { default: Chat } = await import('./chat.svelte');
+const { default: AdapterSwitchFixture } =
+  await import('./adapter/chat-adapter-switch-fixture.svelte');
 
 type TestConversation = import('./conversation-model.ts').ConversationHistory;
 type TestRole = import('./conversation-model.ts').MessageRole;
+type SwitchFixtureInstance = { setConversation: (next: ConversationHistory) => void };
 
 let counter = 0;
 
@@ -625,5 +629,62 @@ describe('Chat — no scroll jump: outer typing wrapper always in DOM', () => {
     expect(outerWrapper).not.toBeNull();
 
     unmount(instance);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reset paths — conversation change clears adapter-derived typing state
+// ---------------------------------------------------------------------------
+
+describe('useChatTypingIndicator — conversation change clears adapter typing', () => {
+  // Uses AdapterSwitchFixture so the `conversation` prop can be swapped
+  // reactively via $state in a Svelte component context.
+  test('typing label disappears when conversation id changes (reset path a)', () => {
+    // Arrange: mount via AdapterSwitchFixture so we can swap conversations.
+    // No `typingParticipants` prop is passed — the adapter path is active.
+    let handlers: ChatPushHandlers | undefined;
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      subscribe: (_conversationId, pushHandlers) => {
+        handlers = pushHandlers;
+        return () => {};
+      },
+    };
+
+    let conversationA = createConversation('typing-reset-conv-a');
+    conversationA = appendMessage(conversationA, 'user', 'Hello');
+
+    const target = document.createElement('div');
+    document.body.append(target);
+    const instance = mount(AdapterSwitchFixture, {
+      target,
+      props: { initial: conversationA, adapter },
+    }) as SwitchFixtureInstance;
+    flushSync();
+
+    // The adapter subscription must have fired and captured handlers.
+    expect(handlers).toBeDefined();
+
+    // Act: push adapter typing-start — the synthetic 'Someone is typing…' label appears.
+    handlers!.onTypingChange(true);
+    flushSync();
+
+    // Assert: visible typing label is shown.
+    const label = target.querySelector('.chat-participant-typing-label');
+    expect(label?.textContent).toBe('Someone is typing…');
+
+    // Act: swap to a different conversation id — the conversation-change $effect runs
+    // typingIndicatorState.reset(), clearing adapterIsTyping and announcedLabel.
+    const conversationB = createConversation('typing-reset-conv-b');
+    instance.setConversation(conversationB);
+    flushSync();
+
+    // Assert: the adapter-derived typing label is gone (reset cleared adapterIsTyping).
+    // The outer wrapper is still in DOM (scroll-jump guard), but the label text is empty.
+    const labelAfterSwap = target.querySelector('.chat-participant-typing-label');
+    expect(labelAfterSwap).toBeNull();
+
+    unmount(instance);
+    target.remove();
   });
 });

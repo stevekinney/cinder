@@ -19,6 +19,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { ChatAdapter, ChatPushHandlers } from './adapter/chat-adapter.ts';
 import type { ReadReceipt } from './chat.types.ts';
+import type { ConversationHistory } from './conversation-model.ts';
 
 setupHappyDom();
 
@@ -48,9 +49,12 @@ afterAll(() => {
 });
 
 const { default: Chat } = await import('./chat.svelte');
+const { default: AdapterSwitchFixture } =
+  await import('./adapter/chat-adapter-switch-fixture.svelte');
 
 type TestConversation = import('./conversation-model.ts').ConversationHistory;
 type TestRole = import('./conversation-model.ts').MessageRole;
+type SwitchFixtureInstance = { setConversation: (next: ConversationHistory) => void };
 
 let counter = 0;
 
@@ -633,5 +637,64 @@ describe('Chat — C6 receipt compatibility', () => {
     expect(container.querySelector('[data-cinder-receipt-status]')).toBeNull();
 
     unmount(instance);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reset paths — conversation change clears adapter-derived receipt state
+// ---------------------------------------------------------------------------
+
+describe('useChatReadReceipts — conversation change clears adapter receipts', () => {
+  // Uses AdapterSwitchFixture so the `conversation` prop can be swapped
+  // reactively via $state in a Svelte component context.
+  test('receipt badge disappears when conversation id changes (reset path a)', () => {
+    // Arrange: mount via AdapterSwitchFixture so we can swap conversations.
+    // No `readReceipts` prop is passed — the adapter path is active.
+    let handlers: ChatPushHandlers | undefined;
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      subscribe: (_conversationId, pushHandlers) => {
+        handlers = pushHandlers;
+        return () => {};
+      },
+    };
+
+    let conversationA = createConversation('receipt-reset-conv-a');
+    conversationA = appendMessage(conversationA, 'user', 'Hello', 'receipt-reset-user-1');
+
+    const target = document.createElement('div');
+    document.body.append(target);
+    const instance = mount(AdapterSwitchFixture, {
+      target,
+      props: { initial: conversationA, adapter },
+    }) as SwitchFixtureInstance;
+    flushSync();
+
+    // The adapter subscription must have fired and captured handlers.
+    expect(handlers).toBeDefined();
+
+    // Act: push a read receipt for the user message in Conversation A.
+    handlers!.onReadReceipt({
+      messageId: 'receipt-reset-user-1',
+      readAt: '2026-06-17T12:00:00.000Z',
+    });
+    flushSync();
+
+    // Assert: receipt badge is shown for the user message.
+    const badge = target.querySelector('[data-cinder-receipt-status]');
+    expect(badge).not.toBeNull();
+    expect(badge?.getAttribute('data-cinder-receipt-status')).toBe('read');
+
+    // Act: swap to a different conversation id — the conversation-change $effect
+    // calls readReceiptsState.reset(), clearing adapterReceipts.
+    const conversationB = createConversation('receipt-reset-conv-b');
+    instance.setConversation(conversationB);
+    flushSync();
+
+    // Assert: the adapter-derived receipt badge is gone (reset cleared adapterReceipts).
+    expect(target.querySelector('[data-cinder-receipt-status]')).toBeNull();
+
+    unmount(instance);
+    target.remove();
   });
 });
