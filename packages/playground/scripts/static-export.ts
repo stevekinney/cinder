@@ -12,7 +12,7 @@
  *
  * What gets rendered (every route `handleRequest` answers, except the live SSE
  * `/events` stream, which has no static form):
- *   - `/` (the redirect to the first component, emitted as an index.html meta-refresh)
+ *   - `/` README-backed landing shell HTML
  *   - `/c/<name>` shell HTML, for every sidebar component
  *   - `/page/<name>` iframe HTML, for every component
  *   - `/shell-bundle/shell.js` + every hashed chunk it imports
@@ -41,8 +41,16 @@ const PLAYGROUND_ROOT = join(import.meta.dirname, '..');
 const OUTPUT_DIRECTORY = join(PLAYGROUND_ROOT, 'public');
 const ORIGIN = 'https://playground.local';
 
-/** Every path written, so we never render the same route twice. */
-const rendered = new Set<string>();
+type StaticExportContext = {
+  outputDirectory: string;
+  rendered: Set<string>;
+};
+
+export type StaticExportOptions = {
+  outputDirectory?: string;
+  sidebarComponents?: string[];
+  allComponents?: string[];
+};
 
 /**
  * Map a request pathname to the static file path under `public/`. A path with
@@ -53,14 +61,14 @@ const rendered = new Set<string>();
  * data routes (`/ping`, `/api/manifest/button`, `/example-src/x/y`) as a bare
  * file — NOT an `index.html` dir, which would mislabel JSON/text as HTML.
  */
-function outputPathFor(pathname: string, isHtml: boolean): string {
+function outputPathFor(pathname: string, isHtml: boolean, outputDirectory: string): string {
   const clean = pathname.replace(/^\/+/, '');
-  if (clean === '') return join(OUTPUT_DIRECTORY, 'index.html');
+  if (clean === '') return join(outputDirectory, 'index.html');
   const lastSegment = clean.split('/').pop() ?? '';
   const hasExtension = lastSegment.includes('.');
   // Only extensionless HTML pages get the index.html clean-URL treatment.
   const relative = !hasExtension && isHtml ? `${clean}/index.html` : clean;
-  return join(OUTPUT_DIRECTORY, relative);
+  return join(outputDirectory, relative);
 }
 
 /**
@@ -70,17 +78,18 @@ function outputPathFor(pathname: string, isHtml: boolean): string {
  * Non-2xx/3xx responses throw — a broken route must fail the build, not ship a
  * 404 page as if it were content.
  */
-async function render(pathname: string): Promise<string | null> {
+async function render(pathname: string, context: StaticExportContext): Promise<string | null> {
+  const { outputDirectory, rendered } = context;
   if (rendered.has(pathname)) return null;
   rendered.add(pathname);
 
   const response = await handleRequest(new Request(`${ORIGIN}${pathname}`));
-  // A redirect (the `/` → `/c/<first>` case) is materialized as a meta-refresh
-  // index.html so the static host has something to serve at `/`.
+  // Redirects are materialized as a meta-refresh index.html so the static host
+  // has something to serve at that path.
   if (response.status >= 300 && response.status < 400) {
     const location = response.headers.get('Location') ?? '/';
     const html = `<!DOCTYPE html><meta http-equiv="refresh" content="0; url=${location}"><link rel="canonical" href="${location}">`;
-    await writeFile(outputPathFor(pathname, true), html);
+    await writeFile(outputPathFor(pathname, true, outputDirectory), html);
     return null;
   }
   if (!response.ok) {
@@ -88,7 +97,7 @@ async function render(pathname: string): Promise<string | null> {
   }
   const isHtml = (response.headers.get('Content-Type') ?? '').includes('text/html');
   const body = await response.text();
-  await writeFile(outputPathFor(pathname, isHtml), body);
+  await writeFile(outputPathFor(pathname, isHtml, outputDirectory), body);
   return body;
 }
 
@@ -132,14 +141,14 @@ function chunkUrlsFromJs(js: string): string[] {
  * Render a JS bundle entry and recursively render every hashed chunk it
  * imports (and any chunks those import) until the graph is exhausted.
  */
-async function renderJsBundleGraph(entryPath: string): Promise<void> {
+async function renderJsBundleGraph(entryPath: string, context: StaticExportContext): Promise<void> {
   const queue = [entryPath];
   while (queue.length > 0) {
     const path = queue.shift()!;
-    const js = await render(path);
+    const js = await render(path, context);
     if (js === null) continue;
     for (const chunk of chunkUrlsFromJs(js)) {
-      if (!rendered.has(chunk)) queue.push(chunk);
+      if (!context.rendered.has(chunk)) queue.push(chunk);
     }
   }
 }
@@ -189,24 +198,29 @@ function cssImportUrlsFrom(fromUrl: string, css: string): string[] {
  * (and their imports) until the graph is exhausted — mirroring the JS chunk
  * graph so the full `@import` cascade is materialized as static files.
  */
-async function renderCssGraph(entryPath: string): Promise<void> {
+async function renderCssGraph(entryPath: string, context: StaticExportContext): Promise<void> {
   const queue = [entryPath];
   while (queue.length > 0) {
     const path = queue.shift()!;
-    const css = await render(path);
+    const css = await render(path, context);
     if (css === null) continue;
     for (const importUrl of cssImportUrlsFrom(path, css)) {
-      if (!rendered.has(importUrl)) queue.push(importUrl);
+      if (!context.rendered.has(importUrl)) queue.push(importUrl);
     }
   }
 }
 
-async function main(): Promise<void> {
+export async function runStaticExport(options: StaticExportOptions = {}): Promise<Set<string>> {
   const start = Date.now();
   process.stdout.write('[static-export] rendering playground to public/…\n');
+  const outputDirectory = options.outputDirectory ?? OUTPUT_DIRECTORY;
+  const context: StaticExportContext = {
+    outputDirectory,
+    rendered: new Set<string>(),
+  };
 
-  const sidebarComponents = await discoverSidebarComponents();
-  const allComponents = await discoverComponents();
+  const sidebarComponents = options.sidebarComponents ?? (await discoverSidebarComponents());
+  const allComponents = options.allComponents ?? (await discoverComponents());
   if (sidebarComponents.length === 0) {
     throw new Error('[static-export] no sidebar components discovered — nothing to render');
   }
@@ -217,10 +231,11 @@ async function main(): Promise<void> {
     for (const url of assetUrlsFromHtml(html)) assetUrls.add(url);
   };
 
-  // Root redirect + the shell bundle graph (shared by every shell page).
-  await render('/');
-  await renderJsBundleGraph('/shell-bundle/shell.js');
-  await render('/ping');
+  // Root landing page + the shell bundle graph (shared by every shell page).
+  const rootHtml = await render('/', context);
+  if (rootHtml !== null) collect(rootHtml);
+  await renderJsBundleGraph('/shell-bundle/shell.js', context);
+  await render('/ping', context);
   // NOTE: the full `/api/manifest` array is intentionally NOT rendered. The UI
   // only ever fetches the per-component `/api/manifest/<name>` route, and
   // writing both would collide on the static host (a file at `api/manifest` and
@@ -228,17 +243,17 @@ async function main(): Promise<void> {
 
   // Per-component: shell page, iframe page, page-bundle graph, manifest, sources.
   for (const name of allComponents) {
-    const pageHtml = await render(`/page/${name}`);
+    const pageHtml = await render(`/page/${name}`, context);
     if (pageHtml !== null) collect(pageHtml);
-    await renderJsBundleGraph(`/page-bundle/${name}.js`);
-    await render(`/api/manifest/${name}`);
-    await render(`/api/documentation/${name}`);
+    await renderJsBundleGraph(`/page-bundle/${name}.js`, context);
+    await render(`/api/manifest/${name}`, context);
+    await render(`/api/documentation/${name}`, context);
     for (const scenario of await discoverExamples(name)) {
-      await render(`/example-src/${name}/${scenario}`);
+      await render(`/example-src/${name}/${scenario}`, context);
     }
   }
   for (const name of sidebarComponents) {
-    const shellHtml = await render(`/c/${name}`);
+    const shellHtml = await render(`/c/${name}`, context);
     if (shellHtml !== null) collect(shellHtml);
   }
 
@@ -248,19 +263,22 @@ async function main(): Promise<void> {
   // those imported files are referenced by no HTML, so without this they 404
   // and the deployed site renders unstyled.
   for (const url of assetUrls) {
-    if (rendered.has(url)) continue;
-    if (url.endsWith('.css')) await renderCssGraph(url);
-    else await render(url);
+    if (context.rendered.has(url)) continue;
+    if (url.endsWith('.css')) await renderCssGraph(url, context);
+    else await render(url, context);
   }
 
   const seconds = ((Date.now() - start) / 1000).toFixed(1);
   process.stdout.write(
-    `[static-export] rendered ${rendered.size} files for ${sidebarComponents.length} components in ${seconds}s\n`,
+    `[static-export] rendered ${context.rendered.size} files for ${sidebarComponents.length} components in ${seconds}s\n`,
   );
+  return context.rendered;
 }
 
 // Fire-and-forget: surface any failure as a non-zero exit so the build fails.
-void main().catch((error: unknown) => {
-  console.error(error);
-  process.exit(1);
-});
+if (import.meta.main) {
+  void runStaticExport().catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

@@ -14,7 +14,11 @@ import { mount } from 'svelte';
 
 import Shell from './shell.svelte';
 
-type InitialData = { component: string; components: string[] };
+type InitialData = { component: string; components: string[]; readmeHtml: string };
+
+function getOwnProperty(value: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value;
+}
 
 /**
  * Validate that the parsed JSON payload matches the expected `InitialData`
@@ -25,11 +29,12 @@ type InitialData = { component: string; components: string[] };
  */
 function isInitialData(value: unknown): value is InitialData {
   if (typeof value !== 'object' || value === null) return false;
-  const record = value as Record<string, unknown>;
-  const component = record['component'];
-  const components = record['components'];
+  const component = getOwnProperty(value, 'component');
+  const components = getOwnProperty(value, 'components');
+  const readmeHtml = getOwnProperty(value, 'readmeHtml');
   if (typeof component !== 'string') return false;
   if (!Array.isArray(components)) return false;
+  if (typeof readmeHtml !== 'string') return false;
   const componentNamePattern = /^[a-z0-9][a-z0-9-]*$/;
   // The active component can legitimately be absent from `components`: the
   // server lists only sidebar-eligible components there (those with at least
@@ -46,14 +51,14 @@ function isInitialData(value: unknown): value is InitialData {
 
 function readInitialData(): InitialData {
   const node = document.getElementById('cinder-initial');
-  if (!node) return { component: '', components: [] };
+  if (!node) return { component: '', components: [], readmeHtml: '' };
   try {
     const parsed: unknown = JSON.parse(node.textContent ?? '{}');
     if (isInitialData(parsed)) return parsed;
   } catch (error) {
     console.error('[cinder playground] failed to parse #cinder-initial:', error);
   }
-  return { component: '', components: [] };
+  return { component: '', components: [], readmeHtml: '' };
 }
 
 const initial = readInitialData();
@@ -68,5 +73,6 @@ mount(Shell, {
   props: {
     initialComponent: initial.component,
     components: initial.components,
+    readmeHtml: initial.readmeHtml,
   },
 });

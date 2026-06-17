@@ -149,6 +149,9 @@ bun install
 bun run dev
 ```
 
+The playground opens at `/` with this README as its landing page. Component examples live under
+`/c/<component-id>`; for example, `/c/accordion` opens the Accordion component page.
+
 Useful root commands:
 
 ```bash

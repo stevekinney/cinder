@@ -123,6 +123,11 @@ export type RenderShellOptions = {
    * string. Any trailing slashes are stripped before composing URLs.
    */
   baseUrl?: string;
+  /**
+   * Sanitized HTML rendered from the repository README. Embedded only on the
+   * root shell route, where the Svelte shell renders it as landing-page prose.
+   */
+  readmeHtml?: string;
 };
 
 /**
@@ -185,6 +190,7 @@ export function renderShell(
   const initialData = {
     component: activeComponent ?? '',
     components,
+    readmeHtml: options.readmeHtml ?? '',
   };
 
   return `<!DOCTYPE html>
