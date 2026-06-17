@@ -22,12 +22,28 @@ import type { PlaygroundControl, PlaygroundValue } from './component-page-playgr
 import { toMountErrorDetail, type MountErrorDetail } from './example-error.ts';
 
 /**
+ * Escape a string for an HTML text-content context: `&` and `<` only. Used for
+ * the raw-snippet render string below so user-typed markup is inserted as
+ * literal text, never parsed into elements. `>` and `"` are literal in element
+ * text content and need no escaping.
+ */
+function escapeHtmlText(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+}
+
+/**
  * Translate the flat playground control values into the props object handed to
  * `mount`. Almost every value passes through unchanged; the one transform is the
  * synthesized `children` text control, whose plain string must become a Svelte
- * snippet (components receive `children` as a snippet, never a raw string). The
- * text is rendered into the snippet as a TEXT node — `textContent`, never
- * `innerHTML` — so user-typed angle brackets stay inert and cannot inject markup.
+ * snippet (components receive `children` as a snippet, never a raw string).
+ *
+ * The snippet renders the escaped text DIRECTLY as element content — no wrapper
+ * element — so the live preview's DOM matches the copyable snippet exactly
+ * (`<Badge>text</Badge>`, not `<Badge><span>text</span></Badge>`). A wrapper
+ * would change inherited styles, spacing, and selectors versus the code the
+ * playground tells the reader to copy. Escaping (not `innerHTML` of raw input)
+ * keeps typed angle brackets inert — they render as the literal characters the
+ * snippet shows.
  *
  * An empty children string yields no `children` prop at all, so the component
  * falls back to its own default rendering rather than mounting an empty snippet.
@@ -42,11 +58,9 @@ export function toMountProps(
     if (control.kind === 'text' && control.isChildren === true) {
       const text = String(value);
       if (text === '') continue;
+      const escaped = escapeHtmlText(text);
       props['children'] = createRawSnippet(() => ({
-        render: () => '<span></span>',
-        setup: (node: Element) => {
-          node.textContent = text;
-        },
+        render: () => escaped,
       }));
       continue;
     }
