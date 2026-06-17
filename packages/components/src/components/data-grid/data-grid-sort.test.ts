@@ -248,7 +248,7 @@ describe('DataGrid sort rendering', () => {
     expect(getColumnText(container, 2)).toEqual(['256', '124', '124']);
   });
 
-  test('keeps active descendant aligned with the sorted visual row order', async () => {
+  test('keeps active descendant on the same row id after sorting', async () => {
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
@@ -263,24 +263,26 @@ describe('DataGrid sort rendering', () => {
 
     await fireEvent.click(customerHeader!.querySelector('button')!);
 
-    const firstSortedRowCells = Array.from(
-      container.querySelectorAll('[role="row"][aria-rowindex="2"] [role="gridcell"]'),
-    );
     const secondSortedRowCells = Array.from(
       container.querySelectorAll('[role="row"][aria-rowindex="3"] [role="gridcell"]'),
     );
+    const thirdSortedRowCells = Array.from(
+      container.querySelectorAll('[role="row"][aria-rowindex="4"] [role="gridcell"]'),
+    );
 
     expect(grid?.getAttribute('aria-activedescendant')).toBe(
-      firstSortedRowCells[0]?.getAttribute('id'),
+      thirdSortedRowCells[0]?.getAttribute('id'),
     );
-    expect(firstSortedRowCells[0]?.getAttribute('data-cinder-active')).toBe('true');
-    expect(firstSortedRowCells[0]?.getAttribute('aria-selected')).toBe('true');
+    expect(thirdSortedRowCells[0]?.textContent?.trim()).toBe('Grace Hopper');
+    expect(thirdSortedRowCells[0]?.getAttribute('data-cinder-active')).toBe('true');
+    expect(thirdSortedRowCells[0]?.getAttribute('aria-selected')).toBe('true');
 
-    await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
+    await fireEvent.keyDown(grid!, { key: 'ArrowUp' });
 
     expect(grid?.getAttribute('aria-activedescendant')).toBe(
       secondSortedRowCells[0]?.getAttribute('id'),
     );
+    expect(secondSortedRowCells[0]?.textContent?.trim()).toBe('Alan Turing');
     expect(secondSortedRowCells[0]?.getAttribute('data-cinder-active')).toBe('true');
     expect(secondSortedRowCells[0]?.getAttribute('aria-selected')).toBe('true');
   });

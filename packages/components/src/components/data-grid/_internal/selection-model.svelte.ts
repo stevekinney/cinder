@@ -109,10 +109,7 @@ export class DataGridSelectionModel {
     return getCellCoordinateKey(this.anchorCell) === getCellCoordinateKey(cell);
   }
 
-  reconcile(
-    fallbackCell: DataGridCellCoordinate | undefined,
-    options: { preferFallback?: boolean } = {},
-  ): void {
+  reconcile(fallbackCell: DataGridCellCoordinate | undefined): void {
     const rowIds = this.rowIds();
     const columnKeys = this.columnKeys();
 
@@ -127,9 +124,7 @@ export class DataGridSelectionModel {
     const hadAnchorCell = this.anchorCell !== undefined;
     const reconciledActiveCell =
       this.activeCell && clampCellCoordinate(this.activeCell, rowIds, columnKeys);
-    const nextActiveCell = options.preferFallback
-      ? (fallbackCell ?? reconciledActiveCell)
-      : (reconciledActiveCell ?? fallbackCell);
+    const nextActiveCell = reconciledActiveCell ?? fallbackCell;
     if (!areCellsEqual(this.activeCell, nextActiveCell)) this.activeCell = nextActiveCell;
 
     const nextAnchorCell =

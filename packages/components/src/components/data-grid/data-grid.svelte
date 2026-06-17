@@ -246,11 +246,23 @@
   });
 
   $effect(() => {
-    const shouldPreferFallback =
+    const didSelectionGeometryChange =
       previousSelectionGeometrySignature !== undefined &&
       previousSelectionGeometrySignature !== selectionGeometrySignature;
     previousSelectionGeometrySignature = selectionGeometrySignature;
-    selectionState.reconcile(activeCellCoordinates, { preferFallback: shouldPreferFallback });
+    selectionState.reconcile(activeCellCoordinates);
+    if (!didSelectionGeometryChange) return;
+
+    const activeCell = selectionState.activeCell;
+    if (!activeCell) return;
+
+    const nextActiveRowIndex = rowDomIds.indexOf(activeCell.rowId);
+    if (nextActiveRowIndex >= 0 && requestedActiveRowIndex !== nextActiveRowIndex) {
+      requestedActiveRowIndex = nextActiveRowIndex;
+    }
+    if (requestedActiveColumnKey !== activeCell.columnKey) {
+      requestedActiveColumnKey = activeCell.columnKey;
+    }
   });
 
   function getCellId(rowId: string, columnKey: string): string {
