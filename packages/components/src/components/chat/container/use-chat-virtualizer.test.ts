@@ -124,6 +124,36 @@ describe('ChatVirtualizer', () => {
     expect(virtualizer.scrollOffset).toBe(0);
   });
 
+  test('keeps a smooth scroll target while waiting for real scroll events', () => {
+    const { virtualizer } = createVirtualizer();
+    const element = scrollableElement();
+    const scrollToCalls: ScrollToOptions[] = [];
+    element.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      if (typeof options === 'number') {
+        element.scrollTop = typeof y === 'number' ? y : options;
+        return;
+      }
+      scrollToCalls.push(options ?? {});
+    };
+    const detach = virtualizer.scrollElement(element);
+
+    element.scrollTop = 120;
+    element.dispatchEvent(new Event('scroll'));
+    expect(virtualizer.scrollOffset).toBe(120);
+
+    virtualizer.scrollToOffset(800, { behavior: 'smooth' });
+
+    expect(scrollToCalls).toEqual([{ top: 800, behavior: 'smooth' }]);
+    expect(element.scrollTop).toBe(120);
+    expect(virtualizer.scrollOffset).toBe(800);
+
+    element.scrollTop = 480;
+    element.dispatchEvent(new Event('scroll'));
+    expect(virtualizer.scrollOffset).toBe(480);
+
+    detach?.();
+  });
+
   test('aligns index scrolling to the viewport and ignores empty transcripts', () => {
     const { virtualizer, setCount } = createVirtualizer();
 

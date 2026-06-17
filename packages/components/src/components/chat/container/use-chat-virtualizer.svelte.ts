@@ -173,9 +173,9 @@ export class ChatVirtualizer {
       const behavior = options?.behavior === 'instant' ? 'auto' : options?.behavior;
       if (typeof element.scrollTo === 'function' && behavior && behavior !== 'auto') {
         element.scrollTo({ top, behavior });
-      } else {
-        element.scrollTop = top;
+        return;
       }
+      element.scrollTop = top;
       element.dispatchEvent(new Event('scroll'));
       return;
     }

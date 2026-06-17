@@ -30,6 +30,9 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-md);
+  }
+
+  .cinder-chat-conversation-list__button[data-cinder-conversation-interactive] {
     cursor: pointer;
   }
 
@@ -39,12 +42,12 @@
   }
 
   @media (hover: hover) {
-    .cinder-chat-conversation-list__button:hover {
+    .cinder-chat-conversation-list__button[data-cinder-conversation-interactive]:hover {
       background: var(--cinder-surface-hover);
     }
   }
 
-  .cinder-chat-conversation-list__button:focus-visible {
+  .cinder-chat-conversation-list__button[data-cinder-conversation-interactive]:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }

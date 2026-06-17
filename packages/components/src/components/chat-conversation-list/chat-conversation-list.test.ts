@@ -69,6 +69,7 @@ describe('ChatConversationList', () => {
     expect(buttons[0]?.getAttribute('aria-current')).toBe('page');
     expect(buttons[0]?.hasAttribute('aria-pressed')).toBe(false);
     expect(buttons[0]?.hasAttribute('data-cinder-conversation-selected')).toBe(true);
+    expect(buttons[0]?.hasAttribute('data-cinder-conversation-interactive')).toBe(true);
   });
 
   test('calls onselectconversation with the selected id', async () => {
@@ -112,6 +113,8 @@ describe('ChatConversationList', () => {
     const item = container.querySelector<HTMLElement>('[data-cinder-conversation-item]');
     expect(item?.tagName).toBe('DIV');
     expect(item?.getAttribute('aria-current')).toBe('page');
+    expect(item?.hasAttribute('data-cinder-conversation-static')).toBe(true);
+    expect(item?.hasAttribute('data-cinder-conversation-interactive')).toBe(false);
     expect(normalizedText(item!)).toContain('Alpha');
   });
 

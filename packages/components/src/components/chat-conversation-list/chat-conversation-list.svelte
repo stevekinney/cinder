@@ -64,6 +64,7 @@
               class="cinder-chat-conversation-list__button"
               aria-current={isActive ? 'page' : undefined}
               data-cinder-conversation-item
+              data-cinder-conversation-interactive
               data-cinder-conversation-selected={isActive ? '' : undefined}
               onclick={() => onselectconversation(conversation.id)}
             >
@@ -81,6 +82,7 @@
               class="cinder-chat-conversation-list__button"
               aria-current={isActive ? 'page' : undefined}
               data-cinder-conversation-item
+              data-cinder-conversation-static
               data-cinder-conversation-selected={isActive ? '' : undefined}
             >
               <span class="cinder-chat-conversation-list__title">{conversation.title}</span>
