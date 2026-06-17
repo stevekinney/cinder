@@ -148,6 +148,7 @@
   let pendingHistoryScroll: PendingHistoryScroll | null = $state(null);
   let historyAnchorMessageId = $state<string | null>(null);
   let historyAnchorViewportOffset = $state<number | null>(null);
+  let historyAnchorRestoredScrollTop: number | null = null;
   let previousHistoryConversationId: string | undefined;
   let previousHistoryAdapter: ChatAdapter | undefined;
 
@@ -158,7 +159,7 @@
   const scrollState = useChatScrollState({
     getBottomThreshold: () => bottomThreshold,
     getJumpThreshold: () => jumpThreshold,
-    onScrollStateChange: (event) => onscrollstatechange?.(event),
+    onScrollStateChange: handleScrollStateChange,
     onReachBottom: () => {
       if (unreadState.unreadCount > 0 || unreadState.hasNewMessageIndicator) {
         unreadState.markAllAsRead();
@@ -336,8 +337,7 @@
     ) {
       adapterHasMoreHistory = undefined;
       pendingHistoryScroll = null;
-      historyAnchorMessageId = null;
-      historyAnchorViewportOffset = null;
+      clearHistoryAnchor();
     }
     previousHistoryConversationId = currentConversationId;
     previousHistoryAdapter = currentAdapter;
@@ -462,15 +462,18 @@
 
     const prependedCount = currentCount - pending.previousCount;
     pendingHistoryScroll = null;
-    historyAnchorMessageId = pending.previousFirstMessageId;
-    historyAnchorViewportOffset = pending.previousFirstMessageViewportOffset;
+    if (isVirtualized) {
+      setHistoryAnchor(pending);
+    }
 
     if (isVirtualized) {
       const newTotalSize = chatVirtualizer.scrollSize;
       const delta = newTotalSize - pending.previousTotalSize;
       const targetScrollTop = pending.previousScrollTop + delta;
       chatVirtualizer.scrollToOffset(targetScrollTop, { behavior: 'instant' });
+      historyAnchorRestoredScrollTop = chatVirtualizer.scrollOffset;
     } else {
+      clearHistoryAnchor();
       const newTotalSize = viewport.scrollHeight;
       const delta = newTotalSize - pending.previousScrollHeight;
       viewport.scrollTo({
@@ -492,6 +495,34 @@
       focusAfterHistoryRestore(pending);
     });
     return true;
+  }
+
+  function setHistoryAnchor(pending: PendingHistoryScroll): void {
+    historyAnchorMessageId = pending.previousFirstMessageId;
+    historyAnchorViewportOffset = pending.previousFirstMessageViewportOffset;
+    historyAnchorRestoredScrollTop = null;
+  }
+
+  function clearHistoryAnchor(): void {
+    historyAnchorMessageId = null;
+    historyAnchorViewportOffset = null;
+    historyAnchorRestoredScrollTop = null;
+  }
+
+  function handleScrollStateChange(event: {
+    isAtBottom: boolean;
+    scrollTop: number;
+    scrollHeight: number;
+  }): void {
+    if (
+      historyAnchorMessageId !== null &&
+      historyAnchorRestoredScrollTop !== null &&
+      Math.abs(event.scrollTop - historyAnchorRestoredScrollTop) > 2
+    ) {
+      clearHistoryAnchor();
+    }
+
+    onscrollstatechange?.(event);
   }
 
   function virtualSpacerOffsetTop(): number {

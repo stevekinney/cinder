@@ -326,6 +326,18 @@ describe('Chat history pagination', () => {
     await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(120));
     expect(conversation.ids[0]).toBe('older-virtual-message');
     await waitFor(() => expect(container.textContent).toContain('1 earlier message loaded'));
+    await waitFor(() => expect(container.textContent).toContain('Message 0'));
+
+    timeline.scrollTop += 80;
+    await fireEvent.scroll(timeline);
+
+    await waitFor(() => expect(container.textContent).toContain('Message 9'));
+    const originalFirstMessageRow = container
+      .querySelector('#message-message-0')
+      ?.closest<HTMLElement>('.chat-virtual-row');
+    expect(originalFirstMessageRow?.style.transform).not.toBe(
+      `translateY(${timeline.scrollTop}px)`,
+    );
   });
 
   test('routes history loading through the adapter and hides the trigger when exhausted', async () => {
