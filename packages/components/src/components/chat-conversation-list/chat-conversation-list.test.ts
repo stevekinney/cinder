@@ -139,6 +139,40 @@ describe('ChatConversationList', () => {
     expect(normalizedText(item!)).toContain('Alpha');
   });
 
+  test('uses singular unread message text for one unread conversation', () => {
+    const { container } = render(ChatConversationList, {
+      props: {
+        onselectconversation: () => {},
+        conversations: [
+          summary({ id: 'interactive', title: 'Interactive', unreadCount: 1 }),
+          summary({
+            id: 'static',
+            title: 'Static',
+            unreadCount: 1,
+            updatedAt: '2026-06-01T00:01:00.000Z',
+          }),
+        ],
+      },
+    });
+
+    const button = container.querySelector<HTMLButtonElement>('button')!;
+    expect(normalizedText(button)).toContain('1 , 1 unread message');
+    expect(normalizedText(button)).not.toContain('1 unread messages');
+
+    cleanup();
+
+    const staticRender = render(ChatConversationList, {
+      props: {
+        conversations: [summary({ id: 'static', title: 'Static', unreadCount: 1 })],
+      },
+    });
+    const staticItem = staticRender.container.querySelector<HTMLElement>(
+      '[data-cinder-conversation-item]',
+    )!;
+    expect(normalizedText(staticItem)).toContain('1 , 1 unread message');
+    expect(normalizedText(staticItem)).not.toContain('1 unread messages');
+  });
+
   test('falls back to message count previews and caps large unread badges', () => {
     const longPreview = `${'Long preview '.repeat(12)}tail`;
     const { container } = render(ChatConversationList, {

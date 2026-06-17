@@ -45,6 +45,10 @@
     return text.length > 96 ? `${text.slice(0, 93)}...` : text;
   }
 
+  function unreadMessageLabel(unreadCount: number): string {
+    return unreadCount === 1 ? '1 unread message' : `${unreadCount} unread messages`;
+  }
+
   const resolvedAriaLabel = $derived(
     typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
   );
@@ -78,7 +82,7 @@
                 <span class="cinder-chat-conversation-list__badge" aria-hidden="true">
                   {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
                 </span>
-                <span class="sr-only">, {conversation.unreadCount} unread messages</span>
+                <span class="sr-only">, {unreadMessageLabel(conversation.unreadCount)}</span>
               {/if}
             </button>
           {:else}
@@ -95,7 +99,7 @@
                 <span class="cinder-chat-conversation-list__badge" aria-hidden="true">
                   {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
                 </span>
-                <span class="sr-only">, {conversation.unreadCount} unread messages</span>
+                <span class="sr-only">, {unreadMessageLabel(conversation.unreadCount)}</span>
               {/if}
             </div>
           {/if}
