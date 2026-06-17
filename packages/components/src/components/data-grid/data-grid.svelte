@@ -246,10 +246,13 @@
   });
 
   $effect(() => {
+    const isInitialSelectionReconciliation = previousSelectionGeometrySignature === undefined;
     const didSelectionGeometryChange =
       previousSelectionGeometrySignature !== undefined &&
       previousSelectionGeometrySignature !== selectionGeometrySignature;
     previousSelectionGeometrySignature = selectionGeometrySignature;
+    if (!isInitialSelectionReconciliation && !didSelectionGeometryChange) return;
+
     selectionState.reconcile(activeCellCoordinates);
     if (!didSelectionGeometryChange) return;
 
