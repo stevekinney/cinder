@@ -1,17 +1,29 @@
+import type { Snippet } from 'svelte';
 import type {
+  DataGridCellContext,
   DataGridColumnDef,
   DataGridColumnPin,
   DataGridColumnPinning,
   DataGridColumnSizing,
+  DataGridSortComparator,
 } from '../data-grid.types.ts';
 
 export const DEFAULT_DATA_GRID_COLUMN_WIDTH = 150;
 export const DEFAULT_DATA_GRID_COLUMN_MIN_WIDTH = 60;
 
-export type ResolvedDataGridColumn<TRow> = DataGridColumnDef<TRow> & {
+export type DataGridValueColumn<TRow> = {
   key: string;
+  sortable?: boolean;
+  sortComparator?: DataGridSortComparator<TRow>;
+  getValue?: (row: TRow) => unknown;
+};
+
+export type ResolvedDataGridColumn<TRow> = DataGridValueColumn<TRow> & {
+  header: string | Snippet;
+  cell?: Snippet<[DataGridCellContext<TRow>]>;
   width: number;
   minWidth: number;
+  maxWidth?: number;
   colIndex: number;
   pin?: DataGridColumnPin;
   pinOffset: number;
@@ -120,13 +132,19 @@ function resolveColumn<TRow>(
   );
   const pin = resolveColumnPin(column, columnPinning);
 
-  const resolvedColumn = {
-    ...column,
+  const resolvedColumn: ResolvedDataGridColumn<TRow> = {
+    key: column.key,
+    header: column.header,
     minWidth,
     width: Math.min(Math.max(baseWidth, minWidth), maxWidth),
     colIndex: index + 1,
     pinOffset: 0,
   };
+  if (column.cell !== undefined) resolvedColumn.cell = column.cell;
+  if (column.maxWidth !== undefined) resolvedColumn.maxWidth = column.maxWidth;
+  if (column.sortable !== undefined) resolvedColumn.sortable = column.sortable;
+  if (column.sortComparator !== undefined) resolvedColumn.sortComparator = column.sortComparator;
+  if (column.getValue !== undefined) resolvedColumn.getValue = column.getValue;
 
   if (pin !== undefined) return { ...resolvedColumn, pin };
 
@@ -177,7 +195,10 @@ function withRenderColIndexes<TRow>(
   return columns.map((column, index) => ({ ...column, colIndex: index + 1 }));
 }
 
-export function getDataGridColumnValue<TRow>(row: TRow, column: DataGridColumnDef<TRow>): unknown {
+export function getDataGridColumnValue<TRow>(
+  row: TRow,
+  column: DataGridValueColumn<TRow>,
+): unknown {
   if (column.getValue) return column.getValue(row);
   if (row !== null && typeof row === 'object' && Object.hasOwn(row, column.key)) {
     const value: unknown = Reflect.get(row, column.key);

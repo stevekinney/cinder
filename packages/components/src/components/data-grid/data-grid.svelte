@@ -10,7 +10,7 @@
    * @useWhen Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.
    * @useWhen You need role=grid semantics instead of native table semantics.
    * @avoidWhen You only need a semantic read-only table — use DataTable or the Table family instead.
-   * @avoidWhen You need sorting, selection, virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
+   * @avoidWhen You need selection, virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
    * @related data-table, table
    */
   export type {
@@ -21,6 +21,10 @@
     DataGridColumnSizing,
     DataGridDensity,
     DataGridProps,
+    DataGridSortComparator,
+    DataGridSortDirection,
+    DataGridSortModel,
+    DataGridSortModelItem,
   } from './data-grid.types.ts';
 </script>
 
@@ -32,7 +36,12 @@
     getDataGridColumnValue,
     type ResolvedDataGridColumn,
   } from './_internal/column-model.svelte.ts';
-  import type { DataGridProps } from './data-grid.types.ts';
+  import {
+    getActiveDataGridSortModel,
+    getNextDataGridSortModel,
+    getSortedDataGridRowIndices,
+  } from './_internal/sort-model.ts';
+  import type { DataGridProps, DataGridSortModelItem } from './data-grid.types.ts';
 
   let {
     rows,
@@ -43,6 +52,8 @@
     columnOrder,
     columnSizing,
     columnPinning,
+    sortModel = $bindable([]),
+    onSortModelChange,
     rowClass,
     getRowAriaLabel,
     class: className,
@@ -59,6 +70,12 @@
     columnPinning: () => columnPinning,
   });
 
+  const activeSortModel = $derived(
+    getActiveDataGridSortModel(columnModel.orderedColumns, sortModel),
+  );
+  const sortedRowIndices = $derived(
+    getSortedDataGridRowIndices(rows, columnModel.orderedColumns, activeSortModel),
+  );
   const gridTemplateColumns = $derived(
     columnModel.renderColumns.map((column) => `${column.width}px`).join(' '),
   );
@@ -85,6 +102,9 @@
       };
     });
   });
+  const sortedKeyedRows = $derived(
+    sortedRowIndices.flatMap((rowIndex) => keyedRows[rowIndex] ?? []),
+  );
   const duplicateRowIds = $derived.by(() => {
     const seen = new Set<string>();
     const duplicates = new Set<string>();
@@ -100,7 +120,7 @@
   let requestedActiveRowIndex = $state(0);
   let requestedActiveColumnKey = $state<string | undefined>();
   const activeRowIndex = $derived(
-    keyedRows.length > 0 ? Math.min(requestedActiveRowIndex, keyedRows.length - 1) : 0,
+    sortedKeyedRows.length > 0 ? Math.min(requestedActiveRowIndex, sortedKeyedRows.length - 1) : 0,
   );
   const activeColumnIndex = $derived.by(() => {
     const index = columnModel.renderColumns.findIndex(
@@ -109,8 +129,8 @@
     return index >= 0 ? index : 0;
   });
   const activeRowDomId = $derived(
-    keyedRows.length > 0
-      ? keyedRows[Math.min(activeRowIndex, keyedRows.length - 1)]?.rowDomId
+    sortedKeyedRows.length > 0
+      ? sortedKeyedRows[Math.min(activeRowIndex, sortedKeyedRows.length - 1)]?.rowDomId
       : firstRowDomId,
   );
   const activeCellId = $derived(
@@ -210,9 +230,42 @@
     return customProperties.join('; ');
   }
 
+  function getColumnSortModelItem(columnKey: string): DataGridSortModelItem | undefined {
+    return activeSortModel.find((item) => item.key === columnKey);
+  }
+
+  function getColumnSortPriority(columnKey: string): number | undefined {
+    const index = activeSortModel.findIndex((item) => item.key === columnKey);
+    return index >= 0 && activeSortModel.length > 1 ? index + 1 : undefined;
+  }
+
+  function getHeaderAriaSort(
+    column: ResolvedDataGridColumn<TRow>,
+    sortItem: DataGridSortModelItem | undefined,
+  ): DataGridSortModelItem['direction'] | undefined {
+    return activeSortModel[0]?.key === column.key ? sortItem?.direction : undefined;
+  }
+
+  function getSortStateDescription(
+    sortItem: DataGridSortModelItem | undefined,
+    sortPriority: number | undefined,
+  ): string {
+    if (!sortItem) return 'not sorted';
+    if (sortPriority === undefined) return `sorted ${sortItem.direction}`;
+    return `sorted ${sortItem.direction}, priority ${sortPriority}`;
+  }
+
+  function handleColumnHeaderClick(column: ResolvedDataGridColumn<TRow>, event: MouseEvent): void {
+    if (!column.sortable) return;
+
+    const nextSortModel = getNextDataGridSortModel(activeSortModel, column.key, event.shiftKey);
+    sortModel = nextSortModel;
+    onSortModelChange?.(nextSortModel);
+  }
+
   function moveActiveCell(rowIndex: number, columnIndex: number): void {
-    if (keyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
-    requestedActiveRowIndex = Math.min(Math.max(rowIndex, 0), keyedRows.length - 1);
+    if (sortedKeyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
+    requestedActiveRowIndex = Math.min(Math.max(rowIndex, 0), sortedKeyedRows.length - 1);
     requestedActiveColumnKey =
       columnModel.renderColumns[
         Math.min(Math.max(columnIndex, 0), columnModel.renderColumns.length - 1)
@@ -224,8 +277,11 @@
       (consumerOnKeydown as (event: KeyboardEvent) => void)(event);
     }
     if (event.defaultPrevented) return;
+    if (event.target instanceof Element && event.target.closest('.cinder-data-grid__sort-button')) {
+      return;
+    }
 
-    if (keyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
+    if (sortedKeyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
 
     if (event.key === 'ArrowRight') {
       event.preventDefault();
@@ -260,7 +316,7 @@
     if (event.key === 'End') {
       event.preventDefault();
       moveActiveCell(
-        event.ctrlKey ? keyedRows.length - 1 : activeRowIndex,
+        event.ctrlKey ? sortedKeyedRows.length - 1 : activeRowIndex,
         columnModel.renderColumns.length - 1,
       );
     }
@@ -284,14 +340,46 @@
 >
   <div class="cinder-data-grid__header-row" role="row" aria-rowindex="1">
     {#each columnModel.renderColumns as column (column.key)}
+      {@const sortItem = getColumnSortModelItem(column.key)}
+      {@const sortPriority = getColumnSortPriority(column.key)}
       <div
         class="cinder-data-grid__header-cell"
         role="columnheader"
         aria-colindex={column.colIndex}
+        aria-sort={column.sortable ? getHeaderAriaSort(column, sortItem) : undefined}
         data-cinder-pin={column.pin}
+        data-cinder-sortable={column.sortable ? 'true' : undefined}
+        data-cinder-sort-direction={sortItem?.direction}
         style={getCellStyle(column)}
       >
-        {#if typeof column.header === 'function'}
+        {#if column.sortable}
+          <button
+            class="cinder-data-grid__sort-button"
+            type="button"
+            onclick={(event) => handleColumnHeaderClick(column, event)}
+          >
+            <span class="cinder-data-grid__header-content">
+              {#if typeof column.header === 'function'}
+                {@render column.header()}
+              {:else}
+                {column.header}
+              {/if}
+            </span>
+            <span class="cinder-data-grid__sort-indicator" aria-hidden="true">
+              {#if sortItem?.direction === 'ascending'}
+                Asc
+              {:else if sortItem?.direction === 'descending'}
+                Desc
+              {/if}
+            </span>
+            {#if sortPriority !== undefined}
+              <span class="cinder-data-grid__sort-priority" aria-hidden="true">
+                {sortPriority}
+              </span>
+            {/if}
+            <span class="cinder-sr-only">{getSortStateDescription(sortItem, sortPriority)}</span>
+          </button>
+        {:else if typeof column.header === 'function'}
           {@render column.header()}
         {:else}
           {column.header}
@@ -301,14 +389,14 @@
   </div>
 
   <div class="cinder-data-grid__body" role="rowgroup">
-    {#each keyedRows as keyedRow (keyedRow.rowKey)}
+    {#each sortedKeyedRows as keyedRow, visualRowIndex (keyedRow.rowKey)}
       {@const row = keyedRow.row}
       {@const rowId = keyedRow.rowDomId}
-      {@const rowIndex = keyedRow.rowIndex}
+      {@const rowIndex = visualRowIndex}
       <div
         class={classNames('cinder-data-grid__row', getRowClass(row, rowIndex))}
         role="row"
-        aria-rowindex={rowIndex + 2}
+        aria-rowindex={visualRowIndex + 2}
         aria-label={getResolvedRowAriaLabel(row, rowIndex)}
       >
         {#each columnModel.renderColumns as column (column.key)}
