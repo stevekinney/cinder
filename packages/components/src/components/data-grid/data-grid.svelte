@@ -152,6 +152,7 @@
     getColumnWidth: (index) => columnModel.renderColumns[index]?.width ?? 150,
     getOverscan: () => 5,
     getInitialHeight: () => resolvedRowHeight * 10,
+    getScrollPaddingStart: () => getHeaderHeight(),
   });
   const virtualRows = $derived(rowVirtualizer.virtualRows);
   const renderedRows = $derived.by(() => {
@@ -247,6 +248,7 @@
   let previousSelectionRowIds: readonly string[] | undefined;
   let previousSelectionColumnKeys: readonly string[] | undefined;
   let gridElement: HTMLDivElement | undefined;
+  let headerElement: HTMLDivElement | undefined;
   let liveRegionTimeoutId: ReturnType<typeof setTimeout> | undefined;
   let liveRegionVersion = 0;
   let warnedVirtualRowHeightFallback = false;
@@ -431,6 +433,12 @@
       `--_cinder-data-grid-row-translate-y: ${row.start}px`,
       `--_cinder-data-grid-row-height: ${row.size}px`,
     ].join('; ');
+  }
+
+  function getHeaderHeight(): number {
+    if (!headerElement) return 0;
+    const rect = headerElement.getBoundingClientRect();
+    return rect.height || headerElement.offsetHeight || 0;
   }
 
   function getColumnSortModelItem(columnKey: string): DataGridSortModelItem | undefined {
@@ -747,7 +755,7 @@
   style:--_cinder-data-grid-template-columns={gridTemplateColumns}
   {@attach rowVirtualizer.mountScrollContainer}
 >
-  <div class="cinder-data-grid__header-row" role="row" aria-rowindex="1">
+  <div bind:this={headerElement} class="cinder-data-grid__header-row" role="row" aria-rowindex="1">
     {#each columnModel.renderColumns as column (column.key)}
       {@const sortItem = getColumnSortModelItem(column.key)}
       {@const sortPriority = getColumnSortPriority(column.key)}

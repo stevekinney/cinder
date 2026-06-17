@@ -32,6 +32,7 @@ export type DataGridVirtualizationAdapterOptions = {
   getColumnWidth: (index: number) => number;
   getOverscan: () => number;
   getInitialHeight: () => number;
+  getScrollPaddingStart: () => number;
 };
 
 export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
@@ -117,7 +118,7 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     this.#rowVirtualizer?.scrollToIndex(index, options);
     if (!element || !shouldUseFallbackScroll) return;
 
-    element.scrollTop = Math.max(0, index * this.#rowHeight());
+    element.scrollTop = this.#scrollPaddingStart() + Math.max(0, index * this.#rowHeight());
     element.dispatchEvent(new Event('scroll'));
   }
 
@@ -149,6 +150,7 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
       measureElement: this.#measureElement,
       onChange: () => this.#update(),
       indexAttribute: 'data-cinder-virtual-index',
+      scrollPaddingStart: this.#scrollPaddingStart(),
     };
   }
 
@@ -163,7 +165,7 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     const element = instance.scrollElement;
     if (!element) return;
 
-    const top = offset + adjustments;
+    const top = this.#scrollPaddingStart() + offset + adjustments;
     if (typeof element.scrollTo === 'function') {
       element.scrollTo(behavior ? { top, behavior } : { top });
       return;
@@ -181,9 +183,11 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
 
     const notify = (): void => {
       const rect = element.getBoundingClientRect();
+      const scrollPaddingStart = this.#scrollPaddingStart();
+      const height = rect.height || element.clientHeight || this.options.getInitialHeight();
       callback({
         width: rect.width || element.clientWidth,
-        height: rect.height || element.clientHeight || this.options.getInitialHeight(),
+        height: Math.max(0, height - scrollPaddingStart) || this.options.getInitialHeight(),
       });
     };
 
@@ -203,10 +207,10 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     if (!element) return () => {};
 
     const notify = (): void => {
-      callback(element.scrollTop, true);
+      callback(this.#scrollOffset(element), true);
       this.#update();
     };
-    callback(element.scrollTop, false);
+    callback(this.#scrollOffset(element), false);
     element.addEventListener('scroll', notify, { passive: true });
     return () => element.removeEventListener('scroll', notify);
   };
@@ -222,7 +226,7 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
 
     const rowHeight = this.#rowHeight();
     const overscan = this.#overscan();
-    const scrollTop = this.#getScrollElement()?.scrollTop ?? 0;
+    const scrollTop = this.#scrollOffset(this.#getScrollElement());
     const visibleCount = Math.ceil(this.#viewportHeight() / rowHeight);
     const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
     const itemCount = Math.min(count - startIndex, visibleCount + overscan * 2);
@@ -246,7 +250,7 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     if (!virtualizerRows || fallbackRows.length === 0) return false;
     if (virtualizerRows.length === 0) return true;
 
-    const scrollTop = this.#getScrollElement()?.scrollTop ?? 0;
+    const scrollTop = this.#scrollOffset(this.#getScrollElement());
     if (scrollTop <= 0) return false;
 
     const firstVirtualizerIndex = virtualizerRows[0]?.index ?? 0;
@@ -266,7 +270,18 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     if (!element) return this.options.getInitialHeight();
 
     const rect = element.getBoundingClientRect();
-    return rect.height || element.clientHeight || this.options.getInitialHeight();
+    const height = rect.height || element.clientHeight || this.options.getInitialHeight();
+    return Math.max(0, height - this.#scrollPaddingStart()) || this.options.getInitialHeight();
+  }
+
+  #scrollOffset(element: HTMLElement | null): number {
+    if (!element) return 0;
+    return Math.max(0, element.scrollTop - this.#scrollPaddingStart());
+  }
+
+  #scrollPaddingStart(): number {
+    const value = this.options.getScrollPaddingStart();
+    return Number.isFinite(value) && value > 0 ? value : 0;
   }
 
   #overscan(): number {

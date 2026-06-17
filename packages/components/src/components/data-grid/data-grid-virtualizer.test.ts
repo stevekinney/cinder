@@ -46,6 +46,20 @@ function dataRows(container: HTMLElement): HTMLElement[] {
   );
 }
 
+function rectWithHeight(height: number): DOMRect {
+  return {
+    bottom: height,
+    height,
+    left: 0,
+    right: 0,
+    top: 0,
+    width: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  };
+}
+
 describe('DataGrid row virtualization', () => {
   test('renders only a row window while aria counts reflect the full dataset', async () => {
     const rows = makeRows(1_000);
@@ -95,6 +109,33 @@ describe('DataGrid row virtualization', () => {
     expect(
       dataRows(container).every((element) => Number(element.getAttribute('aria-rowindex')) > 40),
     ).toBe(true);
+  });
+
+  test('scrolling maps the virtual body below the in-flow header row', async () => {
+    const rows = makeRows(1_000);
+    const { container } = render(LogDataGrid, {
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const headerRow = container.querySelector<HTMLElement>('.cinder-data-grid__header-row');
+    if (!grid || !headerRow) throw new Error('Expected DataGrid root and header row');
+
+    headerRow.getBoundingClientRect = () => rectWithHeight(40);
+    grid.scrollTop = 1_040;
+    await fireEvent.scroll(grid);
+
+    await waitFor(() =>
+      expect(dataRows(container).some((row) => row.textContent?.includes('Message 50'))).toBe(true),
+    );
+    const row = dataRows(container).find((element) => element.textContent?.includes('Message 50'));
+
+    expect(row?.getAttribute('aria-rowindex')).toBe('52');
   });
 
   test('keyboard navigation scrolls an off-window active row into the rendered window', async () => {
