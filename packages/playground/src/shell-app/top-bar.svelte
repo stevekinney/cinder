@@ -172,7 +172,7 @@
     <span class="wordmark" aria-label="Cinder design system">cinder</span>
   </div>
 
-  <Toolbar class="top-bar__toolbar" aria-label="Preview controls">
+  <Toolbar class="top-bar__toolbar" aria-label="Playground controls">
     <Toolbar.Group>
       <span class="component-name" title={currentLocationLabel} aria-label="Current location">
         {currentLocationLabel}

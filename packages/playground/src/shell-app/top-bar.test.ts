@@ -114,7 +114,9 @@ describe('top-bar open-in-new-tab button', () => {
     const { container, unmount } = render(TopBarFixture, { store });
     await tick();
 
-    expect(container.querySelector('.cinder-toolbar')).not.toBeNull();
+    expect(container.querySelector('.cinder-toolbar')?.getAttribute('aria-label')).toBe(
+      'Playground controls',
+    );
     expect(container.querySelectorAll('.cinder-toolbar__group').length).toBeGreaterThanOrEqual(4);
     expect(container.querySelector('.cinder-toolbar__spacer')).not.toBeNull();
     expect(container.querySelectorAll('.cinder-segmented-control').length).toBeGreaterThanOrEqual(
