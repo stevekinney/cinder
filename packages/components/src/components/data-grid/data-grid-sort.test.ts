@@ -271,6 +271,26 @@ describe('DataGrid sort rendering', () => {
     expect(grid?.getAttribute('aria-activedescendant')).toBe(initialActiveCellId);
   });
 
+  test('row callbacks receive the sorted visual row index', () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      sortModel: [{ key: 'customer', direction: 'ascending' }],
+      getRowId: getOrderId,
+      rowClass: (_row, rowIndex) => `visual-row-${rowIndex}`,
+      getRowAriaLabel: (row, rowIndex) => `Visual row ${rowIndex + 1}: ${row.customer}`,
+      'aria-label': 'Orders',
+    });
+
+    const firstSortedRow = container.querySelector<HTMLElement>('[role="row"][aria-rowindex="2"]');
+    const secondSortedRow = container.querySelector<HTMLElement>('[role="row"][aria-rowindex="3"]');
+
+    expect(firstSortedRow?.classList.contains('visual-row-0')).toBe(true);
+    expect(firstSortedRow?.getAttribute('aria-label')).toBe('Visual row 1: Ada Lovelace');
+    expect(secondSortedRow?.classList.contains('visual-row-1')).toBe(true);
+    expect(secondSortedRow?.getAttribute('aria-label')).toBe('Visual row 2: Alan Turing');
+  });
+
   test('sorts duplicate row ids without reusing keyed DOM rows', () => {
     const { container } = render(OrderDataGrid, {
       rows: [

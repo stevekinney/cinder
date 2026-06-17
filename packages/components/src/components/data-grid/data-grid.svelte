@@ -392,7 +392,7 @@
     {#each sortedKeyedRows as keyedRow, visualRowIndex (keyedRow.rowKey)}
       {@const row = keyedRow.row}
       {@const rowId = keyedRow.rowDomId}
-      {@const rowIndex = keyedRow.rowIndex}
+      {@const rowIndex = visualRowIndex}
       <div
         class={classNames('cinder-data-grid__row', getRowClass(row, rowIndex))}
         role="row"
