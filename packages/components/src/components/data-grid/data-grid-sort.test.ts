@@ -60,6 +60,8 @@ describe('DataGrid sort model', () => {
     expect(compareDataGridValues(undefined, 'value')).toBeGreaterThan(0);
     expect(compareDataGridValues(undefined, 'value', 'descending')).toBeGreaterThan(0);
     expect(compareDataGridValues(new Date('invalid'), new Date('2026-01-01'))).toBeGreaterThan(0);
+    expect(compareDataGridValues(null, undefined)).toBe(0);
+    expect(compareDataGridValues(new Date('invalid'), new Date('invalid'))).toBe(0);
   });
 
   test('toggles single and multi-sort models without mutating or reordering the current model', () => {

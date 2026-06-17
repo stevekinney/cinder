@@ -45,7 +45,7 @@ export function getSortedDataGridRowIndices<TRow>(
 
   if (activeSortItems.length === 0) return rowIndices;
 
-  return rowIndices.toSorted((leftIndex, rightIndex) => {
+  return [...rowIndices].toSorted((leftIndex, rightIndex) => {
     const leftRow = rows[leftIndex];
     const rightRow = rows[rightIndex];
     if (leftRow === undefined || rightRow === undefined) return leftIndex - rightIndex;
@@ -72,8 +72,11 @@ export function compareDataGridValues(
   direction: DataGridSortDirection = 'ascending',
 ): number {
   if (Object.is(leftValue, rightValue)) return 0;
-  if (isNullishSortValue(leftValue)) return 1;
-  if (isNullishSortValue(rightValue)) return -1;
+  const leftValueIsNullish = isNullishSortValue(leftValue);
+  const rightValueIsNullish = isNullishSortValue(rightValue);
+  if (leftValueIsNullish && rightValueIsNullish) return 0;
+  if (leftValueIsNullish) return 1;
+  if (rightValueIsNullish) return -1;
 
   const leftNumber = getComparableNumber(leftValue);
   const rightNumber = getComparableNumber(rightValue);
