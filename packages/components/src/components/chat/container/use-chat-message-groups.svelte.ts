@@ -52,7 +52,7 @@ export interface UseChatMessageGroupsOptions {
 export interface UseChatMessageGroupsReturn {
   /** Messages interleaved with date separators */
   readonly messagesWithDates: MessageWithDateItem[];
-  /** Render-only rows derived from messages plus UI-only dividers/typing state */
+  /** Render rows derived from messagesWithDates; call buildChatRenderRows with options for UI-only rows. */
   readonly renderRows: ChatRenderRow[];
   /** Map of tool call ID to tool call pairs for O(1) lookup */
   readonly toolCallPairsByCallId: Map<string, ToolCallPair[]>;

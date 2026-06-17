@@ -5,6 +5,7 @@
 </script>
 
 <script lang="ts">
+  import { createHistoryMessageTimestamp } from './interactive-harness-history.ts';
   import {
     Chat,
     appendAssistantMessage,
@@ -183,7 +184,7 @@
         role: index % 2 === 0 ? 'user' : 'assistant',
         content: `Earlier context ${historyPage}.${index + 1}`,
         position: index,
-        createdAt: `2026-05-${String(30 - historyPage).padStart(2, '0')}T12:${String(index).padStart(2, '0')}:00.000Z`,
+        createdAt: createHistoryMessageTimestamp(historyPage, index),
         metadata: {},
         hidden: false,
       };

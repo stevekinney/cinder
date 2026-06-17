@@ -819,6 +819,13 @@
     isLoadingHistory = false;
   }
 
+  function historyTranscriptChanged(pending: PendingHistoryScroll): boolean {
+    return (
+      messages.length > pending.previousCount ||
+      messages[0]?.id !== pending.previousFirstTranscriptMessageId
+    );
+  }
+
   async function handleLoadHistory(): Promise<void> {
     if (isLoadingHistory || !showHistoryTrigger) return;
 
@@ -842,11 +849,18 @@
         return;
       }
 
-      const transcriptChanged =
-        messages.length > pending.previousCount ||
-        messages[0]?.id !== pending.previousFirstTranscriptMessageId;
+      const transcriptChanged = historyTranscriptChanged(pending);
       if (isVirtualized && !transcriptChanged) {
         deferredAdapterHasMoreHistory = nextHasMoreHistory ?? null;
+        await tick();
+        if (historyTranscriptChanged(pending)) {
+          await settlePendingHistoryScroll(pending);
+        } else if (pendingHistoryScroll === pending) {
+          pendingHistoryScroll = null;
+          finishDeferredAdapterHistoryLoading();
+        } else {
+          finishDeferredAdapterHistoryLoading();
+        }
         return;
       }
 

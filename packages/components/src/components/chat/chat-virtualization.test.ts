@@ -545,14 +545,6 @@ describe('Chat history pagination', () => {
     );
 
     expect(loadCalls).toEqual(['virtual-conversation']);
-    resolveLoad?.({ hasMore: false });
-    await waitFor(() => expect(adapterResolved).toBe(true));
-
-    const loadingTrigger = container.querySelector<HTMLButtonElement>(
-      '[data-cinder-history-trigger] button',
-    );
-    expect(loadingTrigger?.textContent).toContain('Loading earlier');
-
     conversation = prependMessage(
       conversation,
       'assistant',
@@ -570,7 +562,43 @@ describe('Chat history pagination', () => {
       loadingEarlierLabel: 'Loading earlier',
     });
 
+    const loadingTrigger = container.querySelector<HTMLButtonElement>(
+      '[data-cinder-history-trigger] button',
+    );
+    expect(loadingTrigger?.textContent).toContain('Loading earlier');
+
+    resolveLoad?.({ hasMore: false });
+    await waitFor(() => expect(adapterResolved).toBe(true));
     await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(120));
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
+    );
+  });
+
+  test('clears virtualized adapter history loading when exhausted without prepending', async () => {
+    const conversation = longConversation(20);
+    const adapter = {
+      sendMessage: async () => {},
+      loadOlderMessages: async () => ({ hasMore: false }),
+    };
+    const { container } = render(Chat, {
+      props: {
+        id: 'adapter-virtual-empty-history-chat',
+        conversation,
+        adapter,
+        virtualized: true,
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationInitialHeight: 100,
+        virtualizationOverscan: 0,
+        loadingEarlierLabel: 'Loading earlier',
+      },
+    });
+    await waitForVirtualizedTimeline(container);
+
+    await fireEvent.click(
+      container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
+    );
+
     await waitFor(() =>
       expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
     );
