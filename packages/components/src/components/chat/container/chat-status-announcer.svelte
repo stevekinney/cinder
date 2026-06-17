@@ -25,31 +25,16 @@
 </script>
 
 <!-- Screen reader status -->
-<div id={statusId} class="sr-only">
+<div id={statusId} class="cinder-sr-only">
   {messageCount} messages in conversation
 </div>
 
 <!-- Screen reader announcements (polite — does not interrupt current reading) -->
-<div class="sr-only" aria-live="polite" aria-atomic="true">
+<div class="cinder-sr-only" aria-live="polite" aria-atomic="true">
   {announcerMessage}
 </div>
 
 <!-- Assertive announcements — interrupts current reading (tool approval, urgent actions).
      Always rendered so the browser has registered the live region before content
      is injected; mounting with pre-existing text is not reliably announced. -->
-<div class="sr-only" aria-live="assertive" aria-atomic="true">{assertiveMessage ?? ''}</div>
-
-<style>
-  /* Screen reader only */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-</style>
+<div class="cinder-sr-only" aria-live="assertive" aria-atomic="true">{assertiveMessage ?? ''}</div>

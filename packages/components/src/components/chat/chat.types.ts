@@ -19,6 +19,37 @@ import type { MessagePartOverride } from './message/chat-message-parts.ts';
 import type { StepInfo } from './utilities/types.ts';
 
 /**
+ * A participant who is currently typing. Out-of-band UI state — NOT stored on
+ * `Message` or `ConversationHistory`. Flows in as a plain (non-bindable) prop or
+ * via the adapter's `onTypingChange` push handler.
+ */
+export type TypingParticipant = {
+  /** Unique identifier for the participant (e.g. user id). */
+  id: string;
+  /** Display name shown in the typing indicator label. */
+  name: string;
+};
+
+/**
+ * Read-receipt state for a single message. Out-of-band UI state — NOT stored on
+ * `Message`. Flows in as a plain (non-bindable) `readReceipts` prop keyed by
+ * message id, or accumulated from the adapter's `onReadReceipt` push handler.
+ *
+ * Render rules: shown only on `user` messages; color alone never conveys state
+ * (icon + text label always present).
+ */
+export type ReadReceipt = {
+  /** Delivery/read status for this message. */
+  status: 'sent' | 'delivered' | 'read';
+  /**
+   * Names of participants who have read the message. Used to compose the
+   * accessible text (e.g. "Read by Alice, Bob"). May be empty when status is
+   * `sent` or `delivered`.
+   */
+  readBy?: string[];
+};
+
+/**
  * Full-row override snippet. Inversion of control: receives the message AND a
  * `renderDefault` snippet that renders the built-in row, so a consumer can wrap
  * or replace a row while still delegating to the default when it chooses.
@@ -48,6 +79,20 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   class?: string;
   /** Controls the background of the chat surface. Use `'transparent'` to inherit the host element's background when embedding chat inside a card or panel. Default `'default'`. */
   surfaceMode?: 'default' | 'transparent';
+  /**
+   * Controls spacing density of the message timeline.
+   * - `'comfortable'` (default): standard padding and gap.
+   * - `'compact'`: tighter spacing for data-dense contexts (e.g., embedded panels).
+   *   Action buttons keep `min-height: var(--cinder-touch-target-min)` regardless.
+   */
+  density?: 'comfortable' | 'compact';
+  /**
+   * Visual treatment for message bubbles.
+   * - `'bubble'` (default): colored backgrounds differentiate user from assistant.
+   * - `'flat'`: no bubble backgrounds; role is communicated via alignment and role label.
+   *   Text-on-surface contrast meets WCAG AA via `--cinder-text` on `--cinder-surface-inset`.
+   */
+  variant?: 'bubble' | 'flat';
   /** Distance in pixels from the bottom of the scroll viewport within which the chat is considered "at bottom" and will auto-scroll on new messages. Default `150`. */
   bottomThreshold?: number;
   /** Distance in pixels scrolled up from the bottom required before the jump-to-latest button appears. Must be greater than `bottomThreshold` to prevent button flickering. Default `200`. */
@@ -100,6 +145,22 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    */
   messagePart?: MessagePartOverride;
   viewportAttachment?: Attachment<HTMLElement>;
+  /**
+   * Participants who are currently typing. Out-of-band UI state — NOT stored on
+   * `Message`. Pass an array of {@link TypingParticipant} objects; the component
+   * renders a per-participant typing indicator above the input. The adapter's
+   * `onTypingChange` push handler feeds the same indicator when an adapter is
+   * wired. Default `undefined` (indicator hidden).
+   */
+  typingParticipants?: TypingParticipant[];
+  /**
+   * Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.
+   * Pass a `Map` keyed by message id with a {@link ReadReceipt} value; the
+   * component renders a receipt badge on USER messages only. The adapter's
+   * `onReadReceipt` push handler populates the same state when an adapter is wired.
+   * Default `undefined` (no receipts shown).
+   */
+  readReceipts?: Map<string, ReadReceipt>;
   /**
    * Optional command/transport boundary around `conversation`. Its methods take
    * precedence over the matching callback props (e.g. `sendMessage` over

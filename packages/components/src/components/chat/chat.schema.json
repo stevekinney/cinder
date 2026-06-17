@@ -26,6 +26,14 @@
       "enum": ["default", "transparent"],
       "description": "Controls the background of the chat surface. Use `'transparent'` to inherit the host element's background when embedding chat inside a card or panel. Default `'default'`."
     },
+    "density": {
+      "enum": ["comfortable", "compact"],
+      "description": "Controls spacing density of the message timeline.\n- `'comfortable'` (default): standard padding and gap.\n- `'compact'`: tighter spacing for data-dense contexts (e.g., embedded panels).\n  Action buttons keep `min-height: var(--cinder-touch-target-min)` regardless."
+    },
+    "variant": {
+      "enum": ["bubble", "flat"],
+      "description": "Visual treatment for message bubbles.\n- `'bubble'` (default): colored backgrounds differentiate user from assistant.\n- `'flat'`: no bubble backgrounds; role is communicated via alignment and role label.\n  Text-on-surface contrast meets WCAG AA via `--cinder-text` on `--cinder-surface-inset`."
+    },
     "bottomThreshold": {
       "type": "number",
       "description": "Distance in pixels from the bottom of the scroll viewport within which the chat is considered \"at bottom\" and will auto-scroll on new messages. Default `150`."
@@ -234,9 +242,19 @@
         "reason": "function-or-snippet"
       },
       {
+        "name": "readReceipts",
+        "reason": "unknown-shape",
+        "description": "Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.\nPass a `Map` keyed by message id with a {@link ReadReceipt} value; the\ncomponent renders a receipt badge on USER messages only. The adapter's\n`onReadReceipt` push handler populates the same state when an adapter is wired.\nDefault `undefined` (no receipts shown)."
+      },
+      {
         "name": "row",
         "reason": "function-or-snippet",
         "description": "Full-row override. Renders an entire message row; receives the message and\na `renderDefault` snippet for the built-in row (inversion of control), so a\nconsumer can wrap or fully replace specific rows."
+      },
+      {
+        "name": "typingParticipants",
+        "reason": "unknown-shape",
+        "description": "Participants who are currently typing. Out-of-band UI state — NOT stored on\n`Message`. Pass an array of {@link TypingParticipant} objects; the component\nrenders a per-participant typing indicator above the input. The adapter's\n`onTypingChange` push handler feeds the same indicator when an adapter is\nwired. Default `undefined` (indicator hidden)."
       },
       {
         "name": "viewportAttachment",
