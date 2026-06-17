@@ -31,6 +31,7 @@
 </script>
 
 <script lang="ts" generics="TRow">
+  import { tick } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import { classNames } from '../../utilities/class-names.ts';
@@ -105,15 +106,14 @@
   let liveRegionMessage = $state('');
   let renderedLiveRegionMessage = $state('');
   let liveRegionAnnouncementSequence = $state(0);
+  let measuredGridWidth = $state<number | undefined>();
+  let isRightToLeft = $state(false);
 
   const activeSortModel = $derived(
     getActiveDataGridSortModel(columnModel.orderedColumns, sortModel),
   );
   const sortedRowIndices = $derived(
     getSortedDataGridRowIndices(rows, columnModel.orderedColumns, activeSortModel),
-  );
-  const gridTemplateColumns = $derived(
-    columnModel.renderColumns.map((column) => `${column.width}px`).join(' '),
   );
   const keyedRows = $derived.by(() => {
     const records = rows.map((row, rowIndex) => ({
@@ -147,7 +147,12 @@
   );
   const shouldVirtualizeRows = $derived(virtualizeRows && sortedKeyedRows.length > 0);
   const shouldVirtualizeColumns = $derived(
-    virtualizeColumns && columnModel.unpinnedColumns.length > 0 && typeof window !== 'undefined',
+    virtualizeColumns &&
+      columnModel.unpinnedColumns.length > 0 &&
+      measuredGridWidth !== undefined &&
+      measuredGridWidth > 0 &&
+      !isRightToLeft &&
+      typeof window !== 'undefined',
   );
   const rowVirtualizer = new DataGridVirtualizationAdapter({
     getScrollElement: () => gridElement ?? null,
@@ -159,7 +164,7 @@
     getColumnWidth: (index) => columnModel.unpinnedColumns[index]?.width ?? 150,
     getOverscan: () => 5,
     getInitialHeight: () => resolvedRowHeight * 10,
-    getInitialWidth: () => getGridWidth(),
+    getInitialWidth: () => measuredGridWidth ?? 1_000,
     getScrollPaddingStart: () => getHeaderHeight(),
     getScrollPaddingInlineStart: () => columnModel.leftPinnedWidth,
   });
@@ -177,6 +182,20 @@
     observer.observe(node);
     return () => observer.disconnect();
   };
+  const observeGridSize: Attachment<HTMLElement> = (node) => {
+    const updateGridMeasurement = (): void => {
+      const rect = node.getBoundingClientRect();
+      measuredGridWidth = rect.width || node.clientWidth || undefined;
+      isRightToLeft = getComputedStyle(node).direction === 'rtl';
+    };
+
+    updateGridMeasurement();
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(updateGridMeasurement);
+    observer.observe(node);
+    return () => observer.disconnect();
+  };
   const delegateBodyEvents: Attachment<HTMLElement> = (node) => {
     node.addEventListener('click', handleBodyClick);
     node.addEventListener('keydown', handleBodyKeydown);
@@ -187,6 +206,31 @@
   };
   const virtualRows = $derived(rowVirtualizer.virtualRows);
   const virtualColumns = $derived(rowVirtualizer.virtualColumns);
+  const virtualColumnLeadingSpacer = $derived(virtualColumns[0]?.start ?? 0);
+  const virtualColumnTrailingSpacer = $derived.by(() => {
+    const lastColumn = virtualColumns.at(-1);
+    if (!lastColumn) return 0;
+
+    return Math.max(0, rowVirtualizer.totalWidth - (lastColumn.start + lastColumn.size));
+  });
+  const gridContentWidth = $derived(
+    shouldVirtualizeColumns
+      ? columnModel.leftPinnedWidth + rowVirtualizer.totalWidth + columnModel.rightPinnedWidth
+      : undefined,
+  );
+  const gridTemplateColumns = $derived.by(() => {
+    if (!shouldVirtualizeColumns) {
+      return columnModel.renderColumns.map((column) => `${column.width}px`).join(' ');
+    }
+
+    return [
+      ...columnModel.leftPinnedColumns.map((column) => `${column.width}px`),
+      `${virtualColumnLeadingSpacer}px`,
+      ...virtualColumns.map((item) => `${item.size}px`),
+      `${virtualColumnTrailingSpacer}px`,
+      ...columnModel.rightPinnedColumns.map((column) => `${column.width}px`),
+    ].join(' ');
+  });
   const renderedColumns = $derived.by(() => {
     if (!shouldVirtualizeColumns) return columnModel.renderColumns;
 
@@ -397,7 +441,7 @@
     if (shouldVirtualizeColumns && activeVirtualColumnIndex !== undefined) {
       rowVirtualizer.scrollToColumn(activeVirtualColumnIndex);
     }
-    document.getElementById(cellId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    void scrollActiveCellIntoView(cellId);
   });
 
   $effect(() => {
@@ -476,7 +520,7 @@
   function getCellStyle(column: ResolvedDataGridColumn<TRow>): string {
     const customProperties = [
       `--_cinder-data-grid-column-width: ${column.width}px`,
-      `grid-column: ${column.renderIndex}`,
+      `grid-column: ${getCellGridColumn(column)}`,
     ];
     if (column.pin === 'left') {
       customProperties.push(`--_cinder-data-grid-pin-left-offset: ${column.pinOffset}px`);
@@ -502,12 +546,6 @@
 
   function getHeaderHeight(): number {
     return headerElement ? getElementHeight(headerElement) : 0;
-  }
-
-  function getGridWidth(): number {
-    if (!gridElement) return 1_000;
-    const rect = gridElement.getBoundingClientRect();
-    return rect.width || gridElement.clientWidth || 1_000;
   }
 
   function getElementHeight(element: HTMLElement): number {
@@ -564,6 +602,26 @@
     if (columnKey === undefined) return undefined;
     const index = columnModel.unpinnedColumns.findIndex((column) => column.key === columnKey);
     return index >= 0 ? index : undefined;
+  }
+
+  function getCellGridColumn(column: ResolvedDataGridColumn<TRow>): number {
+    if (!shouldVirtualizeColumns) return column.renderIndex;
+
+    const leftPinnedCount = columnModel.leftPinnedColumns.length;
+    if (column.pin === 'left') return column.renderIndex;
+
+    const visibleUnpinnedIndex = virtualColumns.findIndex((item) => item.key === column.key);
+    if (visibleUnpinnedIndex >= 0) return leftPinnedCount + 2 + visibleUnpinnedIndex;
+
+    const rightPinnedIndex = columnModel.rightPinnedColumns.findIndex(
+      (item) => item.key === column.key,
+    );
+    return leftPinnedCount + 2 + virtualColumns.length + 1 + Math.max(0, rightPinnedIndex);
+  }
+
+  async function scrollActiveCellIntoView(cellId: string): Promise<void> {
+    await tick();
+    document.getElementById(cellId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   function moveActiveCell(rowIndex: number, columnIndex: number, extend = false): void {
@@ -836,7 +894,11 @@
   data-cinder-virtualized-rows={shouldVirtualizeRows ? 'true' : undefined}
   data-cinder-virtualized-columns={shouldVirtualizeColumns ? 'true' : undefined}
   style:--_cinder-data-grid-template-columns={gridTemplateColumns}
+  style:--_cinder-data-grid-content-width={gridContentWidth === undefined
+    ? undefined
+    : `${gridContentWidth}px`}
   {@attach rowVirtualizer.mountScrollContainer}
+  {@attach observeGridSize}
 >
   <div
     bind:this={headerElement}

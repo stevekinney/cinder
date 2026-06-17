@@ -3,7 +3,6 @@ import { describe, expect, test } from 'bun:test';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import {
   clampCellCoordinate,
-  columnOffsetForWindow,
   computeCellRange,
   getCellsInRange,
   isCellInRange,
@@ -55,13 +54,6 @@ describe('DataGrid range geometry', () => {
       rowId: 'row-2',
       columnKey: 'status',
     });
-  });
-
-  test('computes scroll-column offsets after pinned left columns', () => {
-    expect(columnOffsetForWindow(0, [80, 120, 160, 200], 1)).toBe(0);
-    expect(columnOffsetForWindow(1, [80, 120, 160, 200], 1)).toBe(0);
-    expect(columnOffsetForWindow(3, [80, 120, 160, 200], 1)).toBe(280);
-    expect(columnOffsetForWindow(Number.NaN, [80, 120], 1)).toBe(0);
   });
 });
 

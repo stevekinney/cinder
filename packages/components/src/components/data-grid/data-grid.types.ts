@@ -89,7 +89,7 @@ export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   stickyHeader?: boolean;
   /** Enables fixed-height row virtualization. */
   virtualizeRows?: boolean;
-  /** Enables horizontal virtualization for unpinned columns. Pinned columns stay rendered. */
+  /** Enables LTR horizontal virtualization for unpinned columns. Pinned columns stay rendered. */
   virtualizeColumns?: boolean;
   /** Fixed body-row pixel height used by row virtualization. Defaults to 44 when omitted or invalid. */
   rowHeight?: number;

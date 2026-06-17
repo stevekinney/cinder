@@ -347,14 +347,14 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     const startIndex = Math.max(0, this.#columnIndexAtOffset(scrollLeft) - overscan);
     const items: VendorVirtualItem[] = [];
     let index = startIndex;
-    let end = this.#columnStart(index);
+    let start = this.#columnStart(index);
+    let end = start;
     const maxEnd = scrollLeft + viewportWidth;
 
     while (
       index < count &&
       (items.length < overscan * 2 || end <= maxEnd + this.#columnWidth(index))
     ) {
-      const start = this.#columnStart(index);
       const size = this.#columnWidth(index);
       end = start + size;
       items.push({
@@ -366,6 +366,7 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
         lane: 0,
       });
       index += 1;
+      start = end;
     }
 
     return items;

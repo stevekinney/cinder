@@ -3,6 +3,7 @@
 @layer cinder.components {
   .cinder-data-grid {
     --_cinder-data-grid-template-columns: none;
+    --_cinder-data-grid-content-width: max-content;
 
     display: block;
     inline-size: 100%;
@@ -26,7 +27,7 @@
   .cinder-data-grid__row {
     display: grid;
     grid-template-columns: var(--_cinder-data-grid-template-columns);
-    inline-size: max-content;
+    inline-size: var(--_cinder-data-grid-content-width);
     min-inline-size: 100%;
   }
 
@@ -47,7 +48,7 @@
 
   .cinder-data-grid__body[data-cinder-virtualized] {
     position: relative;
-    inline-size: max-content;
+    inline-size: var(--_cinder-data-grid-content-width);
     min-inline-size: 100%;
   }
 

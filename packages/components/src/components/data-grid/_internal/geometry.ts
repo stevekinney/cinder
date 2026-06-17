@@ -85,25 +85,3 @@ export function clampCellCoordinate(
       columnKeys[Math.min(Math.max(columnIndex, 0), columnKeys.length - 1)] ?? columnKeys[0]!,
   };
 }
-
-export function columnOffsetForWindow(
-  windowStart: number,
-  columnWidths: readonly number[],
-  pinnedLeftCount: number,
-): number {
-  const firstScrollableIndex = clampInteger(pinnedLeftCount, 0, columnWidths.length);
-  const startIndex = clampInteger(windowStart, firstScrollableIndex, columnWidths.length);
-  let offset = 0;
-
-  for (let index = firstScrollableIndex; index < startIndex; index += 1) {
-    const width = columnWidths[index] ?? 0;
-    if (Number.isFinite(width) && width > 0) offset += width;
-  }
-
-  return offset;
-}
-
-function clampInteger(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  return Math.min(Math.max(Math.trunc(value), min), max);
-}

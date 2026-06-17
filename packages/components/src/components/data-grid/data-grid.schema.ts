@@ -20,7 +20,7 @@ const schema = {
     virtualizeColumns: {
       type: 'boolean',
       description:
-        'Enables horizontal virtualization for unpinned columns. Pinned columns stay rendered.',
+        'Enables LTR horizontal virtualization for unpinned columns. Pinned columns stay rendered.',
     },
     rowHeight: {
       type: 'number',
