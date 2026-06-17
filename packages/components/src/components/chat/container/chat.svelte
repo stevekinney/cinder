@@ -876,13 +876,13 @@
 
     try {
       await onloadhistory?.();
+      await settlePendingHistoryScroll(pending);
     } catch (error) {
       pendingHistoryScroll = null;
       throw error;
     } finally {
       isLoadingHistory = false;
     }
-    void settlePendingHistoryScroll(pending);
   }
 
   function handleRetry(messageId: string): void {

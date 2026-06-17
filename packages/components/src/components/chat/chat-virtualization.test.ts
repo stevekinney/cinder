@@ -36,6 +36,7 @@ const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/s
 const { default: Chat } = await import('./chat.svelte');
 const { default: ChatHistoryPaginationFixture } =
   await import('./chat-history-pagination-fixture.svelte');
+const { tick } = await import('svelte');
 
 afterEach(() => {
   cleanup();
@@ -361,6 +362,47 @@ describe('Chat history pagination', () => {
     );
 
     await waitFor(() => expect(scrollTops).toContain(360));
+    expect(container.textContent).toContain('Earlier context');
+  });
+
+  test('callback history loading keeps the trigger disabled until scroll restoration settles', async () => {
+    let conversation = longConversation(20);
+    let loadCalls = 0;
+    let resolveLoad: (() => void) | undefined;
+    const { container } = render(ChatHistoryPaginationFixture, {
+      props: {
+        conversation,
+        loadHistory: async (currentConversation: ConversationHistory) => {
+          loadCalls += 1;
+          return new Promise<ConversationHistory>((resolve) => {
+            resolveLoad = () => {
+              conversation = prependMessage(
+                currentConversation,
+                'assistant',
+                'older-message',
+                'Earlier context',
+              );
+              resolve(conversation);
+            };
+          });
+        },
+      },
+    });
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-cinder-history-trigger] button',
+    )!;
+
+    await fireEvent.click(trigger);
+    expect(trigger.disabled).toBe(true);
+
+    resolveLoad?.();
+    await tick();
+
+    expect(trigger.disabled).toBe(true);
+    await fireEvent.click(trigger);
+    expect(loadCalls).toBe(1);
+
+    await waitFor(() => expect(trigger.disabled).toBe(false));
     expect(container.textContent).toContain('Earlier context');
   });
 

@@ -133,7 +133,7 @@ export function buildChatRenderRows(
 
   for (const item of items) {
     if (item.type === 'message') {
-      if (item.message.id === firstUnreadId && rows.length > 0) {
+      if (item.message.id === firstUnreadId) {
         rows.push({ type: 'unread-divider', afterMessageId: previousMessageId });
       }
       previousMessageId = item.message.id;

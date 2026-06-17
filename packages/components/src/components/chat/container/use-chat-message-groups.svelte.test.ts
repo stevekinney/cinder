@@ -198,6 +198,7 @@ describe('useChatMessageGroups paired tool-result filtering', () => {
 
     expect(items.map((item) => item.type)).toEqual(['message', 'date', 'message']);
     expect(rows.map(chatRenderRowKey)).toEqual([
+      'unread-start',
       'msg-invalid',
       'date-2026-05-10T12:00:00.000Z',
       'msg-valid',
