@@ -9,9 +9,19 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: DataGrid } = await import('./data-grid.svelte');
+const { default: DataGridSelectionBindFixture } =
+  await import('./data-grid-selection-bind-fixture.svelte');
+const { getObservedSelectionModel, resetObservedSelectionModel } =
+  await import('./data-grid-selection-bind-probe.ts');
+
+type ClipboardLike = { writeText: (text: string) => Promise<void> };
+
+const originalClipboard = globalThis.navigator.clipboard as unknown;
 
 afterEach(() => {
   cleanup();
+  resetObservedSelectionModel();
+  restoreNavigatorClipboard();
 });
 
 type Order = {
@@ -35,6 +45,17 @@ const columns: DataGridColumnDef<Order>[] = [
 
 const getOrderId = (row: Order) => row.id;
 const OrderDataGrid = DataGrid as Component<DataGridProps<Order>>;
+
+function restoreNavigatorClipboard(): void {
+  if (originalClipboard === undefined) {
+    delete (globalThis.navigator as unknown as { clipboard?: ClipboardLike }).clipboard;
+    return;
+  }
+  Object.defineProperty(globalThis.navigator, 'clipboard', {
+    configurable: true,
+    value: originalClipboard,
+  });
+}
 
 function getDataCell(container: HTMLElement, rowIndex: number, columnIndex: number): HTMLElement {
   const row = container.querySelector(`[role="row"][aria-rowindex="${rowIndex + 2}"]`);
@@ -162,6 +183,17 @@ describe('DataGrid selection', () => {
 
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(0);
     expect(container.querySelectorAll('[role="row"][data-cinder-selected]').length).toBe(0);
+  });
+
+  test('bind:selectionModel updates when the bound value starts undefined', async () => {
+    const { container } = render(DataGridSelectionBindFixture);
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    expect(getObservedSelectionModel()).toBeUndefined();
+
+    await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
+
+    expect(getObservedSelectionModel()).toEqual(['ord-1', 'ord-2']);
   });
 
   test('Enter selects the active cell while focus stays on the grid', async () => {

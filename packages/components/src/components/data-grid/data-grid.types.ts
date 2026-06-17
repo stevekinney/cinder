@@ -96,7 +96,7 @@ export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   /** Controls row-selection behavior. Cell focus and range selection remain available. */
   selectionMode?: DataGridSelectionMode;
   /** Controlled row-selection ids, keyed by `getRowId`. */
-  selectionModel?: DataGridSelectionModel;
+  selectionModel?: DataGridSelectionModel | undefined;
   /** Called when row selection changes through cell interaction. */
   onSelectionModelChange?: (selectionModel: DataGridSelectionModel) => void;
   /** Controls the row sort order used to render rows. */

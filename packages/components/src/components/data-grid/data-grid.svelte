@@ -334,8 +334,8 @@
   }
 
   function setSelectionModel(nextSelectionModel: DataGridSelectionModel): void {
-    if (selectionModel !== undefined) selectionModel = nextSelectionModel;
-    else uncontrolledSelectionModel = nextSelectionModel;
+    selectionModel = nextSelectionModel;
+    uncontrolledSelectionModel = nextSelectionModel;
     onSelectionModelChange?.(nextSelectionModel);
   }
 
