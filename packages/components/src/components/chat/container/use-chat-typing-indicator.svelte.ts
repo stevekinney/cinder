@@ -174,10 +174,14 @@ export function useChatTypingIndicator(
   }
 
   function reset(): void {
+    // Clear ONLY the adapter-derived flag. The announced label and its debounce
+    // are owned by the $effect, which is keyed on `typingLabel`: clearing
+    // `adapterIsTyping` recomputes `mergedParticipants` → `typingLabel`, and the
+    // effect then clears or preserves the announcement as appropriate. Forcibly
+    // clearing `announcedLabel`/the timer here would wipe a still-active
+    // PROP-driven announcement (the effect would not re-run because `typingLabel`
+    // is unchanged) — violating the prop-remains-authoritative invariant.
     adapterIsTyping = false;
-    clearTimeout(debounceHandle);
-    debounceHandle = undefined;
-    announcedLabel = '';
   }
 
   return {

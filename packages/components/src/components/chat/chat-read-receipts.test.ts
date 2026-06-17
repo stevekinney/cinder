@@ -685,13 +685,26 @@ describe('useChatReadReceipts — conversation change clears adapter receipts', 
     expect(badge).not.toBeNull();
     expect(badge?.getAttribute('data-cinder-receipt-status')).toBe('read');
 
-    // Act: swap to a different conversation id — the conversation-change $effect
+    // Act: swap to a different conversation that REUSES the same user message id.
+    // This is the leak scenario: without reset, the adapterReceipts entry keyed by
+    // 'receipt-reset-user-1' would still match and render a stale badge on the new
+    // conversation's identically-id'd message. The conversation-change $effect
     // calls readReceiptsState.reset(), clearing adapterReceipts.
-    const conversationB = createConversation('receipt-reset-conv-b');
+    let conversationB = createConversation('receipt-reset-conv-b');
+    conversationB = appendMessage(
+      conversationB,
+      'user',
+      'Different thread',
+      'receipt-reset-user-1',
+    );
     instance.setConversation(conversationB);
     flushSync();
 
-    // Assert: the adapter-derived receipt badge is gone (reset cleared adapterReceipts).
+    // Control: the new conversation's user message DOES render (so a missing badge
+    // is attributable to the reset, not to an empty transcript).
+    expect(target.textContent).toContain('Different thread');
+    // Assert: NO stale badge — reset() cleared adapterReceipts, so the reused id
+    // no longer carries the previous conversation's receipt.
     expect(target.querySelector('[data-cinder-receipt-status]')).toBeNull();
 
     unmount(instance);
