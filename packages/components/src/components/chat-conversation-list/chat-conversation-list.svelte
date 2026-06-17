@@ -41,7 +41,7 @@
 
   function preview(summary: (typeof sortedConversations)[number]): string {
     const text = summary.lastMessageText?.trim();
-    if (!text) return `${summary.messageCount} messages`;
+    if (!text) return summary.messageCount === 1 ? '1 message' : `${summary.messageCount} messages`;
     return text.length > 96 ? `${text.slice(0, 93)}...` : text;
   }
 </script>

@@ -950,20 +950,22 @@
     const currentMessageId = messageIdFromElement(activeElement);
     if (!currentMessageId) return false;
 
-    const messageIds = renderRows.flatMap((renderRow) =>
-      renderRow.type === 'message' ? [renderRow.message.id] : [],
-    );
-    const currentIndex = messageIds.indexOf(currentMessageId);
+    const currentIndex = findRenderRowIndexByMessageId(renderRows, currentMessageId);
     if (currentIndex < 0) return false;
 
-    const targetIndex =
-      direction === 'next'
-        ? Math.min(currentIndex + 1, messageIds.length - 1)
-        : Math.max(currentIndex - 1, 0);
-    const targetMessageId = messageIds[targetIndex];
-    if (!targetMessageId || targetMessageId === currentMessageId) return true;
+    const step = direction === 'next' ? 1 : -1;
+    for (
+      let targetIndex = currentIndex + step;
+      targetIndex >= 0 && targetIndex < renderRows.length;
+      targetIndex += step
+    ) {
+      const targetRow = renderRows[targetIndex];
+      if (targetRow?.type !== 'message') continue;
 
-    void focusVirtualMessage(targetMessageId);
+      void focusVirtualMessage(targetRow.message.id);
+      return true;
+    }
+
     return true;
   }
 

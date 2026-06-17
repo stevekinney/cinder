@@ -124,6 +124,7 @@ describe('ChatConversationList', () => {
       props: {
         onselectconversation: () => {},
         conversations: [
+          summary({ id: 'single', messageCount: 1, updatedAt: '2026-06-01T00:04:00.000Z' }),
           summary({ id: 'count-only', messageCount: 4, updatedAt: '2026-06-01T00:02:00.000Z' }),
           summary({
             id: 'busy',
@@ -137,8 +138,9 @@ describe('ChatConversationList', () => {
     });
 
     const buttons = [...container.querySelectorAll<HTMLButtonElement>('li > button')];
-    expect(normalizedText(buttons[0]!)).toContain('99+ , 120 unread messages');
-    expect(normalizedText(buttons[0]!)).toContain(`${longPreview.slice(0, 93)}...`);
-    expect(normalizedText(buttons[1]!)).toContain('4 messages');
+    expect(normalizedText(buttons[0]!)).toContain('1 message');
+    expect(normalizedText(buttons[1]!)).toContain('99+ , 120 unread messages');
+    expect(normalizedText(buttons[1]!)).toContain(`${longPreview.slice(0, 93)}...`);
+    expect(normalizedText(buttons[2]!)).toContain('4 messages');
   });
 });
