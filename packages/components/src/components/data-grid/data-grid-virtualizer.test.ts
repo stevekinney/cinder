@@ -18,6 +18,7 @@ type LogRow = {
   id: string;
   message: string;
   owner: string;
+  [key: `metric${number}`]: string | number;
 };
 
 const columns: DataGridColumnDef<LogRow>[] = [
@@ -44,6 +45,38 @@ function dataRows(container: HTMLElement): HTMLElement[] {
   return Array.from(
     container.querySelectorAll<HTMLElement>('.cinder-data-grid__body [role="row"]'),
   );
+}
+
+function gridCells(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>('[role="gridcell"]'));
+}
+
+function makeMetricColumns(count: number): DataGridColumnDef<LogRow>[] {
+  return Array.from({ length: count }, (_, index) => {
+    const column: DataGridColumnDef<LogRow> = {
+      key: `metric${index}`,
+      header: `Metric ${index}`,
+      width: 100,
+      getValue: (row: LogRow) => row[`metric${index}`],
+    };
+    if (index === 0) column.pin = 'left';
+    if (index === count - 1) column.pin = 'right';
+    return column;
+  });
+}
+
+function makeMetricRows(rowCount: number, columnCount: number): LogRow[] {
+  return Array.from({ length: rowCount }, (_, rowIndex) => {
+    const row: LogRow = {
+      id: `row-${rowIndex}`,
+      message: `Message ${rowIndex}`,
+      owner: `Owner ${rowIndex % 5}`,
+    };
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      row[`metric${columnIndex}`] = `R${rowIndex} C${columnIndex}`;
+    }
+    return row;
+  });
 }
 
 function rectWithHeight(height: number): DOMRect {
@@ -352,5 +385,38 @@ describe('DataGrid row virtualization', () => {
     } finally {
       result.cleanup();
     }
+  });
+
+  test('renders a horizontal column window while pinned columns stay mounted', async () => {
+    const columnCount = 40;
+    const { container } = render(LogDataGrid, {
+      rows: makeMetricRows(1, columnCount),
+      columns: makeMetricColumns(columnCount),
+      getRowId: getLogRowId,
+      virtualizeColumns: true,
+      'aria-label': 'Metrics',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    if (!grid) throw new Error('Expected DataGrid root');
+
+    await waitFor(() => expect(gridCells(container).length).toBeGreaterThan(0));
+
+    expect(grid.getAttribute('aria-colcount')).toBe(String(columnCount));
+    expect(gridCells(container).length).toBeLessThan(columnCount);
+    expect(container.querySelector('[data-cinder-column-key="metric0"]')).not.toBeNull();
+    expect(container.querySelector('[data-cinder-column-key="metric39"]')).not.toBeNull();
+    expect(
+      container.querySelector('[data-cinder-column-key="metric39"]')?.getAttribute('aria-colindex'),
+    ).toBe('40');
+
+    grid.scrollLeft = 2_000;
+    await fireEvent.scroll(grid);
+
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-column-key="metric20"]')).not.toBeNull(),
+    );
+    expect(container.querySelector('[data-cinder-column-key="metric0"]')).not.toBeNull();
+    expect(container.querySelector('[data-cinder-column-key="metric39"]')).not.toBeNull();
   });
 });

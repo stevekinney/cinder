@@ -25,6 +25,10 @@ async function renderedRows(page: Page) {
   return page.locator(`${virtualizedExample} .cinder-data-grid__body [role="row"]`);
 }
 
+async function renderedCells(page: Page) {
+  return page.locator(`${virtualizedExample} .cinder-data-grid__body [role="gridcell"]`);
+}
+
 test.describe('DataGrid row virtualization', () => {
   test('real scroll keeps a 50k-row grid windowed with full ARIA metadata', async ({
     componentPage,
@@ -38,12 +42,37 @@ test.describe('DataGrid row virtualization', () => {
 
     const grid = page.locator(`${virtualizedExample} [role="grid"]`);
     const rows = await renderedRows(page);
+    const cells = await renderedCells(page);
 
     await expect(grid).toBeVisible();
     await expect(grid).toHaveAttribute('aria-rowcount', '50001');
-    await expect(grid).toHaveAttribute('aria-colcount', '4');
+    await expect(grid).toHaveAttribute('aria-colcount', '13');
     await expect.poll(() => rows.count()).toBeGreaterThan(0);
     await expect.poll(() => rows.count()).toBeLessThan(80);
+    await expect.poll(() => cells.count()).toBeLessThan(13 * 80);
+
+    const timestampCell = page
+      .locator(`${virtualizedExample} [role="gridcell"][data-cinder-column-key="timestamp"]`)
+      .first();
+    const messageCell = page
+      .locator(`${virtualizedExample} [role="gridcell"][data-cinder-column-key="message"]`)
+      .first();
+    await expect(timestampCell).toHaveAttribute('data-cinder-pin', 'left');
+    await expect(messageCell).toHaveAttribute('data-cinder-pin', 'right');
+    await expect(timestampCell).toHaveAttribute('aria-colindex', '1');
+    await expect(messageCell).toHaveAttribute('aria-colindex', '13');
+
+    await expect
+      .poll(() =>
+        timestampCell.evaluate((cell) => {
+          const style = getComputedStyle(cell);
+          return {
+            position: style.position,
+            insetInlineStart: style.insetInlineStart,
+          };
+        }),
+      )
+      .toEqual({ position: 'sticky', insetInlineStart: '0px' });
 
     await page.waitForFunction(
       () => Object.hasOwn(window, '__cinderDataGridVirtualizedFirstRenderMs'),
@@ -71,6 +100,37 @@ test.describe('DataGrid row virtualization', () => {
       { selector: virtualizedExample, offset: targetRowIndex * rowHeight },
     );
     console.info(`DataGrid virtualized scroll frame: ${Math.round(scrollFrameMs)}ms`);
+
+    const horizontalScrollFrameMs = await page.evaluate(
+      ({ selector }) =>
+        new Promise<number>((resolve) => {
+          const gridElement = document.querySelector(`${selector} [role="grid"]`);
+          if (!(gridElement instanceof HTMLElement)) {
+            resolve(Number.POSITIVE_INFINITY);
+            return;
+          }
+          const start = performance.now();
+          gridElement.scrollTo({ left: 900 });
+          requestAnimationFrame(() => resolve(performance.now() - start));
+        }),
+      { selector: virtualizedExample },
+    );
+    console.info(
+      `DataGrid virtualized horizontal scroll frame: ${Math.round(horizontalScrollFrameMs)}ms`,
+    );
+
+    await expect
+      .poll(() =>
+        cells.evaluateAll((items) =>
+          items.map((item) => ({
+            columnKey: (item as HTMLElement).dataset['cinderColumnKey'],
+            columnIndex: item.getAttribute('aria-colindex'),
+          })),
+        ),
+      )
+      .toContainEqual({ columnKey: 'tenant', columnIndex: '9' });
+    await expect(timestampCell).toHaveAttribute('data-cinder-pin', 'left');
+    await expect(messageCell).toHaveAttribute('data-cinder-pin', 'right');
 
     await expect
       .poll(

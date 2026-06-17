@@ -15,7 +15,12 @@ const schema = {
     },
     virtualizeRows: {
       type: 'boolean',
-      description: 'Enables fixed-height row virtualization. Columns still render fully.',
+      description: 'Enables fixed-height row virtualization.',
+    },
+    virtualizeColumns: {
+      type: 'boolean',
+      description:
+        'Enables horizontal virtualization for unpinned columns. Pinned columns stay rendered.',
     },
     rowHeight: {
       type: 'number',
