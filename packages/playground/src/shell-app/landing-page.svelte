@@ -23,7 +23,6 @@
 
 <section class="landing-page" aria-labelledby="landing-title">
   <div class="landing-page__hero">
-    <p class="landing-page__eyebrow">Cinder component library</p>
     <h1 id="landing-title">cinder</h1>
     <p>
       Components for product interfaces. Browse runnable examples, inspect component contracts, and
