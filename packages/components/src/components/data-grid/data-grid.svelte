@@ -202,9 +202,7 @@
   });
 
   $effect(() => {
-    if (!activeCellCoordinates) return;
-    if (selectionState.activeCell) return;
-    selectionState.setActiveCell(activeCellCoordinates);
+    selectionState.reconcile(activeCellCoordinates);
   });
 
   function getCellId(rowId: string, columnKey: string): string {
@@ -290,6 +288,24 @@
     setSelectionModel([...nextSelection]);
   }
 
+  function selectActiveCell(event: KeyboardEvent): void {
+    const row = keyedRows[activeRowIndex];
+    if (!row || activeColumnKey === undefined || activeRowDomId === undefined) return;
+    selectionState.setActiveCell(
+      { rowId: activeRowDomId, columnKey: activeColumnKey },
+      { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey },
+    );
+    updateRowSelection(row.rowId, event);
+  }
+
+  function collapseSelectionToActiveCell(): void {
+    selectionState.collapseToActiveCell();
+    if (selectionMode === 'none') return;
+
+    const row = keyedRows[activeRowIndex];
+    setSelectionModel(row ? [row.rowId] : []);
+  }
+
   async function copySelectedCells(): Promise<void> {
     const rangeCells = getCellsInRange(selectionState.range);
     const toggledCells = rowDomIds.flatMap((rowId) =>
@@ -326,8 +342,17 @@
       })
       .join('\n');
 
-    await navigator.clipboard?.writeText(text);
-    liveRegionMessage = `Copied ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`;
+    if (!navigator.clipboard?.writeText) {
+      liveRegionMessage = 'Copy is unavailable';
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      liveRegionMessage = `Copied ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`;
+    } catch {
+      liveRegionMessage = 'Copy failed';
+    }
   }
 
   function handleCellClick(
@@ -396,7 +421,12 @@
     }
 
     if (action.type === 'collapse-selection') {
-      selectionState.collapseToActiveCell();
+      collapseSelectionToActiveCell();
+      return;
+    }
+
+    if (action.type === 'select-active-cell') {
+      selectActiveCell(event);
       return;
     }
 

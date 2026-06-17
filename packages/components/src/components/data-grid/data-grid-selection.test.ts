@@ -99,6 +99,50 @@ describe('DataGrid selection', () => {
     expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(1);
   });
 
+  test('Escape collapses row selection to the active row', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
+    await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
+    await fireEvent.keyDown(grid!, { key: 'Escape' });
+
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-2']);
+    expect(
+      container.querySelector('[role="row"][aria-rowindex="3"]')?.getAttribute('aria-selected'),
+    ).toBe('true');
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(1);
+  });
+
+  test('Enter selects the active cell while focus stays on the grid', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'single',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
+    await fireEvent.keyDown(grid!, { key: 'Enter' });
+
+    expect(getDataCell(container, 1, 0).getAttribute('aria-selected')).toBe('true');
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-2']);
+  });
+
   test('Ctrl+Click toggles non-contiguous cells', async () => {
     const { container } = render(OrderDataGrid, {
       rows,
@@ -145,5 +189,58 @@ describe('DataGrid selection', () => {
 
     expect(writeText).toHaveBeenCalledWith('Ada Lovelace\tPacked');
     expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Copied 2 cells');
+  });
+
+  test('announces when clipboard copy is unavailable or fails', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+      'Copy is unavailable',
+    );
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: mock(() => Promise.reject(new Error('denied'))) },
+    });
+
+    await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Copy failed');
+  });
+
+  test('reconciles selected cells when rows and columns change', async () => {
+    const { container, rerender } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'End', ctrlKey: true, shiftKey: true });
+    expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(9);
+
+    await rerender({
+      rows: [rows[0]!],
+      columns: [columns[0]!],
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(1);
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(getDataCell(container, 0, 0).id);
   });
 });

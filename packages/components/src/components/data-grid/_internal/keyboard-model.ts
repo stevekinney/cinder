@@ -13,6 +13,9 @@ export type DataGridKeyboardAction =
     }
   | {
       type: 'collapse-selection';
+    }
+  | {
+      type: 'select-active-cell';
     };
 
 export type DataGridKeyboardContext = {
@@ -36,6 +39,7 @@ export function dataGridKeyToAction(
   if (isCommand && event.key.toLowerCase() === 'a') return { type: 'select-all' };
   if (isCommand && event.key.toLowerCase() === 'c') return { type: 'copy-selection' };
   if (event.key === 'Escape') return { type: 'collapse-selection' };
+  if (event.key === 'Enter' || event.key === ' ') return { type: 'select-active-cell' };
 
   if (event.key === 'ArrowRight') {
     return {

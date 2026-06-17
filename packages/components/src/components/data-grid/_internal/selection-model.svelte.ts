@@ -1,8 +1,8 @@
 import {
+  clampCellCoordinate,
   computeCellRange,
   getCellCoordinateKey,
   getCellsInRange,
-  isCellInRange,
   type DataGridCellCoordinate,
   type DataGridCellRange,
 } from './geometry.ts';
@@ -82,12 +82,44 @@ export class DataGridSelectionModel {
   }
 
   isCellSelected(cell: DataGridCellCoordinate): boolean {
-    return isCellInRange(cell, this.range) || this.selectedCells.has(getCellCoordinateKey(cell));
+    return this.selectedCells.has(getCellCoordinateKey(cell));
   }
 
   isAnchorCell(cell: DataGridCellCoordinate): boolean {
     if (!this.anchorCell) return false;
     return getCellCoordinateKey(this.anchorCell) === getCellCoordinateKey(cell);
+  }
+
+  reconcile(fallbackCell: DataGridCellCoordinate | undefined): void {
+    const rowIds = this.rowIds();
+    const columnKeys = this.columnKeys();
+
+    if (rowIds.length === 0 || columnKeys.length === 0) {
+      this.activeCell = undefined;
+      this.anchorCell = undefined;
+      this.toggledCellKeys = [];
+      return;
+    }
+
+    const hadActiveCell = this.activeCell !== undefined;
+    const nextActiveCell =
+      (this.activeCell && clampCellCoordinate(this.activeCell, rowIds, columnKeys)) ?? fallbackCell;
+    if (!areCellsEqual(this.activeCell, nextActiveCell)) this.activeCell = nextActiveCell;
+
+    const nextAnchorCell =
+      (this.anchorCell && clampCellCoordinate(this.anchorCell, rowIds, columnKeys)) ??
+      (!hadActiveCell ? nextActiveCell : undefined);
+    if (!areCellsEqual(this.anchorCell, nextAnchorCell)) this.anchorCell = nextAnchorCell;
+
+    const validCellKeys = new Set(
+      rowIds.flatMap((rowId) =>
+        columnKeys.map((columnKey) => getCellCoordinateKey({ rowId, columnKey })),
+      ),
+    );
+    const nextToggledCellKeys = this.toggledCellKeys.filter((key) => validCellKeys.has(key));
+    if (nextToggledCellKeys.length !== this.toggledCellKeys.length) {
+      this.toggledCellKeys = nextToggledCellKeys;
+    }
   }
 
   private toggleCell(cell: DataGridCellCoordinate): void {
@@ -97,4 +129,13 @@ export class DataGridSelectionModel {
     else keys.add(key);
     this.toggledCellKeys = [...keys];
   }
+}
+
+function areCellsEqual(
+  left: DataGridCellCoordinate | undefined,
+  right: DataGridCellCoordinate | undefined,
+): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return left.rowId === right.rowId && left.columnKey === right.columnKey;
 }
