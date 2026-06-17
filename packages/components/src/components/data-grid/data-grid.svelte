@@ -53,6 +53,17 @@
     DataGridSortModelItem,
   } from './data-grid.types.ts';
 
+  const interactiveDescendantSelector = [
+    'a[href]',
+    'button',
+    'input',
+    'select',
+    'textarea',
+    '[contenteditable=""]',
+    '[contenteditable="true"]',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(',');
+
   let {
     rows,
     columns,
@@ -456,7 +467,7 @@
       { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey },
     );
     updateRowSelection(rowId, event);
-    gridElement?.focus({ preventScroll: true });
+    if (!isInteractiveEventTarget(event)) gridElement?.focus({ preventScroll: true });
   }
 
   function handleCellKeydown(
@@ -466,6 +477,7 @@
     columnKey: string,
     rowIndex: number,
   ): void {
+    if (isInteractiveEventTarget(event)) return;
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     event.stopPropagation();
@@ -487,6 +499,7 @@
     if (event.target instanceof Element && event.target.closest('.cinder-data-grid__sort-button')) {
       return;
     }
+    if (isInteractiveEventTarget(event)) return;
 
     if (sortedKeyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
 
@@ -529,6 +542,12 @@
     if (action.type === 'copy-selection') {
       void copySelectedCells();
     }
+  }
+
+  function isInteractiveEventTarget(event: Event): boolean {
+    if (!(event.target instanceof Element)) return false;
+    const interactiveElement = event.target.closest(interactiveDescendantSelector);
+    return interactiveElement !== null && interactiveElement !== gridElement;
   }
 </script>
 
