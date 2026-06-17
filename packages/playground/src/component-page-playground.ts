@@ -25,7 +25,7 @@ type PlaygroundControlBase = { name: string; description?: string; hasDefault: b
 export type PlaygroundControl = PlaygroundControlBase &
   (
     | { kind: 'boolean'; value: boolean }
-    | { kind: 'text'; value: string }
+    | { kind: 'text'; value: string; isChildren?: boolean }
     | { kind: 'number'; value: number }
     | { kind: 'select'; value: string; options: string[] }
   );
@@ -80,6 +80,16 @@ function numberDefault(value: unknown): number {
 }
 
 /**
+ * Seed text for a synthesized `children` control. Uses the component's display
+ * name so the live preview renders a labelled instance out of the box (a Badge
+ * reading "Badge", a Button reading "Button") rather than an empty shell. The
+ * reader edits it freely from there.
+ */
+function childrenSeed(manifest: ComponentManifest): string {
+  return manifest.name;
+}
+
+/**
  * Build a {@link PlaygroundModel} from a component manifest.
  *
  * Supported control shapes: `boolean -> switch`, `select -> segmented/select`,
@@ -124,8 +134,26 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
         controls.push({ ...base, kind: 'number', value: numberDefault(prop.defaultValue) });
         break;
       default:
-        // snippet / unknown — not adjustable. A required non-snippet value the
-        // generator can't synthesize means we can't build a valid preview at all.
+        // snippet / unknown — not adjustable as an attribute. The one exception
+        // is the ubiquitous `children` snippet: many components (Badge, Button,
+        // Chip, …) render plain text children, and without a control the live
+        // preview shows an empty shell. Synthesize an editable TEXT control for
+        // it, seeded with the component's display name so the preview reads as a
+        // labelled instance out of the box. Marked `isChildren` so the snippet
+        // renders it as element content (`<X>text</X>`) and the mount converts it
+        // to a children snippet, rather than emitting it as an attribute.
+        if (prop.name === 'children' && prop.control.kind === 'snippet') {
+          controls.push({
+            ...base,
+            kind: 'text',
+            isChildren: true,
+            value: childrenSeed(manifest),
+          });
+          break;
+        }
+        // Other snippet / unknown props remain non-adjustable. A required
+        // non-snippet value the generator can't synthesize means we can't build
+        // a valid preview at all.
         skipped.push(prop.name);
         if (blocksGeneratedPreview(prop)) hasUnsatisfiedRequired = true;
         break;
@@ -190,9 +218,28 @@ export function buildSnippet(
   controls: PlaygroundControl[],
   values: Record<string, PlaygroundValue>,
 ): string {
+  // The synthesized `children` control renders as element CONTENT, not an
+  // attribute, so it is partitioned out of the attribute list.
+  const childrenControl = controls.find((c) => c.kind === 'text' && c.isChildren);
+  const childrenText =
+    childrenControl !== undefined
+      ? String(values[childrenControl.name] ?? childrenControl.value)
+      : '';
+
   const attributes = controls
+    .filter((control) => !(control.kind === 'text' && control.isChildren))
     .filter((control) => shouldEmit(control, values[control.name] ?? control.value))
     .map((control) => attributeFor(control.name, values[control.name] ?? control.value));
+
+  // With children content, emit an open/close pair so the snippet copy-pastes as
+  // a real labelled instance; otherwise keep the minimal self-closing form.
+  if (childrenText !== '') {
+    if (attributes.length === 0) return `<${exportName}>${childrenText}</${exportName}>`;
+    if (attributes.length === 1) {
+      return `<${exportName} ${attributes[0]}>${childrenText}</${exportName}>`;
+    }
+    return `<${exportName}\n  ${attributes.join('\n  ')}\n>${childrenText}</${exportName}>`;
+  }
 
   if (attributes.length === 0) return `<${exportName} />`;
   if (attributes.length === 1) return `<${exportName} ${attributes[0]} />`;

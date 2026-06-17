@@ -69,14 +69,26 @@
 
   /* Connecting line between items. It is anchored to the event row, not the
      list item, so optional group headers above the event cannot offset it away
-     from the marker. The line extends through this item's bottom padding to the
-     next event marker center. */
+     from the marker. The line spans THIS marker's center to the NEXT marker's
+     center so it terminates cleanly at each dot with no stub gap.
+
+     The bottom offset is measured from the event box's bottom edge down to the
+     next item's marker center. That distance is three tokens, not two:
+       - the item's padding-bottom (space-4) below the event box, plus
+       - the marker's own margin-top (space-1) inside the next event grid, plus
+       - the next marker's center-y within its event box (marker-center-y).
+     The earlier formula omitted the marker margin-top (space-1), so every
+     segment fell exactly space-1 short of the next dot. Verified in the browser:
+     with this offset the line's painted endpoints land on the marker centers
+     (a 63px inter-marker rhythm at the default token scale). */
   .cinder-timeline-item__event::before {
     content: '';
     position: absolute;
     left: var(--_cinder-timeline-marker-center-x);
     top: var(--_cinder-timeline-marker-center-y);
-    bottom: calc(-1 * (var(--cinder-space-4) + var(--_cinder-timeline-marker-center-y)));
+    bottom: calc(
+      -1 * (var(--cinder-space-4) + var(--cinder-space-1) + var(--_cinder-timeline-marker-center-y))
+    );
     width: 1px;
     background: var(--cinder-border-muted);
   }

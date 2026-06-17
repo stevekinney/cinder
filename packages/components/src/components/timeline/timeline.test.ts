@@ -158,13 +158,20 @@ describe('Timeline', () => {
 
   test('timeline css anchors vertical connectors to the event row for grouped headers', async () => {
     const css = await Bun.file(new URL('./timeline.css', import.meta.url).pathname).text();
+    // Collapse whitespace so the assertion tracks the geometric intent, not
+    // prettier's line breaks (the multi-term calc wraps across lines).
+    const flat = css.replace(/\s+/g, ' ');
 
     expect(css).toContain('.cinder-timeline-item__event::before');
     expect(css).toContain(
       ".cinder-timeline-item[data-cinder-connector-after='hidden'] .cinder-timeline-item__event::before",
     );
-    expect(css).toContain(
-      'bottom: calc(-1 * (var(--cinder-space-4) + var(--_cinder-timeline-marker-center-y)))',
+    // The connector's bottom must reach the NEXT marker center: it extends past
+    // the event box by the item padding (space-4) PLUS the next marker's
+    // margin-top (space-1) PLUS that marker's center-y. Dropping the space-1 term
+    // is the off-by-one-token regression that left stub gaps.
+    expect(flat).toContain(
+      'bottom: calc( -1 * (var(--cinder-space-4) + var(--cinder-space-1) + var(--_cinder-timeline-marker-center-y)) )',
     );
     expect(css).not.toContain('.cinder-timeline-item::before {');
   });

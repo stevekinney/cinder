@@ -16,9 +16,44 @@
  *     errors by container DOM id, and falls back to a featured-example mount when
  *     the live mount fails.
  */
-import { mount, unmount } from 'svelte';
+import { createRawSnippet, mount, unmount } from 'svelte';
 
+import type { PlaygroundControl, PlaygroundValue } from './component-page-playground.ts';
 import { toMountErrorDetail, type MountErrorDetail } from './example-error.ts';
+
+/**
+ * Translate the flat playground control values into the props object handed to
+ * `mount`. Almost every value passes through unchanged; the one transform is the
+ * synthesized `children` text control, whose plain string must become a Svelte
+ * snippet (components receive `children` as a snippet, never a raw string). The
+ * text is rendered into the snippet as a TEXT node — `textContent`, never
+ * `innerHTML` — so user-typed angle brackets stay inert and cannot inject markup.
+ *
+ * An empty children string yields no `children` prop at all, so the component
+ * falls back to its own default rendering rather than mounting an empty snippet.
+ */
+export function toMountProps(
+  controls: PlaygroundControl[],
+  values: Record<string, PlaygroundValue>,
+): Record<string, unknown> {
+  const props: Record<string, unknown> = {};
+  for (const control of controls) {
+    const value = values[control.name] ?? control.value;
+    if (control.kind === 'text' && control.isChildren === true) {
+      const text = String(value);
+      if (text === '') continue;
+      props['children'] = createRawSnippet(() => ({
+        render: () => '<span></span>',
+        setup: (node: Element) => {
+          node.textContent = text;
+        },
+      }));
+      continue;
+    }
+    props[control.name] = value;
+  }
+  return props;
+}
 
 /**
  * The DOM `id` of the live-preview mount container, and therefore the

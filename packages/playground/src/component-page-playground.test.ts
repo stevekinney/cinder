@@ -88,8 +88,34 @@ describe('buildPlaygroundModel', () => {
       ]),
     );
     expect(model.hasUnsatisfiedRequired).toBe(false);
-    expect(model.controls.map((control) => control.name)).toEqual(['multiple']);
-    expect(model.skipped).toEqual(['children']);
+    // `children` is synthesized into an editable text control (not skipped) so
+    // the live preview renders a labelled instance instead of an empty shell.
+    expect(model.controls.map((control) => control.name)).toEqual(['multiple', 'children']);
+    expect(model.skipped).toEqual([]);
+  });
+
+  test('the synthesized children control is a text control seeded with the component name', () => {
+    const model = buildPlaygroundModel(
+      manifest([
+        { name: 'children', control: { kind: 'snippet' }, bindable: false, optional: false },
+      ]),
+    );
+    const childrenControl = model.controls.find((control) => control.name === 'children');
+    expect(childrenControl).toEqual({
+      name: 'children',
+      hasDefault: false,
+      kind: 'text',
+      isChildren: true,
+      value: 'Demo',
+    });
+  });
+
+  test('a non-children snippet prop stays non-adjustable (skipped)', () => {
+    const model = buildPlaygroundModel(
+      manifest([{ name: 'header', control: { kind: 'snippet' }, bindable: false, optional: true }]),
+    );
+    expect(model.controls).toEqual([]);
+    expect(model.skipped).toEqual(['header']);
   });
 
   test('a required non-snippet prop with no default suppresses the generated preview', () => {
@@ -365,5 +391,42 @@ describe('buildSnippet', () => {
     expect(
       buildSnippet('Widget', noDefault, { variant: 'primary', disabled: false, count: 0 }),
     ).toBe('<Widget\n  variant="primary"\n  disabled={false}\n  count={0}\n/>');
+  });
+
+  test('renders a children control as element content, not an attribute', () => {
+    const withChildren = buildPlaygroundModel(
+      manifest([
+        { name: 'children', control: { kind: 'snippet' }, bindable: false, optional: false },
+      ]),
+    ).controls;
+    // Seeded with the component name → open/close pair, not self-closing.
+    expect(buildSnippet('Badge', withChildren, { children: 'Badge' })).toBe('<Badge>Badge</Badge>');
+    // Edited content flows through.
+    expect(buildSnippet('Badge', withChildren, { children: 'Beta' })).toBe('<Badge>Beta</Badge>');
+    // Cleared children → minimal self-closing form (no empty open/close pair).
+    expect(buildSnippet('Badge', withChildren, { children: '' })).toBe('<Badge />');
+  });
+
+  test('combines attribute controls with children content', () => {
+    const mixed = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'variant',
+          control: { kind: 'select', options: ['neutral', 'danger'] },
+          bindable: false,
+          optional: true,
+          defaultValue: 'neutral',
+        },
+        { name: 'children', control: { kind: 'snippet' }, bindable: false, optional: false },
+      ]),
+    ).controls;
+    // One attribute + children → single-attribute open/close form.
+    expect(buildSnippet('Badge', mixed, { variant: 'danger', children: 'Beta' })).toBe(
+      '<Badge variant="danger">Beta</Badge>',
+    );
+    // Attribute at its default is omitted; children still render as content.
+    expect(buildSnippet('Badge', mixed, { variant: 'neutral', children: 'Beta' })).toBe(
+      '<Badge>Beta</Badge>',
+    );
   });
 });
