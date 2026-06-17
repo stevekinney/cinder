@@ -1,8 +1,8 @@
 ---
-'@lostgradient/cinder': major
+'@lostgradient/cinder': minor
 ---
 
-Retune the color palette around an indigo brand, polish the command-palette and timeline, and remove the deprecated experimental-timeline aliases (a breaking export-map change — see below).
+Retune the color palette around an indigo brand, polish the command-palette and timeline, and remove the previously-deprecated experimental-timeline aliases (a pre-1.0 export-map removal shipping in this minor — see the migration note below).
 
 **Palette (visible default change for every consumer):**
 
@@ -16,4 +16,4 @@ Retune the color palette around an indigo brand, polish the command-palette and 
 
 **Timeline:** the connector line now runs continuously from each marker's center to the next marker's center, instead of leaving stubby gaps that didn't reach the dots. The geometry is derived from the marker's center coordinates — the marker is a fixed-size box (`--_cinder-timeline-marker-size`) that custom `marker` snippets fill rather than resize — so the line meets the dot in the default and custom-marker examples alike. The previous fixed-offset calibration left the line short of the next dot.
 
-**Removed the deprecated `@lostgradient/cinder/experimental/timeline` and `@lostgradient/cinder/experimental/timeline-item` export paths.** Import from `@lostgradient/cinder/timeline` and `@lostgradient/cinder/timeline-item` instead.
+**Migration — removed the previously-deprecated `@lostgradient/cinder/experimental/timeline` and `@lostgradient/cinder/experimental/timeline-item` export paths.** These aliases were deprecated once the stable paths shipped; removing them pre-1.0 ships as a minor (no major bump). Import from `@lostgradient/cinder/timeline` and `@lostgradient/cinder/timeline-item` instead.
