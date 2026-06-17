@@ -132,6 +132,41 @@ export function stylesExport(cssPath: string): ExportEntry {
 }
 
 /**
+ * The package-relative source path a legacy export entry resolves from, used to
+ * test whether its on-disk target still exists. Prefers the `svelte` condition
+ * (the authored source) and falls back to `default`; returns `undefined` when
+ * neither is present (e.g. a bare-string entry), in which case the caller
+ * preserves the entry conservatively rather than dropping it.
+ */
+export function legacyEntrySourcePath(
+  entry: ExportEntry | JsonExportEntry | string,
+): string | undefined {
+  if (typeof entry === 'string') return undefined;
+  const svelte = 'svelte' in entry ? entry.svelte : undefined;
+  return svelte ?? entry.default;
+}
+
+/**
+ * Whether a legacy flat export entry should survive a regeneration. An entry is
+ * preserved when its on-disk source still exists (a genuine partial-migration
+ * flat file) and dropped when the target is gone (e.g. a component made internal
+ * via `_<name>`), making the legacy pass self-healing for hides/renames. When
+ * the source path can't be determined ({@link legacyEntrySourcePath} returns
+ * `undefined`), the entry is preserved conservatively rather than dropped.
+ *
+ * Shared by generate mode (which omits dropped entries) and check mode (which
+ * flags them as drift) so the two modes never disagree about a stale entry.
+ */
+export function shouldPreserveLegacyEntry(
+  entry: ExportEntry | JsonExportEntry | string,
+  packageRoot: string = DEFAULT_PACKAGE_ROOT,
+): boolean {
+  const sourcePath = legacyEntrySourcePath(entry);
+  if (!sourcePath) return true;
+  return existsSync(join(packageRoot, sourcePath));
+}
+
+/**
  * Canonical four-condition entry for `@lostgradient/cinder/highlighters/shiki`. Hand-shaped
  * because the adapter is a single static sub-path (not a discovered component
  * and not an upstream re-export); the generator stitches this in alongside
@@ -674,7 +709,12 @@ async function main(): Promise<void> {
         continue;
       if (key === './manifest') continue;
       const flatPattern = /^\.\/(experimental\/)?[a-z][a-z0-9-]*$/;
-      if (flatPattern.test(key)) legacy[key] = entry;
+      if (!flatPattern.test(key)) continue;
+      // Self-heal hides/renames: a legacy entry whose on-disk target is gone
+      // (e.g. a component made internal via `_<name>`) must NOT be resurrected.
+      // Only preserve genuinely-legacy flat files that still exist.
+      if (!shouldPreserveLegacyEntry(entry)) continue;
+      legacy[key] = entry;
     }
 
     for (const [key, entry] of Object.entries(computed)) {
@@ -751,14 +791,21 @@ async function main(): Promise<void> {
       }
     }
 
-    for (const key of Object.keys(existing)) {
+    for (const [key, entry] of Object.entries(existing)) {
       if (RESERVED_KEYS.has(key)) continue;
       if (key in computed) continue;
-      // Pre-migration flat component subpath that hasn't been migrated yet —
-      // leave it alone during the partial-migration window. The check is
-      // intentionally non-strict here.
       const flatPattern = /^\.\/(experimental\/)?[a-z][a-z0-9-]*$/;
-      if (flatPattern.test(key)) continue;
+      if (flatPattern.test(key)) {
+        // Pre-migration flat component subpath that hasn't been migrated yet —
+        // leave it alone during the partial-migration window. But a stale entry
+        // whose on-disk source is gone (a hidden/renamed component) is drift:
+        // generate mode would drop it, so check mode must flag it rather than
+        // silently passing — otherwise the two modes disagree.
+        if (!shouldPreserveLegacyEntry(entry)) {
+          issues.push(`Stale legacy subpath export: "${key}" (on-disk source no longer exists)`);
+        }
+        continue;
+      }
       issues.push(`Orphan subpath export: "${key}"`);
     }
 

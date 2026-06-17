@@ -12,7 +12,11 @@
  *      `default` and at the preserved single-file server bundle for `node`.
  */
 
-import { describe, expect, it } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 
 import {
   assertNoForbiddenExportKeys,
@@ -21,8 +25,10 @@ import {
   computeRootExport,
   EXPLICIT_ROOT_FILE_ENTRIES,
   FORBIDDEN_EXPORT_KEY_PATTERN,
+  legacyEntrySourcePath,
   orderedExportEntry,
   rootLevelExportTargets,
+  shouldPreserveLegacyEntry,
   STATIC_FILES_GLOBS,
   stylesExport,
   stylesGuardExport,
@@ -80,6 +86,79 @@ describe('stylesExport', () => {
     expect(stylesExport('./src/styles/utilities.css').types).toBe(
       './src/styles/utilities.css.d.ts',
     );
+  });
+});
+
+describe('legacyEntrySourcePath', () => {
+  it('prefers the svelte condition (the authored source)', () => {
+    expect(
+      legacyEntrySourcePath({
+        types: './dist/components/timeline-item/index.d.ts',
+        svelte: './src/components/timeline-item/index.ts',
+        default: './dist/components/timeline-item/index.js',
+      }),
+    ).toBe('./src/components/timeline-item/index.ts');
+  });
+
+  it('falls back to default when svelte is absent (e.g. JSON-only entries)', () => {
+    expect(
+      legacyEntrySourcePath({
+        import: './components.json',
+        default: './components.json',
+      }),
+    ).toBe('./components.json');
+  });
+
+  it('returns undefined for a bare-string entry so the caller preserves it conservatively', () => {
+    expect(legacyEntrySourcePath('./package.json')).toBeUndefined();
+  });
+
+  it('returns undefined when neither svelte nor default is present', () => {
+    expect(legacyEntrySourcePath({ types: './dist/foo/index.d.ts' })).toBeUndefined();
+  });
+});
+
+describe('shouldPreserveLegacyEntry', () => {
+  // A throwaway package root holding one real source file. The existence guard
+  // resolves entry source paths against this root, so we can prove it drops a
+  // stale entry (source gone) and keeps a live one (source present).
+  let packageRoot: string;
+
+  beforeAll(() => {
+    packageRoot = mkdtempSync(join(tmpdir(), 'cinder-exports-guard-'));
+    const livePath = join(packageRoot, 'src/components/live/index.ts');
+    mkdirSync(dirname(livePath), { recursive: true });
+    writeFileSync(livePath, 'export {};\n');
+  });
+
+  afterAll(() => {
+    rmSync(packageRoot, { recursive: true, force: true });
+  });
+
+  it('preserves a legacy entry whose on-disk source still exists', () => {
+    expect(
+      shouldPreserveLegacyEntry(
+        { svelte: './src/components/live/index.ts', default: './dist/components/live/index.js' },
+        packageRoot,
+      ),
+    ).toBe(true);
+  });
+
+  it('drops a legacy entry whose on-disk source is gone (hidden/renamed component)', () => {
+    expect(
+      shouldPreserveLegacyEntry(
+        {
+          svelte: './src/components/ghost/index.ts',
+          default: './dist/components/ghost/index.js',
+        },
+        packageRoot,
+      ),
+    ).toBe(false);
+  });
+
+  it('preserves conservatively when the source path cannot be determined', () => {
+    expect(shouldPreserveLegacyEntry('./package.json', packageRoot)).toBe(true);
+    expect(shouldPreserveLegacyEntry({ types: './dist/foo/index.d.ts' }, packageRoot)).toBe(true);
   });
 });
 
