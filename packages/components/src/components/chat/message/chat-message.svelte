@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
   import type { Message, ToolCallPair } from '../conversation-model.ts';
+  import type { MessagePartOverride } from './chat-message-parts.ts';
 
   /**
    * Role labels for display purposes.
@@ -32,6 +33,12 @@
     actions?: Snippet;
     /** Status indicator snippet (sending, delivered, error) */
     status?: Snippet;
+    /**
+     * Per-part render override. Forwarded to the parts renderer; lets a consumer
+     * replace the rendering of an individual body part while delegating the rest
+     * to the built-ins (inversion of control — see the renderer).
+     */
+    messagePart?: MessagePartOverride | undefined;
     /** Show built-in copy button alongside custom actions (default: true) */
     showDefaultActions?: boolean;
     /** Whether this message is currently streaming */
@@ -49,15 +56,11 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { stringify } from '../../../utilities/stringify.ts';
-  import { getMessageText, getMessageParts } from '../utilities/utilities.js';
+  import { deriveMessageParts, getMessageText } from '../utilities/utilities.js';
   import Pencil from 'lucide-svelte/icons/pencil';
   import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
   import CopyButton from '../../copy-button/copy-button.svelte';
-  import MessageContent from './message-content.svelte';
-  import MessageAttachments from './message-attachments.svelte';
-  import ToolCallGroup from './tool-call-group.svelte';
-  import ToolPayloadCode from './tool-payload-code.svelte';
+  import ChatMessagePartsRenderer from './chat-message-parts-renderer.svelte';
 
   let {
     message,
@@ -67,6 +70,7 @@
     searchMatch = false,
     actions,
     status,
+    messagePart,
     showDefaultActions = true,
     streaming = false,
     overrideContent,
@@ -118,51 +122,46 @@
   );
   const isFailed = $derived(deliveryStatus === 'failed');
 
-  // Derived values for content processing
-  const parts = $derived(getMessageParts(message));
+  // Derived values for content processing. `textContent` drives message chrome
+  // (copy, edit, the Show more/less control) — the rendered body itself flows
+  // through deriveMessageParts + the parts renderer below.
   const textContent = $derived(getMessageText(message));
   const roleLabel = $derived(ROLE_LABELS[message.role] ?? message.role);
 
-  // Filter image parts from content
-  const imageParts = $derived(parts.filter((part) => part.type === 'image'));
-  const hasImages = $derived(imageParts.length > 0);
-
-  // Role detection
+  // Role detection — kept for wrapper-level layout + a11y (data-tool-pair,
+  // aria-label). The body branches that used to live here are now derived parts.
   const isToolCall = $derived(message.role === 'tool-call');
-  const isToolResult = $derived(message.role === 'tool-result');
 
-  // Find matching tool pair for tool-call messages
+  // Find matching tool pair for tool-call messages. Resolved here (the container
+  // hands down the pairs for this message) and threaded into deriveMessageParts
+  // so the bridge stays pure; also gates the data-tool-pair wrapper styling.
   const toolPair = $derived.by(() => {
     if (!isToolCall || !message.toolCall) return null;
     return toolCallPairs.find((pair) => pair.call.id === message.toolCall?.id) ?? null;
   });
 
-  // Check result outcome for styling + branching.
-  const isToolResultError = $derived(isToolResult && message.toolResult?.outcome === 'error');
-  const isToolResultActionRequired = $derived(
-    isToolResult && message.toolResult?.outcome === 'action_required',
+  // The cinder-owned render parts for this message. The streaming override and
+  // expanded state are resolved into the parts here so the renderer + part
+  // components stay dumb (no override/streaming plumbing leaks into them).
+  const messageParts = $derived(
+    deriveMessageParts(message, {
+      toolCallPair: toolPair ?? undefined,
+      overrideContent,
+      streaming,
+      expanded,
+    }),
   );
 
-  // Safe stringify for tool result content (handles circular refs, etc.).
-  // - error: prefer the structured error's message (a ToolError OBJECT, so
-  //   render `.message`, not the object — which would stringify to
-  //   `[object Object]`).
-  // - action_required: surface the requested action's message (matching
-  //   ToolCallGroup), falling back to a neutral label so it's never blank.
-  // - otherwise: stringify the content.
-  const formattedToolResult = $derived.by(() => {
-    if (!isToolResult || !message.toolResult) return null;
-    const { outcome, content, error, action } = message.toolResult;
+  // Whether this message has a markdown body part — gates the Show more/less
+  // control (a tool-call/tool-result message has no markdown body to truncate).
+  const hasMarkdownBody = $derived(messageParts.some((part) => part.type === 'markdown'));
 
-    if (outcome === 'error' && error) {
-      return error.message;
-    }
-    if (outcome === 'action_required') {
-      return action?.message ?? 'This tool call requires action.';
-    }
-
-    return stringify(content);
-  });
+  // Split the parts so the rendered DOM matches the historical structure: body
+  // parts (text/markdown/tool) live inside `.chat-message-body`, image parts
+  // render as a sibling AFTER it — exactly where MessageAttachments used to sit,
+  // so the flex layout and spacing are unchanged.
+  const bodyParts = $derived(messageParts.filter((part) => part.type !== 'image'));
+  const imageParts = $derived(messageParts.filter((part) => part.type === 'image'));
 
   // Content truncation threshold (characters)
   const TRUNCATE_THRESHOLD = 500;
@@ -204,27 +203,9 @@
     </header>
 
     <div class="chat-message-body">
-      {#if isToolCall && toolPair}
-        <ToolCallGroup pair={toolPair} {expanded} ontoggle={toggleExpanded} />
-      {:else if isToolResult && formattedToolResult !== null}
-        <div
-          class="chat-message-tool-result"
-          data-error={isToolResultError || undefined}
-          data-action-required={isToolResultActionRequired || undefined}
-        >
-          {#if isToolResultError}
-            <div class="chat-message-tool-error" role="alert">
-              {formattedToolResult}
-            </div>
-          {:else if isToolResultActionRequired}
-            <div class="chat-message-tool-action" role="status">
-              {formattedToolResult}
-            </div>
-          {:else}
-            <ToolPayloadCode code={formattedToolResult} />
-          {/if}
-        </div>
-      {:else if isEditing}
+      {#if isEditing}
+        <!-- Edit mode replaces the body parts with a textarea, but attachments
+             stay visible (they were never inside the editable body). -->
         <div class="chat-message-edit">
           <!-- svelte-ignore a11y_autofocus -->
           <textarea
@@ -245,15 +226,20 @@
           </div>
         </div>
       {:else}
-        <MessageContent
-          content={textContent}
+        <!-- Replaces the historical role-branch body: every body render shape
+             (tool call, tool result, markdown text) flows through the cinder-
+             owned parts spine. The renderer keeps stable DOM identity across
+             streaming updates via per-part keys, so the markdown body never
+             remounts as its text grows. Image parts render below, as a sibling
+             of this body div, matching the historical structure. -->
+        <ChatMessagePartsRenderer
+          parts={bodyParts}
+          {messagePart}
           {expanded}
-          {streaming}
-          {overrideContent}
-          threshold={TRUNCATE_THRESHOLD}
+          ontoggle={toggleExpanded}
         />
 
-        {#if textContent.length > TRUNCATE_THRESHOLD}
+        {#if hasMarkdownBody && textContent.length > TRUNCATE_THRESHOLD}
           <button type="button" class="chat-message-expand" onclick={toggleExpanded}>
             {expanded ? 'Show less' : 'Show more'}
           </button>
@@ -261,8 +247,10 @@
       {/if}
     </div>
 
-    {#if hasImages}
-      <MessageAttachments images={imageParts} />
+    {#if imageParts.length > 0}
+      <!-- Images render through the grouped default path (the attachment grid
+           lays out by total count); they do not flow through `messagePart`. -->
+      <ChatMessagePartsRenderer parts={imageParts} />
     {/if}
 
     {#if isFailed && onretry}
@@ -536,17 +524,8 @@
     line-height: 1.6;
   }
 
-  .chat-message-tool-result {
-    inline-size: 100%;
-  }
-
-  .chat-message-tool-error {
-    padding: var(--cinder-space-3);
-    background: var(--cinder-color-danger-bg);
-    border-radius: var(--cinder-radius-md);
-    color: var(--cinder-color-danger-fg);
-    font-size: var(--cinder-text-sm);
-  }
+  /* Tool-result body styling moved to tool-result-part.svelte alongside its
+     markup (the parts spine now owns that body shape). */
 
   .chat-message-expand {
     display: inline-flex;

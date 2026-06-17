@@ -95,6 +95,12 @@ export const UNMODELLABLE_IMPORT_ALLOWLIST: ReadonlySet<string> = new Set([
   // The imported module is a generated build artifact, never a tracked source
   // component, so it cannot create a component→component edge the scoper misses.
   'packages/components/src/test/hydration-safety.ts',
+  // Shared SSR-safety probe helper: dynamic-imports a CALLER-SUPPLIED, cache-
+  // busted specifier (`import(`${specifier}?ssr-eval=…`)`) under nulled DOM
+  // globals so SSR probe tests can prove a module evaluates without `document`/
+  // `window`. The specifier is a runtime string, so it cannot model a static
+  // component→component edge — and only test files call it.
+  'packages/components/src/test/import-without-dom-globals.ts',
 ]);
 
 // ---------------------------------------------------------------------------

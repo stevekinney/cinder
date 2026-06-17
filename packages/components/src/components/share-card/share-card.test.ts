@@ -5,8 +5,28 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: ShareCard } = await import('./share-card.svelte');
+
+type ClipboardLike = { writeText: (text: string) => Promise<void> };
+
+function setNavigatorClipboard(clipboard: ClipboardLike): void {
+  Object.defineProperty(globalThis.navigator, 'clipboard', {
+    configurable: true,
+    value: clipboard,
+  });
+}
+
+function restoreNavigatorClipboard(originalClipboard: unknown): void {
+  if (originalClipboard === undefined) {
+    delete (globalThis.navigator as unknown as { clipboard?: ClipboardLike }).clipboard;
+    return;
+  }
+  Object.defineProperty(globalThis.navigator, 'clipboard', {
+    configurable: true,
+    value: originalClipboard,
+  });
+}
 
 afterEach(() => {
   cleanup();
@@ -64,30 +84,30 @@ describe('ShareCard', () => {
     // (which loses its prototype and trips the no-misused-spread lint rule).
     let clipboardValue = '';
     const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
-    (navigator as { clipboard?: unknown }).clipboard = {
+    setNavigatorClipboard({
       writeText: async (text: string) => {
         clipboardValue = text;
       },
-    };
-
-    const { getByRole } = render(ShareCard, {
-      value: 'https://example.com',
-      copyLinkLabel: 'Copy link',
-      copiedLabel: 'Copied!',
     });
 
-    const button = getByRole('button', { name: /Copy link/i });
-    fireEvent.click(button);
+    try {
+      const { getByRole } = render(ShareCard, {
+        value: 'https://example.com',
+        copyLinkLabel: 'Copy link',
+        copiedLabel: 'Copied!',
+      });
 
-    // Allow async clipboard operation to settle.
-    await new Promise((resolve) => setTimeout(resolve, 10));
+      const button = getByRole('button', { name: /Copy link/i });
+      await fireEvent.click(button);
 
-    // After a click, the value should have been written (assuming clipboard mock works).
-    expect(clipboardValue).toBe('https://example.com');
+      // Allow async clipboard operation to settle.
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // Restore the original clipboard.
-    if (originalClipboard === undefined) delete (navigator as { clipboard?: unknown }).clipboard;
-    else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
+      // After a click, the value should have been written (assuming clipboard mock works).
+      expect(clipboardValue).toBe('https://example.com');
+    } finally {
+      restoreNavigatorClipboard(originalClipboard);
+    }
   });
 
   test('an identical success re-announces after the confirmation window resets through blank', async () => {
@@ -100,35 +120,41 @@ describe('ShareCard', () => {
     // wanted). A bespoke synchronous blank-then-set would be a no-op that
     // silently defeats the region's own re-announce mechanism.
     const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
-    (navigator as { clipboard?: unknown }).clipboard = {
+    setNavigatorClipboard({
       writeText: async () => {},
-    };
-
-    const { container, getByRole } = render(ShareCard, {
-      value: 'https://example.com',
-      copyLinkLabel: 'Copy link',
-      copiedLabel: 'Copied!',
-      // Short window so the auto-clear fires within the test.
-      confirmDuration: 20,
     });
-    const liveRegion = container.querySelector('.cinder-sr-only');
-    const button = getByRole('button', { name: /Copy link/i });
 
-    fireEvent.click(button);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(liveRegion?.textContent).toBe('Copied!');
+    try {
+      const { container, getByRole } = render(ShareCard, {
+        value: 'https://example.com',
+        copyLinkLabel: 'Copy link',
+        copiedLabel: 'Copied!',
+        // Shorter than the production default, but still longer than the
+        // Testing Library polling interval so the transient copied state is
+        // observable under full-suite load.
+        confirmDuration: 250,
+      });
+      const liveRegion = container.querySelector('.cinder-sr-only');
+      const button = getByRole('button', { name: /Copy link/i });
 
-    // Let the confirmation window elapse: the message auto-clears to ''.
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    expect(liveRegion?.textContent).toBe('');
+      await fireEvent.click(button);
+      await waitFor(() => {
+        expect(liveRegion?.textContent).toBe('Copied!');
+      });
 
-    // A second identical copy now transitions '' → "Copied!" and re-announces.
-    fireEvent.click(button);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(liveRegion?.textContent).toBe('Copied!');
+      // Let the confirmation window elapse: the message auto-clears to ''.
+      await waitFor(() => {
+        expect(liveRegion?.textContent).toBe('');
+      });
 
-    if (originalClipboard === undefined) delete (navigator as { clipboard?: unknown }).clipboard;
-    else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
+      // A second identical copy now transitions '' → "Copied!" and re-announces.
+      await fireEvent.click(button);
+      await waitFor(() => {
+        expect(liveRegion?.textContent).toBe('Copied!');
+      });
+    } finally {
+      restoreNavigatorClipboard(originalClipboard);
+    }
   });
 
   test('renders custom actions', () => {
@@ -167,30 +193,32 @@ describe('ShareCard', () => {
     let clicked = false;
     let copied = '';
     const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
-    (navigator as { clipboard?: unknown }).clipboard = {
+    setNavigatorClipboard({
       writeText: async (text: string) => {
         copied = text;
       },
-    };
-    const { getByRole } = render(ShareCard, {
-      value: 'https://example.com',
-      actions: [
-        {
-          key: 'copy-and-track',
-          label: 'Copy and track',
-          copyValue: 'https://example.com/tracked',
-          onClick: () => {
-            clicked = true;
-          },
-        },
-      ],
     });
-    fireEvent.click(getByRole('button', { name: /Copy and track/i }));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(clicked).toBe(true);
-    expect(copied).toBe('https://example.com/tracked');
-    if (originalClipboard === undefined) delete (navigator as { clipboard?: unknown }).clipboard;
-    else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
+    try {
+      const { getByRole } = render(ShareCard, {
+        value: 'https://example.com',
+        actions: [
+          {
+            key: 'copy-and-track',
+            label: 'Copy and track',
+            copyValue: 'https://example.com/tracked',
+            onClick: () => {
+              clicked = true;
+            },
+          },
+        ],
+      });
+      await fireEvent.click(getByRole('button', { name: /Copy and track/i }));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(clicked).toBe(true);
+      expect(copied).toBe('https://example.com/tracked');
+    } finally {
+      restoreNavigatorClipboard(originalClipboard);
+    }
   });
 
   test('applies custom class', () => {
@@ -244,8 +272,7 @@ describe('ShareCard native share', () => {
     else (navigator as { share?: unknown }).share = originalShare;
     if (originalCanShare === undefined) delete (navigator as { canShare?: unknown }).canShare;
     else (navigator as { canShare?: unknown }).canShare = originalCanShare;
-    if (originalClipboard === undefined) delete (navigator as { clipboard?: unknown }).clipboard;
-    else (navigator as { clipboard?: unknown }).clipboard = originalClipboard;
+    restoreNavigatorClipboard(originalClipboard);
   });
 
   test('renders the default native-share button after client mount when navigator.share exists', () => {
@@ -295,11 +322,11 @@ describe('ShareCard native share', () => {
       throw new DOMException('cancelled', 'AbortError');
     };
     let copied = '';
-    (navigator as { clipboard?: unknown }).clipboard = {
+    setNavigatorClipboard({
       writeText: async (text: string) => {
         copied = text;
       },
-    };
+    });
     const { getByText } = render(ShareCard, { value: 'https://example.com/x' });
     await fireEvent.click(getByText('Share'));
     // Abort is a user cancel — it must NOT trigger the copy fallback.
@@ -311,11 +338,11 @@ describe('ShareCard native share', () => {
       throw new DOMException('denied', 'NotAllowedError');
     };
     let copied = '';
-    (navigator as { clipboard?: unknown }).clipboard = {
+    setNavigatorClipboard({
       writeText: async (text: string) => {
         copied = text;
       },
-    };
+    });
     const { getByText } = render(ShareCard, { value: 'https://example.com/x' });
     await fireEvent.click(getByText('Share'));
     // The copy fallback ran, preserving the value.
@@ -326,9 +353,9 @@ describe('ShareCard native share', () => {
     (navigator as { share?: unknown }).share = async () => {
       throw new DOMException('denied', 'NotAllowedError');
     };
-    (navigator as { clipboard?: unknown }).clipboard = {
+    setNavigatorClipboard({
       writeText: async () => {},
-    };
+    });
     const { container } = render(ShareCard, { value: 'https://example.com/x' });
     const shareButton = container.querySelector('[data-cinder-action="native-share"]');
     await fireEvent.click(shareButton!);
