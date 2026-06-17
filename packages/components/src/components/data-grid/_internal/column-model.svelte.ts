@@ -25,6 +25,7 @@ export type ResolvedDataGridColumn<TRow> = DataGridValueColumn<TRow> & {
   minWidth: number;
   maxWidth?: number;
   colIndex: number;
+  renderIndex: number;
   pin?: DataGridColumnPin;
   pinOffset: number;
 };
@@ -68,6 +69,10 @@ export class DataGridColumnModel<TRow> {
       'right',
     ),
   );
+
+  readonly leftPinnedWidth = $derived(totalColumnWidth(this.leftPinnedColumns));
+
+  readonly rightPinnedWidth = $derived(totalColumnWidth(this.rightPinnedColumns));
 
   readonly unpinnedColumns = $derived.by(() =>
     this.orderedColumns.filter((column) => column.pin === undefined),
@@ -138,6 +143,7 @@ function resolveColumn<TRow>(
     minWidth,
     width: Math.min(Math.max(baseWidth, minWidth), maxWidth),
     colIndex: index + 1,
+    renderIndex: index + 1,
     pinOffset: 0,
   };
   if (column.cell !== undefined) resolvedColumn.cell = column.cell;
@@ -192,7 +198,11 @@ function withPinOffsets<TRow>(
 function withRenderColIndexes<TRow>(
   columns: readonly ResolvedDataGridColumn<TRow>[],
 ): ResolvedDataGridColumn<TRow>[] {
-  return columns.map((column, index) => ({ ...column, colIndex: index + 1 }));
+  return columns.map((column, index) => ({ ...column, renderIndex: index + 1 }));
+}
+
+function totalColumnWidth<TRow>(columns: readonly ResolvedDataGridColumn<TRow>[]): number {
+  return columns.reduce((totalWidth, column) => totalWidth + column.width, 0);
 }
 
 export function getDataGridColumnValue<TRow>(

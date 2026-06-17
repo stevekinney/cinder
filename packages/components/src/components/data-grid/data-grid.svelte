@@ -10,7 +10,7 @@
    * @useWhen Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.
    * @useWhen You need role=grid semantics instead of native table semantics.
    * @avoidWhen You only need a semantic read-only table — use DataTable or the Table family instead.
-   * @avoidWhen You need column virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
+   * @avoidWhen You need resize handles, drag-to-reorder controls, or editing today — DataGrid does not provide them yet.
    * @related data-table, table
    */
   export type {
@@ -31,6 +31,7 @@
 </script>
 
 <script lang="ts" generics="TRow">
+  import { tick } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import { classNames } from '../../utilities/class-names.ts';
@@ -76,6 +77,7 @@
     density = 'comfortable',
     stickyHeader = true,
     virtualizeRows = false,
+    virtualizeColumns = false,
     rowHeight,
     columnOrder,
     columnSizing,
@@ -104,15 +106,14 @@
   let liveRegionMessage = $state('');
   let renderedLiveRegionMessage = $state('');
   let liveRegionAnnouncementSequence = $state(0);
+  let measuredGridWidth = $state<number | undefined>();
+  let isRightToLeft = $state(false);
 
   const activeSortModel = $derived(
     getActiveDataGridSortModel(columnModel.orderedColumns, sortModel),
   );
   const sortedRowIndices = $derived(
     getSortedDataGridRowIndices(rows, columnModel.orderedColumns, activeSortModel),
-  );
-  const gridTemplateColumns = $derived(
-    columnModel.renderColumns.map((column) => `${column.width}px`).join(' '),
   );
   const keyedRows = $derived.by(() => {
     const records = rows.map((row, rowIndex) => ({
@@ -145,16 +146,28 @@
     virtualizeRows && !isValidVirtualRowHeight(rowHeight),
   );
   const shouldVirtualizeRows = $derived(virtualizeRows && sortedKeyedRows.length > 0);
+  const shouldVirtualizeColumns = $derived(
+    virtualizeColumns &&
+      columnModel.unpinnedColumns.length > 0 &&
+      measuredGridWidth !== undefined &&
+      measuredGridWidth > 0 &&
+      !isRightToLeft &&
+      typeof window !== 'undefined',
+  );
   const rowVirtualizer = new DataGridVirtualizationAdapter({
     getScrollElement: () => gridElement ?? null,
     getRowCount: () => sortedKeyedRows.length,
     getRowKey: (index) => sortedKeyedRows[index]?.rowKey ?? index,
     getRowHeight: () => resolvedRowHeight,
-    getColumnCount: () => columnModel.renderColumns.length,
-    getColumnWidth: (index) => columnModel.renderColumns[index]?.width ?? 150,
+    getColumnCount: () => columnModel.unpinnedColumns.length,
+    getColumnKey: (index) => columnModel.unpinnedColumns[index]?.key ?? index,
+    getColumnWidth: (index) => columnModel.unpinnedColumns[index]?.width ?? 150,
     getOverscan: () => 5,
     getInitialHeight: () => resolvedRowHeight * 10,
+    getInitialWidth: () => measuredGridWidth ?? 1_000,
     getScrollPaddingStart: () => getHeaderHeight(),
+    getScrollPaddingInlineStart: () => columnModel.leftPinnedWidth,
+    getScrollPaddingInlineEnd: () => columnModel.rightPinnedWidth,
   });
   const observeHeaderSize: Attachment<HTMLElement> = (node) => {
     if (typeof ResizeObserver === 'undefined') return;
@@ -170,7 +183,69 @@
     observer.observe(node);
     return () => observer.disconnect();
   };
+  const observeGridSize: Attachment<HTMLElement> = (node) => {
+    const updateGridMeasurement = (): void => {
+      const rect = node.getBoundingClientRect();
+      measuredGridWidth = rect.width || node.clientWidth || undefined;
+      isRightToLeft = getComputedStyle(node).direction === 'rtl';
+    };
+
+    updateGridMeasurement();
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(updateGridMeasurement);
+    observer.observe(node);
+    return () => observer.disconnect();
+  };
+  const delegateBodyEvents: Attachment<HTMLElement> = (node) => {
+    node.addEventListener('click', handleBodyClick);
+    node.addEventListener('keydown', handleBodyKeydown);
+    return () => {
+      node.removeEventListener('click', handleBodyClick);
+      node.removeEventListener('keydown', handleBodyKeydown);
+    };
+  };
   const virtualRows = $derived(rowVirtualizer.virtualRows);
+  const virtualColumns = $derived(rowVirtualizer.virtualColumns);
+  const virtualColumnLeadingSpacer = $derived(virtualColumns[0]?.start ?? 0);
+  const virtualColumnTrailingSpacer = $derived.by(() => {
+    const lastColumn = virtualColumns.at(-1);
+    if (!lastColumn) return 0;
+
+    return Math.max(0, rowVirtualizer.totalWidth - (lastColumn.start + lastColumn.size));
+  });
+  const gridContentWidth = $derived(
+    shouldVirtualizeColumns
+      ? columnModel.leftPinnedWidth + rowVirtualizer.totalWidth + columnModel.rightPinnedWidth
+      : undefined,
+  );
+  const gridTemplateColumns = $derived.by(() => {
+    if (!shouldVirtualizeColumns) {
+      return columnModel.renderColumns.map((column) => `${column.width}px`).join(' ');
+    }
+
+    return [
+      ...columnModel.leftPinnedColumns.map((column) => `${column.width}px`),
+      `${virtualColumnLeadingSpacer}px`,
+      ...virtualColumns.map((item) => `${item.size}px`),
+      `${virtualColumnTrailingSpacer}px`,
+      ...columnModel.rightPinnedColumns.map((column) => `${column.width}px`),
+    ].join(' ');
+  });
+  const renderedColumns = $derived.by(() => {
+    if (!shouldVirtualizeColumns) return columnModel.renderColumns;
+
+    const virtualUnpinnedColumns = virtualColumns.flatMap((item) => {
+      const column = columnModel.unpinnedColumns[item.index];
+      return column ? [column] : [];
+    });
+
+    return [
+      ...columnModel.leftPinnedColumns,
+      ...virtualUnpinnedColumns,
+      ...columnModel.rightPinnedColumns,
+    ];
+  });
   const renderedRows = $derived.by(() => {
     if (!shouldVirtualizeRows) {
       return sortedKeyedRows.map((keyedRow, visualRowIndex) => ({
@@ -261,6 +336,7 @@
   let warnedDuplicateRowIdsSignature: string | undefined;
   let previousActiveCellId: string | undefined;
   let previousActiveVirtualRowIndex: number | undefined;
+  let previousActiveVirtualColumnIndex: number | undefined;
   let previousSelectionRowIds: readonly string[] | undefined;
   let previousSelectionColumnKeys: readonly string[] | undefined;
   let gridElement: HTMLDivElement | undefined;
@@ -331,27 +407,42 @@
   $effect(() => {
     const cellId = activeCellId;
     const activeVirtualRowIndex = shouldVirtualizeRows ? activeRowIndex : undefined;
+    const activeVirtualColumnIndex = shouldVirtualizeColumns
+      ? getUnpinnedColumnIndex(activeColumnKey)
+      : undefined;
     if (
       cellId === undefined ||
-      (cellId === previousActiveCellId && activeVirtualRowIndex === previousActiveVirtualRowIndex)
+      (cellId === previousActiveCellId &&
+        activeVirtualRowIndex === previousActiveVirtualRowIndex &&
+        activeVirtualColumnIndex === previousActiveVirtualColumnIndex)
     ) {
       previousActiveCellId = cellId;
       previousActiveVirtualRowIndex = activeVirtualRowIndex;
+      previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
       return;
     }
 
-    if (previousActiveCellId === undefined && previousActiveVirtualRowIndex === undefined) {
+    if (
+      previousActiveCellId === undefined &&
+      previousActiveVirtualRowIndex === undefined &&
+      previousActiveVirtualColumnIndex === undefined
+    ) {
       previousActiveCellId = cellId;
       previousActiveVirtualRowIndex = activeVirtualRowIndex;
+      previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
       return;
     }
 
     previousActiveCellId = cellId;
     previousActiveVirtualRowIndex = activeVirtualRowIndex;
+    previousActiveVirtualColumnIndex = activeVirtualColumnIndex;
     if (shouldVirtualizeRows) {
       rowVirtualizer.scrollToRow(activeRowIndex);
     }
-    document.getElementById(cellId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (shouldVirtualizeColumns && activeVirtualColumnIndex !== undefined) {
+      rowVirtualizer.scrollToColumn(activeVirtualColumnIndex);
+    }
+    void scrollActiveCellIntoView(cellId);
   });
 
   $effect(() => {
@@ -428,7 +519,10 @@
   }
 
   function getCellStyle(column: ResolvedDataGridColumn<TRow>): string {
-    const customProperties = [`--_cinder-data-grid-column-width: ${column.width}px`];
+    const customProperties = [
+      `--_cinder-data-grid-column-width: ${column.width}px`,
+      `grid-column: ${getCellGridColumn(column)}`,
+    ];
     if (column.pin === 'left') {
       customProperties.push(`--_cinder-data-grid-pin-left-offset: ${column.pinOffset}px`);
     }
@@ -503,6 +597,37 @@
     const columnKey = columnKeys[Math.min(Math.max(columnIndex, 0), columnKeys.length - 1)];
     if (rowId === undefined || columnKey === undefined) return undefined;
     return { rowId, columnKey };
+  }
+
+  function getUnpinnedColumnIndex(columnKey: string | undefined): number | undefined {
+    if (columnKey === undefined) return undefined;
+    const index = columnModel.unpinnedColumns.findIndex((column) => column.key === columnKey);
+    return index >= 0 ? index : undefined;
+  }
+
+  function getCellGridColumn(column: ResolvedDataGridColumn<TRow>): number {
+    if (!shouldVirtualizeColumns) return column.renderIndex;
+
+    const leftPinnedCount = columnModel.leftPinnedColumns.length;
+    if (column.pin === 'left') {
+      const leftPinnedIndex = columnModel.leftPinnedColumns.findIndex(
+        (item) => item.key === column.key,
+      );
+      return Math.max(0, leftPinnedIndex) + 1;
+    }
+
+    const visibleUnpinnedIndex = virtualColumns.findIndex((item) => item.key === column.key);
+    if (visibleUnpinnedIndex >= 0) return leftPinnedCount + 2 + visibleUnpinnedIndex;
+
+    const rightPinnedIndex = columnModel.rightPinnedColumns.findIndex(
+      (item) => item.key === column.key,
+    );
+    return leftPinnedCount + 2 + virtualColumns.length + 1 + Math.max(0, rightPinnedIndex);
+  }
+
+  async function scrollActiveCellIntoView(cellId: string): Promise<void> {
+    await tick();
+    document.getElementById(cellId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   function moveActiveCell(rowIndex: number, columnIndex: number, extend = false): void {
@@ -773,8 +898,13 @@
   data-cinder-density={density}
   data-cinder-sticky-header={stickyHeader ? 'true' : undefined}
   data-cinder-virtualized-rows={shouldVirtualizeRows ? 'true' : undefined}
+  data-cinder-virtualized-columns={shouldVirtualizeColumns ? 'true' : undefined}
   style:--_cinder-data-grid-template-columns={gridTemplateColumns}
+  style:--_cinder-data-grid-content-width={gridContentWidth === undefined
+    ? undefined
+    : `${gridContentWidth}px`}
   {@attach rowVirtualizer.mountScrollContainer}
+  {@attach observeGridSize}
 >
   <div
     bind:this={headerElement}
@@ -783,7 +913,7 @@
     aria-rowindex="1"
     {@attach observeHeaderSize}
   >
-    {#each columnModel.renderColumns as column (column.key)}
+    {#each renderedColumns as column (column.key)}
       {@const sortItem = getColumnSortModelItem(column.key)}
       {@const sortPriority = getColumnSortPriority(column.key)}
       <div
@@ -835,10 +965,9 @@
   <div
     class="cinder-data-grid__body"
     role="rowgroup"
-    onclick={handleBodyClick}
-    onkeydown={handleBodyKeydown}
     style:height={bodyHeight}
     data-cinder-virtualized={shouldVirtualizeRows ? 'true' : undefined}
+    {@attach delegateBodyEvents}
   >
     {#each renderedRows as renderedRow (renderedRow.keyedRow.rowKey)}
       {@const keyedRow = renderedRow.keyedRow}
@@ -856,7 +985,7 @@
         data-cinder-virtual-index={rowIndex}
         style={getRowStyle(renderedRow)}
       >
-        {#each columnModel.renderColumns as column (column.key)}
+        {#each renderedColumns as column (column.key)}
           {@const value = getDataGridColumnValue(row, column)}
           {@const cellId = getCellId(rowDomId, column.key)}
           {@const cellCoordinates = { rowId: rowDomId, columnKey: column.key }}

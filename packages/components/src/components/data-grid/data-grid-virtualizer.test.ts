@@ -18,6 +18,7 @@ type LogRow = {
   id: string;
   message: string;
   owner: string;
+  [key: `metric${number}`]: string | number;
 };
 
 const columns: DataGridColumnDef<LogRow>[] = [
@@ -46,6 +47,46 @@ function dataRows(container: HTMLElement): HTMLElement[] {
   );
 }
 
+function gridCells(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>('[role="gridcell"]'));
+}
+
+function makeMetricColumns(count: number): DataGridColumnDef<LogRow>[] {
+  return Array.from({ length: count }, (_, index) => {
+    const column: DataGridColumnDef<LogRow> = {
+      key: `metric${index}`,
+      header: `Metric ${index}`,
+      width: 100,
+      getValue: (row: LogRow) => row[`metric${index}`],
+    };
+    if (index === 0) column.pin = 'left';
+    if (index === count - 1) column.pin = 'right';
+    return column;
+  });
+}
+
+function makeWidePinnedMetricColumns(count: number): DataGridColumnDef<LogRow>[] {
+  return makeMetricColumns(count).map((column, index) => {
+    if (index === 0) return { ...column, width: 260, pin: 'left' };
+    if (index === count - 1) return { ...column, width: 220, pin: 'right' };
+    return column;
+  });
+}
+
+function makeMetricRows(rowCount: number, columnCount: number): LogRow[] {
+  return Array.from({ length: rowCount }, (_, rowIndex) => {
+    const row: LogRow = {
+      id: `row-${rowIndex}`,
+      message: `Message ${rowIndex}`,
+      owner: `Owner ${rowIndex % 5}`,
+    };
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      row[`metric${columnIndex}`] = `R${rowIndex} C${columnIndex}`;
+    }
+    return row;
+  });
+}
+
 function rectWithHeight(height: number): DOMRect {
   return {
     bottom: height,
@@ -57,6 +98,34 @@ function rectWithHeight(height: number): DOMRect {
     x: 0,
     y: 0,
     toJSON: () => ({}),
+  };
+}
+
+function rectWithSize(width: number, height: number): DOMRect {
+  return {
+    bottom: height,
+    height,
+    left: 0,
+    right: width,
+    top: 0,
+    width,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  };
+}
+
+function measureDataGrid(width: number, height = 240): () => void {
+  const original = HTMLElement.prototype.getBoundingClientRect;
+  HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
+    if (this instanceof HTMLElement && this.classList.contains('cinder-data-grid')) {
+      return rectWithSize(width, height);
+    }
+    return original.call(this);
+  };
+
+  return () => {
+    HTMLElement.prototype.getBoundingClientRect = original;
   };
 }
 
@@ -351,6 +420,217 @@ describe('DataGrid row virtualization', () => {
       expect(grid?.getAttribute('aria-colcount')).toBe('2');
     } finally {
       result.cleanup();
+    }
+  });
+
+  test('renders a horizontal column window while pinned columns stay mounted', async () => {
+    const restoreMeasurement = measureDataGrid(520);
+    const columnCount = 40;
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1, columnCount),
+        columns: makeWidePinnedMetricColumns(columnCount),
+        getRowId: getLogRowId,
+        virtualizeColumns: true,
+        'aria-label': 'Metrics',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      if (!grid) throw new Error('Expected DataGrid root');
+
+      await waitFor(() => expect(gridCells(container).length).toBeGreaterThan(0));
+
+      expect(grid.getAttribute('aria-colcount')).toBe(String(columnCount));
+      expect(grid.getAttribute('data-cinder-virtualized-columns')).toBe('true');
+      expect(gridCells(container).length).toBeLessThan(columnCount);
+      expect(container.querySelector('[data-cinder-column-key="metric0"]')).not.toBeNull();
+      expect(container.querySelector('[data-cinder-column-key="metric1"]')).not.toBeNull();
+      expect(container.querySelector('[data-cinder-column-key="metric20"]')).toBeNull();
+      expect(container.querySelector('[data-cinder-column-key="metric39"]')).not.toBeNull();
+      expect(
+        container
+          .querySelector<HTMLElement>('[data-cinder-column-key="metric0"]')
+          ?.style.getPropertyValue('--_cinder-data-grid-column-width'),
+      ).toBe('260px');
+      expect(
+        container
+          .querySelector('[data-cinder-column-key="metric39"]')
+          ?.getAttribute('aria-colindex'),
+      ).toBe('40');
+      expect(
+        container.querySelector<HTMLElement>('[data-cinder-column-key="metric39"]')?.style
+          .gridColumn,
+      ).not.toBe('40');
+
+      grid.scrollLeft = 2_000;
+      await fireEvent.scroll(grid);
+
+      await waitFor(() =>
+        expect(container.querySelector('[data-cinder-column-key="metric20"]')).not.toBeNull(),
+      );
+      expect(container.querySelector('[data-cinder-column-key="metric0"]')).not.toBeNull();
+      expect(container.querySelector('[data-cinder-column-key="metric39"]')).not.toBeNull();
+    } finally {
+      restoreMeasurement();
+    }
+  });
+
+  test('wide pinned columns do not shift the unpinned scroll window', async () => {
+    const restoreMeasurement = measureDataGrid(520);
+    const columnCount = 40;
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1, columnCount),
+        columns: makeWidePinnedMetricColumns(columnCount),
+        getRowId: getLogRowId,
+        virtualizeColumns: true,
+        'aria-label': 'Metrics',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      if (!grid) throw new Error('Expected DataGrid root');
+
+      await waitFor(() =>
+        expect(grid.getAttribute('data-cinder-virtualized-columns')).toBe('true'),
+      );
+
+      grid.scrollLeft = 2_000;
+      await fireEvent.scroll(grid);
+
+      await waitFor(() =>
+        expect(container.querySelector('[data-cinder-column-key="metric20"]')).not.toBeNull(),
+      );
+      expect(container.querySelector('[data-cinder-column-key="metric17"]')).not.toBeNull();
+      expect(container.querySelector('[data-cinder-column-key="metric0"]')).not.toBeNull();
+      expect(container.querySelector('[data-cinder-column-key="metric39"]')).not.toBeNull();
+    } finally {
+      restoreMeasurement();
+    }
+  });
+
+  test('non-contiguous left-pinned columns use compact rendered grid tracks', async () => {
+    const restoreMeasurement = measureDataGrid(520);
+    const columnCount = 40;
+    const columnsWithLaterLeftPin = makeMetricColumns(columnCount).map((column) => {
+      if (column.key === 'metric5') return { ...column, pin: 'left' as const };
+      return column;
+    });
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1, columnCount),
+        columns: columnsWithLaterLeftPin,
+        getRowId: getLogRowId,
+        virtualizeColumns: true,
+        'aria-label': 'Metrics',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      if (!grid) throw new Error('Expected DataGrid root');
+
+      await waitFor(() =>
+        expect(grid.getAttribute('data-cinder-virtualized-columns')).toBe('true'),
+      );
+
+      const firstLeftPinnedCell = container.querySelector<HTMLElement>(
+        '[role="gridcell"][data-cinder-column-key="metric0"]',
+      );
+      const laterLeftPinnedCell = container.querySelector<HTMLElement>(
+        '[role="gridcell"][data-cinder-column-key="metric5"]',
+      );
+
+      expect(firstLeftPinnedCell?.style.gridColumn).toBe('1');
+      expect(firstLeftPinnedCell?.getAttribute('aria-colindex')).toBe('1');
+      expect(laterLeftPinnedCell?.style.gridColumn).toBe('2');
+      expect(laterLeftPinnedCell?.getAttribute('aria-colindex')).toBe('6');
+    } finally {
+      restoreMeasurement();
+    }
+  });
+
+  test('column virtualization works without pinned columns and keyboard navigation mounts the active column', async () => {
+    const restoreMeasurement = measureDataGrid(300);
+    const columnCount = 40;
+    const unpinnedColumns = makeMetricColumns(columnCount).map(
+      ({ pin: _pin, ...column }) => column,
+    );
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1, columnCount),
+        columns: unpinnedColumns,
+        getRowId: getLogRowId,
+        virtualizeColumns: true,
+        'aria-label': 'Metrics',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      if (!grid) throw new Error('Expected DataGrid root');
+
+      await waitFor(() =>
+        expect(grid.getAttribute('data-cinder-virtualized-columns')).toBe('true'),
+      );
+      expect(container.querySelector('[data-cinder-column-key="metric20"]')).toBeNull();
+
+      await fireEvent.keyDown(grid, { key: 'End' });
+
+      await waitFor(() =>
+        expect(
+          container.querySelector(`#${grid.getAttribute('aria-activedescendant')}`),
+        ).not.toBeNull(),
+      );
+      const activeCell = container.querySelector<HTMLElement>(
+        `#${grid.getAttribute('aria-activedescendant')}`,
+      );
+      expect(activeCell?.getAttribute('data-cinder-column-key')).toBe('metric39');
+      expect(activeCell?.getAttribute('data-cinder-active')).toBe('true');
+    } finally {
+      restoreMeasurement();
+    }
+  });
+
+  test('column virtualization falls back to full rendering when every column is pinned', async () => {
+    const restoreMeasurement = measureDataGrid(300);
+    const columnCount = 8;
+    const pinnedColumns = makeMetricColumns(columnCount).map((column, index) => ({
+      ...column,
+      pin: index < columnCount / 2 ? ('left' as const) : ('right' as const),
+    }));
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1, columnCount),
+        columns: pinnedColumns,
+        getRowId: getLogRowId,
+        virtualizeColumns: true,
+        'aria-label': 'Metrics',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      await waitFor(() => expect(gridCells(container)).toHaveLength(columnCount));
+
+      expect(grid?.getAttribute('data-cinder-virtualized-columns')).toBeNull();
+    } finally {
+      restoreMeasurement();
+    }
+  });
+
+  test('column virtualization falls back to full rendering in right-to-left grids', async () => {
+    const restoreMeasurement = measureDataGrid(300);
+    const columnCount = 16;
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1, columnCount),
+        columns: makeMetricColumns(columnCount),
+        getRowId: getLogRowId,
+        virtualizeColumns: true,
+        style: 'direction: rtl;',
+        'aria-label': 'Metrics',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      await waitFor(() => expect(gridCells(container)).toHaveLength(columnCount));
+
+      expect(grid?.getAttribute('data-cinder-virtualized-columns')).toBeNull();
+    } finally {
+      restoreMeasurement();
     }
   });
 });
