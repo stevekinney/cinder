@@ -609,7 +609,12 @@
     if (!shouldVirtualizeColumns) return column.renderIndex;
 
     const leftPinnedCount = columnModel.leftPinnedColumns.length;
-    if (column.pin === 'left') return column.renderIndex;
+    if (column.pin === 'left') {
+      const leftPinnedIndex = columnModel.leftPinnedColumns.findIndex(
+        (item) => item.key === column.key,
+      );
+      return Math.max(0, leftPinnedIndex) + 1;
+    }
 
     const visibleUnpinnedIndex = virtualColumns.findIndex((item) => item.key === column.key);
     if (visibleUnpinnedIndex >= 0) return leftPinnedCount + 2 + visibleUnpinnedIndex;

@@ -508,6 +508,45 @@ describe('DataGrid row virtualization', () => {
     }
   });
 
+  test('non-contiguous left-pinned columns use compact rendered grid tracks', async () => {
+    const restoreMeasurement = measureDataGrid(520);
+    const columnCount = 40;
+    const columnsWithLaterLeftPin = makeMetricColumns(columnCount).map((column) => {
+      if (column.key === 'metric5') return { ...column, pin: 'left' as const };
+      return column;
+    });
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1, columnCount),
+        columns: columnsWithLaterLeftPin,
+        getRowId: getLogRowId,
+        virtualizeColumns: true,
+        'aria-label': 'Metrics',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      if (!grid) throw new Error('Expected DataGrid root');
+
+      await waitFor(() =>
+        expect(grid.getAttribute('data-cinder-virtualized-columns')).toBe('true'),
+      );
+
+      const firstLeftPinnedCell = container.querySelector<HTMLElement>(
+        '[role="gridcell"][data-cinder-column-key="metric0"]',
+      );
+      const laterLeftPinnedCell = container.querySelector<HTMLElement>(
+        '[role="gridcell"][data-cinder-column-key="metric5"]',
+      );
+
+      expect(firstLeftPinnedCell?.style.gridColumn).toBe('1');
+      expect(firstLeftPinnedCell?.getAttribute('aria-colindex')).toBe('1');
+      expect(laterLeftPinnedCell?.style.gridColumn).toBe('2');
+      expect(laterLeftPinnedCell?.getAttribute('aria-colindex')).toBe('6');
+    } finally {
+      restoreMeasurement();
+    }
+  });
+
   test('column virtualization works without pinned columns and keyboard navigation mounts the active column', async () => {
     const restoreMeasurement = measureDataGrid(300);
     const columnCount = 40;
