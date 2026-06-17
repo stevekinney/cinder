@@ -1427,7 +1427,9 @@ async function renderLandingReadmeHtml(): Promise<string> {
   const markdown = await Bun.file(join(PLAYGROUND_ROOT, '..', '..', 'README.md')).text();
   const rendered = renderMarkdown(markdown);
   if (rendered.hadUnsafeContent) {
-    throw new Error('Root README rendering stripped unsafe content');
+    throw new Error(
+      'Root README rendering stripped unsafe content. Update README.md to remove raw HTML, unsafe URLs, or other sanitizer-blocked content.',
+    );
   }
   return rewriteRepositoryRelativeReadmeLinks(rendered.html);
 }

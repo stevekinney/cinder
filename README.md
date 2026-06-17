@@ -12,7 +12,9 @@ Use Cinder when you want UI building blocks without adopting a framework-level r
 bun add @lostgradient/cinder svelte lucide-svelte
 ```
 
-`svelte` and `lucide-svelte` are peer dependencies. Cinder uses Lucide for its own component chrome, but it does not provide a general icon library for your application-specific icons.
+`svelte` and `lucide-svelte` are peer dependencies. Cinder targets Svelte `>=5.55.0 <6`.
+It uses Lucide for its own component chrome, but it does not provide a general icon library for
+your application-specific icons.
 
 ## Quickstart
 
