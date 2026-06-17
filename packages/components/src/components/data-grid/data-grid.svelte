@@ -46,6 +46,7 @@
     getNextDataGridSortModel,
     getSortedDataGridRowIndices,
   } from './_internal/sort-model.ts';
+  import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
   import type {
     DataGridProps,
     DataGridSelectionModel,
@@ -84,6 +85,8 @@
 
   let uncontrolledSelectionModel = $state<DataGridSelectionModel>([]);
   let liveRegionMessage = $state('');
+  let liveRegionAnnouncementSequence = $state(0);
+  let mounted = $state(false);
 
   const activeSortModel = $derived(
     getActiveDataGridSortModel(columnModel.orderedColumns, sortModel),
@@ -166,7 +169,9 @@
       : undefined,
   );
   const resolvedSelectionModel = $derived(selectionModel ?? uncontrolledSelectionModel);
-  const selectedRowIds = $derived(new Set(resolvedSelectionModel));
+  const selectedRowIds = $derived(
+    selectionMode === 'none' ? new Set<string>() : new Set(resolvedSelectionModel),
+  );
   const hasMultipleSelectedCells = $derived(selectionState.selectedCellCount > 1);
   const resolvedAriaLabel = $derived(
     typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
@@ -181,6 +186,10 @@
   let warnedDuplicateRowIdsSignature: string | undefined;
   let previousActiveCellId: string | undefined;
   let gridElement: HTMLDivElement | undefined;
+
+  $effect(() => {
+    mounted = true;
+  });
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
@@ -392,16 +401,21 @@
       .join('\n');
 
     if (!navigator.clipboard?.writeText) {
-      liveRegionMessage = 'Copy is unavailable';
+      announceCopiedCells('Copy is unavailable');
       return;
     }
 
     try {
       await navigator.clipboard.writeText(text);
-      liveRegionMessage = `Copied ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`;
+      announceCopiedCells(`Copied ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`);
     } catch {
-      liveRegionMessage = 'Copy failed';
+      announceCopiedCells('Copy failed');
     }
+  }
+
+  function announceCopiedCells(message: string): void {
+    liveRegionMessage = message;
+    liveRegionAnnouncementSequence += 1;
   }
 
   function sortCellsByGridOrder(
@@ -627,6 +641,10 @@
   </div>
 </div>
 
-<div class="cinder-data-grid__live-region" aria-live="polite" aria-atomic="true">
-  {liveRegionMessage}
-</div>
+{#if mounted}
+  <VisuallyHiddenLiveRegion
+    class="cinder-data-grid__live-region"
+    message={liveRegionMessage}
+    announcementSequence={liveRegionAnnouncementSequence}
+  />
+{/if}

@@ -7,7 +7,7 @@ import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: DataGrid } = await import('./data-grid.svelte');
 
 afterEach(() => {
@@ -148,6 +148,20 @@ describe('DataGrid selection', () => {
     expect(
       container.querySelector('[role="row"][aria-rowindex="3"]')?.getAttribute('aria-selected'),
     ).toBe('true');
+  });
+
+  test('selectionMode none ignores controlled row selection state', () => {
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'none',
+      selectionModel: ['ord-2'],
+      'aria-label': 'Orders',
+    });
+
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(0);
+    expect(container.querySelectorAll('[role="row"][data-cinder-selected]').length).toBe(0);
   });
 
   test('Enter selects the active cell while focus stays on the grid', async () => {
@@ -322,7 +336,9 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
 
     expect(writeText).toHaveBeenCalledWith('Ada Lovelace\tPacked');
-    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Copied 2 cells');
+    await waitFor(() =>
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('Copied 2 cells'),
+    );
   });
 
   test('copies non-contiguous selected cells without filling the bounding box', async () => {
@@ -347,7 +363,35 @@ describe('DataGrid selection', () => {
     });
 
     expect(writeText).toHaveBeenCalledWith('Ada Lovelace\n512');
-    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Copied 2 cells');
+    await waitFor(() =>
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('Copied 2 cells'),
+    );
+  });
+
+  test('re-announces repeated copy feedback', async () => {
+    const writeText = mock(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const liveRegion = () => container.querySelector('[role="status"]');
+
+    await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
+    await waitFor(() => expect(liveRegion()?.textContent).toBe('Copied 1 cell'));
+
+    await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
+    expect(liveRegion()?.textContent).toBe('');
+    await waitFor(() => expect(liveRegion()?.textContent).toBe('Copied 1 cell'));
+    expect(writeText).toHaveBeenCalledTimes(2);
   });
 
   test('announces when clipboard copy is unavailable or fails', async () => {
@@ -366,8 +410,8 @@ describe('DataGrid selection', () => {
     const grid = container.querySelector<HTMLElement>('[role="grid"]');
 
     await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
-    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
-      'Copy is unavailable',
+    await waitFor(() =>
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('Copy is unavailable'),
     );
 
     Object.defineProperty(navigator, 'clipboard', {
@@ -376,7 +420,9 @@ describe('DataGrid selection', () => {
     });
 
     await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
-    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Copy failed');
+    await waitFor(() =>
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('Copy failed'),
+    );
   });
 
   test('reconciles selected cells when rows and columns change', async () => {

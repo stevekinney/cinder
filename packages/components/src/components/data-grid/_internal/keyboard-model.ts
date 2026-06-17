@@ -116,11 +116,13 @@ export function dataGridKeyToAction(
   if (event.key === 'Tab') {
     const direction = event.shiftKey ? -1 : 1;
     const nextCellIndex = activeRowIndex * columnCount + activeColumnIndex + direction;
-    const clampedCellIndex = Math.min(Math.max(nextCellIndex, 0), rowCount * columnCount - 1);
+    const lastCellIndex = rowCount * columnCount - 1;
+    if (nextCellIndex < 0 || nextCellIndex > lastCellIndex) return undefined;
+
     return {
       type: 'move-cell',
-      rowIndex: Math.floor(clampedCellIndex / columnCount),
-      columnIndex: clampedCellIndex % columnCount,
+      rowIndex: Math.floor(nextCellIndex / columnCount),
+      columnIndex: nextCellIndex % columnCount,
       extend: false,
     };
   }

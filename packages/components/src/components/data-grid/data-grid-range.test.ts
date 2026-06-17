@@ -86,4 +86,24 @@ describe('DataGrid keyboard model', () => {
       extend: false,
     });
   });
+
+  test('lets Tab leave the grid at the first and last cells', () => {
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true }), {
+        activeRowIndex: 0,
+        activeColumnIndex: 0,
+        rowCount: 4,
+        columnCount: 4,
+      }),
+    ).toBeUndefined();
+
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'Tab' }), {
+        activeRowIndex: 3,
+        activeColumnIndex: 3,
+        rowCount: 4,
+        columnCount: 4,
+      }),
+    ).toBeUndefined();
+  });
 });
