@@ -3,14 +3,14 @@
    * @cinder
    * @category data-display
    * @status alpha
-   * @purpose Static ARIA data grid foundation for spreadsheet-like datasets with explicit row identity, column sizing, keyboard navigation, and pinning metadata.
+   * @purpose ARIA data grid foundation for spreadsheet-like datasets with explicit row identity, column sizing, keyboard navigation, range selection, and pinning metadata.
    * @tag grid
    * @tag data
    * @tag spreadsheet
    * @useWhen Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.
    * @useWhen You need role=grid semantics instead of native table semantics.
    * @avoidWhen You only need a semantic read-only table — use DataTable or the Table family instead.
-   * @avoidWhen You need selection, virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
+   * @avoidWhen You need virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
    * @related data-table, table
    */
   export type {
@@ -21,6 +21,8 @@
     DataGridColumnSizing,
     DataGridDensity,
     DataGridProps,
+    DataGridSelectionMode,
+    DataGridSelectionModel,
     DataGridSortComparator,
     DataGridSortDirection,
     DataGridSortModel,
@@ -30,18 +32,37 @@
 
 <script lang="ts" generics="TRow">
   import { classNames } from '../../utilities/class-names.ts';
+  import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     DataGridColumnModel,
     getDataGridColumnValue,
     type ResolvedDataGridColumn,
   } from './_internal/column-model.svelte.ts';
+  import type { DataGridCellCoordinate } from './_internal/geometry.ts';
+  import { dataGridKeyToAction } from './_internal/keyboard-model.ts';
+  import { DataGridSelectionModel as InternalDataGridSelectionModel } from './_internal/selection-model.svelte.ts';
   import {
     getActiveDataGridSortModel,
     getNextDataGridSortModel,
     getSortedDataGridRowIndices,
   } from './_internal/sort-model.ts';
-  import type { DataGridProps, DataGridSortModelItem } from './data-grid.types.ts';
+  import type {
+    DataGridProps,
+    DataGridSelectionModel,
+    DataGridSortModelItem,
+  } from './data-grid.types.ts';
+
+  const interactiveDescendantSelector = [
+    'a[href]',
+    'button',
+    'input',
+    'select',
+    'textarea',
+    '[contenteditable=""]',
+    '[contenteditable="true"]',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(',');
 
   let {
     rows,
@@ -52,6 +73,9 @@
     columnOrder,
     columnSizing,
     columnPinning,
+    selectionMode = 'none',
+    selectionModel = $bindable<DataGridSelectionModel | undefined>(undefined),
+    onSelectionModelChange,
     sortModel = $bindable([]),
     onSortModelChange,
     rowClass,
@@ -69,6 +93,10 @@
     columnSizing: () => columnSizing,
     columnPinning: () => columnPinning,
   });
+
+  let liveRegionMessage = $state('');
+  let renderedLiveRegionMessage = $state('');
+  let liveRegionAnnouncementSequence = $state(0);
 
   const activeSortModel = $derived(
     getActiveDataGridSortModel(columnModel.orderedColumns, sortModel),
@@ -114,11 +142,17 @@
     }
     return [...duplicates];
   });
-  const firstRowDomId = $derived(keyedRows[0]?.rowDomId);
+  const firstRowDomId = $derived(sortedKeyedRows[0]?.rowDomId);
   const firstColumnKey = $derived(columnModel.renderColumns[0]?.key);
+  const rowDomIds = $derived(sortedKeyedRows.map((row) => row.rowDomId));
+  const columnKeys = $derived(columnModel.renderColumns.map((column) => column.key));
   const gridId = $props.id();
   let requestedActiveRowIndex = $state(0);
   let requestedActiveColumnKey = $state<string | undefined>();
+  const selectionState = new InternalDataGridSelectionModel({
+    rowIds: () => rowDomIds,
+    columnKeys: () => columnKeys,
+  });
   const activeRowIndex = $derived(
     sortedKeyedRows.length > 0 ? Math.min(requestedActiveRowIndex, sortedKeyedRows.length - 1) : 0,
   );
@@ -133,13 +167,20 @@
       ? sortedKeyedRows[Math.min(activeRowIndex, sortedKeyedRows.length - 1)]?.rowDomId
       : firstRowDomId,
   );
+  const activeColumnKey = $derived(columnModel.renderColumns[activeColumnIndex]?.key);
   const activeCellId = $derived(
     activeRowDomId !== undefined && firstColumnKey !== undefined
-      ? getCellId(
-          activeRowDomId,
-          columnModel.renderColumns[activeColumnIndex]?.key ?? firstColumnKey,
-        )
+      ? getCellId(activeRowDomId, activeColumnKey ?? firstColumnKey)
       : undefined,
+  );
+  const activeCellCoordinates = $derived(
+    activeRowDomId !== undefined && activeColumnKey !== undefined
+      ? { rowId: activeRowDomId, columnKey: activeColumnKey }
+      : undefined,
+  );
+  const resolvedSelectionModel = $derived(selectionModel ?? []);
+  const selectedRowIds = $derived(
+    selectionMode === 'none' ? new Set<string>() : new Set(resolvedSelectionModel),
   );
   const resolvedAriaLabel = $derived(
     typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
@@ -153,6 +194,11 @@
   let hasWarnedNoLabel = false;
   let warnedDuplicateRowIdsSignature: string | undefined;
   let previousActiveCellId: string | undefined;
+  let previousSelectionRowIds: readonly string[] | undefined;
+  let previousSelectionColumnKeys: readonly string[] | undefined;
+  let gridElement: HTMLDivElement | undefined;
+  let liveRegionTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  let liveRegionVersion = 0;
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
@@ -179,6 +225,32 @@
   });
 
   $effect(() => {
+    const nextMessage = liveRegionMessage;
+    void liveRegionAnnouncementSequence;
+    const currentVersion = ++liveRegionVersion;
+
+    if (liveRegionTimeoutId) {
+      clearTimeout(liveRegionTimeoutId);
+      liveRegionTimeoutId = undefined;
+    }
+
+    renderedLiveRegionMessage = '';
+    if (nextMessage === '') return;
+
+    liveRegionTimeoutId = setTimeout(() => {
+      if (liveRegionVersion !== currentVersion) return;
+      renderedLiveRegionMessage = nextMessage;
+      liveRegionTimeoutId = undefined;
+    }, 0);
+
+    return () => {
+      if (!liveRegionTimeoutId) return;
+      clearTimeout(liveRegionTimeoutId);
+      liveRegionTimeoutId = undefined;
+    };
+  });
+
+  $effect(() => {
     const cellId = activeCellId;
     if (cellId === undefined || cellId === previousActiveCellId) {
       previousActiveCellId = cellId;
@@ -193,6 +265,46 @@
     previousActiveCellId = cellId;
     document.getElementById(cellId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   });
+
+  $effect(() => {
+    const previousRowIds = previousSelectionRowIds;
+    const previousColumnKeys = previousSelectionColumnKeys;
+    const isInitialSelectionReconciliation =
+      previousRowIds === undefined || previousColumnKeys === undefined;
+    const didSelectionGeometryChange =
+      !isInitialSelectionReconciliation &&
+      (didStringArrayChange(previousRowIds, rowDomIds) ||
+        didStringArrayChange(previousColumnKeys, columnKeys));
+    previousSelectionRowIds = rowDomIds;
+    previousSelectionColumnKeys = columnKeys;
+    if (!isInitialSelectionReconciliation && !didSelectionGeometryChange) return;
+
+    selectionState.reconcile(activeCellCoordinates);
+    if (!didSelectionGeometryChange) return;
+
+    syncRequestedActiveCell();
+  });
+
+  function syncRequestedActiveCell(): void {
+    const activeCell = selectionState.activeCell;
+    if (!activeCell) return;
+
+    const nextActiveRowIndex = rowDomIds.indexOf(activeCell.rowId);
+    if (nextActiveRowIndex >= 0 && requestedActiveRowIndex !== nextActiveRowIndex) {
+      requestedActiveRowIndex = nextActiveRowIndex;
+    }
+    if (requestedActiveColumnKey !== activeCell.columnKey) {
+      requestedActiveColumnKey = activeCell.columnKey;
+    }
+  }
+
+  function didStringArrayChange(
+    previousValues: readonly string[],
+    nextValues: readonly string[],
+  ): boolean {
+    if (previousValues.length !== nextValues.length) return true;
+    return previousValues.some((value, index) => value !== nextValues[index]);
+  }
 
   function getCellId(rowId: string, columnKey: string): string {
     return `${gridId}-cell-r-${toDomIdSegment(rowId)}-c-${toDomIdSegment(columnKey)}`;
@@ -263,13 +375,205 @@
     onSortModelChange?.(nextSortModel);
   }
 
-  function moveActiveCell(rowIndex: number, columnIndex: number): void {
+  function getCellCoordinate(
+    rowIndex: number,
+    columnIndex: number,
+  ): DataGridCellCoordinate | undefined {
+    const rowId = rowDomIds[Math.min(Math.max(rowIndex, 0), rowDomIds.length - 1)];
+    const columnKey = columnKeys[Math.min(Math.max(columnIndex, 0), columnKeys.length - 1)];
+    if (rowId === undefined || columnKey === undefined) return undefined;
+    return { rowId, columnKey };
+  }
+
+  function moveActiveCell(rowIndex: number, columnIndex: number, extend = false): void {
     if (sortedKeyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
     requestedActiveRowIndex = Math.min(Math.max(rowIndex, 0), sortedKeyedRows.length - 1);
     requestedActiveColumnKey =
       columnModel.renderColumns[
         Math.min(Math.max(columnIndex, 0), columnModel.renderColumns.length - 1)
       ]?.key;
+
+    const cell = getCellCoordinate(rowIndex, columnIndex);
+    if (cell) selectionState.setActiveCell(cell, { extend });
+  }
+
+  function setSelectionModel(nextSelectionModel: DataGridSelectionModel): void {
+    selectionModel = nextSelectionModel;
+    onSelectionModelChange?.(nextSelectionModel);
+  }
+
+  function updateRowSelection(rowId: string, event: MouseEvent | KeyboardEvent): void {
+    if (selectionMode === 'none') return;
+    if (selectionMode === 'single') {
+      setSelectionModel([rowId]);
+      return;
+    }
+
+    const isToggle = event.ctrlKey || event.metaKey;
+    if (event.shiftKey) return;
+    if (!isToggle) {
+      setSelectionModel([rowId]);
+      return;
+    }
+
+    const nextSelection = new Set(resolvedSelectionModel);
+    if (nextSelection.has(rowId)) nextSelection.delete(rowId);
+    else nextSelection.add(rowId);
+    setSelectionModel([...nextSelection]);
+  }
+
+  function selectActiveCell(event: KeyboardEvent): void {
+    const row = sortedKeyedRows[activeRowIndex];
+    if (!row || activeColumnKey === undefined || activeRowDomId === undefined) return;
+    selectionState.setActiveCell(
+      { rowId: activeRowDomId, columnKey: activeColumnKey },
+      { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey },
+    );
+    updateRowSelection(row.rowId, event);
+  }
+
+  function collapseSelectionToActiveCell(): void {
+    selectionState.collapseToActiveCell();
+    if (selectionMode === 'none') return;
+
+    const row = sortedKeyedRows[activeRowIndex];
+    setSelectionModel(row ? [row.rowId] : []);
+  }
+
+  async function copySelectedCells(): Promise<void> {
+    const cells =
+      selectionState.selectedCellCoordinates.length > 0
+        ? sortCellsByGridOrder(selectionState.selectedCellCoordinates)
+        : activeCellCoordinates
+          ? [activeCellCoordinates]
+          : [];
+    if (cells.length === 0) return;
+
+    const rowsByDomId = new Map(keyedRows.map((row) => [row.rowDomId, row.row]));
+    const columnsByKey = new Map(columnModel.renderColumns.map((column) => [column.key, column]));
+    const cellsByRow = new Map<string, DataGridCellCoordinate[]>();
+    for (const cell of cells) {
+      const rowCells = cellsByRow.get(cell.rowId);
+      if (rowCells) rowCells.push(cell);
+      else cellsByRow.set(cell.rowId, [cell]);
+    }
+    const text = [...cellsByRow.entries()]
+      .map(([rowId, rowCells]) => {
+        const row = rowsByDomId.get(rowId);
+        if (!row) return '';
+        return rowCells
+          .map((cell) => {
+            const column = columnsByKey.get(cell.columnKey);
+            if (!column) return '';
+            return formatDataGridValue(getDataGridColumnValue(row, column));
+          })
+          .join('\t');
+      })
+      .join('\n');
+
+    const copied = await copyToClipboard(text);
+    if (copied) {
+      announceCopiedCells(`Copied ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`);
+      return;
+    }
+    announceCopiedCells('Copy failed');
+  }
+
+  function announceCopiedCells(message: string): void {
+    liveRegionMessage = message;
+    liveRegionAnnouncementSequence += 1;
+  }
+
+  function sortCellsByGridOrder(
+    cells: readonly DataGridCellCoordinate[],
+  ): DataGridCellCoordinate[] {
+    const rowIndexes = new Map(rowDomIds.map((rowId, index) => [rowId, index]));
+    const columnIndexes = new Map(columnKeys.map((columnKey, index) => [columnKey, index]));
+    return [...cells].sort((left, right) => {
+      const leftRowIndex = rowIndexes.get(left.rowId) ?? Number.POSITIVE_INFINITY;
+      const rightRowIndex = rowIndexes.get(right.rowId) ?? Number.POSITIVE_INFINITY;
+      if (leftRowIndex !== rightRowIndex) return leftRowIndex - rightRowIndex;
+
+      const leftColumnIndex = columnIndexes.get(left.columnKey) ?? Number.POSITIVE_INFINITY;
+      const rightColumnIndex = columnIndexes.get(right.columnKey) ?? Number.POSITIVE_INFINITY;
+      return leftColumnIndex - rightColumnIndex;
+    });
+  }
+
+  function handleCellClick(
+    event: MouseEvent,
+    rowId: string,
+    rowDomId: string,
+    columnKey: string,
+    rowIndex: number,
+  ): void {
+    requestedActiveRowIndex = rowIndex;
+    requestedActiveColumnKey = columnKey;
+    selectionState.setActiveCell(
+      { rowId: rowDomId, columnKey },
+      { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey },
+    );
+    updateRowSelection(rowId, event);
+    if (!isInteractiveEventTarget(event)) gridElement?.focus({ preventScroll: true });
+  }
+
+  function handleBodyClick(event: MouseEvent): void {
+    const cell = getCellEventDetail(event);
+    if (!cell) return;
+    handleCellClick(event, cell.rowId, cell.rowDomId, cell.columnKey, cell.rowIndex);
+  }
+
+  function handleCellKeydown(
+    event: KeyboardEvent,
+    rowId: string,
+    rowDomId: string,
+    columnKey: string,
+    rowIndex: number,
+  ): void {
+    if (isInteractiveEventTarget(event)) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    event.stopPropagation();
+    requestedActiveRowIndex = rowIndex;
+    requestedActiveColumnKey = columnKey;
+    selectionState.setActiveCell(
+      { rowId: rowDomId, columnKey },
+      { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey },
+    );
+    updateRowSelection(rowId, event);
+    gridElement?.focus({ preventScroll: true });
+  }
+
+  function handleBodyKeydown(event: KeyboardEvent): void {
+    const cell = getCellEventDetail(event);
+    if (!cell) return;
+    handleCellKeydown(event, cell.rowId, cell.rowDomId, cell.columnKey, cell.rowIndex);
+  }
+
+  function getCellEventDetail(
+    event: Event,
+  ): { rowId: string; rowDomId: string; columnKey: string; rowIndex: number } | undefined {
+    if (!(event.target instanceof Element)) return undefined;
+    const cell = event.target.closest<HTMLElement>('.cinder-data-grid__cell');
+    if (!cell) return undefined;
+
+    const { cinderRowId, cinderRowDomId, cinderColumnKey, cinderRowIndex } = cell.dataset;
+    const rowIndex = Number(cinderRowIndex);
+    if (
+      cinderRowId === undefined ||
+      cinderRowDomId === undefined ||
+      cinderColumnKey === undefined ||
+      !Number.isInteger(rowIndex)
+    ) {
+      return undefined;
+    }
+
+    return {
+      rowId: cinderRowId,
+      rowDomId: cinderRowDomId,
+      columnKey: cinderColumnKey,
+      rowIndex,
+    };
   }
 
   function handleKeydown(event: KeyboardEvent): void {
@@ -280,51 +584,62 @@
     if (event.target instanceof Element && event.target.closest('.cinder-data-grid__sort-button')) {
       return;
     }
+    if (isInteractiveEventTarget(event)) return;
 
     if (sortedKeyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
 
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      moveActiveCell(activeRowIndex, activeColumnIndex + 1);
+    const action = dataGridKeyToAction(event, {
+      activeRowIndex,
+      activeColumnIndex,
+      rowCount: sortedKeyedRows.length,
+      columnCount: columnModel.renderColumns.length,
+    });
+    if (!action) return;
+
+    event.preventDefault();
+
+    if (action.type === 'move-cell') {
+      moveActiveCell(action.rowIndex, action.columnIndex, action.extend);
       return;
     }
 
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      moveActiveCell(activeRowIndex, activeColumnIndex - 1);
+    if (action.type === 'select-all') {
+      selectionState.selectAll();
+      syncRequestedActiveCell();
+      if (selectionMode === 'multiple') {
+        setSelectionModel(sortedKeyedRows.map((row) => row.rowId));
+      } else if (selectionMode === 'single') {
+        const row = sortedKeyedRows[activeRowIndex];
+        setSelectionModel(row ? [row.rowId] : []);
+      }
       return;
     }
 
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      moveActiveCell(activeRowIndex + 1, activeColumnIndex);
+    if (action.type === 'collapse-selection') {
+      collapseSelectionToActiveCell();
       return;
     }
 
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      moveActiveCell(activeRowIndex - 1, activeColumnIndex);
+    if (action.type === 'select-active-cell') {
+      selectActiveCell(event);
       return;
     }
 
-    if (event.key === 'Home') {
-      event.preventDefault();
-      moveActiveCell(event.ctrlKey ? 0 : activeRowIndex, 0);
-      return;
+    if (action.type === 'copy-selection') {
+      void copySelectedCells();
     }
+  }
 
-    if (event.key === 'End') {
-      event.preventDefault();
-      moveActiveCell(
-        event.ctrlKey ? sortedKeyedRows.length - 1 : activeRowIndex,
-        columnModel.renderColumns.length - 1,
-      );
-    }
+  function isInteractiveEventTarget(event: Event): boolean {
+    if (!(event.target instanceof Element)) return false;
+    const interactiveElement = event.target.closest(interactiveDescendantSelector);
+    return interactiveElement !== null && interactiveElement !== gridElement;
   }
 </script>
 
 <div
   {...rest}
+  bind:this={gridElement}
   class={classNames('cinder-data-grid', className)}
   role="grid"
   aria-rowcount={rows.length + 1}
@@ -332,6 +647,7 @@
   aria-label={resolvedAriaLabel}
   aria-labelledby={resolvedAriaLabelledBy}
   aria-activedescendant={activeCellId}
+  aria-multiselectable="true"
   tabindex="0"
   onkeydown={handleKeydown}
   data-cinder-density={density}
@@ -388,28 +704,46 @@
     {/each}
   </div>
 
-  <div class="cinder-data-grid__body" role="rowgroup">
+  <div
+    class="cinder-data-grid__body"
+    role="rowgroup"
+    onclick={handleBodyClick}
+    onkeydown={handleBodyKeydown}
+  >
     {#each sortedKeyedRows as keyedRow, visualRowIndex (keyedRow.rowKey)}
       {@const row = keyedRow.row}
-      {@const rowId = keyedRow.rowDomId}
+      {@const rowId = keyedRow.rowId}
+      {@const rowDomId = keyedRow.rowDomId}
       {@const rowIndex = visualRowIndex}
       <div
         class={classNames('cinder-data-grid__row', getRowClass(row, rowIndex))}
         role="row"
         aria-rowindex={visualRowIndex + 2}
         aria-label={getResolvedRowAriaLabel(row, rowIndex)}
+        aria-selected={selectedRowIds.has(rowId) ? 'true' : undefined}
+        data-cinder-selected={selectedRowIds.has(rowId) ? 'true' : undefined}
       >
         {#each columnModel.renderColumns as column (column.key)}
           {@const value = getDataGridColumnValue(row, column)}
-          {@const cellId = getCellId(rowId, column.key)}
+          {@const cellId = getCellId(rowDomId, column.key)}
+          {@const cellCoordinates = { rowId: rowDomId, columnKey: column.key }}
+          {@const isSelectedCell = selectionState.isCellSelected(cellCoordinates)}
+          {@const isAnchorCell = selectionState.isAnchorCell(cellCoordinates)}
           <div
             id={cellId}
             class="cinder-data-grid__cell"
             role="gridcell"
             aria-colindex={column.colIndex}
+            aria-selected={isSelectedCell ? 'true' : undefined}
             tabindex="-1"
             data-cinder-pin={column.pin}
             data-cinder-active={activeCellId === cellId ? 'true' : undefined}
+            data-cinder-selected={isSelectedCell ? 'true' : undefined}
+            data-cinder-anchor={isAnchorCell ? 'true' : undefined}
+            data-cinder-row-id={rowId}
+            data-cinder-row-dom-id={rowDomId}
+            data-cinder-column-key={column.key}
+            data-cinder-row-index={visualRowIndex}
             style={getCellStyle(column)}
           >
             {#if column.cell}
@@ -422,4 +756,13 @@
       </div>
     {/each}
   </div>
+</div>
+
+<div
+  class="cinder-sr-only cinder-data-grid__live-region"
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+>
+  {renderedLiveRegionMessage}
 </div>

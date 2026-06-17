@@ -3,6 +3,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 
 export type DataGridDensity = 'compact' | 'comfortable' | 'spacious';
 export type DataGridColumnPin = 'left' | 'right';
+export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
 export type DataGridSortDirection = 'ascending' | 'descending';
 
 export type DataGridSortModelItem = {
@@ -72,6 +73,8 @@ export type DataGridColumnPinning = {
   right?: readonly string[];
 };
 
+export type DataGridSelectionModel = readonly string[];
+
 export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   HTMLAttributes<HTMLDivElement>,
   'class' | 'role'
@@ -90,6 +93,12 @@ export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   columnSizing?: DataGridColumnSizing;
   /** Pins supplied column keys to the left or right edge. */
   columnPinning?: DataGridColumnPinning;
+  /** Controls row-selection behavior. Cell focus and range selection remain available. */
+  selectionMode?: DataGridSelectionMode;
+  /** Controlled row-selection ids, keyed by `getRowId`. */
+  selectionModel?: DataGridSelectionModel | undefined;
+  /** Called when row selection changes through cell interaction. */
+  onSelectionModelChange?: (selectionModel: DataGridSelectionModel) => void;
   /** Controls the row sort order used to render rows. */
   sortModel?: DataGridSortModel;
   /** Called after the user changes sort order and DataGrid updates `sortModel`. */

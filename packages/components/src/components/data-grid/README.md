@@ -1,6 +1,6 @@
 # DataGrid
 
-Static ARIA data grid foundation for spreadsheet-like datasets with stable row identity, explicit column widths, keyboard navigation, and pinned-column metadata.
+ARIA data grid foundation for spreadsheet-like datasets with stable row identity, explicit column widths, keyboard navigation, row selection, cell/range selection, and pinned-column metadata.
 
 ## Usage
 
@@ -28,32 +28,35 @@ Static ARIA data grid foundation for spreadsheet-like datasets with stable row i
 ### Use When
 
 - Rendering an interactive tabular surface that needs grid semantics instead of native table semantics.
-- Preparing for follow-up DataGrid capabilities such as selection, virtualization, resizing, reordering, or editing.
+- You need built-in row selection, cell focus, range selection, and copy behavior before adding virtualization or editing.
 
 ### Avoid When
 
 - You only need a semantic read-only table — use DataTable or the Table family instead.
-- You need sorting, selection, virtualization, resize handles, drag-to-reorder controls, or editing today.
+- You need sorting, virtualization, resize handles, drag-to-reorder controls, or editing today.
 
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop                | Type                                           | Required | Default | Description                                                                                                                                           |
-| ------------------- | ---------------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`             | `string`                                       | no       | —       | Additional class names merged onto the root grid.                                                                                                     |
-| `columnOrder`       | `string`[]                                     | no       | —       | Applies a supplied column order.                                                                                                                      |
-| `columnSizing`      | `object`                                       | no       | —       | Overrides resolved column widths by column key.                                                                                                       |
-| `density`           | `"compact"` \| `"comfortable"` \| `"spacious"` | no       | —       | Controls body row padding density. Defaults to `'comfortable'`.                                                                                       |
-| `stickyHeader`      | `boolean`                                      | no       | —       | Keeps the column header row pinned to the top edge while scrolling. Defaults to `true`.                                                               |
-| `columnPinning`     | `(opaque)`                                     | no       | —       | Pins supplied column keys to the left or right edge. Not expressible in JSON Schema; see the component types for the signature.                       |
-| `columns`           | `(opaque)`                                     | yes      | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                               |
-| `getRowAriaLabel`   | `(opaque)`                                     | no       | —       | Optional accessible row label for screen-reader row summaries. Not expressible in JSON Schema; see the component types for the signature.             |
-| `getRowId`          | `(opaque)`                                     | yes      | —       | Stable row identity used for ARIA ids and row-scoped state. Not expressible in JSON Schema; see the component types for the signature.                |
-| `onSortModelChange` | `(opaque)`                                     | no       | —       | Called after the user changes sort order and DataGrid updates `sortModel`. Not expressible in JSON Schema; see the component types for the signature. |
-| `rowClass`          | `(opaque)`                                     | no       | —       | Additional class names for body rows. Not expressible in JSON Schema; see the component types for the signature.                                      |
-| `rows`              | `(opaque)`                                     | yes      | —       | A generically typed prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                              |
-| `sortModel`         | `(opaque)`                                     | no       | —       | Controls the row sort order used to render rows. Not expressible in JSON Schema; see the component types for the signature.                           |
+| Prop                     | Type                                           | Required | Default | Description                                                                                                                                           |
+| ------------------------ | ---------------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`                  | `string`                                       | no       | —       | Additional class names merged onto the root grid.                                                                                                     |
+| `columnOrder`            | `string`[]                                     | no       | —       | Applies a supplied column order.                                                                                                                      |
+| `columnSizing`           | `object`                                       | no       | —       | Overrides resolved column widths by column key.                                                                                                       |
+| `density`                | `"compact"` \| `"comfortable"` \| `"spacious"` | no       | —       | Controls body row padding density. Defaults to `'comfortable'`.                                                                                       |
+| `selectionMode`          | `"none"` \| `"single"` \| `"multiple"`         | no       | —       | Controls row-selection behavior. Cell focus and range selection remain available.                                                                     |
+| `selectionModel`         | `string`[]                                     | no       | —       | Controlled row-selection ids, keyed by `getRowId`.                                                                                                    |
+| `stickyHeader`           | `boolean`                                      | no       | —       | Keeps the column header row pinned to the top edge while scrolling. Defaults to `true`.                                                               |
+| `columnPinning`          | `(opaque)`                                     | no       | —       | Pins supplied column keys to the left or right edge. Not expressible in JSON Schema; see the component types for the signature.                       |
+| `columns`                | `(opaque)`                                     | yes      | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                               |
+| `getRowAriaLabel`        | `(opaque)`                                     | no       | —       | Optional accessible row label for screen-reader row summaries. Not expressible in JSON Schema; see the component types for the signature.             |
+| `getRowId`               | `(opaque)`                                     | yes      | —       | Stable row identity used for ARIA ids and row-scoped state. Not expressible in JSON Schema; see the component types for the signature.                |
+| `onSelectionModelChange` | `(opaque)`                                     | no       | —       | Called when row selection changes through cell interaction. Not expressible in JSON Schema; see the component types for the signature.                |
+| `onSortModelChange`      | `(opaque)`                                     | no       | —       | Called after the user changes sort order and DataGrid updates `sortModel`. Not expressible in JSON Schema; see the component types for the signature. |
+| `rowClass`               | `(opaque)`                                     | no       | —       | Additional class names for body rows. Not expressible in JSON Schema; see the component types for the signature.                                      |
+| `rows`                   | `(opaque)`                                     | yes      | —       | A generically typed prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                              |
+| `sortModel`              | `(opaque)`                                     | no       | —       | Controls the row sort order used to render rows. Not expressible in JSON Schema; see the component types for the signature.                           |
 
 <!-- generated:props:end -->
 

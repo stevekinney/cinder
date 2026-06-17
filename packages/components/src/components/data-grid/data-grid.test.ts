@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import type { Component } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -9,8 +9,12 @@ import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
 setupHappyDom();
 
 const { createRawSnippet, tick } = await import('svelte');
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: DataGrid } = await import('./data-grid.svelte');
+
+afterEach(() => {
+  cleanup();
+});
 
 type Order = {
   id: string;
@@ -79,6 +83,56 @@ describe('DataGrid', () => {
 
     expect(container.querySelector('[data-testid="header"]')?.textContent).toBe('Amount');
     expect(container.querySelector('[data-testid="cell"]')?.textContent).toBe('124:false');
+  });
+
+  test('keeps focus on interactive custom cell content after click', async () => {
+    const cell = createRawSnippet(() => ({
+      render: () => '<input data-testid="cell-input" value="Ada Lovelace" />',
+    }));
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns: [{ key: 'customer', header: 'Customer', cell }],
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const input = container.querySelector<HTMLInputElement>('[data-testid="cell-input"]');
+    if (!input) throw new Error('Expected custom cell input to render');
+
+    input.focus();
+    await fireEvent.click(input);
+
+    expect(document.activeElement).toBe(input);
+  });
+
+  test('lets interactive custom cell content handle bubbled shortcuts', () => {
+    const onSelectionModelChange = mock();
+    const cell = createRawSnippet(() => ({
+      render: () => '<input data-testid="cell-input" value="Ada Lovelace" />',
+    }));
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns: [{ key: 'customer', header: 'Customer', cell }],
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const input = container.querySelector<HTMLInputElement>('[data-testid="cell-input"]');
+    if (!input) throw new Error('Expected custom cell input to render');
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'a',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(onSelectionModelChange).not.toHaveBeenCalled();
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]')).toHaveLength(0);
   });
 
   test('moves the active descendant with keyboard navigation', async () => {

@@ -10,5 +10,7 @@ export type {
   DataGridColumnSizing,
   DataGridDensity,
   DataGridProps,
+  DataGridSelectionMode,
+  DataGridSelectionModel,
 } from './data-grid.types.ts';
 export { DataGrid };

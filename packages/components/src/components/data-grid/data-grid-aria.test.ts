@@ -46,6 +46,19 @@ describe('DataGrid ARIA', () => {
     expect(grid?.getAttribute('aria-colcount')).toBe(String(columns.length));
   });
 
+  test('announces multiselectable grid behavior before a range is selected', () => {
+    const { container } = render(IssueDataGrid, {
+      rows,
+      columns,
+      getRowId: getIssueId,
+      'aria-label': 'Issues',
+    });
+
+    expect(container.querySelector('[role="grid"]')?.getAttribute('aria-multiselectable')).toBe(
+      'true',
+    );
+  });
+
   test('assigns one-based row and column indexes', () => {
     const { container } = render(IssueDataGrid, {
       rows,
