@@ -148,7 +148,7 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
       scrollToFn: this.#scrollToOffset,
       measureElement: this.#measureElement,
       onChange: () => this.#update(),
-      indexAttribute: 'data-cinder-data-grid-virtual-index',
+      indexAttribute: 'data-cinder-virtual-index',
     };
   }
 

@@ -24,6 +24,10 @@ const columns: DataGridColumnDef<LogRow>[] = [
   { key: 'message', header: 'Message', width: 180 },
   { key: 'owner', header: 'Owner', width: 120 },
 ];
+const sortableColumns: DataGridColumnDef<LogRow>[] = [
+  { key: 'message', header: 'Message', width: 180, sortable: true },
+  { key: 'owner', header: 'Owner', width: 120 },
+];
 
 const getLogRowId = (row: LogRow) => row.id;
 const LogDataGrid = DataGrid as Component<DataGridProps<LogRow>>;
@@ -122,6 +126,40 @@ describe('DataGrid row virtualization', () => {
     expect(activeCell).not.toBeNull();
     expect(activeCell?.getAttribute('data-cinder-active')).toBe('true');
     expect(activeRow).not.toBeUndefined();
+    expect(activeRow?.getAttribute('aria-rowindex')).toBe('101');
+  });
+
+  test('sorting scrolls a retained active row into its new virtual position', async () => {
+    const rows = makeRows(100);
+    const view = render(LogDataGrid, {
+      rows,
+      columns: sortableColumns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+    const { container } = view;
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    if (!grid) throw new Error('Expected DataGrid root');
+
+    await fireEvent.click(container.querySelector<HTMLElement>('[role="gridcell"]')!);
+    await view.rerender({
+      rows,
+      columns: sortableColumns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      sortModel: [{ key: 'message', direction: 'descending' }],
+      'aria-label': 'Logs',
+    });
+
+    await waitFor(() =>
+      expect(dataRows(container).some((row) => row.textContent?.includes('Message 0'))).toBe(true),
+    );
+    const activeRow = dataRows(container).find((row) => row.textContent?.includes('Message 0'));
+
     expect(activeRow?.getAttribute('aria-rowindex')).toBe('101');
   });
 

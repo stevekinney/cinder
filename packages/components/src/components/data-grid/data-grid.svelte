@@ -243,6 +243,7 @@
   let hasWarnedNoLabel = false;
   let warnedDuplicateRowIdsSignature: string | undefined;
   let previousActiveCellId: string | undefined;
+  let previousActiveVirtualRowIndex: number | undefined;
   let previousSelectionRowIds: readonly string[] | undefined;
   let previousSelectionColumnKeys: readonly string[] | undefined;
   let gridElement: HTMLDivElement | undefined;
@@ -311,17 +312,24 @@
 
   $effect(() => {
     const cellId = activeCellId;
-    if (cellId === undefined || cellId === previousActiveCellId) {
+    const activeVirtualRowIndex = shouldVirtualizeRows ? activeRowIndex : undefined;
+    if (
+      cellId === undefined ||
+      (cellId === previousActiveCellId && activeVirtualRowIndex === previousActiveVirtualRowIndex)
+    ) {
       previousActiveCellId = cellId;
+      previousActiveVirtualRowIndex = activeVirtualRowIndex;
       return;
     }
 
-    if (previousActiveCellId === undefined) {
+    if (previousActiveCellId === undefined && previousActiveVirtualRowIndex === undefined) {
       previousActiveCellId = cellId;
+      previousActiveVirtualRowIndex = activeVirtualRowIndex;
       return;
     }
 
     previousActiveCellId = cellId;
+    previousActiveVirtualRowIndex = activeVirtualRowIndex;
     if (shouldVirtualizeRows) {
       rowVirtualizer.scrollToRow(activeRowIndex);
     }

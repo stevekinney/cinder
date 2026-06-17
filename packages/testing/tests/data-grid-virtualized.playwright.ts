@@ -91,12 +91,16 @@ test.describe('DataGrid row virtualization', () => {
     await grid.focus();
     await page.keyboard.press('Control+End');
     await expect
-      .poll(() => grid.getAttribute('aria-activedescendant'))
-      .toContain('6c_6f_67_2d_34_39_39_39_39');
+      .poll(async () => {
+        const activeId = await grid.getAttribute('aria-activedescendant');
+        if (!activeId) return null;
 
-    const activeId = await grid.getAttribute('aria-activedescendant');
-    expect(activeId).toBeTruthy();
-    await expect(page.locator(`${virtualizedExample} [id="${activeId}"]`)).toHaveCount(1);
+        return page
+          .locator(`${virtualizedExample} [id="${activeId}"]`)
+          .locator('xpath=ancestor::*[@role="row"][1]')
+          .getAttribute('aria-rowindex');
+      })
+      .toBe('50001');
 
     const buckets = await runAxe(
       page,
