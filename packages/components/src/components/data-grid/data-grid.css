@@ -78,6 +78,29 @@
     box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
+  .cinder-data-grid__cell[data-cinder-selected] {
+    box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--cinder-accent) 14%, transparent);
+  }
+
+  .cinder-data-grid__cell[data-cinder-selected][data-cinder-active] {
+    box-shadow:
+      inset 0 0 0 999px color-mix(in srgb, var(--cinder-accent) 14%, transparent),
+      inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  .cinder-data-grid__cell[data-cinder-anchor] {
+    box-shadow:
+      inset 0 0 0 999px color-mix(in srgb, var(--cinder-accent) 14%, transparent),
+      inset 0 0 0 max(2px, var(--cinder-ring-width)) var(--cinder-accent);
+  }
+
+  .cinder-data-grid__cell[data-cinder-anchor][data-cinder-active] {
+    box-shadow:
+      inset 0 0 0 999px color-mix(in srgb, var(--cinder-accent) 14%, transparent),
+      inset 0 0 0 max(2px, var(--cinder-ring-width)) var(--cinder-accent),
+      inset 0 0 0 calc(max(2px, var(--cinder-ring-width)) + 2px) var(--cinder-ring-color);
+  }
+
   .cinder-data-grid__header-cell[data-cinder-pin],
   .cinder-data-grid__cell[data-cinder-pin] {
     position: sticky;
@@ -108,5 +131,33 @@
   .cinder-data-grid[data-cinder-density='spacious'] .cinder-data-grid__cell {
     padding-block: var(--cinder-space-3);
     padding-inline: var(--cinder-space-4);
+  }
+
+  .cinder-data-grid__live-region {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-data-grid__cell[data-cinder-selected] {
+      forced-color-adjust: none;
+      background: Highlight;
+      color: HighlightText;
+      box-shadow: inset 0 0 0 1px HighlightText;
+    }
+
+    .cinder-data-grid__cell[data-cinder-active],
+    .cinder-data-grid__cell[data-cinder-anchor],
+    .cinder-data-grid__cell[data-cinder-selected][data-cinder-active],
+    .cinder-data-grid__cell[data-cinder-anchor][data-cinder-active] {
+      outline: 2px solid ButtonText;
+      outline-offset: -2px;
+      box-shadow: none;
+    }
   }
 }

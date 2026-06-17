@@ -1283,7 +1283,7 @@
       "exportName": "DataGrid",
       "category": "data-display",
       "status": "alpha",
-      "purpose": "Static ARIA data grid foundation for spreadsheet-like datasets with explicit row identity, column sizing, keyboard navigation, and pinning metadata.",
+      "purpose": "ARIA data grid foundation for spreadsheet-like datasets with explicit row identity, column sizing, keyboard navigation, range selection, and pinning metadata.",
       "tags": ["grid", "data", "spreadsheet"],
       "useWhen": [
         "Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.",
@@ -1294,7 +1294,7 @@
           "reason": "You only need a semantic read-only table — use DataTable or the Table family instead."
         },
         {
-          "reason": "You need sorting, selection, virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet."
+          "reason": "You need sorting, virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet."
         }
       ],
       "related": ["data-table", "table"],

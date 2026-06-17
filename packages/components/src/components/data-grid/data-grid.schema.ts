@@ -27,6 +27,18 @@ const schema = {
       },
       description: 'Overrides resolved column widths by column key.',
     },
+    selectionMode: {
+      enum: ['none', 'single', 'multiple'],
+      description:
+        'Controls row-selection behavior. Cell focus and range selection remain available.',
+    },
+    selectionModel: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+      description: 'Controlled row-selection ids, keyed by `getRowId`.',
+    },
     class: {
       type: 'string',
       description: 'Additional class names merged onto the root grid.',
@@ -55,6 +67,11 @@ const schema = {
         reason: 'function-or-snippet',
         required: true,
         description: 'Stable row identity used for ARIA ids and row-scoped state.',
+      },
+      {
+        name: 'onSelectionModelChange',
+        reason: 'function-or-snippet',
+        description: 'Called when row selection changes through cell interaction.',
       },
       {
         name: 'rowClass',
