@@ -4,6 +4,7 @@
 
   import Announcer from './announcer.svelte';
   import {
+    announceLandingNavigation,
     announceNavigation,
     Announcer as AnnouncerStore,
     setAnnouncer,
@@ -18,15 +19,17 @@
   } from './preview-store.svelte.ts';
   import { buildShellHref, parseComponentFromPath, readToolbarStateFromSearch } from './routing.ts';
   import ColorTokenPanel from './color-token-panel.svelte';
+  import LandingPage from './landing-page.svelte';
   import Sidebar, { type SidebarHandle } from './sidebar.svelte';
   import TopBar from './top-bar.svelte';
 
   type Props = {
     initialComponent: string;
     components: string[];
+    readmeHtml: string;
   };
 
-  let { initialComponent, components }: Props = $props();
+  let { initialComponent, components, readmeHtml }: Props = $props();
 
   // Bound to the Sidebar instance so the `/` shortcut can focus its filter.
   let sidebar = $state<SidebarHandle | null>(null);
@@ -161,7 +164,12 @@
 
   async function handlePopState(): Promise<void> {
     const parsed = parseComponentFromPath(window.location.pathname);
-    if (parsed !== null) store.currentComponent = parsed;
+    const isRootPath = window.location.pathname === '/';
+    if (parsed !== null) {
+      store.currentComponent = parsed;
+    } else if (isRootPath) {
+      store.currentComponent = '';
+    }
     // Re-sync the toolbar (theme/viewport/focus mode) from the URL *before*
     // announcing so the toolbar reflects the restored state by the time focus
     // lands on <main>.
@@ -171,6 +179,7 @@
     // 2.4.2 / 4.1.3 / 2.4.3). Guard on a resolved component, mirroring the
     // null check above.
     if (parsed !== null) await announceNavigation(announcer, parsed, () => mainEl);
+    else if (isRootPath) await announceLandingNavigation(announcer, () => mainEl);
   }
 
   /**
@@ -317,7 +326,15 @@
     the Tab order. bind:this gives selectComponent a handle to call .focus().
   -->
   <main bind:this={mainEl} tabindex="-1">
-    <PreviewFrame bind:this={previewFrame} componentName={store.currentComponent} />
+    {#if store.currentComponent === ''}
+      <LandingPage
+        {readmeHtml}
+        firstComponent={components[0] ?? ''}
+        onBrowseComponent={selectComponent}
+      />
+    {:else}
+      <PreviewFrame bind:this={previewFrame} componentName={store.currentComponent} />
+    {/if}
   </main>
   <Announcer />
 </div>

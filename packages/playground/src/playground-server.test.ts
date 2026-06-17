@@ -34,6 +34,7 @@ import {
   PORT,
   createHttpServerOnAvailablePort,
   handleRequest,
+  rewriteRepositoryRelativeReadmeLinks,
   triggerReload,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
@@ -209,11 +210,59 @@ describe('/styles.css', () => {
 });
 
 describe('/', () => {
-  it('redirects to /c/<first-component>', async () => {
+  it('returns README-backed landing shell HTML', async () => {
     const response = await handleRequest(req('/'));
-    expect(response.status).toBe(302);
-    const location = response.headers.get('Location');
-    expect(location).toMatch(/^\/c\//);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/html');
+    const html = await response.text();
+    expect(html).toContain('<!DOCTYPE html>');
+    expect(html).toContain('id="shell-root"');
+    expect(html).toContain('id="cinder-initial"');
+    expect(html).toContain('/shell-bundle/shell.js');
+    expect(html).toContain('Components for product interfaces.');
+    expect(html).toContain('readmeHtml');
+    expect(html).not.toContain('http-equiv="refresh"');
+  });
+
+  it('embeds parseable rendered README HTML in the cinder-initial data island', async () => {
+    const response = await handleRequest(req('/'));
+    const html = await response.text();
+    const match = html.match(
+      /<script type="application\/json" id="cinder-initial">([^<]+)<\/script>/,
+    );
+    expect(match).not.toBeNull();
+    const payload = JSON.parse(match![1]!) as { component: string; readmeHtml: string };
+    expect(payload.component).toBe('');
+    expect(payload.readmeHtml).toContain('<h1>cinder</h1>');
+    expect(payload.readmeHtml).toContain('<h2>Install</h2>');
+    expect(payload.readmeHtml).not.toContain('href="./docs/');
+    expect(payload.readmeHtml).not.toContain('href="docs/');
+    expect(payload.readmeHtml).toContain(
+      'href="https://github.com/stevekinney/cinder/blob/main/docs/tokens.md"',
+    );
+  });
+});
+
+describe('rewriteRepositoryRelativeReadmeLinks', () => {
+  it('rewrites repository-relative README links to GitHub source URLs', () => {
+    const html =
+      '<a href="./docs/tokens.md">tokens</a><a href="docs/recipes/README.md">recipes</a>';
+    expect(rewriteRepositoryRelativeReadmeLinks(html)).toBe(
+      '<a href="https://github.com/stevekinney/cinder/blob/main/docs/tokens.md">tokens</a>' +
+        '<a href="https://github.com/stevekinney/cinder/blob/main/docs/recipes/README.md">recipes</a>',
+    );
+  });
+
+  it('leaves anchors, absolute paths, and protocol URLs untouched', () => {
+    const html =
+      '<a href="#install">install</a><a href="/c/button">button</a>' +
+      '<a href="https://example.com">external</a><a href="mailto:test@example.com">email</a>';
+    expect(rewriteRepositoryRelativeReadmeLinks(html)).toBe(html);
+  });
+
+  it('does not rewrite href text outside anchor tags', () => {
+    const html = '<code>&lt;a href="docs/tokens.md"&gt;tokens&lt;/a&gt;</code>';
+    expect(rewriteRepositoryRelativeReadmeLinks(html)).toBe(html);
   });
 });
 

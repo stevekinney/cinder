@@ -1,10 +1,10 @@
 # cinder
 
-Svelte 5 components for product interfaces.
+Components for product interfaces.
 
 The published package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The current generated manifest lists 155 public component entries across action, data-display, domain, feedback, form, layout, navigation, overlay, and typography categories.
 
-Use Cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data layer, or theme provider. The package is SSR-safe and targets Svelte `>=5.55.0 <6`.
+Use Cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data layer, or theme provider. The package is SSR-safe.
 
 ## Install
 
@@ -12,7 +12,9 @@ Use Cinder when you want UI building blocks without adopting a framework-level r
 bun add @lostgradient/cinder svelte lucide-svelte
 ```
 
-`svelte` and `lucide-svelte` are peer dependencies. Cinder uses Lucide for its own component chrome, but it does not provide a general icon library for your application-specific icons.
+`svelte` and `lucide-svelte` are peer dependencies. Cinder targets Svelte `>=5.55.0 <6`.
+It uses Lucide for its own component chrome, but it does not provide a general icon library for
+your application-specific icons.
 
 ## Quickstart
 
@@ -148,6 +150,9 @@ This repository is a Bun workspace.
 bun install
 bun run dev
 ```
+
+The playground opens at `/` with this README as its landing page. Component examples live under
+`/c/<component-id>`; for example, `/c/accordion` opens the Accordion component page.
 
 Useful root commands:
 

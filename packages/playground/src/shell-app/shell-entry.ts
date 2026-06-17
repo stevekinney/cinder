@@ -12,48 +12,20 @@
 
 import { mount } from 'svelte';
 
+import { parseInitialData, type InitialData } from './shell-initial-data.ts';
 import Shell from './shell.svelte';
-
-type InitialData = { component: string; components: string[] };
-
-/**
- * Validate that the parsed JSON payload matches the expected `InitialData`
- * shape and that every component name in the list satisfies the kebab-case
- * invariant the server enforces. This is defense-in-depth: render-shell
- * already validates server-side, but treating the data island as untrusted
- * input keeps the boundary explicit.
- */
-function isInitialData(value: unknown): value is InitialData {
-  if (typeof value !== 'object' || value === null) return false;
-  const record = value as Record<string, unknown>;
-  const component = record['component'];
-  const components = record['components'];
-  if (typeof component !== 'string') return false;
-  if (!Array.isArray(components)) return false;
-  const componentNamePattern = /^[a-z0-9][a-z0-9-]*$/;
-  // The active component can legitimately be absent from `components`: the
-  // server lists only sidebar-eligible components there (those with at least
-  // one .example.svelte), but `/c/<name>` accepts any discovered component.
-  // So we validate the component name's shape but NOT membership in the
-  // sidebar list — that would wipe the sidebar for a perfectly valid URL
-  // like /c/radio.
-  if (component !== '' && !componentNamePattern.test(component)) return false;
-  for (const item of components) {
-    if (typeof item !== 'string' || !componentNamePattern.test(item)) return false;
-  }
-  return true;
-}
 
 function readInitialData(): InitialData {
   const node = document.getElementById('cinder-initial');
-  if (!node) return { component: '', components: [] };
+  if (!node) return { component: '', components: [], readmeHtml: '' };
   try {
     const parsed: unknown = JSON.parse(node.textContent ?? '{}');
-    if (isInitialData(parsed)) return parsed;
+    const initialData = parseInitialData(parsed);
+    if (initialData !== null) return initialData;
   } catch (error) {
     console.error('[cinder playground] failed to parse #cinder-initial:', error);
   }
-  return { component: '', components: [] };
+  return { component: '', components: [], readmeHtml: '' };
 }
 
 const initial = readInitialData();
@@ -68,5 +40,6 @@ mount(Shell, {
   props: {
     initialComponent: initial.component,
     components: initial.components,
+    readmeHtml: initial.readmeHtml,
   },
 });

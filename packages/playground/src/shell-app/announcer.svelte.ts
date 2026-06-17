@@ -97,6 +97,18 @@ export async function announceNavigation(
   getMain()?.focus();
 }
 
+export async function announceLandingNavigation(
+  announcer: Announcer,
+  getMain: () => HTMLElement | null,
+): Promise<void> {
+  if (typeof document !== 'undefined') {
+    document.title = 'cinder playground — Svelte 5 component library';
+  }
+  announcer.announce('Viewing cinder playground');
+  await tick();
+  getMain()?.focus();
+}
+
 /** Install the singleton announcer on the current component tree. */
 export function setAnnouncer(announcer: Announcer): void {
   setContext(ANNOUNCER_KEY, announcer);

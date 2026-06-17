@@ -69,6 +69,7 @@
   // The custom-width number field is only visible when the viewport is
   // constrained to a numeric value (i.e., previewWidth is not null).
   let isCustomWidthVisible = $derived(store.previewWidth !== null);
+  let currentLocationLabel = $derived(store.currentComponent || 'README');
 
   function handleViewportChange(key: string): void {
     const preset = VIEWPORT_PRESETS.find((p) => p.key === key);
@@ -171,51 +172,53 @@
     <span class="wordmark" aria-label="Cinder design system">cinder</span>
   </div>
 
-  <Toolbar class="top-bar__toolbar" aria-label="Preview controls">
+  <Toolbar class="top-bar__toolbar" aria-label="Playground controls">
     <Toolbar.Group>
-      <span class="component-name" title={store.currentComponent} aria-label="Current component">
-        {store.currentComponent || ' '}
+      <span class="component-name" title={currentLocationLabel} aria-label="Current location">
+        {currentLocationLabel}
       </span>
     </Toolbar.Group>
 
-    <Toolbar.Group class="viewport-size-controls">
-      <SegmentedControl
-        id="viewport-preset"
-        label="Viewport width"
-        hideLabel
-        density="toolbar"
-        {...viewportPresetKey !== undefined ? { value: viewportPresetKey } : {}}
-        disallowEmptySelection={false}
-        onchange={handleViewportChange}
-      >
-        {#each VIEWPORT_SEGMENTED_OPTIONS as option (option.value)}
-          <Segment value={option.value}>{option.label}</Segment>
-        {/each}
-      </SegmentedControl>
+    {#if store.currentComponent !== ''}
+      <Toolbar.Group class="viewport-size-controls">
+        <SegmentedControl
+          id="viewport-preset"
+          label="Viewport width"
+          hideLabel
+          density="toolbar"
+          {...viewportPresetKey !== undefined ? { value: viewportPresetKey } : {}}
+          disallowEmptySelection={false}
+          onchange={handleViewportChange}
+        >
+          {#each VIEWPORT_SEGMENTED_OPTIONS as option (option.value)}
+            <Segment value={option.value}>{option.label}</Segment>
+          {/each}
+        </SegmentedControl>
 
-      {#if isCustomWidthVisible}
-        <!-- A native <input type="number"> renders the value as a plain integer
+        {#if isCustomWidthVisible}
+          <!-- A native <input type="number"> renders the value as a plain integer
              ("1280", never the locale-grouped "1,280") and exposes the browser's
              spinner. Its field is inline-size:100% and would otherwise stretch to
              fill the toolbar row, crushing the segmented controls — the
              .width-input wrapper pins it to a fixed width wide enough for a
              four-digit value plus the spinner. The block only renders when
              previewWidth is a number, so String(...) is always a bare integer. -->
-        <span class="width-input">
-          <Input
-            id="viewport-width-input"
-            type="number"
-            value={String(store.previewWidth)}
-            min={200}
-            max={3840}
-            step={1}
-            aria-label="Custom viewport width in pixels (200 to 3840)"
-            onchange={handleCustomWidthInput}
-          />
-        </span>
-        <span class="unit" aria-hidden="true">px</span>
-      {/if}
-    </Toolbar.Group>
+          <span class="width-input">
+            <Input
+              id="viewport-width-input"
+              type="number"
+              value={String(store.previewWidth)}
+              min={200}
+              max={3840}
+              step={1}
+              aria-label="Custom viewport width in pixels (200 to 3840)"
+              onchange={handleCustomWidthInput}
+            />
+          </span>
+          <span class="unit" aria-hidden="true">px</span>
+        {/if}
+      </Toolbar.Group>
+    {/if}
 
     <Toolbar.Group>
       <SegmentedControl

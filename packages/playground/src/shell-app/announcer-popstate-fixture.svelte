@@ -23,7 +23,11 @@
 
 <script lang="ts">
   import AnnouncerRegion from './announcer.svelte';
-  import { announceNavigation, setAnnouncer } from './announcer.svelte.ts';
+  import {
+    announceLandingNavigation,
+    announceNavigation,
+    setAnnouncer,
+  } from './announcer.svelte.ts';
   import { parseComponentFromPath } from './routing.ts';
 
   type Props = {
@@ -40,15 +44,21 @@
   let mainEl = $state<HTMLElement | null>(null);
 
   /**
-   * Replicates `shell.svelte`'s `handlePopState` exactly: guard on a resolved
-   * component, sync the toolbar from the URL first, then apply the navigation
-   * side effects (title + announcement + focus).
+   * Replicates `shell.svelte`'s `handlePopState` exactly: update the store for
+   * component routes and the root route, sync the toolbar from the URL first,
+   * then apply the navigation side effects (title + announcement + focus).
    */
   export async function popState(): Promise<void> {
     const parsed = parseComponentFromPath(window.location.pathname);
-    if (parsed !== null) store.currentComponent = parsed;
+    const isRootPath = window.location.pathname === '/';
+    if (parsed !== null) {
+      store.currentComponent = parsed;
+    } else if (isRootPath) {
+      store.currentComponent = '';
+    }
     store.syncFromUrl();
     if (parsed !== null) await announceNavigation(announcer, parsed, () => mainEl);
+    else if (isRootPath) await announceLandingNavigation(announcer, () => mainEl);
   }
 
   /** Imperative handle to the focus target. */

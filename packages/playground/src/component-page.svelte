@@ -1340,6 +1340,7 @@
     --dx-rail: 14.5rem;
     --dx-topbar-h: 3.25rem;
     min-height: 100vh;
+    border: 1px solid var(--cinder-border);
     background: light-dark(oklch(100% 0 0), var(--cinder-bg));
   }
 

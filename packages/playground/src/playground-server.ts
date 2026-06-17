@@ -2,7 +2,7 @@
  * Cinder component playground dev server.
  *
  * Runs at http://localhost:5555 by default, or the next available port. Routes:
- *   GET /              → 302 redirect to /c/<first-component>
+ *   GET /              → shell HTML with README landing content
  *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
  *   GET /page/:name    → component page HTML (the iframe target — lists examples)
  *   GET /page-bundle/:name.js → page-bundle entry OR a hashed code-split chunk.
@@ -28,6 +28,7 @@ import { randomUUID } from 'node:crypto';
 import { rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, isAbsolute, join, relative as relativePath, sep } from 'node:path';
 
+import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
 import type { BuildArtifact } from 'bun';
 import {
   componentSourcePath,
@@ -85,6 +86,7 @@ const MAX_PORT_SCAN_ATTEMPTS = 100;
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
 const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
+const REPOSITORY_README_LINK_BASE = 'https://github.com/stevekinney/cinder/blob/main/';
 
 /**
  * Page-bundle entries: keyed by component name → entry artifact path
@@ -1396,6 +1398,42 @@ function badRequest(message: string): Response {
   return new Response(message, { status: 400, headers: { 'Content-Type': 'text/plain' } });
 }
 
+function isRepositoryRelativeHref(href: string): boolean {
+  return (
+    href !== '' &&
+    !href.startsWith('#') &&
+    !href.startsWith('/') &&
+    !/^[a-z][a-z0-9+.-]*:/i.test(href)
+  );
+}
+
+function repositoryReadmeHref(href: string): string {
+  const normalized = href.replace(/^\.\//, '');
+  return `${REPOSITORY_README_LINK_BASE}${normalized}`;
+}
+
+export function rewriteRepositoryRelativeReadmeLinks(html: string): string {
+  return html.replace(
+    /<a\b([^>]*?)\shref="([^"]+)"([^>]*)>/gi,
+    (match: string, before: string, href: string, after: string) =>
+      isRepositoryRelativeHref(href)
+        ? `<a${before} href="${repositoryReadmeHref(href)}"${after}>`
+        : match,
+  );
+}
+
+async function renderLandingReadmeHtml(): Promise<string> {
+  await initializeHighlighter();
+  const markdown = await Bun.file(join(PLAYGROUND_ROOT, '..', '..', 'README.md')).text();
+  const rendered = renderMarkdown(markdown);
+  if (rendered.hadUnsafeContent) {
+    throw new Error(
+      'Root README rendering stripped unsafe content. Update README.md to remove raw HTML, unsafe URLs, or other sanitizer-blocked content.',
+    );
+  }
+  return rewriteRepositoryRelativeReadmeLinks(rendered.html);
+}
+
 /**
  * Build the `/example-src/:name/:scenario` response: strip the doc-page
  * mount-isolation harness so the reader copies clean consumer usage, not the
@@ -1756,18 +1794,12 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
-  // GET / → redirect to first component
+  // GET / → README-backed landing shell
   if (pathname === '/') {
     const sidebarComponents = await discoverSidebarComponents();
-    if (sidebarComponents.length === 0) {
-      const html = renderShell(null, []);
-      return new Response(html, { headers: { 'Content-Type': 'text/html' } });
-    }
-    const first = sidebarComponents[0];
-    return new Response(null, {
-      status: 302,
-      headers: { Location: `/c/${first}` },
-    });
+    const readmeHtml = await renderLandingReadmeHtml();
+    const html = renderShell(null, sidebarComponents, { readmeHtml });
+    return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
   return notFound();
