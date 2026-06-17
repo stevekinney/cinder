@@ -214,13 +214,20 @@ function shouldEmit(control: PlaygroundControl, current: PlaygroundValue): boole
  * @returns A single-element Svelte snippet string.
  */
 /**
- * Escape a string for a Svelte text-content context. The live mount sets the
- * children via `textContent` (so typed markup is inert there), but the COPYABLE
- * snippet string interpolates this value as element content — if the user types
- * `<`, `&`, or `{`, the pasted snippet would be invalid or different Svelte
- * (`<` opens a tag, `&` starts an entity, `{` opens an expression). Escaping
- * those three keeps the copied code rendering the same literal text the live
- * preview shows. `>` is left as-is — it is literal in element text content.
+ * Escape a string for a Svelte **source** text-content context — the COPYABLE
+ * snippet string this module builds, which interpolates the children value as
+ * element content. If the user types `<`, `&`, or `{`, the pasted snippet would
+ * be invalid or different Svelte (`<` opens a tag, `&` starts an entity, `{`
+ * opens an expression). Escaping those three keeps the copied code rendering the
+ * same literal text the live preview shows. `>` is left as-is — it is literal in
+ * element text content.
+ *
+ * The live MOUNT path escapes separately and for a different context: it renders
+ * the value through `createRawSnippet` as an HTML text string (see
+ * `escapeHtmlText` in `component-page-live-preview.ts`, which escapes `&` and `<`
+ * for an HTML text node). Both paths produce the same visible literal text; they
+ * differ only in which characters each target syntax treats as special (`{` is
+ * special in Svelte source, not in an HTML text node).
  */
 function escapeSnippetText(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\{/g, '&lbrace;');
