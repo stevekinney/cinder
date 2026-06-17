@@ -15,6 +15,43 @@
     outline: none;
   }
 
+  .cinder-tree[data-cinder-virtualized] {
+    display: block;
+    overflow: auto;
+  }
+
+  .cinder-tree__virtual-spacer {
+    position: relative;
+    inline-size: 100%;
+  }
+
+  .cinder-tree-item--virtual {
+    position: absolute;
+    inset-inline: 0;
+    overflow: hidden;
+  }
+
+  .cinder-tree__filter {
+    margin-block-end: var(--cinder-space-2, 0.5rem);
+  }
+
+  .cinder-tree__filter-input {
+    inline-size: 100%;
+    min-block-size: 2.25rem;
+    padding-block: var(--cinder-space-1, 0.25rem);
+    padding-inline: var(--cinder-space-2, 0.5rem);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    font: inherit;
+  }
+
+  .cinder-tree__filter-input:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
   .cinder-tree__selection-controls {
     display: flex;
     flex-wrap: wrap;
@@ -22,12 +59,58 @@
     margin-block-end: var(--cinder-space-2, 0.5rem);
   }
 
+  .cinder-tree-expand-all,
+  .cinder-tree-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2, 0.5rem);
+  }
+
+  .cinder-tree-expand-all__label,
+  .cinder-tree-select-all__label {
+    color: var(--cinder-text-muted, inherit);
+    font-size: var(--cinder-text-sm, 0.875rem);
+  }
+
+  .cinder-tree-expand-all__button,
+  .cinder-tree-select-all__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 2rem;
+    padding-block: var(--cinder-space-1, 0.25rem);
+    padding-inline: var(--cinder-space-2, 0.5rem);
+    border: 1px solid var(--cinder-border, currentColor);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface, transparent);
+    color: var(--cinder-text, currentColor);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .cinder-tree-expand-all__button:disabled,
+  .cinder-tree-select-all__button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  @media (hover: hover) {
+    .cinder-tree-expand-all__button:not(:disabled):hover,
+    .cinder-tree-select-all__button:not(:disabled):hover {
+      background: var(--cinder-surface-raised, transparent);
+    }
+  }
+
   .cinder-tree-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     outline: none;
     cursor: default;
     border-radius: var(--cinder-radius-sm);
+    --cinder-tree-drop-line-color: var(--cinder-accent);
+    --cinder-tree-drop-line-thickness: 2px;
+    --cinder-tree-item-dragging-opacity: 0.55;
   }
 
   /* Tree items are full-bleed rows whose first/last siblings sit flush against
@@ -37,14 +120,16 @@
    when a branch item is expanded the ring surrounds only the label row, not
    the entire subtree that the outer .cinder-tree-item div also wraps. The
    tabindex/role attributes stay on the outer .cinder-tree-item. */
-  .cinder-tree-item:focus-visible > .cinder-tree-item__row {
+  .cinder-tree-item:focus-visible > .cinder-tree-item__row,
+  .cinder-tree-item[data-cinder-focused] > .cinder-tree-item__row {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: inset 0 0 0 var(--cinder-ring-width)
       var(--_cinder-tree-item-ring, var(--cinder-ring-color));
   }
 
   @media (forced-colors: active) {
-    .cinder-tree-item:focus-visible > .cinder-tree-item__row {
+    .cinder-tree-item:focus-visible > .cinder-tree-item__row,
+    .cinder-tree-item[data-cinder-focused] > .cinder-tree-item__row {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: calc(var(--cinder-ring-width) * -1);
       box-shadow: none;
@@ -72,6 +157,33 @@
     height: 1rem;
     accent-color: var(--cinder-accent, currentColor);
     pointer-events: auto;
+  }
+
+  .cinder-tree-item__drag-handle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    border: 0;
+    border-radius: var(--cinder-radius-sm);
+    background: transparent;
+    color: var(--cinder-text-muted);
+    cursor: grab;
+    font: inherit;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .cinder-tree-item__drag-handle:active,
+  .cinder-tree-item[data-cinder-dragging] .cinder-tree-item__drag-handle {
+    cursor: grabbing;
+  }
+
+  .cinder-tree-item__drag-handle:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
   /* Long labels must not force the tree wider than its container or overlap the
@@ -103,9 +215,92 @@
     cursor: default;
   }
 
+  .cinder-tree-item[data-cinder-hidden] {
+    display: none;
+  }
+
+  .cinder-tree-item[data-cinder-dragging] > .cinder-tree-item__row {
+    opacity: var(--cinder-tree-item-dragging-opacity);
+  }
+
+  .cinder-tree-item[data-cinder-drop-target]::before,
+  .cinder-tree-item[data-cinder-drop-target]::after {
+    content: '';
+    position: absolute;
+    inset-inline: var(--cinder-space-2, 0.5rem);
+    block-size: var(--cinder-tree-drop-line-thickness);
+    border-radius: var(--cinder-tree-drop-line-thickness);
+    background: var(--cinder-tree-drop-line-color);
+    pointer-events: none;
+  }
+
+  .cinder-tree-item[data-cinder-drop-target='before']::before {
+    inset-block-start: 0;
+  }
+
+  .cinder-tree-item[data-cinder-drop-target='after']::after {
+    inset-block-end: 0;
+  }
+
+  .cinder-tree-item[data-cinder-drop-into] > .cinder-tree-item__row {
+    box-shadow: inset 0 0 0 var(--cinder-tree-drop-line-thickness)
+      var(--cinder-tree-drop-line-color);
+  }
+
+  .cinder-tree-item__highlight {
+    padding: 0;
+    border-radius: var(--cinder-radius-xs, 0.125rem);
+    background-color: color-mix(in srgb, var(--cinder-accent) 20%, transparent);
+    color: inherit;
+  }
+
+  .cinder-tree-item__rename-input {
+    flex: 1 1 auto;
+    min-inline-size: 8rem;
+    max-inline-size: 100%;
+    min-block-size: 2rem;
+    padding-block: var(--cinder-space-1, 0.25rem);
+    padding-inline: var(--cinder-space-2, 0.5rem);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    font: inherit;
+  }
+
+  .cinder-tree-item__rename-input:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  .cinder-tree-item__rename-input[aria-invalid='true'] {
+    border-color: var(--cinder-danger);
+  }
+
   .cinder-tree-item__children {
     display: flex;
     flex-direction: column;
     padding-inline-start: var(--cinder-space-4, 1rem);
+  }
+
+  .cinder-tree__empty {
+    padding-block: var(--cinder-space-2, 0.5rem);
+    padding-inline: var(--cinder-space-2, 0.5rem);
+    color: var(--cinder-text-muted);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-tree-item__highlight {
+      background-color: Highlight;
+      color: HighlightText;
+      forced-color-adjust: none;
+    }
+
+    .cinder-tree-item[data-cinder-drop-target]::before,
+    .cinder-tree-item[data-cinder-drop-target]::after,
+    .cinder-tree-item[data-cinder-drop-into] > .cinder-tree-item__row {
+      --cinder-tree-drop-line-color: Highlight;
+      forced-color-adjust: none;
+    }
   }
 }

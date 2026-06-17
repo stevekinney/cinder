@@ -157,6 +157,28 @@ describe('TreeRegistry', () => {
         'l6',
       ]);
     });
+
+    test('filters by predicate while retaining ancestors of deep matches', () => {
+      const registry = new TreeRegistry();
+      registry.register(makeNode('projects', null, 1, { isBranch: true, label: 'Projects' }));
+      registry.register(makeNode('apollo', 'projects', 2, { label: 'Apollo' }));
+      registry.register(makeNode('borealis', 'projects', 2, { label: 'Borealis' }));
+      registry.register(makeNode('archive', null, 1, { label: 'Archive' }));
+
+      expect(
+        registry.getVisible([], (candidate) => candidate.label.toLowerCase().includes('apollo')),
+      ).toEqual(['projects', 'apollo']);
+    });
+
+    test('filters out matching descendants of unregistered branches deterministically', () => {
+      const registry = new TreeRegistry();
+      registry.register(makeNode('projects', null, 1, { isBranch: true, label: 'Projects' }));
+      registry.register(makeNode('archive', null, 1, { label: 'Archive' }));
+
+      expect(
+        registry.getVisible([], (candidate) => candidate.label.toLowerCase().includes('apollo')),
+      ).toEqual([]);
+    });
   });
 
   describe('parentOf', () => {

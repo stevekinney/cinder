@@ -1,1 +1,5 @@
-[]
+[
+  "--cinder-tree-drop-line-color",
+  "--cinder-tree-drop-line-thickness",
+  "--cinder-tree-item-dragging-opacity"
+]

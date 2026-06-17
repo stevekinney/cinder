@@ -13,10 +13,20 @@ export type TreeNodeRegistration = {
   readonly disabled: boolean;
   selectionScopeIds?: () => readonly string[] | undefined;
   isBranch: () => boolean;
+  bulkExpandable?: () => boolean;
   label: () => string;
   /** DOM-focus the outer role="treeitem" element. */
   focus: () => void;
 };
+
+export type TreeVisibilityCandidate = {
+  id: string;
+  label: string;
+  parentId: string | null;
+  level: number;
+};
+
+export type TreeVisibilityPredicate = (candidate: TreeVisibilityCandidate) => boolean;
 
 /**
  * Reactive registry for tree nodes. Tracks registration order (DOM mount
@@ -29,6 +39,10 @@ export class TreeRegistry {
   readonly #nodes = new SvelteMap<string, TreeNodeRegistration>();
   /** Ordered child lists, keyed by parentId (null = root level). */
   readonly #children = new SvelteMap<string | null, string[]>();
+
+  get size(): number {
+    return this.#nodes.size;
+  }
 
   register(node: TreeNodeRegistration): () => void {
     if (this.#nodes.has(node.id)) {
@@ -71,18 +85,27 @@ export class TreeRegistry {
 
   /**
    * Returns the flat list of node ids in DFS visible order, respecting the
-   * current expansion state. Collapsed subtrees are excluded entirely.
+   * current expansion state. Collapsed subtrees are excluded entirely unless a
+   * filter predicate is supplied, in which case matching nodes and their
+   * ancestors are retained.
    */
-  getVisible(expandedIds: readonly string[]): string[] {
+  getVisible(
+    expandedIds: readonly string[],
+    visibilityPredicate?: TreeVisibilityPredicate,
+  ): string[] {
     const result: string[] = [];
     const expandedSet = new Set(expandedIds);
+    const retainedIds = visibilityPredicate
+      ? this.#retainedIdsForPredicate(visibilityPredicate)
+      : undefined;
 
     const visit = (parentId: string | null): void => {
       const childIds = this.#orderedChildren(parentId);
       for (const id of childIds) {
+        if (retainedIds && !retainedIds.has(id)) continue;
         result.push(id);
         const node = this.#nodes.get(id);
-        if (node?.isBranch() && expandedSet.has(id)) {
+        if (node?.isBranch() && (expandedSet.has(id) || retainedIds?.has(id))) {
           visit(id);
         }
       }
@@ -90,6 +113,32 @@ export class TreeRegistry {
 
     visit(null);
     return result;
+  }
+
+  #retainedIdsForPredicate(visibilityPredicate: TreeVisibilityPredicate): Set<string> {
+    const retainedIds = new Set<string>();
+
+    for (const [id, node] of this.#nodes) {
+      if (
+        !visibilityPredicate({
+          id,
+          label: node.label(),
+          parentId: node.parentId,
+          level: node.level,
+        })
+      ) {
+        continue;
+      }
+
+      retainedIds.add(id);
+      let parentId = node.parentId;
+      while (parentId !== null) {
+        retainedIds.add(parentId);
+        parentId = this.parentOf(parentId) ?? null;
+      }
+    }
+
+    return retainedIds;
   }
 
   getNode(id: string): TreeNodeRegistration | undefined {
@@ -122,6 +171,41 @@ export class TreeRegistry {
     return result;
   }
 
+  getAllBranchIds(options: { bulkOnly?: boolean } = {}): string[] {
+    const result: string[] = [];
+
+    const visit = (parentId: string | null): void => {
+      for (const id of this.#orderedChildren(parentId)) {
+        const node = this.#nodes.get(id);
+        if (!node?.isBranch()) continue;
+        if (!options.bulkOnly || this.isBulkExpandableBranch(id)) {
+          result.push(id);
+        }
+        visit(id);
+      }
+    };
+
+    visit(null);
+    return result;
+  }
+
+  isBulkExpandableBranch(id: string): boolean {
+    const node = this.#nodes.get(id);
+    return Boolean(node?.isBranch() && (node.bulkExpandable?.() ?? true));
+  }
+
+  ancestorsOf(id: string): string[] {
+    const result: string[] = [];
+    let parentId = this.parentOf(id);
+
+    while (parentId !== null && parentId !== undefined) {
+      result.push(parentId);
+      parentId = this.parentOf(parentId);
+    }
+
+    return result;
+  }
+
   siblingsOf(id: string): string[] {
     const node = this.#nodes.get(id);
     if (!node) return [];
@@ -137,8 +221,9 @@ export class TreeRegistry {
     prefix: string,
     currentId: string,
     expandedIds: readonly string[],
+    visibilityPredicate?: TreeVisibilityPredicate,
   ): string | undefined {
-    const visible = this.getVisible(expandedIds);
+    const visible = this.getVisible(expandedIds, visibilityPredicate);
     const lower = prefix.toLowerCase();
     const startIndex = visible.indexOf(currentId);
 

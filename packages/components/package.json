@@ -4233,6 +4233,7 @@
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
     "@shikijs/rehype": "^3.21.0",
+    "@tanstack/virtual-core": "^3.17.1",
     "ajv": "^8",
     "comlink": "^4.4.2",
     "diff-match-patch": "^1.0.5",
