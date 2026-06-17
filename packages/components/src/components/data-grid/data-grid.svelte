@@ -256,6 +256,10 @@
     selectionState.reconcile(activeCellCoordinates);
     if (!didSelectionGeometryChange) return;
 
+    syncRequestedActiveCell();
+  });
+
+  function syncRequestedActiveCell(): void {
     const activeCell = selectionState.activeCell;
     if (!activeCell) return;
 
@@ -266,7 +270,7 @@
     if (requestedActiveColumnKey !== activeCell.columnKey) {
       requestedActiveColumnKey = activeCell.columnKey;
     }
-  });
+  }
 
   function getCellId(rowId: string, columnKey: string): string {
     return `${gridId}-cell-r-${toDomIdSegment(rowId)}-c-${toDomIdSegment(columnKey)}`;
@@ -529,6 +533,7 @@
 
     if (action.type === 'select-all') {
       selectionState.selectAll();
+      syncRequestedActiveCell();
       if (selectionMode === 'multiple') {
         setSelectionModel(sortedKeyedRows.map((row) => row.rowId));
       } else if (selectionMode === 'single') {

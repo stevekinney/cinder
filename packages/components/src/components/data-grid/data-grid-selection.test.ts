@@ -133,9 +133,13 @@ describe('DataGrid selection', () => {
 
     await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
     expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(9);
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(getDataCell(container, 2, 2).id);
+    expect(getDataCell(container, 2, 2).getAttribute('data-cinder-active')).toBe('true');
 
     await fireEvent.keyDown(grid!, { key: 'Escape' });
     expect(container.querySelectorAll('[role="gridcell"][aria-selected="true"]').length).toBe(1);
+    expect(grid?.getAttribute('aria-activedescendant')).toBe(getDataCell(container, 2, 2).id);
+    expect(getDataCell(container, 2, 2).getAttribute('aria-selected')).toBe('true');
   });
 
   test('Escape collapses row selection to the active row', async () => {
@@ -155,9 +159,9 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
     await fireEvent.keyDown(grid!, { key: 'Escape' });
 
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-2']);
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-3']);
     expect(
-      container.querySelector('[role="row"][aria-rowindex="3"]')?.getAttribute('aria-selected'),
+      container.querySelector('[role="row"][aria-rowindex="4"]')?.getAttribute('aria-selected'),
     ).toBe('true');
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(1);
   });
@@ -178,10 +182,10 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
     await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
 
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-2']);
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-3']);
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(1);
     expect(
-      container.querySelector('[role="row"][aria-rowindex="3"]')?.getAttribute('aria-selected'),
+      container.querySelector('[role="row"][aria-rowindex="4"]')?.getAttribute('aria-selected'),
     ).toBe('true');
   });
 

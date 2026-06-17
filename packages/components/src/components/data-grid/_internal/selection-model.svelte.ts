@@ -48,8 +48,6 @@ export class DataGridSelectionModel {
     return keys;
   });
 
-  readonly selectedCellCount = $derived(this.selectedCells.size);
-
   setActiveCell(
     cell: DataGridCellCoordinate,
     options: { extend?: boolean; toggle?: boolean } = {},
