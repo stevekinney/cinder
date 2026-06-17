@@ -219,7 +219,7 @@ describe('/', () => {
     expect(html).toContain('id="shell-root"');
     expect(html).toContain('id="cinder-initial"');
     expect(html).toContain('/shell-bundle/shell.js');
-    expect(html).toContain('Svelte 5 components for product interfaces');
+    expect(html).toContain('Components for product interfaces.');
     expect(html).toContain('readmeHtml');
     expect(html).not.toContain('http-equiv="refresh"');
   });

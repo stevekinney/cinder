@@ -23,19 +23,21 @@
 
 <section class="landing-page" aria-labelledby="landing-title">
   <div class="landing-page__hero">
-    <p class="landing-page__eyebrow">Cinder Playground</p>
-    <h1 id="landing-title">Svelte 5 components for product interfaces</h1>
+    <p class="landing-page__eyebrow">Cinder component library</p>
+    <h1 id="landing-title">cinder</h1>
     <p>
-      Browse runnable examples, inspect component contracts, and use the README as the starting
-      point for installing and shipping Cinder.
+      Components for product interfaces. Browse runnable examples, inspect component contracts, and
+      use the README as the starting point for installing and shipping Cinder.
     </p>
     {#if firstComponent !== ''}
-      <Button
-        href={`/c/${firstComponent}`}
-        variant="primary"
-        label="Browse components"
-        onclick={handleBrowseClick}
-      />
+      <div class="landing-page__actions">
+        <Button
+          href={`/c/${firstComponent}`}
+          variant="primary"
+          label="Browse components"
+          onclick={handleBrowseClick}
+        />
+      </div>
     {/if}
   </div>
 
@@ -54,7 +56,7 @@
 
   .landing-page__hero,
   .landing-page__readme {
-    width: min(100% - 2rem, 920px);
+    width: min(100% - 2rem, var(--cinder-content-width));
     margin-inline: auto;
   }
 
@@ -67,14 +69,14 @@
   .landing-page__eyebrow {
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-weight-medium);
+    font-weight: var(--cinder-font-medium);
     text-transform: uppercase;
   }
 
   .landing-page__hero h1 {
-    max-width: 14ch;
     color: var(--cinder-text);
-    font-size: clamp(2.25rem, 6vw, 4.75rem);
+    font-size: 8rem;
+    letter-spacing: 0;
     line-height: 0.95;
   }
 
@@ -85,7 +87,34 @@
     line-height: var(--cinder-leading-relaxed);
   }
 
+  .landing-page__actions {
+    display: flex;
+    align-items: center;
+  }
+
+  .landing-page__actions :global(.cinder-button) {
+    width: max-content;
+  }
+
   .landing-page__readme {
+    --surface-inset: var(--cinder-surface-inset);
+    --text: var(--cinder-text);
+    --syntax-comment: var(--cinder-text-subtle);
+    --syntax-string: light-dark(oklch(38% 0.12 150), oklch(82% 0.12 150));
+    --syntax-keyword: light-dark(oklch(48% 0.19 285), oklch(76% 0.14 285));
+    --syntax-function: light-dark(oklch(42% 0.13 250), oklch(78% 0.11 250));
+    --syntax-variable: light-dark(oklch(36% 0.07 245), oklch(88% 0.04 245));
+    --syntax-type: light-dark(oklch(42% 0.13 210), oklch(78% 0.12 210));
+    --syntax-number: light-dark(oklch(45% 0.16 45), oklch(82% 0.12 60));
+    --syntax-operator: var(--cinder-text-muted);
+    --syntax-constant: light-dark(oklch(45% 0.17 25), oklch(80% 0.13 30));
+    --syntax-property: light-dark(oklch(40% 0.13 230), oklch(78% 0.11 230));
+    --syntax-tag: light-dark(oklch(45% 0.18 330), oklch(78% 0.14 330));
+    --syntax-attribute: light-dark(oklch(43% 0.14 260), oklch(80% 0.11 260));
+    --syntax-regex: light-dark(oklch(43% 0.15 120), oklch(80% 0.12 120));
+    --syntax-inserted: light-dark(oklch(42% 0.14 145), oklch(78% 0.13 145));
+    --syntax-deleted: light-dark(oklch(47% 0.18 25), oklch(78% 0.14 25));
+
     padding-block: 0 var(--cinder-space-12);
     color: var(--cinder-text);
   }
@@ -148,15 +177,19 @@
     overflow-x: auto;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-inset);
     padding: var(--cinder-space-4);
+  }
+
+  .landing-page__readme :global(pre code) {
+    background: transparent;
+    color: inherit;
   }
 
   .landing-page__readme :global(table) {
     width: 100%;
     border-collapse: collapse;
-    display: block;
-    overflow-x: auto;
+    display: table;
   }
 
   .landing-page__readme :global(th),
@@ -164,18 +197,33 @@
     border-bottom: 1px solid var(--cinder-border);
     padding: var(--cinder-space-2) var(--cinder-space-3);
     text-align: start;
+    vertical-align: top;
+  }
+
+  .landing-page__readme :global(th:first-child),
+  .landing-page__readme :global(td:first-child) {
     white-space: nowrap;
   }
 
   .landing-page__readme :global(th) {
     color: var(--cinder-text);
-    font-weight: var(--cinder-font-weight-semibold);
+    font-weight: var(--cinder-font-semibold);
+  }
+
+  @media (min-width: 1200px) {
+    .landing-page__hero h1 {
+      font-size: 12rem;
+    }
   }
 
   @media (max-width: 720px) {
     .landing-page__hero,
     .landing-page__readme {
-      width: min(100% - 1rem, 920px);
+      width: min(100% - 1rem, var(--cinder-content-width));
+    }
+
+    .landing-page__hero h1 {
+      font-size: 4.5rem;
     }
   }
 </style>
