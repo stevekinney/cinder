@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
-import { createHistoryMessageTimestamp } from './interactive-harness-history.ts';
+const harnessModule = (await import('./interactive-harness.example.svelte')) as unknown as {
+  createHistoryMessageTimestamp: (page: number, index: number) => string;
+};
+const { createHistoryMessageTimestamp } = harnessModule;
 
 describe('interactive chat harness history timestamps', () => {
   test('keeps generated history timestamps valid beyond thirty pages', () => {

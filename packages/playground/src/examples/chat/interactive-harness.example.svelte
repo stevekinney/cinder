@@ -2,10 +2,13 @@
   export const title = 'Interactive harness';
   export const description =
     'Drive Chat from a control panel: reply as the other side (instant / typing / streaming), inject tool calls, toggle features, and watch every callback fire.';
+
+  export function createHistoryMessageTimestamp(page: number, index: number): string {
+    return new Date(Date.UTC(2026, 4, 30 - page, 12, index)).toISOString();
+  }
 </script>
 
 <script lang="ts">
-  import { createHistoryMessageTimestamp } from './interactive-harness-history.ts';
   import {
     Chat,
     appendAssistantMessage,
