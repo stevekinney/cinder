@@ -45,7 +45,7 @@ export function getSortedDataGridRowIndices<TRow>(
 
   if (activeSortItems.length === 0) return rowIndices;
 
-  return [...rowIndices].toSorted((leftIndex, rightIndex) => {
+  return rowIndices.slice().toSorted((leftIndex, rightIndex) => {
     const leftRow = rows[leftIndex];
     const rightRow = rows[rightIndex];
     if (leftRow === undefined || rightRow === undefined) return leftIndex - rightIndex;
