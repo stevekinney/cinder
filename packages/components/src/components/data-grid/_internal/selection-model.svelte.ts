@@ -66,10 +66,8 @@ export class DataGridSelectionModel {
       return;
     }
 
-    if (!options.extend || !this.anchorCell) {
-      this.anchorCell = cell;
-      this.toggledCells = [];
-    }
+    this.anchorCell = cell;
+    this.toggledCells = [];
 
     this.activeCell = cell;
   }

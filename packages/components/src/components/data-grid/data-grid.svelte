@@ -47,7 +47,6 @@
     getNextDataGridSortModel,
     getSortedDataGridRowIndices,
   } from './_internal/sort-model.ts';
-  import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
   import type {
     DataGridProps,
     DataGridSelectionModel,
@@ -96,8 +95,8 @@
   });
 
   let liveRegionMessage = $state('');
+  let renderedLiveRegionMessage = $state('');
   let liveRegionAnnouncementSequence = $state(0);
-  let mounted = $state(false);
 
   const activeSortModel = $derived(
     getActiveDataGridSortModel(columnModel.orderedColumns, sortModel),
@@ -147,9 +146,6 @@
   const firstColumnKey = $derived(columnModel.renderColumns[0]?.key);
   const rowDomIds = $derived(sortedKeyedRows.map((row) => row.rowDomId));
   const columnKeys = $derived(columnModel.renderColumns.map((column) => column.key));
-  const selectionGeometrySignature = $derived(
-    `${rowDomIds.join('\u0001')}\u0002${columnKeys.join('\u0001')}`,
-  );
   const gridId = $props.id();
   let requestedActiveRowIndex = $state(0);
   let requestedActiveColumnKey = $state<string | undefined>();
@@ -198,12 +194,11 @@
   let hasWarnedNoLabel = false;
   let warnedDuplicateRowIdsSignature: string | undefined;
   let previousActiveCellId: string | undefined;
-  let previousSelectionGeometrySignature: string | undefined;
+  let previousSelectionRowIds: readonly string[] | undefined;
+  let previousSelectionColumnKeys: readonly string[] | undefined;
   let gridElement: HTMLDivElement | undefined;
-
-  $effect(() => {
-    mounted = true;
-  });
+  let liveRegionTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  let liveRegionVersion = 0;
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
@@ -230,6 +225,32 @@
   });
 
   $effect(() => {
+    const nextMessage = liveRegionMessage;
+    void liveRegionAnnouncementSequence;
+    const currentVersion = ++liveRegionVersion;
+
+    if (liveRegionTimeoutId) {
+      clearTimeout(liveRegionTimeoutId);
+      liveRegionTimeoutId = undefined;
+    }
+
+    renderedLiveRegionMessage = '';
+    if (nextMessage === '') return;
+
+    liveRegionTimeoutId = setTimeout(() => {
+      if (liveRegionVersion !== currentVersion) return;
+      renderedLiveRegionMessage = nextMessage;
+      liveRegionTimeoutId = undefined;
+    }, 0);
+
+    return () => {
+      if (!liveRegionTimeoutId) return;
+      clearTimeout(liveRegionTimeoutId);
+      liveRegionTimeoutId = undefined;
+    };
+  });
+
+  $effect(() => {
     const cellId = activeCellId;
     if (cellId === undefined || cellId === previousActiveCellId) {
       previousActiveCellId = cellId;
@@ -246,11 +267,16 @@
   });
 
   $effect(() => {
-    const isInitialSelectionReconciliation = previousSelectionGeometrySignature === undefined;
+    const previousRowIds = previousSelectionRowIds;
+    const previousColumnKeys = previousSelectionColumnKeys;
+    const isInitialSelectionReconciliation =
+      previousRowIds === undefined || previousColumnKeys === undefined;
     const didSelectionGeometryChange =
-      previousSelectionGeometrySignature !== undefined &&
-      previousSelectionGeometrySignature !== selectionGeometrySignature;
-    previousSelectionGeometrySignature = selectionGeometrySignature;
+      !isInitialSelectionReconciliation &&
+      (didStringArrayChange(previousRowIds, rowDomIds) ||
+        didStringArrayChange(previousColumnKeys, columnKeys));
+    previousSelectionRowIds = rowDomIds;
+    previousSelectionColumnKeys = columnKeys;
     if (!isInitialSelectionReconciliation && !didSelectionGeometryChange) return;
 
     selectionState.reconcile(activeCellCoordinates);
@@ -270,6 +296,14 @@
     if (requestedActiveColumnKey !== activeCell.columnKey) {
       requestedActiveColumnKey = activeCell.columnKey;
     }
+  }
+
+  function didStringArrayChange(
+    previousValues: readonly string[],
+    nextValues: readonly string[],
+  ): boolean {
+    if (previousValues.length !== nextValues.length) return true;
+    return previousValues.some((value, index) => value !== nextValues[index]);
   }
 
   function getCellId(rowId: string, columnKey: string): string {
@@ -483,6 +517,12 @@
     if (!isInteractiveEventTarget(event)) gridElement?.focus({ preventScroll: true });
   }
 
+  function handleBodyClick(event: MouseEvent): void {
+    const cell = getCellEventDetail(event);
+    if (!cell) return;
+    handleCellClick(event, cell.rowId, cell.rowDomId, cell.columnKey, cell.rowIndex);
+  }
+
   function handleCellKeydown(
     event: KeyboardEvent,
     rowId: string,
@@ -502,6 +542,38 @@
     );
     updateRowSelection(rowId, event);
     gridElement?.focus({ preventScroll: true });
+  }
+
+  function handleBodyKeydown(event: KeyboardEvent): void {
+    const cell = getCellEventDetail(event);
+    if (!cell) return;
+    handleCellKeydown(event, cell.rowId, cell.rowDomId, cell.columnKey, cell.rowIndex);
+  }
+
+  function getCellEventDetail(
+    event: Event,
+  ): { rowId: string; rowDomId: string; columnKey: string; rowIndex: number } | undefined {
+    if (!(event.target instanceof Element)) return undefined;
+    const cell = event.target.closest<HTMLElement>('.cinder-data-grid__cell');
+    if (!cell) return undefined;
+
+    const { cinderRowId, cinderRowDomId, cinderColumnKey, cinderRowIndex } = cell.dataset;
+    const rowIndex = Number(cinderRowIndex);
+    if (
+      cinderRowId === undefined ||
+      cinderRowDomId === undefined ||
+      cinderColumnKey === undefined ||
+      !Number.isInteger(rowIndex)
+    ) {
+      return undefined;
+    }
+
+    return {
+      rowId: cinderRowId,
+      rowDomId: cinderRowDomId,
+      columnKey: cinderColumnKey,
+      rowIndex,
+    };
   }
 
   function handleKeydown(event: KeyboardEvent): void {
@@ -632,7 +704,12 @@
     {/each}
   </div>
 
-  <div class="cinder-data-grid__body" role="rowgroup">
+  <div
+    class="cinder-data-grid__body"
+    role="rowgroup"
+    onclick={handleBodyClick}
+    onkeydown={handleBodyKeydown}
+  >
     {#each sortedKeyedRows as keyedRow, visualRowIndex (keyedRow.rowKey)}
       {@const row = keyedRow.row}
       {@const rowId = keyedRow.rowId}
@@ -663,10 +740,11 @@
             data-cinder-active={activeCellId === cellId ? 'true' : undefined}
             data-cinder-selected={isSelectedCell ? 'true' : undefined}
             data-cinder-anchor={isAnchorCell ? 'true' : undefined}
+            data-cinder-row-id={rowId}
+            data-cinder-row-dom-id={rowDomId}
+            data-cinder-column-key={column.key}
+            data-cinder-row-index={visualRowIndex}
             style={getCellStyle(column)}
-            onclick={(event) => handleCellClick(event, rowId, rowDomId, column.key, visualRowIndex)}
-            onkeydown={(event) =>
-              handleCellKeydown(event, rowId, rowDomId, column.key, visualRowIndex)}
           >
             {#if column.cell}
               {@render column.cell({ row, value, editing: false })}
@@ -680,10 +758,11 @@
   </div>
 </div>
 
-{#if mounted}
-  <VisuallyHiddenLiveRegion
-    class="cinder-data-grid__live-region"
-    message={liveRegionMessage}
-    announcementSequence={liveRegionAnnouncementSequence}
-  />
-{/if}
+<div
+  class="cinder-sr-only cinder-data-grid__live-region"
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+>
+  {renderedLiveRegionMessage}
+</div>
