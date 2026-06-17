@@ -32,6 +32,7 @@
 
 <script lang="ts" generics="TRow">
   import { classNames } from '../../utilities/class-names.ts';
+  import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     DataGridColumnModel,
@@ -94,7 +95,6 @@
     columnPinning: () => columnPinning,
   });
 
-  let uncontrolledSelectionModel = $state<DataGridSelectionModel>([]);
   let liveRegionMessage = $state('');
   let liveRegionAnnouncementSequence = $state(0);
   let mounted = $state(false);
@@ -182,7 +182,7 @@
       ? { rowId: activeRowDomId, columnKey: activeColumnKey }
       : undefined,
   );
-  const resolvedSelectionModel = $derived(selectionModel ?? uncontrolledSelectionModel);
+  const resolvedSelectionModel = $derived(selectionModel ?? []);
   const selectedRowIds = $derived(
     selectionMode === 'none' ? new Set<string>() : new Set(resolvedSelectionModel),
   );
@@ -346,7 +346,6 @@
 
   function setSelectionModel(nextSelectionModel: DataGridSelectionModel): void {
     selectionModel = nextSelectionModel;
-    uncontrolledSelectionModel = nextSelectionModel;
     onSelectionModelChange?.(nextSelectionModel);
   }
 
@@ -419,17 +418,12 @@
       })
       .join('\n');
 
-    if (!navigator.clipboard?.writeText) {
-      announceCopiedCells('Copy is unavailable');
+    const copied = await copyToClipboard(text);
+    if (copied) {
+      announceCopiedCells(`Copied ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`);
       return;
     }
-
-    try {
-      await navigator.clipboard.writeText(text);
-      announceCopiedCells(`Copied ${cells.length} ${cells.length === 1 ? 'cell' : 'cells'}`);
-    } catch {
-      announceCopiedCells('Copy failed');
-    }
+    announceCopiedCells('Copy failed');
   }
 
   function announceCopiedCells(message: string): void {

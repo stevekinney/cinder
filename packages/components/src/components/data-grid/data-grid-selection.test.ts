@@ -15,13 +15,16 @@ const { getObservedSelectionModel, resetObservedSelectionModel } =
   await import('./data-grid-selection-bind-probe.ts');
 
 type ClipboardLike = { writeText: (text: string) => Promise<void> };
+type ExecCommandLike = (commandId: string) => boolean;
 
 const originalClipboard = globalThis.navigator.clipboard as unknown;
+const originalExecCommand = document.execCommand as unknown;
 
 afterEach(() => {
   cleanup();
   resetObservedSelectionModel();
   restoreNavigatorClipboard();
+  restoreDocumentExecCommand();
 });
 
 type Order = {
@@ -54,6 +57,17 @@ function restoreNavigatorClipboard(): void {
   Object.defineProperty(globalThis.navigator, 'clipboard', {
     configurable: true,
     value: originalClipboard,
+  });
+}
+
+function restoreDocumentExecCommand(): void {
+  if (originalExecCommand === undefined) {
+    delete (document as unknown as { execCommand?: ExecCommandLike }).execCommand;
+    return;
+  }
+  Object.defineProperty(document, 'execCommand', {
+    configurable: true,
+    value: originalExecCommand,
   });
 }
 
@@ -183,6 +197,32 @@ describe('DataGrid selection', () => {
 
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(0);
     expect(container.querySelectorAll('[role="row"][data-cinder-selected]').length).toBe(0);
+  });
+
+  test('explicit undefined controlled selection clears selected rows', async () => {
+    const { container, rerender } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      selectionModel: ['ord-1'],
+      'aria-label': 'Orders',
+    });
+
+    expect(
+      container.querySelector('[role="row"][aria-rowindex="2"]')?.getAttribute('aria-selected'),
+    ).toBe('true');
+
+    await rerender({
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      selectionModel: undefined,
+      'aria-label': 'Orders',
+    });
+
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]')).toHaveLength(0);
   });
 
   test('bind:selectionModel updates when the bound value starts undefined', async () => {
@@ -469,10 +509,15 @@ describe('DataGrid selection', () => {
     expect(writeText).toHaveBeenCalledTimes(2);
   });
 
-  test('announces when clipboard copy is unavailable or fails', async () => {
+  test('copies through the shared clipboard fallback when navigator clipboard is unavailable', async () => {
+    const execCommand = mock(() => true);
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: undefined,
+    });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: execCommand,
     });
 
     const { container } = render(OrderDataGrid, {
@@ -485,14 +530,30 @@ describe('DataGrid selection', () => {
     const grid = container.querySelector<HTMLElement>('[role="grid"]');
 
     await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
+    expect(execCommand).toHaveBeenCalledWith('copy');
     await waitFor(() =>
-      expect(container.querySelector('[role="status"]')?.textContent).toBe('Copy is unavailable'),
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('Copied 1 cell'),
     );
+  });
 
+  test('announces when clipboard copy fails', async () => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: mock(() => Promise.reject(new Error('denied'))) },
     });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: mock(() => false),
+    });
+
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
 
     await fireEvent.keyDown(grid!, { key: 'c', ctrlKey: true });
     await waitFor(() =>
