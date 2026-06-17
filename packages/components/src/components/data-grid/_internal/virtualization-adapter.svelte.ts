@@ -107,6 +107,12 @@ export class DataGridVirtualizationAdapter implements DataGridVirtualWindow {
     return () => this.#rowVirtualizer?.measureElement(null);
   };
 
+  refreshMeasurements(): void {
+    this.#subscribe();
+    this.#syncOptions();
+    this.#update();
+  }
+
   scrollToRow(index: number, options: ScrollToOptions = { align: 'auto' }): void {
     this.#subscribe();
     this.#syncOptions();

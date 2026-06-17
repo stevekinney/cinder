@@ -45,11 +45,15 @@ test.describe('DataGrid row virtualization', () => {
     await expect.poll(() => rows.count()).toBeGreaterThan(0);
     await expect.poll(() => rows.count()).toBeLessThan(80);
 
-    const firstRenderMs = await page
-      .waitForFunction(() => Reflect.get(window, '__cinderDataGridVirtualizedFirstRenderMs'), {
+    await page.waitForFunction(
+      () => Object.hasOwn(window, '__cinderDataGridVirtualizedFirstRenderMs'),
+      {
         timeout: 5_000,
-      })
-      .then((handle) => handle.jsonValue() as Promise<number>);
+      },
+    );
+    const firstRenderMs = await page.evaluate(() =>
+      Reflect.get(window, '__cinderDataGridVirtualizedFirstRenderMs'),
+    );
     console.info(`DataGrid virtualized first render: ${Math.round(firstRenderMs)}ms`);
 
     const scrollFrameMs = await page.evaluate(

@@ -31,6 +31,8 @@
 </script>
 
 <script lang="ts" generics="TRow">
+  import type { Attachment } from 'svelte/attachments';
+
   import { classNames } from '../../utilities/class-names.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
@@ -154,6 +156,20 @@
     getInitialHeight: () => resolvedRowHeight * 10,
     getScrollPaddingStart: () => getHeaderHeight(),
   });
+  const observeHeaderSize: Attachment<HTMLElement> = (node) => {
+    if (typeof ResizeObserver === 'undefined') return;
+
+    let previousHeight = getElementHeight(node);
+    const observer = new ResizeObserver(() => {
+      const nextHeight = getElementHeight(node);
+      if (nextHeight === previousHeight) return;
+
+      previousHeight = nextHeight;
+      rowVirtualizer.refreshMeasurements();
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  };
   const virtualRows = $derived(rowVirtualizer.virtualRows);
   const renderedRows = $derived.by(() => {
     if (!shouldVirtualizeRows) {
@@ -436,9 +452,14 @@
   }
 
   function getHeaderHeight(): number {
-    if (!headerElement) return 0;
-    const rect = headerElement.getBoundingClientRect();
-    return rect.height || headerElement.offsetHeight || 0;
+    return headerElement ? getElementHeight(headerElement) : 0;
+  }
+
+  function getElementHeight(element: HTMLElement): number {
+    const offsetHeight = element.offsetHeight;
+    if (offsetHeight > 0) return offsetHeight;
+
+    return element.getBoundingClientRect().height || 0;
   }
 
   function getColumnSortModelItem(columnKey: string): DataGridSortModelItem | undefined {
@@ -755,7 +776,13 @@
   style:--_cinder-data-grid-template-columns={gridTemplateColumns}
   {@attach rowVirtualizer.mountScrollContainer}
 >
-  <div bind:this={headerElement} class="cinder-data-grid__header-row" role="row" aria-rowindex="1">
+  <div
+    bind:this={headerElement}
+    class="cinder-data-grid__header-row"
+    role="row"
+    aria-rowindex="1"
+    {@attach observeHeaderSize}
+  >
     {#each columnModel.renderColumns as column (column.key)}
       {@const sortItem = getColumnSortModelItem(column.key)}
       {@const sortPriority = getColumnSortPriority(column.key)}

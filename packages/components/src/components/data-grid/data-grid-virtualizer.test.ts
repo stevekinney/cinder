@@ -60,6 +60,22 @@ function rectWithHeight(height: number): DOMRect {
   };
 }
 
+class TestResizeObserver {
+  static instances: TestResizeObserver[] = [];
+
+  constructor(readonly callback: ResizeObserverCallback) {
+    TestResizeObserver.instances.push(this);
+  }
+
+  observe(): void {}
+
+  disconnect(): void {}
+
+  trigger(): void {
+    this.callback([], this as unknown as ResizeObserver);
+  }
+}
+
 describe('DataGrid row virtualization', () => {
   test('renders only a row window while aria counts reflect the full dataset', async () => {
     const rows = makeRows(1_000);
@@ -136,6 +152,53 @@ describe('DataGrid row virtualization', () => {
     const row = dataRows(container).find((element) => element.textContent?.includes('Message 50'));
 
     expect(row?.getAttribute('aria-rowindex')).toBe('52');
+  });
+
+  test('refreshes the virtual window when header height changes', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    TestResizeObserver.instances = [];
+    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      const rows = makeRows(1_000);
+      const { container } = render(LogDataGrid, {
+        rows,
+        columns,
+        getRowId: getLogRowId,
+        virtualizeRows: true,
+        rowHeight: 20,
+        'aria-label': 'Logs',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      const headerRow = container.querySelector<HTMLElement>('.cinder-data-grid__header-row');
+      if (!grid || !headerRow) throw new Error('Expected DataGrid root and header row');
+
+      Object.defineProperty(headerRow, 'offsetHeight', { configurable: true, value: 0 });
+      grid.scrollTop = 1_000;
+      await fireEvent.scroll(grid);
+      await waitFor(() =>
+        expect(dataRows(container).some((row) => row.textContent?.includes('Message 50'))).toBe(
+          true,
+        ),
+      );
+
+      Object.defineProperty(headerRow, 'offsetHeight', { configurable: true, value: 40 });
+      for (const observer of TestResizeObserver.instances) observer.trigger();
+
+      await waitFor(() =>
+        expect(dataRows(container).some((row) => row.textContent?.includes('Message 48'))).toBe(
+          true,
+        ),
+      );
+      const row = dataRows(container).find((element) =>
+        element.textContent?.includes('Message 48'),
+      );
+
+      expect(row?.getAttribute('aria-rowindex')).toBe('50');
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
   });
 
   test('keyboard navigation scrolls an off-window active row into the rendered window', async () => {
