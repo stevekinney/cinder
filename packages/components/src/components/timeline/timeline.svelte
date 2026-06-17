@@ -11,7 +11,7 @@
    * @useWhen Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks.
    * @avoidWhen Surfacing a real-time social or activity stream — feed is the higher-affordance composition.
    * @avoidWhen Guiding users through a numbered procedural flow — steps conveys progress more clearly.
-   * @related timeline-item, feed, steps
+   * @related feed, steps
    */
   export type {
     TimelineEntry,
@@ -26,7 +26,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import TimelineItem from '../timeline-item/timeline-item.svelte';
+  import TimelineItem from '../_timeline-item/timeline-item.svelte';
   import { buildTimelineRenderPlan } from './timeline-groups.ts';
   import type { TimelineProps } from './timeline.types.ts';
 

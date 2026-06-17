@@ -1,4 +1,3 @@
-import './timeline-item.css';
 import TimelineItem from './timeline-item.svelte';
 
 export default TimelineItem;
