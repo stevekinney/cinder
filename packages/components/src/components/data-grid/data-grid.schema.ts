@@ -57,6 +57,11 @@ const schema = {
         description: 'Stable row identity used for ARIA ids and row-scoped state.',
       },
       {
+        name: 'onSortModelChange',
+        reason: 'function-or-snippet',
+        description: 'Called after DataGrid writes a user-initiated sort model change.',
+      },
+      {
         name: 'rowClass',
         reason: 'function-or-snippet',
         description: 'Additional class names for body rows.',
@@ -65,6 +70,11 @@ const schema = {
         name: 'rows',
         reason: 'generic-type-parameter',
         required: true,
+      },
+      {
+        name: 'sortModel',
+        reason: 'unknown-shape',
+        description: 'Bound sort model. DataGrid reorders rendered rows from this model.',
       },
     ],
   },

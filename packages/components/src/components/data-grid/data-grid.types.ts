@@ -3,6 +3,21 @@ import type { HTMLAttributes } from 'svelte/elements';
 
 export type DataGridDensity = 'compact' | 'comfortable' | 'spacious';
 export type DataGridColumnPin = 'left' | 'right';
+export type DataGridSortDirection = 'ascending' | 'descending';
+
+export type DataGridSortModelItem = {
+  key: string;
+  direction: DataGridSortDirection;
+};
+
+export type DataGridSortModel = readonly DataGridSortModelItem[];
+
+export type DataGridSortComparator<TRow, TValue = unknown> = (
+  leftValue: TValue,
+  rightValue: TValue,
+  leftRow: TRow,
+  rightRow: TRow,
+) => number;
 
 export type DataGridCellContext<TRow, TValue = unknown> = {
   row: TRow;
@@ -30,6 +45,10 @@ type DataGridBaseColumnDef<TRow> = {
   maxWidth?: number;
   /** Pin this column to the left or right edge of the horizontal scroller. */
   pin?: DataGridColumnPin;
+  /** Enables header-click sorting for this column. */
+  sortable?: boolean;
+  /** Custom comparator for this column. Receives cell values and their source rows. */
+  sortComparator?: DataGridSortComparator<TRow>;
 };
 
 export type DataGridColumnDef<TRow = Record<string, unknown>> =
@@ -69,6 +88,10 @@ export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   columnSizing?: DataGridColumnSizing;
   /** Pins supplied column keys to the left or right edge. */
   columnPinning?: DataGridColumnPinning;
+  /** Bound sort model. DataGrid reorders rendered rows from this model. */
+  sortModel?: DataGridSortModel;
+  /** Called after DataGrid writes a user-initiated sort model change. */
+  onSortModelChange?: (sortModel: DataGridSortModel) => void;
   /** Additional class names merged onto the root grid. */
   class?: string;
   /** Additional class names for body rows. */
