@@ -74,6 +74,11 @@ const schema = {
         description: 'Called when row selection changes through cell interaction.',
       },
       {
+        name: 'onSortModelChange',
+        reason: 'function-or-snippet',
+        description: 'Called after the user changes sort order and DataGrid updates `sortModel`.',
+      },
+      {
         name: 'rowClass',
         reason: 'function-or-snippet',
         description: 'Additional class names for body rows.',
@@ -82,6 +87,11 @@ const schema = {
         name: 'rows',
         reason: 'generic-type-parameter',
         required: true,
+      },
+      {
+        name: 'sortModel',
+        reason: 'unknown-shape',
+        description: 'Controls the row sort order used to render rows.',
       },
     ],
   },

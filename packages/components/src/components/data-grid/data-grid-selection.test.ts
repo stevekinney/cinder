@@ -181,6 +181,7 @@ describe('DataGrid selection', () => {
       'aria-label': 'Orders',
     });
 
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
     const firstCell = getDataCell(container, 0, 0);
 
     firstCell.focus();
@@ -188,6 +189,28 @@ describe('DataGrid selection', () => {
 
     expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
     expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1']);
+    expect(document.activeElement).toBe(grid);
+  });
+
+  test('Shift+Arrow range extension keeps multiple row selection intact', async () => {
+    const onSelectionModelChange = mock();
+    const { container } = render(OrderDataGrid, {
+      rows,
+      columns,
+      getRowId: getOrderId,
+      selectionMode: 'multiple',
+      onSelectionModelChange,
+      'aria-label': 'Orders',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+
+    await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
+    await fireEvent.keyDown(grid!, { key: 'ArrowRight', shiftKey: true });
+
+    expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
+    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
+    expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(3);
   });
 
   test('Ctrl+Click toggles non-contiguous cells', async () => {

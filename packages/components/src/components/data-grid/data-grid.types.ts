@@ -4,6 +4,18 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type DataGridDensity = 'compact' | 'comfortable' | 'spacious';
 export type DataGridColumnPin = 'left' | 'right';
 export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
+export type DataGridSortDirection = 'ascending' | 'descending';
+
+export type DataGridSortModelItem = {
+  key: string;
+  direction: DataGridSortDirection;
+};
+
+export type DataGridSortModel = readonly DataGridSortModelItem[];
+
+export type DataGridSortComparator<TRow, TValue = unknown> = {
+  bivarianceHack(leftValue: TValue, rightValue: TValue, leftRow: TRow, rightRow: TRow): number;
+}['bivarianceHack'];
 
 export type DataGridCellContext<TRow, TValue = unknown> = {
   row: TRow;
@@ -31,15 +43,24 @@ type DataGridBaseColumnDef<TRow> = {
   maxWidth?: number;
   /** Pin this column to the left or right edge of the horizontal scroller. */
   pin?: DataGridColumnPin;
+  /** Enables header-click sorting for this column. */
+  sortable?: boolean;
+};
+
+type DataGridSortableColumnDef<TRow, TValue> = DataGridBaseColumnDef<TRow> & {
+  /** Custom comparator for this column. Receives cell values and their source rows. */
+  sortComparator?: DataGridSortComparator<TRow, TValue>;
 };
 
 export type DataGridColumnDef<TRow = Record<string, unknown>> =
-  | (DataGridBaseColumnDef<TRow> & {
-      key: Extract<keyof TRow, string>;
-      /** Reads a value from the row. Defaults to object-key access by `column.key`. */
-      getValue?: (row: TRow) => TRow[Extract<keyof TRow, string>];
-    })
-  | (DataGridBaseColumnDef<TRow> & {
+  | {
+      [TKey in Extract<keyof TRow, string>]: DataGridSortableColumnDef<TRow, TRow[TKey]> & {
+        key: TKey;
+        /** Reads a value from the row. Defaults to object-key access by `column.key`. */
+        getValue?: (row: TRow) => TRow[TKey];
+      };
+    }[Extract<keyof TRow, string>]
+  | (DataGridSortableColumnDef<TRow, unknown> & {
       key: string;
       /** Required for computed columns whose key is not a row property. */
       getValue: (row: TRow) => unknown;
@@ -78,6 +99,10 @@ export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   selectionModel?: DataGridSelectionModel;
   /** Called when row selection changes through cell interaction. */
   onSelectionModelChange?: (selectionModel: DataGridSelectionModel) => void;
+  /** Controls the row sort order used to render rows. */
+  sortModel?: DataGridSortModel;
+  /** Called after the user changes sort order and DataGrid updates `sortModel`. */
+  onSortModelChange?: (sortModel: DataGridSortModel) => void;
   /** Additional class names merged onto the root grid. */
   class?: string;
   /** Additional class names for body rows. */

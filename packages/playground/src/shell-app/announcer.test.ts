@@ -230,4 +230,24 @@ describe('popstate navigation (browser back/forward)', () => {
     const region = container.querySelector('[aria-live="polite"]');
     expect(region?.textContent).toBe('');
   });
+
+  test('applies title + announcement + focus when returning to the root landing page', async () => {
+    happyWindow.happyDOM.setURL('http://localhost/');
+    const announcer = new Announcer();
+    const store = makePopStateStore();
+    store.currentComponent = 'button';
+    const { container, component } = render(PopStateFixture, { announcer, store });
+    await tick();
+
+    await component['popState']();
+
+    expect(store.currentComponent).toBe('');
+    expect(store.syncFromUrlCalls).toBe(1);
+    expect(document.title).toBe('cinder playground — Svelte 5 component library');
+    expect(document.activeElement).toBe(component['getMain']());
+
+    await advance(70);
+    const region = container.querySelector('[aria-live="polite"]');
+    expect(region?.textContent).toBe('Viewing cinder playground');
+  });
 });

@@ -83,6 +83,11 @@ test.describe('playground shell styles', () => {
     expect(filterMetrics.borderRadius).toBeGreaterThan(0);
     expect(filterMetrics.height).toBeGreaterThan(30);
 
+    const previewPage = page.frameLocator('iframe[data-cinder-preview]').locator('.dx');
+    await expect(previewPage).toBeVisible();
+    const previewPageMetrics = await computedMetrics(previewPage);
+    expect(previewPageMetrics.borderBlockStartWidth).toBeGreaterThan(0);
+
     await page.getByRole('radio', { name: 'Tablet (768 pixels)' }).click();
     await expect(viewportControl.locator('[data-cinder-selected]')).toContainText('Tablet');
 
