@@ -87,6 +87,10 @@ export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   density?: DataGridDensity;
   /** Keeps the column header row pinned to the top edge while scrolling. Defaults to `true`. */
   stickyHeader?: boolean;
+  /** Enables fixed-height row virtualization. Columns still render fully. */
+  virtualizeRows?: boolean;
+  /** Fixed body-row pixel height used by row virtualization. Defaults to 44 when omitted or invalid. */
+  rowHeight?: number;
   /** Applies a supplied column order. */
   columnOrder?: readonly string[];
   /** Overrides resolved column widths by column key. */

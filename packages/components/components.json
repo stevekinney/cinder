@@ -1354,7 +1354,7 @@
           "reason": "You only need a semantic read-only table — use DataTable or the Table family instead."
         },
         {
-          "reason": "You need virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet."
+          "reason": "You need column virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet."
         }
       ],
       "related": ["data-table", "table"],

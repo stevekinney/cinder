@@ -1,0 +1,356 @@
+/// <reference lib="dom" />
+import { afterEach, describe, expect, mock, test } from 'bun:test';
+import type { Component } from 'svelte';
+
+import { setupHappyDom } from '../../test/happy-dom.ts';
+import { renderThenHydrate } from '../../test/hydrate.ts';
+import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
+
+setupHappyDom();
+
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { default: DataGrid } = await import('./data-grid.svelte');
+const sourcePath = new URL('./data-grid.svelte', import.meta.url).pathname;
+
+afterEach(() => cleanup());
+
+type LogRow = {
+  id: string;
+  message: string;
+  owner: string;
+};
+
+const columns: DataGridColumnDef<LogRow>[] = [
+  { key: 'message', header: 'Message', width: 180 },
+  { key: 'owner', header: 'Owner', width: 120 },
+];
+const sortableColumns: DataGridColumnDef<LogRow>[] = [
+  { key: 'message', header: 'Message', width: 180, sortable: true },
+  { key: 'owner', header: 'Owner', width: 120 },
+];
+
+const getLogRowId = (row: LogRow) => row.id;
+const LogDataGrid = DataGrid as Component<DataGridProps<LogRow>>;
+
+function makeRows(count: number): LogRow[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `row-${index}`,
+    message: `Message ${index}`,
+    owner: `Owner ${index % 5}`,
+  }));
+}
+
+function dataRows(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>('.cinder-data-grid__body [role="row"]'),
+  );
+}
+
+function rectWithHeight(height: number): DOMRect {
+  return {
+    bottom: height,
+    height,
+    left: 0,
+    right: 0,
+    top: 0,
+    width: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  };
+}
+
+class TestResizeObserver {
+  static instances: TestResizeObserver[] = [];
+
+  constructor(readonly callback: ResizeObserverCallback) {
+    TestResizeObserver.instances.push(this);
+  }
+
+  observe(): void {}
+
+  disconnect(): void {}
+
+  trigger(): void {
+    this.callback([], this as unknown as ResizeObserver);
+  }
+}
+
+describe('DataGrid row virtualization', () => {
+  test('renders only a row window while aria counts reflect the full dataset', async () => {
+    const rows = makeRows(1_000);
+    const { container } = render(LogDataGrid, {
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    await waitFor(() => expect(dataRows(container).length).toBeGreaterThan(0));
+
+    expect(grid?.getAttribute('aria-rowcount')).toBe('1001');
+    expect(grid?.getAttribute('aria-colcount')).toBe('2');
+    expect(dataRows(container).length).toBeLessThan(1_000);
+    expect(dataRows(container).length).toBeLessThanOrEqual(25);
+    expect(dataRows(container)[0]?.getAttribute('aria-rowindex')).toBe('2');
+  });
+
+  test('scrolling shifts rendered rows while aria-rowindex stays full-dataset based', async () => {
+    const rows = makeRows(1_000);
+    const { container } = render(LogDataGrid, {
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    if (!grid) throw new Error('Expected DataGrid root');
+
+    grid.scrollTop = 1_000;
+    await fireEvent.scroll(grid);
+
+    await waitFor(() =>
+      expect(dataRows(container).some((row) => row.textContent?.includes('Message 50'))).toBe(true),
+    );
+    const row = dataRows(container).find((element) => element.textContent?.includes('Message 50'));
+
+    expect(row?.getAttribute('aria-rowindex')).toBe('52');
+    expect(grid.getAttribute('aria-rowcount')).toBe('1001');
+    expect(
+      dataRows(container).every((element) => Number(element.getAttribute('aria-rowindex')) > 40),
+    ).toBe(true);
+  });
+
+  test('scrolling maps the virtual body below the in-flow header row', async () => {
+    const rows = makeRows(1_000);
+    const { container } = render(LogDataGrid, {
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    const headerRow = container.querySelector<HTMLElement>('.cinder-data-grid__header-row');
+    if (!grid || !headerRow) throw new Error('Expected DataGrid root and header row');
+
+    headerRow.getBoundingClientRect = () => rectWithHeight(40);
+    grid.scrollTop = 1_040;
+    await fireEvent.scroll(grid);
+
+    await waitFor(() =>
+      expect(dataRows(container).some((row) => row.textContent?.includes('Message 50'))).toBe(true),
+    );
+    const row = dataRows(container).find((element) => element.textContent?.includes('Message 50'));
+
+    expect(row?.getAttribute('aria-rowindex')).toBe('52');
+  });
+
+  test('refreshes the virtual window when header height changes', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    TestResizeObserver.instances = [];
+    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      const rows = makeRows(1_000);
+      const { container } = render(LogDataGrid, {
+        rows,
+        columns,
+        getRowId: getLogRowId,
+        virtualizeRows: true,
+        rowHeight: 20,
+        'aria-label': 'Logs',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      const headerRow = container.querySelector<HTMLElement>('.cinder-data-grid__header-row');
+      if (!grid || !headerRow) throw new Error('Expected DataGrid root and header row');
+
+      Object.defineProperty(headerRow, 'offsetHeight', { configurable: true, value: 0 });
+      grid.scrollTop = 1_000;
+      await fireEvent.scroll(grid);
+      await waitFor(() =>
+        expect(dataRows(container).some((row) => row.textContent?.includes('Message 50'))).toBe(
+          true,
+        ),
+      );
+
+      Object.defineProperty(headerRow, 'offsetHeight', { configurable: true, value: 40 });
+      for (const observer of TestResizeObserver.instances) observer.trigger();
+
+      await waitFor(() =>
+        expect(dataRows(container).some((row) => row.textContent?.includes('Message 48'))).toBe(
+          true,
+        ),
+      );
+      const row = dataRows(container).find((element) =>
+        element.textContent?.includes('Message 48'),
+      );
+
+      expect(row?.getAttribute('aria-rowindex')).toBe('50');
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('keyboard navigation scrolls an off-window active row into the rendered window', async () => {
+    const rows = makeRows(100);
+    const { container } = render(LogDataGrid, {
+      rows,
+      columns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    if (!grid) throw new Error('Expected DataGrid root');
+
+    await fireEvent.keyDown(grid, { key: 'End', ctrlKey: true });
+
+    await waitFor(() =>
+      expect(
+        container.querySelector(`#${grid.getAttribute('aria-activedescendant')}`),
+      ).not.toBeNull(),
+    );
+    const activeCell = container.querySelector<HTMLElement>(
+      `#${grid.getAttribute('aria-activedescendant')}`,
+    );
+    const activeRow = dataRows(container).find((row) => row.textContent?.includes('Message 99'));
+
+    expect(activeCell).not.toBeNull();
+    expect(activeCell?.getAttribute('data-cinder-active')).toBe('true');
+    expect(activeRow).not.toBeUndefined();
+    expect(activeRow?.getAttribute('aria-rowindex')).toBe('101');
+  });
+
+  test('sorting scrolls a retained active row into its new virtual position', async () => {
+    const rows = makeRows(100);
+    const view = render(LogDataGrid, {
+      rows,
+      columns: sortableColumns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+    const { container } = view;
+
+    const grid = container.querySelector<HTMLElement>('[role="grid"]');
+    if (!grid) throw new Error('Expected DataGrid root');
+
+    await fireEvent.click(container.querySelector<HTMLElement>('[role="gridcell"]')!);
+    await view.rerender({
+      rows,
+      columns: sortableColumns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      sortModel: [{ key: 'message', direction: 'descending' }],
+      'aria-label': 'Logs',
+    });
+
+    await waitFor(() =>
+      expect(dataRows(container).some((row) => row.textContent?.includes('Message 0'))).toBe(true),
+    );
+    const activeRow = dataRows(container).find((row) => row.textContent?.includes('Message 0'));
+
+    expect(activeRow?.getAttribute('aria-rowindex')).toBe('101');
+  });
+
+  test('warns and falls back when row virtualization omits fixed rowHeight', () => {
+    const warnings: unknown[] = [];
+    const warnSpy = mock((message?: unknown) => {
+      warnings.push(message);
+    });
+    const originalWarn = console.warn;
+    console.warn = warnSpy;
+
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeRows(100),
+        columns,
+        getRowId: getLogRowId,
+        virtualizeRows: true,
+        'aria-label': 'Logs',
+      });
+
+      expect(dataRows(container).length).toBeGreaterThan(0);
+      expect(dataRows(container).length).toBeLessThanOrEqual(25);
+      expect(
+        container
+          .querySelector<HTMLElement>('.cinder-data-grid__body')
+          ?.style.getPropertyValue('height'),
+      ).toBe('4400px');
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(String(warnings[0])).toContain('default rowHeight of 44px');
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warns and falls back when row virtualization receives invalid rowHeight', () => {
+    const warnings: unknown[] = [];
+    const warnSpy = mock((message?: unknown) => {
+      warnings.push(message);
+    });
+    const originalWarn = console.warn;
+    console.warn = warnSpy;
+
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeRows(100),
+        columns,
+        getRowId: getLogRowId,
+        virtualizeRows: true,
+        rowHeight: Number.NaN,
+        'aria-label': 'Logs',
+      });
+
+      expect(dataRows(container).length).toBeGreaterThan(0);
+      expect(
+        container
+          .querySelector<HTMLElement>('.cinder-data-grid__body')
+          ?.style.getPropertyValue('height'),
+      ).toBe('4400px');
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(String(warnings[0])).toContain('positive finite rowHeight');
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('keeps full ARIA counts through server render and hydration', async () => {
+    const result = await renderThenHydrate(LogDataGrid, sourcePath, {
+      rows: makeRows(100),
+      columns,
+      getRowId: getLogRowId,
+      virtualizeRows: true,
+      rowHeight: 20,
+      'aria-label': 'Logs',
+    });
+
+    try {
+      expect(result.ssrHtml).toContain('role="grid"');
+      expect(result.ssrHtml).toContain('aria-rowcount="101"');
+      expect(result.ssrHtml).toContain('aria-colcount="2"');
+      expect(result.ssrHtml).not.toContain('aria-activedescendant');
+      expect(result.ssrHtml).not.toContain('role="gridcell"');
+
+      const grid = result.container.querySelector('[role="grid"]');
+      expect(grid?.getAttribute('aria-rowcount')).toBe('101');
+      expect(grid?.getAttribute('aria-colcount')).toBe('2');
+    } finally {
+      result.cleanup();
+    }
+  });
+});
