@@ -13,6 +13,14 @@ const schema = {
       description:
         'Keeps the column header row pinned to the top edge while scrolling. Defaults to `true`.',
     },
+    virtualizeRows: {
+      type: 'boolean',
+      description: 'Enables fixed-height row virtualization. Columns still render fully.',
+    },
+    rowHeight: {
+      type: 'number',
+      description: 'Fixed body-row pixel height used by row virtualization.',
+    },
     columnOrder: {
       type: 'array',
       items: {

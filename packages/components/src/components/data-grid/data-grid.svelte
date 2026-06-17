@@ -10,7 +10,7 @@
    * @useWhen Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.
    * @useWhen You need role=grid semantics instead of native table semantics.
    * @avoidWhen You only need a semantic read-only table — use DataTable or the Table family instead.
-   * @avoidWhen You need virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
+   * @avoidWhen You need column virtualization, resizing, reordering, or editing today — DataGrid does not provide them yet.
    * @related data-table, table
    */
   export type {
@@ -47,6 +47,7 @@
     getNextDataGridSortModel,
     getSortedDataGridRowIndices,
   } from './_internal/sort-model.ts';
+  import { DataGridVirtualizationAdapter } from './_internal/virtualization-adapter.svelte.ts';
   import type {
     DataGridProps,
     DataGridSelectionModel,
@@ -70,6 +71,8 @@
     getRowId,
     density = 'comfortable',
     stickyHeader = true,
+    virtualizeRows = false,
+    rowHeight,
     columnOrder,
     columnSizing,
     columnPinning,
@@ -133,6 +136,46 @@
   const sortedKeyedRows = $derived(
     sortedRowIndices.flatMap((rowIndex) => keyedRows[rowIndex] ?? []),
   );
+  const resolvedRowHeight = $derived(rowHeight ?? 44);
+  const shouldVirtualizeRows = $derived(virtualizeRows && sortedKeyedRows.length > 0);
+  const rowVirtualizer = new DataGridVirtualizationAdapter({
+    getScrollElement: () => gridElement ?? null,
+    getRowCount: () => sortedKeyedRows.length,
+    getRowKey: (index) => sortedKeyedRows[index]?.rowKey ?? index,
+    getRowHeight: () => resolvedRowHeight,
+    getColumnCount: () => columnModel.renderColumns.length,
+    getColumnWidth: (index) => columnModel.renderColumns[index]?.width ?? 150,
+    getOverscan: () => 5,
+    getInitialHeight: () => resolvedRowHeight * 10,
+  });
+  const virtualRows = $derived(rowVirtualizer.virtualRows);
+  const renderedRows = $derived.by(() => {
+    if (!shouldVirtualizeRows) {
+      return sortedKeyedRows.map((keyedRow, visualRowIndex) => ({
+        keyedRow,
+        visualRowIndex,
+        start: 0,
+        size: resolvedRowHeight,
+        virtualized: false,
+      }));
+    }
+
+    return virtualRows.flatMap((item) => {
+      const keyedRow = sortedKeyedRows[item.index];
+      return keyedRow
+        ? [
+            {
+              keyedRow,
+              visualRowIndex: item.index,
+              start: item.start,
+              size: item.size,
+              virtualized: true,
+            },
+          ]
+        : [];
+    });
+  });
+  const bodyHeight = $derived(shouldVirtualizeRows ? `${rowVirtualizer.totalHeight}px` : undefined);
   const duplicateRowIds = $derived.by(() => {
     const seen = new Set<string>();
     const duplicates = new Set<string>();
@@ -199,6 +242,7 @@
   let gridElement: HTMLDivElement | undefined;
   let liveRegionTimeoutId: ReturnType<typeof setTimeout> | undefined;
   let liveRegionVersion = 0;
+  let warnedMissingVirtualRowHeight = false;
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
@@ -221,6 +265,15 @@
       `[cinder-data-grid] getRowId returned duplicate row ids: ${duplicateRowIds
         .map((rowId) => JSON.stringify(rowId))
         .join(', ')}. Row ids must be unique.`,
+    );
+  });
+
+  $effect(() => {
+    if (!virtualizeRows || rowHeight !== undefined || warnedMissingVirtualRowHeight) return;
+
+    warnedMissingVirtualRowHeight = true;
+    devWarn(
+      '[cinder-data-grid] DataGrid row virtualization requires a fixed rowHeight. Falling back to 44px.',
     );
   });
 
@@ -263,6 +316,9 @@
     }
 
     previousActiveCellId = cellId;
+    if (shouldVirtualizeRows) {
+      rowVirtualizer.scrollToRow(activeRowIndex);
+    }
     document.getElementById(cellId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   });
 
@@ -340,6 +396,19 @@
       customProperties.push(`--_cinder-data-grid-pin-right-offset: ${column.pinOffset}px`);
     }
     return customProperties.join('; ');
+  }
+
+  function getRowStyle(row: {
+    virtualized: boolean;
+    start: number;
+    size: number;
+  }): string | undefined {
+    if (!row.virtualized) return undefined;
+
+    return [
+      `--_cinder-data-grid-row-translate-y: ${row.start}px`,
+      `--_cinder-data-grid-row-height: ${row.size}px`,
+    ].join('; ');
   }
 
   function getColumnSortModelItem(columnKey: string): DataGridSortModelItem | undefined {
@@ -652,7 +721,9 @@
   onkeydown={handleKeydown}
   data-cinder-density={density}
   data-cinder-sticky-header={stickyHeader ? 'true' : undefined}
+  data-cinder-virtualized-rows={shouldVirtualizeRows ? 'true' : undefined}
   style:--_cinder-data-grid-template-columns={gridTemplateColumns}
+  {@attach rowVirtualizer.mountScrollContainer}
 >
   <div class="cinder-data-grid__header-row" role="row" aria-rowindex="1">
     {#each columnModel.renderColumns as column (column.key)}
@@ -709,19 +780,24 @@
     role="rowgroup"
     onclick={handleBodyClick}
     onkeydown={handleBodyKeydown}
+    style:height={bodyHeight}
+    data-cinder-virtualized={shouldVirtualizeRows ? 'true' : undefined}
   >
-    {#each sortedKeyedRows as keyedRow, visualRowIndex (keyedRow.rowKey)}
+    {#each renderedRows as renderedRow (renderedRow.keyedRow.rowKey)}
+      {@const keyedRow = renderedRow.keyedRow}
       {@const row = keyedRow.row}
       {@const rowId = keyedRow.rowId}
       {@const rowDomId = keyedRow.rowDomId}
-      {@const rowIndex = visualRowIndex}
+      {@const rowIndex = renderedRow.visualRowIndex}
       <div
         class={classNames('cinder-data-grid__row', getRowClass(row, rowIndex))}
         role="row"
-        aria-rowindex={visualRowIndex + 2}
+        aria-rowindex={rowIndex + 2}
         aria-label={getResolvedRowAriaLabel(row, rowIndex)}
         aria-selected={selectedRowIds.has(rowId) ? 'true' : undefined}
         data-cinder-selected={selectedRowIds.has(rowId) ? 'true' : undefined}
+        data-cinder-virtual-index={rowIndex}
+        style={getRowStyle(renderedRow)}
       >
         {#each columnModel.renderColumns as column (column.key)}
           {@const value = getDataGridColumnValue(row, column)}
@@ -743,7 +819,7 @@
             data-cinder-row-id={rowId}
             data-cinder-row-dom-id={rowDomId}
             data-cinder-column-key={column.key}
-            data-cinder-row-index={visualRowIndex}
+            data-cinder-row-index={rowIndex}
             style={getCellStyle(column)}
           >
             {#if column.cell}

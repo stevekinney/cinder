@@ -45,6 +45,20 @@
     transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
+  .cinder-data-grid__body[data-cinder-virtualized] {
+    position: relative;
+    inline-size: max-content;
+    min-inline-size: 100%;
+  }
+
+  .cinder-data-grid__body[data-cinder-virtualized] .cinder-data-grid__row {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    block-size: var(--_cinder-data-grid-row-height);
+    transform: translateY(var(--_cinder-data-grid-row-translate-y));
+  }
+
   @media (hover: hover) {
     .cinder-data-grid__row:hover {
       background: var(--cinder-surface-hover);
