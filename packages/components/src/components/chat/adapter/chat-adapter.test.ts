@@ -1407,3 +1407,40 @@ describe('ChatAdapter — tool approval', () => {
     unmount(instance);
   });
 });
+
+describe('Chat — suggested replies (C5) are a last-turn affordance', () => {
+  function suggestionMessage(id: string, position: number, labels: string[]): Message {
+    return {
+      id,
+      role: 'assistant',
+      content: `reply ${id}`,
+      position,
+      createdAt: `2026-06-02T00:0${position}:00.000Z`,
+      metadata: { 'cinder:suggestions': labels },
+      hidden: false,
+    };
+  }
+
+  test('only the LAST message renders suggestion chips, even when earlier ones carry the metadata', () => {
+    // Two assistant turns both carry cinder:suggestions metadata. Suggestions are
+    // a per-turn affordance — only the latest turn should show chips, not every
+    // historical message that still carries the metadata. (Cursor Bugbot.)
+    const conversation = conversationFromMessages('chat-suggestions', [
+      suggestionMessage('older', 0, ['Stale one', 'Stale two']),
+      suggestionMessage('latest', 1, ['Fresh one', 'Fresh two']),
+    ]);
+    const { container, instance } = mountChat({ id: 'chat-suggestions', conversation });
+
+    const toolbars = container.querySelectorAll('[role="toolbar"][aria-label="Suggested replies"]');
+    expect(toolbars).toHaveLength(1);
+
+    const chipText = Array.from(toolbars[0]!.querySelectorAll('[data-cinder-suggestion]')).map(
+      (chip) => chip.textContent?.trim(),
+    );
+    expect(chipText).toEqual(['Fresh one', 'Fresh two']);
+    // The stale earlier-turn suggestions must NOT render.
+    expect(container.textContent).not.toContain('Stale one');
+
+    unmount(instance);
+  });
+});

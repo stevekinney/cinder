@@ -104,13 +104,25 @@ describe('resolveMessageReasoning', () => {
     expect(resolveMessageReasoning(m, () => 'prop')).toBe('prop');
   });
 
-  it('returns undefined when a throwing callback is given (never breaks render)', () => {
+  it('a throwing callback never breaks render and falls back to metadata', () => {
     const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
+    // A buggy/throwing callback is treated as "no opinion" — it must not crash
+    // the render, and it must not suppress valid metadata.
     expect(
       resolveMessageReasoning(m, () => {
         throw new Error('consumer bug');
       }),
-    ).toBeUndefined();
+    ).toBe('meta');
+  });
+
+  it('a callback returning undefined falls back to cinder:reasoning metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
+    expect(resolveMessageReasoning(m, () => undefined)).toBe('meta');
+  });
+
+  it('a callback returning an empty string suppresses reasoning (does NOT fall back)', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
+    expect(resolveMessageReasoning(m, () => '')).toBeUndefined();
   });
 });
 
@@ -146,12 +158,18 @@ describe('resolveMessageSteps', () => {
     expect(resolveMessageSteps(m, () => [other])).toEqual([other]);
   });
 
-  it('returns undefined when the callback throws', () => {
+  it('a throwing callback falls back to metadata (never breaks render)', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:steps': [validStep] } });
     expect(
-      resolveMessageSteps(message({ role: 'assistant' }), () => {
+      resolveMessageSteps(m, () => {
         throw new Error('consumer bug');
       }),
-    ).toBeUndefined();
+    ).toEqual([validStep]);
+  });
+
+  it('a callback returning undefined falls back to cinder:steps metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:steps': [validStep] } });
+    expect(resolveMessageSteps(m, () => undefined)).toEqual([validStep]);
   });
 
   it('a prop returning an empty array suppresses steps even when metadata has valid entries', () => {
@@ -183,11 +201,22 @@ describe('resolveMessageSuggestions', () => {
     expect(resolveMessageSuggestions(m, () => ['prop'])).toEqual(['prop']);
   });
 
-  it('returns undefined when the callback throws', () => {
+  it('a throwing callback falls back to metadata (never breaks render)', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:suggestions': ['meta'] } });
     expect(
-      resolveMessageSuggestions(message({ role: 'assistant' }), () => {
+      resolveMessageSuggestions(m, () => {
         throw new Error('consumer bug');
       }),
-    ).toBeUndefined();
+    ).toEqual(['meta']);
+  });
+
+  it('a callback returning undefined falls back to cinder:suggestions metadata', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:suggestions': ['meta'] } });
+    expect(resolveMessageSuggestions(m, () => undefined)).toEqual(['meta']);
+  });
+
+  it('a callback returning an empty array suppresses suggestions (does NOT fall back)', () => {
+    const m = message({ role: 'assistant', metadata: { 'cinder:suggestions': ['meta'] } });
+    expect(resolveMessageSuggestions(m, () => [])).toBeUndefined();
   });
 });

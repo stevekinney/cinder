@@ -232,6 +232,56 @@ describe('C3 — toolName resolution', () => {
   });
 });
 
+describe('C3 — paired tool-call whose result is action_required', () => {
+  // The common transcript shape is a tool-call message paired with its
+  // tool-result. The container folds the standalone result row away, so the
+  // approval prompt must come from the tool-call branch (with the pair in
+  // context) — otherwise paired call+result transcripts would never get
+  // Approve/Reject controls. (Cursor Bugbot HIGH.)
+  it('emits BOTH a tool-call card and a tool-approval part for a paired action_required result', () => {
+    const call = { id: 'call-7', name: 'deploy_to_production', arguments: {} };
+    const result = {
+      callId: 'call-7',
+      outcome: 'action_required' as const,
+      content: null,
+      action: { type: 'approval' as const, message: 'Deploy to production?' },
+    };
+    const msg = message({ id: 'tc', role: 'tool-call', toolCall: call });
+    const parts = deriveMessageParts(msg, { toolCallPair: { call, result } });
+
+    expect(parts.map((part) => part.type)).toEqual(['tool-call', 'tool-approval']);
+    const approval = parts[1];
+    expect(approval?.type === 'tool-approval' && approval.toolCallId).toBe('call-7');
+    // The tool name resolves from the paired call, not the bare call id.
+    expect(approval?.type === 'tool-approval' && approval.toolName).toBe('deploy_to_production');
+  });
+
+  it('reflects the approved/denied state on the paired approval part', () => {
+    const call = { id: 'call-7', name: 'deploy', arguments: {} };
+    const result = {
+      callId: 'call-7',
+      outcome: 'action_required' as const,
+      content: null,
+      action: { type: 'approval' as const, message: 'Go?' },
+    };
+    const msg = message({ id: 'tc', role: 'tool-call', toolCall: call });
+    const parts = deriveMessageParts(msg, {
+      toolCallPair: { call, result },
+      approvedToolCallIds: new Set(['call-7']),
+    });
+    const approval = parts[1];
+    expect(approval?.type === 'tool-approval' && approval.approved).toBe(true);
+  });
+
+  it('a paired SUCCESS result emits only the tool-call card (no approval prompt)', () => {
+    const call = { id: 'call-7', name: 'deploy', arguments: {} };
+    const result = { callId: 'call-7', outcome: 'success' as const, content: 'done' };
+    const msg = message({ id: 'tc', role: 'tool-call', toolCall: call });
+    const parts = deriveMessageParts(msg, { toolCallPair: { call, result } });
+    expect(parts.map((part) => part.type)).toEqual(['tool-call']);
+  });
+});
+
 describe('C3 — plain tool-result path is unchanged', () => {
   it('outcome=success still emits a tool-result part', () => {
     const msg = message({

@@ -232,6 +232,9 @@
   });
 
   const messages = $derived(getMessages(conversation));
+  // C5 — suggested replies are a per-TURN affordance shown only beneath the last
+  // message, not on every historical message that still carries the metadata.
+  const lastMessageId = $derived(messages.at(-1)?.id);
   let previousAutoScrollMessageCount = getMessages(conversation).length;
 
   // The conversation id as a stable VALUE dependency. The subscribe effect keys
@@ -1477,7 +1480,10 @@
          chat/utilities). A plain transcript yields `undefined` for all three. -->
     {@const derivedReasoning = resolveMessageReasoning(message, messageReasoning)}
     {@const derivedSteps = resolveMessageSteps(message, messageSteps)}
-    {@const derivedSuggestions = resolveMessageSuggestions(message, messageSuggestions)}
+    {@const derivedSuggestions =
+      message.id === lastMessageId
+        ? resolveMessageSuggestions(message, messageSuggestions)
+        : undefined}
 
     <!-- The built-in row. Wrapped in a snippet so the optional `row`
          override can render it (inversion of control) or replace it. The

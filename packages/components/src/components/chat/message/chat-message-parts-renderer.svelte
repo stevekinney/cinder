@@ -33,19 +33,14 @@
   let activeIndex = $state(0);
 
   // The chip count can shrink between renders (a new assistant turn with fewer
-  // suggestions, or streaming). A raw `activeIndex` left beyond the new range
-  // would leave NO chip with tabindex=0, making the toolbar unreachable by Tab.
-  // Resolve the applied index against the current count so it always points at a
-  // real chip (clamped into range, floored at 0 for the empty case).
-  const suggestionCount = $derived(
-    units.reduce(
-      (total, unit) => total + (unit.kind === 'suggestions' ? unit.suggestions.length : 0),
-      0,
-    ),
-  );
-  const appliedActiveIndex = $derived(
-    suggestionCount === 0 ? 0 : Math.min(activeIndex, suggestionCount - 1),
-  );
+  // suggestions, or streaming). A raw `activeIndex` left beyond a toolbar's range
+  // would leave NO chip with tabindex=0, making that toolbar unreachable by Tab.
+  // Clamp against EACH toolbar's own length (not the total across units) so every
+  // rendered toolbar always has exactly one tabindex=0 entry point — floored at 0
+  // for the empty case.
+  function activeChipIndex(count: number): number {
+    return count === 0 ? 0 : Math.min(activeIndex, count - 1);
+  }
 
   function handleToolbarKeydown(event: KeyboardEvent, toolbar: HTMLElement, count: number): void {
     if (count === 0) return;
@@ -127,7 +122,7 @@
         <SuggestionPart
           part={suggestion}
           {onsuggestionselect}
-          tabindex={index === appliedActiveIndex ? 0 : -1}
+          tabindex={index === activeChipIndex(unit.suggestions.length) ? 0 : -1}
         />
       {/each}
     </div>
