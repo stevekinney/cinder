@@ -172,7 +172,6 @@
   const selectedRowIds = $derived(
     selectionMode === 'none' ? new Set<string>() : new Set(resolvedSelectionModel),
   );
-  const hasMultipleSelectedCells = $derived(selectionState.selectedCellCount > 1);
   const resolvedAriaLabel = $derived(
     typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
   );
@@ -534,9 +533,7 @@
   aria-label={resolvedAriaLabel}
   aria-labelledby={resolvedAriaLabelledBy}
   aria-activedescendant={activeCellId}
-  aria-multiselectable={selectionMode === 'multiple' || hasMultipleSelectedCells
-    ? 'true'
-    : undefined}
+  aria-multiselectable="true"
   tabindex="0"
   onkeydown={handleKeydown}
   data-cinder-density={density}
