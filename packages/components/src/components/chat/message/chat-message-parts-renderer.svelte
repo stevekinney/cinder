@@ -32,13 +32,29 @@
   // Home/End jump to first/last. Tab and all other keys pass through.
   let activeIndex = $state(0);
 
+  // The chip count can shrink between renders (a new assistant turn with fewer
+  // suggestions, or streaming). A raw `activeIndex` left beyond the new range
+  // would leave NO chip with tabindex=0, making the toolbar unreachable by Tab.
+  // Resolve the applied index against the current count so it always points at a
+  // real chip (clamped into range, floored at 0 for the empty case).
+  const suggestionCount = $derived(
+    units.reduce(
+      (total, unit) => total + (unit.kind === 'suggestions' ? unit.suggestions.length : 0),
+      0,
+    ),
+  );
+  const appliedActiveIndex = $derived(
+    suggestionCount === 0 ? 0 : Math.min(activeIndex, suggestionCount - 1),
+  );
+
   function handleToolbarKeydown(event: KeyboardEvent, toolbar: HTMLElement, count: number): void {
     if (count === 0) return;
-    let next = activeIndex;
+    const current = Math.min(activeIndex, count - 1);
+    let next = current;
     if (event.key === 'ArrowRight') {
-      next = (activeIndex + 1) % count;
+      next = (current + 1) % count;
     } else if (event.key === 'ArrowLeft') {
-      next = (activeIndex - 1 + count) % count;
+      next = (current - 1 + count) % count;
     } else if (event.key === 'Home') {
       next = 0;
     } else if (event.key === 'End') {
@@ -111,7 +127,7 @@
         <SuggestionPart
           part={suggestion}
           {onsuggestionselect}
-          tabindex={index === activeIndex ? 0 : -1}
+          tabindex={index === appliedActiveIndex ? 0 : -1}
         />
       {/each}
     </div>

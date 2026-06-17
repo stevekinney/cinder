@@ -6,7 +6,114 @@
  */
 
 import type { Message, MultiModalContent } from '../conversation-model.ts';
-import type { ChatMessagePart, ImageMessagePart, MessagePartDerivationContext } from './types.ts';
+import type {
+  ChatMessagePart,
+  ImageMessagePart,
+  MessagePartDerivationContext,
+  StepInfo,
+  StepStatus,
+} from './types.ts';
+
+/** Namespaced metadata keys the overlay parts read (ignorable by plain rendering). */
+export const CINDER_REASONING_METADATA_KEY = 'cinder:reasoning';
+export const CINDER_STEPS_METADATA_KEY = 'cinder:steps';
+export const CINDER_SUGGESTIONS_METADATA_KEY = 'cinder:suggestions';
+
+const STEP_STATUSES: ReadonlySet<string> = new Set<StepStatus>([
+  'pending',
+  'running',
+  'done',
+  'error',
+]);
+
+/**
+ * Narrows an unknown value to a valid {@link StepInfo}. Uses `in`-operator
+ * narrowing (no `as` assertion) so each accessed field is type-safe.
+ */
+function isStepInfo(value: unknown): value is StepInfo {
+  if (value === null || typeof value !== 'object') return false;
+  if (!('title' in value) || !('content' in value) || !('status' in value)) return false;
+  return (
+    typeof value.title === 'string' &&
+    typeof value.content === 'string' &&
+    typeof value.status === 'string' &&
+    STEP_STATUSES.has(value.status)
+  );
+}
+
+/**
+ * Resolves the reasoning overlay for a message. An explicit per-message callback
+ * takes priority over `cinder:reasoning` namespaced metadata. Both paths are
+ * validated identically (must be a non-empty string) and the callback is guarded
+ * so a consumer throw never breaks the chat render. Returns `undefined` when no
+ * reasoning applies — a plain transcript renders the feature absent.
+ */
+export function resolveMessageReasoning(
+  message: Message,
+  fromProp?: (message: Message) => string | undefined,
+): string | undefined {
+  let candidate: unknown;
+  if (fromProp !== undefined) {
+    try {
+      candidate = fromProp(message);
+    } catch {
+      return undefined;
+    }
+  } else {
+    candidate = message.metadata[CINDER_REASONING_METADATA_KEY];
+  }
+  return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
+}
+
+/**
+ * Resolves the step overlay for a message. An explicit per-message callback takes
+ * priority over `cinder:steps` namespaced metadata. Both paths are validated to a
+ * `StepInfo[]` (invalid entries are dropped) and the callback is guarded against
+ * throwing. Returns `undefined` when no valid steps apply.
+ */
+export function resolveMessageSteps(
+  message: Message,
+  fromProp?: (message: Message) => StepInfo[] | undefined,
+): StepInfo[] | undefined {
+  let candidate: unknown;
+  if (fromProp !== undefined) {
+    try {
+      candidate = fromProp(message);
+    } catch {
+      return undefined;
+    }
+  } else {
+    candidate = message.metadata[CINDER_STEPS_METADATA_KEY];
+  }
+  if (!Array.isArray(candidate)) return undefined;
+  const steps = candidate.filter(isStepInfo);
+  return steps.length > 0 ? steps : undefined;
+}
+
+/**
+ * Resolves the suggestion overlay for a message. An explicit per-message callback
+ * takes priority over `cinder:suggestions` namespaced metadata. Both paths are
+ * validated to a `string[]` (non-string entries are dropped) and the callback is
+ * guarded against throwing. Returns `undefined` when no valid suggestions apply.
+ */
+export function resolveMessageSuggestions(
+  message: Message,
+  fromProp?: (message: Message) => string[] | undefined,
+): string[] | undefined {
+  let candidate: unknown;
+  if (fromProp !== undefined) {
+    try {
+      candidate = fromProp(message);
+    } catch {
+      return undefined;
+    }
+  } else {
+    candidate = message.metadata[CINDER_SUGGESTIONS_METADATA_KEY];
+  }
+  if (!Array.isArray(candidate)) return undefined;
+  const suggestions = candidate.filter((entry): entry is string => typeof entry === 'string');
+  return suggestions.length > 0 ? suggestions : undefined;
+}
 
 /**
  * Normalizes content to a multi-modal array.

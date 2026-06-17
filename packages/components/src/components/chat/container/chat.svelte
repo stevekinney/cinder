@@ -21,7 +21,13 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
-  import { getMessages, pairToolCallsWithResults } from '../utilities';
+  import {
+    getMessages,
+    pairToolCallsWithResults,
+    resolveMessageReasoning,
+    resolveMessageSteps,
+    resolveMessageSuggestions,
+  } from '../utilities';
   import { ChatMessage, ChatDateSeparator } from '../message';
   import { ChatInput } from '../input';
   import { DEFAULT_SCROLL_CONFIGURATION } from './scroll-utilities';
@@ -44,7 +50,6 @@
   } from './use-chat-message-groups.svelte.ts';
   import { ChatVirtualizer } from './use-chat-virtualizer.svelte.ts';
   import { useChatReasoningState } from './use-chat-reasoning-state.svelte.ts';
-  import type { StepInfo } from '../utilities/types.ts';
   import type { VirtualItem } from '../../../_internal/virtual-item.ts';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
@@ -981,15 +986,51 @@
     inputRef?.focus();
   }
 
-  // C3 — tool approval handlers. Each handler optimistically records the
-  // resolution in the UI-only id sets, then calls the adapter (if present) and
-  // the consumer callback. Guard double-resolution: if the call id is already in
-  // either set, skip it so a second tap/Escape cannot flip a resolved state.
-  function handleApprove(toolCallId: string): void {
+  // C3 — tool approval handlers. The resolution is recorded optimistically in the
+  // UI-only id sets for immediate feedback, then the adapter command (if present)
+  // or the consumer callback fires. Guard double-resolution: if the call id is
+  // already in either set, skip so a second tap/Escape cannot flip a resolved
+  // state. If the ADAPTER command REJECTS, the optimistic resolution is rolled
+  // back so the prompt returns to pending instead of being stuck permanently
+  // "approved"/"denied" on a transport failure — the error still routes to
+  // onadaptererror. The callback-only path resolves synchronously (no rejection).
+  function resolveToolApproval(
+    toolCallId: string,
+    command: 'approveToolCall' | 'denyToolCall',
+    commit: (id: string) => void,
+    rollback: (id: string) => void,
+    runAdapter: (adapter: ChatAdapter) => Promise<void> | undefined,
+    callback: (() => void) | undefined,
+  ): void {
     if (approvedToolCallIds.has(toolCallId) || deniedToolCallIds.has(toolCallId)) return;
-    approvedToolCallIds = new Set([...approvedToolCallIds, toolCallId]);
-    void dispatchCommand(
+    commit(toolCallId);
+
+    if (adapter) {
+      let run: Promise<void> | undefined;
+      try {
+        run = runAdapter(adapter);
+      } catch (error) {
+        rollback(toolCallId);
+        onadaptererror?.({ command, error });
+        return;
+      }
+      if (run !== undefined) {
+        void run.catch((error: unknown) => {
+          rollback(toolCallId);
+          onadaptererror?.({ command, error });
+        });
+        return;
+      }
+    }
+    callback?.();
+  }
+
+  function handleApprove(toolCallId: string): void {
+    resolveToolApproval(
+      toolCallId,
       'approveToolCall',
+      (id) => (approvedToolCallIds = new Set([...approvedToolCallIds, id])),
+      (id) => (approvedToolCallIds = removeFromSet(approvedToolCallIds, id)),
       (resolvedAdapter) =>
         resolvedAdapter.approveToolCall
           ? Promise.resolve(resolvedAdapter.approveToolCall(toolCallId))
@@ -999,16 +1040,23 @@
   }
 
   function handleDeny(toolCallId: string): void {
-    if (approvedToolCallIds.has(toolCallId) || deniedToolCallIds.has(toolCallId)) return;
-    deniedToolCallIds = new Set([...deniedToolCallIds, toolCallId]);
-    void dispatchCommand(
+    resolveToolApproval(
+      toolCallId,
       'denyToolCall',
+      (id) => (deniedToolCallIds = new Set([...deniedToolCallIds, id])),
+      (id) => (deniedToolCallIds = removeFromSet(deniedToolCallIds, id)),
       (resolvedAdapter) =>
         resolvedAdapter.denyToolCall
           ? Promise.resolve(resolvedAdapter.denyToolCall(toolCallId))
           : undefined,
       () => ondeny?.(toolCallId),
     );
+  }
+
+  function removeFromSet(set: Set<string>, value: string): Set<string> {
+    const next = new Set(set);
+    next.delete(value);
+    return next;
   }
 
   function handleStopGenerating(): void {
@@ -1406,42 +1454,14 @@
       searchState.isOpen &&
       searchState.currentMatch !== null &&
       searchState.currentMatch.message.id === message.id}
-    {@const derivedReasoning = (() => {
-      // C4: resolve reasoning — explicit prop takes priority over metadata.
-      if (messageReasoning !== undefined) {
-        return messageReasoning(message);
-      }
-      const metaReasoning = (message.metadata as Record<string, unknown>)?.['cinder:reasoning'];
-      return typeof metaReasoning === 'string' ? metaReasoning : undefined;
-    })()}
-    {@const derivedSteps = (() => {
-      // C4: resolve steps — explicit prop takes priority over metadata.
-      if (messageSteps !== undefined) {
-        return messageSteps(message);
-      }
-      const metaSteps = (message.metadata as Record<string, unknown>)?.['cinder:steps'];
-      if (!Array.isArray(metaSteps)) return undefined;
-      return metaSteps.filter(
-        (s): s is StepInfo =>
-          s !== null &&
-          typeof s === 'object' &&
-          typeof s.title === 'string' &&
-          typeof s.content === 'string' &&
-          (s.status === 'pending' ||
-            s.status === 'running' ||
-            s.status === 'done' ||
-            s.status === 'error'),
-      );
-    })()}
-    {@const derivedSuggestions = (() => {
-      // C5: resolve suggestions — explicit prop takes priority over metadata.
-      if (messageSuggestions !== undefined) {
-        return messageSuggestions(message);
-      }
-      const metaSuggestions = (message.metadata as Record<string, unknown>)?.['cinder:suggestions'];
-      if (!Array.isArray(metaSuggestions)) return undefined;
-      return metaSuggestions.filter((s): s is string => typeof s === 'string');
-    })()}
+    <!-- C4/C5: resolve reasoning/steps/suggestions overlays. Each prefers an
+         explicit per-message prop over `cinder:`-namespaced metadata, validates
+         both paths identically, and guards consumer-callback throws — so a
+         malformed callback can never break the chat render (see resolve* in
+         chat/utilities). A plain transcript yields `undefined` for all three. -->
+    {@const derivedReasoning = resolveMessageReasoning(message, messageReasoning)}
+    {@const derivedSteps = resolveMessageSteps(message, messageSteps)}
+    {@const derivedSuggestions = resolveMessageSuggestions(message, messageSuggestions)}
 
     <!-- The built-in row. Wrapped in a snippet so the optional `row`
          override can render it (inversion of control) or replace it. The

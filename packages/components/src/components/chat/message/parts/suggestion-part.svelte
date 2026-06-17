@@ -52,7 +52,11 @@
 
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     min-block-size: var(--cinder-touch-target-min, 2.75rem);
+    /* WCAG 2.5.5 applies to both axes — a single-character suggestion would
+       otherwise produce a chip narrower than the 44px target. */
+    min-inline-size: var(--cinder-touch-target-min, 2.75rem);
     padding-block: var(--cinder-space-2);
     padding-inline: var(--cinder-space-4);
     background: var(--cinder-chat-suggestion-bg);

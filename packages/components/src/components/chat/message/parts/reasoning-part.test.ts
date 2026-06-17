@@ -121,16 +121,55 @@ describe('ReasoningPart — expanded state', () => {
     expect(container.textContent).toContain('This is my extended reasoning about the problem.');
   });
 
-  test('"Reasoning complete." polite region is present when expanded and not streaming', () => {
+  test('a never-streamed (static) reasoning block does NOT announce "Reasoning complete."', () => {
+    // A static historical reasoning block must stay silent — the announcement is
+    // for a stream that just FINISHED, not for any non-streaming render.
     const { container } = render(ReasoningPart, {
       props: { part: makePart({ streaming: false }), expanded: true },
     });
-    // There should be an aria-live="polite" region with "Reasoning complete."
     const liveRegions = container.querySelectorAll('[aria-live="polite"]');
     const hasComplete = Array.from(liveRegions).some((el) =>
       el.textContent?.includes('Reasoning complete.'),
     );
-    expect(hasComplete).toBe(true);
+    expect(hasComplete).toBe(false);
+  });
+
+  test('"Reasoning complete." fires once after a streaming true→false transition', () => {
+    const { container, rerender } = render(ReasoningPart, {
+      props: { part: makePart({ streaming: true }), expanded: true },
+    });
+    const politeText = () =>
+      Array.from(container.querySelectorAll('[aria-live="polite"]'))
+        .map((el) => el.textContent ?? '')
+        .join(' ');
+
+    // Silent while streaming.
+    expect(politeText()).not.toContain('Reasoning complete.');
+
+    // Stream ends → the polite region announces exactly once.
+    rerender({ part: makePart({ streaming: false }), expanded: true });
+    flushSync();
+    expect(politeText()).toContain('Reasoning complete.');
+  });
+
+  test('the announcement clears again when a new stream starts (fires per session)', () => {
+    const { container, rerender } = render(ReasoningPart, {
+      props: { part: makePart({ streaming: true }) },
+    });
+    const politeText = () =>
+      Array.from(container.querySelectorAll('[aria-live="polite"]'))
+        .map((el) => el.textContent ?? '')
+        .join(' ');
+
+    rerender({ part: makePart({ streaming: false }) });
+    flushSync();
+    expect(politeText()).toContain('Reasoning complete.');
+
+    // A new stream begins on the same block — the region clears so the next
+    // completion announces again.
+    rerender({ part: makePart({ streaming: true }) });
+    flushSync();
+    expect(politeText()).not.toContain('Reasoning complete.');
   });
 });
 

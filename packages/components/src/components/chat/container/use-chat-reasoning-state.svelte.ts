@@ -7,7 +7,7 @@
  */
 
 /** Options for the reasoning state helper. */
-export interface UseChatReasoningStateOptions {
+export type UseChatReasoningStateOptions = {
   /**
    * Optional callback to trigger a virtualizer remeasure for a specific message
    * row after the reasoning disclosure state changes. If the virtualizer is not
@@ -15,10 +15,10 @@ export interface UseChatReasoningStateOptions {
    * still works, no remeasure fires.
    */
   onRemeasureRow?: ((messageId: string) => void) | undefined;
-}
+};
 
 /** Return type for the reasoning state helper. */
-export interface UseChatReasoningStateReturn {
+export type UseChatReasoningStateReturn = {
   /** Whether the reasoning block for the given message id is expanded. */
   isExpanded: (messageId: string) => boolean;
   /**
@@ -31,7 +31,7 @@ export interface UseChatReasoningStateReturn {
    * expanded reasoning blocks from the previous conversation are cleared.
    */
   reset: () => void;
-}
+};
 
 /**
  * Creates reactive state for reasoning block expansion.

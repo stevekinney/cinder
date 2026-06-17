@@ -2,8 +2,8 @@
  * Tests for tool-approval-part.svelte (C3).
  *
  * Covers:
- *   1. Pending state — renders alertdialog with tool name, action message,
- *      Approve and Reject buttons.
+ *   1. Pending state — renders a labelled role="group" with tool name, action
+ *      message, Approve and Reject buttons (inline item, not a modal alertdialog).
  *   2. Approved state — renders approved chip with no buttons.
  *   3. Denied state — renders denied chip with no buttons.
  *   4. Approve button fires the onapprove callback.
@@ -13,7 +13,7 @@
  *      NOT re-fired (guarded by the parent, but the Escape handler in the
  *      component also guards isPending).
  *   8. Buttons are disabled when no callbacks are provided.
- *   9. Accessibility — role="alertdialog", aria-modal="false",
+ *   9. Accessibility — role="group", tabindex="-1", no autofocus,
  *      aria-labelledby, aria-describedby.
  *  10. Collapsible args are rendered when action.schema is present.
  */
@@ -51,21 +51,33 @@ function pendingPart(overrides?: Partial<ToolApprovalMessagePart>): ToolApproval
 }
 
 describe('ToolApprovalPart — pending state', () => {
-  test('renders with role="alertdialog"', () => {
+  test('renders as role="group" (inline item, not a focus-stealing alertdialog)', () => {
     const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[role="alertdialog"]');
+    const dialog = container.querySelector('[data-cinder-tool-approval]');
     expect(dialog).not.toBeNull();
+    expect(dialog?.getAttribute('role')).toBe('group');
+    // Must NOT claim alertdialog — that role implies modal/interruption semantics
+    // and would let historical/virtualized pending rows steal focus on render.
+    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
   });
 
-  test('renders with aria-modal="false"', () => {
+  test('container is programmatically focusable (tabindex=-1) for reliable Escape', () => {
     const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[role="alertdialog"]');
-    expect(dialog?.getAttribute('aria-modal')).toBe('false');
+    const dialog = container.querySelector('[data-cinder-tool-approval]');
+    expect(dialog?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('Approve button is not autofocused (no focus theft on render)', () => {
+    const { container } = render(ToolApprovalPart, {
+      props: { part: pendingPart(), onapprove: mock(() => {}) },
+    });
+    const approve = container.querySelector('.chat-tool-approval-btn-approve');
+    expect(approve?.hasAttribute('autofocus')).toBe(false);
   });
 
   test('renders aria-labelledby pointing to the title element', () => {
     const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[role="alertdialog"]');
+    const dialog = container.querySelector('[data-cinder-tool-approval]');
     const labelId = dialog?.getAttribute('aria-labelledby');
     expect(labelId).toBeTruthy();
     const labelElement = labelId ? container.querySelector(`#${labelId}`) : null;
@@ -75,7 +87,7 @@ describe('ToolApprovalPart — pending state', () => {
 
   test('renders aria-describedby pointing to the message element', () => {
     const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[role="alertdialog"]');
+    const dialog = container.querySelector('[data-cinder-tool-approval]');
     const descId = dialog?.getAttribute('aria-describedby');
     expect(descId).toBeTruthy();
     const descElement = descId ? container.querySelector(`#${descId}`) : null;
@@ -191,7 +203,7 @@ describe('ToolApprovalPart — Escape key', () => {
     const { container } = render(ToolApprovalPart, {
       props: { part: pendingPart(), onapprove: mock(() => {}), ondeny },
     });
-    const dialog = container.querySelector('[role="alertdialog"]');
+    const dialog = container.querySelector('[data-cinder-tool-approval]');
     dialog && fireEvent.keyDown(dialog, { key: 'Escape' });
     flushSync();
     expect(ondeny).toHaveBeenCalledTimes(1);
@@ -207,7 +219,7 @@ describe('ToolApprovalPart — Escape key', () => {
         ondeny,
       },
     });
-    const dialog = container.querySelector('[role="alertdialog"]');
+    const dialog = container.querySelector('[data-cinder-tool-approval]');
     dialog && fireEvent.keyDown(dialog, { key: 'Escape' });
     flushSync();
     expect(ondeny).toHaveBeenCalledTimes(0);
@@ -222,7 +234,7 @@ describe('ToolApprovalPart — Escape key', () => {
         ondeny,
       },
     });
-    const dialog = container.querySelector('[role="alertdialog"]');
+    const dialog = container.querySelector('[data-cinder-tool-approval]');
     dialog && fireEvent.keyDown(dialog, { key: 'Escape' });
     flushSync();
     expect(ondeny).toHaveBeenCalledTimes(0);

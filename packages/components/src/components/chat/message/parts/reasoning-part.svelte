@@ -23,20 +23,25 @@
     approximateTokenCount > 0 ? ` (${approximateTokenCount.toLocaleString()} tokens)` : '',
   );
 
-  // Track the streaming-end announcement. The live region is always in the DOM
-  // so the screen reader has registered it before the text appears. The text is
-  // set once when streaming ends (part.streaming transitions false) and then
-  // cleared back to '' when streaming resumes, so it fires exactly once per
-  // streaming session regardless of how many times the block is expanded/collapsed.
-  let hasAnnounced = $state(false);
+  // The polite "Reasoning complete." announcement fires ONLY on a streaming
+  // true→false transition — not on a reasoning block that was never streaming
+  // (a static historical block must stay silent). We observe the transition edge
+  // here: this effect's sole job is to record that a stream just ended, which is
+  // observing an external lifecycle ("a stream finished"), not deriving state
+  // from state. `announced` flips to true on the edge and back to false when a
+  // new stream starts, so the live region fires once per streaming session.
+  let wasStreaming = false;
+  let announced = $state(false);
   $effect(() => {
-    if (!part.streaming) {
-      hasAnnounced = true;
-    } else {
-      hasAnnounced = false;
+    const streaming = part.streaming;
+    if (streaming) {
+      announced = false;
+    } else if (wasStreaming) {
+      announced = true;
     }
+    wasStreaming = streaming;
   });
-  const announcementText = $derived(hasAnnounced && !part.streaming ? 'Reasoning complete.' : '');
+  const announcementText = $derived(announced ? 'Reasoning complete.' : '');
 
   function handleToggle(): void {
     if (!part.streaming) {
@@ -87,10 +92,15 @@
     </span>
   </button>
 
-  <div class="chat-reasoning-body" aria-hidden={!expanded}>
+  <!-- The controlled region carries `id`/`aria-hidden` on the SAME element the
+       toggle's aria-controls points at, so the relationship is never to an
+       element buried inside an aria-hidden subtree. When collapsed it is hidden
+       from AT and removed from the tab order. -->
+  <div class="chat-reasoning-body">
     <div
       id={contentId}
       class="chat-reasoning-content"
+      aria-hidden={!expanded}
       aria-live={part.streaming ? 'off' : undefined}
       aria-busy={part.streaming ? true : undefined}
     >
@@ -216,9 +226,13 @@
   }
 
   .chat-reasoning-content {
-    overflow: hidden;
     max-block-size: 16rem;
     overflow-y: auto;
+    /* Hidden + non-focusable while collapsed. A scrollable region with
+       overflow-y:auto is keyboard-focusable in some browsers even at zero
+       height; visibility:hidden removes it from the tab order (and from AT),
+       complementing aria-hidden. The parent grid (0fr) clips it visually. */
+    visibility: hidden;
     padding-block: var(--cinder-space-2);
     padding-inline: var(--cinder-space-3);
     font-size: var(--cinder-text-sm);
@@ -226,6 +240,23 @@
     line-height: var(--cinder-leading-relaxed, 1.625);
     white-space: pre-wrap;
     word-break: break-word;
+  }
+
+  [data-cinder-expanded] .chat-reasoning-content {
+    visibility: visible;
+  }
+
+  /* Forced-colors: the decorative pulse dot and the accent rail use background/
+     border colors the system overrides, so pin them to a system color. */
+  @media (forced-colors: active) {
+    .chat-reasoning {
+      border-inline-start-color: ButtonText;
+    }
+
+    .chat-reasoning-dot {
+      background: ButtonText;
+      forced-color-adjust: none;
+    }
   }
 
   /* Screen reader only */

@@ -17,11 +17,17 @@ export {
   type ToolResultMessagePart,
 } from './types';
 export {
+  CINDER_REASONING_METADATA_KEY,
+  CINDER_STEPS_METADATA_KEY,
+  CINDER_SUGGESTIONS_METADATA_KEY,
   deriveMessageParts,
   formatMessageAsMarkdown,
   getMessageParts,
   getMessageRoleLabel,
   getMessageText,
   messagesToMarkdown,
+  resolveMessageReasoning,
+  resolveMessageSteps,
+  resolveMessageSuggestions,
   toMultiModalArray,
 } from './utilities';

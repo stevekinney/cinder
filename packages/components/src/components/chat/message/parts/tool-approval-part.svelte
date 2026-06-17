@@ -28,8 +28,12 @@
     part.action.schema !== undefined ? stringify(part.action.schema) : undefined,
   );
 
-  const labelId = $derived(`tool-approval-label-${part.toolCallId}`);
-  const descId = $derived(`tool-approval-desc-${part.toolCallId}`);
+  // Tool-call ids are external data (may contain whitespace, ':', etc. that make
+  // invalid/duplicate DOM ids). Sanitize from the stable part key, mirroring
+  // reasoning-part, so aria-labelledby/aria-describedby always resolve.
+  const safeKey = $derived(part.key.replace(/[^a-z0-9-]/gi, '-'));
+  const labelId = $derived(`tool-approval-label-${safeKey}`);
+  const descId = $derived(`tool-approval-desc-${safeKey}`);
 
   function handleApprove(): void {
     if (!isPending) return;
@@ -49,16 +53,18 @@
 </script>
 
 <!--
-  Tool approval prompt. Uses role="alertdialog" to announce the pending action
-  assertively when it appears (screen readers interrupt the current reading to
-  surface it). aria-modal="false" because this is inline in the chat timeline,
-  not a true modal overlay — keyboard focus is NOT trapped here.
+  Tool approval prompt. This is an INLINE timeline item, not a modal overlay, so
+  it uses role="group" (labelled + described) rather than role="alertdialog":
+  alertdialog implies modal/interruption semantics and would let any pending row
+  (incl. historical/virtualized rows) steal focus on render. The assertive
+  announcement is owned by ChatStatusAnnouncer instead. tabindex="-1" makes the
+  container programmatically focusable and the Escape→reject keydown reliable.
 -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="chat-tool-approval"
-  role="alertdialog"
-  aria-modal="false"
+  role="group"
+  tabindex="-1"
   aria-labelledby={labelId}
   aria-describedby={descId}
   data-cinder-tool-approval
@@ -102,7 +108,6 @@
         class="chat-tool-approval-btn chat-tool-approval-btn-approve"
         onclick={handleApprove}
         disabled={onapprove === undefined}
-        autofocus
       >
         Approve
       </button>
@@ -222,6 +227,7 @@
   .chat-tool-approval-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     min-block-size: var(--cinder-touch-target-min, 44px);
     padding-block: var(--cinder-space-2);
     padding-inline: var(--cinder-space-4);
@@ -230,11 +236,17 @@
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
     cursor: pointer;
-    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+    transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
 
     &:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      outline: var(--cinder-ring-width) solid transparent;
+      outline-offset: 2px;
+      box-shadow: var(--_cinder-focus-ring-shadow);
     }
   }
 
@@ -243,8 +255,16 @@
     color: var(--cinder-chat-tool-approval-approve-color);
     border-color: var(--cinder-color-success-border, var(--cinder-chat-tool-approval-border));
 
-    &:not(:disabled):hover {
-      opacity: 0.85;
+    /* Background darkening, not opacity, so foreground text contrast is
+       preserved (opacity would dim text + bg together, risking WCAG 1.4.11). */
+    @media (hover: hover) {
+      &:not(:disabled):hover {
+        background: color-mix(
+          in oklch,
+          var(--cinder-color-success-bg, var(--cinder-surface-raised)),
+          currentColor 8%
+        );
+      }
     }
   }
 
@@ -257,6 +277,19 @@
       &:not(:disabled):hover {
         background: var(--cinder-color-danger-bg, var(--cinder-surface-raised));
       }
+    }
+  }
+
+  /* Forced-colors: the resolved-state border color is overridden by the system.
+     The title text ("Approved:"/"Denied:") is the primary non-color signal, but
+     keep a visible distinction by pinning the border to a system color. */
+  @media (forced-colors: active) {
+    .chat-tool-approval[data-cinder-status='approved'] {
+      border-color: Highlight;
+    }
+
+    .chat-tool-approval[data-cinder-status='denied'] {
+      border-color: GrayText;
     }
   }
 </style>
