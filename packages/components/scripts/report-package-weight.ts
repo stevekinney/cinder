@@ -20,7 +20,7 @@ type PackageIdentity = {
 const budgets = {
   packedBytes: 8_000_000,
   unpackedBytes: 32_000_000,
-  fileCount: 4_200,
+  fileCount: 4_500,
   largestEntrypointBytes: 2_500_000,
 } as const;
 

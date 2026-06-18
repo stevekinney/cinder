@@ -214,6 +214,56 @@ end_of_record
     );
   });
 
+  test('excludes sibling private workspace source from the component package aggregate', () => {
+    const withSiblingWorkspaceSource = `${lcovFixture}TN:
+SF:../editor/src/commands.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:../markdown/src/pipeline/index.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:../commentary/src/comments/index.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:../diff/src/line-diff.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+`;
+
+    const records = parseLcovRecords(withSiblingWorkspaceSource);
+    expect(records.map((record) => record.file)).toEqual(['covered.ts', 'partial.ts']);
+    expect(computeCoverageAverages(records).functions).toBe(75);
+  });
+
+  test('does not exclude component source whose path merely contains a sibling workspace name', () => {
+    const lookalike = `${lcovFixture}TN:
+SF:src/components/editor/src/commands.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(lookalike);
+    expect(records.map((record) => record.file)).toContain('src/components/editor/src/commands.ts');
+  });
+
   test('reports no failures when the aggregate ratchet is met', () => {
     const averages = computeCoverageAverages(parseLcovRecords(lcovFixture));
     expect(coverageFailures(averages, { functions: 0.7, lines: 0.7 })).toEqual([]);
