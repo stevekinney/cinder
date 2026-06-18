@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "permission-matrix",
+  "import": "@lostgradient/cinder/permission-matrix",
+  "examples": [
+    {
+      "id": "scope-matrix",
+      "title": "Scope matrix",
+      "description": "A permission matrix showing which authorization scopes grant catalog operations.",
+      "code": "<script lang=\"ts\">\n  import { PermissionMatrix } from '@lostgradient/cinder/permission-matrix';\n  import type {\n    PermissionMatrixAxisItem,\n    PermissionMatrixCellState,\n  } from '@lostgradient/cinder/permission-matrix';\n\n  const rows = [\n    { id: 'workflows-admin', label: 'workflows:admin' },\n    { id: 'workflows-read', label: 'workflows:read' },\n    { id: 'runs-admin', label: 'runs:admin' },\n    { id: 'runs-read', label: 'runs:read' },\n  ];\n\n  const columns = [\n    { id: 'cancel', label: 'cancel' },\n    { id: 'retry', label: 'retry' },\n    { id: 'inspect', label: 'inspect' },\n    { id: 'archive', label: 'archive' },\n  ];\n\n  const grants = new Set(['workflows-admin:cancel', 'workflows-admin:retry', 'runs-admin:archive']);\n  const denials = new Set(['workflows-read:retry', 'runs-read:cancel']);\n\n  function getCellState(\n    row: PermissionMatrixAxisItem,\n    column: PermissionMatrixAxisItem,\n  ): PermissionMatrixCellState {\n    const key = `${row.id}:${column.id}`;\n    if (grants.has(key)) return 'granted';\n    if (denials.has(key)) return 'denied';\n    return 'not-applicable';\n  }\n</script>\n\n<PermissionMatrix\n  label=\"Operation scope matrix\"\n  description=\"Rows are authorization scopes; columns are operations.\"\n  {rows}\n  {columns}\n  {getCellState}\n  onCellClick={(row, column) => console.log(row.id, column.id)}\n/>\n"
+    }
+  ]
+}

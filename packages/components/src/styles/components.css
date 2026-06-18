@@ -91,6 +91,7 @@
 @import '../components/number-input/number-input.css';
 @import '../components/pagination/pagination.css';
 @import '../components/payload-inspector/payload-inspector.css';
+@import '../components/permission-matrix/permission-matrix.css';
 @import '../components/phone-input/phone-input.css';
 @import '../components/pin-input/pin-input.css';
 @import '../components/popover/popover.css';
