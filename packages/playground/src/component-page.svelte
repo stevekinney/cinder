@@ -411,8 +411,15 @@
   // bundle, by the documented `exportName` (falling back to the default export).
   // `undefined` when the module wasn't provided or the export isn't a component,
   // in which case the section degrades to the static featured-example mount.
+  //
+  // Compound components (Accordion, Tabs, …) resolve to `undefined` here on
+  // purpose: their `children` are structured sub-components the playground can't
+  // synthesize, so a bare mount with no children would throw
+  // (`{@render children()}` on `undefined`). They take the featured-example
+  // fallback, whose mount renders a real composed instance — see
+  // `documentation.propsManifest.isCompound`.
   const bareComponent = $derived(
-    documentation === null
+    documentation === null || documentation.propsManifest.isCompound === true
       ? undefined
       : resolveBareComponent(bareComponentModule, documentation.component.exportName),
   );
@@ -844,9 +851,18 @@
                   <h2 class="dx-section__title">Playground</h2>
                   <span class="dx-section__rule" aria-hidden="true"></span>
                 </div>
-                <p class="dx-prose dx-play__intro">
-                  Adjust the props below — the snippet updates live. Copy it when it looks right.
-                </p>
+                {#if documentation.propsManifest.isCompound}
+                  <p class="dx-prose dx-play__intro">
+                    Adjust the props below to build your snippet. This is a compound component — its
+                    children are structured sub-components, so the preview shows a composed example
+                    rather than your control changes. The snippet updates live.
+                  </p>
+                {:else}
+                  <p class="dx-prose dx-play__intro">
+                    Adjust the props below — the preview and snippet update live. Copy it when it
+                    looks right.
+                  </p>
+                {/if}
 
                 <div class="dx-play">
                   <div class="dx-play__preview">

@@ -464,4 +464,98 @@ describe('analyzeComponent — bare <script module> block', () => {
 
     expect(manifest.props).toEqual([]);
   });
+
+  it('treats a fixture with no sibling index.ts as non-compound', async () => {
+    // A fixture written to the temp dir has no index.ts beside it, so compound
+    // detection returns false without throwing.
+    const filePath = await writeFixture(
+      'loose',
+      `<script lang="ts">
+  let { label }: { label?: string } = $props();
+</script>
+
+<span>{label}</span>`,
+    );
+    const manifest = await analyzeComponent(filePath);
+    expect(manifest.isCompound).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Compound detection (isCompound)
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — isCompound', () => {
+  // Each index.ts-shape case gets its OWN temp directory: a sibling `index.ts`
+  // written next to one fixture must not leak into another fixture's detection.
+  let compoundDir: string;
+
+  beforeAll(() => {
+    compoundDir = mkdtempSync(join(tmpdir(), 'cinder-compound-'));
+  });
+
+  afterAll(() => {
+    rmSync(compoundDir, { recursive: true, force: true });
+  });
+
+  /** Write a `.svelte` + sibling `index.ts` into an isolated subdir; return the .svelte path. */
+  async function writeComponentWithIndex(subdir: string, indexSource: string): Promise<string> {
+    const dir = join(compoundDir, subdir);
+    const sveltePath = join(dir, `${subdir}.svelte`);
+    await Bun.write(
+      sveltePath,
+      `<script lang="ts">
+  let { children }: { children?: unknown } = $props();
+</script>`,
+    );
+    await Bun.write(join(dir, 'index.ts'), indexSource);
+    return sveltePath;
+  }
+
+  it('flags a real compound component (Accordion) whose index.ts uses Object.assign', async () => {
+    // Accordion assembles `Accordion.Item` onto the root via Object.assign.
+    const manifest = await analyzeComponent(componentPath('accordion'));
+    expect(manifest.isCompound).toBe(true);
+  });
+
+  it('leaves a real non-compound component (Badge) unflagged', async () => {
+    // Badge renders plain-text children and has no sub-component namespace.
+    const manifest = await analyzeComponent(componentPath('badge'));
+    expect(manifest.isCompound).toBeUndefined();
+  });
+
+  it('flags a namespace assembled via Object.assign(Root, { … })', async () => {
+    const sveltePath = await writeComponentWithIndex(
+      'widget',
+      `import WidgetRoot from './widget.svelte';
+const Widget = Object.assign(WidgetRoot, { Item: {} });
+export default Widget;`,
+    );
+    const manifest = await analyzeComponent(sveltePath);
+    expect(manifest.isCompound).toBe(true);
+  });
+
+  it('does NOT flag a config-merge Object.assign({}, …)', async () => {
+    // An object-literal first argument is a config merge, not namespace assembly —
+    // the leading-identifier requirement excludes it.
+    const sveltePath = await writeComponentWithIndex(
+      'merger',
+      `import MergerRoot from './merger.svelte';
+export const defaults = Object.assign({}, { size: 'md' });
+export default MergerRoot;`,
+    );
+    const manifest = await analyzeComponent(sveltePath);
+    expect(manifest.isCompound).toBeUndefined();
+  });
+
+  it('does NOT flag an Object.assign that appears only in a comment', async () => {
+    const sveltePath = await writeComponentWithIndex(
+      'commented',
+      `import CommentedRoot from './commented.svelte';
+// historically used Object.assign(CommentedRoot, { Item }) — no longer.
+export default CommentedRoot;`,
+    );
+    const manifest = await analyzeComponent(sveltePath);
+    expect(manifest.isCompound).toBeUndefined();
+  });
 });

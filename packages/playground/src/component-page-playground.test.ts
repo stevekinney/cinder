@@ -7,6 +7,10 @@ function manifest(props: PropManifest[]): ComponentManifest {
   return { name: 'Demo', kebabName: 'demo', file: 'demo.svelte', importPath: 'demo', props };
 }
 
+function compoundManifest(props: PropManifest[]): ComponentManifest {
+  return { ...manifest(props), isCompound: true };
+}
+
 describe('buildPlaygroundModel', () => {
   test('classifies boolean/select/text/number props into controls', () => {
     const model = buildPlaygroundModel(
@@ -108,6 +112,43 @@ describe('buildPlaygroundModel', () => {
       isChildren: true,
       value: 'Demo',
     });
+  });
+
+  test('a compound component does NOT synthesize a text children control', () => {
+    // Accordion-shaped: a `multiple` boolean plus a required structured-children
+    // snippet. The compound flag means `children` are `<Accordion.Item>` elements,
+    // not plain text, so seeding the display name would render a broken preview.
+    const model = buildPlaygroundModel(
+      compoundManifest([
+        {
+          name: 'multiple',
+          control: { kind: 'boolean' },
+          bindable: false,
+          optional: true,
+          defaultValue: false,
+        },
+        { name: 'children', control: { kind: 'snippet' }, bindable: false, optional: false },
+      ]),
+    );
+    // `children` is skipped (shown as "not adjustable here"), never synthesized,
+    // and the remaining `multiple` control keeps the playground visible.
+    expect(model.controls.map((control) => control.name)).toEqual(['multiple']);
+    expect(model.skipped).toEqual(['children']);
+    expect(model.controls.find((control) => control.name === 'children')).toBeUndefined();
+    expect(model.hasUnsatisfiedRequired).toBe(false);
+  });
+
+  test('a compound component whose only prop is children yields no controls', () => {
+    // With children skipped and nothing else adjustable, the playground model is
+    // empty so the page suppresses the generated Playground section entirely and
+    // leans on the Examples/Overview previews for real usage.
+    const model = buildPlaygroundModel(
+      compoundManifest([
+        { name: 'children', control: { kind: 'snippet' }, bindable: false, optional: false },
+      ]),
+    );
+    expect(model.controls).toEqual([]);
+    expect(model.skipped).toEqual(['children']);
   });
 
   test('a non-children snippet prop stays non-adjustable (skipped)', () => {
