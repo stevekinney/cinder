@@ -851,9 +851,18 @@
                   <h2 class="dx-section__title">Playground</h2>
                   <span class="dx-section__rule" aria-hidden="true"></span>
                 </div>
-                <p class="dx-prose dx-play__intro">
-                  Adjust the props below — the snippet updates live. Copy it when it looks right.
-                </p>
+                {#if documentation.propsManifest.isCompound}
+                  <p class="dx-prose dx-play__intro">
+                    Adjust the props below to build your snippet. This is a compound component — its
+                    children are structured sub-components, so the preview shows a composed example
+                    rather than your control changes. The snippet updates live.
+                  </p>
+                {:else}
+                  <p class="dx-prose dx-play__intro">
+                    Adjust the props below — the preview and snippet update live. Copy it when it
+                    looks right.
+                  </p>
+                {/if}
 
                 <div class="dx-play">
                   <div class="dx-play__preview">

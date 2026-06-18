@@ -502,19 +502,39 @@ function toPascalCase(kebab: string): string {
 }
 
 /**
+ * The canonical compound-namespace assembly: `Object.assign(<Root>, { … })`,
+ * where `<Root>` is the bare root-component identifier. This is the convention
+ * every compound component's `index.ts` uses to graft its public sub-components
+ * onto the root (e.g. `Object.assign(AccordionRoot, { Item: AccordionItem })`),
+ * and it is load-bearing for {@link detectCompound} — a compound component that
+ * assembled its namespace another way (direct `Root.Item = …`, a spread) would
+ * not be detected. The leading-identifier requirement (`,` after it) excludes
+ * `Object.assign({}, …)` config-merge uses, which take an object literal first.
+ */
+const COMPOUND_NAMESPACE_PATTERN = /Object\.assign\(\s*[A-Za-z_$][\w$]*\s*,/;
+
+/** Strip `//` line comments and block comments so the pattern test sees code only. */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+}
+
+/**
  * Detect whether a component is a compound namespace by inspecting its sibling
  * `index.ts`. Compound roots assemble their public sub-components onto the root
  * constructor with `Object.assign(Root, { Item: … })` — that call is the
  * authoritative signal that consumers compose the component as `Accordion.Item`
- * rather than passing plain-text children. Flat-layout components have no
- * sibling `index.ts`, so the read simply returns `false`.
+ * rather than passing plain-text children. Comments are stripped first so an
+ * `Object.assign` reference in prose never trips the check, and the pattern
+ * requires a leading identifier so an `Object.assign({}, …)` config merge is not
+ * mistaken for namespace assembly. Flat-layout components have no sibling
+ * `index.ts`, so the read simply returns `false`.
  *
  * @param svelteFilePath - Absolute path to the component's `.svelte` file.
  */
 async function detectCompound(svelteFilePath: string): Promise<boolean> {
   const indexFile = Bun.file(join(dirname(svelteFilePath), 'index.ts'));
   if (!(await indexFile.exists())) return false;
-  return /Object\.assign\(/.test(await indexFile.text());
+  return COMPOUND_NAMESPACE_PATTERN.test(stripComments(await indexFile.text()));
 }
 
 // ---------------------------------------------------------------------------

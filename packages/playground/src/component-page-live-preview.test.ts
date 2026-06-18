@@ -264,6 +264,33 @@ describe('component-page live preview (#405)', () => {
     unmount();
   });
 
+  test('a compound component never bare-mounts even when the bare component IS resolvable', async () => {
+    // The load-bearing gate of the compound fix: `isCompound` must suppress the
+    // live bare mount regardless of whether the export resolves. Here `LiveProbe`
+    // IS a perfectly mountable component, yet the compound flag forces the
+    // featured-example fallback — a bare `<Accordion multiple>` with no children
+    // would throw on `{@render children()}`. This distinguishes the compound path
+    // from the "unresolvable export" path above, which only the page-layer gate
+    // (mirrored here) prevents.
+    const { unmount } = render(Fixture, {
+      bareComponentModule: asNamedModule(LiveProbe),
+      exportName: 'Demo',
+      isCompound: true,
+      featuredExample: FeaturedProbe,
+      featuredScenario: 'demo',
+      initialValues: { multiple: false },
+    });
+    await tick();
+
+    // No live mount despite a resolvable component; the featured example renders.
+    expect(liveProbeCount()).toBe(0);
+    expect(mountCount()).toBe(0);
+    expect(document.querySelector('.scenario-probe')).not.toBeNull();
+    expect(document.querySelector('.dx-stage__label')?.textContent).toBe('Featured example');
+
+    unmount();
+  });
+
   test('falls back to the featured example when the live mount fails', async () => {
     // A component whose constructor throws stands in for a bare mount that fails
     // (an unsynthesized required snippet, a missing context provider, …). With a

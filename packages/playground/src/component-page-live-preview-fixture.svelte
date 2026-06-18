@@ -43,6 +43,13 @@
     bareComponentModule?: unknown;
     /** Export name `resolveBareComponent` looks up first (mirrors `exportName`). */
     exportName?: string;
+    /**
+     * Whether the documented component is a compound namespace. Mirrors the page's
+     * `documentation.propsManifest.isCompound` gate: when `true`, the bare component
+     * is never resolved (a bare mount would throw on its required structured
+     * `children`), so the preview always takes the featured-example fallback.
+     */
+    isCompound?: boolean;
     /** The featured example component used when the bare component can't mount. */
     featuredExample?: unknown;
     /** Scenario id for the featured-example container, mirroring the page. */
@@ -58,6 +65,7 @@
   let {
     bareComponentModule,
     exportName = 'Demo',
+    isCompound = false,
     featuredExample,
     featuredScenario = 'demo',
     snapshotMode = false,
@@ -82,8 +90,13 @@
   }
 
   // Resolve + mount via the SAME production helpers the page uses, so a passing
-  // test means the real page logic works, not a fixture copy of it.
-  const bareComponent = $derived(resolveBareComponent(bareComponentModule, exportName));
+  // test means the real page logic works, not a fixture copy of it. The
+  // `isCompound` short-circuit mirrors the page's `bareComponent` $derived: a
+  // compound component never resolves a bare constructor (it would throw on its
+  // required structured `children`), so it always takes the featured fallback.
+  const bareComponent = $derived(
+    isCompound ? undefined : resolveBareComponent(bareComponentModule, exportName),
+  );
   const liveMountFailed = $derived(mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined);
   const mountLivePreview = createLivePreviewMount({ mountErrors });
 
