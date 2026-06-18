@@ -369,12 +369,10 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
-  test('shows a context note (not controls) when a required non-snippet prop has no default', async () => {
+  test('omits the Playground when a required non-snippet prop has no default', async () => {
     const required = baseFixture();
     // A required `unknown` prop with no default can't be synthesized, so the
-    // generated interactive playground is suppressed. A context-note section
-    // IS rendered instead, linking to the first `avoidWhen` alternative's page.
-    // The Playground TOC link is still omitted.
+    // generated interactive playground is suppressed entirely.
     required.propsManifest.props = [
       {
         name: 'value',
@@ -388,27 +386,8 @@ describe('component-page single-scroll layout', () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
 
-    // The playground section renders a context note, not interactive controls.
-    const section = document.getElementById('playground');
-    expect(section).not.toBeNull();
-    const note = section?.querySelector('.dx-play__context-note');
-    expect(note).not.toBeNull();
-    // The note describes the ACTUAL condition — a required prop the playground
-    // can't fill in automatically — rather than over-claiming a specific cause
-    // like "must be nested inside a parent", which only applies to some of the
-    // components this branch covers.
-    const noteText = note?.textContent ?? '';
-    expect(noteText).toContain("can't fill in automatically");
-    expect(noteText).not.toMatch(/nested inside/i);
-    // The base fixture's first `avoidWhen` alternative is `segmented-control`, so
-    // the note links to that component's page rather than the in-page Examples.
-    const noteLink = note?.querySelector('a');
-    expect(noteLink?.getAttribute('href')).toBe('/c/segmented-control');
-    // No control widgets are rendered.
-    expect(section?.querySelector('.dx-ctl')).toBeNull();
+    expect(document.getElementById('playground')).toBeNull();
 
-    // The TOC still does NOT include a Playground link — the context-note
-    // section is shown outside the TOC-driven flow.
     const nav = screen.getByRole('navigation', { name: 'On this page' });
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
     expect(labels.some((label) => label.includes('Playground'))).toBe(false);
@@ -417,15 +396,59 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
-  test('context note falls back to the Examples anchor when there is no avoidWhen alternative', async () => {
+  test('omits the Playground for components that require authored examples', async () => {
+    const exampleOnly = baseFixture();
+    exampleOnly.component.id = 'autocomplete';
+    exampleOnly.component.name = 'Autocomplete';
+    exampleOnly.component.exportName = 'Autocomplete';
+    exampleOnly.propsManifest = {
+      name: 'Autocomplete',
+      kebabName: 'autocomplete',
+      file: 'autocomplete.svelte',
+      importPath: '@lostgradient/cinder/autocomplete',
+      props: [
+        {
+          name: 'label',
+          control: { kind: 'text' },
+          bindable: false,
+          optional: true,
+        },
+        {
+          name: 'value',
+          control: { kind: 'text' },
+          bindable: true,
+          optional: true,
+          defaultValue: '',
+        },
+        {
+          name: 'suggestionSource',
+          control: { kind: 'unknown', rawType: 'AutocompleteSuggestionSource' },
+          bindable: false,
+          optional: true,
+        },
+      ],
+    };
+    installDocumentationFetch(exampleOnly);
+
+    const { unmount } = render(ComponentPage);
+    await screen.findByRole('heading', { level: 1, name: 'Autocomplete' });
+
+    expect(document.getElementById('playground')).toBeNull();
+
+    const nav = screen.getByRole('navigation', { name: 'On this page' });
+    const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
+    expect(labels.some((label) => label.includes('Playground'))).toBe(false);
+
+    unmount();
+    await tick();
+  });
+
+  test('omits the Playground when a required non-children snippet has no default', async () => {
     const required = baseFixture();
-    // Same unsatisfiable required prop, but with no `avoidWhen` alternative to
-    // link to — the note should fall back to the in-page Examples anchor.
-    required.component.avoidWhen = [];
     required.propsManifest.props = [
       {
-        name: 'value',
-        control: { kind: 'unknown', rawType: 'CustomValue' },
+        name: 'items',
+        control: { kind: 'snippet' },
         bindable: false,
         optional: false,
       },
@@ -435,9 +458,7 @@ describe('component-page single-scroll layout', () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
 
-    const note = document.getElementById('playground')?.querySelector('.dx-play__context-note');
-    expect(note).not.toBeNull();
-    expect(note?.querySelector('a')?.getAttribute('href')).toBe('#examples');
+    expect(document.getElementById('playground')).toBeNull();
 
     unmount();
     await tick();

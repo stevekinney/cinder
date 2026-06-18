@@ -19,6 +19,7 @@
       "id": "single-series",
       "title": "Revenue trend",
       "description": "A single-series line chart for monthly recurring revenue.",
+      "featured": true,
       "code": "<script lang=\"ts\">\n  import { LineChart } from '@lostgradient/cinder/line-chart';\n\n  const series = [\n    {\n      id: 'revenue',\n      label: 'Revenue',\n      data: [\n        { x: 'Jan', y: 120 },\n        { x: 'Feb', y: 148 },\n        { x: 'Mar', y: 172 },\n        { x: 'Apr', y: 196 },\n      ],\n    },\n  ];\n</script>\n\n<LineChart label=\"Monthly recurring revenue\" {series} dataTableVisibility=\"visible\" />\n"
     }
   ]

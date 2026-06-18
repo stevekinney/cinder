@@ -30,10 +30,16 @@
       tone: 'warning' as const,
     },
   ];
+
+  const details: Record<string, string> = {
+    'deploy-start': 'Release automation began applying the candidate build.',
+    'deploy-done': 'Health checks passed and the candidate was promoted.',
+    incident: 'Support detected a separate issue later in the day.',
+  };
 </script>
 
 <Timeline {entries} gapThresholdMinutes={60} label="Release timeline">
   {#snippet children(entry)}
-    {entry.title}
+    {details[entry.id]}
   {/snippet}
 </Timeline>

@@ -47,18 +47,30 @@ export type PlaygroundModel = {
    * snippet rather than emit an invalid one.
    */
   hasUnsatisfiedRequired: boolean;
+  /**
+   * True when the component is better represented by its authored examples than
+   * by the generic prop playground. This covers components whose essential
+   * behavior depends on optional callbacks/data sources the analyzer cannot
+   * synthesize into a sensible live demo.
+   */
+  requiresExamplePlayground: boolean;
 };
+
+const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set(['autocomplete']);
 
 /**
  * True when a prop would make the generated preview invalid by construction: it
  * is required (not optional, no default) AND is a value the generator cannot
- * synthesize. Snippet props (e.g. the ubiquitous required `children`) are
- * EXCLUDED — their content comes from the mounted example scenario, not from
- * generated props, so a required `children` never suppresses the playground.
+ * synthesize. The ubiquitous required `children` snippet is EXCLUDED — plain
+ * children can be synthesized as text, so it does not suppress the playground by
+ * itself. Other required snippets are structured render props the generator
+ * cannot invent safely.
  */
 function blocksGeneratedPreview(prop: PropManifest): boolean {
-  if (prop.control.kind === 'snippet') return false;
-  return !prop.optional && prop.defaultValue === undefined;
+  if (prop.optional || prop.defaultValue !== undefined) return false;
+  return (
+    prop.control.kind === 'unknown' || (prop.control.kind === 'snippet' && prop.name !== 'children')
+  );
 }
 
 /**
@@ -69,9 +81,38 @@ function booleanDefault(value: unknown): boolean {
   return value === true;
 }
 
-/** Coerce a manifest `defaultValue` into a string control's initial value. */
+/** Coerce a manifest `defaultValue` into a string value. */
 function stringDefault(value: unknown): string {
   return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Seed required text props with readable values. Empty strings are useful for
+ * optional text controls, but a required label/id/title seeded to `''` makes the
+ * live playground look broken before the reader changes anything.
+ */
+function requiredTextSeed(prop: PropManifest, manifest: ComponentManifest): string {
+  switch (prop.name) {
+    case 'id':
+      return `${manifest.kebabName}-example`;
+    case 'ariaLabel':
+    case 'label':
+    case 'legend':
+    case 'title':
+      return manifest.name;
+    case 'name':
+      return manifest.kebabName;
+    case 'placeholder':
+      return `Enter ${manifest.name.toLowerCase()}`;
+    default:
+      return prop.name;
+  }
+}
+
+function textDefault(prop: PropManifest, manifest: ComponentManifest): string {
+  const value = stringDefault(prop.defaultValue);
+  if (value !== '') return value;
+  return prop.optional ? '' : requiredTextSeed(prop, manifest);
 }
 
 /** Coerce a manifest `defaultValue` into a number control's initial value. */
@@ -96,11 +137,11 @@ function childrenSeed(manifest: ComponentManifest): string {
  * `text -> input`, `number -> number input` — all become controls, synthesizing
  * an initial value (`false` / first option / `''` / `0`) when no default is
  * given, so a required supported prop is still adjustable. Only `snippet` and
- * `unknown` props are skipped. Among those, a required `unknown` prop with no
- * default also flags `hasUnsatisfiedRequired` (see {@link blocksGeneratedPreview})
- * so the caller can suppress the generated preview/snippet entirely; a required
- * `snippet` (e.g. the ubiquitous `children`) does not, since its content comes
- * from the mounted example.
+ * `unknown` props are skipped. Among those, a required unknown prop or required
+ * non-`children` snippet with no default also flags `hasUnsatisfiedRequired`
+ * (see {@link blocksGeneratedPreview}) so the caller can suppress the generated
+ * preview/snippet entirely. The ubiquitous required `children` snippet is the
+ * exception because plain children can be synthesized as text.
  */
 export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundModel {
   const controls: PlaygroundControl[] = [];
@@ -128,7 +169,7 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
         });
         break;
       case 'text':
-        controls.push({ ...base, kind: 'text', value: stringDefault(prop.defaultValue) });
+        controls.push({ ...base, kind: 'text', value: textDefault(prop, manifest) });
         break;
       case 'number':
         controls.push({ ...base, kind: 'number', value: numberDefault(prop.defaultValue) });
@@ -166,7 +207,12 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
     }
   }
 
-  return { controls, skipped, hasUnsatisfiedRequired };
+  return {
+    controls,
+    skipped,
+    hasUnsatisfiedRequired,
+    requiresExamplePlayground: EXAMPLE_ONLY_PLAYGROUND_COMPONENTS.has(manifest.kebabName),
+  };
 }
 
 /**

@@ -22,9 +22,11 @@
     type ToolErrorCategory,
   } from '@lostgradient/cinder/chat';
   import { Button } from '@lostgradient/cinder/button';
+  import { Input } from '@lostgradient/cinder/input';
   import { Segment } from '@lostgradient/cinder/segment';
   import { SegmentedControl } from '@lostgradient/cinder/segmented-control';
   import { Select } from '@lostgradient/cinder/select';
+  import { Textarea } from '@lostgradient/cinder/textarea';
   import { Toggle } from '@lostgradient/cinder/toggle';
   import { onDestroy } from 'svelte';
 
@@ -413,13 +415,13 @@
   >
     <section style="display: grid; gap: 0.5rem;">
       <strong>Reply as the other side</strong>
-      <textarea
+      <Textarea
+        id="harness-reply-text"
         data-testid="reply-text"
-        aria-label="Reply text"
+        label="Reply text"
         bind:value={replyText}
-        rows="2"
-        style="width: 100%; font: inherit; padding: 0.5rem; border-radius: var(--cinder-radius-sm); border: 1px solid var(--cinder-border-muted);"
-      ></textarea>
+        rows={2}
+      />
       <SegmentedControl
         id="harness-reply-mode"
         selectionMode="single"
@@ -446,19 +448,19 @@
 
     <section style="display: grid; gap: 0.5rem;">
       <strong>Inject tool call</strong>
-      <input
+      <Input
+        id="harness-tool-name"
         data-testid="tool-name"
-        aria-label="Tool name"
+        label="Tool name"
         bind:value={toolName}
-        style="font: inherit; padding: 0.4rem; border-radius: var(--cinder-radius-sm); border: 1px solid var(--cinder-border-muted);"
       />
-      <textarea
+      <Textarea
+        id="harness-tool-arguments"
         data-testid="tool-arguments"
-        aria-label="Tool arguments (JSON)"
+        label="Tool arguments (JSON)"
         bind:value={toolArguments}
-        rows="2"
-        style="font: var(--cinder-font-mono); padding: 0.4rem; border-radius: var(--cinder-radius-sm); border: 1px solid var(--cinder-border-muted);"
-      ></textarea>
+        rows={2}
+      />
       {#if !parsedToolArguments.ok}
         <span
           data-testid="tool-arguments-error"
@@ -520,12 +522,15 @@
       <strong>Event log</strong>
       <!-- tabindex=0 gives the scrollable region keyboard access (axe
            scrollable-region-focusable). A group label names it without a `log`
-           role, which would collide with the chat timeline's own role="log". -->
-      <div
+           role, which would collide with the chat timeline's own role="log".
+           svelte:element keeps the rendered DOM as a div while avoiding the
+           static a11y warning for this focusable scroll-region pattern. -->
+      <svelte:element
+        this={'div'}
         data-testid="event-log"
         role="group"
         aria-label="Event log"
-        tabindex="0"
+        tabindex={0}
         style="display: grid; gap: 0.15rem; max-height: 10rem; overflow: auto; font-size: var(--cinder-text-xs); font-family: var(--cinder-font-mono);"
       >
         {#each log as entry (entry.id)}
@@ -533,7 +538,7 @@
             {entry.event}: {entry.payload}
           </div>
         {/each}
-      </div>
+      </svelte:element>
     </section>
   </div>
 
@@ -584,9 +589,16 @@
         </div>
       {/snippet}
       {#snippet messageActions(message: Message)}
-        <button type="button" data-testid="harness-message-action" data-message-id={message.id}
-          >★</button
+        <Button
+          iconOnly={true}
+          label="Message action"
+          size="xs"
+          variant="ghost"
+          data-testid="harness-message-action"
+          data-message-id={message.id}
         >
+          ★
+        </Button>
       {/snippet}
       {#snippet messageStatus(message: Message)}
         <span data-testid="harness-message-status" data-message-id={message.id}>·</span>

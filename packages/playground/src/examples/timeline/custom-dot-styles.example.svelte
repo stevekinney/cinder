@@ -29,6 +29,12 @@
       tone: 'error' as const,
     },
   ];
+
+  const details: Record<string, string> = {
+    green: 'All probes returned healthy responses across the deployment target.',
+    yellow: 'Projected load crossed the warning threshold for the current pool.',
+    red: 'Rollback automation started after error rates continued climbing.',
+  };
 </script>
 
 <Timeline {entries} label="Incident timeline">
@@ -37,6 +43,6 @@
   {/snippet}
 
   {#snippet children(entry)}
-    {entry.title}
+    {details[entry.id]}
   {/snippet}
 </Timeline>

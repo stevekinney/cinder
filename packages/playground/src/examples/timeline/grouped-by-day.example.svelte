@@ -31,10 +31,16 @@
       tone: 'warning' as const,
     },
   ];
+
+  const details: Record<string, string> = {
+    'monday-1': 'The release candidate was opened for reviewer feedback.',
+    'monday-2': 'Required approvals landed and the candidate moved forward.',
+    'tuesday-1': 'Rollout paused while capacity warnings were investigated.',
+  };
 </script>
 
 <Timeline {entries} groupBy="day" gapThresholdMinutes={90} label="Review timeline">
   {#snippet children(entry)}
-    {entry.title}
+    {details[entry.id]}
   {/snippet}
 </Timeline>
