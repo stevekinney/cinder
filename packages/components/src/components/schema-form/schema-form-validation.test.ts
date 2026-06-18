@@ -1,3 +1,4 @@
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 
@@ -147,6 +148,44 @@ describe('schema-form validation', () => {
     expect(result.issues).toEqual([
       { path: ['name'], message: 'Name is required.' },
       { path: ['nested', 'count'], message: 'Count is required.' },
+    ]);
+  });
+
+  test('normalizes non-string Standard Schema issue path segments defensively', async () => {
+    const circularSegment: Record<string, unknown> = {};
+    circularSegment['self'] = circularSegment;
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        validate: () => ({
+          issues: [
+            {
+              path: [
+                0,
+                true,
+                1n,
+                Symbol('symbol-key'),
+                null,
+                undefined,
+                { key: 'wrapped' },
+                { kind: 'plain-object' },
+                circularSegment,
+              ],
+              message: 'Mixed path segment.',
+            },
+          ],
+        }),
+      },
+    } as unknown as StandardSchemaV1;
+
+    const result = await validateSchemaValue(schema, {});
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual([
+      {
+        path: ['0', 'true', '1', 'symbol-key', '', '', 'wrapped', '{"kind":"plain-object"}', ''],
+        message: 'Mixed path segment.',
+      },
     ]);
   });
 

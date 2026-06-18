@@ -269,6 +269,110 @@ describe('SchemaForm', () => {
     expect(submitted).toEqual([{ name: 'Ada' }]);
   });
 
+  test('blocks submit when async Standard Schema validation returns issues', async () => {
+    let releaseValidation!: () => void;
+    const validationGate = new Promise<void>((resolve) => {
+      releaseValidation = resolve;
+    });
+    const submitted: unknown[] = [];
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'async-invalid-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { name: { type: 'string', title: 'Name' } },
+            required: ['name'],
+          }),
+          output: () => ({}),
+        },
+        async validate() {
+          await validationGate;
+          return {
+            issues: [{ path: ['name'], message: 'Name is unavailable.' }],
+          };
+        },
+      },
+    } as const;
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { name: 'Ada' },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const submitPromise = submit(formFrom(container));
+    await flush();
+    expect(screen.getByLabelText(/Name/)).toHaveProperty('disabled', true);
+
+    releaseValidation();
+    await submitPromise;
+    await flush();
+
+    expect(submitted).toEqual([]);
+    expect(screen.getByLabelText(/Name/).getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Name is unavailable.')).toBeTruthy();
+  });
+
+  test('freezes controls during async validation so late edits cannot change the submitted payload', async () => {
+    let releaseValidation!: () => void;
+    const validationGate = new Promise<void>((resolve) => {
+      releaseValidation = resolve;
+    });
+    const submitted: unknown[] = [];
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'async-freeze-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { name: { type: 'string', title: 'Name' } },
+            required: ['name'],
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          await validationGate;
+          return { value };
+        },
+      },
+    } as const;
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { name: 'Ada' },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const submitPromise = submit(formFrom(container));
+    await flush();
+
+    const input = screen.getByLabelText(/Name/);
+    expect(input).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: /Validating/ })).toHaveProperty('disabled', true);
+
+    await fireEvent.input(input, { target: { value: 'Grace' } });
+    releaseValidation();
+    await submitPromise;
+    await flush();
+
+    expect(submitted).toEqual([{ name: 'Ada' }]);
+    expect(input).toHaveProperty('value', 'Ada');
+    expect(input).toHaveProperty('disabled', false);
+  });
+
   test('removes array items without leaking removed values into the submitted payload', async () => {
     let submitted: unknown;
     const { container } = render(SchemaForm, {

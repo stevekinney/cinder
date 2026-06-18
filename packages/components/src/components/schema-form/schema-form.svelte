@@ -132,6 +132,7 @@
   }
 
   function updateValue(path: readonly string[], next: unknown) {
+    if (submitting) return;
     formValue = setValueAtPath(formValue, path, next);
     const key = pathKey(path);
     if (errors[key]) {
@@ -147,11 +148,22 @@
   }
 
   function updateString(field: SchemaFormField, event: Event) {
-    updateValue(field.path, (event.currentTarget as HTMLInputElement).value);
+    const input = event.currentTarget as HTMLInputElement;
+    if (submitting) {
+      input.value = stringValue(field);
+      return;
+    }
+    updateValue(field.path, input.value);
   }
 
   function updateNumber(field: SchemaFormField, event: Event) {
-    const raw = (event.currentTarget as HTMLInputElement).value;
+    const input = event.currentTarget as HTMLInputElement;
+    if (submitting) {
+      const current = numberValue(field);
+      input.value = current === undefined ? '' : String(current);
+      return;
+    }
+    const raw = input.value;
     updateValue(field.path, raw === '' ? undefined : Number(raw));
   }
 
@@ -160,12 +172,22 @@
   }
 
   function updateEnum(field: SchemaFormField, event: Event) {
-    updateValue(field.path, decodeEnumValue((event.currentTarget as HTMLSelectElement).value));
+    const select = event.currentTarget as HTMLSelectElement;
+    if (submitting) {
+      select.value = enumValue(field);
+      return;
+    }
+    updateValue(field.path, decodeEnumValue(select.value));
   }
 
   function updateRawJson(field: SchemaFormField, event: Event) {
+    const textarea = event.currentTarget as HTMLTextAreaElement;
+    if (submitting) {
+      textarea.value = rawJsonValue(field);
+      return;
+    }
     const key = pathKey(field.path);
-    rawDrafts = { ...rawDrafts, [key]: (event.currentTarget as HTMLTextAreaElement).value };
+    rawDrafts = { ...rawDrafts, [key]: textarea.value };
     setSerializedValue('');
   }
 
@@ -189,6 +211,7 @@
   }
 
   function addArrayItem(field: SchemaFormField) {
+    if (submitting) return;
     const values = arrayValueAtPath(formValue, field.path);
     const nextValue = field.item ? defaultValueForField(field.item) : null;
     updateValue(field.path, [...values, nextValue]);
@@ -200,6 +223,7 @@
   }
 
   function removeArrayItem(field: SchemaFormField, index: number) {
+    if (submitting) return;
     const values = arrayValueAtPath(formValue, field.path);
     updateValue(
       field.path,
@@ -384,6 +408,7 @@
             <button
               type="button"
               class="cinder-schema-form__secondary-button"
+              disabled={submitting}
               onclick={() => removeArrayItem(field, row.index)}
             >
               Remove
@@ -394,6 +419,7 @@
       <button
         type="button"
         class="cinder-schema-form__secondary-button"
+        disabled={submitting}
         onclick={() => addArrayItem(field)}
       >
         Add {field.label}
@@ -411,6 +437,7 @@
         class="cinder-schema-form__switch"
         data-cinder-checked={booleanValue(field) || undefined}
         data-cinder-invalid={error ? 'true' : undefined}
+        disabled={submitting}
         onclick={() => toggleSwitch(field)}
         onkeydown={(event) => handleSwitchKeydown(field, event)}
       >
@@ -428,6 +455,7 @@
           class="cinder-_input-frame cinder-schema-form__control"
           value={stringValue(field)}
           required={field.required}
+          disabled={submitting}
           aria-describedby={ariaDescribedBy}
           aria-invalid={error ? 'true' : undefined}
           oninput={(event) => updateString(field, event)}
@@ -440,6 +468,7 @@
           step={field.kind === 'integer' ? '1' : 'any'}
           value={numberValue(field)}
           required={field.required}
+          disabled={submitting}
           aria-describedby={ariaDescribedBy}
           aria-invalid={error ? 'true' : undefined}
           oninput={(event) => updateNumber(field, event)}
@@ -450,6 +479,7 @@
           class="cinder-_input-frame cinder-schema-form__control"
           value={enumValue(field)}
           required={field.required}
+          disabled={submitting}
           aria-describedby={ariaDescribedBy}
           aria-invalid={error ? 'true' : undefined}
           onchange={(event) => updateEnum(field, event)}
@@ -466,6 +496,7 @@
           spellcheck="false"
           value={rawJsonValue(field)}
           required={field.required}
+          disabled={submitting}
           aria-describedby={ariaDescribedBy}
           aria-invalid={error ? 'true' : undefined}
           oninput={(event) => updateRawJson(field, event)}
