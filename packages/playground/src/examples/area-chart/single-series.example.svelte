@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Usage area';
   export const description = 'A single-series area chart for product usage.';
+  export const featured = true;
 </script>
 
 <script lang="ts">

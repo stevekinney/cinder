@@ -378,7 +378,12 @@
   // --- Playground controls ----------------------------------------------
   const playgroundModel = $derived(
     documentation === null
-      ? { controls: [], skipped: [], hasUnsatisfiedRequired: false }
+      ? {
+          controls: [],
+          skipped: [],
+          hasUnsatisfiedRequired: false,
+          requiresExamplePlayground: false,
+        }
       : buildPlaygroundModel(documentation.propsManifest),
   );
   // Live control values, keyed by prop name. Seeded from each control's default
@@ -403,7 +408,9 @@
         ),
   );
   const showGeneratedPlayground = $derived(
-    playgroundModel.controls.length > 0 && !playgroundModel.hasUnsatisfiedRequired,
+    playgroundModel.controls.length > 0 &&
+      !playgroundModel.hasUnsatisfiedRequired &&
+      !playgroundModel.requiresExamplePlayground,
   );
 
   // The bare component constructor for the Playground section's LIVE preview
@@ -1012,24 +1019,6 @@
                     {/each}
                   </div>
                 </div>
-              </section>
-            {:else if documentation !== null && playgroundModel.hasUnsatisfiedRequired}
-              {@const firstAlternative = documentation.component.avoidWhen[0]?.alternative}
-              <section id="playground" class="dx-section">
-                <div class="dx-section__head">
-                  <span class="dx-section__num">{sectionNumber.get('playground') ?? ''}</span>
-                  <h2 class="dx-section__title">Playground</h2>
-                  <span class="dx-section__rule" aria-hidden="true"></span>
-                </div>
-                <p class="dx-play__context-note">
-                  This component requires a prop value the playground can't fill in automatically.
-                  {#if firstAlternative !== undefined}
-                    See the <a href="/c/{firstAlternative}">{humanizeId(firstAlternative)}</a> page for
-                    a live demo.
-                  {:else}
-                    See the <a href="#examples">Examples</a> section for usage.
-                  {/if}
-                </p>
               </section>
             {/if}
 
@@ -1948,24 +1937,6 @@
     margin: 0;
     font-size: var(--cinder-text-xs);
     color: var(--cinder-text-subtle);
-  }
-  .dx-play__context-note {
-    margin: 0;
-    font-size: var(--cinder-text-sm);
-    color: var(--cinder-text-subtle);
-    line-height: var(--cinder-leading-relaxed);
-  }
-  .dx-play__context-note a {
-    color: var(--cinder-accent-text);
-    text-decoration: none;
-  }
-  .dx-play__context-note a:hover {
-    text-decoration: underline;
-  }
-  .dx-play__context-note a:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
-    border-radius: var(--cinder-radius-sm);
   }
   .dx-play__controls {
     border: 1px solid var(--cinder-border);

@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Revenue trend';
   export const description = 'A single-series line chart for monthly recurring revenue.';
+  export const featured = true;
 </script>
 
 <script lang="ts">

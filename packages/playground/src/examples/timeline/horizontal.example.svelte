@@ -29,10 +29,16 @@
       tone: 'warning' as const,
     },
   ];
+
+  const details: Record<string, string> = {
+    intake: 'Requirements and constraints were collected.',
+    design: 'The selected approach passed design review.',
+    ship: 'Release validation is waiting on final checks.',
+  };
 </script>
 
 <Timeline {entries} orientation="horizontal" label="Project phase timeline">
   {#snippet children(entry)}
-    {entry.title}
+    {details[entry.id]}
   {/snippet}
 </Timeline>

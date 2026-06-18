@@ -53,6 +53,7 @@ describe('buildPlaygroundModel', () => {
     ]);
     expect(model.skipped).toEqual([]);
     expect(model.hasUnsatisfiedRequired).toBe(false);
+    expect(model.requiresExamplePlayground).toBe(false);
   });
 
   test('skips snippet/unknown props and lists them', () => {
@@ -159,6 +160,23 @@ describe('buildPlaygroundModel', () => {
     expect(model.skipped).toEqual(['header']);
   });
 
+  test('a required non-children snippet prop suppresses the generated preview', () => {
+    const model = buildPlaygroundModel(
+      manifest([
+        {
+          name: 'open',
+          control: { kind: 'boolean' },
+          bindable: true,
+          optional: true,
+          defaultValue: false,
+        },
+        { name: 'items', control: { kind: 'snippet' }, bindable: false, optional: false },
+      ]),
+    );
+    expect(model.hasUnsatisfiedRequired).toBe(true);
+    expect(model.skipped).toEqual(['items']);
+  });
+
   test('a required non-snippet prop with no default suppresses the generated preview', () => {
     const model = buildPlaygroundModel(
       manifest([
@@ -181,6 +199,26 @@ describe('buildPlaygroundModel', () => {
     expect(model.skipped).toContain('value');
   });
 
+  test('marks components whose behavior needs authored examples as example-only', () => {
+    const model = buildPlaygroundModel({
+      name: 'Autocomplete',
+      kebabName: 'autocomplete',
+      file: 'autocomplete.svelte',
+      importPath: '@lostgradient/cinder/autocomplete',
+      props: [
+        { name: 'value', control: { kind: 'text' }, bindable: true, optional: true },
+        {
+          name: 'suggestionSource',
+          control: { kind: 'unknown', rawType: 'AutocompleteSuggestionSource' },
+          bindable: false,
+          optional: true,
+        },
+      ],
+    });
+    expect(model.controls.map((control) => control.name)).toEqual(['value']);
+    expect(model.requiresExamplePlayground).toBe(true);
+  });
+
   test('a select with no defaultValue seeds its value to the first option', () => {
     const model = buildPlaygroundModel(
       manifest([
@@ -199,6 +237,19 @@ describe('buildPlaygroundModel', () => {
       options: ['primary', 'secondary'],
       value: 'primary',
     });
+  });
+
+  test('required text controls seed readable defaults', () => {
+    const model = buildPlaygroundModel(
+      manifest([
+        { name: 'id', control: { kind: 'text' }, bindable: false, optional: false },
+        { name: 'label', control: { kind: 'text' }, bindable: false, optional: false },
+      ]),
+    );
+    expect(model.controls).toEqual([
+      { name: 'id', hasDefault: false, kind: 'text', value: 'demo-example' },
+      { name: 'label', hasDefault: false, kind: 'text', value: 'Demo' },
+    ]);
   });
 });
 

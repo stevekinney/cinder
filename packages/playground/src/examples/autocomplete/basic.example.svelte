@@ -2,6 +2,7 @@
   export const title = 'Basic autocomplete';
   export const description =
     'Free-form text stays editable while the suggestion list offers completions.';
+  export const featured = true;
 </script>
 
 <script lang="ts">

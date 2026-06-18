@@ -13,6 +13,7 @@
       "id": "single-series",
       "title": "Usage area",
       "description": "A single-series area chart for product usage.",
+      "featured": true,
       "code": "<script lang=\"ts\">\n  import { AreaChart } from '@lostgradient/cinder/area-chart';\n\n  const series = [\n    {\n      id: 'usage',\n      label: 'Usage',\n      data: [\n        { x: 'Jan', y: 44 },\n        { x: 'Feb', y: 61 },\n        { x: 'Mar', y: 79 },\n      ],\n    },\n  ];\n</script>\n\n<AreaChart label=\"Product usage\" {series} />\n"
     },
     {
