@@ -11,7 +11,7 @@
  * the manifest. If the Props type has a property not in the destructuring, it is skipped.
  */
 
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import type { Expression, Pattern, Property, SpreadElement } from 'estree';
 import { type AST, parse } from 'svelte/compiler';
@@ -501,6 +501,22 @@ function toPascalCase(kebab: string): string {
   return kebab.replace(/(^|-)([a-z])/g, (_, _sep, char: string) => char.toUpperCase());
 }
 
+/**
+ * Detect whether a component is a compound namespace by inspecting its sibling
+ * `index.ts`. Compound roots assemble their public sub-components onto the root
+ * constructor with `Object.assign(Root, { Item: … })` — that call is the
+ * authoritative signal that consumers compose the component as `Accordion.Item`
+ * rather than passing plain-text children. Flat-layout components have no
+ * sibling `index.ts`, so the read simply returns `false`.
+ *
+ * @param svelteFilePath - Absolute path to the component's `.svelte` file.
+ */
+async function detectCompound(svelteFilePath: string): Promise<boolean> {
+  const indexFile = Bun.file(join(dirname(svelteFilePath), 'index.ts'));
+  if (!(await indexFile.exists())) return false;
+  return /Object\.assign\(/.test(await indexFile.text());
+}
+
 // ---------------------------------------------------------------------------
 // Main analysis function
 // ---------------------------------------------------------------------------
@@ -558,12 +574,15 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
     props.push(manifest);
   }
 
+  const isCompound = await detectCompound(filePath);
+
   return {
     name: componentName,
     kebabName: fileBaseName,
     file: filePath,
     importPath: `@lostgradient/cinder/${fileBaseName}`,
     props,
+    ...(isCompound ? { isCompound: true } : {}),
   };
 }
 

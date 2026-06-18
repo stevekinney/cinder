@@ -31,4 +31,14 @@ export type ComponentManifest = {
   file: string;
   importPath: string;
   props: PropManifest[];
+  /**
+   * True when the component is a compound namespace — its sibling `index.ts`
+   * assembles sub-components onto the root via `Object.assign` (e.g.
+   * `Accordion.Item`). Such a component's `children` must be those structured
+   * sub-components, never plain text, so the playground neither synthesizes a
+   * text `children` control for it nor mounts it bare in the live preview
+   * (a bare mount with no children throws — `{@render children()}` on
+   * `undefined`). It falls back to the featured example instead.
+   */
+  isCompound?: boolean;
 };

@@ -411,8 +411,15 @@
   // bundle, by the documented `exportName` (falling back to the default export).
   // `undefined` when the module wasn't provided or the export isn't a component,
   // in which case the section degrades to the static featured-example mount.
+  //
+  // Compound components (Accordion, Tabs, …) resolve to `undefined` here on
+  // purpose: their `children` are structured sub-components the playground can't
+  // synthesize, so a bare mount with no children would throw
+  // (`{@render children()}` on `undefined`). They take the featured-example
+  // fallback, whose mount renders a real composed instance — see
+  // `documentation.propsManifest.isCompound`.
   const bareComponent = $derived(
-    documentation === null
+    documentation === null || documentation.propsManifest.isCompound === true
       ? undefined
       : resolveBareComponent(bareComponentModule, documentation.component.exportName),
   );

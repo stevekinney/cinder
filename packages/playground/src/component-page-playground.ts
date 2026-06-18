@@ -142,7 +142,13 @@ export function buildPlaygroundModel(manifest: ComponentManifest): PlaygroundMod
         // labelled instance out of the box. Marked `isChildren` so the snippet
         // renders it as element content (`<X>text</X>`) and the mount converts it
         // to a children snippet, rather than emitting it as an attribute.
-        if (prop.name === 'children' && prop.control.kind === 'snippet') {
+        //
+        // Compound components are EXCLUDED: their `children` must be structured
+        // sub-components (`<Accordion.Item>`), so seeding plain text would render
+        // a semantically broken preview (loose text in an empty `.cinder-accordion`
+        // shell). They skip the control and fall back to the featured-example
+        // mount instead — see {@link ComponentManifest.isCompound}.
+        if (prop.name === 'children' && prop.control.kind === 'snippet' && !manifest.isCompound) {
           controls.push({
             ...base,
             kind: 'text',

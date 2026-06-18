@@ -464,4 +464,37 @@ describe('analyzeComponent — bare <script module> block', () => {
 
     expect(manifest.props).toEqual([]);
   });
+
+  it('treats a fixture with no sibling index.ts as non-compound', async () => {
+    // A fixture written to the temp dir has no index.ts beside it, so compound
+    // detection returns false without throwing.
+    const filePath = await writeFixture(
+      'loose',
+      `<script lang="ts">
+  let { label }: { label?: string } = $props();
+</script>
+
+<span>{label}</span>`,
+    );
+    const manifest = await analyzeComponent(filePath);
+    expect(manifest.isCompound).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Compound detection (isCompound)
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — isCompound', () => {
+  it('flags a compound component whose sibling index.ts uses Object.assign', async () => {
+    // Accordion assembles `Accordion.Item` onto the root via Object.assign.
+    const manifest = await analyzeComponent(componentPath('accordion'));
+    expect(manifest.isCompound).toBe(true);
+  });
+
+  it('leaves a non-compound component unflagged', async () => {
+    // Badge renders plain-text children and has no sub-component namespace.
+    const manifest = await analyzeComponent(componentPath('badge'));
+    expect(manifest.isCompound).toBeUndefined();
+  });
 });
