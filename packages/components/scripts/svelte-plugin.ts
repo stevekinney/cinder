@@ -54,18 +54,14 @@ export function sveltePlugin(
       builder.onLoad({ filter: /\.svelte$/ }, async ({ path }) => {
         const source = await Bun.file(path).text();
         const isPlaygroundFile = path.replaceAll('\\', '/').includes('/packages/playground/');
-        const hydrationSafetyServerBuild =
-          process.env['CINDER_HYDRATION_SAFETY_SERVER_BUILD'] === '1';
-        const css =
-          hydrationSafetyServerBuild || isPlaygroundFile || injectCss ? 'injected' : 'external';
-        const generate = hydrationSafetyServerBuild ? 'server' : options.generate;
+        const css = isPlaygroundFile || injectCss ? 'injected' : 'external';
         const compileResult = compile(source, {
           filename: path,
-          generate,
+          generate: options.generate,
           css,
           // Read the same environment source that `scripts/build.ts` writes before `Bun.build()`
           // runs so production builds and test/dev loads stay in sync.
-          dev: hydrationSafetyServerBuild ? false : process.env['NODE_ENV'] !== 'production',
+          dev: process.env['NODE_ENV'] !== 'production',
         });
         if (!isPlaygroundFile && compileResult.css?.code?.trim() && !allowsStyleBlock(path)) {
           throw new Error(
@@ -80,15 +76,12 @@ export function sveltePlugin(
         const moduleSource = path.endsWith('.ts')
           ? new Bun.Transpiler({ loader: 'ts' }).transformSync(source)
           : source;
-        const hydrationSafetyServerBuild =
-          process.env['CINDER_HYDRATION_SAFETY_SERVER_BUILD'] === '1';
-        const generate = hydrationSafetyServerBuild ? 'server' : options.generate;
         const compileResult = compileModule(moduleSource, {
           filename: path,
-          generate,
+          generate: options.generate,
           // Read the same environment source that `scripts/build.ts` writes before `Bun.build()`
           // runs so production builds and test/dev loads stay in sync.
-          dev: hydrationSafetyServerBuild ? false : process.env['NODE_ENV'] !== 'production',
+          dev: process.env['NODE_ENV'] !== 'production',
         });
         return { contents: compileResult.js.code, loader: 'js' };
       });

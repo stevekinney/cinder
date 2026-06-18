@@ -1,16 +1,11 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
 
 setupHappyDom();
-
-// The build-flag hydration helper performs multiple Bun builds. The helper's
-// own test suite uses the same headroom so this file does not false-timeout
-// under CPU contention.
-setDefaultTimeout(60_000);
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: TreeRenameFixture } =

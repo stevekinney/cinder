@@ -8,9 +8,17 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { cleanup, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: AccessGate } = await import('./access-gate.svelte');
+const { default: AccessGateDynamicFixture } =
+  await import('../../test/fixtures/access-gate-dynamic-fixture.svelte');
 const { createRawSnippet, tick } = await import('svelte');
+const { checkBuildFlagHydrationSafety } = await import('../../test/hydration-safety.ts');
+
+const accessGateSsrFixturePath = new URL(
+  '../../test/fixtures/access-gate-ssr-fixture.svelte',
+  import.meta.url,
+).pathname;
 
 function markupSnippet(markup: string) {
   return createRawSnippet(() => ({
@@ -88,12 +96,77 @@ describe('AccessGate', () => {
 
     const link = container.querySelector<HTMLAnchorElement>('a');
     const customControl = container.querySelector<HTMLElement>('[role="button"]');
+    let linkActivations = 0;
+    let customActivations = 0;
+    link?.addEventListener('click', () => {
+      linkActivations += 1;
+    });
+    customControl?.addEventListener('click', () => {
+      customActivations += 1;
+    });
+    customControl?.addEventListener('keydown', () => {
+      customActivations += 1;
+    });
 
     expect(link?.getAttribute('aria-disabled')).toBe('true');
     expect(link?.getAttribute('tabindex')).toBe('-1');
     expect(link?.hasAttribute('href')).toBe(false);
     expect(customControl?.getAttribute('aria-disabled')).toBe('true');
     expect(customControl?.getAttribute('tabindex')).toBe('-1');
+
+    const linkClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+    link?.dispatchEvent(linkClick);
+    const customClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+    customControl?.dispatchEvent(customClick);
+    const enterKey = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    });
+    customControl?.dispatchEvent(enterKey);
+    const spaceKey = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: ' ',
+    });
+    customControl?.dispatchEvent(spaceKey);
+
+    expect(linkActivations).toBe(0);
+    expect(customActivations).toBe(0);
+    expect(linkClick.defaultPrevented).toBe(true);
+    expect(customClick.defaultPrevented).toBe(true);
+    expect(enterKey.defaultPrevented).toBe(true);
+    expect(spaceKey.defaultPrevented).toBe(true);
+  });
+
+  test('denied inline gates disable controls inserted after mount', async () => {
+    const { container, getByRole } = render(AccessGateDynamicFixture, {});
+
+    await fireEvent.click(getByRole('button', { name: 'Reveal denied action' }));
+    const button = getByRole('button', { name: 'Dynamic cancel' }) as HTMLButtonElement;
+    const reason = container.querySelector('.cinder-access-gate__inline-reason');
+    let activations = 0;
+    button.addEventListener('click', () => {
+      activations += 1;
+    });
+
+    await waitFor(() => {
+      expect(button.disabled).toBe(true);
+    });
+    expect(button.getAttribute('aria-describedby')?.split(/\s+/)).toContain(reason!.id);
+
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    button.dispatchEvent(click);
+
+    expect(activations).toBe(0);
+  });
+
+  test('denied inline gates server-render inert content until hydration disables controls', async () => {
+    const { serverHtml: body } = await checkBuildFlagHydrationSafety(accessGateSsrFixturePath);
+
+    expect(body).toContain('inert');
+    expect(body).toContain('Cancel workflow');
+    expect(body).toContain('Requires scope: workflows:cancel');
   });
 
   test('denied section gates replace children with a locked placeholder', () => {

@@ -41,7 +41,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import type { Component } from 'svelte';
-import { compile } from 'svelte/compiler';
+import { compile, compileModule } from 'svelte/compiler';
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Scratch directory for the per-render server modules this helper emits. */
@@ -82,6 +82,27 @@ function serverCompilePlugin(): BunPlugin {
         });
         return { contents: result.js.code, loader: 'js' };
       });
+
+      builder.onResolve({ filter: /\.svelte\.(js|ts)$/ }, ({ path, importer, resolveDir }) => {
+        const baseDirectory = importer ? dirname(importer) : resolveDir;
+        return {
+          path: isAbsolute(path) ? path : resolve(baseDirectory, path),
+          namespace,
+        };
+      });
+
+      builder.onLoad({ filter: /\.svelte\.(js|ts)$/, namespace }, async ({ path }) => {
+        const source = await Bun.file(path).text();
+        const moduleSource = path.endsWith('.ts')
+          ? new Bun.Transpiler({ loader: 'ts' }).transformSync(source)
+          : source;
+        const result = compileModule(moduleSource, {
+          filename: path,
+          generate: 'server',
+          dev: false,
+        });
+        return { contents: result.js.code, loader: 'js' };
+      });
     },
   };
 }
@@ -96,31 +117,20 @@ async function renderWithConditions(
   conditions: readonly string[],
   props: Record<string, unknown>,
 ): Promise<string> {
-  const previousHydrationSafetyServerBuild = process.env['CINDER_HYDRATION_SAFETY_SERVER_BUILD'];
-  process.env['CINDER_HYDRATION_SAFETY_SERVER_BUILD'] = '1';
-  let build: Bun.BuildOutput;
-  try {
-    build = await Bun.build({
-      entrypoints: [componentPath],
-      target: 'bun',
-      conditions: [...conditions],
-      // Svelte MUST stay a single shared instance, not bundled. If Bun.build
-      // inlined svelte's server internals, the component module would carry its
-      // own `ssr_context` module state, separate from the `render()` we import
-      // below — `render()` would initialize ITS copy's context while the bundled
-      // component reads its own (null) copy, crashing any component that touches a
-      // lifecycle/context API (`onDestroy`, `getContext`). esm-env, by contrast,
-      // stays bundled so `conditions` still flips BROWSER — that's the discriminator.
-      external: ['svelte', 'svelte/*'],
-      plugins: [serverCompilePlugin()],
-    });
-  } finally {
-    if (previousHydrationSafetyServerBuild === undefined) {
-      delete process.env['CINDER_HYDRATION_SAFETY_SERVER_BUILD'];
-    } else {
-      process.env['CINDER_HYDRATION_SAFETY_SERVER_BUILD'] = previousHydrationSafetyServerBuild;
-    }
-  }
+  const build = await Bun.build({
+    entrypoints: [componentPath],
+    target: 'bun',
+    conditions: [...conditions],
+    // Svelte MUST stay a single shared instance, not bundled. If Bun.build
+    // inlined svelte's server internals, the component module would carry its
+    // own `ssr_context` module state, separate from the `render()` we import
+    // below — `render()` would initialize ITS copy's context while the bundled
+    // component reads its own (null) copy, crashing any component that touches a
+    // lifecycle/context API (`onDestroy`, `getContext`). esm-env, by contrast,
+    // stays bundled so `conditions` still flips BROWSER — that's the discriminator.
+    external: ['svelte', 'svelte/*'],
+    plugins: [serverCompilePlugin()],
+  });
   if (!build.success) {
     const logText = build.logs.map((log) => String(log.message ?? log)).join('\n');
     throw new Error(`hydration-safety: server build failed for ${componentPath}\n${logText}`);

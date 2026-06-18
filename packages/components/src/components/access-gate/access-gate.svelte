@@ -102,9 +102,25 @@
     }
   }
 
+  function setAttributeIfChanged(element: HTMLElement, name: string, value: string): void {
+    if (element.getAttribute(name) !== value) {
+      element.setAttribute(name, value);
+    }
+  }
+
+  type DisabledControlState = {
+    readonly restore: () => void;
+  };
+
   const disableDeniedControls: Attachment<HTMLElement> = (element) => {
-    const restore = Array.from(element.querySelectorAll<HTMLElement>(INTERACTIVE_SELECTOR)).map(
-      (control) => {
+    const disabledControls: Array<[HTMLElement, DisabledControlState]> = [];
+
+    function disabledControlIndex(control: HTMLElement): number {
+      return disabledControls.findIndex(([disabledControl]) => disabledControl === control);
+    }
+
+    function disableControl(control: HTMLElement): void {
+      if (disabledControlIndex(control) === -1) {
         const previousDisabled = isNativeDisableable(control) ? control.disabled : undefined;
         const previousAriaDisabled = control.getAttribute('aria-disabled');
         const previousTabindex = control.getAttribute('tabindex');
@@ -113,33 +129,59 @@
           control instanceof HTMLAnchorElement ? control.getAttribute('href') : null;
         const previousDataControl = control.getAttribute('data-cinder-access-gate-control');
 
-        control.setAttribute('data-cinder-access-gate-control', '');
-        control.setAttribute('aria-describedby', appendId(previousDescribedBy, inlineReasonId));
+        disabledControls.push([
+          control,
+          {
+            restore: () => {
+              if (previousDisabled !== undefined && isNativeDisableable(control)) {
+                control.disabled = previousDisabled;
+              }
+              restoreAttribute(control, 'aria-disabled', previousAriaDisabled);
+              restoreAttribute(control, 'tabindex', previousTabindex);
+              restoreAttribute(control, 'aria-describedby', previousDescribedBy);
+              if (control instanceof HTMLAnchorElement) {
+                restoreAttribute(control, 'href', previousHref);
+              }
+              restoreAttribute(control, 'data-cinder-access-gate-control', previousDataControl);
+            },
+          },
+        ]);
+      }
 
-        if (isNativeDisableable(control)) {
+      setAttributeIfChanged(control, 'data-cinder-access-gate-control', '');
+      setAttributeIfChanged(
+        control,
+        'aria-describedby',
+        appendId(control.getAttribute('aria-describedby'), inlineReasonId),
+      );
+
+      if (isNativeDisableable(control)) {
+        if (!control.disabled) {
           control.disabled = true;
-        } else {
-          control.setAttribute('aria-disabled', 'true');
-          control.setAttribute('tabindex', '-1');
-          if (control instanceof HTMLAnchorElement) {
-            control.removeAttribute('href');
-          }
         }
+      } else {
+        setAttributeIfChanged(control, 'aria-disabled', 'true');
+        setAttributeIfChanged(control, 'tabindex', '-1');
+        if (control instanceof HTMLAnchorElement && control.hasAttribute('href')) {
+          control.removeAttribute('href');
+        }
+      }
+    }
 
-        return () => {
-          if (previousDisabled !== undefined && isNativeDisableable(control)) {
-            control.disabled = previousDisabled;
-          }
-          restoreAttribute(control, 'aria-disabled', previousAriaDisabled);
-          restoreAttribute(control, 'tabindex', previousTabindex);
-          restoreAttribute(control, 'aria-describedby', previousDescribedBy);
-          if (control instanceof HTMLAnchorElement) {
-            restoreAttribute(control, 'href', previousHref);
-          }
-          restoreAttribute(control, 'data-cinder-access-gate-control', previousDataControl);
-        };
-      },
-    );
+    function syncDisabledControls(): void {
+      const currentControls = new Set(element.querySelectorAll<HTMLElement>(INTERACTIVE_SELECTOR));
+
+      for (const control of currentControls) {
+        disableControl(control);
+      }
+
+      for (const [control, state] of [...disabledControls]) {
+        if (!element.contains(control)) {
+          state.restore();
+          disabledControls.splice(disabledControlIndex(control), 1);
+        }
+      }
+    }
 
     function preventActivation(event: Event): void {
       event.preventDefault();
@@ -154,13 +196,24 @@
 
     element.addEventListener('click', preventActivation, true);
     element.addEventListener('keydown', preventKeyboardActivation, true);
+    const observer = new MutationObserver(syncDisabledControls);
+    observer.observe(element, {
+      attributeFilter: ['aria-describedby', 'aria-disabled', 'disabled', 'href', 'tabindex'],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    syncDisabledControls();
+    element.inert = false;
 
     return () => {
+      observer.disconnect();
       element.removeEventListener('click', preventActivation, true);
       element.removeEventListener('keydown', preventKeyboardActivation, true);
-      for (const restoreControl of restore) {
-        restoreControl();
+      for (const [, state] of disabledControls) {
+        state.restore();
       }
+      disabledControls.length = 0;
     };
   };
 </script>
@@ -190,20 +243,19 @@
     </span>
   </section>
 {:else}
-  <span
+  <div
     {...rest}
     class={classNames('cinder-access-gate', customClassName)}
     data-cinder-variant="inline"
     role="group"
-    aria-disabled="true"
     aria-describedby={inlineReasonId}
   >
-    <span class="cinder-access-gate__inline-content" {@attach disableDeniedControls}>
+    <span class="cinder-access-gate__inline-content" inert {@attach disableDeniedControls}>
       {@render children?.()}
     </span>
     <span id={inlineReasonId} class="cinder-access-gate__inline-reason">
       <Lock size={14} strokeWidth={2} aria-hidden="true" />
       <span>{reason}</span>
     </span>
-  </span>
+  </div>
 {/if}
