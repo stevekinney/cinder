@@ -246,6 +246,7 @@ describe('buildPlaygroundModel', () => {
         { name: 'label', control: { kind: 'text' }, bindable: false, optional: false },
       ]),
     );
+    expect(model.hasUnsatisfiedRequired).toBe(false);
     expect(model.controls).toEqual([
       { name: 'id', hasDefault: false, kind: 'text', value: 'demo-example' },
       { name: 'label', hasDefault: false, kind: 'text', value: 'Demo' },

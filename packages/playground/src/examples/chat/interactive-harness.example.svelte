@@ -418,7 +418,7 @@
       <Textarea
         id="harness-reply-text"
         data-testid="reply-text"
-        aria-label="Reply text"
+        label="Reply text"
         bind:value={replyText}
         rows={2}
       />
@@ -451,13 +451,13 @@
       <Input
         id="harness-tool-name"
         data-testid="tool-name"
-        aria-label="Tool name"
+        label="Tool name"
         bind:value={toolName}
       />
       <Textarea
         id="harness-tool-arguments"
         data-testid="tool-arguments"
-        aria-label="Tool arguments (JSON)"
+        label="Tool arguments (JSON)"
         bind:value={toolArguments}
         rows={2}
       />

@@ -8,6 +8,10 @@
 <script lang="ts">
   import Autocomplete from '@lostgradient/cinder/autocomplete';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let fieldId = $derived(`${mountIdPrefix ?? uid}-field`);
+
   const fruits = [
     { value: 'apple', label: 'Apple', description: 'Classic pie filling' },
     { value: 'apricot', label: 'Apricot', description: 'Stone fruit' },
@@ -21,7 +25,7 @@
 </script>
 
 <Autocomplete
-  id="autocomplete-basic"
+  id={fieldId}
   label="Favorite fruit"
   placeholder="Type a fruit"
   suggestionSource={(query: string) =>

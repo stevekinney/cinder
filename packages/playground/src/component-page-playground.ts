@@ -67,8 +67,10 @@ const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set(['autocomplete']);
  * cannot invent safely.
  */
 function blocksGeneratedPreview(prop: PropManifest): boolean {
-  if (prop.control.kind === 'snippet' && prop.name === 'children') return false;
-  return !prop.optional && prop.defaultValue === undefined;
+  if (prop.optional || prop.defaultValue !== undefined) return false;
+  return (
+    prop.control.kind === 'unknown' || (prop.control.kind === 'snippet' && prop.name !== 'children')
+  );
 }
 
 /**

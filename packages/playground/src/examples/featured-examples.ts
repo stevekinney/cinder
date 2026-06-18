@@ -39,8 +39,8 @@ export const FEATURED_EXAMPLES: readonly FeaturedExample[] = [
   },
   {
     component: 'autocomplete',
-    file: 'autocomplete/async.example.svelte',
-    oldHardcodedIds: ['autocomplete-async'],
+    file: 'autocomplete/basic.example.svelte',
+    oldHardcodedIds: ['autocomplete-basic'],
   },
   {
     component: 'chat',
