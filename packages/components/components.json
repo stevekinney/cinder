@@ -65,6 +65,41 @@
   },
   "components": [
     {
+      "name": "AccessGate",
+      "id": "access-gate",
+      "import": "@lostgradient/cinder/access-gate",
+      "exportName": "AccessGate",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Authorization-scope gate that keeps unavailable actions visible with an accessible reason or replaces locked sections with a scope-required placeholder.",
+      "tags": ["feedback", "authorization", "permission"],
+      "useWhen": [
+        "Showing a mutating action that the current user cannot activate because an application authorization scope is missing.",
+        "Replacing a panel, tab, or administrative section with a lock state that names the missing scope or permission."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Checking browser permissions, media capabilities, or feature support — use capability-gate instead."
+        },
+        {
+          "reason": "Resolving roles, scopes, or policies — compute granted in application code and pass the boolean in."
+        }
+      ],
+      "related": ["capability-gate", "button", "callout", "empty-state"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/access-gate/schema",
+        "variables": "@lostgradient/cinder/access-gate/variables",
+        "examples": "@lostgradient/cinder/access-gate/examples"
+      },
+      "a11y": {
+        "notes": [
+          "Denied inline gates disable native controls, mark custom controls aria-disabled, remove them from sequential focus, and wire the reason through aria-describedby."
+        ]
+      }
+    },
+    {
       "name": "Accordion",
       "id": "accordion",
       "import": "@lostgradient/cinder/accordion",
