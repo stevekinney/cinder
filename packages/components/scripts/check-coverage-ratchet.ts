@@ -90,7 +90,7 @@ function isTransientTestArtifact(file: string): boolean {
     artifactFileName = normalizedFile.slice(artifactPrefix.length);
   }
 
-  return /^(?:client|server)-\d+-\d+-[a-z0-9]+\.mjs$/.test(artifactFileName);
+  return /^(?:client|server)-\d+-\d+-[a-z0-9]+(?:\.svelte-server)?\.mjs$/.test(artifactFileName);
 }
 
 export function parseLcovRecords(source: string): CoverageRecord[] {
