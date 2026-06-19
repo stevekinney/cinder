@@ -69,6 +69,31 @@
       "import": "./components.json",
       "default": "./components.json"
     },
+    "./access-gate": {
+      "types": "./dist/components/access-gate/index.d.ts",
+      "svelte": "./src/components/access-gate/index.ts",
+      "node": "./dist/server/components/access-gate/index.js",
+      "default": "./dist/components/access-gate/index.js"
+    },
+    "./access-gate/schema": {
+      "types": "./dist/components/access-gate/access-gate.schema.d.ts",
+      "svelte": "./src/components/access-gate/access-gate.schema.ts",
+      "node": "./dist/server/components/access-gate/access-gate.schema.js",
+      "default": "./dist/components/access-gate/access-gate.schema.js"
+    },
+    "./access-gate/variables": {
+      "types": "./dist/components/access-gate/access-gate.variables.d.ts",
+      "svelte": "./src/components/access-gate/access-gate.variables.ts",
+      "node": "./dist/server/components/access-gate/access-gate.variables.js",
+      "default": "./dist/components/access-gate/access-gate.variables.js"
+    },
+    "./access-gate/styles": {
+      "default": "./dist/components/access-gate/access-gate.css"
+    },
+    "./access-gate/examples": {
+      "import": "./src/components/access-gate/access-gate.examples.json",
+      "default": "./src/components/access-gate/access-gate.examples.json"
+    },
     "./accordion": {
       "types": "./dist/components/accordion/index.d.ts",
       "svelte": "./src/components/accordion/index.ts",

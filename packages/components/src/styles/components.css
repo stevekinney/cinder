@@ -8,6 +8,7 @@
 @import './components/_floating-surface.css';
 @import './components/_input-frame.css';
 
+@import '../components/access-gate/access-gate.css';
 @import '../components/accordion-item/accordion-item.css';
 @import '../components/accordion/accordion.css';
 @import '../components/alert/alert.css';

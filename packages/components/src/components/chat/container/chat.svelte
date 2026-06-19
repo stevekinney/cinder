@@ -659,16 +659,17 @@
     if (!spacer) return 0;
 
     const offsetTop = spacer.offsetTop;
-    const rectOffset =
-      spacer.getBoundingClientRect().top -
-      viewport.getBoundingClientRect().top +
-      viewport.scrollTop;
+    const spacerRect = spacer.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
+    const hasLayoutBox =
+      spacerRect.top !== 0 ||
+      spacerRect.bottom !== 0 ||
+      viewportRect.top !== 0 ||
+      viewportRect.bottom !== 0;
+    if (!hasLayoutBox) return Math.max(0, offsetTop);
 
-    if (offsetTop === 0 && Math.abs(rectOffset - viewport.scrollTop) < 1) {
-      return 0;
-    }
-
-    return Math.max(0, offsetTop || rectOffset);
+    const rectOffset = spacerRect.top - viewportRect.top + viewport.scrollTop;
+    return Math.max(0, Number.isFinite(rectOffset) ? rectOffset : offsetTop);
   }
 
   function focusAfterHistoryRestore(pending: PendingHistoryScroll): void {

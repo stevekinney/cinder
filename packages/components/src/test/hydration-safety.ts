@@ -37,11 +37,11 @@
  */
 import type { BunPlugin } from 'bun';
 import { unlinkSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import type { Component } from 'svelte';
-import { compile } from 'svelte/compiler';
+import { compile, compileModule } from 'svelte/compiler';
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Scratch directory for the per-render server modules this helper emits. */
@@ -59,15 +59,50 @@ const hydrationSafetyTempDir = join(here, '..', '..', 'tmp', 'hydration-safety')
  * still compiles.
  */
 function serverCompilePlugin(): BunPlugin {
+  const namespace = 'hydration-safety-svelte-server';
+  const isFileSpecifier = (specifier: string): boolean =>
+    isAbsolute(specifier) || specifier.startsWith('.');
+
   return {
     name: 'hydration-safety-svelte-server',
     setup(builder) {
-      builder.onLoad({ filter: /\.svelte$/ }, async ({ path }) => {
+      builder.onResolve({ filter: /\.svelte$/ }, ({ path, importer, resolveDir }) => {
+        if (!isFileSpecifier(path)) return undefined;
+        const baseDirectory = importer ? dirname(importer) : resolveDir;
+        return {
+          path: isAbsolute(path) ? path : resolve(baseDirectory, path),
+          namespace,
+        };
+      });
+
+      builder.onLoad({ filter: /\.svelte$/, namespace }, async ({ path }) => {
         const source = await Bun.file(path).text();
         const result = compile(source, {
           filename: path,
           generate: 'server',
           css: 'injected',
+          dev: false,
+        });
+        return { contents: result.js.code, loader: 'js' };
+      });
+
+      builder.onResolve({ filter: /\.svelte\.(js|ts)$/ }, ({ path, importer, resolveDir }) => {
+        if (!isFileSpecifier(path)) return undefined;
+        const baseDirectory = importer ? dirname(importer) : resolveDir;
+        return {
+          path: isAbsolute(path) ? path : resolve(baseDirectory, path),
+          namespace,
+        };
+      });
+
+      builder.onLoad({ filter: /\.svelte\.(js|ts)$/, namespace }, async ({ path }) => {
+        const source = await Bun.file(path).text();
+        const moduleSource = path.endsWith('.ts')
+          ? new Bun.Transpiler({ loader: 'ts' }).transformSync(source)
+          : source;
+        const result = compileModule(moduleSource, {
+          filename: path,
+          generate: 'server',
           dev: false,
         });
         return { contents: result.js.code, loader: 'js' };
@@ -108,28 +143,61 @@ async function renderWithConditions(
   if (!artifact) throw new Error(`hydration-safety: no server artifact for ${componentPath}`);
 
   // External svelte alone isn't enough: the test process runs under the `browser`
-  // export condition, so a runtime-resolved `svelte`/`svelte/internal/server`
-  // import lands on the CLIENT build, whose `onDestroy`/`setContext` throw during
-  // a server render. Repoint those at Svelte's server index — the same rewrite
-  // renderToServerHtml/hydrate.ts use. Other `svelte/*` subpaths
+  // export condition and the root test preload mocks bare `svelte`, so a
+  // runtime-resolved `svelte`/`svelte/internal/server` import can land on the
+  // CLIENT build, whose `onDestroy`/`setContext` throw during a server render.
+  // Repoint `svelte/internal/server` directly and route bare `svelte` through a
+  // per-render server shim. Other `svelte/*` subpaths
   // (`svelte/reactivity`, `svelte/store`, …) stay runtime-resolved: they are
   // isomorphic across the browser/server condition for SSR (verified with a
   // `SvelteMap` child), so they don't fork the rendered markup.
+  const moduleNameBase = `${conditions.includes('browser') ? 'client' : 'server'}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const modulePath = join(hydrationSafetyTempDir, `${moduleNameBase}.mjs`);
+  const serverRuntimeShimPath = join(hydrationSafetyTempDir, `${moduleNameBase}.svelte-server.mjs`);
+  const serverRuntimeShimUrl = pathToFileURL(serverRuntimeShimPath).href;
+
   const sveltePackageUrl = import.meta.resolve('svelte/package.json');
-  const serverIndexUrl = new URL('./src/index-server.js', sveltePackageUrl).href;
+  const serverAbortSignalUrl = new URL('./src/internal/server/abort-signal.js', sveltePackageUrl)
+    .href;
+  const serverContextUrl = new URL('./src/internal/server/context.js', sveltePackageUrl).href;
+  const serverErrorsUrl = new URL('./src/internal/server/errors.js', sveltePackageUrl).href;
+  const serverHydratableUrl = new URL('./src/internal/server/hydratable.js', sveltePackageUrl).href;
   const serverInternalUrl = new URL('./src/internal/server/index.js', sveltePackageUrl).href;
+  const serverSnippetUrl = new URL('./src/internal/server/blocks/snippet.js', sveltePackageUrl)
+    .href;
+  const sharedUtilitiesUrl = new URL('./src/internal/shared/utils.js', sveltePackageUrl).href;
+  await Bun.write(
+    serverRuntimeShimPath,
+    [
+      `import { ssr_context } from ${JSON.stringify(serverContextUrl)};`,
+      `import { noop } from ${JSON.stringify(sharedUtilitiesUrl)};`,
+      `import * as e from ${JSON.stringify(serverErrorsUrl)};`,
+      `export { noop as beforeUpdate, noop as afterUpdate, noop as onMount, noop as flushSync, run as untrack } from ${JSON.stringify(sharedUtilitiesUrl)};`,
+      `export { createContext, getAllContexts, getContext, hasContext, setContext } from ${JSON.stringify(serverContextUrl)};`,
+      `export { getAbortSignal } from ${JSON.stringify(serverAbortSignalUrl)};`,
+      `export { hydratable } from ${JSON.stringify(serverHydratableUrl)};`,
+      `export { createRawSnippet } from ${JSON.stringify(serverSnippetUrl)};`,
+      'export function createEventDispatcher() { return noop; }',
+      'export function onDestroy(fn) { ssr_context.r.on_destroy(fn); }',
+      'export async function tick() {}',
+      'export async function settled() {}',
+      "export function mount() { e.lifecycle_function_unavailable('mount'); }",
+      "export function hydrate() { e.lifecycle_function_unavailable('hydrate'); }",
+      "export function unmount() { e.lifecycle_function_unavailable('unmount'); }",
+      "export function fork() { e.lifecycle_function_unavailable('fork'); }",
+      '',
+    ].join('\n'),
+  );
   let code = await artifact.text();
   code = code
     .replaceAll(
       /from\s*['"]svelte\/internal\/server['"]/g,
       `from ${JSON.stringify(serverInternalUrl)}`,
     )
-    .replaceAll(/from\s*['"]svelte['"]/g, `from ${JSON.stringify(serverIndexUrl)}`);
+    .replaceAll(/from\s*['"]svelte['"]/g, `from ${JSON.stringify(serverRuntimeShimUrl)}`);
 
-  // Unique per-call filename + finally cleanup so parallel checks on the SAME
+  // Unique per-call filenames + finally cleanup so parallel checks on the SAME
   // component path never race the same module file (mirrors hydrate.ts).
-  const moduleName = `${conditions.includes('browser') ? 'client' : 'server'}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`;
-  const modulePath = join(hydrationSafetyTempDir, moduleName);
   await Bun.write(modulePath, code);
 
   const { render } = (await import('svelte/server')) as typeof import('svelte/server');
@@ -154,6 +222,11 @@ async function renderWithConditions(
     globalThis.window = originalWindow;
     try {
       unlinkSync(modulePath);
+    } catch {
+      // Best-effort — a stray temp module never breaks a test.
+    }
+    try {
+      unlinkSync(serverRuntimeShimPath);
     } catch {
       // Best-effort — a stray temp module never breaks a test.
     }

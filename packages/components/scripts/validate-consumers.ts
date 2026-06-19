@@ -1,5 +1,12 @@
 import { $, Glob } from 'bun';
-import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, join, resolve as resolvePath } from 'node:path';
@@ -675,6 +682,23 @@ async function runSveltePeerCompatibilityFixture(
   }
 }
 
+function ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory: string): void {
+  const clientDirectory = join(fixtureDirectory, 'build/client');
+  const chunkRelativeClientDirectory = join(fixtureDirectory, 'build/server/chunks/client');
+
+  if (!existsSync(clientDirectory) || existsSync(chunkRelativeClientDirectory)) return;
+  if (!existsSync(dirname(chunkRelativeClientDirectory))) return;
+
+  try {
+    symlinkSync('../../client', chunkRelativeClientDirectory, 'dir');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail(
+      `sveltekit-consumer could not expose adapter-node static assets for runtime CSS verification: ${message}`,
+    );
+  }
+}
+
 async function runSveltekitFixture(label = 'workspace', svelteVersion?: string): Promise<void> {
   const fixtureDirectory = join(repositoryRoot, 'fixtures/sveltekit-consumer');
   process.stdout.write(
@@ -717,6 +741,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         `vite build failed in sveltekit-consumer ${label}:\n${viteBuildResult.stdout.toString()}\n${viteBuildResult.stderr.toString()}`,
       );
     }
+    ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory);
 
     // Scan BOTH the intermediate Vite output and the final adapter-node output. SvelteKit's
     // CSS layout in `.svelte-kit/output/` is version-dependent; asserting only there risks a

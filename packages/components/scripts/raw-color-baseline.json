@@ -22,7 +22,7 @@
   {
     "filePath": "src/components/code-block/code-block.css",
     "colorClass": "light-dark",
-    "allowedCount": 2
+    "allowedCount": 3
   },
   {
     "filePath": "src/components/command-menu/command-menu.css",

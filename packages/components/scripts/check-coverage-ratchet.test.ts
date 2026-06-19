@@ -137,6 +137,20 @@ LF:10
 LH:0
 end_of_record
 TN:
+SF:tmp/hydration-safety/client-12345-1780000000000-abc123.svelte-server.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:tmp/hydration-safety/server-12345-1780000000000-def456.svelte-server.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
 SF:src/components/resizable-panels/.cinder-ssr-test-12345-1780000000000.mjs
 FNF:10
 FNH:0
@@ -214,9 +228,16 @@ end_of_record
     );
   });
 
-  test('excludes sibling private workspace source from the component package aggregate', () => {
-    const withSiblingWorkspaceSource = `${lcovFixture}TN:
+  test('excludes sibling workspace source-map records from the component package ratchet', () => {
+    const withSiblingWorkspaces = `${lcovFixture}TN:
 SF:../editor/src/commands.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:../markdown/src/pipeline/ast.ts
 FNF:10
 FNH:0
 LF:10
@@ -245,9 +266,23 @@ LH:0
 end_of_record
 `;
 
-    const records = parseLcovRecords(withSiblingWorkspaceSource);
+    const records = parseLcovRecords(withSiblingWorkspaces);
     expect(records.map((record) => record.file)).toEqual(['covered.ts', 'partial.ts']);
     expect(computeCoverageAverages(records).functions).toBe(75);
+  });
+
+  test('does not exclude package-local source paths that normalize inside the package root', () => {
+    const localPath = `${lcovFixture}TN:
+SF:src/components/../utilities/local.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(localPath);
+    expect(records.map((record) => record.file)).toContain('src/components/../utilities/local.ts');
   });
 
   test('does not exclude component source whose path merely contains a sibling workspace name', () => {

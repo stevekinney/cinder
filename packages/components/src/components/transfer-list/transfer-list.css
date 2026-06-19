@@ -3,6 +3,9 @@
   .cinder-transfer-list {
     container-type: inline-size;
     container-name: cinder-transfer-list;
+  }
+
+  .cinder-transfer-list__layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     gap: var(--cinder-space-4);
@@ -99,7 +102,7 @@
   }
 
   @container cinder-transfer-list (max-width: 42rem) {
-    .cinder-transfer-list {
+    .cinder-transfer-list__layout {
       grid-template-columns: minmax(0, 1fr);
     }
 
