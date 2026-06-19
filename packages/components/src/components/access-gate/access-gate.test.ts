@@ -12,6 +12,8 @@ const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/s
 const { default: AccessGate } = await import('./access-gate.svelte');
 const { default: AccessGateDynamicFixture } =
   await import('../../test/fixtures/access-gate-dynamic-fixture.svelte');
+const { default: AccessGateStatefulFixture } =
+  await import('../../test/fixtures/access-gate-stateful-fixture.svelte');
 const { createRawSnippet, tick } = await import('svelte');
 const { checkBuildFlagHydrationSafety } = await import('../../test/hydration-safety.ts');
 
@@ -104,7 +106,13 @@ describe('AccessGate', () => {
     customControl?.addEventListener('click', () => {
       customActivations += 1;
     });
+    customControl?.addEventListener('pointerdown', () => {
+      customActivations += 1;
+    });
     customControl?.addEventListener('keydown', () => {
+      customActivations += 1;
+    });
+    customControl?.addEventListener('keyup', () => {
       customActivations += 1;
     });
 
@@ -118,12 +126,20 @@ describe('AccessGate', () => {
     link?.dispatchEvent(linkClick);
     const customClick = new MouseEvent('click', { bubbles: true, cancelable: true });
     customControl?.dispatchEvent(customClick);
+    const pointerDown = new MouseEvent('pointerdown', { bubbles: true, cancelable: true });
+    customControl?.dispatchEvent(pointerDown);
     const enterKey = new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
       key: 'Enter',
     });
     customControl?.dispatchEvent(enterKey);
+    const enterKeyUp = new KeyboardEvent('keyup', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    });
+    customControl?.dispatchEvent(enterKeyUp);
     const spaceKey = new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
@@ -135,7 +151,9 @@ describe('AccessGate', () => {
     expect(customActivations).toBe(0);
     expect(linkClick.defaultPrevented).toBe(true);
     expect(customClick.defaultPrevented).toBe(true);
+    expect(pointerDown.defaultPrevented).toBe(true);
     expect(enterKey.defaultPrevented).toBe(true);
+    expect(enterKeyUp.defaultPrevented).toBe(true);
     expect(spaceKey.defaultPrevented).toBe(true);
   });
 
@@ -157,14 +175,53 @@ describe('AccessGate', () => {
 
     const click = new MouseEvent('click', { bubbles: true, cancelable: true });
     button.dispatchEvent(click);
+    const enterKey = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    });
+    button.dispatchEvent(enterKey);
 
     expect(activations).toBe(0);
+    expect(click.cancelable).toBe(true);
+    expect(enterKey.cancelable).toBe(true);
   });
 
-  test('denied inline gates server-render inert content until hydration disables controls', async () => {
-    const { serverHtml: body } = await checkBuildFlagHydrationSafety(accessGateSsrFixturePath);
+  test('denied inline gates preserve child-owned description updates after grant', async () => {
+    const { container, getByRole } = render(AccessGateStatefulFixture, {});
 
-    expect(body).toContain('inert');
+    await tick();
+
+    let button = getByRole('button', { name: 'Stateful cancel' }) as HTMLButtonElement;
+    const reason = container.querySelector('.cinder-access-gate__inline-reason');
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-describedby')?.split(/\s+/)).toContain('initial-hint');
+    expect(button.getAttribute('aria-describedby')?.split(/\s+/)).toContain(reason!.id);
+
+    await fireEvent.click(getByRole('button', { name: 'Update child description' }));
+
+    await waitFor(() => {
+      const describedBy = button.getAttribute('aria-describedby')?.split(/\s+/) ?? [];
+      expect(describedBy).toContain('updated-hint');
+      expect(describedBy).toContain(reason!.id);
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Grant scope' }));
+
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-access-gate')).toBeNull();
+    });
+    button = getByRole('button', { name: 'Stateful cancel' }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('aria-describedby')).toBe('updated-hint');
+  });
+
+  test('denied inline gates server-render visible controls with accessible reason text', async () => {
+    const { buildFlagInvariant, serverHtml: body } =
+      await checkBuildFlagHydrationSafety(accessGateSsrFixturePath);
+
+    expect(buildFlagInvariant).toBe(true);
+    expect(body).not.toContain('inert');
     expect(body).toContain('Cancel workflow');
     expect(body).toContain('Requires scope: workflows:cancel');
   });

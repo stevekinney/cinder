@@ -94,6 +94,11 @@
     return ids.join(' ');
   }
 
+  function removeId(value: string | null, id: string): string | null {
+    const ids = (value ?? '').split(/\s+/).filter((candidate) => candidate && candidate !== id);
+    return ids.length > 0 ? ids.join(' ') : null;
+  }
+
   function restoreAttribute(element: HTMLElement, name: string, value: string | null): void {
     if (value === null) {
       element.removeAttribute(name);
@@ -109,76 +114,132 @@
   }
 
   type DisabledControlState = {
-    readonly restore: () => void;
+    nativeDisabled: boolean | undefined;
+    ariaDisabled: string | null;
+    tabindex: string | null;
+    href: string | null;
+    dataControl: string | null;
   };
+
+  type ConsumerStateRefreshes = ReadonlyArray<readonly [HTMLElement, readonly string[]]>;
 
   const disableDeniedControls: Attachment<HTMLElement> = (element) => {
     const disabledControls: Array<[HTMLElement, DisabledControlState]> = [];
+    let ignoringGateMutations = false;
+    let mutationResetVersion = 0;
 
     function disabledControlIndex(control: HTMLElement): number {
       return disabledControls.findIndex(([disabledControl]) => disabledControl === control);
     }
 
-    function disableControl(control: HTMLElement): void {
-      if (disabledControlIndex(control) === -1) {
-        const previousDisabled = isNativeDisableable(control) ? control.disabled : undefined;
-        const previousAriaDisabled = control.getAttribute('aria-disabled');
-        const previousTabindex = control.getAttribute('tabindex');
-        const previousDescribedBy = control.getAttribute('aria-describedby');
-        const previousHref =
-          control instanceof HTMLAnchorElement ? control.getAttribute('href') : null;
-        const previousDataControl = control.getAttribute('data-cinder-access-gate-control');
+    function captureControlState(control: HTMLElement): DisabledControlState {
+      return {
+        nativeDisabled: isNativeDisableable(control) ? control.disabled : undefined,
+        ariaDisabled: control.getAttribute('aria-disabled'),
+        tabindex: control.getAttribute('tabindex'),
+        href: control instanceof HTMLAnchorElement ? control.getAttribute('href') : null,
+        dataControl: control.getAttribute('data-cinder-access-gate-control'),
+      };
+    }
 
-        disabledControls.push([
-          control,
-          {
-            restore: () => {
-              if (previousDisabled !== undefined && isNativeDisableable(control)) {
-                control.disabled = previousDisabled;
-              }
-              restoreAttribute(control, 'aria-disabled', previousAriaDisabled);
-              restoreAttribute(control, 'tabindex', previousTabindex);
-              restoreAttribute(control, 'aria-describedby', previousDescribedBy);
-              if (control instanceof HTMLAnchorElement) {
-                restoreAttribute(control, 'href', previousHref);
-              }
-              restoreAttribute(control, 'data-cinder-access-gate-control', previousDataControl);
-            },
-          },
-        ]);
+    function refreshConsumerState(
+      control: HTMLElement,
+      state: DisabledControlState,
+      attributes: readonly string[],
+    ): void {
+      if (attributes.includes('disabled')) {
+        state.nativeDisabled = isNativeDisableable(control) ? control.disabled : undefined;
       }
-
-      setAttributeIfChanged(control, 'data-cinder-access-gate-control', '');
-      setAttributeIfChanged(
-        control,
-        'aria-describedby',
-        appendId(control.getAttribute('aria-describedby'), inlineReasonId),
-      );
-
-      if (isNativeDisableable(control)) {
-        if (!control.disabled) {
-          control.disabled = true;
-        }
-      } else {
-        setAttributeIfChanged(control, 'aria-disabled', 'true');
-        setAttributeIfChanged(control, 'tabindex', '-1');
-        if (control instanceof HTMLAnchorElement && control.hasAttribute('href')) {
-          control.removeAttribute('href');
-        }
+      if (attributes.includes('aria-disabled')) {
+        state.ariaDisabled = control.getAttribute('aria-disabled');
+      }
+      if (attributes.includes('tabindex')) {
+        state.tabindex = control.getAttribute('tabindex');
+      }
+      if (attributes.includes('href')) {
+        state.href = control instanceof HTMLAnchorElement ? control.getAttribute('href') : null;
       }
     }
 
-    function syncDisabledControls(): void {
+    function runGateWrites(write: () => void): void {
+      ignoringGateMutations = true;
+      write();
+      const resetVersion = ++mutationResetVersion;
+      queueMicrotask(() => {
+        if (resetVersion === mutationResetVersion) {
+          ignoringGateMutations = false;
+        }
+      });
+    }
+
+    function restoreControl(control: HTMLElement, state: DisabledControlState): void {
+      if (state.nativeDisabled !== undefined && isNativeDisableable(control)) {
+        control.disabled = state.nativeDisabled;
+      }
+      restoreAttribute(control, 'aria-disabled', state.ariaDisabled);
+      restoreAttribute(control, 'tabindex', state.tabindex);
+      restoreAttribute(
+        control,
+        'aria-describedby',
+        removeId(control.getAttribute('aria-describedby'), inlineReasonId),
+      );
+      if (control instanceof HTMLAnchorElement) {
+        restoreAttribute(control, 'href', state.href);
+      }
+      restoreAttribute(control, 'data-cinder-access-gate-control', state.dataControl);
+    }
+
+    function disableControl(
+      control: HTMLElement,
+      stateRefreshes: ConsumerStateRefreshes | undefined,
+    ): void {
+      const existingIndex = disabledControlIndex(control);
+      const existingState = existingIndex === -1 ? undefined : disabledControls[existingIndex]?.[1];
+      const state = existingState ?? captureControlState(control);
+      const refreshedAttributes = stateRefreshes?.find(([target]) => target === control)?.[1];
+      if (existingState && refreshedAttributes) {
+        refreshConsumerState(control, state, refreshedAttributes);
+      }
+      if (existingIndex === -1) {
+        disabledControls.push([control, state]);
+      }
+
+      runGateWrites(() => {
+        setAttributeIfChanged(control, 'data-cinder-access-gate-control', '');
+        setAttributeIfChanged(
+          control,
+          'aria-describedby',
+          appendId(control.getAttribute('aria-describedby'), inlineReasonId),
+        );
+
+        if (isNativeDisableable(control)) {
+          if (!control.disabled) {
+            control.disabled = true;
+          }
+        } else {
+          setAttributeIfChanged(control, 'aria-disabled', 'true');
+          setAttributeIfChanged(control, 'tabindex', '-1');
+          if (control instanceof HTMLAnchorElement && control.hasAttribute('href')) {
+            control.removeAttribute('href');
+          }
+        }
+      });
+    }
+
+    function syncDisabledControls(stateRefreshes?: ConsumerStateRefreshes): void {
       const currentControls = new Set(element.querySelectorAll<HTMLElement>(INTERACTIVE_SELECTOR));
 
       for (const control of currentControls) {
-        disableControl(control);
+        disableControl(control, stateRefreshes);
       }
 
       for (const [control, state] of [...disabledControls]) {
         if (!element.contains(control)) {
-          state.restore();
-          disabledControls.splice(disabledControlIndex(control), 1);
+          restoreControl(control, state);
+          const index = disabledControlIndex(control);
+          if (index !== -1) {
+            disabledControls.splice(index, 1);
+          }
         }
       }
     }
@@ -194,24 +255,102 @@
       }
     }
 
-    element.addEventListener('click', preventActivation, true);
+    const blockedPointerEvents = [
+      'click',
+      'pointerdown',
+      'pointerup',
+      'mousedown',
+      'mouseup',
+      'touchstart',
+      'touchend',
+    ];
+    for (const eventName of blockedPointerEvents) {
+      element.addEventListener(eventName, preventActivation, true);
+    }
     element.addEventListener('keydown', preventKeyboardActivation, true);
-    const observer = new MutationObserver(syncDisabledControls);
+    element.addEventListener('keyup', preventKeyboardActivation, true);
+    function isGateMutation(record: MutationRecord): boolean {
+      if (record.type !== 'attributes') return false;
+      if (!(record.target instanceof HTMLElement)) return false;
+
+      const control = record.target;
+      const attributeName = record.attributeName;
+      if (disabledControlIndex(control) === -1 || attributeName === null) return false;
+
+      if (attributeName === 'aria-describedby') {
+        const previousIds = (record.oldValue ?? '').split(/\s+/).filter(Boolean);
+        const currentIds = (control.getAttribute('aria-describedby') ?? '')
+          .split(/\s+/)
+          .filter(Boolean);
+        return !previousIds.includes(inlineReasonId) && currentIds.includes(inlineReasonId);
+      }
+
+      if (attributeName === 'aria-disabled') {
+        return control.getAttribute('aria-disabled') === 'true';
+      }
+
+      if (attributeName === 'disabled') {
+        return isNativeDisableable(control) && control.disabled;
+      }
+
+      if (attributeName === 'href') {
+        return control instanceof HTMLAnchorElement && !control.hasAttribute('href');
+      }
+
+      if (attributeName === 'tabindex') {
+        return control.getAttribute('tabindex') === '-1';
+      }
+
+      return false;
+    }
+
+    const observer = new MutationObserver((records) => {
+      if (ignoringGateMutations && records.every(isGateMutation)) return;
+
+      const stateRefreshes: Array<[HTMLElement, string[]]> = [];
+      for (const record of records) {
+        if (record.type !== 'attributes') continue;
+        if (!(record.target instanceof HTMLElement)) continue;
+        if (isGateMutation(record)) continue;
+        const attributeName = record.attributeName;
+        if (
+          attributeName === 'aria-disabled' ||
+          attributeName === 'disabled' ||
+          attributeName === 'href' ||
+          attributeName === 'tabindex'
+        ) {
+          let refresh = stateRefreshes.find(([target]) => target === record.target);
+          if (!refresh) {
+            refresh = [record.target, []];
+            stateRefreshes.push(refresh);
+          }
+          if (!refresh[1].includes(attributeName)) {
+            refresh[1].push(attributeName);
+          }
+        }
+      }
+
+      syncDisabledControls(stateRefreshes);
+    });
     observer.observe(element, {
       attributeFilter: ['aria-describedby', 'aria-disabled', 'disabled', 'href', 'tabindex'],
+      attributeOldValue: true,
       attributes: true,
       childList: true,
       subtree: true,
     });
     syncDisabledControls();
-    element.inert = false;
 
     return () => {
+      mutationResetVersion += 1;
       observer.disconnect();
-      element.removeEventListener('click', preventActivation, true);
+      for (const eventName of blockedPointerEvents) {
+        element.removeEventListener(eventName, preventActivation, true);
+      }
       element.removeEventListener('keydown', preventKeyboardActivation, true);
-      for (const [, state] of disabledControls) {
-        state.restore();
+      element.removeEventListener('keyup', preventKeyboardActivation, true);
+      for (const [control, state] of disabledControls) {
+        restoreControl(control, state);
       }
       disabledControls.length = 0;
     };
@@ -250,7 +389,7 @@
     role="group"
     aria-describedby={inlineReasonId}
   >
-    <span class="cinder-access-gate__inline-content" inert {@attach disableDeniedControls}>
+    <span class="cinder-access-gate__inline-content" {@attach disableDeniedControls}>
       {@render children?.()}
     </span>
     <span id={inlineReasonId} class="cinder-access-gate__inline-reason">

@@ -60,11 +60,14 @@ const hydrationSafetyTempDir = join(here, '..', '..', 'tmp', 'hydration-safety')
  */
 function serverCompilePlugin(): BunPlugin {
   const namespace = 'hydration-safety-svelte-server';
+  const isFileSpecifier = (specifier: string): boolean =>
+    isAbsolute(specifier) || specifier.startsWith('.');
 
   return {
     name: 'hydration-safety-svelte-server',
     setup(builder) {
       builder.onResolve({ filter: /\.svelte$/ }, ({ path, importer, resolveDir }) => {
+        if (!isFileSpecifier(path)) return undefined;
         const baseDirectory = importer ? dirname(importer) : resolveDir;
         return {
           path: isAbsolute(path) ? path : resolve(baseDirectory, path),
@@ -84,6 +87,7 @@ function serverCompilePlugin(): BunPlugin {
       });
 
       builder.onResolve({ filter: /\.svelte\.(js|ts)$/ }, ({ path, importer, resolveDir }) => {
+        if (!isFileSpecifier(path)) return undefined;
         const baseDirectory = importer ? dirname(importer) : resolveDir;
         return {
           path: isAbsolute(path) ? path : resolve(baseDirectory, path),

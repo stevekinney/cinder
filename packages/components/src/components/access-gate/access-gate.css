@@ -16,7 +16,6 @@
   .cinder-access-gate__inline-content {
     display: inline-flex;
     min-inline-size: 0;
-    opacity: 0.62;
   }
 
   .cinder-access-gate__inline-content [data-cinder-access-gate-control] {
