@@ -19,6 +19,10 @@
  *     allowed (they document the OIDC rationale).
  *   - release-manual.yaml is NOT checked — that file intentionally uses a token
  *     as a documented break-glass fallback.
+ *   - Pending changeset files do NOT target packages listed in
+ *     `.changeset/config.json` `ignore`. Ignored-package changesets are never
+ *     consumed by `changeset version`, but `changesets/action` still treats them
+ *     as pending release work and tries to open another release pull request.
  *
  * What this does NOT check:
  *   - Whether the npm registry has a Trusted Publisher configured (that is a
@@ -27,14 +31,25 @@
  *     itself via the "Upgrade npm" step; this script only inspects YAML structure).
  */
 
-import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { load as loadYaml } from 'js-yaml';
+
+import { isObjectRecord } from './validation-utilities.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptDirectory, '..');
 const workspaceRoot = resolve(packageRoot, '../..');
 const releaseWorkflowPath = join(workspaceRoot, '.github/workflows/release.yaml');
+const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json');
+const changesetDirectoryPath = join(workspaceRoot, '.changeset');
+
+export type IgnoredPackageChangeset = {
+  filePath: string;
+  packages: string[];
+};
 
 function fail(message: string): never {
   process.stderr.write(`[validate-release-workflow] FAIL: ${message}\n`);
@@ -44,16 +59,6 @@ function fail(message: string): never {
 function pass(message: string): void {
   process.stdout.write(`[validate-release-workflow] PASS: ${message}\n`);
 }
-
-const workflowContent = (() => {
-  try {
-    return readFileSync(releaseWorkflowPath, 'utf8');
-  } catch {
-    fail(`release workflow not found at ${releaseWorkflowPath}`);
-  }
-})();
-
-const lines = workflowContent.split('\n');
 
 /**
  * Whether a YAML line is a comment. We treat any line whose first non-whitespace
@@ -68,104 +73,211 @@ function isComment(line: string): boolean {
   return line.trimStart().startsWith('#');
 }
 
-// ── Guard 1: id-token: write must be present ────────────────────────────────
-// Skip comments: a commented-out `# id-token: write` must NOT satisfy the check.
-const hasIdTokenWrite = lines.some((line) => !isComment(line) && /id-token\s*:\s*write/.test(line));
-if (!hasIdTokenWrite) {
-  fail(
-    'release.yaml is missing `id-token: write`. The primary publish path requires this ' +
-      'OIDC permission for npm Trusted Publishing.',
-  );
-}
-pass('id-token: write is present');
-
-// ── Guard 2: locate the primary publish step ────────────────────────────────
-// The primary publish step is identified by the run: command that calls publish:release.
-// We scan for the step boundary and extract its env: block, then check for tokens.
-//
-// Strategy: find the line index of the publish:release `run:` command, then walk
-// upward to the `- name:` that opens this step and downward to the next `- name:`
-// or end of file. Within that range, assert no env key matches the token names.
-
-// Match the publish step's actual `run:` command, not a comment that mentions it.
-// `^\s*run:` anchors to a real YAML key so a `# ... bun run ... publish:release`
-// note can't be mistaken for the step.
-const publishRunPattern = /^\s*run\s*:.*bun run --filter=@lostgradient\/cinder publish:release/;
-const publishRunLineIndex = lines.findIndex(
-  (line) => !isComment(line) && publishRunPattern.test(line),
-);
-
-if (publishRunLineIndex === -1) {
-  fail(
-    'Could not locate the primary publish step in release.yaml. ' +
-      'Expected a step with `run: bun run --filter=@lostgradient/cinder publish:release`.',
-  );
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
-// Walk backward to find the `- name:` opening of this step (skipping comments).
-let stepStartIndex = publishRunLineIndex;
-for (let index = publishRunLineIndex - 1; index >= 0; index--) {
-  if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
-    stepStartIndex = index;
-    break;
+function loadIgnoredChangesetPackages(configurationPath: string): string[] {
+  let rawConfiguration: string;
+  try {
+    rawConfiguration = readFileSync(configurationPath, 'utf8');
+  } catch {
+    fail(`changesets configuration not found at ${configurationPath}`);
   }
-}
 
-// Walk forward to find the next `- name:` opening (start of the next step) or EOF.
-let stepEndIndex = lines.length;
-for (let index = publishRunLineIndex + 1; index < lines.length; index++) {
-  if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
-    stepEndIndex = index;
-    break;
+  let parsedConfiguration: unknown;
+  try {
+    parsedConfiguration = JSON.parse(rawConfiguration);
+  } catch {
+    fail(`changesets configuration at ${configurationPath} is not valid JSON`);
   }
+
+  if (!isObjectRecord(parsedConfiguration)) {
+    fail(`changesets configuration at ${configurationPath} is not a JSON object`);
+  }
+
+  const ignoredPackages = parsedConfiguration['ignore'];
+  if (ignoredPackages === undefined) return [];
+  if (!isStringArray(ignoredPackages)) {
+    fail('changesets configuration `ignore` must be an array of package names');
+  }
+  return ignoredPackages;
 }
 
-const publishStepLines = lines.slice(stepStartIndex, stepEndIndex);
+export function parseChangesetPackageNames(markdown: string): string[] {
+  const frontmatterMatch = /^---\r?\n(?<frontmatter>[\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(markdown);
+  const frontmatter = frontmatterMatch?.groups?.['frontmatter'];
+  if (frontmatter === undefined) return [];
 
-// ── Guard 3: no token env vars in the publish step ──────────────────────────
-const forbiddenPatterns: Array<{ pattern: RegExp; label: string }> = [
-  { pattern: /NODE_AUTH_TOKEN\s*:/, label: 'NODE_AUTH_TOKEN' },
-  { pattern: /NPM_TOKEN\s*:/, label: 'NPM_TOKEN' },
-];
+  const parsedFrontmatter: unknown = loadYaml(frontmatter);
+  if (!isObjectRecord(parsedFrontmatter)) return [];
 
-for (const { pattern, label } of forbiddenPatterns) {
-  const offendingLine = publishStepLines.find((line) => !isComment(line) && pattern.test(line));
-  if (offendingLine !== undefined) {
+  return Object.entries(parsedFrontmatter)
+    .filter(([, releaseType]) => typeof releaseType === 'string')
+    .map(([packageName]) => packageName);
+}
+
+export function findIgnoredPackageChangesets(
+  changesetDirectory: string,
+  ignoredPackages: readonly string[],
+): IgnoredPackageChangeset[] {
+  const ignoredPackageSet = new Set(ignoredPackages);
+  if (ignoredPackageSet.size === 0 || !existsSync(changesetDirectory)) return [];
+
+  return readdirSync(changesetDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'README.md')
+    .flatMap((entry) => {
+      const filePath = join(changesetDirectory, entry.name);
+      const ignoredChangesetPackages = parseChangesetPackageNames(
+        readFileSync(filePath, 'utf8'),
+      ).filter((packageName) => ignoredPackageSet.has(packageName));
+
+      return ignoredChangesetPackages.length > 0
+        ? [{ filePath, packages: ignoredChangesetPackages }]
+        : [];
+    });
+}
+
+function runValidation(): void {
+  const workflowContent = (() => {
+    try {
+      return readFileSync(releaseWorkflowPath, 'utf8');
+    } catch {
+      fail(`release workflow not found at ${releaseWorkflowPath}`);
+    }
+  })();
+
+  const lines = workflowContent.split('\n');
+
+  // ── Guard 1: id-token: write must be present ────────────────────────────────
+  // Skip comments: a commented-out `# id-token: write` must NOT satisfy the check.
+  const hasIdTokenWrite = lines.some(
+    (line) => !isComment(line) && /id-token\s*:\s*write/.test(line),
+  );
+  if (!hasIdTokenWrite) {
     fail(
-      `release.yaml's primary publish step contains ${label}:\n` +
-        `  ${offendingLine.trim()}\n\n` +
-        'The primary publish path must use npm Trusted Publishing (OIDC), not a long-lived token.\n' +
-        'Remove the token env var from this step.\n' +
-        'For break-glass token publishing, use release-manual.yaml instead.',
+      'release.yaml is missing `id-token: write`. The primary publish path requires this ' +
+        'OIDC permission for npm Trusted Publishing.',
     );
   }
-}
+  pass('id-token: write is present');
 
-pass('No NODE_AUTH_TOKEN or NPM_TOKEN in the primary publish step');
+  // ── Guard 2: locate the primary publish step ────────────────────────────────
+  // The primary publish step is identified by the run: command that calls publish:release.
+  // We scan for the step boundary and extract its env: block, then check for tokens.
+  //
+  // Strategy: find the line index of the publish:release `run:` command, then walk
+  // upward to the `- name:` that opens this step and downward to the next `- name:`
+  // or end of file. Within that range, assert no env key matches the token names.
 
-// ── Guard 4: no token env vars ANYWHERE in release.yaml ─────────────────────
-// The step-scoped check above is precise, but a token placed in a `env:` block
-// at the JOB level or the WORKFLOW level would be inherited by the publish step
-// without appearing inside the step's own lines — a real evasion path. Because
-// the entire OIDC release path is tokenless (the only legitimate token use lives
-// in release-manual.yaml's break-glass flow), the correct, evasion-proof
-// invariant is simply: these token names appear NOWHERE in release.yaml — not in
-// a step env, not in a job env, not in a workflow env. We allow them inside
-// comment lines (e.g. the explanatory note about setup-node's _authToken) but
-// reject any real `KEY:` assignment.
-for (const { pattern, label } of forbiddenPatterns) {
-  const offendingLine = lines.find((line) => !isComment(line) && pattern.test(line));
-  if (offendingLine !== undefined) {
+  // Match the publish step's actual `run:` command, not a comment that mentions it.
+  // `^\s*run:` anchors to a real YAML key so a `# ... bun run ... publish:release`
+  // note can't be mistaken for the step.
+  const publishRunPattern = /^\s*run\s*:.*bun run --filter=@lostgradient\/cinder publish:release/;
+  const publishRunLineIndex = lines.findIndex(
+    (line) => !isComment(line) && publishRunPattern.test(line),
+  );
+
+  if (publishRunLineIndex === -1) {
     fail(
-      `release.yaml references ${label} outside a comment:\n` +
-        `  ${offendingLine.trim()}\n\n` +
-        'The OIDC release path must be fully tokenless. A token in a job-level or\n' +
-        'workflow-level `env:` block would be inherited by the publish step and\n' +
-        'silently re-enable token publishing. Remove it.\n' +
-        'For break-glass token publishing, use release-manual.yaml instead.',
+      'Could not locate the primary publish step in release.yaml. ' +
+        'Expected a step with `run: bun run --filter=@lostgradient/cinder publish:release`.',
     );
   }
+
+  // Walk backward to find the `- name:` opening of this step (skipping comments).
+  let stepStartIndex = publishRunLineIndex;
+  for (let index = publishRunLineIndex - 1; index >= 0; index--) {
+    if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
+      stepStartIndex = index;
+      break;
+    }
+  }
+
+  // Walk forward to find the next `- name:` opening (start of the next step) or EOF.
+  let stepEndIndex = lines.length;
+  for (let index = publishRunLineIndex + 1; index < lines.length; index++) {
+    if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
+      stepEndIndex = index;
+      break;
+    }
+  }
+
+  const publishStepLines = lines.slice(stepStartIndex, stepEndIndex);
+
+  // ── Guard 3: no token env vars in the publish step ──────────────────────────
+  const forbiddenPatterns: Array<{ pattern: RegExp; label: string }> = [
+    { pattern: /NODE_AUTH_TOKEN\s*:/, label: 'NODE_AUTH_TOKEN' },
+    { pattern: /NPM_TOKEN\s*:/, label: 'NPM_TOKEN' },
+  ];
+
+  for (const { pattern, label } of forbiddenPatterns) {
+    const offendingLine = publishStepLines.find((line) => !isComment(line) && pattern.test(line));
+    if (offendingLine !== undefined) {
+      fail(
+        `release.yaml's primary publish step contains ${label}:\n` +
+          `  ${offendingLine.trim()}\n\n` +
+          'The primary publish path must use npm Trusted Publishing (OIDC), not a long-lived token.\n' +
+          'Remove the token env var from this step.\n' +
+          'For break-glass token publishing, use release-manual.yaml instead.',
+      );
+    }
+  }
+
+  pass('No NODE_AUTH_TOKEN or NPM_TOKEN in the primary publish step');
+
+  // ── Guard 4: no token env vars ANYWHERE in release.yaml ─────────────────────
+  // The step-scoped check above is precise, but a token placed in a `env:` block
+  // at the JOB level or the WORKFLOW level would be inherited by the publish step
+  // without appearing inside the step's own lines — a real evasion path. Because
+  // the entire OIDC release path is tokenless (the only legitimate token use lives
+  // in release-manual.yaml's break-glass flow), the correct, evasion-proof
+  // invariant is simply: these token names appear NOWHERE in release.yaml — not in
+  // a step env, not in a job env, not in a workflow env. We allow them inside
+  // comment lines (e.g. the explanatory note about setup-node's _authToken) but
+  // reject any real `KEY:` assignment.
+  for (const { pattern, label } of forbiddenPatterns) {
+    const offendingLine = lines.find((line) => !isComment(line) && pattern.test(line));
+    if (offendingLine !== undefined) {
+      fail(
+        `release.yaml references ${label} outside a comment:\n` +
+          `  ${offendingLine.trim()}\n\n` +
+          'The OIDC release path must be fully tokenless. A token in a job-level or\n' +
+          'workflow-level `env:` block would be inherited by the publish step and\n' +
+          'silently re-enable token publishing. Remove it.\n' +
+          'For break-glass token publishing, use release-manual.yaml instead.',
+      );
+    }
+  }
+
+  pass('No NODE_AUTH_TOKEN or NPM_TOKEN anywhere in release.yaml (job/workflow env safe)');
+
+  const ignoredPackageChangesets = findIgnoredPackageChangesets(
+    changesetDirectoryPath,
+    loadIgnoredChangesetPackages(changesetsConfigurationPath),
+  );
+
+  if (ignoredPackageChangesets.length > 0) {
+    const formattedChangesets = ignoredPackageChangesets
+      .map((changeset) => {
+        const relativePath = relative(workspaceRoot, changeset.filePath);
+        return `  - ${relativePath}: ${changeset.packages.join(', ')}`;
+      })
+      .join('\n');
+
+    fail(
+      'Ignored-package changesets are pending:\n' +
+        `${formattedChangesets}\n\n` +
+        'changesets/action treats these files as pending release work, but `changeset version` ' +
+        'does not consume ignored packages. Remove the changeset files, or retarget them to ' +
+        '@lostgradient/cinder if the public package should release.',
+    );
+  }
+
+  pass('No pending changesets target ignored packages');
+  pass('release.yaml is correctly configured for npm Trusted Publishing');
 }
 
-pass('No NODE_AUTH_TOKEN or NPM_TOKEN anywhere in release.yaml (job/workflow env safe)');
-pass('release.yaml is correctly configured for npm Trusted Publishing');
+if (import.meta.main) {
+  runValidation();
+}
