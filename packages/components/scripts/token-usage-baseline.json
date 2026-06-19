@@ -15,8 +15,23 @@
     "allowedCount": 1
   },
   {
+    "filePath": "src/components/chat/message/parts/reasoning-part.svelte",
+    "name": "--cinder-border-accent",
+    "allowedCount": 1
+  },
+  {
     "filePath": "src/components/color-picker/color-picker.css",
     "name": "--cinder-text-secondary",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/date-range-field/date-range-field.css",
+    "name": "--cinder-accent-border",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/invocation-rule-builder/invocation-rule-builder.css",
+    "name": "--cinder-shadow-xs",
     "allowedCount": 1
   },
   {
@@ -35,6 +50,26 @@
     "allowedCount": 2
   },
   {
+    "filePath": "src/components/payload-inspector/payload-inspector.css",
+    "name": "--cinder-feedback-warning-border",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/payload-inspector/payload-inspector.css",
+    "name": "--cinder-feedback-warning-surface",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/payload-inspector/payload-inspector.css",
+    "name": "--cinder-feedback-warning-text",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/run-step-timeline/run-step-timeline.css",
+    "name": "--cinder-surface-sunken",
+    "allowedCount": 1
+  },
+  {
     "filePath": "src/components/select/select.css",
     "name": "--cinder-control-height",
     "allowedCount": 1
@@ -48,6 +83,11 @@
     "filePath": "src/components/toast-region/toast-region.css",
     "name": "--cinder-spinner-size-sm",
     "allowedCount": 2
+  },
+  {
+    "filePath": "src/components/tree/tree.css",
+    "name": "--cinder-radius-xs",
+    "allowedCount": 1
   },
   {
     "filePath": "src/styles/components/_control-item.css",

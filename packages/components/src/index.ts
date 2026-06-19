@@ -1,3 +1,6 @@
+export { default as AccessGate } from './components/access-gate/index.ts';
+export type { AccessGateProps, AccessGateVariant } from './components/access-gate/index.ts';
+
 export { default as AccordionItem } from './components/accordion-item/index.ts';
 export type { AccordionItemProps } from './components/accordion-item/index.ts';
 

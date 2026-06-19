@@ -1,4 +1,4 @@
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export type CoverageThresholds = {
@@ -90,17 +90,19 @@ function isTransientTestArtifact(file: string): boolean {
     artifactFileName = normalizedFile.slice(artifactPrefix.length);
   }
 
-  return /^(?:client|server)-\d+-\d+-[a-z0-9]+\.mjs$/.test(artifactFileName);
+  return /^(?:client|server)-\d+-\d+-[a-z0-9]+(?:\.svelte-server)?\.mjs$/.test(artifactFileName);
 }
 
 /**
- * The component package re-exports sibling private workspaces, and some tests
- * import those implementations through workspace source paths. Those packages
- * have their own validation jobs, so their LCOV records should not move the
- * `@lostgradient/cinder` package ratchet.
+ * Bun follows source maps into sibling workspaces when component tests exercise
+ * packed private packages such as @cinder/editor and @cinder/markdown. Those
+ * packages have their own validation scripts; this ratchet is scoped to the
+ * @lostgradient/cinder package directory.
  */
-function isSiblingWorkspaceSource(file: string): boolean {
-  return /^\.\.\/(?:commentary|diff|editor|markdown)\/src\//.test(file.replaceAll('\\', '/'));
+function isOutsidePackageRootSourceMap(file: string): boolean {
+  const absoluteFile = isAbsolute(file) ? file : resolve(packageRoot, file);
+  const relativeFile = relative(packageRoot, absoluteFile).replaceAll('\\', '/');
+  return relativeFile === '..' || relativeFile.startsWith('../');
 }
 
 export function parseLcovRecords(source: string): CoverageRecord[] {
@@ -120,7 +122,8 @@ export function parseLcovRecords(source: string): CoverageRecord[] {
       };
     })
     .filter(
-      (record) => !isTransientTestArtifact(record.file) && !isSiblingWorkspaceSource(record.file),
+      (record) =>
+        !isTransientTestArtifact(record.file) && !isOutsidePackageRootSourceMap(record.file),
     );
 }
 
