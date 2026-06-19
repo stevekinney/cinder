@@ -32,7 +32,6 @@
 
   import {
     arrayValueAtPath,
-    collectJsonFields,
     createSchemaFormModel,
     decodeEnumValue,
     defaultValueForField,
@@ -238,7 +237,7 @@
 
   function seedRawDrafts(field: SchemaFormField, currentValue: unknown): Record<string, string> {
     const drafts: Record<string, string> = {};
-    for (const jsonField of collectJsonFields(field)) {
+    for (const jsonField of currentJsonFields(field, currentValue)) {
       drafts[pathKey(jsonField.path)] = JSON.stringify(
         getValueAtPath(currentValue, jsonField.path) ?? null,
         null,
@@ -246,6 +245,23 @@
       );
     }
     return drafts;
+  }
+
+  function currentJsonFields(field: SchemaFormField, currentValue: unknown): SchemaFormField[] {
+    const fields: SchemaFormField[] = [];
+
+    function visit(candidate: SchemaFormField) {
+      if (candidate.kind === 'json') fields.push(candidate);
+      for (const child of candidate.fields) visit(child);
+      if (candidate.kind === 'array' && candidate.item) {
+        for (const [index] of arrayValueAtPath(currentValue, candidate.path).entries()) {
+          visit(rebaseFieldPath(candidate.item, [...candidate.path, String(index)]));
+        }
+      }
+    }
+
+    visit(field);
+    return fields;
   }
 
   function seedArrayKeys(field: SchemaFormField, currentValue: unknown): Record<string, string[]> {
@@ -269,7 +285,7 @@
   function rawJsonIssues(): { value: unknown; issues: SchemaFormValidationIssue[] } {
     let nextValue = formValue;
     const issues: SchemaFormValidationIssue[] = [];
-    for (const field of collectJsonFields(model.field)) {
+    for (const field of currentJsonFields(model.field, formValue)) {
       const draft = rawDrafts[pathKey(field.path)];
       if (draft === undefined) continue;
       const parsed = parseJsonDraft(field.path, draft);
@@ -293,6 +309,25 @@
 
   function shouldResumeNativeSubmit(): boolean {
     return onsubmit === undefined && (rest.action !== undefined || rest.method !== undefined);
+  }
+
+  function nativeSubmitter(event: SubmitEvent): HTMLButtonElement | HTMLInputElement | undefined {
+    const submitter = event.submitter;
+    if (
+      submitter instanceof HTMLButtonElement &&
+      submitter.type === 'submit' &&
+      submitter.form === formElement
+    ) {
+      return submitter;
+    }
+    if (
+      submitter instanceof HTMLInputElement &&
+      (submitter.type === 'submit' || submitter.type === 'image') &&
+      submitter.form === formElement
+    ) {
+      return submitter;
+    }
+    return undefined;
   }
 
   async function handleSubmit(event: SubmitEvent) {
@@ -339,9 +374,7 @@
       if (shouldResumeNativeSubmit()) {
         allowNativeSubmit = true;
         await tick();
-        formElement?.requestSubmit(
-          event.submitter instanceof HTMLElement ? event.submitter : undefined,
-        );
+        formElement?.requestSubmit(nativeSubmitter(event));
       }
     } finally {
       submitting = false;

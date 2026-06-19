@@ -252,6 +252,7 @@ export function defaultValueForField(field: SchemaFormField): unknown {
 export function initialValueForField(field: SchemaFormField, value: unknown): unknown {
   if (value === undefined) return defaultValueForField(field);
   const clonedValue = cloneJsonCompatible(value);
+  if (clonedValue === undefined) return defaultValueForField(field);
   return mergeInitialValueWithFieldDefaults(field, clonedValue);
 }
 
@@ -288,10 +289,14 @@ function mergeInitialValueWithFieldDefaults(field: SchemaFormField, value: unkno
 
 export function cloneJsonCompatible(value: unknown): unknown {
   if (value === undefined) return undefined;
-  const serializedValue = JSON.stringify(value);
-  if (serializedValue === undefined) return undefined;
-  const clonedValue: unknown = JSON.parse(serializedValue);
-  return clonedValue;
+  try {
+    const serializedValue = JSON.stringify(value);
+    if (serializedValue === undefined) return undefined;
+    const clonedValue: unknown = JSON.parse(serializedValue);
+    return clonedValue;
+  } catch {
+    return undefined;
+  }
 }
 
 export function pathKey(path: readonly string[]): string {

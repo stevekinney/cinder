@@ -99,6 +99,37 @@ describe('SchemaForm', () => {
     expect(viaCallback).toEqual(viaNativeSubmit);
   });
 
+  test('resumes native submit without forwarding non-submit submitters', async () => {
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+        value: { name: 'Ada' },
+        action: '/submit',
+      },
+    });
+    await flush();
+
+    const form = formFrom(container);
+    const requestSubmitCalls: unknown[] = [];
+    form.requestSubmit = ((submitter?: HTMLElement | null) => {
+      requestSubmitCalls.push(submitter);
+    }) as typeof form.requestSubmit;
+    const invalidSubmitter = document.createElement('div');
+    const event = new Event('submit', { bubbles: true, cancelable: true }) as SubmitEvent;
+    Object.defineProperty(event, 'submitter', { value: invalidSubmitter });
+
+    form.dispatchEvent(event);
+    await flush();
+    await flush();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(requestSubmitCalls).toEqual([undefined]);
+  });
+
   test('blocks submit when validated Standard Schema output cannot be serialized', async () => {
     const schema = {
       '~standard': {
@@ -134,6 +165,41 @@ describe('SchemaForm', () => {
     expect(rawTextarea.getAttribute('aria-describedby')).toContain(error.id);
     expect(hiddenInput).toBeInstanceOf(HTMLInputElement);
     expect((hiddenInput as HTMLInputElement).value).toBe('');
+  });
+
+  test('submits edited raw JSON drafts for every array row', async () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          title: 'Items',
+          items: {
+            title: 'Payload',
+            oneOf: [{ type: 'string' }, { type: 'object' }],
+          },
+        },
+      },
+    };
+    let submitted: unknown;
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { items: [{ ok: 1 }, { ok: 2 }] },
+        onsubmit: (value: unknown) => {
+          submitted = value;
+        },
+      },
+    });
+    await flush();
+
+    const rawInputs = within(container).getAllByRole('textbox');
+    expect(rawInputs).toHaveLength(2);
+    await fireEvent.input(rawInputs[1]!, { target: { value: '{"ok":42}' } });
+    await submit(formFrom(container));
+
+    expect(submitted).toEqual({ items: [{ ok: 1 }, { ok: 42 }] });
   });
 
   test('blocks invalid submit, renders associated field errors, and focuses the first invalid field', async () => {

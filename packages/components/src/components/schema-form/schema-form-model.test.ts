@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import {
   arrayValueAtPath,
+  cloneJsonCompatible,
   collectJsonFields,
   createSchemaFormModel,
   decodeEnumValue,
@@ -206,6 +207,20 @@ describe('schema-form model', () => {
       contacts: [{ kind: 'email', value: 'ada@example.com' }],
       extra: 'preserved',
     });
+  });
+
+  test('falls back to defaults when initial values cannot be cloned', () => {
+    const model = createSchemaFormModel({
+      type: 'object',
+      properties: {
+        name: { type: 'string', default: 'Ada' },
+      },
+    });
+    const cyclicValue: Record<string, unknown> = {};
+    cyclicValue['self'] = cyclicValue;
+
+    expect(cloneJsonCompatible(cyclicValue)).toBeUndefined();
+    expect(initialValueForField(model.field, cyclicValue)).toEqual({ name: 'Ada' });
   });
 
   test('reads, writes, prunes, and lists values by schema paths', () => {
