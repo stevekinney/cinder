@@ -47,6 +47,7 @@
     overscan = 5,
     height = '24rem',
     stickToBottom = false,
+    onscroll: onScroll,
     class: className,
     ...rest
   }: DataTableProps<Row> = $props();
@@ -54,6 +55,7 @@
   let wrapperElement: HTMLElement | undefined = $state();
   let scrollOffset = $state(0);
   let measuredViewportHeight = $state(0);
+  let captionHeight = $state(0);
   let headerHeight = $state(0);
   let activeRowIndex = $state(0);
   let previousRowCount = 0;
@@ -118,6 +120,8 @@
 
     const observer = new ResizeObserver(() => syncScrollMetrics(element));
     observer.observe(element);
+    const caption = element.querySelector('caption');
+    if (caption) observer.observe(caption);
     const header = element.querySelector('thead');
     if (header) observer.observe(header);
     return () => observer.disconnect();
@@ -139,7 +143,12 @@
       stickToBottom &&
       element !== undefined &&
       rowCount > previousRowCount &&
-      isAtBottom(element, previousRowCount * resolvedRowHeight, viewportHeight, headerHeight);
+      isAtBottom(
+        element,
+        previousRowCount * resolvedRowHeight,
+        viewportHeight,
+        getTableChromeHeight(captionHeight, headerHeight),
+      );
 
     previousRowCount = rowCount;
   });
@@ -150,7 +159,11 @@
     if (!shouldVirtualizeRows || !stickToBottom || !shouldStickAfterAppend || !element) return;
 
     void tick().then(() => {
-      element.scrollTop = maxScrollTop(rowCount * resolvedRowHeight, viewportHeight, headerHeight);
+      element.scrollTop = maxScrollTop(
+        rowCount * resolvedRowHeight,
+        viewportHeight,
+        getTableChromeHeight(captionHeight, headerHeight),
+      );
       syncScrollMetrics(element);
       shouldStickAfterAppend = false;
     });
@@ -158,6 +171,13 @@
 
   function estimateViewportHeight(value: string | undefined, fallbackRowHeight: number): number {
     return parsePixelLength(value) ?? fallbackRowHeight * 10;
+  }
+
+  function getCaptionHeight(element: HTMLElement): number {
+    const captionElement = element.querySelector<HTMLElement>('caption');
+    if (!captionElement) return 0;
+    const rect = captionElement.getBoundingClientRect();
+    return rect.height || captionElement.offsetHeight || 0;
   }
 
   function getHeaderHeight(element: HTMLElement): number {
@@ -169,33 +189,45 @@
 
   function syncScrollMetrics(element: HTMLElement): void {
     const rect = element.getBoundingClientRect();
+    const nextCaptionHeight = getCaptionHeight(element);
     const nextHeaderHeight = getHeaderHeight(element);
     measuredViewportHeight =
       rect.height || element.clientHeight || parsePixelLength(height) || resolvedRowHeight * 10;
+    captionHeight = nextCaptionHeight;
     headerHeight = nextHeaderHeight;
-    scrollOffset = Math.max(0, element.scrollTop - getBodyScrollOrigin(nextHeaderHeight));
+    scrollOffset = Math.max(
+      0,
+      element.scrollTop - getBodyScrollOrigin(nextCaptionHeight, nextHeaderHeight),
+    );
   }
 
-  function handleWrapperScroll(event: Event): void {
+  function handleWrapperScroll(
+    event: UIEvent & { currentTarget: EventTarget & HTMLDivElement },
+  ): void {
+    if (typeof onScroll === 'function') onScroll(event);
     if (!shouldVirtualizeRows) return;
     syncScrollMetrics(event.currentTarget as HTMLElement);
   }
 
-  function maxScrollTop(totalBodyHeight: number, visibleHeight: number, headerBlockSize: number) {
-    return Math.max(0, headerBlockSize + totalBodyHeight - visibleHeight);
+  function maxScrollTop(totalBodyHeight: number, visibleHeight: number, chromeBlockSize: number) {
+    return Math.max(0, chromeBlockSize + totalBodyHeight - visibleHeight);
   }
 
-  function getBodyScrollOrigin(headerBlockSize: number): number {
-    return stickyHeader ? 0 : headerBlockSize;
+  function getTableChromeHeight(captionBlockSize: number, headerBlockSize: number): number {
+    return captionBlockSize + headerBlockSize;
+  }
+
+  function getBodyScrollOrigin(captionBlockSize: number, headerBlockSize: number): number {
+    return stickyHeader ? 0 : getTableChromeHeight(captionBlockSize, headerBlockSize);
   }
 
   function isAtBottom(
     element: HTMLElement,
     totalBodyHeight: number,
     visibleHeight: number,
-    headerBlockSize: number,
+    chromeBlockSize: number,
   ): boolean {
-    return element.scrollTop >= maxScrollTop(totalBodyHeight, visibleHeight, headerBlockSize) - 1;
+    return element.scrollTop >= maxScrollTop(totalBodyHeight, visibleHeight, chromeBlockSize) - 1;
   }
 
   function clampRowIndex(index: number): number {
@@ -207,10 +239,16 @@
     if (!element) return;
 
     const rowScrollTop =
-      index === 0 ? 0 : getBodyScrollOrigin(headerHeight) + index * resolvedRowHeight;
+      index === 0
+        ? 0
+        : getBodyScrollOrigin(captionHeight, headerHeight) + index * resolvedRowHeight;
 
     element.scrollTop = Math.min(
-      maxScrollTop(rows.length * resolvedRowHeight, viewportHeight, headerHeight),
+      maxScrollTop(
+        rows.length * resolvedRowHeight,
+        viewportHeight,
+        getTableChromeHeight(captionHeight, headerHeight),
+      ),
       rowScrollTop,
     );
     syncScrollMetrics(element);

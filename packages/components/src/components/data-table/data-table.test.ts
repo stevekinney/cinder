@@ -6,6 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: DataTable } = await import('./data-table.svelte');
 
 afterEach(() => cleanup());
@@ -415,6 +416,97 @@ describe('DataTable — virtualized rows', () => {
 
     await waitFor(() => expect(bodyDataRows(container)[0]?.textContent).toContain('Person 50'));
     expect(bodyDataRows(container)[0]?.getAttribute('aria-rowindex')).toBe('52');
+  });
+
+  test('captioned virtualized tables subtract caption and header before windowing body rows', async () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: makeRows(1_000),
+      caption: 'Workflow log tail',
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 0,
+    });
+
+    const wrapper = container.querySelector<HTMLElement>('.cinder-data-table');
+    const caption = container.querySelector<HTMLElement>('caption');
+    const header = container.querySelector<HTMLElement>('thead');
+    if (!wrapper || !caption || !header) {
+      throw new Error('Expected DataTable wrapper, caption, and header');
+    }
+
+    caption.getBoundingClientRect = () => rectWithHeight(40);
+    header.getBoundingClientRect = () => rectWithHeight(40);
+    wrapper.scrollTop = 1_000;
+    await fireEvent.scroll(wrapper);
+
+    await waitFor(() => expect(bodyDataRows(container)[0]?.textContent).toContain('Person 46'));
+    expect(bodyDataRows(container)[0]?.getAttribute('aria-rowindex')).toBe('48');
+  });
+
+  test('captioned virtualized tables keep stickToBottom pinned after append', async () => {
+    const view = render(DataTable, {
+      columns,
+      rows: makeRows(100),
+      caption: 'Workflow log tail',
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickToBottom: true,
+    });
+
+    const wrapper = view.container.querySelector<HTMLElement>('.cinder-data-table');
+    const caption = view.container.querySelector<HTMLElement>('caption');
+    const header = view.container.querySelector<HTMLElement>('thead');
+    if (!wrapper || !caption || !header) {
+      throw new Error('Expected DataTable wrapper, caption, and header');
+    }
+
+    caption.getBoundingClientRect = () => rectWithHeight(40);
+    header.getBoundingClientRect = () => rectWithHeight(40);
+    wrapper.scrollTop = 1_880;
+    await fireEvent.scroll(wrapper);
+
+    await view.rerender({
+      columns,
+      rows: makeRows(101),
+      caption: 'Workflow log tail',
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickToBottom: true,
+    });
+    await tick();
+
+    await waitFor(() => expect(wrapper.scrollTop).toBe(1_900));
+    expect(bodyDataRows(view.container).at(-1)?.textContent).toContain('Person 100');
+  });
+
+  test('virtualized scrolling composes consumer onscroll with the internal window update', async () => {
+    let scrollCallCount = 0;
+    const { container } = render(DataTable, {
+      columns,
+      rows: makeRows(1_000),
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 0,
+      onscroll: () => {
+        scrollCallCount += 1;
+      },
+    });
+
+    const wrapper = container.querySelector<HTMLElement>('.cinder-data-table');
+    if (!wrapper) throw new Error('Expected DataTable wrapper');
+
+    wrapper.scrollTop = 1_000;
+    await fireEvent.scroll(wrapper);
+
+    expect(scrollCallCount).toBe(1);
+    await waitFor(() => expect(bodyDataRows(container)[0]?.textContent).toContain('Person 50'));
   });
 
   test('keyboard navigation scrolls an off-window row into view and keeps it reachable', async () => {
