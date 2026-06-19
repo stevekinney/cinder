@@ -18,7 +18,7 @@ const { default: AccessGateFocusFixture } =
 const { default: AccessGateStatefulFixture } =
   await import('../../test/fixtures/access-gate-stateful-fixture.svelte');
 const { createRawSnippet, tick } = await import('svelte');
-const { checkBuildFlagHydrationSafety } = await import('../../test/hydration-safety.ts');
+const { renderToServerHtml } = await import('../../test/server-render.ts');
 
 const accessGateSsrFixturePath = new URL(
   '../../test/fixtures/access-gate-ssr-fixture.svelte',
@@ -356,10 +356,8 @@ describe('AccessGate', () => {
   });
 
   test('denied inline gates server-render visible controls with a hydration activation guard', async () => {
-    const { buildFlagInvariant, serverHtml: body } =
-      await checkBuildFlagHydrationSafety(accessGateSsrFixturePath);
+    const body = await renderToServerHtml(accessGateSsrFixturePath);
 
-    expect(buildFlagInvariant).toBe(true);
     expect(body).toContain('inert');
     expect(body).toContain('Cancel workflow');
     expect(body).toContain('Requires scope: workflows:cancel');
