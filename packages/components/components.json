@@ -95,7 +95,7 @@
       },
       "a11y": {
         "notes": [
-          "Denied inline gates disable native controls, mark custom controls aria-disabled, remove them from sequential focus, and wire the reason through aria-describedby."
+          "Denied inline gates render content inert before hydration, then disable controls, remove them from sequential focus, and wire the reason through aria-describedby."
         ]
       }
     },

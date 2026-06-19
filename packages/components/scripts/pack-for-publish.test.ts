@@ -14,6 +14,9 @@ describe('buildPublishedManifest', () => {
     const files = published.files ?? [];
 
     expect(files.indexOf('src/components/**/*.svelte')).toBeGreaterThanOrEqual(0);
+    expect(files.indexOf('!src/components/**/*fixture*.svelte')).toBeGreaterThan(
+      files.indexOf('src/components/**/*.svelte'),
+    );
     expect(files.indexOf('!src/components/**/_*-test-harness.svelte')).toBeGreaterThan(
       files.indexOf('src/components/**/*.svelte'),
     );
@@ -57,5 +60,20 @@ describe('buildPublishedManifest', () => {
     const files = published.files ?? [];
 
     expect(files).toContain('src/styles/base-guard.ts');
+  });
+
+  it('publishes only exported component JSON sidecars', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+
+    expect(files).toContain('src/components/**/*.examples.json');
+    expect(files).toContain('src/components/**/*.constraints.json');
+    expect(files).not.toContain('src/components/**/*.json');
   });
 });

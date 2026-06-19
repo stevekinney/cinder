@@ -1,4 +1,4 @@
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export type CoverageThresholds = {
@@ -93,6 +93,18 @@ function isTransientTestArtifact(file: string): boolean {
   return /^(?:client|server)-\d+-\d+-[a-z0-9]+(?:\.svelte-server)?\.mjs$/.test(artifactFileName);
 }
 
+/**
+ * Bun follows source maps into sibling workspaces when component tests exercise
+ * packed private packages such as @cinder/editor and @cinder/markdown. Those
+ * packages have their own validation scripts; this ratchet is scoped to the
+ * @lostgradient/cinder package directory.
+ */
+function isOutsidePackageRootSourceMap(file: string): boolean {
+  const absoluteFile = isAbsolute(file) ? file : resolve(packageRoot, file);
+  const relativeFile = relative(packageRoot, absoluteFile).replaceAll('\\', '/');
+  return relativeFile === '..' || relativeFile.startsWith('../');
+}
+
 export function parseLcovRecords(source: string): CoverageRecord[] {
   return source
     .split('end_of_record')
@@ -109,7 +121,10 @@ export function parseLcovRecords(source: string): CoverageRecord[] {
         linesHit: readNumberField(lines, 'LH'),
       };
     })
-    .filter((record) => !isTransientTestArtifact(record.file));
+    .filter(
+      (record) =>
+        !isTransientTestArtifact(record.file) && !isOutsidePackageRootSourceMap(record.file),
+    );
 }
 
 function readStringField(lines: string[], key: string): string {

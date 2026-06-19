@@ -4,6 +4,10 @@
     color: var(--cinder-text);
   }
 
+  .cinder-access-gate__passthrough {
+    display: contents;
+  }
+
   .cinder-access-gate[data-cinder-variant='inline'] {
     display: inline-flex;
     flex-wrap: wrap;
@@ -19,7 +23,9 @@
   }
 
   .cinder-access-gate__inline-content [data-cinder-access-gate-control] {
+    color: var(--cinder-text-disabled);
     cursor: not-allowed;
+    opacity: 0.6;
   }
 
   .cinder-access-gate__inline-reason {

@@ -1,3 +1,4 @@
+import './access-gate.css';
 import AccessGate from './access-gate.svelte';
 
 export default AccessGate;

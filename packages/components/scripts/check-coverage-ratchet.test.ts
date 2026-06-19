@@ -228,6 +228,42 @@ end_of_record
     );
   });
 
+  test('excludes sibling workspace source-map records from the component package ratchet', () => {
+    const withSiblingWorkspaces = `${lcovFixture}TN:
+SF:../editor/src/commands.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:../markdown/src/pipeline/ast.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+`;
+
+    const records = parseLcovRecords(withSiblingWorkspaces);
+    expect(records.map((record) => record.file)).toEqual(['covered.ts', 'partial.ts']);
+    expect(computeCoverageAverages(records).functions).toBe(75);
+  });
+
+  test('does not exclude package-local source paths that normalize inside the package root', () => {
+    const localPath = `${lcovFixture}TN:
+SF:src/components/../utilities/local.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(localPath);
+    expect(records.map((record) => record.file)).toContain('src/components/../utilities/local.ts');
+  });
+
   test('reports no failures when the aggregate ratchet is met', () => {
     const averages = computeCoverageAverages(parseLcovRecords(lcovFixture));
     expect(coverageFailures(averages, { functions: 0.7, lines: 0.7 })).toEqual([]);
