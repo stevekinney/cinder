@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { compileModule } from 'svelte/compiler';
 
 import { getAnchoredOverlayWidthStyle } from './anchored-overlay.svelte.ts';
 
@@ -29,5 +30,18 @@ describe('anchored overlay width styles', () => {
 
   test('none leaves width entirely to the component stylesheet', () => {
     expect(getAnchoredOverlayWidthStyle('none', { width: 320 })).toBe('');
+  });
+
+  test('server compilation omits Floating UI runtime imports', async () => {
+    const sourcePath = `${import.meta.dir}/anchored-overlay.svelte.ts`;
+    const source = await Bun.file(sourcePath).text();
+    const moduleSource = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
+    const result = compileModule(moduleSource, {
+      filename: sourcePath,
+      generate: 'server',
+      dev: false,
+    });
+
+    expect(result.js.code).not.toContain('@floating-ui/dom');
   });
 });
