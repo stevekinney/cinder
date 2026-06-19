@@ -1,11 +1,12 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, jest, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: ShareCard } = await import('./share-card.svelte');
 
 type ClipboardLike = { writeText: (text: string) => Promise<void> };
@@ -30,6 +31,9 @@ function restoreNavigatorClipboard(originalClipboard: unknown): void {
 
 afterEach(() => {
   cleanup();
+  if (jest.isFakeTimers()) {
+    jest.useRealTimers();
+  }
 });
 
 describe('ShareCard', () => {
@@ -123,6 +127,7 @@ describe('ShareCard', () => {
     setNavigatorClipboard({
       writeText: async () => {},
     });
+    jest.useFakeTimers();
 
     try {
       const { container, getByRole } = render(ShareCard, {
@@ -138,22 +143,25 @@ describe('ShareCard', () => {
       const button = getByRole('button', { name: /Copy link/i });
 
       await fireEvent.click(button);
-      await waitFor(() => {
-        expect(liveRegion?.textContent).toBe('Copied!');
-      });
+      await tick();
+      jest.advanceTimersByTime(0);
+      await tick();
+      expect(liveRegion?.textContent).toBe('Copied!');
 
       // Let the confirmation window elapse: the message auto-clears to ''.
-      await waitFor(() => {
-        expect(liveRegion?.textContent).toBe('');
-      });
+      jest.advanceTimersByTime(250);
+      await tick();
+      expect(liveRegion?.textContent).toBe('');
 
       // A second identical copy now transitions '' → "Copied!" and re-announces.
       await fireEvent.click(button);
-      await waitFor(() => {
-        expect(liveRegion?.textContent).toBe('Copied!');
-      });
+      await tick();
+      jest.advanceTimersByTime(0);
+      await tick();
+      expect(liveRegion?.textContent).toBe('Copied!');
     } finally {
       restoreNavigatorClipboard(originalClipboard);
+      jest.useRealTimers();
     }
   });
 

@@ -123,20 +123,21 @@ const upstreamReexportEntrypoints = upstreamReexports.map(
 );
 
 /**
- * Transitive third-party runtime dependencies inherited from the four
- * `@cinder/*` workspace packages. Bundling the upstream Svelte/TS source
- * into `@lostgradient/cinder/dist` pulls these into esbuild's resolution graph; they must
- * stay external so they are installed from the npm registry at the consumer
- * site (declared in `@lostgradient/cinder`'s own `dependencies`) rather than vendored into
- * the published bundle. Sourced from each upstream `package.json#dependencies`
- * minus `@cinder/*` workspace entries.
+ * Third-party runtime dependencies that must stay external so they are
+ * installed from the npm registry at the consumer site (declared in
+ * `@lostgradient/cinder`'s own `dependencies`) rather than vendored into the
+ * published bundle. Some are transitive dependencies inherited from the
+ * bundled `@cinder/*` workspace packages; others, such as Ajv, are direct lazy
+ * runtime dependencies for optional component behavior.
  */
-const upstreamTransitiveExternals = [
+const runtimeDependencyExternals = [
   '@shikijs/rehype',
   '@milkdown/kit',
   '@milkdown/prose',
   '@milkdown/kit/*',
   '@milkdown/prose/*',
+  'ajv',
+  'ajv/*',
   'comlink',
   'diff-match-patch',
   'hast-util-sanitize',
@@ -229,7 +230,7 @@ const serverBuildResult = await Bun.build({
     'svelte',
     '@lostgradient/cinder',
     '@lostgradient/cinder/*',
-    ...upstreamTransitiveExternals,
+    ...runtimeDependencyExternals,
   ],
   plugins: [sveltePlugin({ generate: 'server' })],
 });
@@ -265,7 +266,7 @@ const perComponentMetadataEntrypoints = components.flatMap((component) =>
  * dev-only base-loaded guard at `@lostgradient/cinder/styles/guard`; new non-component
  * static sub-paths get listed here so the build emits a predictable
  * `dist/<rel>.js` for each one. `shiki` itself stays external (declared in
- * cinder's `dependencies` + the `upstreamTransitiveExternals` list) — the
+ * cinder's `dependencies` + the `runtimeDependencyExternals` list) — the
  * adapter dynamic-imports it lazily so consumers who never use
  * `@lostgradient/cinder/highlighters/shiki` ship zero Shiki bytes in their entry chunk.
  */
@@ -358,7 +359,7 @@ const browserBuildResult = await Bun.build({
     'svelte/*',
     '@lostgradient/cinder',
     '@lostgradient/cinder/*',
-    ...upstreamTransitiveExternals,
+    ...runtimeDependencyExternals,
   ],
   naming: {
     entry: '[dir]/[name].[ext]',
@@ -408,7 +409,7 @@ const perComponentServerBuildResult = await Bun.build({
     'svelte/*',
     '@lostgradient/cinder',
     '@lostgradient/cinder/*',
-    ...upstreamTransitiveExternals,
+    ...runtimeDependencyExternals,
   ],
   naming: {
     entry: '[dir]/[name].[ext]',
