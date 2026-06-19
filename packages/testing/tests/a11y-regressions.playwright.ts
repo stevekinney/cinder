@@ -1,6 +1,10 @@
 import { expect, test } from '../src/fixtures/component-page.ts';
 import { runAxe } from '../src/helpers/axe.ts';
-import { loadManifest } from '../src/helpers/manifest.ts';
+import {
+  loadManifest,
+  type ComponentEntry,
+  type ManifestFixtureEntry,
+} from '../src/helpers/manifest.ts';
 
 const entriesBySlug = new Map(loadManifest().map((entry) => [entry.slug, entry] as const));
 const desktopViewport = { name: 'desktop', width: 1440, height: 1080 } as const;
@@ -15,6 +19,14 @@ function getEntry(slug: string) {
   return entry;
 }
 
+function getFixture(entry: ComponentEntry, fixtureName: string): ManifestFixtureEntry {
+  const fixture = entry.fixtures?.find((candidate) => candidate.name === fixtureName);
+  if (!fixture) {
+    throw new Error(`Component fixture is missing: ${entry.slug}/${fixtureName}`);
+  }
+  return fixture;
+}
+
 function expectNoViolations(
   component: string,
   fixture: string,
@@ -27,6 +39,90 @@ function expectNoViolations(
 }
 
 test.describe('a11y regressions', () => {
+  test('access-gate denied states expose reasons and block inline activation', async ({
+    componentPage,
+  }) => {
+    const entry = getEntry('access-gate');
+    const inlineFixture = getFixture(entry, 'inline-denied');
+    const sectionFixture = getFixture(entry, 'section-denied');
+
+    const inlinePage = await componentPage.open({
+      entry,
+      theme: lightTheme,
+      viewport: desktopViewport,
+      fixtureName: inlineFixture.name,
+      fixtureContentHash: inlineFixture.fixtureContentHash,
+    });
+    const inlineRootSelector = '.cinder-access-gate';
+    const inlineGate = inlinePage.locator(inlineRootSelector);
+    const button = inlinePage.getByRole('button', { name: 'Cancel workflow' });
+    await expect(button).toBeDisabled();
+    await expect(inlineGate.locator('.cinder-access-gate__inline-reason')).toContainText(
+      'Requires scope: workflows:cancel',
+    );
+
+    const reasonIsAssociated = await button.evaluate((element) => {
+      const ids = element.getAttribute('aria-describedby')?.split(/\s+/).filter(Boolean) ?? [];
+      return ids.some((id) =>
+        document.getElementById(id)?.textContent?.includes('Requires scope: workflows:cancel'),
+      );
+    });
+    expect(reasonIsAssociated).toBe(true);
+
+    const focusSucceeded = await button.evaluate((element) => {
+      (element as HTMLButtonElement).focus();
+      return document.activeElement === element;
+    });
+    expect(focusSucceeded).toBe(false);
+
+    const activated = await button.evaluate((element) => {
+      let clicked = false;
+      element.addEventListener('click', () => {
+        clicked = true;
+      });
+      (element as HTMLButtonElement).click();
+      return clicked;
+    });
+    expect(activated).toBe(false);
+
+    const inlineBuckets = await runAxe(
+      inlinePage,
+      {
+        slug: 'access-gate',
+        theme: lightTheme,
+        viewport: desktopViewport.name,
+        fixture: inlineFixture.name,
+      },
+      { include: inlineRootSelector },
+    );
+    expectNoViolations('access-gate', inlineFixture.name, inlineBuckets);
+
+    const sectionPage = await componentPage.open({
+      entry,
+      theme: lightTheme,
+      viewport: desktopViewport,
+      fixtureName: sectionFixture.name,
+      fixtureContentHash: sectionFixture.fixtureContentHash,
+    });
+    const sectionRootSelector = '.cinder-access-gate';
+    const sectionGate = sectionPage.locator(sectionRootSelector);
+    await expect(sectionGate).toContainText('Requires scope: storage:admin');
+    await expect(sectionGate).toContainText('storage:admin');
+    await expect(sectionPage.getByRole('button', { name: 'Cancel workflow' })).toHaveCount(0);
+
+    const sectionBuckets = await runAxe(
+      sectionPage,
+      {
+        slug: 'access-gate',
+        theme: lightTheme,
+        viewport: desktopViewport.name,
+        fixture: sectionFixture.name,
+      },
+      { include: sectionRootSelector },
+    );
+    expectNoViolations('access-gate', sectionFixture.name, sectionBuckets);
+  });
+
   test('section-heading uses div roots without header landmarks', async ({ componentPage }) => {
     const page = await componentPage.open({
       entry: getEntry('section-heading'),

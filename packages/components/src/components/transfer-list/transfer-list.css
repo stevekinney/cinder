@@ -1,6 +1,10 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-transfer-list {
+    container-type: inline-size;
+  }
+
+  .cinder-transfer-list__layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     gap: var(--cinder-space-4);
@@ -96,8 +100,8 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
-  @media (max-width: 42rem) {
-    .cinder-transfer-list {
+  @container (max-width: 42rem) {
+    .cinder-transfer-list__layout {
       grid-template-columns: minmax(0, 1fr);
     }
 

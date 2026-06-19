@@ -1,8 +1,7 @@
 <script lang="ts">
   // No-styles test: import only the button JS (no `@lostgradient/cinder/button/styles`,
-  // no aggregators). The built CSS bundle for this route should NOT contain
-  // button selectors — proves the component JS does not pull CSS as a side
-  // effect.
+  // no aggregators). The built CSS bundle for this route should contain button
+  // selectors because component JS imports its CSS sidecar as a side effect.
   import Button from '@lostgradient/cinder/button';
 </script>
 

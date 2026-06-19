@@ -24,6 +24,15 @@ const items: TransferListItem[] = [
 ];
 
 describe('TransferList', () => {
+  test('responsive layout uses container queries instead of viewport media queries', async () => {
+    const css = await Bun.file(new URL('./transfer-list.css', import.meta.url).pathname).text();
+
+    expect(css).toContain('container-type: inline-size');
+    expect(css).toContain('@container (max-width: 42rem)');
+    expect(css).toContain('.cinder-transfer-list__layout');
+    expect(css).not.toContain('@media (max-width');
+  });
+
   test('renders two labelled multiselect listboxes and transfer controls', () => {
     render(TransferList, {
       props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected' },

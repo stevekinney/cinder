@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "access-gate",
+  "import": "@lostgradient/cinder/access-gate",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Disabled action",
+      "description": "Keeps an unauthorized action visible with an accessible scope reason.",
+      "code": "<script lang=\"ts\">\n  import { AccessGate } from '@lostgradient/cinder/access-gate';\n  import { Button } from '@lostgradient/cinder/button';\n\n  const canCancelWorkflow = false;\n</script>\n\n<AccessGate granted={canCancelWorkflow} reason=\"Requires scope: workflows:cancel\">\n  <Button label=\"Cancel workflow\" variant=\"danger\" />\n</AccessGate>\n"
+    },
+    {
+      "id": "section",
+      "title": "Locked section",
+      "description": "Replaces a protected region with a scope-required placeholder.",
+      "code": "<script lang=\"ts\">\n  import { AccessGate } from '@lostgradient/cinder/access-gate';\n</script>\n\n<AccessGate\n  granted={false}\n  variant=\"section\"\n  reason=\"Requires scope: storage:admin\"\n  requirement=\"storage:admin\"\n/>\n"
+    }
+  ]
+}

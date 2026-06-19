@@ -288,105 +288,107 @@
 </script>
 
 <div {...rest} class={classNames('cinder-transfer-list', customClassName)}>
-  <section class="cinder-transfer-list__panel" aria-labelledby={`${baseId}-left-label`}>
-    <h3 id={`${baseId}-left-label`} class="cinder-transfer-list__label">{leftLabel}</h3>
-    <ul
-      class="cinder-transfer-list__list"
-      role="listbox"
-      aria-multiselectable="true"
-      aria-labelledby={`${baseId}-left-label`}
-      aria-activedescendant={leftActiveOptionId}
-      tabindex="0"
-      onfocus={() => handleListFocus('left')}
-      onclick={(event) => handleListClick(event, 'left')}
-      onkeydown={(event) => handleListKeydown(event, 'left')}
-    >
-      {#each leftItems as item, index (item.id)}
-        <li
-          id={optionId('left', index)}
-          class="cinder-transfer-list__option"
-          role="option"
-          aria-selected={leftSelectedSet.has(item.id) ? 'true' : 'false'}
-          aria-disabled={item.disabled ? 'true' : undefined}
-          data-cinder-active={resolvedLeftActiveId === item.id ? 'true' : undefined}
-          data-cinder-transfer-list-item-id={item.id}
-        >
-          {item.label}
-        </li>
-      {:else}
-        <li class="cinder-transfer-list__empty" role="presentation">No available items</li>
-      {/each}
-    </ul>
-  </section>
+  <div class="cinder-transfer-list__layout">
+    <section class="cinder-transfer-list__panel" aria-labelledby={`${baseId}-left-label`}>
+      <h3 id={`${baseId}-left-label`} class="cinder-transfer-list__label">{leftLabel}</h3>
+      <ul
+        class="cinder-transfer-list__list"
+        role="listbox"
+        aria-multiselectable="true"
+        aria-labelledby={`${baseId}-left-label`}
+        aria-activedescendant={leftActiveOptionId}
+        tabindex="0"
+        onfocus={() => handleListFocus('left')}
+        onclick={(event) => handleListClick(event, 'left')}
+        onkeydown={(event) => handleListKeydown(event, 'left')}
+      >
+        {#each leftItems as item, index (item.id)}
+          <li
+            id={optionId('left', index)}
+            class="cinder-transfer-list__option"
+            role="option"
+            aria-selected={leftSelectedSet.has(item.id) ? 'true' : 'false'}
+            aria-disabled={item.disabled ? 'true' : undefined}
+            data-cinder-active={resolvedLeftActiveId === item.id ? 'true' : undefined}
+            data-cinder-transfer-list-item-id={item.id}
+          >
+            {item.label}
+          </li>
+        {:else}
+          <li class="cinder-transfer-list__empty" role="presentation">No available items</li>
+        {/each}
+      </ul>
+    </section>
 
-  <div class="cinder-transfer-list__controls" role="group" aria-label="Transfer controls">
-    <button
-      type="button"
-      class="cinder-transfer-list__control"
-      aria-label={`Move selected items to ${rightLabel}`}
-      disabled={movableLeftSelectedIds.length === 0}
-      onclick={moveSelectedRight}
-    >
-      Add
-    </button>
-    <button
-      type="button"
-      class="cinder-transfer-list__control"
-      aria-label={`Move all items to ${rightLabel}`}
-      disabled={movableLeftItemIds.length === 0}
-      onclick={moveAllRight}
-    >
-      Add all
-    </button>
-    <button
-      type="button"
-      class="cinder-transfer-list__control"
-      aria-label={`Move selected items to ${leftLabel}`}
-      disabled={movableRightSelectedIds.length === 0}
-      onclick={moveSelectedLeft}
-    >
-      Remove
-    </button>
-    <button
-      type="button"
-      class="cinder-transfer-list__control"
-      aria-label={`Move all items to ${leftLabel}`}
-      disabled={movableRightItemIds.length === 0}
-      onclick={moveAllLeft}
-    >
-      Remove all
-    </button>
+    <div class="cinder-transfer-list__controls" role="group" aria-label="Transfer controls">
+      <button
+        type="button"
+        class="cinder-transfer-list__control"
+        aria-label={`Move selected items to ${rightLabel}`}
+        disabled={movableLeftSelectedIds.length === 0}
+        onclick={moveSelectedRight}
+      >
+        Add
+      </button>
+      <button
+        type="button"
+        class="cinder-transfer-list__control"
+        aria-label={`Move all items to ${rightLabel}`}
+        disabled={movableLeftItemIds.length === 0}
+        onclick={moveAllRight}
+      >
+        Add all
+      </button>
+      <button
+        type="button"
+        class="cinder-transfer-list__control"
+        aria-label={`Move selected items to ${leftLabel}`}
+        disabled={movableRightSelectedIds.length === 0}
+        onclick={moveSelectedLeft}
+      >
+        Remove
+      </button>
+      <button
+        type="button"
+        class="cinder-transfer-list__control"
+        aria-label={`Move all items to ${leftLabel}`}
+        disabled={movableRightItemIds.length === 0}
+        onclick={moveAllLeft}
+      >
+        Remove all
+      </button>
+    </div>
+
+    <section class="cinder-transfer-list__panel" aria-labelledby={`${baseId}-right-label`}>
+      <h3 id={`${baseId}-right-label`} class="cinder-transfer-list__label">{rightLabel}</h3>
+      <ul
+        class="cinder-transfer-list__list"
+        role="listbox"
+        aria-multiselectable="true"
+        aria-labelledby={`${baseId}-right-label`}
+        aria-activedescendant={rightActiveOptionId}
+        tabindex="0"
+        onfocus={() => handleListFocus('right')}
+        onclick={(event) => handleListClick(event, 'right')}
+        onkeydown={(event) => handleListKeydown(event, 'right')}
+      >
+        {#each rightItems as item, index (item.id)}
+          <li
+            id={optionId('right', index)}
+            class="cinder-transfer-list__option"
+            role="option"
+            aria-selected={rightSelectedSet.has(item.id) ? 'true' : 'false'}
+            data-cinder-active={resolvedRightActiveId === item.id ? 'true' : undefined}
+            data-cinder-transfer-list-item-id={item.id}
+          >
+            {item.label}
+          </li>
+        {:else}
+          <li class="cinder-transfer-list__empty" role="presentation">No selected items</li>
+        {/each}
+      </ul>
+    </section>
   </div>
-
-  <section class="cinder-transfer-list__panel" aria-labelledby={`${baseId}-right-label`}>
-    <h3 id={`${baseId}-right-label`} class="cinder-transfer-list__label">{rightLabel}</h3>
-    <ul
-      class="cinder-transfer-list__list"
-      role="listbox"
-      aria-multiselectable="true"
-      aria-labelledby={`${baseId}-right-label`}
-      aria-activedescendant={rightActiveOptionId}
-      tabindex="0"
-      onfocus={() => handleListFocus('right')}
-      onclick={(event) => handleListClick(event, 'right')}
-      onkeydown={(event) => handleListKeydown(event, 'right')}
-    >
-      {#each rightItems as item, index (item.id)}
-        <li
-          id={optionId('right', index)}
-          class="cinder-transfer-list__option"
-          role="option"
-          aria-selected={rightSelectedSet.has(item.id) ? 'true' : 'false'}
-          data-cinder-active={resolvedRightActiveId === item.id ? 'true' : undefined}
-          data-cinder-transfer-list-item-id={item.id}
-        >
-          {item.label}
-        </li>
-      {:else}
-        <li class="cinder-transfer-list__empty" role="presentation">No selected items</li>
-      {/each}
-    </ul>
-  </section>
 
   <div role="alert" aria-atomic="true" class="cinder-sr-only">{announcer.message}</div>
 </div>
