@@ -169,10 +169,11 @@
 
   function syncScrollMetrics(element: HTMLElement): void {
     const rect = element.getBoundingClientRect();
+    const nextHeaderHeight = getHeaderHeight(element);
     measuredViewportHeight =
       rect.height || element.clientHeight || parsePixelLength(height) || resolvedRowHeight * 10;
-    headerHeight = getHeaderHeight(element);
-    scrollOffset = Math.max(0, element.scrollTop - headerHeight);
+    headerHeight = nextHeaderHeight;
+    scrollOffset = Math.max(0, element.scrollTop - getBodyScrollOrigin(nextHeaderHeight));
   }
 
   function handleWrapperScroll(event: Event): void {
@@ -182,6 +183,10 @@
 
   function maxScrollTop(totalBodyHeight: number, visibleHeight: number, headerBlockSize: number) {
     return Math.max(0, headerBlockSize + totalBodyHeight - visibleHeight);
+  }
+
+  function getBodyScrollOrigin(headerBlockSize: number): number {
+    return stickyHeader ? 0 : headerBlockSize;
   }
 
   function isAtBottom(
@@ -201,9 +206,12 @@
     const element = wrapperElement;
     if (!element) return;
 
+    const rowScrollTop =
+      index === 0 ? 0 : getBodyScrollOrigin(headerHeight) + index * resolvedRowHeight;
+
     element.scrollTop = Math.min(
       maxScrollTop(rows.length * resolvedRowHeight, viewportHeight, headerHeight),
-      headerHeight + index * resolvedRowHeight,
+      rowScrollTop,
     );
     syncScrollMetrics(element);
   }

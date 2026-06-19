@@ -29,7 +29,8 @@ const schema = {
     },
     rowHeight: {
       type: 'number',
-      description: 'Fixed body row height in pixels for virtualized mode.\nDefaults to 44.',
+      description:
+        'Fixed body row height in pixels for virtualized mode.\nThis must match the actual rendered body row height, including density\npadding and any wrapping introduced by the table content.\nDefaults to 44.',
     },
     overscan: {
       type: 'number',

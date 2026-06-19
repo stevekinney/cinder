@@ -93,6 +93,8 @@ export type DataTableProps<Row extends DataTableRow = DataTableRow> = Omit<
   virtualized?: boolean;
   /**
    * Fixed body row height in pixels for virtualized mode.
+   * This must match the actual rendered body row height, including density
+   * padding and any wrapping introduced by the table content.
    * Defaults to 44.
    */
   rowHeight?: number;

@@ -33,6 +33,20 @@ function bodyDataRows(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>('tbody tr:not([aria-hidden="true"])'));
 }
 
+function rectWithHeight(height: number): DOMRect {
+  return {
+    bottom: height,
+    height,
+    left: 0,
+    right: 0,
+    top: 0,
+    width: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  };
+}
+
 describe('DataTable — table structure', () => {
   test('renders a semantic <table> element', () => {
     const { container } = render(DataTable, { columns, rows });
@@ -380,6 +394,29 @@ describe('DataTable — virtualized rows', () => {
     expect(container.querySelector('table')?.getAttribute('aria-rowcount')).toBe('1001');
   });
 
+  test('sticky virtualized headers map scroll offsets directly to the body window', async () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: makeRows(1_000),
+      stickyHeader: true,
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 0,
+    });
+
+    const wrapper = container.querySelector<HTMLElement>('.cinder-data-table');
+    const header = container.querySelector<HTMLElement>('thead');
+    if (!wrapper || !header) throw new Error('Expected DataTable wrapper and header');
+
+    header.getBoundingClientRect = () => rectWithHeight(40);
+    wrapper.scrollTop = 1_000;
+    await fireEvent.scroll(wrapper);
+
+    await waitFor(() => expect(bodyDataRows(container)[0]?.textContent).toContain('Person 50'));
+    expect(bodyDataRows(container)[0]?.getAttribute('aria-rowindex')).toBe('52');
+  });
+
   test('keyboard navigation scrolls an off-window row into view and keeps it reachable', async () => {
     const { container } = render(DataTable, {
       columns,
@@ -429,5 +466,46 @@ describe('DataTable — virtualized rows', () => {
       row.textContent?.includes('Person 199'),
     );
     expect(restoredLastRow?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('Home returns a virtualized table to the top of the native scroll container', async () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: makeRows(200),
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 0,
+    });
+
+    const wrapper = container.querySelector<HTMLElement>('.cinder-data-table');
+    const header = container.querySelector<HTMLElement>('thead');
+    const firstRow = bodyDataRows(container)[0];
+    if (!wrapper || !header || !firstRow) {
+      throw new Error('Expected DataTable wrapper, header, and first rendered row');
+    }
+
+    header.getBoundingClientRect = () => rectWithHeight(40);
+    wrapper.scrollTop = 1_000;
+    await fireEvent.scroll(wrapper);
+
+    await waitFor(() =>
+      expect(bodyDataRows(container).some((row) => row.textContent?.includes('Person 48'))).toBe(
+        true,
+      ),
+    );
+    const scrolledRow = bodyDataRows(container)[0];
+    if (!scrolledRow) throw new Error('Expected scrolled rendered data row');
+
+    scrolledRow.focus();
+    await fireEvent.keyDown(scrolledRow, { key: 'Home' });
+
+    await waitFor(() =>
+      expect(bodyDataRows(container).some((row) => row.textContent?.includes('Person 0'))).toBe(
+        true,
+      ),
+    );
+    expect(wrapper.scrollTop).toBe(0);
+    expect(bodyDataRows(container)[0]?.getAttribute('tabindex')).toBe('0');
   });
 });
