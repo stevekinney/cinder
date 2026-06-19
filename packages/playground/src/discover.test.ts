@@ -256,9 +256,11 @@ describe('discoverSidebarComponents', () => {
     // with examples: chat-conversation-header and chat-conversation-list,
     // bringing the measured ceiling to 125.
     // AccessGate adds one standalone authorization-state primitive with examples,
-    // bringing the measured ceiling to 126.
+    // bringing the measured ceiling to 126. Then
+    // SchemaForm adds one public form family with JSON Schema and Standard Schema
+    // examples, bringing the measured ceiling to 127.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(126);
+    expect(sidebar.length).toBeLessThanOrEqual(127);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -272,6 +274,7 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('chat-conversation-header');
     expect(sidebar).toContain('chat-conversation-list');
     expect(sidebar).toContain('access-gate');
+    expect(sidebar).toContain('schema-form');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

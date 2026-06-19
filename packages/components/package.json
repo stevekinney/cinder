@@ -2691,6 +2691,31 @@
       "import": "./src/components/run-step-timeline/run-step-timeline.examples.json",
       "default": "./src/components/run-step-timeline/run-step-timeline.examples.json"
     },
+    "./schema-form": {
+      "types": "./dist/components/schema-form/index.d.ts",
+      "svelte": "./src/components/schema-form/index.ts",
+      "node": "./dist/server/components/schema-form/index.js",
+      "default": "./dist/components/schema-form/index.js"
+    },
+    "./schema-form/schema": {
+      "types": "./dist/components/schema-form/schema-form.schema.d.ts",
+      "svelte": "./src/components/schema-form/schema-form.schema.ts",
+      "node": "./dist/server/components/schema-form/schema-form.schema.js",
+      "default": "./dist/components/schema-form/schema-form.schema.js"
+    },
+    "./schema-form/variables": {
+      "types": "./dist/components/schema-form/schema-form.variables.d.ts",
+      "svelte": "./src/components/schema-form/schema-form.variables.ts",
+      "node": "./dist/server/components/schema-form/schema-form.variables.js",
+      "default": "./dist/components/schema-form/schema-form.variables.js"
+    },
+    "./schema-form/styles": {
+      "default": "./dist/components/schema-form/schema-form.css"
+    },
+    "./schema-form/examples": {
+      "import": "./src/components/schema-form/schema-form.examples.json",
+      "default": "./src/components/schema-form/schema-form.examples.json"
+    },
     "./scroll-area": {
       "types": "./dist/components/scroll-area/index.d.ts",
       "svelte": "./src/components/scroll-area/index.ts",
@@ -4287,6 +4312,7 @@
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
     "@shikijs/rehype": "^3.21.0",
+    "@standard-schema/spec": "^1.1.0",
     "@tanstack/virtual-core": "^3.17.1",
     "ajv": "^8",
     "comlink": "^4.4.2",

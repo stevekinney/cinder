@@ -243,6 +243,27 @@ FNH:0
 LF:10
 LH:0
 end_of_record
+TN:
+SF:../markdown/src/pipeline/index.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:../commentary/src/comments/index.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:../diff/src/line-diff.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
 `;
 
     const records = parseLcovRecords(withSiblingWorkspaces);
@@ -262,6 +283,20 @@ end_of_record
 
     const records = parseLcovRecords(localPath);
     expect(records.map((record) => record.file)).toContain('src/components/../utilities/local.ts');
+  });
+
+  test('does not exclude component source whose path merely contains a sibling workspace name', () => {
+    const lookalike = `${lcovFixture}TN:
+SF:src/components/editor/src/commands.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(lookalike);
+    expect(records.map((record) => record.file)).toContain('src/components/editor/src/commands.ts');
   });
 
   test('reports no failures when the aggregate ratchet is met', () => {
