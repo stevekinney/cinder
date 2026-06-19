@@ -204,7 +204,7 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
-  it('keeps the sidebar at or below the 126-entry product gate', async () => {
+  it('keeps the sidebar at or below the 129-entry product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
@@ -255,14 +255,16 @@ describe('discoverSidebarComponents', () => {
     // Chat conversation pagination/sibling primitives add two standalone families
     // with examples: chat-conversation-header and chat-conversation-list,
     // bringing the measured ceiling to 125.
+    // PermissionMatrix adds one standalone authorization-inspection family with
+    // its first playground example, bringing the measured ceiling to 126.
     // AccessGate adds one standalone authorization-state primitive with examples,
-    // bringing the measured ceiling to 126.
+    // bringing the measured ceiling to 127.
     // SchemaForm adds one public form family with JSON Schema and Standard Schema
-    // examples, bringing the measured ceiling to 127.
-    // VirtualList adds one standalone windowing primitive with examples, bringing
-    // the measured ceiling to 128.
+    // examples, bringing the measured ceiling to 128.
+    // VirtualList adds one standalone windowing primitive with examples,
+    // bringing the measured ceiling to 129.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(128);
+    expect(sidebar.length).toBeLessThanOrEqual(129);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -275,6 +277,7 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('transfer-list');
     expect(sidebar).toContain('chat-conversation-header');
     expect(sidebar).toContain('chat-conversation-list');
+    expect(sidebar).toContain('permission-matrix');
     expect(sidebar).toContain('access-gate');
     expect(sidebar).toContain('schema-form');
     expect(sidebar).toContain('virtual-list');

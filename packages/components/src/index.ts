@@ -502,6 +502,15 @@ export type {
   PayloadInspectorView,
 } from './components/payload-inspector/index.ts';
 
+export { default as PermissionMatrix } from './components/permission-matrix/index.ts';
+export type {
+  PermissionMatrixAxisItem,
+  PermissionMatrixCellState,
+  PermissionMatrixProps,
+  PermissionMatrixSchemaProps,
+  PermissionMatrixStateLabels,
+} from './components/permission-matrix/index.ts';
+
 export { default as PhoneInput } from './components/phone-input/index.ts';
 export type {
   PhoneInputChange,

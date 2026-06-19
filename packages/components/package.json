@@ -2419,6 +2419,31 @@
       "import": "./src/components/payload-inspector/payload-inspector.examples.json",
       "default": "./src/components/payload-inspector/payload-inspector.examples.json"
     },
+    "./permission-matrix": {
+      "types": "./dist/components/permission-matrix/index.d.ts",
+      "svelte": "./src/components/permission-matrix/index.ts",
+      "node": "./dist/server/components/permission-matrix/index.js",
+      "default": "./dist/components/permission-matrix/index.js"
+    },
+    "./permission-matrix/schema": {
+      "types": "./dist/components/permission-matrix/permission-matrix.schema.d.ts",
+      "svelte": "./src/components/permission-matrix/permission-matrix.schema.ts",
+      "node": "./dist/server/components/permission-matrix/permission-matrix.schema.js",
+      "default": "./dist/components/permission-matrix/permission-matrix.schema.js"
+    },
+    "./permission-matrix/variables": {
+      "types": "./dist/components/permission-matrix/permission-matrix.variables.d.ts",
+      "svelte": "./src/components/permission-matrix/permission-matrix.variables.ts",
+      "node": "./dist/server/components/permission-matrix/permission-matrix.variables.js",
+      "default": "./dist/components/permission-matrix/permission-matrix.variables.js"
+    },
+    "./permission-matrix/styles": {
+      "default": "./dist/components/permission-matrix/permission-matrix.css"
+    },
+    "./permission-matrix/examples": {
+      "import": "./src/components/permission-matrix/permission-matrix.examples.json",
+      "default": "./src/components/permission-matrix/permission-matrix.examples.json"
+    },
     "./phone-input": {
       "types": "./dist/components/phone-input/index.d.ts",
       "svelte": "./src/components/phone-input/index.ts",
