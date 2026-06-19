@@ -343,6 +343,7 @@ export function setValueAtPath(value: unknown, path: readonly string[], next: un
   if (Array.isArray(value)) {
     const copy = [...value];
     const index = Number(head);
+    if (!Number.isInteger(index) || index < 0) return copy;
     copy[index] = setValueAtPath(copy[index], tail, next);
     return copy;
   }

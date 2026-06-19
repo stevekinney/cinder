@@ -236,6 +236,18 @@ describe('schema-form model', () => {
     expect(pruneUndefined(value)).toEqual({ nested: { owner: 'Ada' }, tags: ['one'] });
   });
 
+  test('does not write non-index array path segments as object properties', () => {
+    const value = ['one'];
+
+    const namedSegment = setValueAtPath(value, ['name'], 'Ada');
+    const negativeIndex = setValueAtPath(value, ['-1'], 'Ada');
+
+    expect(namedSegment).toEqual(['one']);
+    expect(negativeIndex).toEqual(['one']);
+    expect(Object.hasOwn(namedSegment as object, 'name')).toBe(false);
+    expect(Object.hasOwn(negativeIndex as object, '-1')).toBe(false);
+  });
+
   test('rebases array item field paths for a concrete index', () => {
     const model = createSchemaFormModel(schema);
     const tags = model.field.fields.find((field) => field.key === 'tags');
