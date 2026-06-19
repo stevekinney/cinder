@@ -1,12 +1,4 @@
 import type { Middleware, Placement, ReferenceElement } from '@floating-ui/dom';
-import {
-  arrow as arrowMiddleware,
-  autoUpdate,
-  computePosition,
-  flip,
-  offset as offsetMiddleware,
-  shift,
-} from '@floating-ui/dom';
 
 export type AnchoredOverlayWidthMode = 'content' | 'match-anchor' | 'menu' | 'none';
 
@@ -114,53 +106,70 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const widthMode = options.widthMode?.() ?? 'content';
     let cancelled = false;
     let generation = 0;
+    let stopAutoUpdate: (() => void) | undefined;
 
-    const middleware: Middleware[] = [
-      offsetMiddleware(offset),
-      flip(),
-      shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }),
-    ];
-    if (showArrow && arrow) {
-      middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
-    }
+    void (async () => {
+      const {
+        arrow: arrowMiddleware,
+        autoUpdate,
+        computePosition,
+        flip,
+        offset: offsetMiddleware,
+        shift,
+      } = await import('@floating-ui/dom');
 
-    const stop = autoUpdate(anchor, panel, async () => {
       if (cancelled) return;
-      const currentGeneration = ++generation;
-      let result: Awaited<ReturnType<typeof computePosition>>;
-      try {
-        result = await computePosition(anchor, panel, {
-          placement,
-          middleware,
-          strategy: 'fixed',
-        });
-      } catch {
-        if (cancelled || currentGeneration !== generation) return;
-        positionReady = false;
-        positionStyle = '';
-        arrowStyle = '';
-        resolvedPlacement = placement;
-        return;
-      }
-      if (cancelled || currentGeneration !== generation) return;
 
-      const widthStyle = getAnchoredOverlayWidthStyle(widthMode, anchor.getBoundingClientRect());
-      positionStyle = [
-        'position: fixed;',
-        `left: ${result.x}px;`,
-        `top: ${result.y}px;`,
-        widthStyle,
-      ]
-        .filter(Boolean)
-        .join(' ');
-      resolvedPlacement = result.placement;
-      arrowStyle = showArrow ? getArrowStyle(result.placement, result.middlewareData.arrow) : '';
-      positionReady = true;
+      const middleware: Middleware[] = [
+        offsetMiddleware(offset),
+        flip(),
+        shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }),
+      ];
+      if (showArrow && arrow) {
+        middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
+      }
+
+      stopAutoUpdate = autoUpdate(anchor, panel, async () => {
+        if (cancelled) return;
+        const currentGeneration = ++generation;
+        let result: Awaited<ReturnType<typeof computePosition>>;
+        try {
+          result = await computePosition(anchor, panel, {
+            placement,
+            middleware,
+            strategy: 'fixed',
+          });
+        } catch {
+          if (cancelled || currentGeneration !== generation) return;
+          positionReady = false;
+          positionStyle = '';
+          arrowStyle = '';
+          resolvedPlacement = placement;
+          return;
+        }
+        if (cancelled || currentGeneration !== generation) return;
+
+        const widthStyle = getAnchoredOverlayWidthStyle(widthMode, anchor.getBoundingClientRect());
+        positionStyle = [
+          'position: fixed;',
+          `left: ${result.x}px;`,
+          `top: ${result.y}px;`,
+          widthStyle,
+        ]
+          .filter(Boolean)
+          .join(' ');
+        resolvedPlacement = result.placement;
+        arrowStyle = showArrow ? getArrowStyle(result.placement, result.middlewareData.arrow) : '';
+        positionReady = true;
+      });
+    })().catch((error) => {
+      if (cancelled) return;
+      throw error;
     });
 
     return () => {
       cancelled = true;
-      stop();
+      stopAutoUpdate?.();
       positionReady = false;
       positionStyle = '';
       arrowStyle = '';
