@@ -44,6 +44,7 @@
     getCellState,
     onCellClick,
     stateLabels,
+    rowHeaderLabel = 'Scope',
     loading = false,
     class: customClassName,
     empty,
@@ -107,7 +108,7 @@
           <caption class="cinder-sr-only">{label}</caption>
           <thead>
             <tr>
-              <th class="cinder-permission-matrix__corner" scope="col">Scope</th>
+              <th class="cinder-permission-matrix__corner" scope="col">{rowHeaderLabel}</th>
               {#each columns as column (column.id)}
                 <th class="cinder-permission-matrix__column-header" scope="col">
                   {column.label}

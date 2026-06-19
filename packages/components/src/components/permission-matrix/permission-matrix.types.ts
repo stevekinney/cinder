@@ -30,6 +30,8 @@ export type PermissionMatrixProps<
   onCellClick?: (row: TRow, column: TColumn, state: PermissionMatrixCellState) => void;
   /** Accessible and visible labels for the built-in states. */
   stateLabels?: PermissionMatrixStateLabels;
+  /** Header label for the row axis. Default `Scope`. */
+  rowHeaderLabel?: string;
   /** Whether the matrix is in a loading state. */
   loading?: boolean;
   /** Custom class applied to the root element. */
@@ -62,6 +64,8 @@ export type PermissionMatrixSchemaProps = {
   ) => void;
   /** Accessible and visible labels for the built-in states. */
   stateLabels?: PermissionMatrixStateLabels;
+  /** Header label for the row axis. Default `Scope`. */
+  rowHeaderLabel?: string;
   /** Whether the matrix is in a loading state. Default `false`. */
   loading?: boolean;
   /** Custom class applied to the root element. */

@@ -33,6 +33,7 @@ Use PermissionMatrix when each cell is an enumerated access state. Use MatrixCha
 | `description`    | `string`   | no       | —       | Optional description rendered above the matrix.                                                                                             |
 | `label`          | `string`   | yes      | —       | Accessible label for the matrix.                                                                                                            |
 | `loading`        | `boolean`  | no       | —       | Whether the matrix is in a loading state. Default `false`.                                                                                  |
+| `rowHeaderLabel` | `string`   | no       | —       | Header label for the row axis. Default `Scope`.                                                                                             |
 | `columns`        | `(opaque)` | yes      | —       | Column definitions, usually operations. Not expressible in JSON Schema; see the component types for the signature.                          |
 | `empty`          | `(opaque)` | no       | —       | Snippet rendered when rows or columns are empty. Not expressible in JSON Schema; see the component types for the signature.                 |
 | `getCellState`   | `(opaque)` | yes      | —       | Resolves the discrete state for one row and column intersection. Not expressible in JSON Schema; see the component types for the signature. |

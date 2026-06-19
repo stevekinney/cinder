@@ -75,6 +75,18 @@ describe('PermissionMatrix', () => {
     expect(rowHeaders).toEqual(['workflows:admin', 'workflows:read', 'runs:admin']);
   });
 
+  test('supports a custom row header label for non-scope matrices', () => {
+    const { container } = render(PermissionMatrix, {
+      label: 'Role matrix',
+      rows,
+      columns,
+      getCellState,
+      rowHeaderLabel: 'Role',
+    });
+
+    expect(container.querySelector('thead th[scope="col"]')?.textContent?.trim()).toBe('Role');
+  });
+
   test('clicking a cell invokes the handler with the correct row and column identity', async () => {
     const onCellClick = mock();
     const { getByRole } = render(PermissionMatrix, {

@@ -12,6 +12,10 @@ const schema = {
       type: 'string',
       description: 'Optional description rendered above the matrix.',
     },
+    rowHeaderLabel: {
+      type: 'string',
+      description: 'Header label for the row axis. Default `Scope`.',
+    },
     loading: {
       type: 'boolean',
       description: 'Whether the matrix is in a loading state. Default `false`.',
