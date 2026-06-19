@@ -93,6 +93,16 @@ function isTransientTestArtifact(file: string): boolean {
   return /^(?:client|server)-\d+-\d+-[a-z0-9]+\.mjs$/.test(artifactFileName);
 }
 
+/**
+ * The component package re-exports sibling private workspaces, and some tests
+ * import those implementations through workspace source paths. Those packages
+ * have their own validation jobs, so their LCOV records should not move the
+ * `@lostgradient/cinder` package ratchet.
+ */
+function isSiblingWorkspaceSource(file: string): boolean {
+  return /^\.\.\/(?:commentary|diff|editor|markdown)\/src\//.test(file.replaceAll('\\', '/'));
+}
+
 export function parseLcovRecords(source: string): CoverageRecord[] {
   return source
     .split('end_of_record')
@@ -109,7 +119,9 @@ export function parseLcovRecords(source: string): CoverageRecord[] {
         linesHit: readNumberField(lines, 'LH'),
       };
     })
-    .filter((record) => !isTransientTestArtifact(record.file));
+    .filter(
+      (record) => !isTransientTestArtifact(record.file) && !isSiblingWorkspaceSource(record.file),
+    );
 }
 
 function readStringField(lines: string[], key: string): string {

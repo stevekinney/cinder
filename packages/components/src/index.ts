@@ -589,6 +589,15 @@ export {
 } from './components/review-editor/index.ts';
 export type { ReviewEditorProps } from './components/review-editor/index.ts';
 
+export { default as SchemaForm, readSchemaFormData } from './components/schema-form/index.ts';
+export type {
+  SchemaFormOutput,
+  SchemaFormProps,
+  SchemaFormSchema,
+  SchemaFormStandardSchema,
+  SchemaFormSubmitHandler,
+} from './components/schema-form/index.ts';
+
 export { default as ScrollArea } from './components/scroll-area/index.ts';
 export type {
   ScrollAreaDirection,
