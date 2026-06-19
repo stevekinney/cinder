@@ -95,6 +95,30 @@ describe('VirtualList', () => {
     expect(renderedRows(container)[0]?.dataset['index']).toBe('98');
   });
 
+  test('scrolling composes consumer onscroll with the internal window update', async () => {
+    let scrollCallCount = 0;
+    const { container } = render(VirtualList, {
+      items: makeItems(10_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+      onscroll: () => {
+        scrollCallCount += 1;
+      },
+    });
+
+    const list = container.querySelector<HTMLElement>('.cinder-virtual-list');
+    if (!list) throw new Error('Expected virtual list root');
+
+    list.scrollTop = 2_000;
+    await fireEvent.scroll(list);
+
+    expect(scrollCallCount).toBe(1);
+    await waitFor(() => expect(renderedRows(container)[0]?.textContent).toBe('Item 100'));
+  });
+
   test('appending at the bottom keeps the viewport pinned when stickToBottom is true', async () => {
     const view = render(VirtualList, {
       items: makeItems(100),

@@ -48,6 +48,7 @@
     getKey,
     row,
     role = 'list',
+    onscroll: onScroll,
     class: className,
     ...rest
   }: VirtualListProps<Item> = $props();
@@ -139,7 +140,8 @@
     scrollOffset = Math.max(0, element.scrollTop);
   }
 
-  function handleScroll(event: Event): void {
+  function handleScroll(event: UIEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
+    if (typeof onScroll === 'function') onScroll(event);
     const element = event.currentTarget as HTMLElement;
     scrollOffset = Math.max(0, element.scrollTop);
   }

@@ -99,6 +99,7 @@
           size: resolvedRowHeight,
         })),
   );
+  const tabbableRowIndex = $derived(getTabbableRowIndex());
 
   /**
    * Map a DataTableColumn's `align` value to the value accepted by TableHeaderCell
@@ -218,7 +219,17 @@
   }
 
   function getBodyScrollOrigin(captionBlockSize: number, headerBlockSize: number): number {
-    return stickyHeader ? 0 : getTableChromeHeight(captionBlockSize, headerBlockSize);
+    return stickyHeader
+      ? captionBlockSize
+      : getTableChromeHeight(captionBlockSize, headerBlockSize);
+  }
+
+  function getTabbableRowIndex(): number {
+    if (!shouldVirtualizeRows) return activeRowIndex;
+    if (virtualRows.some((virtualRow) => virtualRow.index === activeRowIndex)) {
+      return activeRowIndex;
+    }
+    return virtualRows[0]?.index ?? activeRowIndex;
   }
 
   function isAtBottom(
@@ -337,7 +348,7 @@
           {...shouldVirtualizeRows
             ? {
                 'aria-rowindex': virtualRow.index + 2,
-                tabindex: activeRowIndex === virtualRow.index ? 0 : -1,
+                tabindex: tabbableRowIndex === virtualRow.index ? 0 : -1,
                 'data-cinder-virtual-row': 'true',
                 'data-cinder-data-table-row-index': virtualRow.index,
                 onfocus: () => handleRowFocus(virtualRow.index),

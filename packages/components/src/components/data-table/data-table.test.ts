@@ -445,6 +445,34 @@ describe('DataTable — virtualized rows', () => {
     expect(bodyDataRows(container)[0]?.getAttribute('aria-rowindex')).toBe('48');
   });
 
+  test('sticky captioned virtualized tables subtract caption but not the sticky header', async () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: makeRows(1_000),
+      caption: 'Workflow log tail',
+      stickyHeader: true,
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 0,
+    });
+
+    const wrapper = container.querySelector<HTMLElement>('.cinder-data-table');
+    const caption = container.querySelector<HTMLElement>('caption');
+    const header = container.querySelector<HTMLElement>('thead');
+    if (!wrapper || !caption || !header) {
+      throw new Error('Expected DataTable wrapper, caption, and header');
+    }
+
+    caption.getBoundingClientRect = () => rectWithHeight(40);
+    header.getBoundingClientRect = () => rectWithHeight(40);
+    wrapper.scrollTop = 1_000;
+    await fireEvent.scroll(wrapper);
+
+    await waitFor(() => expect(bodyDataRows(container)[0]?.textContent).toContain('Person 48'));
+    expect(bodyDataRows(container)[0]?.getAttribute('aria-rowindex')).toBe('50');
+  });
+
   test('captioned virtualized tables keep stickToBottom pinned after append', async () => {
     const view = render(DataTable, {
       columns,
@@ -546,6 +574,7 @@ describe('DataTable — virtualized rows', () => {
         true,
       ),
     );
+    expect(bodyDataRows(container)[0]?.getAttribute('tabindex')).toBe('0');
 
     wrapper.scrollTop = 3_800;
     await fireEvent.scroll(wrapper);
