@@ -4886,6 +4886,36 @@
       }
     },
     {
+      "name": "VirtualList",
+      "id": "virtual-list",
+      "import": "@lostgradient/cinder/virtual-list",
+      "exportName": "VirtualList",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Fixed-height windowing primitive for long vertical lists that renders only the visible rows plus overscan inside a native scroll container.",
+      "tags": ["list", "virtualization", "performance"],
+      "useWhen": [
+        "Rendering thousands of same-height append-only rows such as logs, event streams, or activity feeds.",
+        "You need a reusable primitive that owns native vertical scrolling but leaves row markup to a snippet."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rows have substantially variable heights that must be measured dynamically — v1 requires a fixed itemHeight."
+        },
+        {
+          "reason": "Rendering columns or two-dimensional grids — use data-grid for grid semantics and column virtualization."
+        }
+      ],
+      "related": ["data-list", "data-table", "data-grid"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/virtual-list/schema",
+        "variables": "@lostgradient/cinder/virtual-list/variables",
+        "examples": "@lostgradient/cinder/virtual-list/examples"
+      }
+    },
+    {
       "name": "VisuallyHidden",
       "id": "visually-hidden",
       "import": "@lostgradient/cinder/visually-hidden",

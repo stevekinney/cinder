@@ -2,6 +2,7 @@
 @layer cinder.components {
   .cinder-transfer-list {
     container-type: inline-size;
+    container-name: cinder-transfer-list;
   }
 
   .cinder-transfer-list__layout {
@@ -100,7 +101,7 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
-  @container (max-width: 42rem) {
+  @container cinder-transfer-list (max-width: 42rem) {
     .cinder-transfer-list__layout {
       grid-template-columns: minmax(0, 1fr);
     }

@@ -152,6 +152,7 @@
 @import '../components/tooltip/tooltip.css';
 @import '../components/tree/tree.css';
 @import '../components/typography/typography.css';
+@import '../components/virtual-list/virtual-list.css';
 @import '../components/waveform/waveform.css';
 
 /* Shared internal partial — base chrome for Alert/Banner dismiss buttons.

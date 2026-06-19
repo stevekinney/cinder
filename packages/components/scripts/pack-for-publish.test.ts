@@ -62,6 +62,50 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('src/styles/base-guard.ts');
   });
 
+  it('publishes schema and variables subpaths through built artifacts only', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {
+        './button': {
+          types: './dist/components/button/index.d.ts',
+          svelte: './src/components/button/index.ts',
+          node: './dist/server/components/button/index.js',
+          default: './dist/components/button/index.js',
+        },
+        './button/schema': {
+          types: './dist/components/button/button.schema.d.ts',
+          svelte: './src/components/button/button.schema.ts',
+          node: './dist/server/components/button/button.schema.js',
+          default: './dist/components/button/button.schema.js',
+        },
+        './button/variables': {
+          types: './dist/components/button/button.variables.d.ts',
+          svelte: './src/components/button/button.variables.ts',
+          node: './dist/server/components/button/button.variables.js',
+          default: './dist/components/button/button.variables.js',
+        },
+      },
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+
+    expect(published.exports['./button']).toEqual(manifest.exports['./button']);
+    expect(published.exports['./button/schema']).toEqual({
+      types: './dist/components/button/button.schema.d.ts',
+      node: './dist/server/components/button/button.schema.js',
+      default: './dist/components/button/button.schema.js',
+    });
+    expect(published.exports['./button/variables']).toEqual({
+      types: './dist/components/button/button.variables.d.ts',
+      node: './dist/server/components/button/button.variables.js',
+      default: './dist/components/button/button.variables.js',
+    });
+    expect(files).toContain('!src/components/**/*.schema.ts');
+    expect(files).toContain('!src/components/**/*.variables.ts');
+  });
+
   it('publishes only exported component JSON sidecars', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',

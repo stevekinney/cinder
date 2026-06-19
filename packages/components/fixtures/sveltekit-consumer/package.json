@@ -22,7 +22,7 @@
     "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz"
   },
   "devDependencies": {
-    "@sveltejs/adapter-node": "^5.5.4",
+    "@sveltejs/adapter-node": "5.5.4",
     "@sveltejs/kit": "^2.57.1",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "svelte": "~5.55.0",

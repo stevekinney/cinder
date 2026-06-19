@@ -141,9 +141,9 @@
   }
 
   .cinder-payload-inspector__notice--warning {
-    background: var(--cinder-feedback-warning-surface);
-    border-color: var(--cinder-feedback-warning-border);
-    color: var(--cinder-feedback-warning-text);
+    background: var(--cinder-color-warning-bg);
+    border-color: var(--cinder-color-warning-border);
+    color: var(--cinder-color-warning-fg);
   }
 
   .cinder-payload-inspector__empty {

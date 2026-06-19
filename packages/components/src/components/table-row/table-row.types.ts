@@ -1,4 +1,5 @@
 import type { Snippet } from 'svelte';
+import type { HTMLAttributes } from 'svelte/elements';
 
 /**
  * Discriminated union for row selection props.
@@ -42,7 +43,7 @@ export type TableRowSelectionProps =
       selectionDisabled?: undefined;
     };
 
-export type TableRowProps = {
+export type TableRowProps = Omit<HTMLAttributes<HTMLTableRowElement>, 'class'> & {
   /** Additional class names merged with `.cinder-table__row`. */
   class?: string;
   /** Cell children (TableCell or TableHeaderCell). */

@@ -86,6 +86,35 @@ export type DataTableProps<Row extends DataTableRow = DataTableRow> = Omit<
    */
   scrollable?: boolean;
   /**
+   * When true, renders only the visible `<tbody>` row window plus spacer rows.
+   * Requires a fixed row height. This is intended for large, append-only tables
+   * such as live logs or event streams.
+   */
+  virtualized?: boolean;
+  /**
+   * Fixed body row height in pixels for virtualized mode.
+   * This must match the actual rendered body row height, including density
+   * padding and any wrapping introduced by the table content.
+   * Defaults to 44.
+   */
+  rowHeight?: number;
+  /**
+   * Extra body rows rendered before and after the visible virtualized window.
+   * Defaults to 5.
+   */
+  overscan?: number;
+  /**
+   * CSS block-size for the virtualized native scroll container.
+   * Defaults to `"24rem"` when `virtualized` is true.
+   */
+  height?: string;
+  /**
+   * When true in virtualized mode, appending rows while scrolled to the bottom
+   * keeps the newest row pinned in view. Appending while scrolled up does not
+   * change the viewport.
+   */
+  stickToBottom?: boolean;
+  /**
    * Additional class names merged onto DataTable's root wrapper element (the
    * `<div class="cinder-data-table">` that contains the table). To style the
    * `<table>` itself, target `.cinder-data-table table` from this class.

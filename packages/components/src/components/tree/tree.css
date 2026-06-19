@@ -249,7 +249,7 @@
 
   .cinder-tree-item__highlight {
     padding: 0;
-    border-radius: var(--cinder-radius-xs, 0.125rem);
+    border-radius: 0.125rem;
     background-color: color-mix(in srgb, var(--cinder-accent) 20%, transparent);
     color: inherit;
   }

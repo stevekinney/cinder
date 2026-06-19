@@ -28,7 +28,8 @@ describe('TransferList', () => {
     const css = await Bun.file(new URL('./transfer-list.css', import.meta.url).pathname).text();
 
     expect(css).toContain('container-type: inline-size');
-    expect(css).toContain('@container (max-width: 42rem)');
+    expect(css).toContain('container-name: cinder-transfer-list;');
+    expect(css).toContain('@container cinder-transfer-list (max-width: 42rem)');
     expect(css).toContain('.cinder-transfer-list__layout');
     expect(css).not.toContain('@media (max-width');
   });

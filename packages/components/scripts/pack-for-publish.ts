@@ -130,6 +130,23 @@ function rewriteUpstreamReexportEntry(
 }
 
 /**
+ * Metadata sub-paths are plain TypeScript modules. The source manifest keeps a
+ * `svelte` condition for in-repository tooling, but published consumers can use
+ * the built browser/server entrypoints and declarations directly.
+ */
+function rewriteMetadataEntry(entry: ExportConditional): ExportConditional {
+  const result: ExportConditional = {};
+  if (entry.types !== undefined) result.types = entry.types;
+  if (entry.node !== undefined) result.node = entry.node;
+  if (entry.default !== undefined) result.default = entry.default;
+  return result;
+}
+
+function isMetadataExportKey(key: string): boolean {
+  return key.endsWith('/schema') || key.endsWith('/variables');
+}
+
+/**
  * Build the transformed manifest written into staging.
  */
 function buildPublishedManifest(
@@ -145,6 +162,10 @@ function buildPublishedManifest(
       const reexport = reexportByKey.get(key);
       if (!reexport) throw new Error(`Internal error: missing reexport for ${key}`);
       transformedExports[key] = rewriteUpstreamReexportEntry(entry, reexport);
+      continue;
+    }
+    if (isMetadataExportKey(key) && typeof entry === 'object') {
+      transformedExports[key] = rewriteMetadataEntry(entry);
       continue;
     }
     // Component sub-paths (and other non-upstream exports) keep their
@@ -228,6 +249,8 @@ function buildPublishedManifest(
     '!src/components/**/*.test.ts',
     '!src/components/**/*.spec.ts',
     '!src/components/**/*.type-test.ts',
+    '!src/components/**/*.schema.ts',
+    '!src/components/**/*.variables.ts',
     '!src/components/**/*-fixtures.ts',
     '!src/components/**/*fixtures.ts',
     'src/components/**/*.svelte',

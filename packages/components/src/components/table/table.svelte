@@ -38,6 +38,7 @@
     selectable = false,
     class: className,
     children,
+    ...rest
   }: TableProps = $props();
 
   // A native <caption> (caption-side: top) renders above the table's border box
@@ -85,6 +86,7 @@
 </script>
 
 <table
+  {...rest}
   class={classNames('cinder-table', className)}
   data-cinder-sticky-header={stickyHeader || undefined}
   data-cinder-density={density}

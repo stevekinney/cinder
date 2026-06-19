@@ -9,6 +9,11 @@
  * ======================================== */
 
   .cinder-code-block {
+    --_cinder-code-block-code-surface: light-dark(
+      var(--cinder-surface-raised),
+      var(--cinder-surface-inset)
+    );
+
     background: var(--cinder-surface-inset);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -40,7 +45,7 @@
   .cinder-code-block__viewport {
     display: block;
     overflow-x: auto;
-    background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset));
+    background: var(--_cinder-code-block-code-surface);
   }
 
   .cinder-code-block__pre,
@@ -57,7 +62,7 @@
     /* Use near-white in light mode so github-light token colors (e.g. #d73a49
      * keyword red) clear 4.5:1 WCAG AA. In dark mode keep the deep inset so
      * github-dark tokens maintain contrast on a very dark surface. */
-    background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset));
+    background: var(--_cinder-code-block-code-surface);
   }
 
   /* Shiki writes inline background styles on its generated <pre>; keep the
@@ -65,7 +70,7 @@
   .cinder-code-block :where(pre.shiki) {
     margin: 0 !important;
     padding: var(--cinder-space-4) !important;
-    background: light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset)) !important;
+    background: var(--_cinder-code-block-code-surface) !important;
   }
 
   .cinder-code-block__code,

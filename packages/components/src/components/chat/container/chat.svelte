@@ -349,11 +349,10 @@
       return virtualItem;
     }
 
+    const scrollTop = viewport?.scrollTop ?? chatVirtualizer.scrollOffset;
     const start = Math.max(
       0,
-      chatVirtualizer.scrollOffset -
-        chatVirtualizer.scrollPaddingStart +
-        historyAnchorViewportOffset,
+      scrollTop - chatVirtualizer.scrollPaddingStart + historyAnchorViewportOffset,
     );
     return {
       ...virtualItem,
@@ -595,7 +594,7 @@
       const delta = newTotalSize - pending.previousTotalSize;
       const targetScrollTop = pending.previousScrollTop + delta;
       chatVirtualizer.scrollToOffset(targetScrollTop, { behavior: 'instant' });
-      historyAnchorRestoredScrollTop = chatVirtualizer.scrollOffset;
+      historyAnchorRestoredScrollTop = viewport?.scrollTop ?? chatVirtualizer.scrollOffset;
     } else {
       clearHistoryAnchor();
       const newTotalSize = viewport.scrollHeight;
@@ -660,16 +659,17 @@
     if (!spacer) return 0;
 
     const offsetTop = spacer.offsetTop;
-    const rectOffset =
-      spacer.getBoundingClientRect().top -
-      viewport.getBoundingClientRect().top +
-      viewport.scrollTop;
+    const spacerRect = spacer.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
+    const hasLayoutBox =
+      spacerRect.top !== 0 ||
+      spacerRect.bottom !== 0 ||
+      viewportRect.top !== 0 ||
+      viewportRect.bottom !== 0;
+    if (!hasLayoutBox) return Math.max(0, offsetTop);
 
-    if (offsetTop === 0 && Math.abs(rectOffset - viewport.scrollTop) < 1) {
-      return 0;
-    }
-
-    return Math.max(0, offsetTop || rectOffset);
+    const rectOffset = spacerRect.top - viewportRect.top + viewport.scrollTop;
+    return Math.max(0, Number.isFinite(rectOffset) ? rectOffset : offsetTop);
   }
 
   function focusAfterHistoryRestore(pending: PendingHistoryScroll): void {

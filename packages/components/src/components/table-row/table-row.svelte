@@ -33,6 +33,7 @@
     onSelectedChange,
     selectionLabel,
     selectionDisabled,
+    ...rest
   }: TableRowProps = $props();
 
   const table = tryGetTableContext();
@@ -88,7 +89,7 @@
   }
 </script>
 
-<tr class={classNames('cinder-table__row', className)}>
+<tr {...rest} class={classNames('cinder-table__row', className)}>
   {#if shouldRenderHeaderSelectionCell && headerSelection}
     <th scope="col" class="cinder-table__header-cell cinder-table__header-cell--selection">
       <input

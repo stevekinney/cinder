@@ -3966,6 +3966,31 @@
       "import": "./src/components/typography/typography.examples.json",
       "default": "./src/components/typography/typography.examples.json"
     },
+    "./virtual-list": {
+      "types": "./dist/components/virtual-list/index.d.ts",
+      "svelte": "./src/components/virtual-list/index.ts",
+      "node": "./dist/server/components/virtual-list/index.js",
+      "default": "./dist/components/virtual-list/index.js"
+    },
+    "./virtual-list/schema": {
+      "types": "./dist/components/virtual-list/virtual-list.schema.d.ts",
+      "svelte": "./src/components/virtual-list/virtual-list.schema.ts",
+      "node": "./dist/server/components/virtual-list/virtual-list.schema.js",
+      "default": "./dist/components/virtual-list/virtual-list.schema.js"
+    },
+    "./virtual-list/variables": {
+      "types": "./dist/components/virtual-list/virtual-list.variables.d.ts",
+      "svelte": "./src/components/virtual-list/virtual-list.variables.ts",
+      "node": "./dist/server/components/virtual-list/virtual-list.variables.js",
+      "default": "./dist/components/virtual-list/virtual-list.variables.js"
+    },
+    "./virtual-list/styles": {
+      "default": "./dist/components/virtual-list/virtual-list.css"
+    },
+    "./virtual-list/examples": {
+      "import": "./src/components/virtual-list/virtual-list.examples.json",
+      "default": "./src/components/virtual-list/virtual-list.examples.json"
+    },
     "./visually-hidden": {
       "types": "./dist/components/visually-hidden/index.d.ts",
       "svelte": "./src/components/visually-hidden/index.ts",

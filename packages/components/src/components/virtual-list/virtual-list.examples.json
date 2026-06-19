@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "virtual-list",
+  "import": "@lostgradient/cinder/virtual-list",
+  "examples": [
+    {
+      "id": "ten-thousand",
+      "title": "10,000 item virtual list",
+      "description": "A native scroll container rendering only the visible slice of a 10,000 item append-only event stream.",
+      "code": "<script lang=\"ts\">\n  import { VirtualList } from '@lostgradient/cinder/virtual-list';\n\n  type EventRow = {\n    id: string;\n    timestamp: string;\n    source: string;\n    message: string;\n  };\n\n  const events: EventRow[] = Array.from({ length: 10_000 }, (_, index) => ({\n    id: `event-${index}`,\n    timestamp: `2026-06-18T${String(index % 24).padStart(2, '0')}:${String(index % 60).padStart(\n      2,\n      '0',\n    )}:00Z`,\n    source: `worker-${index % 12}`,\n    message: `Processed workflow event ${index.toLocaleString('en-US')}`,\n  }));\n</script>\n\n<VirtualList\n  items={events}\n  itemHeight={36}\n  height=\"360px\"\n  overscan={4}\n  getKey={(event) => event.id}\n  aria-label=\"Workflow events\"\n>\n  {#snippet row(event, context)}\n    <div\n      style=\"display: grid; grid-template-columns: 11rem 7rem minmax(0, 1fr); gap: 0.75rem; align-items: center; min-block-size: 36px; padding-inline: 0.75rem; border-block-end: 1px solid var(--cinder-border); font-size: var(--cinder-text-sm);\"\n      data-index={context.index}\n    >\n      <span>{event.timestamp}</span>\n      <strong>{event.source}</strong>\n      <span>{event.message}</span>\n    </div>\n  {/snippet}\n</VirtualList>\n"
+    }
+  ]
+}
