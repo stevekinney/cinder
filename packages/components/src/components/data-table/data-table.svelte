@@ -70,7 +70,7 @@
   const rowHeaderKey = $derived(
     (columns.find((column) => column.rowHeader === true) ?? columns[0])?.key,
   );
-  const shouldVirtualizeRows = $derived(virtualized && rows.length > 0);
+  const shouldVirtualizeRows = $derived(virtualized);
   const resolvedRowHeight = $derived(resolveVirtualItemHeight(rowHeight, 44));
   const resolvedOverscan = $derived(resolveVirtualOverscan(overscan));
   const viewportHeight = $derived(

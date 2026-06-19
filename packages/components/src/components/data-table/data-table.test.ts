@@ -342,6 +342,37 @@ describe('DataTable — align mapping', () => {
 });
 
 describe('DataTable — virtualized rows', () => {
+  test('keeps virtualized table semantics and layout when initially empty', async () => {
+    const view = render(DataTable, {
+      columns,
+      rows: [],
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+    });
+
+    const wrapper = view.container.querySelector<HTMLElement>('.cinder-data-table');
+    const table = view.container.querySelector('table');
+    if (!wrapper || !table) throw new Error('Expected DataTable wrapper and table');
+
+    expect(wrapper.classList.contains('cinder-table-scroll')).toBe(true);
+    expect(wrapper.getAttribute('data-cinder-virtualized')).toBe('true');
+    expect(wrapper.style.getPropertyValue('--cinder-data-table-height')).toBe('200px');
+    expect(table.getAttribute('aria-rowcount')).toBe('1');
+    expect(bodyDataRows(view.container)).toHaveLength(0);
+
+    await view.rerender({
+      columns,
+      rows: makeRows(1),
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+    });
+
+    await waitFor(() => expect(bodyDataRows(view.container)).toHaveLength(1));
+    expect(bodyDataRows(view.container)[0]?.getAttribute('aria-rowindex')).toBe('2');
+  });
+
   test('windows <tbody> rows while preserving table and header semantics', async () => {
     const manyRows = makeRows(10_000);
     const { container } = render(DataTable, {

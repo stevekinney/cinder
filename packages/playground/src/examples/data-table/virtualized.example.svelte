@@ -35,6 +35,7 @@
   {columns}
   {rows}
   virtualized
+  density="condensed"
   rowHeight={36}
   height="360px"
   overscan={4}

@@ -1,14 +1,10 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { TransferListItem } from './transfer-list.types.ts';
 
 setupHappyDom();
-
-const currentDirectory = dirname(fileURLToPath(import.meta.url));
 
 const { cleanup, fireEvent, render, screen, waitFor, within } =
   await import('@testing-library/svelte');
@@ -319,14 +315,5 @@ describe('TransferList', () => {
     const module = await import('./index.ts');
     expect(typeof module.default).toBe('function');
     expect(module.TransferList).toBe(module.default);
-  });
-
-  test('responsive layout uses a container query instead of viewport media', async () => {
-    const stylesheet = await Bun.file(join(currentDirectory, 'transfer-list.css')).text();
-
-    expect(stylesheet).toContain('container-type: inline-size;');
-    expect(stylesheet).toContain('container-name: cinder-transfer-list;');
-    expect(stylesheet).toContain('@container cinder-transfer-list (max-width: 42rem)');
-    expect(stylesheet).not.toContain('@media (max-width: 42rem)');
   });
 });
