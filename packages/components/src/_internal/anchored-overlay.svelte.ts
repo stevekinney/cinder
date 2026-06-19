@@ -72,6 +72,17 @@ function getArrowStyle(placement: Placement, data: { x?: number; y?: number } | 
     .join(' ');
 }
 
+function reportAnchoredOverlaySetupError(error: unknown): void {
+  if (typeof globalThis.reportError === 'function') {
+    globalThis.reportError(error);
+    return;
+  }
+
+  setTimeout(() => {
+    throw error;
+  }, 0);
+}
+
 export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
   let positionReady = $state(false);
   let positionStyle = $state('');
@@ -164,7 +175,11 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       });
     })().catch((error) => {
       if (cancelled) return;
-      throw error;
+      positionReady = false;
+      positionStyle = '';
+      arrowStyle = '';
+      resolvedPlacement = placement;
+      reportAnchoredOverlaySetupError(error);
     });
 
     return () => {
