@@ -250,7 +250,40 @@ export function defaultValueForField(field: SchemaFormField): unknown {
 }
 
 export function initialValueForField(field: SchemaFormField, value: unknown): unknown {
-  return value === undefined ? defaultValueForField(field) : cloneJsonCompatible(value);
+  if (value === undefined) return defaultValueForField(field);
+  const clonedValue = cloneJsonCompatible(value);
+  return mergeInitialValueWithFieldDefaults(field, clonedValue);
+}
+
+function mergeInitialValueWithFieldDefaults(field: SchemaFormField, value: unknown): unknown {
+  if (field.kind === 'object' && isRecord(value)) {
+    const defaultValue = defaultValueForField(field);
+    const defaultRecord = isRecord(defaultValue) ? defaultValue : {};
+    const result: Record<string, unknown> = { ...defaultRecord };
+    const fieldKeys = new Set(field.fields.map((child) => child.key));
+
+    for (const child of field.fields) {
+      const seededValue = Object.hasOwn(value, child.key)
+        ? value[child.key]
+        : defaultRecord[child.key];
+      result[child.key] =
+        seededValue === undefined
+          ? defaultValueForField(child)
+          : mergeInitialValueWithFieldDefaults(child, seededValue);
+    }
+
+    for (const [key, extraValue] of Object.entries(value)) {
+      if (!fieldKeys.has(key)) result[key] = extraValue;
+    }
+
+    return result;
+  }
+
+  if (field.kind === 'array' && Array.isArray(value) && field.item) {
+    return value.map((item) => mergeInitialValueWithFieldDefaults(field.item!, item));
+  }
+
+  return value;
 }
 
 export function cloneJsonCompatible(value: unknown): unknown {

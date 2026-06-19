@@ -99,6 +99,43 @@ describe('SchemaForm', () => {
     expect(viaCallback).toEqual(viaNativeSubmit);
   });
 
+  test('blocks submit when validated Standard Schema output cannot be serialized', async () => {
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        validate: () => ({ value: { count: Number.NaN } }),
+      },
+    } as const;
+    const submitted: unknown[] = [];
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { count: 1 },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const form = formFrom(container);
+    const event = await submit(form);
+    const rawInput = form.querySelector('textarea');
+    const error = screen.getByText(/non-finite number/i);
+    const hiddenInput = form.querySelector('input[type="hidden"][name="value"]');
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(submitted).toHaveLength(0);
+    expect(rawInput).toBeInstanceOf(HTMLTextAreaElement);
+    const rawTextarea = rawInput as HTMLTextAreaElement;
+    expect(rawTextarea.getAttribute('aria-invalid')).toBe('true');
+    expect(rawTextarea.getAttribute('aria-describedby')).toContain(error.id);
+    expect(hiddenInput).toBeInstanceOf(HTMLInputElement);
+    expect((hiddenInput as HTMLInputElement).value).toBe('');
+  });
+
   test('blocks invalid submit, renders associated field errors, and focuses the first invalid field', async () => {
     const onsubmitCalls: unknown[] = [];
     const { container } = render(SchemaForm, {

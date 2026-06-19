@@ -145,7 +145,7 @@ describe('schema-form model', () => {
     expect(model.field.description).toContain('cannot be inspected');
   });
 
-  test('creates defaults and uses caller-provided initial values verbatim', () => {
+  test('creates defaults and preserves caller-provided initial values', () => {
     const model = createSchemaFormModel(schema);
     expect(defaultValueForField(model.field)).toEqual({
       name: '',
@@ -158,7 +158,54 @@ describe('schema-form model', () => {
     });
 
     const initial = { name: 'Ada', count: 2, active: true, mode: 'safe' };
-    expect(initialValueForField(model.field, initial)).toEqual(initial);
+    expect(initialValueForField(model.field, initial)).toEqual({
+      ...initial,
+      tags: [],
+      nested: { owner: '' },
+      raw: null,
+    });
+  });
+
+  test('seeds omitted fields in partial initial object and array values', () => {
+    const model = createSchemaFormModel({
+      type: 'object',
+      properties: {
+        name: { type: 'string', default: 'Ada' },
+        active: { type: 'boolean' },
+        nested: {
+          type: 'object',
+          properties: {
+            owner: { type: 'string', default: 'Grace' },
+            count: { type: 'integer' },
+          },
+        },
+        contacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              kind: { type: 'string', default: 'email' },
+              value: { type: 'string' },
+            },
+          },
+        },
+      },
+    });
+
+    expect(
+      initialValueForField(model.field, {
+        active: true,
+        nested: { count: 2 },
+        contacts: [{ value: 'ada@example.com' }],
+        extra: 'preserved',
+      }),
+    ).toEqual({
+      name: 'Ada',
+      active: true,
+      nested: { owner: 'Grace', count: 2 },
+      contacts: [{ kind: 'email', value: 'ada@example.com' }],
+      extra: 'preserved',
+    });
   });
 
   test('reads, writes, prunes, and lists values by schema paths', () => {
