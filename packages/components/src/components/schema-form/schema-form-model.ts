@@ -304,9 +304,19 @@ export function pathKey(path: readonly string[]): string {
 }
 
 export function pathId(path: readonly string[]): string {
-  return path.length === 0
-    ? 'value'
-    : path.map((segment) => segment.replaceAll(/[^a-zA-Z0-9_-]/g, '-')).join('-');
+  return path.length === 0 ? 'value' : path.map(domIdSegment).join('__');
+}
+
+function domIdSegment(segment: string): string {
+  let encoded = '';
+  for (const character of segment) {
+    if (/^[a-zA-Z0-9]$/.test(character)) {
+      encoded += character;
+    } else {
+      encoded += `_${character.codePointAt(0)?.toString(16) ?? '0'}_`;
+    }
+  }
+  return `${segment.length}_${encoded}`;
 }
 
 export function getValueAtPath(value: unknown, path: readonly string[]): unknown {

@@ -167,6 +167,43 @@ describe('SchemaForm', () => {
     expect((hiddenInput as HTMLInputElement).value).toBe('');
   });
 
+  test('renders form-level serialization errors for object schemas', async () => {
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { count: { type: 'number', title: 'Count' } },
+          }),
+        },
+        validate: () => ({ value: { count: Number.NaN } }),
+      },
+    } as const;
+    const submitted: unknown[] = [];
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { count: 1 },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const event = await submit(formFrom(container));
+    const error = screen.getByText(/non-finite number/i);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(submitted).toHaveLength(0);
+    expect(error.id).toMatch(/-value-error$/);
+    expect(error.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(error);
+  });
+
   test('submits edited raw JSON drafts for every array row', async () => {
     const schema = {
       type: 'object',
@@ -200,6 +237,42 @@ describe('SchemaForm', () => {
     await submit(formFrom(container));
 
     expect(submitted).toEqual({ items: [{ ok: 1 }, { ok: 42 }] });
+  });
+
+  test('reindexes raw JSON drafts when removing array rows', async () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          title: 'Items',
+          items: {
+            title: 'Payload',
+            oneOf: [{ type: 'string' }, { type: 'object' }],
+          },
+        },
+      },
+    };
+    let submitted: unknown;
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { items: [{ ok: 1 }, { ok: 2 }] },
+        onsubmit: (value: unknown) => {
+          submitted = value;
+        },
+      },
+    });
+    await flush();
+
+    const rawInputs = within(container).getAllByRole('textbox');
+    expect(rawInputs).toHaveLength(2);
+    await fireEvent.input(rawInputs[1]!, { target: { value: '{"ok":99}' } });
+    await fireEvent.click(within(container).getByRole('button', { name: 'Remove Items item 1' }));
+    await submit(formFrom(container));
+
+    expect(submitted).toEqual({ items: [{ ok: 99 }] });
   });
 
   test('blocks invalid submit, renders associated field errors, and focuses the first invalid field', async () => {

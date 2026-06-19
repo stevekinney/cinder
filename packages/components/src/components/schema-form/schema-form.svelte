@@ -79,6 +79,8 @@
 
   const formId = $derived((rest.id as string | undefined) ?? `${generatedId}-form`);
   const rootFields = $derived(model.field.kind === 'object' ? model.field.fields : [model.field]);
+  const rootError = $derived(model.field.kind === 'object' ? errors[pathKey([])] : undefined);
+  const rootErrorId = $derived(`${formId}-${pathId([])}-error`);
 
   $effect(() => {
     const nextValue = initialValueForField(model.field, value);
@@ -228,11 +230,55 @@
       field.path,
       values.filter((_, candidateIndex) => candidateIndex !== index),
     );
+    rawDrafts = reindexArrayPathState(rawDrafts, field.path, index);
+    errors = reindexArrayPathState(errors, field.path, index);
     const key = pathKey(field.path);
     arrayKeys = {
       ...arrayKeys,
       [key]: (arrayKeys[key] ?? []).filter((_, candidateIndex) => candidateIndex !== index),
     };
+  }
+
+  function reindexArrayPathState<T>(
+    state: Record<string, T>,
+    arrayPath: readonly string[],
+    removedIndex: number,
+  ): Record<string, T> {
+    const prefix = pathKey(arrayPath);
+    const pathPrefix = prefix === '' ? '' : `${prefix}/`;
+    const next: Record<string, T> = {};
+
+    for (const [key, stateValue] of Object.entries(state)) {
+      if (!key.startsWith(pathPrefix)) {
+        next[key] = stateValue;
+        continue;
+      }
+
+      const relativeKey = key.slice(pathPrefix.length);
+      if (relativeKey === '') {
+        next[key] = stateValue;
+        continue;
+      }
+
+      const [indexSegment = '', ...remainingSegments] = relativeKey.split('/');
+      const index = Number(indexSegment);
+      if (!Number.isInteger(index) || index < 0) {
+        next[key] = stateValue;
+        continue;
+      }
+
+      if (index < removedIndex) {
+        next[key] = stateValue;
+        continue;
+      }
+
+      if (index === removedIndex) continue;
+
+      const shiftedKey = [String(index - 1), ...remainingSegments].join('/');
+      next[`${pathPrefix}${shiftedKey}`] = stateValue;
+    }
+
+    return next;
   }
 
   function seedRawDrafts(field: SchemaFormField, currentValue: unknown): Record<string, string> {
@@ -551,6 +597,12 @@
   novalidate={novalidate ?? true}
   onsubmit={handleSubmit}
 >
+  {#if rootError}
+    <p id={rootErrorId} class="cinder-schema-form__error" aria-live="polite" tabindex="-1">
+      {rootError}
+    </p>
+  {/if}
+
   <div class="cinder-schema-form__fields">
     {#each rootFields as field (pathKey(field.path))}
       {@render renderField(field)}

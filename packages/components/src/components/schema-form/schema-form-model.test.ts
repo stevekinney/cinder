@@ -246,7 +246,10 @@ describe('schema-form model', () => {
 
   test('encodes path and enum values for DOM-safe ids and select values', () => {
     expect(pathKey(['a/b', 'c~d'])).toBe('a~1b/c~0d');
-    expect(pathId(['a/b', 'c~d'])).toBe('a-b-c-d');
+    expect(pathId([])).toBe('value');
+    expect(pathId(['foo-bar'])).not.toBe(pathId(['foo', 'bar']));
+    expect(pathId(['tags-0'])).not.toBe(pathId(['tags', '0']));
+    expect(pathId(['a/b', 'c~d'])).toMatch(/^[a-zA-Z0-9_]+(?:__[a-zA-Z0-9_]+)*$/);
     expect(decodeEnumValue(encodeEnumValue(true))).toBe(true);
     expect(decodeEnumValue(encodeEnumValue(2))).toBe(2);
     expect(decodeEnumValue(encodeEnumValue(null))).toBeNull();
