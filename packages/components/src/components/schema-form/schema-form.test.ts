@@ -204,6 +204,15 @@ describe('SchemaForm', () => {
 
   test('blocks invalid submit, renders associated field errors, and focuses the first invalid field', async () => {
     const onsubmitCalls: unknown[] = [];
+    const disabledStatesAtFocus: boolean[] = [];
+    const originalFocus = HTMLInputElement.prototype.focus;
+    HTMLInputElement.prototype.focus = function focusWithDisabledStateCapture(
+      this: HTMLInputElement,
+      options?: FocusOptions,
+    ) {
+      disabledStatesAtFocus.push(this.disabled);
+      return originalFocus.call(this, options);
+    };
     const { container } = render(SchemaForm, {
       props: {
         schema: {
@@ -219,16 +228,21 @@ describe('SchemaForm', () => {
     });
     await flush();
 
-    const form = formFrom(container);
-    const event = await submit(form);
-    const input = screen.getByLabelText(/Name/);
-    const error = screen.getByText(/fewer than 1 characters|required/i);
+    try {
+      const form = formFrom(container);
+      const event = await submit(form);
+      const input = screen.getByLabelText(/Name/);
+      const error = screen.getByText(/fewer than 1 characters|required/i);
 
-    expect(event.defaultPrevented).toBe(true);
-    expect(onsubmitCalls).toHaveLength(0);
-    expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(input.getAttribute('aria-describedby')).toContain(error.id);
-    expect(document.activeElement).toBe(input);
+      expect(event.defaultPrevented).toBe(true);
+      expect(onsubmitCalls).toHaveLength(0);
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(input.getAttribute('aria-describedby')).toContain(error.id);
+      expect(disabledStatesAtFocus).toEqual([false]);
+      expect(document.activeElement).toBe(input);
+    } finally {
+      HTMLInputElement.prototype.focus = originalFocus;
+    }
   });
 
   test('renders and submits string, number, integer, boolean, enum, array, nested object, and raw JSON fields', async () => {

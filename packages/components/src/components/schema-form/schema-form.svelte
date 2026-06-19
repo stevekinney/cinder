@@ -298,6 +298,13 @@
     return { value: nextValue, issues };
   }
 
+  async function reportSubmitIssues(issues: SchemaFormValidationIssue[]) {
+    errors = issuesByPath(issues);
+    setSerializedValue('');
+    submitting = false;
+    await focusFirstError();
+  }
+
   async function focusFirstError() {
     await tick();
     formElement
@@ -343,26 +350,20 @@
     try {
       const raw = rawJsonIssues();
       if (raw.issues.length > 0) {
-        errors = issuesByPath(raw.issues);
-        setSerializedValue('');
-        await focusFirstError();
+        await reportSubmitIssues(raw.issues);
         return;
       }
 
       const candidate = pruneUndefined(raw.value);
       const result = await validateSchemaValue(schema, candidate);
       if (!result.valid) {
-        errors = issuesByPath(result.issues);
-        setSerializedValue('');
-        await focusFirstError();
+        await reportSubmitIssues(result.issues);
         return;
       }
 
       const serialized = serializeValidatedValue(result.value);
       if (!serialized.ok) {
-        errors = issuesByPath([serialized.issue]);
-        setSerializedValue('');
-        await focusFirstError();
+        await reportSubmitIssues([serialized.issue]);
         return;
       }
 
