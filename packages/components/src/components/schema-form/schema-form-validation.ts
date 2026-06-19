@@ -161,7 +161,11 @@ export function serializeValidatedValue(
   value: unknown,
 ): { ok: true; value: string } | { ok: false; issue: SchemaFormValidationIssue } {
   try {
-    return { ok: true, value: JSON.stringify(value) };
+    const serialized = JSON.stringify(value, schemaFormJsonReplacer);
+    if (serialized === undefined) {
+      throw new TypeError('Validated value is not JSON serializable.');
+    }
+    return { ok: true, value: serialized };
   } catch (error) {
     return {
       ok: false,
@@ -174,8 +178,22 @@ export function serializeValidatedValue(
   }
 }
 
+function schemaFormJsonReplacer(_key: string, value: unknown): unknown {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new TypeError('Validated value contains a non-finite number.');
+  }
+  if (typeof value === 'bigint') {
+    throw new TypeError('Validated value contains a bigint, which is not JSON serializable.');
+  }
+  return value;
+}
+
 export function readSchemaFormData(formData: FormData, name = 'value'): unknown {
   const raw = formData.get(name);
   if (typeof raw !== 'string') return undefined;
-  return JSON.parse(raw);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
 }

@@ -218,6 +218,9 @@ describe('schema-form validation', () => {
     formData.set('payload', '{"name":"Ada"}');
     expect(readSchemaFormData(formData, 'payload')).toEqual({ name: 'Ada' });
     expect(readSchemaFormData(formData, 'missing')).toBeUndefined();
+
+    formData.set('payload', '{');
+    expect(readSchemaFormData(formData, 'payload')).toBeUndefined();
   });
 
   test('reports non-serializable validated output', () => {
@@ -228,6 +231,26 @@ describe('schema-form validation', () => {
     if (!serialized.ok) {
       expect(serialized.issue.path).toEqual([]);
       expect(serialized.issue.message).toMatch(/circular|cyclic/i);
+    }
+  });
+
+  test('rejects values that JSON would silently coerce or omit', () => {
+    const nonFiniteNumber = serializeValidatedValue({ count: Number.NaN });
+    expect(nonFiniteNumber.ok).toBe(false);
+    if (!nonFiniteNumber.ok) {
+      expect(nonFiniteNumber.issue.message).toMatch(/non-finite number/i);
+    }
+
+    const bigint = serializeValidatedValue({ count: 1n });
+    expect(bigint.ok).toBe(false);
+    if (!bigint.ok) {
+      expect(bigint.issue.message).toMatch(/bigint/i);
+    }
+
+    const missingRootValue = serializeValidatedValue(undefined);
+    expect(missingRootValue.ok).toBe(false);
+    if (!missingRootValue.ok) {
+      expect(missingRootValue.issue.message).toMatch(/not JSON serializable/i);
     }
   });
 });

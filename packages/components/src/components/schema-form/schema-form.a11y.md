@@ -5,7 +5,7 @@
 - The component renders a native `<form>` element and native text, number, select, and textarea controls wherever the schema shape is inspectable.
 - Every generated field receives a visible label. Required fields include a visual `*` marker; schema validation still owns the actual validity contract.
 - Generated descriptions and errors are connected to their controls with `aria-describedby`.
-- Failed validation sets `aria-invalid="true"` on the invalid field. Boolean fields render as `button role="switch"` with `aria-checked`.
+- Failed validation sets `aria-invalid="true"` on the invalid field. Boolean fields render as `button role="switch"` with `aria-checked` and use `aria-required="true"` when the schema marks them required.
 
 ## Keyboard Interactions
 

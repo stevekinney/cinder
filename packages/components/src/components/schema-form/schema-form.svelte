@@ -45,7 +45,7 @@
     setValueAtPath,
     type SchemaFormField,
   } from './schema-form-model.ts';
-  import type { SchemaFormProps, SchemaFormSchema } from './schema-form.types.ts';
+  import type { SchemaFormOutput, SchemaFormProps, SchemaFormSchema } from './schema-form.types.ts';
   import {
     issuesByPath,
     parseJsonDraft,
@@ -334,7 +334,7 @@
       formValue = result.value;
       errors = {};
       setSerializedValue(serialized.value);
-      await onsubmit?.(result.value as never, event);
+      await onsubmit?.(result.value as SchemaFormOutput<Schema>, event);
 
       if (shouldResumeNativeSubmit()) {
         allowNativeSubmit = true;
@@ -408,6 +408,7 @@
             <button
               type="button"
               class="cinder-schema-form__secondary-button"
+              aria-label={`Remove ${field.label} item ${row.index + 1}`}
               disabled={submitting}
               onclick={() => removeArrayItem(field, row.index)}
             >
@@ -432,6 +433,7 @@
         type="button"
         role="switch"
         aria-checked={booleanValue(field)}
+        aria-required={field.required ? 'true' : undefined}
         aria-describedby={ariaDescribedBy}
         aria-invalid={error ? 'true' : undefined}
         class="cinder-schema-form__switch"

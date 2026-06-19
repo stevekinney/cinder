@@ -171,13 +171,17 @@ describe('SchemaForm', () => {
     await fireEvent.input(screen.getByLabelText(/Name/), { target: { value: 'Updated' } });
     await fireEvent.input(screen.getByLabelText(/Ratio/), { target: { value: '2.5' } });
     await fireEvent.input(screen.getByLabelText(/Count/), { target: { value: '4' } });
-    await fireEvent.keyDown(screen.getByRole('switch', { name: /Active/ }), { key: ' ' });
+    const activeSwitch = screen.getByRole('switch', { name: /Active/ });
+    expect(activeSwitch.getAttribute('aria-required')).toBe('true');
+    await fireEvent.keyDown(activeSwitch, { key: ' ' });
     await fireEvent.change(screen.getByLabelText(/Mode/), { target: { value: '"safe"' } });
 
     await fireEvent.click(screen.getByRole('button', { name: /Add Tags/ }));
-    const tagInputs = screen.getAllByLabelText(/Tag/);
+    expect(screen.getByRole('button', { name: 'Remove Tags item 1' })).toBeTruthy();
+    const tagInputs = screen.getAllByRole('textbox', { name: /Tag/ });
     expect(tagInputs).toHaveLength(2);
     await fireEvent.input(tagInputs[1]!, { target: { value: 'two' } });
+    expect(screen.getByRole('button', { name: 'Remove Tags item 2' })).toBeTruthy();
 
     await fireEvent.input(screen.getByLabelText(/Owner/), { target: { value: 'Grace' } });
     await fireEvent.input(screen.getByLabelText(/Raw payload/), {
@@ -392,7 +396,7 @@ describe('SchemaForm', () => {
     });
     await flush();
 
-    await fireEvent.click(within(container).getAllByRole('button', { name: 'Remove' })[0]!);
+    await fireEvent.click(within(container).getByRole('button', { name: 'Remove Tags item 1' }));
     await submit(formFrom(container));
 
     expect(submitted).toEqual({ tags: ['two'] });
