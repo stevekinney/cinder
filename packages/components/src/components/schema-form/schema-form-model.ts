@@ -290,13 +290,23 @@ function mergeInitialValueWithFieldDefaults(field: SchemaFormField, value: unkno
 export function cloneJsonCompatible(value: unknown): unknown {
   if (value === undefined) return undefined;
   try {
-    const serializedValue = JSON.stringify(value);
+    const serializedValue = JSON.stringify(value, cloneJsonCompatibleReplacer);
     if (serializedValue === undefined) return undefined;
     const clonedValue: unknown = JSON.parse(serializedValue);
     return clonedValue;
   } catch {
     return undefined;
   }
+}
+
+function cloneJsonCompatibleReplacer(_key: string, value: unknown): unknown {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new TypeError('SchemaForm values must contain finite numbers.');
+  }
+  if (typeof value === 'bigint') {
+    throw new TypeError('SchemaForm values must not contain bigint values.');
+  }
+  return value;
 }
 
 export function pathKey(path: readonly string[]): string {

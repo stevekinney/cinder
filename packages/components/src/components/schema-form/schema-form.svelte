@@ -117,6 +117,11 @@
     return typeof current === 'number' ? current : undefined;
   }
 
+  function numberInputValue(field: SchemaFormField): string {
+    const current = numberValue(field);
+    return current === undefined ? '' : String(current);
+  }
+
   function booleanValue(field: SchemaFormField): boolean {
     return getValueAtPath(formValue, field.path) === true;
   }
@@ -161,8 +166,7 @@
   function updateNumber(field: SchemaFormField, event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     if (submitting) {
-      const current = numberValue(field);
-      input.value = current === undefined ? '' : String(current);
+      input.value = numberInputValue(field);
       return;
     }
     const raw = input.value;
@@ -553,7 +557,7 @@
           class="cinder-_input-frame cinder-schema-form__control"
           type="number"
           step={field.kind === 'integer' ? '1' : 'any'}
-          value={numberValue(field)}
+          value={numberInputValue(field)}
           required={field.required}
           disabled={submitting}
           aria-describedby={ariaDescribedBy}

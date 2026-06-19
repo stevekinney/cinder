@@ -223,6 +223,20 @@ describe('schema-form model', () => {
     expect(initialValueForField(model.field, cyclicValue)).toEqual({ name: 'Ada' });
   });
 
+  test('falls back to defaults when initial values contain non-JSON numeric values', () => {
+    const model = createSchemaFormModel({
+      type: 'object',
+      properties: {
+        count: { type: 'number', default: 1 },
+      },
+    });
+
+    expect(cloneJsonCompatible({ count: Number.NaN })).toBeUndefined();
+    expect(cloneJsonCompatible({ count: Number.POSITIVE_INFINITY })).toBeUndefined();
+    expect(cloneJsonCompatible({ count: 1n })).toBeUndefined();
+    expect(initialValueForField(model.field, { count: Number.NaN })).toEqual({ count: 1 });
+  });
+
   test('reads, writes, prunes, and lists values by schema paths', () => {
     const value = { nested: { owner: 'Ada' }, tags: ['one'], missing: undefined };
     expect(getValueAtPath(value, ['nested', 'owner'])).toBe('Ada');

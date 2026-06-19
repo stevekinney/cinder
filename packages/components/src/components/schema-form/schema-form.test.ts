@@ -99,6 +99,23 @@ describe('SchemaForm', () => {
     expect(viaCallback).toEqual(viaNativeSubmit);
   });
 
+  test('renders an empty numeric input value for missing or non-number values', async () => {
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'number', title: 'Count' } },
+        },
+        value: { count: 'not a number' },
+      },
+    });
+    await flush();
+
+    const input = screen.getByLabelText(/Count/);
+    expect(input).toBeInstanceOf(HTMLInputElement);
+    expect((input as HTMLInputElement).value).toBe('');
+  });
+
   test('resumes native submit without forwarding non-submit submitters', async () => {
     const { container } = render(SchemaForm, {
       props: {
