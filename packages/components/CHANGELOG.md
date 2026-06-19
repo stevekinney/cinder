@@ -1,5 +1,88 @@
 # @lostgradient/cinder
 
+## 0.3.0
+
+### Minor Changes
+
+- [#368](https://github.com/stevekinney/cinder/pull/368) [`4e5847e`](https://github.com/stevekinney/cinder/commit/4e5847e7ec6e5960bda464c998c9f2701f29f88c) Thanks [@stevekinney](https://github.com/stevekinney)! - Enrich the component manifest (`components.json`) with structured accessibility metadata and restructure `avoidWhen` guidance.
+  - `avoidWhen` entries change from flat strings to `{ reason, alternative? }` objects, where `alternative` is the kebab-case id of the component to reach for instead. Authored as `@avoidWhen <reason> | <kebab-id>` (the alternative is optional). This is a breaking change to the published manifest schema for external consumers that read `avoidWhen`.
+  - New optional `a11y` metadata per component (`{ pattern?, keyboard?, notes? }`), authored via `@a11yPattern`, `@keyboardShortcut <keys> | <action>`, and `@a11yNote` JSDoc tags. Components without these tags omit the field entirely.
+
+  The manifest generator now also fails if an `avoidWhen.alternative` does not resolve to a real component id.
+
+- [#439](https://github.com/stevekinney/cinder/pull/439) [`a4a414d`](https://github.com/stevekinney/cinder/commit/a4a414dba7d8a714ea8971c5c7ddd5f30c5f2cbd) Thanks [@stevekinney](https://github.com/stevekinney)! - **Breaking:** Removed `TimelineItem` from the public API. The
+  `@lostgradient/cinder/timeline-item` import path (and its `/schema`,
+  `/variables`, `/styles` subpaths) and the top-level `TimelineItem` /
+  `TimelineItemProps` exports are gone.
+
+  `TimelineItem` is now an internal implementation detail of `Timeline` — compose
+  `Timeline` (which renders its items for you) instead of building a rail out of
+  bare `TimelineItem`s. The public timeline surface is `Timeline` and
+  `RunStepTimeline`, which model distinct domains (an entries-driven event rail vs.
+  async run/step state).
+
+- [#428](https://github.com/stevekinney/cinder/pull/428) [`5d0a325`](https://github.com/stevekinney/cinder/commit/5d0a32506b97b51b5955917dda7c2898dceb5d74) Thanks [@stevekinney](https://github.com/stevekinney)! - Retune the color palette around an indigo brand, polish the command-palette and timeline, and remove the previously-deprecated experimental-timeline aliases (a pre-1.0 export-map removal shipping in this minor — see the migration note below).
+
+  **Palette (visible default change for every consumer):**
+  - Brand accent is now indigo (hue 270) and carries white labels in light mode. `--cinder-accent` moves to `oklch(50% 0.22 270)` (light) / `oklch(72% 0.14 270)` (dark) and `--cinder-accent-contrast` flips to white in light mode — primary buttons, the active command-palette item, and every solid accent fill show white text on indigo (6.45:1, clears WCAG AA). `--cinder-accent-text` (links/icons) and the focus ring re-hue automatically; the ring's light-arm lightness clamp drops 0.58 → 0.55 so the indigo ring keeps ≥3:1 (WCAG 1.4.11) on near-white surfaces.
+  - Info status nudged hue 245 → 230 so the blue "info" state no longer competes with the indigo brand.
+  - The 8 categorical chart series are retuned: brand-safe (no hue in 248–292) and strongly distinguishable in normal vision (min CIEDE2000 ΔE00 ≥ 12). Each arm additionally keeps a minimum pairwise CIE L\* separation of ≥ 4 so lightness stays a usable secondary distinguishing channel when hue contrast degrades for color-vision-deficient viewers. The light and dark arms are tuned independently for in-theme contrast and gamut, so a series is not guaranteed the same hue across themes.
+  - Status fills (success/warning/danger) refitted to the sRGB gamut — several were authored over-chroma and silently clamped (warning especially). The danger button's hover and active states are now authored explicitly instead of derived by darkening the fill at constant chroma: red sits near the gamut boundary, so the old constant-chroma derivation clamped the pressed/hover states to a duller red than specified. Each light-arm state is now pinned to its in-gamut chroma maximum, so the darkening is both monotonic and exactly rendered (white labels stay ≥ 6.7:1).
+  - A new gate, `check-token-contrast.test.ts` (`bun run colors:contrast`), parses the actual token values and asserts WCAG contrast, sRGB-gamut integrity, and chart distinguishability so the palette can't silently regress.
+
+  **Command palette:** the search input no longer carries its own 3px focus ring (it read as a stray floating box around the edgeless input). Keyboard focus is now indicated by the search row's bottom border recoloring to the ring color on `:focus-within`; the border is reserved at 2px at rest so focusing causes no layout shift.
+
+  **Timeline:** the connector line now runs continuously from each marker's center to the next marker's center, instead of leaving stubby gaps that didn't reach the dots. The geometry is derived from the marker's center coordinates — the marker is a fixed-size box (`--_cinder-timeline-marker-size`) that custom `marker` snippets fill rather than resize — so the line meets the dot in the default and custom-marker examples alike. The previous fixed-offset calibration left the line short of the next dot.
+
+  **Migration — removed the previously-deprecated `@lostgradient/cinder/experimental/timeline` and `@lostgradient/cinder/experimental/timeline-item` export paths.** These aliases were deprecated once the stable paths shipped; removing them pre-1.0 ships as a minor (no major bump). Import from `@lostgradient/cinder/timeline` and `@lostgradient/cinder/timeline-item` instead.
+
+- [#367](https://github.com/stevekinney/cinder/pull/367) [`c6764d0`](https://github.com/stevekinney/cinder/commit/c6764d04a42547ee2b788bad41d6b1112a5d650c) Thanks [@stevekinney](https://github.com/stevekinney)! - Add seven operational components for agent/workflow tooling: `FacetedFilterBar`
+  ([#352](https://github.com/stevekinney/cinder/issues/352)), `EventStreamViewer` ([#354](https://github.com/stevekinney/cinder/issues/354)), `PayloadInspector` ([#355](https://github.com/stevekinney/cinder/issues/355)), `RunStepTimeline`
+  ([#356](https://github.com/stevekinney/cinder/issues/356)), `DateRangeField` ([#357](https://github.com/stevekinney/cinder/issues/357)), `SecretValueField` ([#359](https://github.com/stevekinney/cinder/issues/359)), and
+  `InvocationRuleBuilder` ([#360](https://github.com/stevekinney/cinder/issues/360)). Also adds operational-payload examples to
+  `JsonViewer` ([#358](https://github.com/stevekinney/cinder/issues/358)).
+
+### Patch Changes
+
+- [#414](https://github.com/stevekinney/cinder/pull/414) [`77ec914`](https://github.com/stevekinney/cinder/commit/77ec91420c5f7fe91b45882e2007a83a0871d619) Thanks [@stevekinney](https://github.com/stevekinney)! - Resolve component-side findings from the keyboard/ARIA accessibility audit ([#382](https://github.com/stevekinney/cinder/issues/382), [#377](https://github.com/stevekinney/cinder/issues/377), [#383](https://github.com/stevekinney/cinder/issues/383)).
+  - **`Autocomplete`, `Combobox`, `Dropdown`** — the keyboard-active option in floating lists is now an unambiguous, WCAG 1.4.11-clearing indicator. Two parts: (1) `Autocomplete` previously pinned its active-row background to `--cinder-surface-raised` — the exact token the floating panel uses for its own background — so the highlight disappeared in light mode; that component-local override is removed so the row inherits the shared treatment. (2) The shared `.cinder-_option-row[data-cinder-active]` rule now adds an inset `--cinder-ring-color` keyboard-cursor ring on top of the `--cinder-surface-hover` background. The background tint alone is a deliberately subtle ~1.1:1 step (fine for pointer hover) but fails the 3:1 non-text-contrast floor for the _sole_ keyboard-position indicator; the ring clears it in both themes. The ring is scoped to the keyboard cursor (`data-cinder-active`), keeping it visually distinct from a committed `aria-selected` choice, and falls back to a `forced-colors` `outline: Highlight`. This applies to every floating list built on `.cinder-_option-row` (Autocomplete, Combobox, Dropdown).
+  - **`Avatar`** — documented that a placeholder-only avatar (no `src`, no `name`) renders a decorative `aria-hidden` placeholder and has no accessible name; consumers that need such a slot announced (e.g. an "unassigned" avatar) can pass `aria-label` through the forwarded rest props, which lands on the root element. No behavior change.
+  - **`DiffStatistics`** — clarified the `variant` prop description (`default` shows full statistic markup; `compact` trims it for tight surfaces) and distinguished it from the separate `density` prop, which adjusts control height.
+
+- [#421](https://github.com/stevekinney/cinder/pull/421) [`7aa96e4`](https://github.com/stevekinney/cinder/commit/7aa96e4251589a24f31d0d118d7775950b5a6e06) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix the component-example generator's metadata extraction so escaped delimiters
+  and line continuations inside an example's `title`/`description` string literal
+  no longer truncate the value or leak the `<script module>` block into the
+  published `code` field ([#420](https://github.com/stevekinney/cinder/issues/420)). The extraction grammar is now escape-aware and
+  the parsed value is decoded to its true string. No existing example artifact
+  changes — this only affects future examples whose metadata contains an escape
+  sequence.
+
+- [#428](https://github.com/stevekinney/cinder/pull/428) [`5d0a325`](https://github.com/stevekinney/cinder/commit/5d0a32506b97b51b5955917dda7c2898dceb5d74) Thanks [@stevekinney](https://github.com/stevekinney)! - Tame the overlay entrance/exit motion. The shared `--cinder-ease-spring` timing function was a back-ease (`cubic-bezier(0.34, 1.56, 0.64, 1)`) whose `y1` control point of `1.56` overshot to 156% of the animated travel before settling. On `Sheet` and `Drawer` — where the panel translates a full 100% of its own width/height — that overshoot flung the panel well past the viewport edge mid-transition. `Modal` and `CommandPalette` (which share the token) showed the same pop on a smaller scale. The token is now a settled ease-out (`cubic-bezier(0.22, 1, 0.36, 1)`): the same snappy decelerate-in feel with no overshoot, so overlays slide cleanly to rest. No API change.
+
+- [#412](https://github.com/stevekinney/cinder/pull/412) [`ed74f22`](https://github.com/stevekinney/cinder/commit/ed74f2228f933cda5f8219237765e738ffd848f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Add descriptions for previously-undocumented public props so every prop now renders a Description in its generated README table and JSON schema ([#373](https://github.com/stevekinney/cinder/issues/373)). Documentation only — no runtime or type-shape changes.
+
+- [#410](https://github.com/stevekinney/cinder/pull/410) [`52efdcf`](https://github.com/stevekinney/cinder/commit/52efdcfecb06e4a93c280c85dfeb5373e85b4ba6) Thanks [@stevekinney](https://github.com/stevekinney)! - Correct generated schema/documentation prop surfaces flagged in the component audit ([#393](https://github.com/stevekinney/cinder/issues/393)).
+  - **`Textarea`** — `required` and `maxlength` now appear as first-class typed props (`boolean` / `number`) in the schema and README props table instead of being silently dropped as inherited HTML attributes. Both already drive component behavior (form validation wiring and the `showCount` character counter).
+  - **`Timeline`** — the internal `role` escape-hatch is now typed `never` instead of `unknown`, matching the public contract (which omits `role` so consumers cannot clobber the `<ol>`'s implicit `list` role). No public API change.
+  - **`TreeItem`** — replaced a leaked internal note ("see tree.svelte plan for rationale") on the `branch` prop with a consumer-facing description of branch semantics.
+
+  Also regenerates schema artifacts that had drifted from their source types on `main`, surfacing two props that were already accepted but undocumented:
+  - **`AvatarGroup`** — `label` (`string`, default `"Collaborators"`) now appears in the schema and README as the accessible name for the avatar stack.
+  - **`Popover`** — `closeOnEscape` (`boolean`, default `true`) now appears in the schema and README; it controls whether Escape closes the Popover (set `false` when a parent composite widget owns Escape for the whole interaction).
+
+- [#436](https://github.com/stevekinney/cinder/pull/436) [`4a68b09`](https://github.com/stevekinney/cinder/commit/4a68b09108bdf9b3501f730293631c286840d6ef) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix two component CSS defects surfaced by the playground:
+  - **Timeline connector** now spans each marker's center to the next marker's
+    center instead of stopping `space-1` short, so the rail reads as one
+    continuous line through the dots rather than disconnected stubs (notably with
+    custom marker snippets). The connector's `bottom` offset now accounts for the
+    marker's own `margin-top` inside the next event grid.
+  - **Code block** no longer renders per-token background bands in dark mode. The
+    generated `<code>` element (and Shiki line/token spans) are forced transparent
+    so the single `<pre>` surface shows through as one uniform field; only token
+    foreground colors apply. The header copy button also gains real button
+    affordance — a 28px-square hit target (clearing WCAG 2.5.8) with a subtle
+    resting chip background — instead of a bare floating glyph.
+
 ## 0.2.0
 
 ### Minor Changes
