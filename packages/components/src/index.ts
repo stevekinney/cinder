@@ -492,15 +492,6 @@ export type { NavigationItemProps } from './components/navigation-item/index.ts'
 export { default as NumberInput } from './components/number-input/index.ts';
 export type { NumberInputProps } from './components/number-input/index.ts';
 
-export { default as PermissionMatrix } from './components/permission-matrix/index.ts';
-export type {
-  PermissionMatrixAxisItem,
-  PermissionMatrixCellState,
-  PermissionMatrixProps,
-  PermissionMatrixSchemaProps,
-  PermissionMatrixStateLabels,
-} from './components/permission-matrix/index.ts';
-
 export { default as Pagination } from './components/pagination/index.ts';
 export type { PaginationProps } from './components/pagination/index.ts';
 
@@ -510,6 +501,15 @@ export type {
   PayloadInspectorProps,
   PayloadInspectorView,
 } from './components/payload-inspector/index.ts';
+
+export { default as PermissionMatrix } from './components/permission-matrix/index.ts';
+export type {
+  PermissionMatrixAxisItem,
+  PermissionMatrixCellState,
+  PermissionMatrixProps,
+  PermissionMatrixSchemaProps,
+  PermissionMatrixStateLabels,
+} from './components/permission-matrix/index.ts';
 
 export { default as PhoneInput } from './components/phone-input/index.ts';
 export type {
