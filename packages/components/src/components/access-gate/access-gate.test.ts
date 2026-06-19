@@ -40,6 +40,8 @@ describe('AccessGate', () => {
     const { container } = render(AccessGate, {
       granted: true,
       reason: 'Requires scope: workflows:cancel',
+      id: 'cancel-access-gate',
+      'data-access-scope': 'workflows:cancel',
       children: markupSnippet('<button type="button">Cancel</button>'),
     });
 
@@ -50,6 +52,8 @@ describe('AccessGate', () => {
     expect(container.firstElementChild).toBe(passthrough);
     expect(passthrough?.getAttribute('role')).toBeNull();
     expect(passthrough?.getAttribute('tabindex')).toBeNull();
+    expect(passthrough?.id).toBe('cancel-access-gate');
+    expect(passthrough?.dataset['accessScope']).toBe('workflows:cancel');
     expect(passthrough?.firstElementChild).toBe(button);
     expect(button?.disabled).toBe(false);
   });
