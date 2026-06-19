@@ -514,6 +514,95 @@ describe('SchemaForm', () => {
     expect(screen.getByText('Name is unavailable.')).toBeTruthy();
   });
 
+  test('keeps controls frozen when a new submit starts during invalid-submit focus', async () => {
+    let releaseFirstValidation!: () => void;
+    let releaseSecondValidation!: () => void;
+    const firstValidationGate = new Promise<void>((resolve) => {
+      releaseFirstValidation = resolve;
+    });
+    const secondValidationGate = new Promise<void>((resolve) => {
+      releaseSecondValidation = resolve;
+    });
+    const submitted: unknown[] = [];
+    let validationCalls = 0;
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'async-overlap-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { name: { type: 'string', title: 'Name' } },
+            required: ['name'],
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          validationCalls += 1;
+          if (validationCalls === 1) {
+            await firstValidationGate;
+            return {
+              issues: [{ path: ['name'], message: 'First invalid.' }],
+            };
+          }
+
+          await secondValidationGate;
+          return { value };
+        },
+      },
+    } as const;
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { name: 'Ada' },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const form = formFrom(container);
+    const input = screen.getByLabelText(/Name/);
+    const originalFocus = HTMLInputElement.prototype.focus;
+    let secondSubmitDispatched = false;
+    HTMLInputElement.prototype.focus = function dispatchSecondSubmitDuringFocus(
+      this: HTMLInputElement,
+      options?: FocusOptions,
+    ) {
+      if (!secondSubmitDispatched) {
+        secondSubmitDispatched = true;
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
+      return originalFocus.call(this, options);
+    };
+
+    try {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+      expect(input).toHaveProperty('disabled', true);
+
+      releaseFirstValidation();
+      await flush();
+      await flush();
+
+      expect(secondSubmitDispatched).toBe(true);
+      expect(validationCalls).toBe(2);
+      expect(input).toHaveProperty('disabled', true);
+      expect(screen.getByRole('button', { name: /Validating/ })).toHaveProperty('disabled', true);
+
+      releaseSecondValidation();
+      await flush();
+      await flush();
+
+      expect(submitted).toEqual([{ name: 'Ada' }]);
+      expect(input).toHaveProperty('disabled', false);
+    } finally {
+      HTMLInputElement.prototype.focus = originalFocus;
+    }
+  });
+
   test('freezes controls during async validation so late edits cannot change the submitted payload', async () => {
     let releaseValidation!: () => void;
     const validationGate = new Promise<void>((resolve) => {

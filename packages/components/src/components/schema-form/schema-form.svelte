@@ -74,6 +74,7 @@
   let serializedValue = $state('');
   let submitting = $state(false);
   let allowNativeSubmit = false;
+  let activeSubmitId = 0;
   let arrayKeyCounter = 0;
   let arrayKeys = $state<Record<string, string[]>>({});
 
@@ -344,15 +345,17 @@
     return { value: nextValue, issues };
   }
 
-  async function reportSubmitIssues(issues: SchemaFormValidationIssue[]) {
+  async function reportSubmitIssues(issues: SchemaFormValidationIssue[], submitId: number) {
+    if (activeSubmitId !== submitId) return;
     errors = issuesByPath(issues);
     setSerializedValue('');
     submitting = false;
-    await focusFirstError();
+    await focusFirstError(submitId);
   }
 
-  async function focusFirstError() {
+  async function focusFirstError(submitId: number) {
     await tick();
+    if (activeSubmitId !== submitId) return;
     formElement
       ?.querySelector<HTMLElement>(
         '[aria-invalid="true"], [data-cinder-invalid="true"], .cinder-schema-form__error',
@@ -392,24 +395,26 @@
     event.preventDefault();
     if (submitting) return;
 
+    const submitId = activeSubmitId + 1;
+    activeSubmitId = submitId;
     submitting = true;
     try {
       const raw = rawJsonIssues();
       if (raw.issues.length > 0) {
-        await reportSubmitIssues(raw.issues);
+        await reportSubmitIssues(raw.issues, submitId);
         return;
       }
 
       const candidate = pruneUndefined(raw.value);
       const result = await validateSchemaValue(schema, candidate);
       if (!result.valid) {
-        await reportSubmitIssues(result.issues);
+        await reportSubmitIssues(result.issues, submitId);
         return;
       }
 
       const serialized = serializeValidatedValue(result.value);
       if (!serialized.ok) {
-        await reportSubmitIssues([serialized.issue]);
+        await reportSubmitIssues([serialized.issue], submitId);
         return;
       }
 
@@ -424,7 +429,7 @@
         formElement?.requestSubmit(nativeSubmitter(event));
       }
     } finally {
-      submitting = false;
+      if (activeSubmitId === submitId) submitting = false;
     }
   }
 </script>
