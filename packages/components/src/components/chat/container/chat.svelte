@@ -349,11 +349,10 @@
       return virtualItem;
     }
 
+    const scrollTop = viewport?.scrollTop ?? chatVirtualizer.scrollOffset;
     const start = Math.max(
       0,
-      chatVirtualizer.scrollOffset -
-        chatVirtualizer.scrollPaddingStart +
-        historyAnchorViewportOffset,
+      scrollTop - chatVirtualizer.scrollPaddingStart + historyAnchorViewportOffset,
     );
     return {
       ...virtualItem,
@@ -595,7 +594,7 @@
       const delta = newTotalSize - pending.previousTotalSize;
       const targetScrollTop = pending.previousScrollTop + delta;
       chatVirtualizer.scrollToOffset(targetScrollTop, { behavior: 'instant' });
-      historyAnchorRestoredScrollTop = chatVirtualizer.scrollOffset;
+      historyAnchorRestoredScrollTop = viewport?.scrollTop ?? chatVirtualizer.scrollOffset;
     } else {
       clearHistoryAnchor();
       const newTotalSize = viewport.scrollHeight;

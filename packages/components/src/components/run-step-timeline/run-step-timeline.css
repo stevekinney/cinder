@@ -174,7 +174,7 @@
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-xs);
     color: var(--cinder-text-subtle);
-    background: var(--cinder-surface-sunken);
+    background: var(--cinder-surface-inset);
     border-radius: var(--cinder-radius-sm);
     padding: var(--cinder-space-2) var(--cinder-space-3);
     white-space: pre-wrap;

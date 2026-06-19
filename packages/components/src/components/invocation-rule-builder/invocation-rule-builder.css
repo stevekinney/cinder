@@ -17,7 +17,7 @@
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
-    box-shadow: var(--cinder-shadow-xs);
+    box-shadow: var(--cinder-shadow-sm);
   }
 
   /* Rule header row: label + move/remove controls */

@@ -118,7 +118,7 @@
 <style>
   .chat-reasoning {
     --cinder-chat-reasoning-bg: var(--cinder-surface-inset);
-    --cinder-chat-reasoning-border: var(--cinder-border-accent, var(--cinder-border));
+    --cinder-chat-reasoning-border: var(--cinder-border);
     --cinder-chat-reasoning-text: var(--cinder-text-muted);
 
     display: flex;

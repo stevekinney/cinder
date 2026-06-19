@@ -1,12 +1,14 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: DataTable } = await import('./data-table.svelte');
+
+afterEach(() => cleanup());
 
 const columns = [
   { key: 'name', label: 'Name', sortable: true },
@@ -18,6 +20,18 @@ const rows = [
   { name: 'Ada Lovelace', role: 'Mathematician', commits: 142 },
   { name: 'Grace Hopper', role: 'Computer Scientist', commits: 98 },
 ];
+
+function makeRows(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    name: `Person ${index}`,
+    role: `Role ${index % 5}`,
+    commits: index,
+  }));
+}
+
+function bodyDataRows(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>('tbody tr:not([aria-hidden="true"])'));
+}
 
 describe('DataTable — table structure', () => {
   test('renders a semantic <table> element', () => {
@@ -309,5 +323,111 @@ describe('DataTable — align mapping', () => {
     const { container } = render(DataTable, { columns: startColumns, rows: startRows });
     const headerCell = container.querySelector('thead th');
     expect(headerCell?.getAttribute('data-cinder-align')).toBe('left');
+  });
+});
+
+describe('DataTable — virtualized rows', () => {
+  test('windows <tbody> rows while preserving table and header semantics', async () => {
+    const manyRows = makeRows(10_000);
+    const { container } = render(DataTable, {
+      columns,
+      rows: manyRows,
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 2,
+    });
+
+    await waitFor(() => expect(bodyDataRows(container).length).toBeGreaterThan(0));
+
+    const table = container.querySelector('table');
+    expect(table?.getAttribute('aria-rowcount')).toBe('10001');
+    expect(container.querySelectorAll('thead th[scope="col"]')).toHaveLength(columns.length);
+    expect(bodyDataRows(container).length).toBeLessThan(10_000 / 10);
+    expect(bodyDataRows(container).length).toBeLessThanOrEqual(14);
+    expect(bodyDataRows(container)[0]?.getAttribute('aria-rowindex')).toBe('2');
+    expect(bodyDataRows(container)[0]?.querySelector('th[scope="row"]')?.textContent).toContain(
+      'Person 0',
+    );
+  });
+
+  test('scrolling renders the expected row window with full-dataset row indexes', async () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: makeRows(1_000),
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 2,
+    });
+
+    const wrapper = container.querySelector<HTMLElement>('.cinder-data-table');
+    if (!wrapper) throw new Error('Expected DataTable wrapper');
+
+    wrapper.scrollTop = 1_000;
+    await fireEvent.scroll(wrapper);
+
+    await waitFor(() =>
+      expect(bodyDataRows(container).some((row) => row.textContent?.includes('Person 50'))).toBe(
+        true,
+      ),
+    );
+    const row = bodyDataRows(container).find((element) =>
+      element.textContent?.includes('Person 50'),
+    );
+
+    expect(row?.getAttribute('aria-rowindex')).toBe('52');
+    expect(container.querySelector('table')?.getAttribute('aria-rowcount')).toBe('1001');
+  });
+
+  test('keyboard navigation scrolls an off-window row into view and keeps it reachable', async () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: makeRows(200),
+      virtualized: true,
+      rowHeight: 20,
+      height: '200px',
+      overscan: 2,
+    });
+
+    const firstRow = bodyDataRows(container)[0];
+    if (!firstRow) throw new Error('Expected first rendered data row');
+    firstRow.focus();
+    expect(document.activeElement).toBe(firstRow);
+
+    await fireEvent.keyDown(firstRow, { key: 'End' });
+
+    await waitFor(() =>
+      expect(bodyDataRows(container).some((row) => row.textContent?.includes('Person 199'))).toBe(
+        true,
+      ),
+    );
+    const lastRow = bodyDataRows(container).find((row) => row.textContent?.includes('Person 199'));
+    if (!lastRow) throw new Error('Expected last rendered data row');
+    expect(lastRow?.getAttribute('aria-rowindex')).toBe('201');
+    expect(lastRow?.getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(lastRow);
+
+    const wrapper = container.querySelector<HTMLElement>('.cinder-data-table');
+    if (!wrapper) throw new Error('Expected DataTable wrapper');
+    wrapper.scrollTop = 0;
+    await fireEvent.scroll(wrapper);
+    await waitFor(() =>
+      expect(bodyDataRows(container).some((row) => row.textContent?.includes('Person 0'))).toBe(
+        true,
+      ),
+    );
+
+    wrapper.scrollTop = 3_800;
+    await fireEvent.scroll(wrapper);
+    await waitFor(() =>
+      expect(bodyDataRows(container).some((row) => row.textContent?.includes('Person 199'))).toBe(
+        true,
+      ),
+    );
+    const restoredLastRow = bodyDataRows(container).find((row) =>
+      row.textContent?.includes('Person 199'),
+    );
+    expect(restoredLastRow?.getAttribute('tabindex')).toBe('0');
   });
 });

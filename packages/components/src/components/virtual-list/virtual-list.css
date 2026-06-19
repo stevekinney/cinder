@@ -1,0 +1,30 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  .cinder-virtual-list {
+    --cinder-virtual-list-height: 20rem;
+
+    display: block;
+    block-size: var(--cinder-virtual-list-height, 20rem);
+    inline-size: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    contain: layout paint;
+  }
+
+  .cinder-virtual-list__spacer {
+    position: relative;
+    min-block-size: 100%;
+    inline-size: 100%;
+  }
+
+  .cinder-virtual-list__window {
+    position: absolute;
+    inset-inline: 0;
+  }
+
+  .cinder-virtual-list__row {
+    overflow: hidden;
+  }
+}

@@ -1,3 +1,3 @@
-const variables: readonly string[] = [];
+const variables: readonly string[] = ['--cinder-data-table-height'];
 
 export default variables;

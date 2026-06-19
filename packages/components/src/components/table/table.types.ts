@@ -1,4 +1,5 @@
 import type { Snippet } from 'svelte';
+import type { HTMLTableAttributes } from 'svelte/elements';
 /** Sort direction. */
 export type SortDirection = 'ascending' | 'descending';
 /** Bound sort state shape. */
@@ -48,7 +49,7 @@ export type TableContext = {
  * columns, or aggregate. The consumer owns data ordering and dispatches sort
  * intents through the `sort` bindable.
  */
-export type TableProps = {
+export type TableProps = Omit<HTMLTableAttributes, 'class'> & {
   /**
    * Bound sort state. When the user activates a sortable header, this prop
    * is updated to reflect the new column / direction.

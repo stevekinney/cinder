@@ -70,7 +70,7 @@
 
   .cinder-date-range-field__preset-btn[aria-pressed='true'] {
     background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-    border-color: var(--cinder-accent-border);
+    border-color: var(--cinder-accent);
     color: var(--cinder-accent-text);
   }
 

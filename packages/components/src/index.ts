@@ -842,6 +842,20 @@ export type {
   TypographyVariant,
 } from './components/typography/index.ts';
 
+export {
+  default as VirtualList,
+  getFixedVirtualWindow,
+  parsePixelLength,
+  resolveVirtualItemHeight,
+  resolveVirtualOverscan,
+} from './components/virtual-list/index.ts';
+export type {
+  FixedVirtualWindow,
+  FixedVirtualWindowItem,
+  VirtualListProps,
+  VirtualListRowContext,
+} from './components/virtual-list/index.ts';
+
 export { default as VisuallyHidden } from './components/visually-hidden/index.ts';
 export type {
   VisuallyHiddenElement,

@@ -27,4 +27,29 @@
   .cinder-data-table.cinder-table-scroll {
     display: block;
   }
+
+  .cinder-data-table[data-cinder-virtualized] {
+    --cinder-data-table-height: 24rem;
+
+    block-size: var(--cinder-data-table-height, 24rem);
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    contain: layout paint;
+  }
+
+  .cinder-data-table[data-cinder-virtualized] .cinder-table__row[data-cinder-virtual-row] {
+    block-size: var(--_cinder-data-table-row-height, 44px);
+  }
+
+  .cinder-data-table[data-cinder-virtualized]
+    .cinder-table__row[data-cinder-virtual-row]:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .cinder-data-table__virtual-spacer-cell {
+    padding: 0;
+    border: 0;
+  }
 }

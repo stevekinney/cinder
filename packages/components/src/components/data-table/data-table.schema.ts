@@ -22,6 +22,30 @@ const schema = {
       description:
         'When true, wraps the table in a `.cinder-table-scroll` container that\nenables horizontal overflow scrolling on small viewports.',
     },
+    virtualized: {
+      type: 'boolean',
+      description:
+        'When true, renders only the visible `<tbody>` row window plus spacer rows.\nRequires a fixed row height. This is intended for large, append-only tables\nsuch as live logs or event streams.',
+    },
+    rowHeight: {
+      type: 'number',
+      description: 'Fixed body row height in pixels for virtualized mode.\nDefaults to 44.',
+    },
+    overscan: {
+      type: 'number',
+      description:
+        'Extra body rows rendered before and after the visible virtualized window.\nDefaults to 5.',
+    },
+    height: {
+      type: 'string',
+      description:
+        'CSS block-size for the virtualized native scroll container.\nDefaults to `"24rem"` when `virtualized` is true.',
+    },
+    stickToBottom: {
+      type: 'boolean',
+      description:
+        'When true in virtualized mode, appending rows while scrolled to the bottom\nkeeps the newest row pinned in view. Appending while scrolled up does not\nchange the viewport.',
+    },
     class: {
       type: 'string',
       description:

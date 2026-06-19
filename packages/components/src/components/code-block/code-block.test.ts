@@ -138,6 +138,16 @@ describe('CodeBlock — static structure', () => {
     expect(css).toContain('@media (prefers-color-scheme: dark)');
   });
 
+  test('code surface background uses one component-owned light-dark declaration', async () => {
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+    const lightDarkCount = css.match(/\blight-dark\(/g)?.length ?? 0;
+
+    expect(css).toContain('--_cinder-code-block-code-surface: light-dark(');
+    expect(css).toContain('background: var(--_cinder-code-block-code-surface);');
+    expect(css).toContain('background: var(--_cinder-code-block-code-surface) !important;');
+    expect(lightDarkCount).toBe(1);
+  });
+
   test('stable viewport carries inset focus ring (regression #398)', async () => {
     // .cinder-code-block has overflow:hidden, so the standard outset focus ring is
     // clipped. The fix adds an INSET box-shadow ring to the stable focusable
