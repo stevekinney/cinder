@@ -2984,6 +2984,36 @@
       }
     },
     {
+      "name": "PermissionMatrix",
+      "id": "permission-matrix",
+      "import": "@lostgradient/cinder/permission-matrix",
+      "exportName": "PermissionMatrix",
+      "category": "data-display",
+      "status": "alpha",
+      "purpose": "Categorical permission matrix for scanning discrete access states across scopes and operations.",
+      "tags": ["matrix", "permission", "authorization", "table"],
+      "useWhen": [
+        "Showing whether scopes, roles, or policy categories grant specific operations.",
+        "Each cell represents a discrete state such as granted, denied, or not applicable."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing numeric density or magnitude across two categorical dimensions — use matrix-chart instead."
+        },
+        {
+          "reason": "Rendering editable permissions — use a purpose-built form or data-grid instead."
+        }
+      ],
+      "related": ["matrix-chart", "data-grid", "table"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/permission-matrix/schema",
+        "variables": "@lostgradient/cinder/permission-matrix/variables",
+        "examples": "@lostgradient/cinder/permission-matrix/examples"
+      }
+    },
+    {
       "name": "PhoneInput",
       "id": "phone-input",
       "import": "@lostgradient/cinder/phone-input",
