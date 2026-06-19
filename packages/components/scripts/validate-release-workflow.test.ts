@@ -21,6 +21,17 @@ Release notes.
     ).toEqual(['@lostgradient/cinder', '@cinder/playground']);
   });
 
+  test('reports malformed changeset front matter with a targeted error', () => {
+    expect(() =>
+      parseChangesetPackageNames(`---
+'@cinder/playground': [
+---
+
+Broken release note.
+`),
+    ).toThrow(/changeset has invalid YAML front matter/);
+  });
+
   test('reports pending changesets for ignored packages', () => {
     const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cinder-release-workflow-'));
     const changesetDirectory = join(temporaryDirectory, '.changeset');

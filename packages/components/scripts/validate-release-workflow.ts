@@ -77,6 +77,10 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
+function errorMessageFrom(error: unknown): string {
+  return error instanceof Error && error.message.length > 0 ? error.message : String(error);
+}
+
 function loadIgnoredChangesetPackages(configurationPath: string): string[] {
   let rawConfiguration: string;
   try {
@@ -104,12 +108,23 @@ function loadIgnoredChangesetPackages(configurationPath: string): string[] {
   return ignoredPackages;
 }
 
-export function parseChangesetPackageNames(markdown: string): string[] {
+export function parseChangesetPackageNames(
+  markdown: string,
+  changesetLabel = 'changeset',
+): string[] {
   const frontmatterMatch = /^---\r?\n(?<frontmatter>[\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(markdown);
   const frontmatter = frontmatterMatch?.groups?.['frontmatter'];
   if (frontmatter === undefined) return [];
 
-  const parsedFrontmatter: unknown = loadYaml(frontmatter);
+  let parsedFrontmatter: unknown;
+  try {
+    parsedFrontmatter = loadYaml(frontmatter);
+  } catch (error) {
+    throw new Error(`${changesetLabel} has invalid YAML front matter: ${errorMessageFrom(error)}`, {
+      cause: error,
+    });
+  }
+
   if (!isObjectRecord(parsedFrontmatter)) return [];
 
   return Object.entries(parsedFrontmatter)
@@ -130,6 +145,7 @@ export function findIgnoredPackageChangesets(
       const filePath = join(changesetDirectory, entry.name);
       const ignoredChangesetPackages = parseChangesetPackageNames(
         readFileSync(filePath, 'utf8'),
+        filePath,
       ).filter((packageName) => ignoredPackageSet.has(packageName));
 
       return ignoredChangesetPackages.length > 0
@@ -252,10 +268,15 @@ function runValidation(): void {
 
   pass('No NODE_AUTH_TOKEN or NPM_TOKEN anywhere in release.yaml (job/workflow env safe)');
 
-  const ignoredPackageChangesets = findIgnoredPackageChangesets(
-    changesetDirectoryPath,
-    loadIgnoredChangesetPackages(changesetsConfigurationPath),
-  );
+  let ignoredPackageChangesets: IgnoredPackageChangeset[];
+  try {
+    ignoredPackageChangesets = findIgnoredPackageChangesets(
+      changesetDirectoryPath,
+      loadIgnoredChangesetPackages(changesetsConfigurationPath),
+    );
+  } catch (error) {
+    fail(errorMessageFrom(error));
+  }
 
   if (ignoredPackageChangesets.length > 0) {
     const formattedChangesets = ignoredPackageChangesets
