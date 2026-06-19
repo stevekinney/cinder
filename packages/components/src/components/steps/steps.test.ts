@@ -314,6 +314,13 @@ describe('Steps — interactive step items', () => {
       /\.cinder-steps\[data-cinder-orientation='vertical'\]\s*\.cinder-steps__interactive\.cinder-steps__body\s*\{[^}]*padding-bottom:\s*var\(--cinder-space-4\);/m,
     );
   });
+
+  test('vertical step bodies align label content with the marker row', () => {
+    const match = stepsCss.match(
+      /\.cinder-steps\[data-cinder-orientation='vertical'\]\s*\.cinder-steps__body\s*\{(?<body>[^}]*)\}/m,
+    );
+    expect(match?.groups?.['body']).toContain('padding-block-start: 0;');
+  });
 });
 
 // Layout geometry is not observable in happy-dom (no layout engine), so these
@@ -499,6 +506,9 @@ describe('Steps — narrow horizontal fallback (CSS contract)', () => {
       /\.cinder-steps\[data-cinder-orientation='horizontal'\]\s*\.cinder-steps__body\s*\{/,
     );
     expect(body).toMatch(/text-align:\s*start;/);
+    // The grid fallback should match the vertical layout: label content starts
+    // on the marker row instead of inheriting the wide body's top padding.
+    expect(body).toMatch(/padding-block-start:\s*0;/);
   });
 
   test('narrow interactive body undoes the wide marker-capture geometry', () => {
@@ -512,5 +522,6 @@ describe('Steps — narrow horizontal fallback (CSS contract)', () => {
     expect(body).toMatch(/inline-size:\s*100%;/);
     expect(body).toMatch(/align-self:\s*stretch;/);
     expect(body).toMatch(/margin-block-start:\s*0;/);
+    expect(body).toMatch(/padding-block-start:\s*0;/);
   });
 });
