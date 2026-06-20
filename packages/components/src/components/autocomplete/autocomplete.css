@@ -6,6 +6,9 @@
   }
 
   .cinder-autocomplete__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);

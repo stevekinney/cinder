@@ -25,7 +25,7 @@ export type NumberInputProps = Omit<
   /** Maximum permitted value; the stepper increment button disables when this bound is reached. */
   max?: number;
   /** Amount added or subtracted per stepper click or arrow-key press. Default `1`. */
-  step?: number;
+  step?: number | undefined;
   format?: Intl.NumberFormatOptions;
   /** BCP 47 locale tag used for number formatting and parsing. Defaults to `navigator.language`. */
   locale?: string;
@@ -38,9 +38,9 @@ export type NumberInputProps = Omit<
   /** Visible label text rendered above the input and linked via `for`/`id`. */
   label?: string;
   /** Helper text rendered below the input and associated via `aria-describedby`. */
-  description?: string;
+  description?: string | undefined;
   /** Error message rendered below the input; also sets `aria-invalid` on the input. */
-  error?: string;
+  error?: string | undefined;
   class?: string;
   onchange?: (value: number | null) => void;
 };

@@ -16,13 +16,14 @@
 
 <script lang="ts">
   import type { ToggleProps } from './toggle.types.ts';
+  import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   let {
     id,
     checked = $bindable(false),
     label,
-    disabled = false,
+    disabled,
     hideLabel = false,
     name,
     value = 'on',
@@ -30,10 +31,18 @@
     class: customClassName,
   }: ToggleProps = $props();
 
+  // A switch implies an immediate-effect setting, so Toggle deliberately does
+  // NOT take on `required`/`error` validation semantics — a deferred boolean in
+  // a submit form should use Checkbox instead (see the module docstring). It
+  // does, however, inherit `disabled` from a wrapping FormField so a disabled
+  // field group greys out the switch alongside its peers.
+  const context = getFormFieldContext();
+  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+
   const labelId = $derived(`${id}-label`);
 
   function toggle(): void {
-    if (!disabled) {
+    if (!resolvedDisabled) {
       checked = !checked;
     }
   }
@@ -46,7 +55,7 @@
     role="switch"
     aria-checked={checked}
     aria-labelledby={labelId}
-    {disabled}
+    disabled={resolvedDisabled}
     onclick={toggle}
     class={classNames('cinder-toggle', customClassName)}
     data-cinder-checked={checked ? '' : undefined}
@@ -65,7 +74,7 @@
       disabled — only `disabled` excludes a control from the form data set.
       Rendered only when `name` is set, so a client-side-only toggle pays nothing.
     -->
-    <input type="checkbox" hidden {name} {value} {form} {disabled} bind:checked />
+    <input type="checkbox" hidden {name} {value} {form} disabled={resolvedDisabled} bind:checked />
   {/if}
   <!--
     The label is a <span> (not a <label for>) named via aria-labelledby. A native
@@ -80,7 +89,7 @@
     class="cinder-toggle-field__label"
     role="presentation"
     data-hidden={hideLabel || undefined}
-    data-disabled={disabled || undefined}
+    data-disabled={resolvedDisabled || undefined}
     onclick={toggle}
   >
     {label}

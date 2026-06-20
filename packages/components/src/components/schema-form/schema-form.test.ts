@@ -49,7 +49,10 @@ describe('SchemaForm', () => {
     await flush();
 
     await fireEvent.input(screen.getByLabelText(/Name/), { target: { value: 'Ada' } });
-    await fireEvent.input(screen.getByLabelText(/Count/), { target: { value: '3' } });
+    // NumberInput commits its parsed value on blur (it buffers while editing).
+    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '3' } });
+    await fireEvent.blur(countInput);
 
     const form = formFrom(container);
     await submit(form);
@@ -111,7 +114,7 @@ describe('SchemaForm', () => {
     });
     await flush();
 
-    const input = screen.getByLabelText(/Count/);
+    const input = screen.getByRole('textbox', { name: /Count/ });
     expect(input).toBeInstanceOf(HTMLInputElement);
     expect((input as HTMLInputElement).value).toBe('');
   });
@@ -376,11 +379,18 @@ describe('SchemaForm', () => {
     await flush();
 
     await fireEvent.input(screen.getByLabelText(/Name/), { target: { value: 'Updated' } });
-    await fireEvent.input(screen.getByLabelText(/Ratio/), { target: { value: '2.5' } });
-    await fireEvent.input(screen.getByLabelText(/Count/), { target: { value: '4' } });
-    const activeSwitch = screen.getByRole('switch', { name: /Active/ });
-    expect(activeSwitch.getAttribute('aria-required')).toBe('true');
-    await fireEvent.keyDown(activeSwitch, { key: ' ' });
+    // NumberInput commits the parsed value on blur, so commit each before submit.
+    const ratioInput = screen.getByRole('textbox', { name: /Ratio/ });
+    await fireEvent.input(ratioInput, { target: { value: '2.5' } });
+    await fireEvent.blur(ratioInput);
+    const countField = screen.getByRole('textbox', { name: /Count/ });
+    await fireEvent.input(countField, { target: { value: '4' } });
+    await fireEvent.blur(countField);
+    const activeCheckbox = screen.getByRole('checkbox', { name: /Active/ });
+    // boolean schema fields render as a native Checkbox: `required` is the
+    // native attribute and the control toggles on click.
+    expect((activeCheckbox as HTMLInputElement).required).toBe(true);
+    await fireEvent.click(activeCheckbox);
     await fireEvent.change(screen.getByLabelText(/Mode/), { target: { value: '"safe"' } });
 
     await fireEvent.click(screen.getByRole('button', { name: /Add Tags/ }));

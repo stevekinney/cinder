@@ -56,8 +56,14 @@ export type ComboboxProps<T extends string = string> = {
   description?: string;
   /** Validation error message; sets aria-invalid="true". */
   error?: string;
-  /** Disables the combobox. */
+  /** Disables the combobox. Inherited from a wrapping FormField when unset. */
   disabled?: boolean;
+  /**
+   * Marks the field required: renders the required marker on the label and
+   * sets `aria-required` on the input. Inherited from a wrapping FormField
+   * when unset.
+   */
+  required?: boolean;
   /** Hard cap on visible filtered options. Default 200. */
   maxVisibleOptions?: number;
   /**

@@ -25,9 +25,9 @@ export type CheckboxProps = HTMLInputAttributes & {
   /** Visible label rendered in a `<label>` element associated via `for`. */
   label?: string;
   /** Helper text displayed below the checkbox; wired via `aria-describedby`. */
-  description?: string;
+  description?: string | undefined;
   /** Validation error message; sets `aria-invalid="true"` and `aria-describedby`. */
-  error?: string;
+  error?: string | undefined;
   /** Disables the checkbox. */
   disabled?: boolean;
   /** Extra class names merged with `.cinder-checkbox`. */

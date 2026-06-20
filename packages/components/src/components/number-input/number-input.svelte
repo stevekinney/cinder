@@ -19,12 +19,7 @@
   import type { NumberInputProps } from './number-input.types.ts';
   import { onMount, untrack } from 'svelte';
 
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../../_internal/field-control.ts';
+  import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { formatNumber } from '../../utilities/format-number.ts';
@@ -448,19 +443,6 @@
     };
   });
 
-  const defaultDescriptionId = $derived(describeId(id, !!description));
-  const defaultErrorId = $derived(buildErrorId(id, !!error));
-  const ownDescriptionId = $derived(
-    description && defaultDescriptionId === context?.descriptionId
-      ? `${id}-number-input-description`
-      : defaultDescriptionId,
-  );
-  const ownErrorId = $derived(
-    error && defaultErrorId === context?.errorId ? `${id}-number-input-error` : defaultErrorId,
-  );
-  const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
-  const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-
   // Internal error region — rendered when the parse failed and the consumer
   // didn't supply their own `error` text. Without it, screen readers would
   // hear `aria-invalid="true"` with no associated message describing why.
@@ -473,19 +455,31 @@
   );
   const internalErrorId = $derived(internalErrorMessage ? `${id}-internal-error` : undefined);
 
-  const describedBy = $derived(
-    composeDescribedBy(
-      resolvedDescriptionId,
-      resolvedErrorId,
-      internalErrorId,
+  // `hasError` is scoped to the consumer's `error` text (which drives the
+  // rendered error <p> and its id). The broader invalid surface — internal
+  // parse failure or required-empty — is fed through `consumerInvalid` so it
+  // sets aria-invalid without fabricating an error-element id that points at
+  // nothing. The internal message is wired into describedBy via its own id.
+  const internalInvalid = $derived(malformedError || requiredEmptyError ? 'true' : undefined);
+  const field = $derived(
+    resolveFieldControl({
+      id,
+      generatedId: id,
+      context,
+      hasDescription: !!description,
+      hasError: !!error,
+      localIdNamespace: 'number-input',
       consumerDescribedBy,
-    ),
+      consumerInvalid: internalInvalid ?? (rest['aria-invalid'] as 'true' | 'false' | undefined),
+      additionalDescribedBy: [internalErrorId],
+      required,
+      disabled,
+    }),
   );
-  const resolvedAriaInvalid = $derived(
-    error || malformedError || requiredEmptyError
-      ? ariaInvalid(true)
-      : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
-  );
+  const ownDescriptionId = $derived(field.ownDescriptionId);
+  const ownErrorId = $derived(field.ownErrorId);
+  const describedBy = $derived(field.describedBy);
+  const resolvedAriaInvalid = $derived(field.ariaInvalid);
 
   const incrementDisabled = $derived(
     resolvedDisabled || (value !== null && value !== undefined && value >= resolvedMax),
@@ -510,6 +504,9 @@
   {#if label}
     <label for={id} class="cinder-input-field__label" data-disabled={resolvedDisabled || undefined}>
       {label}
+      {#if resolvedRequired}
+        <span class="cinder-_required-marker" aria-hidden="true">*</span>
+      {/if}
     </label>
   {/if}
 

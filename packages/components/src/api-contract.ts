@@ -286,8 +286,8 @@ export const CONTRACT: Record<string, ComponentContract> = {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       value: { optional: false, type_kind: 'TSStringKeyword', default: B('') },
       label: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
-      description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
-      error: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      description: { optional: true, type_kind: 'TSUnionType', default: NO_DEFAULT },
+      error: { optional: true, type_kind: 'TSUnionType', default: NO_DEFAULT },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       type: { optional: true, type_kind: 'TSTypeReference', default: L('text') },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
@@ -440,8 +440,8 @@ export const CONTRACT: Record<string, ComponentContract> = {
       id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
       value: { optional: true, type_kind: 'TSStringKeyword', default: B('') },
       label: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
-      description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
-      error: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      description: { optional: true, type_kind: 'TSUnionType', default: NO_DEFAULT },
+      error: { optional: true, type_kind: 'TSUnionType', default: NO_DEFAULT },
       rows: { optional: true, type_kind: 'TSNumberKeyword', default: L(4) },
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
@@ -458,7 +458,10 @@ export const CONTRACT: Record<string, ComponentContract> = {
       // analyzer sees the bindable shape (matches the runtime $bindable wrapper).
       checked: { optional: true, type_kind: 'TSBooleanKeyword', default: B(false) },
       label: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-      disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+      // `disabled` no longer defaults to `false` in the destructure — it resolves
+      // through FormField context (`disabled ?? context?.disabled ?? false`), so
+      // the prop carries no literal default.
+      disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {},

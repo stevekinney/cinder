@@ -91,7 +91,7 @@ describe('Select', () => {
     });
     const labelEl = container.querySelector('label[for="labeled-select"]');
     expect(labelEl).not.toBeNull();
-    expect(labelEl!.textContent).toBe('Choose one');
+    expect(labelEl!.textContent?.trim()).toBe('Choose one');
   });
 
   test('on user change event, bound value updates', async () => {

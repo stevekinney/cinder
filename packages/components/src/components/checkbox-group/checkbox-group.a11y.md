@@ -29,7 +29,7 @@ The `disabled` prop sets the native `disabled` attribute on `<fieldset>`. The br
 
 ## Required
 
-The `required` prop is a **visual and data-attribute hint only**. It sets `data-cinder-required` on the fieldset (present when `true`, absent when `false`) so consumers can target it for styling (e.g., rendering an asterisk in the legend).
+The `required` prop sets `aria-required="true"` and `data-cinder-required` on the fieldset, and renders the required asterisk in the legend. It does **not** set `required` on any child `<input>` and does not enforce native constraint validation — per-control `required` must be set on the individual `<Checkbox>`.
 
 It does **not** set the `required` attribute on any child `<input>` and does **not** enforce constraint validation. To enforce that at least one checkbox is checked, either:
 
@@ -56,7 +56,7 @@ A common UI pattern is a top-level "select all" checkbox whose visual state refl
   }
 </script>
 
-<CheckboxGroup legend="Select items">
+<CheckboxGroup label="Select items">
   <Checkbox
     id="select-all"
     name="select-all"

@@ -62,7 +62,12 @@
 
 <div class="cinder-textarea-field">
   {#if label}
-    <label for={id} class="cinder-textarea-label">{label}</label>
+    <label for={id} class="cinder-textarea-label" data-disabled={field.disabled || undefined}>
+      {label}
+      {#if field.required}
+        <span class="cinder-_required-marker" aria-hidden="true">*</span>
+      {/if}
+    </label>
   {/if}
   <textarea
     {id}

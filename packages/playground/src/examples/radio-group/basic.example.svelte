@@ -16,7 +16,7 @@
   let plan = $state('pro');
 </script>
 
-<RadioGroup name={groupName} legend="Pricing tier" bind:value={plan}>
+<RadioGroup name={groupName} label="Pricing tier" bind:value={plan}>
   <RadioGroup.Option id={freeId} value="free" label="Free — for individuals exploring Cinder" />
   <RadioGroup.Option id={proId} value="pro" label="Pro — small teams, includes private support" />
   <RadioGroup.Option id={teamId} value="team" label="Team — SSO, audit logs, role-based access" />

@@ -13,7 +13,7 @@ describe('CheckboxGroup', () => {
   // Test 1: fieldset + legend
   test('renders a <fieldset> with the given legend', () => {
     const { container } = render(Wrapper, {
-      legend: 'Notifications',
+      label: 'Notifications',
       options: [
         { id: 'cb-a', name: 'email', label: 'Email' },
         { id: 'cb-b', name: 'sms', label: 'SMS' },

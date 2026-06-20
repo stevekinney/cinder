@@ -1,7 +1,7 @@
 <script lang="ts" module>
   /** Test-only fixture: composes CheckboxGroup with N Checkbox children for testing. */
   export type CheckboxGroupFixtureProps = {
-    legend?: string;
+    label?: string;
     description?: string;
     error?: string;
     disabled?: boolean;
@@ -25,7 +25,7 @@
   import Checkbox from '../../components/checkbox/checkbox.svelte';
 
   let {
-    legend,
+    label,
     description,
     error,
     disabled = false,
@@ -36,7 +36,7 @@
 </script>
 
 <CheckboxGroup
-  {...legend !== undefined ? { legend } : {}}
+  {...label !== undefined ? { label } : {}}
   {...description !== undefined ? { description } : {}}
   {...error !== undefined ? { error } : {}}
   {...variant !== undefined ? { variant } : {}}

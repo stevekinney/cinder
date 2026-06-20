@@ -30,7 +30,12 @@ const schema = {
     },
     disabled: {
       type: 'boolean',
-      description: 'Disables the combobox.',
+      description: 'Disables the combobox. Inherited from a wrapping FormField when unset.',
+    },
+    required: {
+      type: 'boolean',
+      description:
+        'Marks the field required: renders the required marker on the label and\nsets `aria-required` on the input. Inherited from a wrapping FormField\nwhen unset.',
     },
     maxVisibleOptions: {
       type: 'number',

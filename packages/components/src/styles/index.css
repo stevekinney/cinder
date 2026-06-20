@@ -32,6 +32,7 @@
 @import './_base-marker.css' layer(cinder.tokens);
 @import './foundation.css' layer(cinder.foundation);
 @import './components/_dismiss-button.css';
+@import './components/_field-label.css';
 @import './components/_floating-surface.css';
 @import './components/_control-item.css';
 @import './components/_input-frame.css';

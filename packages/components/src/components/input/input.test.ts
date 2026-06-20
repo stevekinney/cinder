@@ -232,7 +232,14 @@ describe('Input context inheritance from FormField', () => {
       },
     });
     const input = container.querySelector('#ctx-field');
-    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-input-description');
+    // The Input's own description gets a distinct namespaced id and is listed
+    // first; the FormField's context description id is still composed in (the
+    // FormField renders that element, so it must remain referenced). This
+    // matches Textarea/Select — Input previously dropped the context id, the
+    // outlier behavior the shared resolver migration corrects.
+    expect(input?.getAttribute('aria-describedby')).toBe(
+      'ctx-field-input-description ctx-field-description',
+    );
     expect(idsIn(container).filter((id) => id === 'ctx-field-description')).toHaveLength(1);
     expect(idsIn(container).filter((id) => id === 'ctx-field-input-description')).toHaveLength(1);
   });
@@ -265,7 +272,10 @@ describe('Input context inheritance from FormField', () => {
       },
     });
     const input = container.querySelector('#ctx-field');
-    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-input-error');
+    // Own error id first, context error id composed in second — both elements
+    // exist (Input renders its own error <p>, FormField renders its error <p>),
+    // so both must be referenced. Mirrors Textarea's contract.
+    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-input-error ctx-field-error');
     expect(input?.getAttribute('aria-invalid')).toBe('true');
     expect(idsIn(container).filter((id) => id === 'ctx-field-error')).toHaveLength(1);
     expect(idsIn(container).filter((id) => id === 'ctx-field-input-error')).toHaveLength(1);

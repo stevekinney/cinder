@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "legend": {
+    "label": {
       "type": "string",
-      "description": "Optional legend rendered as a `<legend>` inside the `<fieldset>`."
+      "description": "Visible group caption. Rendered as a `<legend>` inside the `<fieldset>`.\nNamed `label` for consistency with every other form control — the element\nis a `<legend>` because the group is a fieldset."
     },
     "description": {
       "type": "string",
@@ -20,7 +20,7 @@
     },
     "required": {
       "type": "boolean",
-      "description": "Marks the group as visually required. Sets `data-cinder-required` on the\nfieldset so consumers can target it (e.g. legend asterisk).\n\nThis is a visual/data-attribute hint. It does NOT set `required` on any\nchild `<input>` and does NOT enforce constraint validation. Per-control\n`required` must be set on the individual `<Checkbox>`."
+      "description": "Marks the group required: sets `aria-required=\"true\"` and\n`data-cinder-required` on the fieldset and renders the required asterisk in\nthe legend.\n\nIt does NOT set `required` on any child `<input>` and does NOT enforce\nnative constraint validation. Per-control `required` must be set on the\nindividual `<Checkbox>`."
     },
     "variant": {
       "enum": ["default", "card"],

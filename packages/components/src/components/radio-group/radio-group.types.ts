@@ -24,8 +24,12 @@ export type RadioGroupProps = {
   value?: string;
   /** Shared `name` for all radios in the group; required for native form submission. */
   name: string;
-  /** Optional legend rendered as a `<legend>` inside the `<fieldset>`. */
-  legend?: string;
+  /**
+   * Visible group caption. Rendered as a `<legend>` inside the `<fieldset>`.
+   * Named `label` for consistency with every other form control — the element
+   * is a `<legend>` because the group is a fieldset.
+   */
+  label?: string;
   /** Helper text displayed below the group; wired via `aria-describedby` on the fieldset. */
   description?: string;
   /** Validation error message; sets `aria-invalid="true"` on the group's children. */

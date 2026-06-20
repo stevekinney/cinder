@@ -51,12 +51,12 @@ const schema = {
       type: 'string',
       description: 'Placeholder text for the inner `<input>`.',
     },
-    ariaLabel: {
+    'aria-label': {
       type: 'string',
       description:
         'Accessible label applied directly to the inner `<input>` when no `FormField` wraps it.',
     },
-    ariaLabelledby: {
+    'aria-labelledby': {
       type: 'string',
       description: 'Id of an external element that labels the inner `<input>`.',
     },
