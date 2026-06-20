@@ -70,6 +70,9 @@
   --cinder-shadow-lg:
     0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.11)),
     0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.07));
+  --cinder-shadow-overlay:
+    0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(0% 0 0 / 0.45)),
+    0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(0% 0 0 / 0.32));
 
   /* ========================================
    * CONTROL HEIGHTS

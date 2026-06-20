@@ -11,18 +11,19 @@
 
   const popoverId = 'null-position-selection-popover';
 
-  /**
-   * A fixed anchor used to demonstrate the null-clear behavior without requiring
-   * a real text selection in this example. The coordinates are viewport-relative,
-   * consistent with how a real selection anchor would be computed.
-   */
-  const demonstrationPosition: SelectionPopoverPosition = { x: 220, y: 220 };
-
   let isOpen = $state(false);
   let position = $state<SelectionPopoverPosition | null>(null);
+  let anchorElement = $state<HTMLElement | null>(null);
 
   function showPopover(): void {
-    position = demonstrationPosition;
+    if (!anchorElement) return;
+
+    const rect = anchorElement.getBoundingClientRect();
+    position = {
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+      height: rect.height,
+    };
     isOpen = true;
   }
 
@@ -32,7 +33,7 @@
   }
 
   function restorePosition(): void {
-    position = demonstrationPosition;
+    showPopover();
   }
 </script>
 
@@ -49,7 +50,9 @@
   </p>
 
   <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
-    <Button label="Show popover" onclick={showPopover} />
+    <span bind:this={anchorElement} style="display: inline-flex;">
+      <Button label="Show popover" onclick={showPopover} />
+    </span>
     <Button label="Clear position (set null)" onclick={clearPosition} disabled={!isOpen} />
     <Button label="Restore position" onclick={restorePosition} disabled={!isOpen} />
   </div>

@@ -199,25 +199,31 @@ describe('buildPlaygroundModel', () => {
     expect(model.skipped).toContain('value');
   });
 
-  test('marks components whose behavior needs authored examples as example-only', () => {
-    const model = buildPlaygroundModel({
-      name: 'Autocomplete',
-      kebabName: 'autocomplete',
-      file: 'autocomplete.svelte',
-      importPath: '@lostgradient/cinder/autocomplete',
-      props: [
-        { name: 'value', control: { kind: 'text' }, bindable: true, optional: true },
-        {
-          name: 'suggestionSource',
-          control: { kind: 'unknown', rawType: 'AutocompleteSuggestionSource' },
-          bindable: false,
-          optional: true,
-        },
-      ],
-    });
-    expect(model.controls.map((control) => control.name)).toEqual(['value']);
-    expect(model.requiresExamplePlayground).toBe(true);
-  });
+  test.each([
+    ['Autocomplete', 'autocomplete', '@lostgradient/cinder/autocomplete'],
+    ['Spectrogram', 'spectrogram', '@lostgradient/cinder/spectrogram'],
+  ])(
+    'marks %s as example-only when behavior needs authored examples',
+    (name, kebabName, importPath) => {
+      const model = buildPlaygroundModel({
+        name,
+        kebabName,
+        file: `${kebabName}.svelte`,
+        importPath,
+        props: [
+          { name: 'value', control: { kind: 'text' }, bindable: true, optional: true },
+          {
+            name: 'dataSource',
+            control: { kind: 'unknown', rawType: `${name}DataSource` },
+            bindable: false,
+            optional: true,
+          },
+        ],
+      });
+      expect(model.controls.map((control) => control.name)).toEqual(['value']);
+      expect(model.requiresExamplePlayground).toBe(true);
+    },
+  );
 
   test('a select with no defaultValue seeds its value to the first option', () => {
     const model = buildPlaygroundModel(

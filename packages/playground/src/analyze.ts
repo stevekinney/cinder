@@ -15,7 +15,7 @@ import { basename, dirname, join } from 'node:path';
 
 import type { Expression, Pattern, Property, SpreadElement } from 'estree';
 import { type AST, parse } from 'svelte/compiler';
-import { Project, type PropertySignature, SyntaxKind, type TypeNode } from 'ts-morph';
+import { Project, type PropertySignature, SyntaxKind, type Type, type TypeNode } from 'ts-morph';
 
 import { discoverComponentFilePaths } from './discover.ts';
 import type { ComponentManifest, ControlKind, PropManifest } from './types.ts';
@@ -81,7 +81,28 @@ function inferControlKindFromTypeNode(
       return inferControlKindFromTypeNode(resolvedNode, resolvedNode?.getText() ?? typeText);
     }
 
-    return { kind: 'unknown', rawType: typeText };
+    return inferControlKindFromResolvedType(typeNode.getType(), typeText);
+  }
+
+  return { kind: 'unknown', rawType: typeText };
+}
+
+function inferControlKindFromResolvedType(type: Type, typeText: string): ControlKind {
+  if (type.isBoolean()) return { kind: 'boolean' };
+  if (type.isNumber()) return { kind: 'number' };
+  if (type.isString()) return { kind: 'text' };
+
+  if (type.isUnion()) {
+    const options: string[] = [];
+    for (const member of type.getUnionTypes()) {
+      if (!member.isStringLiteral()) return { kind: 'unknown', rawType: typeText };
+      const value = member.getLiteralValue();
+      if (typeof value !== 'string') return { kind: 'unknown', rawType: typeText };
+      options.push(value);
+    }
+    return options.length > 0
+      ? { kind: 'select', options }
+      : { kind: 'unknown', rawType: typeText };
   }
 
   return { kind: 'unknown', rawType: typeText };
@@ -367,6 +388,7 @@ export function getProjectCreationCount(): number {
 function buildTypeInfoMap(
   moduleScriptContent: string,
   componentName: string,
+  sourceDirectory: string,
 ): Map<string, TypeInfo> {
   const project = getSharedProject();
 
@@ -374,7 +396,10 @@ function buildTypeInfoMap(
   // analyses of the same component) from clobbering each other's source file on
   // the shared project.
   syntheticFileCounter += 1;
-  const syntheticPath = `__synthetic__/${componentName}.${syntheticFileCounter}.ts`;
+  const syntheticPath = join(
+    sourceDirectory,
+    `__synthetic-${componentName}.${syntheticFileCounter}.ts`,
+  );
   const sf = project.createSourceFile(syntheticPath, moduleScriptContent);
 
   try {
@@ -562,7 +587,7 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
     moduleScriptContent = `${moduleScriptContent}\n${typesSource}`;
   }
 
-  const typeInfoMap = buildTypeInfoMap(moduleScriptContent, componentName);
+  const typeInfoMap = buildTypeInfoMap(moduleScriptContent, componentName, dirname(filePath));
 
   const props: PropManifest[] = [];
 

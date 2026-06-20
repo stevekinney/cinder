@@ -24,6 +24,7 @@ const accessGateSsrFixturePath = new URL(
   '../../test/fixtures/access-gate-ssr-fixture.svelte',
   import.meta.url,
 ).pathname;
+const accessGateSsrFixtureHtml = renderToServerHtml(accessGateSsrFixturePath);
 
 function markupSnippet(markup: string) {
   return createRawSnippet(() => ({
@@ -356,7 +357,7 @@ describe('AccessGate', () => {
   });
 
   test('denied inline gates server-render visible controls with a hydration activation guard', async () => {
-    const body = await renderToServerHtml(accessGateSsrFixturePath);
+    const body = await accessGateSsrFixtureHtml;
 
     expect(body).toContain('inert');
     expect(body).toContain('Cancel workflow');

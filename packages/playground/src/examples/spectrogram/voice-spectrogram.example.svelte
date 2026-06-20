@@ -2,6 +2,7 @@
   export const title = 'Voice spectrogram';
   export const description =
     'Time × frequency heatmap showing how frequency content changes over time.';
+  export const featured = true;
 </script>
 
 <script lang="ts">
