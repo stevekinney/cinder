@@ -39,17 +39,18 @@ Rem-based spacing scale. Use these for padding, gap, margin — anywhere you'd o
 
 Corner radii and elevation shadows. `--cinder-radius-full` produces a pill or circle depending on the element's aspect ratio.
 
-Shadow tokens wrap each color argument in `light-dark()` so dark mode paints a light-neutral elevation instead of invisible black-on-dark. The offsets, blur radii, and spread radii are identical across themes; `--cinder-shadow-sm` carries a second hairline layer for deeper, crisper elevation, and the alphas were raised — in both arms for `--cinder-shadow-sm` and in the dark arms only for `--cinder-shadow-md` and `--cinder-shadow-lg`. Only those alphas, the new `sm` layer, and the per-theme color values branch.
+Shadow tokens wrap each color argument in `light-dark()` so dark mode paints a light-neutral elevation instead of invisible black-on-dark. The offsets, blur radii, and spread radii are identical across themes; `--cinder-shadow-sm` carries a second hairline layer for deeper, crisper elevation, and the alphas were raised — in both arms for `--cinder-shadow-sm` and in the dark arms only for `--cinder-shadow-md` and `--cinder-shadow-lg`. Only those alphas, the new `sm` layer, and the per-theme color values branch. Overlay surfaces that sit above already-elevated dark UI can use `--cinder-shadow-overlay`, which keeps a dark shadow in both themes to avoid a glow halo.
 
-| Token                  | Default                                                                                                                                              |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--cinder-radius-sm`   | `0.375rem`                                                                                                                                           |
-| `--cinder-radius-md`   | `0.5rem`                                                                                                                                             |
-| `--cinder-radius-lg`   | `0.75rem`                                                                                                                                            |
-| `--cinder-radius-full` | `9999px`                                                                                                                                             |
-| `--cinder-shadow-sm`   | `0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09)), 0 1px 1px light-dark(oklch(0% 0 0 / 0.06), oklch(100% 0 0 / 0.05))`              |
-| `--cinder-shadow-md`   | `0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.09)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.06))`    |
-| `--cinder-shadow-lg`   | `0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.11)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.07))` |
+| Token                     | Default                                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-radius-sm`      | `0.375rem`                                                                                                                                           |
+| `--cinder-radius-md`      | `0.5rem`                                                                                                                                             |
+| `--cinder-radius-lg`      | `0.75rem`                                                                                                                                            |
+| `--cinder-radius-full`    | `9999px`                                                                                                                                             |
+| `--cinder-shadow-sm`      | `0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09)), 0 1px 1px light-dark(oklch(0% 0 0 / 0.06), oklch(100% 0 0 / 0.05))`              |
+| `--cinder-shadow-md`      | `0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.09)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.06))`    |
+| `--cinder-shadow-lg`      | `0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.11)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.07))` |
+| `--cinder-shadow-overlay` | `0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(0% 0 0 / 0.45)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(0% 0 0 / 0.32))`     |
 
 ## Control heights
 

@@ -119,4 +119,12 @@ describe('StatGroup', () => {
     expect(root?.getAttribute('data-testid')).toBe('stat-group');
     expect(root?.getAttribute('id')).toBe('my-group');
   });
+
+  test('auto columns use a readable track floor to avoid orphaned dashboard rows', async () => {
+    const css = await Bun.file(new URL('./stat-group.css', import.meta.url)).text();
+
+    expect(css).toMatch(
+      /\.cinder-stat-group\[data-cinder-columns='auto'\]\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(16rem,\s*100%\),\s*1fr\)\);/,
+    );
+  });
 });

@@ -73,6 +73,10 @@
     cursor: pointer;
   }
 
+  .cinder-kanban-board__column-handle svg {
+    fill: currentcolor;
+  }
+
   .cinder-kanban-board__column-handle:focus-visible,
   .cinder-kanban-board__collapse:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;

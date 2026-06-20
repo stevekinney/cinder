@@ -16,6 +16,7 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: KanbanBoard } = await import('./kanban-board.svelte');
+const kanbanBoardCss = await Bun.file(new URL('./kanban-board.css', import.meta.url)).text();
 
 afterEach(() => {
   cleanup();
@@ -190,6 +191,14 @@ describe('kanban board helpers', () => {
     columns[1] = { ...columns[1], collapsed: true };
     expect(findNextVisibleColumn(columns, 0, 1)).toBe(2);
     expect(findNextVisibleColumn(columns, 2, 1)).toBeNull();
+  });
+});
+
+describe('kanban board styles', () => {
+  test('column reorder handle icon inherits the button text color', () => {
+    expect(kanbanBoardCss).toMatch(
+      /\.cinder-kanban-board__column-handle\s+svg\s*\{[^}]*fill:\s*currentcolor;/,
+    );
   });
 });
 
