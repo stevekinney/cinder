@@ -204,3 +204,21 @@ describe('CheckboxGroup', () => {
     });
   });
 });
+
+describe('CheckboxGroup — required parity', () => {
+  test('required sets aria-required on the fieldset and renders the legend marker', () => {
+    const { container } = render(Wrapper, {
+      label: 'Notifications',
+      required: true,
+      options: [
+        { id: 'cg-a', name: 'email', label: 'Email' },
+        { id: 'cg-b', name: 'sms', label: 'SMS' },
+      ],
+    });
+    const fieldset = container.querySelector('fieldset');
+    expect(fieldset?.getAttribute('aria-required')).toBe('true');
+    const marker = container.querySelector('legend .cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.textContent).toBe('*');
+  });
+});

@@ -689,3 +689,25 @@ describe('Combobox Escape restores committed label', () => {
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
 });
+
+describe('Combobox — required', () => {
+  test('required renders the marker and sets aria-required on the input', () => {
+    const { container } = renderIntoContainer(Combobox, {
+      props: {
+        id: 'req-combobox',
+        label: 'Fruit',
+        required: true,
+        options: [
+          { value: 'apple', label: 'Apple' },
+          { value: 'pear', label: 'Pear' },
+        ],
+      },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
+    const input = container.querySelector('#req-combobox');
+    expect(input?.getAttribute('aria-required')).toBe('true');
+  });
+});

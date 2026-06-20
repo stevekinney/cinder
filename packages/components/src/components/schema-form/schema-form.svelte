@@ -518,12 +518,15 @@
           onchange={(event) => updateEnum(field, event)}
         />
       {:else if field.kind === 'boolean'}
+        <!-- A required boolean schema property means "the value must be present",
+             not "the box must be checked". Native checkbox `required` would block
+             a valid `false` submission, so it is intentionally NOT forwarded here;
+             presence is enforced by the schema validator on submit. -->
         <Checkbox
           {id}
           label={field.label}
           description={field.description}
           {error}
-          required={field.required}
           disabled={submitting}
           bind:checked={() => booleanValue(field), (next) => updateValue(field.path, next)}
         />

@@ -572,3 +572,22 @@ describe('Input group (leading/trailing addons)', () => {
     expect(describedBy).toContain('grouped-described-error');
   });
 });
+
+describe('Input — required marker', () => {
+  test('renders the shared required marker on a standalone (no FormField) Input', () => {
+    const { container } = render(Input, {
+      props: { id: 'req-input', value: '', label: 'Name', required: true },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
+  });
+
+  test('omits the marker when not required', () => {
+    const { container } = render(Input, {
+      props: { id: 'opt-input', value: '', label: 'Name' },
+    });
+    expect(container.querySelector('.cinder-_required-marker')).toBeNull();
+  });
+});

@@ -387,9 +387,11 @@ describe('SchemaForm', () => {
     await fireEvent.input(countField, { target: { value: '4' } });
     await fireEvent.blur(countField);
     const activeCheckbox = screen.getByRole('checkbox', { name: /Active/ });
-    // boolean schema fields render as a native Checkbox: `required` is the
-    // native attribute and the control toggles on click.
-    expect((activeCheckbox as HTMLInputElement).required).toBe(true);
+    // boolean schema fields render as a native Checkbox and toggle on click.
+    // A required boolean property is presence-required (enforced by the schema
+    // validator), NOT "must be checked" — so the checkbox carries no native
+    // `required` constraint that would block a valid `false`.
+    expect((activeCheckbox as HTMLInputElement).required).toBe(false);
     await fireEvent.click(activeCheckbox);
     await fireEvent.change(screen.getByLabelText(/Mode/), { target: { value: '"safe"' } });
 
@@ -706,5 +708,104 @@ describe('SchemaForm', () => {
     await submit(formFrom(container));
 
     expect(submitted).toEqual({ tags: ['two'] });
+  });
+});
+
+describe('SchemaForm — composed-control regressions', () => {
+  afterEach(() => cleanup());
+
+  // Codex committee finding: prove the function bindings do NOT revert on writeback
+  // the way the enum Select did (which is why Select is one-way value+onchange).
+  test('string/number/json edits commit and do not revert after input/blur', async () => {
+    const submitted: unknown[] = [];
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', title: 'Name' },
+            count: { type: 'integer', title: 'Count' },
+            // No `type` → classified as a raw-JSON field (renders a Textarea).
+            raw: { title: 'Raw' },
+          },
+          required: ['name', 'count', 'raw'],
+        },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const nameInput = screen.getByLabelText(/Name/);
+    await fireEvent.input(nameInput, { target: { value: 'Ada' } });
+    expect((nameInput as HTMLInputElement).value).toBe('Ada'); // does not revert
+
+    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '7' } });
+    await fireEvent.blur(countInput);
+    expect((countInput as HTMLInputElement).value).toBe('7'); // does not revert after blur commit
+
+    const rawTextarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    await fireEvent.input(rawTextarea, { target: { value: '{"ok":true}' } });
+    expect(rawTextarea.value).toBe('{"ok":true}'); // draft does not revert
+
+    await submit(formFrom(container));
+    expect(submitted).toEqual([{ name: 'Ada', count: 7, raw: { ok: true } }]);
+  });
+
+  // Codex committee finding: an integer field must never yield a non-integer.
+  // NumberInput is rendered with step={1} for integer fields, so it snaps a
+  // typed `2.5` to the nearest integer on blur — the form never holds 2.5.
+  test('integer field coerces a non-integer entry to an integer (step=1 snap)', async () => {
+    const submitted: unknown[] = [];
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '2.5' } });
+    await fireEvent.blur(countInput);
+    expect((countInput as HTMLInputElement).value).toBe('3'); // snapped to an integer
+    await submit(formFrom(container));
+
+    expect(submitted).toHaveLength(1);
+    expect(Number.isInteger((submitted[0] as { count: number }).count)).toBe(true);
+  });
+
+  // Codex committee finding: a required boolean property means "present", not
+  // "must be checked". The Checkbox must NOT carry native `required`, so an
+  // unchecked (false) value still submits.
+  test('required boolean field submits false (no native checkbox required constraint)', async () => {
+    const submitted: unknown[] = [];
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { enabled: { type: 'boolean', title: 'Enabled' } },
+          required: ['enabled'],
+        },
+        value: { enabled: false },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const checkbox = screen.getByRole('checkbox', { name: /Enabled/ });
+    expect((checkbox as HTMLInputElement).required).toBe(false); // not constrained
+    await submit(formFrom(container));
+    expect(submitted).toEqual([{ enabled: false }]);
   });
 });

@@ -364,3 +364,24 @@ describe('Select chevron indicator', () => {
     }
   });
 });
+
+describe('Select — required marker', () => {
+  test('renders the shared required marker on a standalone Select', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'req-select',
+        value: 'a',
+        label: 'Choose',
+        required: true,
+        options: [
+          { value: 'a', label: 'A' },
+          { value: 'b', label: 'B' },
+        ],
+      },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
+  });
+});
