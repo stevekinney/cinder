@@ -123,8 +123,8 @@ describe('StatGroup', () => {
   test('auto columns use a readable track floor to avoid orphaned dashboard rows', async () => {
     const css = await Bun.file(new URL('./stat-group.css', import.meta.url)).text();
 
-    expect(css).toContain(
-      ".cinder-stat-group[data-cinder-columns='auto'] {\n    grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));",
+    expect(css).toMatch(
+      /\.cinder-stat-group\[data-cinder-columns='auto'\]\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(16rem,\s*100%\),\s*1fr\)\);/,
     );
   });
 });

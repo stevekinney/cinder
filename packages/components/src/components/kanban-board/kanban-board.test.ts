@@ -196,11 +196,9 @@ describe('kanban board helpers', () => {
 
 describe('kanban board styles', () => {
   test('column reorder handle icon inherits the button text color', () => {
-    const rule = kanbanBoardCss
-      .split('.cinder-kanban-board__column-handle svg {')[1]
-      ?.split('}')[0];
-
-    expect(rule).toContain('fill: currentcolor;');
+    expect(kanbanBoardCss).toMatch(
+      /\.cinder-kanban-board__column-handle\s+svg\s*\{[^}]*fill:\s*currentcolor;/,
+    );
   });
 });
 
