@@ -100,6 +100,10 @@ async function triggerDelayedTooltipShow(wrapper: HTMLElement): Promise<void> {
     globalThis.clearTimeout = trackedClearTimeout;
     globalThis.setInterval = trackedSetInterval;
     globalThis.clearInterval = trackedClearInterval;
+    expect(globalThis.setTimeout).toBe(trackedSetTimeout);
+    expect(globalThis.clearTimeout).toBe(trackedClearTimeout);
+    expect(globalThis.setInterval).toBe(trackedSetInterval);
+    expect(globalThis.clearInterval).toBe(trackedClearInterval);
   }
 }
 
