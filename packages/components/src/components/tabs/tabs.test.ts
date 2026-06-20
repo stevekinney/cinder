@@ -96,9 +96,7 @@ describe('Tabs font-weight layout stability (regression #402)', () => {
     // Extracting just the [data-cinder-active] block and asserting font-weight is absent
     // prevents the sibling-jank regression: an inactive tab's offsetWidth must not
     // change when a sibling activates.
-    const activeBlockMatch = tabsCss.match(
-      /\.cinder-tab\[data-cinder-active\]\s*\{([^}]*)\}/,
-    );
+    const activeBlockMatch = tabsCss.match(/\.cinder-tab\[data-cinder-active\]\s*\{([^}]*)\}/);
     // The selector must exist (active state is styled).
     expect(activeBlockMatch).not.toBeNull();
     // The block must NOT contain font-weight.

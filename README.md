@@ -2,9 +2,9 @@
 
 Components for product interfaces.
 
-The published package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The current generated manifest lists 155 public component entries across action, data-display, domain, feedback, form, layout, navigation, overlay, and typography categories.
+The published package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The current generated manifest lists 167 public component entries across action, data-display, domain, feedback, form, layout, navigation, overlay, and typography categories.
 
-Use Cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data layer, or theme provider. The package is SSR-safe.
+Use Cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data fetching layer, global state provider, or theme provider. The package is SSR-safe.
 
 ## Install
 
@@ -123,7 +123,7 @@ Cinder is a presentation library, not an application framework.
 
 - No router.
 - No form-state manager.
-- No toast queue store.
+- No application-wide toast singleton; use `ToastRegion` for scoped toast UI.
 - No data fetching layer.
 - No global state provider.
 - No general-purpose icon library for product-specific icons.

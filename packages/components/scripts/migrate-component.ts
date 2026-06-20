@@ -491,7 +491,7 @@ export type { ${indexTypes} } from './${name}.types.ts';
   if (!existsSync(readmePath)) {
     const readmeBody = `# ${pascalName}
 
-${isExperimental ? `> **EXPERIMENTAL** — this component's API may change between minor versions until promoted to stable.\n\n` : ''}A ${pascalName} component. Replace this sentence with a one-line purpose statement once the migration settles.
+${isExperimental ? `> **EXPERIMENTAL** — this component's API may change between minor versions until promoted to stable.\n\n` : ''}This migration scaffold is incomplete. Update the component's \`@purpose\` metadata and rerun \`bun run components:generate\` before publishing.
 
 ## Usage
 

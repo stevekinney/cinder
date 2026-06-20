@@ -31,8 +31,9 @@ describe('JsonViewer', () => {
     const { container } = render(JsonViewer, { value: { config: { a: 1 } } });
     // Find the toggle button for the nested expandable node whose key is "config"
     const toggleButtons = Array.from(container.querySelectorAll('.cinder-json-viewer__toggle'));
-    const configButton = toggleButtons.find((button) =>
-      button.querySelector('.cinder-json-viewer__key')?.textContent?.trim() === 'config:',
+    const configButton = toggleButtons.find(
+      (button) =>
+        button.querySelector('.cinder-json-viewer__key')?.textContent?.trim() === 'config:',
     );
     expect(configButton).not.toBeNull();
     // The key span must be a DESCENDANT of the button, not a sibling
