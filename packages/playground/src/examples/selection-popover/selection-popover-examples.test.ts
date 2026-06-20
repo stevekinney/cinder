@@ -176,6 +176,17 @@ describe('selection-popover examples — selectionchange wired at document level
   });
 });
 
+describe('selection-popover examples — button-triggered anchors', () => {
+  it('null-position example derives its anchor from the rendered trigger', async () => {
+    const source = await readExample('null-position.example.svelte');
+
+    expect(source).toContain('bind:this={anchorElement}');
+    expect(source).toContain('anchorElement.getBoundingClientRect()');
+    expect(source).not.toContain('demonstrationPosition');
+    expect(source).not.toContain('{ x: 220, y: 220 }');
+  });
+});
+
 describe('selection-popover examples — source analysis helpers (unit)', () => {
   it('extractSelectionPopoverSites finds self-closing call sites', () => {
     const source = [

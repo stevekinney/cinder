@@ -56,7 +56,7 @@ export type PlaygroundModel = {
   requiresExamplePlayground: boolean;
 };
 
-const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set(['autocomplete']);
+const EXAMPLE_ONLY_PLAYGROUND_COMPONENTS = new Set(['autocomplete', 'spectrogram']);
 
 /**
  * True when a prop would make the generated preview invalid by construction: it

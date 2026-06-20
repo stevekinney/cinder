@@ -10,7 +10,7 @@
   }
 
   .cinder-stat-group[data-cinder-columns='auto'] {
-    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   }
 
   .cinder-stat-group[data-cinder-columns='1'] {

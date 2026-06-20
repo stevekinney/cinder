@@ -54,9 +54,13 @@ const deterministicDropdownTokens = `
 :root {
   --cinder-border: rgb(44 56 72);
   --cinder-radius-md: 8px;
-  --cinder-shadow-lg: 0 10px 15px rgb(2 6 23 / 0.18);
   --cinder-surface-raised: rgb(242 246 251);
   --cinder-text: rgb(17 24 39);
+}
+
+.cinder-dropdown__menu,
+.cinder-dropdown-menu {
+  --cinder-shadow-overlay: 0 10px 15px rgb(2 6 23 / 0.18);
 }
 `;
 
@@ -121,7 +125,7 @@ async function injectDropdownCss(): Promise<() => void> {
   ]);
 
   const style = document.createElement('style');
-  style.textContent = `${tokens}\n${deterministicDropdownTokens}\n${dropdownCss}`;
+  style.textContent = `${tokens}\n${dropdownCss}\n${deterministicDropdownTokens}`;
   document.head.appendChild(style);
 
   return () => style.remove();
@@ -632,7 +636,10 @@ describe('Dropdown', () => {
     const css = await readDropdownCss();
     expect(css).toMatch(/\.cinder-dropdown__menu,\s*\.cinder-dropdown-menu\s*\{/);
     expect(css).toContain('background: var(--cinder-surface-raised);');
-    expect(css).toContain('box-shadow: var(--cinder-shadow-lg');
+    expect(css).toContain('box-shadow: var(--cinder-shadow-overlay);');
+    expect(css).not.toContain('--cinder-dropdown-menu-shadow:');
+    expect(css).not.toContain('oklch(100% 0 0 / 0.11)');
+    expect(css).not.toContain('oklch(100% 0 0 / 0.07)');
     expect(css).not.toContain('border-radius: var(--cinder-radius-lg);');
     expect(css).not.toContain('color-mix(in oklch, var(--cinder-text) 8%');
   });

@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
+import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
@@ -82,6 +82,29 @@ const disabledTabindexTriggerSnippet = createRawSnippet(() => ({
 
 function queryTooltip(): HTMLElement | null {
   return document.body.querySelector('[role="tooltip"]');
+}
+
+async function triggerDelayedTooltipShow(wrapper: HTMLElement): Promise<void> {
+  const trackedSetTimeout = globalThis.setTimeout;
+  const trackedClearTimeout = globalThis.clearTimeout;
+  const trackedSetInterval = globalThis.setInterval;
+  const trackedClearInterval = globalThis.clearInterval;
+  jest.useFakeTimers();
+  try {
+    await fireEvent.mouseEnter(wrapper);
+    jest.advanceTimersByTime(100);
+    await tick();
+  } finally {
+    jest.useRealTimers();
+    globalThis.setTimeout = trackedSetTimeout;
+    globalThis.clearTimeout = trackedClearTimeout;
+    globalThis.setInterval = trackedSetInterval;
+    globalThis.clearInterval = trackedClearInterval;
+    expect(globalThis.setTimeout).toBe(trackedSetTimeout);
+    expect(globalThis.clearTimeout).toBe(trackedClearTimeout);
+    expect(globalThis.setInterval).toBe(trackedSetInterval);
+    expect(globalThis.clearInterval).toBe(trackedClearInterval);
+  }
 }
 
 // Tooltip schedules show/hide via setTimeout; track timers per test so a
@@ -477,7 +500,7 @@ describe('Tooltip', () => {
     });
     const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
-    await fireEvent.mouseEnter(wrapper);
+    await triggerDelayedTooltipShow(wrapper);
     await waitFor(() => {
       expect(computePositionSpy).toHaveBeenCalled();
     });
@@ -489,7 +512,7 @@ describe('Tooltip', () => {
 
     deferComputePosition = false;
     computePositionResult = { x: 303, y: 404, placement: 'left' };
-    await fireEvent.mouseEnter(wrapper);
+    await triggerDelayedTooltipShow(wrapper);
 
     const staleResolvers = [...deferredResolvers];
     deferredResolvers = [];

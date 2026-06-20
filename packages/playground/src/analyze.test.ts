@@ -156,6 +156,23 @@ describe('analyzeComponent — input.svelte', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Surface — imported literal-union prop type
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — surface.svelte', () => {
+  it('resolves imported literal-union aliases as select controls', async () => {
+    const manifest = await analyzeComponent(componentPath('surface'));
+    const tone = manifest.props.find((p) => p.name === 'tone');
+
+    expect(tone?.control).toEqual({
+      kind: 'select',
+      options: ['default', 'raised', 'inset', 'transparent'],
+    });
+    expect(tone?.defaultValue).toBe('default');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Accordion — bindable expandedIds
 // ---------------------------------------------------------------------------
 
