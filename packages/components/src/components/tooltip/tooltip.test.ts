@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
+import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
@@ -82,6 +82,17 @@ const disabledTabindexTriggerSnippet = createRawSnippet(() => ({
 
 function queryTooltip(): HTMLElement | null {
   return document.body.querySelector('[role="tooltip"]');
+}
+
+async function triggerDelayedTooltipShow(wrapper: HTMLElement): Promise<void> {
+  jest.useFakeTimers();
+  try {
+    await fireEvent.mouseEnter(wrapper);
+    jest.advanceTimersByTime(100);
+    await tick();
+  } finally {
+    jest.useRealTimers();
+  }
 }
 
 // Tooltip schedules show/hide via setTimeout; track timers per test so a
@@ -477,7 +488,7 @@ describe('Tooltip', () => {
     });
     const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
-    await fireEvent.mouseEnter(wrapper);
+    await triggerDelayedTooltipShow(wrapper);
     await waitFor(() => {
       expect(computePositionSpy).toHaveBeenCalled();
     });
@@ -489,7 +500,7 @@ describe('Tooltip', () => {
 
     deferComputePosition = false;
     computePositionResult = { x: 303, y: 404, placement: 'left' };
-    await fireEvent.mouseEnter(wrapper);
+    await triggerDelayedTooltipShow(wrapper);
 
     const staleResolvers = [...deferredResolvers];
     deferredResolvers = [];
