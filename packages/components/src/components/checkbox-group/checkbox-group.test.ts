@@ -13,7 +13,7 @@ describe('CheckboxGroup', () => {
   // Test 1: fieldset + legend
   test('renders a <fieldset> with the given legend', () => {
     const { container } = render(Wrapper, {
-      legend: 'Notifications',
+      label: 'Notifications',
       options: [
         { id: 'cb-a', name: 'email', label: 'Email' },
         { id: 'cb-b', name: 'sms', label: 'SMS' },
@@ -202,5 +202,23 @@ describe('CheckboxGroup', () => {
     labels.forEach((label) => {
       expect(fieldset.contains(label)).toBe(true);
     });
+  });
+});
+
+describe('CheckboxGroup — required parity', () => {
+  test('required sets aria-required on the fieldset and renders the legend marker', () => {
+    const { container } = render(Wrapper, {
+      label: 'Notifications',
+      required: true,
+      options: [
+        { id: 'cg-a', name: 'email', label: 'Email' },
+        { id: 'cg-b', name: 'sms', label: 'SMS' },
+      ],
+    });
+    const fieldset = container.querySelector('fieldset');
+    expect(fieldset?.getAttribute('aria-required')).toBe('true');
+    const marker = container.querySelector('legend .cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.textContent).toBe('*');
   });
 });

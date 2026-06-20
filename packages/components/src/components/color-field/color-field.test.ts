@@ -621,10 +621,10 @@ describe('ColorField — forwarded form attributes', () => {
     expect(input.placeholder).toBe('Pick a color');
   });
 
-  test('ariaLabel forwards as aria-label', () => {
+  test('aria-label forwards to the inner input', () => {
     const { container } = render(ColorField, {
       id: 'color',
-      ariaLabel: 'Accent color',
+      'aria-label': 'Accent color',
     });
     const input = getInput(container);
     expect(input.getAttribute('aria-label')).toBe('Accent color');

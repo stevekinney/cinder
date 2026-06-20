@@ -469,3 +469,23 @@ describe('Toggle — hideLabel', () => {
     expect(label?.hasAttribute('data-hidden')).toBe(false);
   });
 });
+
+describe('Toggle — FormField context', () => {
+  test('inherits disabled from a wrapping FormField when own disabled is unset', async () => {
+    const { default: FormFieldToggleFixture } =
+      await import('../../test/fixtures/form-field-toggle-fixture.svelte');
+    const { container } = render(FormFieldToggleFixture, {
+      props: { fieldId: 'ctx-toggle', fieldLabel: 'Notifications', disabled: true },
+    });
+    const button = container.querySelector('button[role="switch"]') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+  });
+
+  test('an unwrapped Toggle is enabled by default', () => {
+    const { container } = render(Toggle, {
+      props: { id: 't-ctx-default', checked: false, label: 'Standalone' },
+    });
+    const button = container.querySelector('button[role="switch"]') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+  });
+});

@@ -79,7 +79,10 @@
   >
     {label}
     {#if required}
-      <span class="cinder-form-field__required" aria-hidden="true"></span>
+      <!-- Visible asterisk conveys "required" by shape, not color alone (WCAG
+           1.4.1). aria-hidden so the accessible name stays clean — the field's
+           own `required`/`aria-required` attribute is the single AT signal. -->
+      <span class="cinder-_required-marker" aria-hidden="true">*</span>
     {/if}
   </label>
 

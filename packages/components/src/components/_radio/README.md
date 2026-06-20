@@ -13,7 +13,7 @@ runtime. (A standalone `Checkbox`, by contrast, is a legitimate independent cont
   import { RadioGroup } from '@lostgradient/cinder/radio-group';
 </script>
 
-<RadioGroup name="plan" legend="Pricing tier">
+<RadioGroup name="plan" label="Pricing tier">
   <RadioGroup.Option id="free" value="free" label="Free" />
   <RadioGroup.Option id="pro" value="pro" label="Pro" />
 </RadioGroup>

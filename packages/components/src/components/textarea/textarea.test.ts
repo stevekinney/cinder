@@ -367,3 +367,22 @@ describe('resolveMaximumLength', () => {
     expect(resolveMaximumLength(input)).toBeUndefined();
   });
 });
+
+describe('Textarea — required marker', () => {
+  test('renders the shared required marker on a standalone Textarea (the reported bug)', () => {
+    const { container } = render(Textarea, {
+      props: { id: 'req-textarea', value: '', label: 'Notes', required: true },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
+  });
+
+  test('omits the marker when not required', () => {
+    const { container } = render(Textarea, {
+      props: { id: 'opt-textarea', value: '', label: 'Notes' },
+    });
+    expect(container.querySelector('.cinder-_required-marker')).toBeNull();
+  });
+});

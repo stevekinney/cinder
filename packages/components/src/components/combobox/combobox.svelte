@@ -19,12 +19,8 @@
   import type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
   import { untrack } from 'svelte';
 
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../../_internal/field-control.ts';
+  import { resolveFieldControl } from '../../_internal/field-control.ts';
+  import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Popover from '../popover/popover.svelte';
@@ -39,17 +35,38 @@
     filter,
     description,
     error,
-    disabled = false,
+    disabled,
+    required,
     maxVisibleOptions = 200,
     class: className,
     'aria-describedby': consumerDescribedBy,
   }: ComboboxProps<T> = $props();
 
+  const context = getFormFieldContext();
+  const field = $derived(
+    resolveFieldControl({
+      id,
+      generatedId: id,
+      context,
+      hasDescription: !!description,
+      hasError: !!error,
+      localIdNamespace: 'combobox',
+      consumerDescribedBy,
+      required,
+      disabled,
+    }),
+  );
+  const resolvedDisabled = $derived(field.disabled);
+  const resolvedRequired = $derived(field.required);
+  const describedBy = $derived(field.describedBy);
+
   const listboxId = $derived(`${id}-listbox`);
-  const descriptionId = $derived(describeId(id, !!description));
-  // errId only included in aria-describedby when error is active.
-  const errId = $derived(buildErrorId(id, !!error));
-  const describedBy = $derived(composeDescribedBy(descriptionId, errId, consumerDescribedBy));
+  const descriptionId = $derived(field.ownDescriptionId);
+  // Stable id for the always-in-DOM error live region when no error is active.
+  // Mirrors Select: avoids colliding with a wrapping FormField's error id.
+  const stableLocalErrorId = $derived(
+    context?.errorId === `${field.id}-error` ? `${field.id}-combobox-error` : `${field.id}-error`,
+  );
 
   const defaultFilter = (option: ComboboxOption<T>, query: string): boolean => {
     if (!query) return true;
@@ -159,7 +176,7 @@
   }
 
   function handleFocus() {
-    if (!disabled) open = true;
+    if (!resolvedDisabled) open = true;
   }
 
   function handleBlur(event: FocusEvent) {
@@ -226,8 +243,11 @@
 
 <div class={classNames('cinder-combobox', className)}>
   {#if label}
-    <label for={id} class="cinder-combobox__label" data-disabled={disabled || undefined}>
+    <label for={id} class="cinder-combobox__label" data-disabled={resolvedDisabled || undefined}>
       {label}
+      {#if resolvedRequired}
+        <span class="cinder-_required-marker" aria-hidden="true">*</span>
+      {/if}
     </label>
   {/if}
 
@@ -241,14 +261,15 @@
       autocomplete="off"
       autocorrect="off"
       spellcheck="false"
-      {disabled}
+      disabled={resolvedDisabled}
       {placeholder}
       value={inputValue}
       aria-autocomplete="list"
       aria-expanded={open}
       aria-controls={listboxId}
       aria-activedescendant={activeOptionId}
-      aria-invalid={ariaInvalid(!!error)}
+      aria-invalid={field.ariaInvalid}
+      aria-required={resolvedRequired || undefined}
       aria-describedby={describedBy}
       oninput={handleInput}
       onfocus={handleFocus}
@@ -325,7 +346,7 @@
 
   <!-- Always in DOM for the same reason — live region must pre-exist before text is injected. -->
   <p
-    id="{id}-error"
+    id={field.ownErrorId ?? stableLocalErrorId}
     class="cinder-combobox__error"
     aria-live="polite"
     data-cinder-error={!!error || undefined}

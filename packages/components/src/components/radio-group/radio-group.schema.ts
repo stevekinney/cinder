@@ -13,9 +13,10 @@ const schema = {
       description:
         'Shared `name` for all radios in the group; required for native form submission.',
     },
-    legend: {
+    label: {
       type: 'string',
-      description: 'Optional legend rendered as a `<legend>` inside the `<fieldset>`.',
+      description:
+        'Visible group caption. Rendered as a `<legend>` inside the `<fieldset>`.\nNamed `label` for consistency with every other form control — the element\nis a `<legend>` because the group is a fieldset.',
     },
     description: {
       type: 'string',

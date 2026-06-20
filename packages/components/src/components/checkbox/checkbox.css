@@ -165,6 +165,9 @@
 
   /* Label */
   .cinder-checkbox-field__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
     color: var(--cinder-text);

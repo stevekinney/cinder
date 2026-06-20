@@ -108,6 +108,9 @@
         data-disabled={field.disabled || undefined}
       >
         {label}
+        {#if field.required}
+          <span class="cinder-_required-marker" aria-hidden="true">*</span>
+        {/if}
       </label>
     {/if}
   </div>

@@ -29,7 +29,7 @@ const { default: Wrapper } = await import('../../test/fixtures/radio-group-fixtu
 describe('RadioGroup', () => {
   test('renders a fieldset with the given legend', () => {
     const { container } = render(Wrapper, {
-      legend: 'Pick one',
+      label: 'Pick one',
       name: 'choice',
       value: 'a',
       options: [

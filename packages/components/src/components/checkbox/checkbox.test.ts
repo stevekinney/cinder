@@ -235,3 +235,15 @@ describe('Checkbox — FormField context wiring', () => {
     expect(container.querySelector('label[for="agree"]')).not.toBeNull();
   });
 });
+
+describe('Checkbox — required marker', () => {
+  test('renders the shared required marker on a standalone Checkbox', () => {
+    const { container } = render(Checkbox, {
+      props: { id: 'req-checkbox', label: 'Agree', required: true },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
+  });
+});

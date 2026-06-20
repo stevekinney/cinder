@@ -27,7 +27,7 @@
   const groupId = $props.id();
 
   let {
-    legend,
+    label: legend,
     description,
     error,
     disabled = false,
@@ -58,12 +58,18 @@
   {disabled}
   aria-invalid={ariaInvalid(!!error)}
   aria-describedby={describedBy}
+  aria-required={required || undefined}
   data-cinder-disabled={disabled || undefined}
   data-cinder-required={required || undefined}
   data-variant={variant}
 >
   {#if legend}
-    <legend class="cinder-checkbox-group__legend">{legend}</legend>
+    <legend class="cinder-checkbox-group__legend">
+      {legend}
+      {#if required}
+        <span class="cinder-_required-marker" aria-hidden="true">*</span>
+      {/if}
+    </legend>
   {/if}
 
   <div class="cinder-checkbox-group__items">

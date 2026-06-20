@@ -3,7 +3,7 @@
   export type RadioGroupFixtureProps = {
     name: string;
     value?: string;
-    legend?: string;
+    label?: string;
     description?: string;
     error?: string;
     disabled?: boolean;
@@ -28,7 +28,7 @@
   let {
     name,
     value = $bindable(''),
-    legend,
+    label,
     description,
     error,
     disabled = false,
@@ -41,7 +41,7 @@
 <RadioGroup
   {name}
   bind:value
-  {...legend !== undefined ? { legend } : {}}
+  {...label !== undefined ? { label } : {}}
   {...description !== undefined ? { description } : {}}
   {...error !== undefined ? { error } : {}}
   {...variant !== undefined ? { variant } : {}}

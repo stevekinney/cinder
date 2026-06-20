@@ -73,7 +73,12 @@
 
 <div class={classNames('cinder-select-field', className)}>
   {#if label}
-    <label for={id}>{label}</label>
+    <label for={id} class="cinder-select-field__label" data-disabled={field.disabled || undefined}>
+      {label}
+      {#if field.required}
+        <span class="cinder-_required-marker" aria-hidden="true">*</span>
+      {/if}
+    </label>
   {/if}
   <span class="cinder-select-field__control">
     {#if options.length === 0}

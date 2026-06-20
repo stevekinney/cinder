@@ -91,7 +91,7 @@ describe('Select', () => {
     });
     const labelEl = container.querySelector('label[for="labeled-select"]');
     expect(labelEl).not.toBeNull();
-    expect(labelEl!.textContent).toBe('Choose one');
+    expect(labelEl!.textContent?.trim()).toBe('Choose one');
   });
 
   test('on user change event, bound value updates', async () => {
@@ -362,5 +362,26 @@ describe('Select chevron indicator', () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+});
+
+describe('Select — required marker', () => {
+  test('renders the shared required marker on a standalone Select', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'req-select',
+        value: 'a',
+        label: 'Choose',
+        required: true,
+        options: [
+          { value: 'a', label: 'A' },
+          { value: 'b', label: 'B' },
+        ],
+      },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
   });
 });

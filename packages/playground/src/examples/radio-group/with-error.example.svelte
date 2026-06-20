@@ -16,7 +16,7 @@
   {#if showError}
     <RadioGroup
       name="with-error-role"
-      legend="Role"
+      label="Role"
       description="Pick the role that best describes you."
       bind:value={role}
       error="Choose a role to continue."
@@ -28,7 +28,7 @@
   {:else}
     <RadioGroup
       name="with-error-role"
-      legend="Role"
+      label="Role"
       description="Pick the role that best describes you."
       bind:value={role}
     >

@@ -1,0 +1,20 @@
+@layer cinder.components {
+  /* Shared required-field marker. One definition consumed by every form
+     control's inline label, by FormField, and by the standalone Label so the
+     indicator can never drift between surfaces.
+
+     A visible asterisk (not a color-only dot) so the "required" meaning is
+     conveyed by glyph shape, satisfying WCAG 1.4.1 for users who cannot
+     perceive the red color. The span is `aria-hidden` in markup — the field's
+     native `required`/`aria-required` attribute is the single signal exposed
+     to assistive technology, so the asterisk does not double-announce. */
+  .cinder-_required-marker {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    color: var(--cinder-danger);
+    font-size: var(--cinder-text-sm);
+    line-height: 0;
+    flex-shrink: 0;
+  }
+}

@@ -232,7 +232,14 @@ describe('Input context inheritance from FormField', () => {
       },
     });
     const input = container.querySelector('#ctx-field');
-    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-input-description');
+    // The Input's own description gets a distinct namespaced id and is listed
+    // first; the FormField's context description id is still composed in (the
+    // FormField renders that element, so it must remain referenced). This
+    // matches Textarea/Select — Input previously dropped the context id, the
+    // outlier behavior the shared resolver migration corrects.
+    expect(input?.getAttribute('aria-describedby')).toBe(
+      'ctx-field-input-description ctx-field-description',
+    );
     expect(idsIn(container).filter((id) => id === 'ctx-field-description')).toHaveLength(1);
     expect(idsIn(container).filter((id) => id === 'ctx-field-input-description')).toHaveLength(1);
   });
@@ -265,7 +272,10 @@ describe('Input context inheritance from FormField', () => {
       },
     });
     const input = container.querySelector('#ctx-field');
-    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-input-error');
+    // Own error id first, context error id composed in second — both elements
+    // exist (Input renders its own error <p>, FormField renders its error <p>),
+    // so both must be referenced. Mirrors Textarea's contract.
+    expect(input?.getAttribute('aria-describedby')).toBe('ctx-field-input-error ctx-field-error');
     expect(input?.getAttribute('aria-invalid')).toBe('true');
     expect(idsIn(container).filter((id) => id === 'ctx-field-error')).toHaveLength(1);
     expect(idsIn(container).filter((id) => id === 'ctx-field-input-error')).toHaveLength(1);
@@ -560,5 +570,24 @@ describe('Input group (leading/trailing addons)', () => {
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('grouped-described-description');
     expect(describedBy).toContain('grouped-described-error');
+  });
+});
+
+describe('Input — required marker', () => {
+  test('renders the shared required marker on a standalone (no FormField) Input', () => {
+    const { container } = render(Input, {
+      props: { id: 'req-input', value: '', label: 'Name', required: true },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
+  });
+
+  test('omits the marker when not required', () => {
+    const { container } = render(Input, {
+      props: { id: 'opt-input', value: '', label: 'Name' },
+    });
+    expect(container.querySelector('.cinder-_required-marker')).toBeNull();
   });
 });

@@ -15,6 +15,9 @@
   }
 
   .cinder-radio-group__legend {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text);

@@ -18,12 +18,7 @@
 <script lang="ts">
   import type { InputProps } from './input.types.ts';
 
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../../_internal/field-control.ts';
+  import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
@@ -43,6 +38,7 @@
     leadingInteractive = false,
     trailingInteractive = false,
     'aria-describedby': consumerDescribedBy,
+    'aria-invalid': consumerInvalid,
     ...rest
   }: InputProps = $props();
 
@@ -56,32 +52,32 @@
     }
   });
 
-  const defaultDescriptionId = $derived(describeId(id, !!description));
-  const defaultErrorId = $derived(buildErrorId(id, !!error));
-  const ownDescriptionId = $derived(
-    description && defaultDescriptionId === context?.descriptionId
-      ? `${id}-input-description`
-      : defaultDescriptionId,
+  const field = $derived(
+    resolveFieldControl({
+      id,
+      generatedId: id,
+      context,
+      hasDescription: !!description,
+      hasError: !!error,
+      localIdNamespace: 'input',
+      consumerDescribedBy,
+      consumerInvalid,
+      required,
+      disabled,
+    }),
   );
-  const ownErrorId = $derived(
-    error && defaultErrorId === context?.errorId ? `${id}-input-error` : defaultErrorId,
-  );
-  const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
-  const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-  const describedBy = $derived(
-    composeDescribedBy(resolvedDescriptionId, resolvedErrorId, consumerDescribedBy),
-  );
-  const resolvedAriaInvalid = $derived(
-    error ? ariaInvalid(true) : (context?.invalid ?? rest['aria-invalid'] ?? ariaInvalid(false)),
-  );
-  const resolvedRequired = $derived(required ?? context?.required ?? false);
-  const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+  const ownDescriptionId = $derived(field.ownDescriptionId);
+  const ownErrorId = $derived(field.ownErrorId);
+  const describedBy = $derived(field.describedBy);
+  const resolvedAriaInvalid = $derived(field.ariaInvalid);
+  const resolvedRequired = $derived(field.required);
+  const resolvedDisabled = $derived(field.disabled);
 
   const isNativeDateInput = $derived(type === 'date');
   const rendersNativeDateIcon = $derived(isNativeDateInput && !trailing);
   const hasTrailing = $derived(!!trailing || isNativeDateInput);
   const hasGroupWrapper = $derived(!!leading || hasTrailing);
-  const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
+  const isInvalid = $derived(resolvedAriaInvalid === 'true');
 </script>
 
 {#snippet calendarIcon()}
@@ -123,6 +119,9 @@
   {#if label}
     <label for={id} class="cinder-input-field__label" data-disabled={resolvedDisabled || undefined}>
       {label}
+      {#if resolvedRequired}
+        <span class="cinder-_required-marker" aria-hidden="true">*</span>
+      {/if}
     </label>
   {/if}
 

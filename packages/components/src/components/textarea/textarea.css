@@ -21,11 +21,18 @@
  * ---------------------------------------- */
 
   .cinder-textarea-label {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
     color: var(--cinder-text);
+  }
+
+  .cinder-textarea-label[data-disabled] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
   }
 
   /* ----------------------------------------

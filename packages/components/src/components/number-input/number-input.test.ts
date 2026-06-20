@@ -1211,3 +1211,15 @@ describe('delta rounding preserves base-value precision', () => {
     expect(calls[calls.length - 1]).toBe(1);
   });
 });
+
+describe('NumberInput — required marker', () => {
+  test('renders the shared required marker on a standalone NumberInput', () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'req-number', value: null, label: 'Count', required: true },
+    });
+    const marker = container.querySelector('.cinder-_required-marker');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
+  });
+});

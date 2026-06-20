@@ -35,9 +35,9 @@ export type ColorFieldProps = {
   /** Placeholder text for the inner `<input>`. */
   placeholder?: string;
   /** Accessible label applied directly to the inner `<input>` when no `FormField` wraps it. */
-  ariaLabel?: string;
+  'aria-label'?: string;
   /** Id of an external element that labels the inner `<input>`. */
-  ariaLabelledby?: string;
+  'aria-labelledby'?: string;
   /** Additional classes merged onto the **outer wrapper** root (`.cinder-color-field`). */
   class?: string;
   /** Override the default parse-failure error message. */

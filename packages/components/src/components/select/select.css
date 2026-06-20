@@ -14,12 +14,19 @@
  * Label
  * ---------------------------------------- */
 
-  .cinder-select-field > label {
-    display: inline-block;
+  .cinder-select-field__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
     color: var(--cinder-text);
+  }
+
+  .cinder-select-field__label[data-disabled] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
   }
 
   /* ----------------------------------------

@@ -9,8 +9,12 @@ import type { Snippet } from 'svelte';
  * handles the disabled cascade without any Svelte context.
  */
 export type CheckboxGroupProps = {
-  /** Optional legend rendered as a `<legend>` inside the `<fieldset>`. */
-  legend?: string;
+  /**
+   * Visible group caption. Rendered as a `<legend>` inside the `<fieldset>`.
+   * Named `label` for consistency with every other form control — the element
+   * is a `<legend>` because the group is a fieldset.
+   */
+  label?: string;
   /** Helper text below the group; wired via `aria-describedby` on the fieldset. */
   description?: string;
   /**
@@ -30,12 +34,13 @@ export type CheckboxGroupProps = {
    */
   disabled?: boolean;
   /**
-   * Marks the group as visually required. Sets `data-cinder-required` on the
-   * fieldset so consumers can target it (e.g. legend asterisk).
+   * Marks the group required: sets `aria-required="true"` and
+   * `data-cinder-required` on the fieldset and renders the required asterisk in
+   * the legend.
    *
-   * This is a visual/data-attribute hint. It does NOT set `required` on any
-   * child `<input>` and does NOT enforce constraint validation. Per-control
-   * `required` must be set on the individual `<Checkbox>`.
+   * It does NOT set `required` on any child `<input>` and does NOT enforce
+   * native constraint validation. Per-control `required` must be set on the
+   * individual `<Checkbox>`.
    */
   required?: boolean;
   /**

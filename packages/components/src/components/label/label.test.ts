@@ -53,9 +53,10 @@ describe('Label rendering', () => {
       required: true,
       children: textSnippet('Email'),
     });
-    const star = container.querySelector('.cinder-label__required');
+    const star = container.querySelector('.cinder-_required-marker');
     expect(star).not.toBeNull();
     expect(star?.getAttribute('aria-hidden')).toBe('true');
+    expect(star?.textContent).toBe('*');
   });
 
   test('required false omits the asterisk', () => {
@@ -63,7 +64,7 @@ describe('Label rendering', () => {
       for: 'a',
       children: textSnippet('Email'),
     });
-    expect(container.querySelector('.cinder-label__required')).toBeNull();
+    expect(container.querySelector('.cinder-_required-marker')).toBeNull();
   });
 
   test('disabled prop sets data-disabled on the label', () => {

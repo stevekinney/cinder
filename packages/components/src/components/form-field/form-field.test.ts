@@ -71,16 +71,17 @@ describe('FormField rendering', () => {
     const { container } = render(FormField, {
       props: { id: 'name', label: 'Name', required: true, children: emptySnippet },
     });
-    const marker = container.querySelector('.cinder-form-field__required');
+    const marker = container.querySelector('.cinder-_required-marker');
     expect(marker).not.toBeNull();
     expect(marker?.getAttribute('aria-hidden')).toBe('true');
+    expect(marker?.textContent).toBe('*');
   });
 
   test('does not render required marker when required is false', () => {
     const { container } = render(FormField, {
       props: { id: 'name', label: 'Name', children: emptySnippet },
     });
-    expect(container.querySelector('.cinder-form-field__required')).toBeNull();
+    expect(container.querySelector('.cinder-_required-marker')).toBeNull();
   });
 
   test('applies class prop alongside cinder-form-field', () => {

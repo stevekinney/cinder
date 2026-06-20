@@ -7,9 +7,9 @@ export type TextareaProps = HTMLTextareaAttributes & {
   /** Visible label rendered in a `<label>` element associated via `for`. */
   label?: string;
   /** Helper text displayed below the textarea; wired via `aria-describedby`. */
-  description?: string;
+  description?: string | undefined;
   /** Validation error message; sets `aria-invalid="true"` and `aria-describedby`. */
-  error?: string;
+  error?: string | undefined;
   /** Number of visible text rows. Defaults to 4. */
   rows?: number;
   // `required` and `maxlength` redeclare inherited `HTMLTextareaAttributes` keys,

@@ -29,6 +29,11 @@
   import { tick } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import Checkbox from '../checkbox/checkbox.svelte';
+  import Input from '../input/input.svelte';
+  import NumberInput from '../number-input/number-input.svelte';
+  import Select from '../select/select.svelte';
+  import Textarea from '../textarea/textarea.svelte';
 
   import {
     arrayValueAtPath,
@@ -100,13 +105,6 @@
     return errors[pathKey(field.path)];
   }
 
-  function describedBy(field: SchemaFormField): string | undefined {
-    const ids: string[] = [];
-    if (field.description) ids.push(`${fieldDomId(field)}-description`);
-    if (fieldError(field)) ids.push(`${fieldDomId(field)}-error`);
-    return ids.length > 0 ? ids.join(' ') : undefined;
-  }
-
   function stringValue(field: SchemaFormField): string {
     const current = getValueAtPath(formValue, field.path);
     return current === undefined || current === null ? '' : String(current);
@@ -117,11 +115,6 @@
     return typeof current === 'number' ? current : undefined;
   }
 
-  function numberInputValue(field: SchemaFormField): string {
-    const current = numberValue(field);
-    return current === undefined ? '' : String(current);
-  }
-
   function booleanValue(field: SchemaFormField): boolean {
     return getValueAtPath(formValue, field.path) === true;
   }
@@ -130,6 +123,18 @@
     const current = getValueAtPath(formValue, field.path);
     const option = field.options.find((candidate) => Object.is(candidate.value, current));
     return option?.encodedValue ?? field.options[0]?.encodedValue ?? '';
+  }
+
+  /** Map a field's options to Select's `{ value, label }` shape, keyed on the
+   *  encoded (string) value so the native <option> values stay round-trippable. */
+  function selectOptions(field: SchemaFormField): Array<{ value: string; label: string }> {
+    return field.options.map((option) => ({ value: option.encodedValue, label: option.label }));
+  }
+
+  /** NumberInput binds a `number | null`; the model stores `undefined` for an
+   *  empty numeric field, so translate between the two at the binding edge. */
+  function numberFieldValue(field: SchemaFormField): number | null {
+    return numberValue(field) ?? null;
   }
 
   function rawJsonValue(field: SchemaFormField): string {
@@ -154,57 +159,21 @@
     if (serializedInputElement) serializedInputElement.value = next;
   }
 
-  function updateString(field: SchemaFormField, event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
-    if (submitting) {
-      input.value = stringValue(field);
-      return;
-    }
-    updateValue(field.path, input.value);
-  }
-
-  function updateNumber(field: SchemaFormField, event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
-    if (submitting) {
-      input.value = numberInputValue(field);
-      return;
-    }
-    const raw = input.value;
-    updateValue(field.path, raw === '' ? undefined : Number(raw));
-  }
-
-  function updateBoolean(field: SchemaFormField, checked: boolean) {
-    updateValue(field.path, checked);
-  }
-
+  /** Enum Select is one-way (value + onchange) rather than a function binding:
+   *  the encode/decode round-trip is unstable inside Svelte's <select> binding
+   *  writeback, which reverts the selection. Decode the chosen option here. */
   function updateEnum(field: SchemaFormField, event: Event) {
+    if (submitting) return;
     const select = event.currentTarget as HTMLSelectElement;
-    if (submitting) {
-      select.value = enumValue(field);
-      return;
-    }
     updateValue(field.path, decodeEnumValue(select.value));
   }
 
-  function updateRawJson(field: SchemaFormField, event: Event) {
-    const textarea = event.currentTarget as HTMLTextAreaElement;
-    if (submitting) {
-      textarea.value = rawJsonValue(field);
-      return;
-    }
-    const key = pathKey(field.path);
-    rawDrafts = { ...rawDrafts, [key]: textarea.value };
+  /** JSON fields hold a raw text draft (validated/parsed on submit), so the
+   *  textarea's value flows into `rawDrafts` rather than the typed value tree. */
+  function updateRawJsonValue(field: SchemaFormField, next: string) {
+    if (submitting) return;
+    rawDrafts = { ...rawDrafts, [pathKey(field.path)]: next };
     setSerializedValue('');
-  }
-
-  function toggleSwitch(field: SchemaFormField) {
-    updateBoolean(field, !booleanValue(field));
-  }
-
-  function handleSwitchKeydown(field: SchemaFormField, event: KeyboardEvent) {
-    if (event.key !== ' ' && event.key !== 'Enter') return;
-    event.preventDefault();
-    toggleSwitch(field);
   }
 
   function arrayRows(field: SchemaFormField): Array<{ key: string; index: number }> {
@@ -438,14 +407,13 @@
   }
 </script>
 
-{#snippet fieldLabel(field: SchemaFormField)}
-  <span>{field.label}</span>
-  {#if field.required}
-    <span class="cinder-schema-form__required" aria-hidden="true">*</span>
-  {/if}
-{/snippet}
-
-{#snippet fieldMessages(field: SchemaFormField)}
+{#snippet groupLegend(field: SchemaFormField)}
+  <legend class="cinder-schema-form__legend">
+    {field.label}
+    {#if field.required}
+      <span class="cinder-_required-marker" aria-hidden="true">*</span>
+    {/if}
+  </legend>
   {#if field.description}
     <p id="{fieldDomId(field)}-description" class="cinder-schema-form__description">
       {field.description}
@@ -466,12 +434,10 @@
 {#snippet renderField(field: SchemaFormField)}
   {@const id = fieldDomId(field)}
   {@const error = fieldError(field)}
-  {@const ariaDescribedBy = describedBy(field)}
 
   {#if field.kind === 'object'}
     <fieldset class="cinder-schema-form__fieldset">
-      <legend class="cinder-schema-form__legend">{@render fieldLabel(field)}</legend>
-      {@render fieldMessages(field)}
+      {@render groupLegend(field)}
       <div class="cinder-schema-form__fields">
         {#each field.fields as child (pathKey(child.path))}
           {@render renderField(child)}
@@ -480,8 +446,7 @@
     </fieldset>
   {:else if field.kind === 'array'}
     <fieldset class="cinder-schema-form__fieldset">
-      <legend class="cinder-schema-form__legend">{@render fieldLabel(field)}</legend>
-      {@render fieldMessages(field)}
+      {@render groupLegend(field)}
       <div
         class="cinder-schema-form__array"
         data-cinder-empty={arrayRows(field).length === 0 || undefined}
@@ -515,85 +480,70 @@
         Add {field.label}
       </button>
     </fieldset>
-  {:else if field.kind === 'boolean'}
-    <div class="cinder-schema-form__field">
-      <button
-        {id}
-        type="button"
-        role="switch"
-        aria-checked={booleanValue(field)}
-        aria-required={field.required ? 'true' : undefined}
-        aria-describedby={ariaDescribedBy}
-        aria-invalid={error ? 'true' : undefined}
-        class="cinder-schema-form__switch"
-        data-cinder-checked={booleanValue(field) || undefined}
-        data-cinder-invalid={error ? 'true' : undefined}
-        disabled={submitting}
-        onclick={() => toggleSwitch(field)}
-        onkeydown={(event) => handleSwitchKeydown(field, event)}
-      >
-        <span class="cinder-schema-form__switch-thumb" aria-hidden="true"></span>
-        <span class="cinder-schema-form__switch-label">{@render fieldLabel(field)}</span>
-      </button>
-      {@render fieldMessages(field)}
-    </div>
   {:else}
     <div class="cinder-schema-form__field">
-      <label class="cinder-schema-form__label" for={id}>{@render fieldLabel(field)}</label>
       {#if field.kind === 'string'}
-        <input
+        <Input
           {id}
-          class="cinder-_input-frame cinder-schema-form__control"
-          value={stringValue(field)}
+          label={field.label}
+          description={field.description}
+          {error}
           required={field.required}
           disabled={submitting}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={error ? 'true' : undefined}
-          oninput={(event) => updateString(field, event)}
+          bind:value={() => stringValue(field), (next) => updateValue(field.path, next)}
         />
       {:else if field.kind === 'number' || field.kind === 'integer'}
-        <input
+        <NumberInput
           {id}
-          class="cinder-_input-frame cinder-schema-form__control"
-          type="number"
-          step={field.kind === 'integer' ? '1' : 'any'}
-          value={numberInputValue(field)}
+          label={field.label}
+          description={field.description}
+          {error}
           required={field.required}
           disabled={submitting}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={error ? 'true' : undefined}
-          oninput={(event) => updateNumber(field, event)}
+          step={field.kind === 'integer' ? 1 : undefined}
+          bind:value={
+            () => numberFieldValue(field), (next) => updateValue(field.path, next ?? undefined)
+          }
         />
       {:else if field.kind === 'enum'}
-        <select
+        <Select
           {id}
-          class="cinder-_input-frame cinder-schema-form__control"
+          label={field.label}
+          description={field.description}
+          {error}
+          required={field.required}
+          disabled={submitting}
+          options={selectOptions(field)}
           value={enumValue(field)}
-          required={field.required}
-          disabled={submitting}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={error ? 'true' : undefined}
           onchange={(event) => updateEnum(field, event)}
-        >
-          {#each field.options as option (option.encodedValue)}
-            <option value={option.encodedValue}>{option.label}</option>
-          {/each}
-        </select>
-      {:else}
-        <textarea
+        />
+      {:else if field.kind === 'boolean'}
+        <!-- A required boolean schema property means "the value must be present",
+             not "the box must be checked". Native checkbox `required` would block
+             a valid `false` submission, so it is intentionally NOT forwarded here;
+             presence is enforced by the schema validator on submit. -->
+        <Checkbox
           {id}
-          class="cinder-_input-frame cinder-schema-form__control cinder-schema-form__json-control"
-          rows="6"
-          spellcheck="false"
-          value={rawJsonValue(field)}
+          label={field.label}
+          description={field.description}
+          {error}
+          disabled={submitting}
+          bind:checked={() => booleanValue(field), (next) => updateValue(field.path, next)}
+        />
+      {:else}
+        <Textarea
+          {id}
+          label={field.label}
+          description={field.description}
+          {error}
           required={field.required}
           disabled={submitting}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={error ? 'true' : undefined}
-          oninput={(event) => updateRawJson(field, event)}
-        ></textarea>
+          rows={6}
+          spellcheck={false}
+          class="cinder-schema-form__json-control"
+          bind:value={() => rawJsonValue(field), (next) => updateRawJsonValue(field, next)}
+        />
       {/if}
-      {@render fieldMessages(field)}
     </div>
   {/if}
 {/snippet}
