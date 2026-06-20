@@ -12,7 +12,7 @@ sections:
 
 ## Using cinder in your app
 
-`@lostgradient/cinder` is a Svelte 5 component library with more than 150 public
+`@lostgradient/cinder` is a Svelte 5 component library with more than 160 public
 component entries across accessible primitives and opinionated domain suites.
 It targets Svelte `>=5.55.0 <6` and is SSR-safe out of the box. Everything ships
 with a JSON Schema, CSS variable list, and (where it matters) a constraints
@@ -322,7 +322,7 @@ the matching entry in `@lostgradient/cinder/manifest`.
 
 | id             | purpose                                                                                                        | use when                                                                                                      |
 | -------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `modal`        | Centered modal dialog built on the native dialog element with focus capture, restoration, and dismissal…       | Interrupting the user for a focused task or decision that blocks the rest of the page.                        |
+| `modal`        | Centered modal dialog shell built on the native dialog element with focus capture, restoration, and dismissal… | Presenting rich or structured content that requires user interaction before returning to the page — forms,…   |
 | `drawer`       | Side-anchored modal panel built on the native dialog element for secondary navigation, settings, or long-form… | Showing supplementary navigation, filters, or settings that should slide in from a page edge.                 |
 | `sheet`        | Bottom-anchored modal panel built on the native dialog element with an optional drag handle for mobile-first…  | Presenting a focused task or set of actions that slides up from the bottom of the viewport on touch surfaces. |
 | `popover`      | Anchored floating panel positioned by Floating UI that hosts non-modal contextual content beside a trigger…    | Showing rich, interactive contextual content anchored to a trigger such as a help panel, color picker, or…    |
@@ -353,8 +353,9 @@ scope and you should wire them up yourself:
 - **No router.** Use SvelteKit's router (or your framework's). Components
   like `NavigationItem`, `Breadcrumbs`, and `Tabs` accept `href` props but
   do not own navigation.
-- **No toast queue store.** `ToastRegion` is the render surface and the live
-  region. You build (or import) the queue that pushes toasts at it.
+- **No process-global toast singleton.** `ToastRegion` owns a region-scoped
+  queue and live regions. Mount one where descendants should dispatch, then
+  bridge application events into the nearest region with `useToast()`.
 - **No form-state manager.** Components are uncontrolled-friendly and play
   nicely with `bind:value`. Pair them with a form library of your choice
   (Felte, Superforms, plain `<form>`) for validation, submission, and field
@@ -572,8 +573,8 @@ bun run manifest:generate     # components.json only
 bun run examples:generate     # *.examples.json
 bun run constraints:generate  # *.constraints.json
 bun run exports:generate      # package.json#exports
-bun run agents:generate       # this AGENTS.md overlap-family block
-bun run agents:check          # drift-check this file
+bun run scripts/render-agents-md.ts          # this AGENTS.md overlap-family block
+bun run scripts/render-agents-md.ts --check  # drift-check this file
 ```
 
 For repo-wide git/commit/PR conventions (commit message format, branch

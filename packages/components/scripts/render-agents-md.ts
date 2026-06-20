@@ -122,7 +122,7 @@ async function main(): Promise<void> {
   if (check) {
     if (next !== existing) {
       console.error(
-        `AGENTS.md is out of date. Run \`bun run agents:generate\` to refresh ` +
+        `AGENTS.md is out of date. Run \`bun run scripts/render-agents-md.ts\` to refresh ` +
           `the overlap-family decision aid.`,
       );
       process.exit(1);

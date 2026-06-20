@@ -19,6 +19,7 @@ const componentsRoot = resolve(scriptDirectory, '..', 'src', 'components');
  */
 const STALE_PHRASES: string[] = [
   'Replace this sentence',
+  'This migration scaffold is incomplete',
   'opt-in highlighting',
 ];
 
@@ -62,9 +63,7 @@ async function main(): Promise<void> {
     process.stderr.write(`    line   : ${line}\n\n`);
   }
 
-  process.stderr.write(
-    'Replace each instance with accurate documentation before merging.\n',
-  );
+  process.stderr.write('Replace each instance with accurate documentation before merging.\n');
   process.exit(1);
 }
 

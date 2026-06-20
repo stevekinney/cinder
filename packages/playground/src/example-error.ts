@@ -52,7 +52,10 @@ export function formatErrorMessage(error: unknown): string {
  * ellipsis marker when content was dropped. Returns `undefined` for an empty or
  * whitespace-only input so the caller can omit the stack block entirely.
  */
-export function truncateStack(stack: string | undefined, maxLength = MAX_STACK_LENGTH): string | undefined {
+export function truncateStack(
+  stack: string | undefined,
+  maxLength = MAX_STACK_LENGTH,
+): string | undefined {
   if (stack === undefined) return undefined;
   const trimmed = stack.trim();
   if (trimmed === '') return undefined;

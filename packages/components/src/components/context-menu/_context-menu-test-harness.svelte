@@ -48,4 +48,3 @@
   <div class="context-menu-selection"></div>
   <output class="context-menu-selected">{selected}</output>
 </div>
-

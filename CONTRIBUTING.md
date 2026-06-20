@@ -103,7 +103,7 @@ The moving parts:
 
 ### The tradeoff (read this)
 
-The full site is rendered at build time (≈90s for ~90 components / ~1500 files), so deploys are slower than a function deploy but every request is served instantly from static assets with no runtime compilation. Because the export is a point-in-time snapshot, the deployed playground reflects the components as of the build — re-deploy to pick up component changes (the GitHub workflow does this automatically on push to `main`). For an internal component playground this is the right tradeoff; the live, watch-mode dev server (`bun run dev`) remains the authoring experience.
+The full site is rendered at build time, so deploys are slower than a function deploy but every request is served instantly from static assets with no runtime compilation. Because the export is a point-in-time snapshot, the deployed playground reflects the components as of the build — re-deploy to pick up component changes (the GitHub workflow does this automatically on push to `main`). For an internal component playground this is the right tradeoff; the live, watch-mode dev server (`bun run dev`) remains the authoring experience.
 
 ### One-time setup (a human must do this — it is not automated)
 

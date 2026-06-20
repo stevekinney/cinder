@@ -232,7 +232,10 @@ function hasAriaOrRoleCall(root: CallExpression): boolean {
 // ---------------------------------------------------------------------------
 
 /** Read a property as a nested record, or `undefined` if it isn't one. */
-function recordProperty(record: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+function recordProperty(
+  record: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined {
   const value = record[key];
   return isObjectRecord(value) ? value : undefined;
 }

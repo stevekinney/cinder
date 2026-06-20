@@ -87,8 +87,8 @@ describe('formatErrorForClipboard', () => {
   });
 
   it('joins message and stack with a blank line', () => {
-    expect(
-      formatErrorForClipboard({ message: 'oops', stack: 'at a\nat b' }),
-    ).toBe('oops\n\nat a\nat b');
+    expect(formatErrorForClipboard({ message: 'oops', stack: 'at a\nat b' })).toBe(
+      'oops\n\nat a\nat b',
+    );
   });
 });

@@ -43,7 +43,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@floating-ui/dom": "1.7.6",
         "@lasercat/homogenaize": "^1.2.41",
