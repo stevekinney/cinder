@@ -85,6 +85,10 @@ function queryTooltip(): HTMLElement | null {
 }
 
 async function triggerDelayedTooltipShow(wrapper: HTMLElement): Promise<void> {
+  const trackedSetTimeout = globalThis.setTimeout;
+  const trackedClearTimeout = globalThis.clearTimeout;
+  const trackedSetInterval = globalThis.setInterval;
+  const trackedClearInterval = globalThis.clearInterval;
   jest.useFakeTimers();
   try {
     await fireEvent.mouseEnter(wrapper);
@@ -92,6 +96,10 @@ async function triggerDelayedTooltipShow(wrapper: HTMLElement): Promise<void> {
     await tick();
   } finally {
     jest.useRealTimers();
+    globalThis.setTimeout = trackedSetTimeout;
+    globalThis.clearTimeout = trackedClearTimeout;
+    globalThis.setInterval = trackedSetInterval;
+    globalThis.clearInterval = trackedClearInterval;
   }
 }
 
