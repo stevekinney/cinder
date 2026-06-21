@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -683,5 +683,59 @@ describe('Autocomplete — out-of-portal status live region', () => {
     await waitFor(() => {
       expect(statusRegion()?.textContent?.trim()).toBe('No matches found');
     });
+  });
+});
+
+describe('Autocomplete — each-key behavior', () => {
+  test('emits a devWarn and suppresses rendering when the suggestion source returns duplicate values', async () => {
+    // When the suggestion source returns duplicate values, devWarn fires and
+    // rendering is suppressed (no suggestions shown) to avoid a keyed-each
+    // key collision. This lets the developer diagnose the issue without a crash.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    const duplicateFruits = [
+      { value: 'apple', label: 'Apple' },
+      { value: 'apple', label: 'Apple (duplicate)' },
+      { value: 'banana', label: 'Banana' },
+    ];
+    try {
+      const { container } = render(Autocomplete, {
+        props: {
+          id: 'dup-search',
+          suggestionSource: () => duplicateFruits,
+        },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: 'a' } });
+      // Wait for the Promise.then microtask to complete.
+      await tick();
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate suggestion values'));
+      // Duplicate suggestions are not rendered (to avoid a keyed-each key
+      // collision); only the "No suggestions" status row may be present.
+      const enabledOptions = getOptions().filter((o) => !o.getAttribute('aria-disabled'));
+      expect(enabledOptions).toHaveLength(0);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('does not warn when suggestion values are all unique', async () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { container } = render(Autocomplete, {
+        props: {
+          id: 'unique-search',
+          suggestionSource: () => fruits,
+        },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: 'a' } });
+
+      await waitFor(() => {
+        expect(getOptions().length).toBeGreaterThan(0);
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

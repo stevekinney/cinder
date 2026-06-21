@@ -135,7 +135,7 @@
   }
 
   // Warn in dev mode when duplicate colors appear in the palette.
-  $effect(() => {
+  $effect.pre(() => {
     const colorValues = colors.map((c) => c.color);
     if (new Set(colorValues).size !== colorValues.length) {
       devWarn(
@@ -157,7 +157,7 @@
   data-cinder-layout={layout}
   onkeydown={handleKeydown}
 >
-  {#each colors as swatch, index (swatch.color + index)}
+  {#each colors as swatch, index (swatch.color)}
     {@const isSelected = index === selectedIndex}
     {@const isDisabled = swatch.disabled === true}
     {@const contrastColor = pickContrastColor(swatch.color)}

@@ -99,6 +99,7 @@
 
   const renderedSuggestions = $derived(suggestions.slice(0, resolvedMaxVisibleSuggestions));
   const enabledIndexes = $derived(getEnabledIndexes(renderedSuggestions));
+
   const activeDescendant = $derived(
     activeIndex === null ? undefined : `${resolvedId}-option-${activeIndex}`,
   );
@@ -218,10 +219,19 @@
         ) {
           return;
         }
+        const visibleSlice = nextSuggestions.slice(0, resolvedMaxVisibleSuggestions);
+        const visibleValues = visibleSlice.map((s) => s.value);
+        if (new Set(visibleValues).size !== visibleValues.length) {
+          devWarn(
+            '[cinder/Autocomplete] Duplicate suggestion values detected. Each rendered suggestion must have a unique value.',
+          );
+          loading = false;
+          return;
+        }
         suggestions = nextSuggestions;
         loading = false;
         open = true;
-        clampActiveIndex(nextSuggestions.slice(0, resolvedMaxVisibleSuggestions));
+        clampActiveIndex(visibleSlice);
       })
       .catch((errorValue: unknown) => {
         if (
@@ -487,7 +497,7 @@
       {emptyMessage}
     </div>
   {:else}
-    {#each renderedSuggestions as suggestion, index (`${suggestion.value}-${index}`)}
+    {#each renderedSuggestions as suggestion, index (suggestion.value)}
       {@const suggestionLabel = suggestion.label ?? suggestion.value}
       {@const parts = highlightParts(suggestionLabel, value)}
       <div

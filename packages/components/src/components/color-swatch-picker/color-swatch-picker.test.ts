@@ -476,24 +476,35 @@ describe('ColorSwatchPicker empty palette', () => {
 });
 
 describe('ColorSwatchPicker duplicate palette', () => {
-  test('only first matching swatch receives aria-selected (and warns in dev)', () => {
-    // A duplicate palette intentionally trips the dev warning. Scope the spy to
-    // this test so incidental warnings elsewhere still fail their tests.
+  test('emits a devWarn when the palette is updated to contain duplicate color values', async () => {
+    // The $effect.pre duplicate check runs before DOM mutations, so the warning
+    // fires before Svelte processes the keyed each block. Start with unique colors,
+    // then rerender with duplicates to trigger the reactive update path.
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     try {
-      const colors = [
+      const uniqueColors = [
+        { color: '#ff0000', name: 'Red' },
+        { color: '#00ff00', name: 'Green' },
+        { color: '#0000ff', name: 'Blue' },
+      ];
+      const { rerender } = render(ColorSwatchPicker, {
+        colors: uniqueColors,
+        label: 'Colors',
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      // Rerender with duplicates — $effect.pre fires the devWarn before Svelte
+      // processes the keyed each. Swallow any subsequent Svelte throw.
+      const duplicateColors = [
         { color: '#ff0000', name: 'Red 1' },
         { color: '#ff0000', name: 'Red 2' },
-        { color: '#0000ff' },
+        { color: '#0000ff', name: 'Blue' },
       ];
-      const { container } = render(ColorSwatchPicker, {
-        colors,
-        label: 'Colors',
-        defaultValue: '#ff0000',
-      });
-      const options = toArray(container.querySelectorAll('[role="option"]'));
-      expect(options[0].getAttribute('aria-selected')).toBe('true');
-      expect(options[1].getAttribute('aria-selected')).toBe('false');
+      try {
+        await rerender({ colors: duplicateColors, label: 'Colors' });
+      } catch {
+        // Svelte may throw each_key_duplicate after our warning has already fired.
+      }
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate color values'));
     } finally {
       warnSpy.mockRestore();

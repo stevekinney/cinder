@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import Button from '../button/button.svelte';
   import type { PricingCardProps } from './pricing-card.types.ts';
 
@@ -31,6 +32,14 @@
     class: className,
     ...rest
   }: PricingCardProps = $props();
+
+  $effect.pre(() => {
+    if (new Set(features).size !== features.length) {
+      devWarn(
+        '[cinder/PricingCard] Duplicate feature values detected. Each feature must be unique when used as a list key.',
+      );
+    }
+  });
 </script>
 
 <div
@@ -54,7 +63,7 @@
 
   <div class="cinder-pricing-card__body">
     <ul class="cinder-pricing-card__features">
-      {#each features as feature, index (index)}
+      {#each features as feature (feature)}
         <li class="cinder-pricing-card__feature">{feature}</li>
       {/each}
     </ul>

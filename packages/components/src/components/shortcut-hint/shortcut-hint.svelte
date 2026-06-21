@@ -47,7 +47,7 @@
   {/if}
 
   <span class="cinder-shortcut-hint__keys" aria-hidden="true">
-    {#each keys as key, index (key + index)}
+    {#each keys as key, index (index)}
       <Kbd label={key} size="sm" />
       {#if index < keys.length - 1}
         <span class="cinder-shortcut-hint__separator">+</span>
