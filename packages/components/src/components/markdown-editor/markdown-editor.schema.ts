@@ -70,12 +70,12 @@ const schema = {
         description: 'Called when editor mode changes',
       },
       {
-        name: 'onReady',
+        name: 'onready',
         reason: 'function-or-snippet',
         description: 'Called when the editor is ready (Milkdown initialized)',
       },
       {
-        name: 'onSelectionChange',
+        name: 'onselectionchange',
         reason: 'function-or-snippet',
         description: 'Called when selection changes (stub for DEP-39)',
       },

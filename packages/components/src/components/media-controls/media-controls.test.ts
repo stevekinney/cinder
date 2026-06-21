@@ -70,11 +70,11 @@ describe('MediaControls', () => {
     expect(button.hasAttribute('disabled')).toBe(true);
   });
 
-  test('calls onPlay when play button is clicked', () => {
+  test('calls onplay when play button is clicked', () => {
     let called = false;
     const { getByRole } = render(MediaControls, {
       playing: false,
-      onPlay: () => {
+      onplay: () => {
         called = true;
       },
     });
@@ -82,11 +82,11 @@ describe('MediaControls', () => {
     expect(called).toBe(true);
   });
 
-  test('calls onPause when pause button is clicked', () => {
+  test('calls onpause when pause button is clicked', () => {
     let called = false;
     const { getByRole } = render(MediaControls, {
       playing: true,
-      onPause: () => {
+      onpause: () => {
         called = true;
       },
     });
@@ -94,11 +94,11 @@ describe('MediaControls', () => {
     expect(called).toBe(true);
   });
 
-  test('calls onReplay when replay button is clicked', () => {
+  test('calls onreplay when replay button is clicked', () => {
     let called = false;
     const { getByRole } = render(MediaControls, {
       replay: true,
-      onReplay: () => {
+      onreplay: () => {
         called = true;
       },
     });
@@ -106,11 +106,11 @@ describe('MediaControls', () => {
     expect(called).toBe(true);
   });
 
-  test('does not call onPlay when disabled', () => {
+  test('does not call onplay when disabled', () => {
     let called = false;
     const { getByRole } = render(MediaControls, {
       disabled: true,
-      onPlay: () => {
+      onplay: () => {
         called = true;
       },
     });

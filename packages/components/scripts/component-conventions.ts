@@ -425,12 +425,19 @@ function validatePropNameViolation(name: string): string | null {
   // Allow: aria-* and data-* passthrough
   if (name.startsWith('aria-') || name.startsWith('data-')) return null;
 
-  // Deny: exact case-sensitive match against the denylist.
-  // The denylist enumerates the wrong-cased / abbreviated prop names that
-  // cinder explicitly forbids. These are already in the form they must not
-  // appear as — e.g. `icononly` is forbidden, but `iconOnly` (camelCase) is
-  // the correct form and is NOT denied by this check.
-  if ((PROP_NAME_DENYLIST as readonly string[]).includes(name)) {
+  // Deny: check the denylist, with special handling for on* props.
+  // For event-callback props (those starting with "on"), the comparison is
+  // lowercased so that a camelCase variant (e.g. `onDismiss`) is caught by the
+  // same denylist entry as its lowercase canonical form (`ondismiss`). This
+  // prevents PascalCase-suffix event callbacks from evading the gate.
+  // For all other props (e.g. `icononly`, `className`), the comparison is
+  // exact so that the correct camelCase form (`iconOnly`) is not mistakenly
+  // denied by a lowercase wrong-form entry (`icononly`).
+  const lowerName = name.toLowerCase();
+  const isOnProp = lowerName.startsWith('on');
+  const denylist = PROP_NAME_DENYLIST as readonly string[];
+  const denied = isOnProp ? denylist.includes(lowerName) : denylist.includes(name);
+  if (denied) {
     return `"${name}" is in the prop-name denylist`;
   }
 

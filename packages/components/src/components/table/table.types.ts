@@ -20,13 +20,13 @@ export type TableSectionContext = 'header' | 'body';
 export type TableHeaderSelectionContext = {
   readonly allSelected: boolean;
   readonly someSelected: boolean;
-  readonly onSelectAll: (next: boolean) => void;
+  readonly onselectall: (next: boolean) => void;
   readonly selectAllLabel: string;
   claimSelectionHeaderCell: () => void;
 };
 /**
  * Shape of the table context provided to child components. Header cells call
- * `onSortChange` with their column key when activated; the table propagates
+ * `onsortchange` with their column key when activated; the table propagates
  * the new sort state to its bindable `sort` prop. Children read
  * `selectionEnabled` to render the leading selection cell.
  *
@@ -36,7 +36,7 @@ export type TableHeaderSelectionContext = {
  */
 export type TableContext = {
   readonly sort: TableSort | undefined;
-  onSortChange: (column: string) => void;
+  onsortchange: (column: string) => void;
   /** Mirror of Table.selectable. Set synchronously at construction time. */
   readonly selectionEnabled?: boolean;
 };

@@ -49,17 +49,17 @@
   "metadata": {
     "unsupportedProps": [
       {
-        "name": "onPause",
+        "name": "onpause",
         "reason": "function-or-snippet",
         "description": "Called when the pause action is triggered."
       },
       {
-        "name": "onPlay",
+        "name": "onplay",
         "reason": "function-or-snippet",
         "description": "Called when the play action is triggered."
       },
       {
-        "name": "onReplay",
+        "name": "onreplay",
         "reason": "function-or-snippet",
         "description": "Called when the replay action is triggered."
       }

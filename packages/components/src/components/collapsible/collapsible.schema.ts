@@ -40,7 +40,7 @@ const schema = {
         description: 'Panel content shown when open.',
       },
       {
-        name: 'onToggle',
+        name: 'ontoggle',
         reason: 'function-or-snippet',
         description:
           'Fired on every successful toggle with the next open state. Not called while disabled.',

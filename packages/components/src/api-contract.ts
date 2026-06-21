@@ -104,7 +104,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
     props: {
       variant: { optional: true, type_kind: 'TSTypeReference', default: L('info') },
       dismissible: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-      onDismiss: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
+      ondismiss: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {

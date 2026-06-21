@@ -1683,12 +1683,12 @@
           plugins={[anchorPlugin]}
           {snapshotMode}
           onchange={handleEditorBodyChange}
-          onReady={() => {
+          onready={() => {
             if (!editorViewReady) {
               editorViewReady = true;
             }
           }}
-          onSelectionChange={handleSelectionChange}
+          onselectionchange={handleSelectionChange}
         />
       </div>
     {:else if activeView === 'diff'}

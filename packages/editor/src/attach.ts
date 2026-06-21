@@ -24,8 +24,8 @@ import { DEFAULT_DEBOUNCE_MS } from './types.js';
  *   const editorAttachment = createEditorAttachment({
  *     getInitialValue: () => markdown,
  *     getReadonly: () => readonly,
- *     onReady: (state) => { editorState = state; },
- *     onChange: (md) => { markdown = md; },
+ *     onready: (state) => { editorState = state; },
+ *     onchange: (md) => { markdown = md; },
  *   });
  * </script>
  *
@@ -37,9 +37,9 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
     getInitialValue,
     getReadonly,
     getAriaLabel,
-    onReady,
-    onChange,
-    onSelectionChange,
+    onready,
+    onchange,
+    onSelectionchange,
     onLinkShortcut,
     onCommentShortcut,
     debounceMs = DEFAULT_DEBOUNCE_MS,
@@ -68,14 +68,13 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
       ariaLabel,
       changeDebounceMs: debounceMs,
       plugins,
+      ...(onchange && { onchange }),
+      ...(onselectionchange && { onselectionchange }),
+      ...(onLinkShortcut && { onLinkShortcut }),
+      ...(onCommentShortcut && { onCommentShortcut }),
+      ...(placeholderCompletion && { placeholderCompletion }),
+      ...(placeholderDecoration && { placeholderDecoration }),
     };
-
-    if (onChange) editorConfiguration.onChange = onChange;
-    if (onSelectionChange) editorConfiguration.onSelectionChange = onSelectionChange;
-    if (onLinkShortcut) editorConfiguration.onLinkShortcut = onLinkShortcut;
-    if (onCommentShortcut) editorConfiguration.onCommentShortcut = onCommentShortcut;
-    if (placeholderCompletion) editorConfiguration.placeholderCompletion = placeholderCompletion;
-    if (placeholderDecoration) editorConfiguration.placeholderDecoration = placeholderDecoration;
 
     // Initialize editor asynchronously
     void (async () => {
@@ -89,7 +88,7 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
         }
 
         editorState = state;
-        onReady?.(state);
+        onready?.(state);
       } catch (error) {
         // If we were unmounted mid-init, swallow the error to avoid unhandled rejections
         // in test environments that rapidly mount/unmount.

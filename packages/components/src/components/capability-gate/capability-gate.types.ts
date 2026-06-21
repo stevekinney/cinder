@@ -42,7 +42,7 @@ export type CapabilityGateProps = Omit<
    * re-opens the gate) — the component blurs the dismiss button first so focus
    * is not stranded, but only the consumer knows the right next focus target.
    */
-  onDismiss?: () => void;
+  ondismiss?: () => void;
   /** Custom content rendered below the status text and before the actions. */
   children?: Snippet;
   /** Additional class names merged with `.cinder-capability-gate`. */
@@ -77,7 +77,7 @@ export interface CapabilityGateSchemaProps {
   /** Called when the fallback action button is activated. */
   onFallbackAction?: () => void;
   /** Called when the gate is dismissed. */
-  onDismiss?: () => void;
+  ondismiss?: () => void;
   /** Custom content rendered below the status text and before the actions. */
   children?: Snippet;
 }

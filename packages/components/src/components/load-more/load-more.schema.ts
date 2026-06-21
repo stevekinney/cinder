@@ -43,10 +43,10 @@ const schema = {
       {
         name: 'onError',
         reason: 'function-or-snippet',
-        description: 'Notified when onLoadMore throws or rejects.',
+        description: 'Notified when onloadmore throws or rejects.',
       },
       {
-        name: 'onLoadMore',
+        name: 'onloadmore',
         reason: 'function-or-snippet',
         description:
           'Called when the next page should be loaded. Caller flips `loading` and `hasMore`.',

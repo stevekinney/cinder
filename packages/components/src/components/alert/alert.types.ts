@@ -24,7 +24,7 @@ export type AlertProps = Omit<
 > & {
   variant?: AlertVariant;
   dismissible?: boolean;
-  onDismiss?: () => void;
+  ondismiss?: () => void;
   class?: string;
   children: Snippet;
   icon?: Snippet;

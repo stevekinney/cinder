@@ -33,7 +33,7 @@
   let {
     variant = 'info',
     dismissible = true,
-    onDismiss,
+    ondismiss,
     class: className,
     children,
     actions,
@@ -49,7 +49,7 @@
     visible = false;
     await tick();
     if (focusTarget?.isConnected) focusTarget.focus();
-    onDismiss?.();
+    ondismiss?.();
   }
 
   function resolveFocusTarget(bannerElement: HTMLElement): HTMLElement | null {

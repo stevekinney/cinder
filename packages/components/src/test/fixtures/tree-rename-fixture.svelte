@@ -10,28 +10,28 @@
     disabled = false,
     branch = false,
     includeBeta = true,
-    onRename = async (_id: string, _nextLabel: string) => {},
+    onrename = async (_id: string, _nextLabel: string) => {},
   }: {
     initialLabel?: string;
     selectionMode?: TreeSelectionMode;
     disabled?: boolean;
     branch?: boolean;
     includeBeta?: boolean;
-    onRename?: (itemId: string, nextLabel: string) => void | Promise<void>;
+    onrename?: (itemId: string, nextLabel: string) => void | Promise<void>;
   } = $props();
 
   let label = $state(untrack(() => initialLabel));
   let expandedIds = $state<string[]>(untrack(() => (branch ? ['alpha'] : [])));
 
   async function handleRename(itemId: string, nextLabel: string): Promise<void> {
-    await onRename(itemId, nextLabel);
+    await onrename(itemId, nextLabel);
     label = nextLabel;
   }
 </script>
 
 <Tree aria-label="Rename tree" {selectionMode} bind:expandedIds>
   {#key label}
-    <TreeItem id="alpha" {label} {disabled} {branch} onRename={handleRename}>
+    <TreeItem id="alpha" {label} {disabled} {branch} onrename={handleRename}>
       {#if branch}
         <TreeItem id="child" label="Child" />
       {/if}

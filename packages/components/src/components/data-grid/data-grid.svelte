@@ -84,9 +84,9 @@
     columnPinning,
     selectionMode = 'none',
     selectionModel = $bindable<DataGridSelectionModel | undefined>(undefined),
-    onSelectionModelChange,
+    onselectionmodelchange,
     sortModel = $bindable([]),
-    onSortModelChange,
+    onsortmodelchange,
     rowClass,
     getRowAriaLabel,
     class: className,
@@ -586,7 +586,7 @@
 
     const nextSortModel = getNextDataGridSortModel(activeSortModel, column.key, event.shiftKey);
     sortModel = nextSortModel;
-    onSortModelChange?.(nextSortModel);
+    onsortmodelchange?.(nextSortModel);
   }
 
   function getCellCoordinate(
@@ -644,7 +644,7 @@
 
   function setSelectionModel(nextSelectionModel: DataGridSelectionModel): void {
     selectionModel = nextSelectionModel;
-    onSelectionModelChange?.(nextSelectionModel);
+    onselectionmodelchange?.(nextSelectionModel);
   }
 
   function updateRowSelection(rowId: string, event: MouseEvent | KeyboardEvent): void {

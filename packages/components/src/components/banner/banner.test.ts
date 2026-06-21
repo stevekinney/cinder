@@ -197,11 +197,11 @@ describe('Banner dismiss behavior', () => {
     expect(container.querySelector('.cinder-banner')).toBeNull();
   });
 
-  test('clicking the dismiss button invokes onDismiss exactly once', async () => {
+  test('clicking the dismiss button invokes ondismiss exactly once', async () => {
     let callCount = 0;
     const { container } = render(Banner, {
       props: {
-        onDismiss: () => {
+        ondismiss: () => {
           callCount += 1;
         },
         children: emptySnippet,
@@ -233,7 +233,7 @@ describe('Banner dismiss behavior', () => {
     }
   });
 
-  test('omitting onDismiss does not throw when the dismiss button is clicked', async () => {
+  test('omitting ondismiss does not throw when the dismiss button is clicked', async () => {
     const { container } = render(Banner, {
       props: { children: emptySnippet },
     });
@@ -280,11 +280,11 @@ describe('Banner dismiss behavior', () => {
     }
   });
 
-  test('rapid double-click on dismiss invokes onDismiss exactly once', async () => {
+  test('rapid double-click on dismiss invokes ondismiss exactly once', async () => {
     let callCount = 0;
     const { container } = render(Banner, {
       props: {
-        onDismiss: () => {
+        ondismiss: () => {
           callCount += 1;
         },
         children: emptySnippet,
@@ -296,11 +296,11 @@ describe('Banner dismiss behavior', () => {
     expect(callCount).toBe(1);
   });
 
-  test('banner is removed from the DOM before onDismiss fires', async () => {
+  test('banner is removed from the DOM before ondismiss fires', async () => {
     let bannerStillPresent = true;
     const { container } = render(Banner, {
       props: {
-        onDismiss: () => {
+        ondismiss: () => {
           bannerStillPresent = container.querySelector('.cinder-banner') !== null;
         },
         children: emptySnippet,

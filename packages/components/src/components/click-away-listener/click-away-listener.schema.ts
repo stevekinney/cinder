@@ -7,7 +7,7 @@ const schema = {
     enabled: {
       type: 'boolean',
       description:
-        'When false the document listener is detached and `onClickAway` is never\ncalled. Defaults to `true`.',
+        'When false the document listener is detached and `onclickaway` is never\ncalled. Defaults to `true`.',
     },
     class: {
       type: 'string',
@@ -24,7 +24,7 @@ const schema = {
         description: 'Content rendered inside the root element. Required.',
       },
       {
-        name: 'onClickAway',
+        name: 'onclickaway',
         reason: 'function-or-snippet',
         required: true,
         description:

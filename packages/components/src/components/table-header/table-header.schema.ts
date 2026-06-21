@@ -16,7 +16,7 @@ const schema = {
     someSelected: {
       type: 'boolean',
       description:
-        'When true and `allSelected` is false, the select-all checkbox renders as indeterminate.\nThe browser exposes that as `aria-checked="mixed"` to assistive tech.\nRequired (alongside `allSelected` and `onSelectAll`) when `Table.selectable`\nis true for accurate checkbox state.',
+        'When true and `allSelected` is false, the select-all checkbox renders as indeterminate.\nThe browser exposes that as `aria-checked="mixed"` to assistive tech.\nRequired (alongside `allSelected` and `onselectall`) when `Table.selectable`\nis true for accurate checkbox state.',
     },
     selectAllLabel: {
       type: 'string',
@@ -34,7 +34,7 @@ const schema = {
         description: 'TableRow children — typically a single header row.',
       },
       {
-        name: 'onSelectAll',
+        name: 'onselectall',
         reason: 'function-or-snippet',
         description:
           'Called when the user activates the select-all checkbox. Required when `Table.selectable` is true.',

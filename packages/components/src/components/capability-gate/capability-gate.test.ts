@@ -104,13 +104,13 @@ describe('CapabilityGate', () => {
     expect(link?.getAttribute('href')).toBe('/settings');
   });
 
-  test('dismiss hides the component and calls onDismiss', () => {
+  test('dismiss hides the component and calls ondismiss', () => {
     let dismissed = false;
     const { container, getByRole } = render(CapabilityGate, {
       feature: 'Offline storage',
       state: 'unavailable',
       dismissAction: 'Dismiss',
-      onDismiss: () => {
+      ondismiss: () => {
         dismissed = true;
       },
     });

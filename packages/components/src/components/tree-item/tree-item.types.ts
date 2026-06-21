@@ -21,7 +21,7 @@ export type TreeItemProps = {
   label: string;
   /** When true, the item cannot be selected or actioned. Still keyboard-reachable. */
   disabled?: boolean;
-  /** Render a reorder handle when the parent Tree provides onReorder. */
+  /** Render a reorder handle when the parent Tree provides onreorder. */
   draggable?: boolean;
   /**
    * Marks the node as an expandable branch. A node is a leaf unless it sets `branch`
@@ -34,14 +34,14 @@ export type TreeItemProps = {
   /**
    * Async loader called the first time the item is expanded. Implies `branch=true`.
    * The loader mutates consumer-owned reactive state; it returns no data.
-   * Errors are forwarded to `onLoadError` if provided, otherwise logged via
+   * Errors are forwarded to `onloaderror` if provided, otherwise logged via
    * `console.error` with a `[cinder-tree]` prefix.
    */
   loadChildren?: (context: { id: string; signal: AbortSignal }) => void | Promise<void>;
   /** Called when `loadChildren` rejects with a non-abort error. */
-  onLoadError?: (error: unknown, itemId: string) => void;
+  onloaderror?: (error: unknown, itemId: string) => void;
   /** Called when inline label editing commits a new label. */
-  onRename?: (itemId: string, nextLabel: string) => void | Promise<void>;
+  onrename?: (itemId: string, nextLabel: string) => void | Promise<void>;
   /** Explicit selectable ids controlled by this item in cascade checkbox-selection mode. */
   selectionScopeIds?: string[];
   /** Optional row content snippet override. Default renders `label`. */

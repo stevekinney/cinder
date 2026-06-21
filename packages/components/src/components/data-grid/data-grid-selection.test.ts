@@ -143,13 +143,13 @@ describe('DataGrid selection', () => {
   });
 
   test('Escape collapses row selection to the active row', async () => {
-    const onSelectionModelChange = mock();
+    const onselectionmodelchange = mock();
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
       getRowId: getOrderId,
       selectionMode: 'multiple',
-      onSelectionModelChange,
+      onselectionmodelchange,
       'aria-label': 'Orders',
     });
 
@@ -159,7 +159,7 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
     await fireEvent.keyDown(grid!, { key: 'Escape' });
 
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-3']);
+    expect(onselectionmodelchange).toHaveBeenLastCalledWith(['ord-3']);
     expect(
       container.querySelector('[role="row"][aria-rowindex="4"]')?.getAttribute('aria-selected'),
     ).toBe('true');
@@ -167,13 +167,13 @@ describe('DataGrid selection', () => {
   });
 
   test('Ctrl+A keeps row selection singular in single selection mode', async () => {
-    const onSelectionModelChange = mock();
+    const onselectionmodelchange = mock();
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
       getRowId: getOrderId,
       selectionMode: 'single',
-      onSelectionModelChange,
+      onselectionmodelchange,
       'aria-label': 'Orders',
     });
 
@@ -182,7 +182,7 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
     await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
 
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-3']);
+    expect(onselectionmodelchange).toHaveBeenLastCalledWith(['ord-3']);
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(1);
     expect(
       container.querySelector('[role="row"][aria-rowindex="4"]')?.getAttribute('aria-selected'),
@@ -241,13 +241,13 @@ describe('DataGrid selection', () => {
   });
 
   test('Enter selects the active cell while focus stays on the grid', async () => {
-    const onSelectionModelChange = mock();
+    const onselectionmodelchange = mock();
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
       getRowId: getOrderId,
       selectionMode: 'single',
-      onSelectionModelChange,
+      onselectionmodelchange,
       'aria-label': 'Orders',
     });
 
@@ -257,17 +257,17 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'Enter' });
 
     expect(getDataCell(container, 1, 0).getAttribute('aria-selected')).toBe('true');
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-2']);
+    expect(onselectionmodelchange).toHaveBeenLastCalledWith(['ord-2']);
   });
 
   test('cell Enter handling does not bubble into duplicate grid selection handling', async () => {
-    const onSelectionModelChange = mock();
+    const onselectionmodelchange = mock();
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
       getRowId: getOrderId,
       selectionMode: 'single',
-      onSelectionModelChange,
+      onselectionmodelchange,
       'aria-label': 'Orders',
     });
 
@@ -277,19 +277,19 @@ describe('DataGrid selection', () => {
     firstCell.focus();
     await fireEvent.keyDown(firstCell, { key: 'Enter' });
 
-    expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1']);
+    expect(onselectionmodelchange).toHaveBeenCalledTimes(1);
+    expect(onselectionmodelchange).toHaveBeenLastCalledWith(['ord-1']);
     expect(document.activeElement).toBe(grid);
   });
 
   test('Shift+Arrow range extension keeps multiple row selection intact', async () => {
-    const onSelectionModelChange = mock();
+    const onselectionmodelchange = mock();
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
       getRowId: getOrderId,
       selectionMode: 'multiple',
-      onSelectionModelChange,
+      onselectionmodelchange,
       'aria-label': 'Orders',
     });
 
@@ -298,19 +298,19 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
     await fireEvent.keyDown(grid!, { key: 'ArrowRight', shiftKey: true });
 
-    expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
+    expect(onselectionmodelchange).toHaveBeenCalledTimes(1);
+    expect(onselectionmodelchange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(3);
   });
 
   test('Shift+Click range extension keeps multiple row selection intact', async () => {
-    const onSelectionModelChange = mock();
+    const onselectionmodelchange = mock();
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
       getRowId: getOrderId,
       selectionMode: 'multiple',
-      onSelectionModelChange,
+      onselectionmodelchange,
       'aria-label': 'Orders',
     });
 
@@ -319,19 +319,19 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'a', ctrlKey: true });
     await fireEvent.click(getDataCell(container, 1, 1), { shiftKey: true });
 
-    expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
+    expect(onselectionmodelchange).toHaveBeenCalledTimes(1);
+    expect(onselectionmodelchange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(3);
   });
 
   test('Shift+Enter range extension keeps multiple row selection intact', async () => {
-    const onSelectionModelChange = mock();
+    const onselectionmodelchange = mock();
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
       getRowId: getOrderId,
       selectionMode: 'multiple',
-      onSelectionModelChange,
+      onselectionmodelchange,
       'aria-label': 'Orders',
     });
 
@@ -341,8 +341,8 @@ describe('DataGrid selection', () => {
     await fireEvent.keyDown(grid!, { key: 'ArrowDown' });
     await fireEvent.keyDown(grid!, { key: 'Enter', shiftKey: true });
 
-    expect(onSelectionModelChange).toHaveBeenCalledTimes(1);
-    expect(onSelectionModelChange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
+    expect(onselectionmodelchange).toHaveBeenCalledTimes(1);
+    expect(onselectionmodelchange).toHaveBeenLastCalledWith(['ord-1', 'ord-2', 'ord-3']);
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]').length).toBe(3);
   });
 

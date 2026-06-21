@@ -82,9 +82,9 @@
     showToolbar = true,
     class: className,
     onchange,
-    onReady,
+    onready,
     onmodechange,
-    onSelectionChange,
+    onselectionchange,
     onCommentShortcut,
     plugins = [],
     placeholderCompletion,
@@ -438,12 +438,12 @@
     getPlugins: () => plugins,
     getPlaceholderCompletion: () => placeholderCompletion,
     getPlaceholderDecoration: () => placeholderDecoration,
-    onReady: (state) => {
+    onready: (state) => {
       editorState = state;
       isInitializing = false;
-      onReady?.();
+      onready?.();
     },
-    onChange: (markdown) => {
+    onchange: (markdown) => {
       isInternalUpdate = true;
       value = markdown;
       onchange?.(markdown);
@@ -455,10 +455,10 @@
         isInternalUpdate = false;
       });
     },
-    onSelectionChange: (selection) => {
+    onselectionchange: (selection) => {
       // Increment version to trigger toolbar state re-derivation
       selectionVersion++;
-      onSelectionChange?.(selection);
+      onselectionchange?.(selection);
     },
     onLinkShortcut: () => {
       // Mod-k pressed - open link popover with a virtual element anchor

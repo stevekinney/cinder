@@ -55,7 +55,7 @@ const schema = {
         description: 'Custom content rendered below the status text and before the actions.',
       },
       {
-        name: 'onDismiss',
+        name: 'ondismiss',
         reason: 'function-or-snippet',
         description: 'Called when the gate is dismissed.',
       },

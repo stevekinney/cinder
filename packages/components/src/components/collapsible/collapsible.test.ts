@@ -121,21 +121,21 @@ describe('Collapsible (uncontrolled)', () => {
 });
 
 describe('Collapsible (controlled)', () => {
-  test('onToggle fires with the next state on each click', async () => {
-    const onToggle = mock(() => {});
+  test('ontoggle fires with the next state on each click', async () => {
+    const ontoggle = mock(() => {});
     const { container } = render(Collapsible, {
       trigger: 'Toggle',
       open: false,
-      onToggle,
+      ontoggle,
       children: bodySnippet(),
     });
 
     await fireEvent.click(trigger(container));
-    expect(onToggle).toHaveBeenLastCalledWith(true);
+    expect(ontoggle).toHaveBeenLastCalledWith(true);
     expect(panel(container)).not.toBeNull();
 
     await fireEvent.click(trigger(container));
-    expect(onToggle).toHaveBeenLastCalledWith(false);
+    expect(ontoggle).toHaveBeenLastCalledWith(false);
     expect(panel(container)).toBeNull();
   });
 
@@ -159,11 +159,11 @@ describe('Collapsible (controlled)', () => {
 
 describe('Collapsible disabled', () => {
   test('disabled trigger is a real disabled button that does not toggle', async () => {
-    const onToggle = mock(() => {});
+    const ontoggle = mock(() => {});
     const { container } = render(Collapsible, {
       trigger: 'Toggle',
       disabled: true,
-      onToggle,
+      ontoggle,
       children: bodySnippet(),
     });
 
@@ -173,7 +173,7 @@ describe('Collapsible disabled', () => {
     await fireEvent.click(button);
 
     expect(panel(container)).toBeNull();
-    expect(onToggle).not.toHaveBeenCalled();
+    expect(ontoggle).not.toHaveBeenCalled();
   });
 });
 

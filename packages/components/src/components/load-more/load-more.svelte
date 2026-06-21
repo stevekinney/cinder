@@ -21,7 +21,7 @@
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
   let {
-    onLoadMore = async () => {},
+    onloadmore = async () => {},
     onError,
     hasMore = $bindable(true),
     loading = $bindable(false),
@@ -91,7 +91,7 @@
     errorState = false;
 
     try {
-      await onLoadMore();
+      await onloadmore();
       if (source === 'button') {
         retryCount = 0;
       }

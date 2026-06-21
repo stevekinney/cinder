@@ -62,7 +62,7 @@
     { box: 'border-box', enabled: () => stickyHeader },
   );
 
-  function onSortChange(column: string): void {
+  function onsortchange(column: string): void {
     if (!sort || sort.column !== column) {
       sort = { column, direction: 'ascending' };
       return;
@@ -81,7 +81,7 @@
     get selectionEnabled() {
       return selectable;
     },
-    onSortChange,
+    onsortchange,
   });
 </script>
 

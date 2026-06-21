@@ -83,12 +83,12 @@ const schema = {
         description: 'Stable row identity used for ARIA ids and row-scoped state.',
       },
       {
-        name: 'onSelectionModelChange',
+        name: 'onselectionmodelchange',
         reason: 'function-or-snippet',
         description: 'Called when row selection changes through cell interaction.',
       },
       {
-        name: 'onSortModelChange',
+        name: 'onsortmodelchange',
         reason: 'function-or-snippet',
         description: 'Called after the user changes sort order and DataGrid updates `sortModel`.',
       },
