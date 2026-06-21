@@ -40,7 +40,7 @@ export interface UseChatUnreadStateReturn {
   /** Current count of unread messages */
   readonly unreadCount: number;
   /** Whether the new message indicator should be visible */
-  readonly hasNewMessageIndicator: boolean;
+  readonly newMessageIndicatorVisible: boolean;
   /** ID of the first unread message (for divider placement) */
   readonly firstUnreadId: string | null;
   /** Formatted unread count for display (caps at "99+") */
@@ -55,10 +55,10 @@ export interface UseChatUnreadStateReturn {
    * Process messages to detect new arrivals and update unread state.
    * Should be called in an $effect when messages change.
    *
-   * @param getIsAtBottom - Getter function to read isAtBottom without creating a dependency.
-   *                        This allows the effect to only re-run when messages change, not on scroll.
+   * @param getAtBottom - Getter function to read atBottom without creating a dependency.
+   *                      This allows the effect to only re-run when messages change, not on scroll.
    */
-  processMessages(messages: Message[], conversationId: string, getIsAtBottom: () => boolean): void;
+  processMessages(messages: Message[], conversationId: string, getAtBottom: () => boolean): void;
   /** Cleanup resources */
   destroy(): void;
 }
@@ -80,9 +80,9 @@ export interface UseChatUnreadStateReturn {
  *   });
  *
  *   // Call in an $effect to process message changes
- *   // Pass a getter function for isAtBottom to avoid creating a scroll dependency
+ *   // Pass a getter function for atBottom to avoid creating a scroll dependency
  *   $effect(() => {
- *     unreadState.processMessages(messages, conversation.id, () => scrollState.isAtBottom);
+ *     unreadState.processMessages(messages, conversation.id, () => scrollState.atBottom);
  *   });
  *
  *   // Mark as read when user scrolls to bottom
@@ -99,7 +99,7 @@ export function useChatUnreadState(options?: UseChatUnreadStateOptions): UseChat
 
   // Internal reactive state
   let unreadCount = $state(0);
-  let hasNewMessageIndicator = $state(false);
+  let newMessageIndicatorVisible = $state(false);
   let firstUnreadId = $state<string | null>(null);
 
   // Non-reactive bookkeeping (prevents $effect infinite loops)
@@ -116,16 +116,16 @@ export function useChatUnreadState(options?: UseChatUnreadStateOptions): UseChat
 
   /**
    * Fire the indicator-change callback from the mutation sites that actually
-   * change `unreadCount` / `hasNewMessageIndicator`. Driving it here (rather
+   * change `unreadCount` / `newMessageIndicatorVisible`. Driving it here (rather
    * than from an `$effect`) avoids the spurious `{ unreadCount: 0,
-   * hasNewMessageIndicator: false }` notification that an effect would emit on
+   * newMessageIndicatorVisible: false }` notification that an effect would emit on
    * mount, and keeps the contract aligned with `onScrollStateChange`, which
    * only fires from its own mutation site.
    */
   function notifyIndicatorChange(): void {
     onUnreadIndicatorChange?.({
       unreadCount,
-      hasNewMessageIndicator,
+      newMessageIndicatorVisible,
     });
   }
 
@@ -133,9 +133,9 @@ export function useChatUnreadState(options?: UseChatUnreadStateOptions): UseChat
    * Mark all messages as read (resets unread state).
    */
   function markAllAsRead(): void {
-    const changed = unreadCount !== 0 || hasNewMessageIndicator;
+    const changed = unreadCount !== 0 || newMessageIndicatorVisible;
     unreadCount = 0;
-    hasNewMessageIndicator = false;
+    newMessageIndicatorVisible = false;
     firstUnreadId = null;
     if (changed) notifyIndicatorChange();
   }
@@ -144,12 +144,12 @@ export function useChatUnreadState(options?: UseChatUnreadStateOptions): UseChat
    * Process messages to detect new arrivals and update unread state.
    * This should be called from an $effect in the parent component.
    *
-   * @param getIsAtBottom - Getter function to read isAtBottom without creating a dependency.
+   * @param getAtBottom - Getter function to read atBottom without creating a dependency.
    */
   function processMessages(
     messages: Message[],
     conversationId: string,
-    getIsAtBottom: () => boolean,
+    getAtBottom: () => boolean,
   ): void {
     // Check if conversation has changed - reset tracking if so
     if (conversationId !== previousConversationId) {
@@ -177,15 +177,15 @@ export function useChatUnreadState(options?: UseChatUnreadStateOptions): UseChat
 
     if (wasAppended) {
       // New messages arrived at the end
-      // Read isAtBottom via getter to avoid creating a reactive dependency
+      // Read atBottom via getter to avoid creating a reactive dependency
       // The getter is called inside untrack to ensure no dependency tracking
-      const atBottom = untrack(getIsAtBottom);
+      const atBottom = untrack(getAtBottom);
 
       if (!atBottom) {
         // User is reading history - show indicator
         const newMessageCount = currentCount - prevCount;
         unreadCount += newMessageCount;
-        hasNewMessageIndicator = true;
+        newMessageIndicatorVisible = true;
 
         // Set first unread ID if not already set
         // The first new message is at index (currentCount - newMessageCount)
@@ -225,8 +225,8 @@ export function useChatUnreadState(options?: UseChatUnreadStateOptions): UseChat
     get unreadCount() {
       return unreadCount;
     },
-    get hasNewMessageIndicator() {
-      return hasNewMessageIndicator;
+    get newMessageIndicatorVisible() {
+      return newMessageIndicatorVisible;
     },
     get firstUnreadId() {
       return firstUnreadId;

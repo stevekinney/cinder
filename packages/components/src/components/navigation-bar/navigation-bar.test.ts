@@ -171,27 +171,27 @@ describe('NavigationBar', () => {
     expect(container.querySelector('nav')?.getAttribute('id')).toBe('main-nav');
   });
 
-  // ── navAriaLabel prop ────────────────────────────────────────────────────
+  // ── label prop ────────────────────────────────────────────────────
 
-  test('navAriaLabel defaults to "Main navigation"', () => {
+  test('label defaults to "Main navigation"', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
     });
     expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Main navigation');
   });
 
-  test('navAriaLabel prop is applied to <nav>', () => {
+  test('label prop is applied to <nav>', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
-      navAriaLabel: 'Site navigation',
+      label: 'Site navigation',
     });
     expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Site navigation');
   });
 
-  test('rest-prop aria-label does not override navAriaLabel', () => {
+  test('rest-prop aria-label does not override label', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
-      navAriaLabel: 'Primary nav',
+      label: 'Primary nav',
       'aria-label': 'Should be ignored',
     } as any);
     expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Primary nav');

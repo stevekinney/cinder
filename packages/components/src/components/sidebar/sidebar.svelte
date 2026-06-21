@@ -31,7 +31,7 @@
   let {
     id: sidebarId,
     collapsed = $bindable(false),
-    ariaLabel = 'Sidebar',
+    label = 'Sidebar',
     class: className,
     brand: brandSnippet,
     navigation: navigationSnippet,
@@ -42,10 +42,10 @@
   }: SidebarRuntimeProps = $props();
 
   const validatedLabel = $derived.by(() => {
-    if (ariaLabel.trim() === '') {
-      throw new Error('Sidebar requires a non-empty ariaLabel.');
+    if (label.trim() === '') {
+      throw new Error('Sidebar requires a non-empty label.');
     }
-    return ariaLabel;
+    return label;
   });
 
   // The inner <nav> landmark gets a distinct accessible name so the outer

@@ -24,7 +24,7 @@ const schema = {
       type: 'boolean',
       description: 'Two-way bindable open state of the mobile menu.',
     },
-    navAriaLabel: {
+    label: {
       type: 'string',
       description:
         "Accessible name for the <nav> landmark. Wins over any aria-label passed via rest. Default 'Main navigation'.",

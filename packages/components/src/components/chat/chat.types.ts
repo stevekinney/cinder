@@ -56,6 +56,26 @@ export type ReadReceipt = {
  */
 export type ChatRowOverride = Snippet<[message: Message, renderDefault: Snippet]>;
 
+/**
+ * Feature-capability flags for the Chat component. Grouped here so consumers
+ * pass a single object instead of five scattered boolean props.
+ *
+ * All flags default to `true` when the `capabilities` prop is omitted or when
+ * an individual key is absent from the object.
+ */
+export type ChatCapabilities = {
+  /** Whether file attachments are enabled in the composer. When `false`, the attachment button is hidden and drag-and-drop onto the chat surface is suppressed. Default `true`. */
+  attachments?: boolean;
+  /** Whether in-conversation search is enabled. When `true`, pressing Ctrl+F / Cmd+F opens a search bar that highlights matching messages. Default `true`. */
+  search?: boolean;
+  /** Whether per-message copy buttons are shown in the message action bar. Default `true`. */
+  copy?: boolean;
+  /** Whether user messages can be edited inline. Default `true`. */
+  editing?: boolean;
+  /** Whether failed assistant messages show a retry button. Default `true`. */
+  retry?: boolean;
+};
+
 /** Props for the Chat component. */
 // `onsubmit` is redefined below with a ChatSubmitEvent payload, so strip the
 // native DOM SubmitEvent handler from the base attributes to avoid an
@@ -70,11 +90,11 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    */
   conversation: ConversationHistory;
   /** Whether the message viewport is scrolled to the bottom. Bindable; updated automatically as the user scrolls. Default `true`. */
-  isAtBottom?: boolean;
+  atBottom?: boolean;
   /** Number of messages received while the viewport was scrolled away from the bottom. Bindable; resets to `0` when the user scrolls to the bottom. Default `0`. */
   unreadCount?: number;
   /** Whether the "new messages" indicator is currently visible above the composer. Bindable; cleared automatically when the viewport reaches the bottom. Default `false`. */
-  hasNewMessageIndicator?: boolean;
+  newMessageIndicatorVisible?: boolean;
   /** Additional class name merged onto the `.chat-container` root element. */
   class?: string;
   /** Controls the background of the chat surface. Use `'transparent'` to inherit the host element's background when embedding chat inside a card or panel. Default `'default'`. */
@@ -98,13 +118,15 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   /** Distance in pixels scrolled up from the bottom required before the jump-to-latest button appears. Must be greater than `bottomThreshold` to prevent button flickering. Default `200`. */
   jumpThreshold?: number;
   /** Whether a streaming response is currently in progress. When `true`, the composer is disabled and a stop-generating button is shown. Default `false`. */
-  isStreaming?: boolean;
-  /** Optional status label displayed in the typing indicator while `isStreaming` is `true` and no streaming content has arrived yet (e.g. `"Thinking…"` or `"Analyzing file…"`). When omitted, three animated dots are shown. */
+  streaming?: boolean;
+  /** Optional status label displayed in the typing indicator while `streaming` is `true` and no streaming content has arrived yet (e.g. `"Thinking…"` or `"Analyzing file…"`). When omitted, three animated dots are shown. */
   streamingStatus?: string;
-  /** Whether file attachments are enabled in the composer. When `false`, the attachment button is hidden and drag-and-drop onto the chat surface is suppressed. Default `true`. */
-  allowAttachments?: boolean;
-  /** Whether in-conversation search is enabled. When `true`, pressing Ctrl+F / Cmd+F opens a search bar that highlights matching messages. Default `true`. */
-  allowSearch?: boolean;
+  /**
+   * Feature-capability flags. Pass a `ChatCapabilities` object to enable or disable
+   * individual Chat features (attachments, search, copy, editing, retry) as a group
+   * rather than as five separate boolean props.
+   */
+  capabilities?: ChatCapabilities;
   /** Use the virtualized message render path for long transcripts. The complete `ConversationHistory` remains unchanged; only the DOM window is reduced. Default `false`. */
   virtualized?: boolean;
   /** Estimated row height in pixels for virtualized message rows. Default `88`. */
@@ -114,17 +136,11 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   /** Initial virtualized viewport height used before measurement. Default `640`. */
   virtualizationInitialHeight?: number;
   /** Whether the explicit "Load earlier messages" trigger is shown when a load handler exists. Default `true`. */
-  hasMoreHistory?: boolean;
+  moreHistoryAvailable?: boolean;
   /** Label for the history pagination trigger. Default `"Load earlier messages"`. */
   loadEarlierLabel?: string;
   /** Status text while older messages are loading. Default `"Loading earlier messages"`. */
   loadingEarlierLabel?: string;
-  /** Whether per-message copy buttons are shown in the message action bar. Default `true`. */
-  allowCopy?: boolean;
-  /** Whether user messages can be edited inline. Default `true`. */
-  allowEditing?: boolean;
-  /** Whether failed assistant messages show a retry button. Default `true`. */
-  allowRetry?: boolean;
   header?: Snippet;
   empty?: Snippet;
   /** List of suggested starter prompt strings shown as clickable buttons in the default empty state. Clicking a prompt submits it immediately as a user message. Has no effect when a custom `empty` snippet is provided. */

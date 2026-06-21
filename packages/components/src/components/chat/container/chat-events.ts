@@ -14,7 +14,7 @@ export type ChatStopGeneratingEvent = {
 
 /** Event fired when scroll state changes. */
 export type ChatScrollStateChangeEvent = {
-  isAtBottom: boolean;
+  atBottom: boolean;
   scrollTop: number;
   scrollHeight: number;
 };
@@ -22,5 +22,5 @@ export type ChatScrollStateChangeEvent = {
 /** Event fired when unread indicator state changes. */
 export type ChatUnreadIndicatorChangeEvent = {
   unreadCount: number;
-  hasNewMessageIndicator: boolean;
+  newMessageIndicatorVisible: boolean;
 };

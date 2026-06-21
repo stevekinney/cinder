@@ -13,7 +13,7 @@
       "id": "statuses",
       "title": "Status dot statuses",
       "description": "All eight semantic status values.",
-      "code": "<script lang=\"ts\">\n  import { StatusDot } from '@lostgradient/cinder/status-dot';\n</script>\n\n<div class=\"example-preview-row\">\n  <StatusDot status=\"online\" label=\"Online\" />\n  <StatusDot status=\"offline\" label=\"Offline\" />\n  <StatusDot status=\"warning\" label=\"Warning\" />\n  <StatusDot status=\"error\" label=\"Error\" />\n  <StatusDot status=\"pending\" label=\"Pending\" />\n  <StatusDot status=\"neutral\" label=\"Neutral\" />\n  <StatusDot status=\"success\" label=\"Success\" />\n  <StatusDot status=\"accent\" label=\"Accent\" />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { StatusDot } from '@lostgradient/cinder/status-dot';\n</script>\n\n<div class=\"example-preview-row\">\n  <StatusDot status=\"online\" label=\"Online\" />\n  <StatusDot status=\"offline\" label=\"Offline\" />\n  <StatusDot status=\"warning\" label=\"Warning\" />\n  <StatusDot status=\"danger\" label=\"Danger\" />\n  <StatusDot status=\"pending\" label=\"Pending\" />\n  <StatusDot status=\"neutral\" label=\"Neutral\" />\n  <StatusDot status=\"success\" label=\"Success\" />\n  <StatusDot status=\"accent\" label=\"Accent\" />\n</div>\n"
     }
   ]
 }

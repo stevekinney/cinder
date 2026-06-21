@@ -20,7 +20,7 @@ export type SidebarProps = Omit<
    * by appending `' navigation'` so screen readers can distinguish the
    * outer complementary region from the inner navigation region.
    */
-  ariaLabel?: string;
+  label?: string;
   /** Additional CSS class merged with `.cinder-sidebar`. */
   class?: string;
   /** Optional branding region rendered above the navigation. */

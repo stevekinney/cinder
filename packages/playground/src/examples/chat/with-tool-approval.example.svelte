@@ -64,7 +64,7 @@
   <Chat
     id="playground-tool-approval-chat"
     {conversation}
-    allowAttachments={false}
+    capabilities={{ attachments: false }}
     onapprove={handleApprove}
     ondeny={handleDeny}
   />

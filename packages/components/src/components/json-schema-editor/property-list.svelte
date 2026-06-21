@@ -162,7 +162,7 @@
 
 <div class="cinder-jse-property-list">
   {#if renameError}
-    <Alert variant="error">{renameError}</Alert>
+    <Alert variant="danger">{renameError}</Alert>
   {/if}
 
   {#if propertyNames.length === 0}

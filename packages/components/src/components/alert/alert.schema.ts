@@ -5,9 +5,9 @@ const schema = {
   type: 'object',
   properties: {
     variant: {
-      enum: ['info', 'success', 'warning', 'error', 'danger'],
+      enum: ['info', 'success', 'warning', 'danger'],
       description:
-        'Visual style. `danger` is an accepted alias for `error` — both render identically.',
+        'Visual severity variant. `danger` is the canonical failure-severity spelling, consistent with banner and callout.',
       default: 'info',
     },
     dismissible: {

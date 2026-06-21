@@ -80,11 +80,11 @@
     font-size: var(--cinder-text-xs);
   }
 
-  .cinder-fab[data-cinder-size='sm'][data-cinder-variant='filled'] {
+  .cinder-fab[data-cinder-size='sm'][data-cinder-shape='filled'] {
     inline-size: var(--cinder-space-10);
   }
 
-  .cinder-fab[data-cinder-size='sm'][data-cinder-variant='extended'] {
+  .cinder-fab[data-cinder-size='sm'][data-cinder-shape='extended'] {
     padding-inline: var(--cinder-space-4);
   }
 
@@ -93,11 +93,11 @@
     font-size: var(--cinder-text-sm);
   }
 
-  .cinder-fab[data-cinder-size='md'][data-cinder-variant='filled'] {
+  .cinder-fab[data-cinder-size='md'][data-cinder-shape='filled'] {
     inline-size: var(--cinder-space-12);
   }
 
-  .cinder-fab[data-cinder-size='md'][data-cinder-variant='extended'] {
+  .cinder-fab[data-cinder-size='md'][data-cinder-shape='extended'] {
     padding-inline: var(--cinder-space-6);
   }
 
@@ -106,51 +106,51 @@
     font-size: var(--cinder-text-lg);
   }
 
-  .cinder-fab[data-cinder-size='lg'][data-cinder-variant='filled'] {
+  .cinder-fab[data-cinder-size='lg'][data-cinder-shape='filled'] {
     inline-size: var(--cinder-space-16);
   }
 
-  .cinder-fab[data-cinder-size='lg'][data-cinder-variant='extended'] {
+  .cinder-fab[data-cinder-size='lg'][data-cinder-shape='extended'] {
     padding-inline: var(--cinder-space-8);
   }
 
   /* ----------------------------------------
-   * Color variants
+   * Color variants (via variant prop)
    * ---------------------------------------- */
 
   /* primary — accent fill with contrast foreground */
-  .cinder-fab[data-cinder-color='primary'] {
+  .cinder-fab[data-cinder-variant='primary'] {
     --_cinder-fab-ring: var(--cinder-ring-on-accent);
     background: var(--cinder-accent);
     color: var(--cinder-accent-contrast);
   }
 
-  .cinder-fab[data-cinder-color='primary']:disabled,
-  .cinder-fab[data-cinder-color='primary'][aria-disabled='true'] {
+  .cinder-fab[data-cinder-variant='primary']:disabled,
+  .cinder-fab[data-cinder-variant='primary'][aria-disabled='true'] {
     background: var(--cinder-surface-inset);
     color: var(--cinder-text-disabled);
   }
 
   /* secondary — surface-raised background with standard text */
-  .cinder-fab[data-cinder-color='secondary'] {
+  .cinder-fab[data-cinder-variant='secondary'] {
     background: var(--cinder-surface-raised);
     color: var(--cinder-text);
   }
 
-  .cinder-fab[data-cinder-color='secondary']:disabled,
-  .cinder-fab[data-cinder-color='secondary'][aria-disabled='true'] {
+  .cinder-fab[data-cinder-variant='secondary']:disabled,
+  .cinder-fab[data-cinder-variant='secondary'][aria-disabled='true'] {
     background: var(--cinder-surface-inset);
     color: var(--cinder-text-disabled);
   }
 
   /* surface — neutral surface color, suited for floating above content */
-  .cinder-fab[data-cinder-color='surface'] {
+  .cinder-fab[data-cinder-variant='surface'] {
     background: var(--cinder-surface);
     color: var(--cinder-text);
   }
 
-  .cinder-fab[data-cinder-color='surface']:disabled,
-  .cinder-fab[data-cinder-color='surface'][aria-disabled='true'] {
+  .cinder-fab[data-cinder-variant='surface']:disabled,
+  .cinder-fab[data-cinder-variant='surface'][aria-disabled='true'] {
     background: var(--cinder-surface-inset);
     color: var(--cinder-text-disabled);
   }
@@ -168,15 +168,15 @@
       --_cinder-fab-elevation: var(--cinder-shadow-lg);
     }
 
-    .cinder-fab[data-cinder-color='primary']:hover:not(:disabled):not([aria-disabled='true']) {
+    .cinder-fab[data-cinder-variant='primary']:hover:not(:disabled):not([aria-disabled='true']) {
       background: var(--cinder-accent-hover);
     }
 
-    .cinder-fab[data-cinder-color='secondary']:hover:not(:disabled):not([aria-disabled='true']) {
+    .cinder-fab[data-cinder-variant='secondary']:hover:not(:disabled):not([aria-disabled='true']) {
       background: var(--cinder-surface-hover);
     }
 
-    .cinder-fab[data-cinder-color='surface']:hover:not(:disabled):not([aria-disabled='true']) {
+    .cinder-fab[data-cinder-variant='surface']:hover:not(:disabled):not([aria-disabled='true']) {
       background: var(--cinder-surface-hover);
     }
   }
@@ -184,15 +184,15 @@
   /* :active placed after hover media so press feedback fires on tap as well.
      Uses the gentler on-fill pressed token so the --cinder-accent-contrast label stays
      AA-legible on the pressed fill (see --cinder-accent-active-on-fill in tokens-base.css). */
-  .cinder-fab[data-cinder-color='primary']:active:not(:disabled):not([aria-disabled='true']) {
+  .cinder-fab[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
     background: var(--cinder-accent-active-on-fill);
   }
 
-  .cinder-fab[data-cinder-color='secondary']:active:not(:disabled):not([aria-disabled='true']) {
+  .cinder-fab[data-cinder-variant='secondary']:active:not(:disabled):not([aria-disabled='true']) {
     background: var(--cinder-surface-pressed);
   }
 
-  .cinder-fab[data-cinder-color='surface']:active:not(:disabled):not([aria-disabled='true']) {
+  .cinder-fab[data-cinder-variant='surface']:active:not(:disabled):not([aria-disabled='true']) {
     background: var(--cinder-surface-pressed);
   }
 

@@ -8,15 +8,15 @@ const schema = {
       type: 'string',
       description: 'Additional class names merged onto the group root.',
     },
-    ariaLabel: {
+    label: {
       type: 'string',
       description:
-        'Accessible label for the group, applied as aria-label. Provide exactly one of `ariaLabel` or `labelledBy`.',
+        'Accessible label for the group, applied as aria-label. Provide exactly one of `label` or `labelledBy`.',
     },
     labelledBy: {
       type: 'string',
       description:
-        'ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `ariaLabel` or `labelledBy`.',
+        'ID of an existing element whose text labels the group, applied as aria-labelledby. Provide exactly one of `label` or `labelledBy`.',
     },
   },
   additionalProperties: false,

@@ -8,29 +8,29 @@ landmark; below the `md` breakpoint (~767px) it renders inside a `<Drawer>`.
 
 - Outer container is `<aside>` with a required `aria-label` (defaults to "Sidebar").
 - The inner navigation list lives inside a nested `<nav>` element whose
-  accessible name is derived by appending `" navigation"` to `ariaLabel`. So
-  with `ariaLabel="Workspace"` the `<aside>` is announced as "Workspace,
+  accessible name is derived by appending `" navigation"` to `label`. So
+  with `label="Workspace"` the `<aside>` is announced as "Workspace,
   complementary" and the inner `<nav>` as "Workspace navigation". The two
   landmarks are distinct in the landmarks list — the component owns this
   separation; consumers do not pass two labels.
 - If the page contains more than one `<aside>` or more than one navigation
-  landmark, pass a unique `ariaLabel` per Sidebar instance. The default
+  landmark, pass a unique `label` per Sidebar instance. The default
   "Sidebar" is fine for a single-sidebar page but collides on dashboards with
   primary + contextual sidebars.
 - Below the `md` breakpoint the `<aside>` is replaced by `<Drawer>`. The drawer
   carries its own `<dialog role="dialog" aria-modal="true">` and an internal
-  heading sourced from `ariaLabel`; the inner `<nav>` is still present inside
+  heading sourced from `label`; the inner `<nav>` is still present inside
   the drawer body with the same derived `" navigation"` label.
 
 ## ARIA attributes
 
 | Prop / source                                            | Attribute on aside / drawer                  |
 | -------------------------------------------------------- | -------------------------------------------- |
-| `ariaLabel` (default `'Sidebar'`)                        | `aria-label` on `<aside>` (or drawer `<h2>`) |
-| `ariaLabel` (derived `"${ariaLabel} navigation"`)        | `aria-label` on inner `<nav>`                |
+| `label` (default `'Sidebar'`)                            | `aria-label` on `<aside>` (or drawer `<h2>`) |
+| `label` (derived `"${label} navigation"`)                | `aria-label` on inner `<nav>`                |
 | Passing `aria-label` or `aria-labelledby` via rest props | Stripped — the required prop always wins     |
 
-An empty or whitespace-only `ariaLabel` throws at render time. This is a hard
+An empty or whitespace-only `label` throws at render time. This is a hard
 fail because a landmark with no accessible name is worse than no landmark — it
 gets announced as a duplicate by screen readers without context.
 
@@ -71,7 +71,7 @@ Mobile drawer inherits Drawer's focus trap, ESC handling, body scroll lock, and
 backdrop click — see [`drawer.a11y.md`](drawer.a11y.md).
 
 The brand region renders inline at the top of the drawer body (not as the
-drawer's `<h2>` title), so the drawer's visible heading reflects `ariaLabel`
+drawer's `<h2>` title), so the drawer's visible heading reflects `label`
 and the brand block stays a visual region rather than the accessible name.
 
 ### Wiring the mobile trigger
@@ -92,7 +92,7 @@ pattern is a hamburger button with `aria-controls` pointing at the sidebar and
   <!-- hamburger icon -->
 </button>
 
-<Sidebar id="primary-sidebar" bind:collapsed ariaLabel="Workspace">...</Sidebar>
+<Sidebar id="primary-sidebar" bind:collapsed label="Workspace">...</Sidebar>
 ```
 
 This wires the open/close affordance into the page chrome and keeps the

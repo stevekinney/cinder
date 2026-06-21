@@ -82,7 +82,7 @@ describe('Stat', () => {
     expect(container.querySelector('.cinder-stat__icon')).toBeNull();
   });
 
-  test('change without ariaLabel or description synthesizes sr-only text for up direction', () => {
+  test('change without label or description synthesizes sr-only text for up direction', () => {
     const { container } = render(Stat, {
       label: 'Revenue',
       value: '$1,000',
@@ -92,7 +92,7 @@ describe('Stat', () => {
     expect(srOnly?.textContent).toBe('increased by 4.75%');
   });
 
-  test('change without ariaLabel or description synthesizes sr-only text for down direction', () => {
+  test('change without label or description synthesizes sr-only text for down direction', () => {
     const { container } = render(Stat, {
       label: 'Revenue',
       value: '$1,000',
@@ -102,7 +102,7 @@ describe('Stat', () => {
     expect(srOnly?.textContent).toBe('decreased by 12');
   });
 
-  test('change without ariaLabel or description synthesizes sr-only text for neutral direction', () => {
+  test('change without label or description synthesizes sr-only text for neutral direction', () => {
     const { container } = render(Stat, {
       label: 'Revenue',
       value: '$1,000',
@@ -138,7 +138,7 @@ describe('Stat', () => {
     expect(descEl?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('change.ariaLabel is used verbatim in the sr-only span', () => {
+  test('change.label is used verbatim in the sr-only span', () => {
     const { container } = render(Stat, {
       label: 'Revenue',
       value: '$1,000',
@@ -146,7 +146,7 @@ describe('Stat', () => {
         direction: 'up',
         value: '4.75%',
         description: 'from last month',
-        ariaLabel: 'Revenue increased significantly',
+        label: 'Revenue increased significantly',
       },
     });
     const srOnly = container.querySelector('.cinder-stat__change .cinder-sr-only');

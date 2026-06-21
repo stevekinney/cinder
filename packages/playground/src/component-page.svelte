@@ -64,7 +64,7 @@
   type CinderWindow = Window &
     typeof globalThis & { __CINDER_EXAMPLES__?: CinderExampleDescriptor[] };
   type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
-  type StatusDotStatus = 'online' | 'warning' | 'error' | 'pending' | 'neutral' | 'accent';
+  type StatusDotStatus = 'online' | 'warning' | 'danger' | 'pending' | 'neutral' | 'accent';
 
   // The bare component's module namespace, passed in by the page-bundle entry
   // (`compilePageBundleArtifacts`) which `import * as`-es the component's package

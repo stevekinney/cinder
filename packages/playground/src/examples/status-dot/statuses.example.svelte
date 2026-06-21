@@ -11,7 +11,7 @@
   <StatusDot status="online" label="Online" />
   <StatusDot status="offline" label="Offline" />
   <StatusDot status="warning" label="Warning" />
-  <StatusDot status="error" label="Error" />
+  <StatusDot status="danger" label="Danger" />
   <StatusDot status="pending" label="Pending" />
   <StatusDot status="neutral" label="Neutral" />
   <StatusDot status="success" label="Success" />

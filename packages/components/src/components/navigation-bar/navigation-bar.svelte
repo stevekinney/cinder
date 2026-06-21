@@ -37,7 +37,7 @@
     actions,
     menuToggle,
     mobileMenuOpen = $bindable(false),
-    navAriaLabel = 'Main navigation',
+    label = 'Main navigation',
     // Strip these from rest so they cannot collide with internal attributes.
     'aria-label': _ariaLabel,
     'data-collapsible': _dataCollapsible,
@@ -134,7 +134,7 @@
 
 <nav
   {...rest}
-  aria-label={navAriaLabel}
+  aria-label={label}
   class={classNames('cinder-navigation-bar', className)}
   data-collapsible={isCollapsible ? 'true' : 'false'}
   data-cinder-placement={placement}

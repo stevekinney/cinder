@@ -12,8 +12,8 @@
     {
       "id": "variants",
       "title": "Alert variants",
-      "description": "Info, success, warning, and error alerts.",
-      "code": "<script lang=\"ts\">\n  import { Alert } from '@lostgradient/cinder/alert';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem;\">\n  <Alert variant=\"info\">Your account sync is in progress.</Alert>\n  <Alert variant=\"success\">Changes saved successfully.</Alert>\n  <Alert variant=\"warning\">Your trial expires in 3 days.</Alert>\n  <Alert variant=\"error\">Failed to connect to the server.</Alert>\n</div>\n"
+      "description": "Info, success, warning, and danger alerts.",
+      "code": "<script lang=\"ts\">\n  import { Alert } from '@lostgradient/cinder/alert';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem;\">\n  <Alert variant=\"info\">Your account sync is in progress.</Alert>\n  <Alert variant=\"success\">Changes saved successfully.</Alert>\n  <Alert variant=\"warning\">Your trial expires in 3 days.</Alert>\n  <Alert variant=\"danger\">Failed to connect to the server.</Alert>\n</div>\n"
     },
     {
       "id": "with-icon",

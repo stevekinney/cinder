@@ -13,7 +13,7 @@ const ALL_STATUSES = [
   'online',
   'offline',
   'warning',
-  'error',
+  'danger',
   'pending',
   'neutral',
   'success',
@@ -135,13 +135,15 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
   });
 
   test('falls back to aria-label={status} when no label is provided', () => {
-    const { container } = render(StatusDot, { props: { status: 'error' } });
-    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
+    const { container } = render(StatusDot, { props: { status: 'danger' } });
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
+      'danger',
+    );
   });
 
   test('uses label text as aria-label when showLabel is false but label is provided', () => {
     const { container } = render(StatusDot, {
-      props: { status: 'error', label: 'Database unavailable', showLabel: false },
+      props: { status: 'danger', label: 'Database unavailable', showLabel: false },
     });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
       'Database unavailable',
@@ -191,18 +193,22 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
 
   test('empty-string aria-label from consumer does not blank the accessible name', () => {
     const { container } = render(StatusDot, {
-      props: { status: 'error', 'aria-label': '' },
+      props: { status: 'danger', 'aria-label': '' },
     });
     // An empty override would hide the element from AT — treat it as "no
     // override" and fall through to the automatic status fallback instead.
-    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
+      'danger',
+    );
   });
 
   test('whitespace-only aria-label from consumer does not blank the accessible name', () => {
     const { container } = render(StatusDot, {
-      props: { status: 'error', 'aria-label': '   ' },
+      props: { status: 'danger', 'aria-label': '   ' },
     });
-    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe('error');
+    expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
+      'danger',
+    );
   });
 });
 

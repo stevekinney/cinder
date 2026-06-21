@@ -65,11 +65,11 @@ describe('FloatingActionButton — element rendering', () => {
 });
 
 describe('FloatingActionButton — data attributes', () => {
-  test('applies default variant "filled"', () => {
+  test('applies default shape "filled"', () => {
     const { container } = render(FloatingActionButton, {
       props: { 'aria-label': 'Add', children: iconSnippet() },
     });
-    expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-variant')).toBe(
+    expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-shape')).toBe(
       'filled',
     );
   });
@@ -81,23 +81,21 @@ describe('FloatingActionButton — data attributes', () => {
     expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-size')).toBe('md');
   });
 
-  test('applies default color "primary"', () => {
+  test('applies default variant "primary"', () => {
     const { container } = render(FloatingActionButton, {
       props: { 'aria-label': 'Add', children: iconSnippet() },
     });
-    expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-color')).toBe(
+    expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-variant')).toBe(
       'primary',
     );
   });
 
-  test('every variant renders its data attribute', () => {
-    for (const variant of ['filled', 'extended'] as const) {
+  test('every shape renders its data attribute', () => {
+    for (const shape of ['filled', 'extended'] as const) {
       const { container, unmount } = render(FloatingActionButton, {
-        props: { variant, 'aria-label': 'Add', children: iconSnippet() },
+        props: { shape, 'aria-label': 'Add', children: iconSnippet() },
       });
-      expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-variant')).toBe(
-        variant,
-      );
+      expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-shape')).toBe(shape);
       unmount();
     }
   });
@@ -112,12 +110,14 @@ describe('FloatingActionButton — data attributes', () => {
     }
   });
 
-  test('every color renders its data attribute', () => {
-    for (const color of ['primary', 'secondary', 'surface'] as const) {
+  test('every variant renders its data attribute', () => {
+    for (const variant of ['primary', 'secondary', 'surface'] as const) {
       const { container, unmount } = render(FloatingActionButton, {
-        props: { color, 'aria-label': 'Add', children: iconSnippet() },
+        props: { variant, 'aria-label': 'Add', children: iconSnippet() },
       });
-      expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-color')).toBe(color);
+      expect(container.querySelector('.cinder-fab')?.getAttribute('data-cinder-variant')).toBe(
+        variant,
+      );
       unmount();
     }
   });

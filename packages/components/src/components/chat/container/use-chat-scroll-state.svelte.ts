@@ -2,7 +2,7 @@
  * Runes helper for chat scroll state management.
  *
  * Manages:
- * - isAtBottom state for auto-scroll decisions
+ * - atBottom state for auto-scroll decisions
  * - showJumpButton state for jump-to-latest visibility
  * - Scroll event listener attachment
  * - IntersectionObserver for bottom sentinel
@@ -60,13 +60,13 @@ export interface UseChatScrollStateOptions {
 /** Return type for the scroll state helper */
 export interface UseChatScrollStateReturn {
   /** Whether the viewport is at or near the bottom */
-  readonly isAtBottom: boolean;
+  readonly atBottom: boolean;
   /** Whether the jump-to-latest button should be visible */
   readonly showJumpButton: boolean;
   /** Whether user is in a smooth scroll animation (used by parent for auto-scroll logic) */
   readonly isUserScrolling: boolean;
-  /** Set isAtBottom state directly */
-  setIsAtBottom(value: boolean): void;
+  /** Set atBottom state directly */
+  setAtBottom(value: boolean): void;
   /** Create a scroll event listener attachment for the viewport */
   createScrollAttachment(): Attachment<HTMLElement>;
   /**
@@ -167,7 +167,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   }
 
   // Reactive state
-  let isAtBottom = $state(true);
+  let atBottom = $state(true);
   let showJumpButton = $state(false);
 
   // Non-reactive bookkeeping
@@ -175,10 +175,10 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   let isUserScrolling = false; // Prevents auto-scroll from interrupting user-initiated smooth scroll
 
   /**
-   * Set isAtBottom state directly.
+   * Set atBottom state directly.
    */
-  function setIsAtBottom(value: boolean): void {
-    isAtBottom = value;
+  function setAtBottom(value: boolean): void {
+    atBottom = value;
   }
 
   /**
@@ -197,24 +197,27 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
             clientHeight: element.clientHeight,
           };
 
-          const atBottom = checkIsAtBottom(state, getBottomThreshold?.() ?? bottomThreshold);
+          const scrolledToBottom = checkIsAtBottom(
+            state,
+            getBottomThreshold?.() ?? bottomThreshold,
+          );
           const shouldShowJump = shouldShowJumpToLatest(
             state,
             getJumpThreshold?.() ?? jumpThreshold,
           );
 
           // Update reactive state
-          isAtBottom = atBottom;
+          atBottom = scrolledToBottom;
           showJumpButton = shouldShowJump;
 
           // Clear unread when scrolled to bottom
-          if (atBottom) {
+          if (scrolledToBottom) {
             onReachBottom?.();
           }
 
           // Emit scroll state change
           onScrollStateChange?.({
-            isAtBottom: atBottom,
+            atBottom: scrolledToBottom,
             scrollTop: state.scrollTop,
             scrollHeight: state.scrollHeight,
           });
@@ -233,9 +236,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * Exposed for use with useIntersection attachment-based wiring.
    */
   function handleSentinelEntry(entry: IntersectionObserverEntry): void {
-    const atBottom = entry.isIntersecting;
-    if (atBottom && !isAtBottom) {
-      isAtBottom = true;
+    const sentinelVisible = entry.isIntersecting;
+    if (sentinelVisible && !atBottom) {
+      atBottom = true;
       onReachBottom?.();
     }
   }
@@ -308,13 +311,13 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   }
 
   return {
-    get isAtBottom() {
-      return isAtBottom;
+    get atBottom() {
+      return atBottom;
     },
     get showJumpButton() {
       return showJumpButton;
     },
-    setIsAtBottom,
+    setAtBottom,
     createScrollAttachment,
     createSentinelObserver,
     handleSentinelEntry,

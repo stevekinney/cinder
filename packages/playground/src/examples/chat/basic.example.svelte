@@ -31,5 +31,5 @@
 </script>
 
 <div style="height: 34rem;">
-  <Chat id={chatId} {conversation} allowAttachments={false} />
+  <Chat id={chatId} {conversation} capabilities={{ attachments: false }} />
 </div>

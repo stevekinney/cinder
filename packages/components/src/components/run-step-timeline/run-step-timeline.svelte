@@ -50,7 +50,7 @@
       case 'succeeded':
         return 'success';
       case 'failed':
-        return 'error';
+        return 'danger';
       case 'running':
         return 'online';
       case 'retrying':

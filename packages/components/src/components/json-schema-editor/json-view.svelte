@@ -73,7 +73,7 @@
   />
 
   {#if draftErrorMessage}
-    <Alert variant="error">
+    <Alert variant="danger">
       <pre class="cinder-jse-json-view__errors">{draftErrorMessage}</pre>
     </Alert>
   {/if}

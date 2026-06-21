@@ -11,7 +11,7 @@
 <div
   style="--cinder-scrollbar-thumb: oklch(62% 0.18 264 / 0.7); --cinder-scrollbar-thumb-hover: oklch(62% 0.18 264 / 0.95);"
 >
-  <ScrollArea ariaLabel="Release notes" maxHeight="14rem">
+  <ScrollArea label="Release notes" maxHeight="14rem">
     <h3>0.42.0</h3>
     <p>Adds scroll-area, themed via design tokens.</p>
     <h3>0.41.0</h3>

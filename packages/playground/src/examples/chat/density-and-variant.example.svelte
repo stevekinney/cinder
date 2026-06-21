@@ -63,7 +63,7 @@
       conversation={baseConversation}
       {density}
       {variant}
-      allowAttachments={false}
+      capabilities={{ attachments: false }}
     />
   </div>
 </div>

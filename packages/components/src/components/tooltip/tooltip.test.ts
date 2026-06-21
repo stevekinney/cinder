@@ -112,6 +112,23 @@ async function triggerDelayedTooltipShow(wrapper: HTMLElement): Promise<void> {
 let timers: ReturnType<typeof trackTimers>;
 
 beforeEach(() => {
+  // Re-register the module mock before each test. The @floating-ui/dom import
+  // inside anchored-overlay is a lazy dynamic import that runs inside a Svelte
+  // $effect — it resolves at effect runtime, not at module-eval time. If another
+  // test file calls mock.restore() between tests (e.g. dev-warn.test.ts), it
+  // wipes this process-global mock registration and the real floating-ui runs
+  // instead of these spies, causing non-deterministic failures in the same
+  // process. Re-asserting here ensures the spy is always active when the effect
+  // fires, regardless of what other files do.
+  mock.module('@floating-ui/dom', () => ({
+    arrow: arrowSpy,
+    autoUpdate: autoUpdateSpy,
+    computePosition: computePositionSpy,
+    flip: flipSpy,
+    shift: shiftSpy,
+    offset: offsetSpy,
+  }));
+
   computePositionResult = {
     x: 16,
     y: 24,

@@ -49,5 +49,5 @@
 </script>
 
 <div style="height: 34rem;">
-  <Chat id="playground-reasoning-steps-chat" {conversation} allowAttachments={false} />
+  <Chat id="playground-reasoning-steps-chat" {conversation} capabilities={{ attachments: false }} />
 </div>

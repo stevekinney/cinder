@@ -25,7 +25,7 @@
   <div
     style="display: flex; min-height: 28rem; border: 1px solid var(--cinder-border); border-radius: 0.5rem; overflow: hidden;"
   >
-    <Sidebar bind:collapsed ariaLabel="Documentation">
+    <Sidebar bind:collapsed label="Documentation">
       {#snippet brand()}
         <strong style="font-size: 0.875rem;">Cinder Docs</strong>
       {/snippet}

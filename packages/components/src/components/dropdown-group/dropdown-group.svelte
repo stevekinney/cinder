@@ -23,14 +23,14 @@
   let {
     class: customClassName,
     children,
-    ariaLabel,
+    label,
     labelledBy,
     ...rest
   }: DropdownGroupProps = $props();
 
   function normalizeAccessibleName(
     value: string | undefined,
-    propertyName: 'ariaLabel' | 'labelledBy',
+    propertyName: 'label' | 'labelledBy',
   ): string | undefined {
     if (value === undefined) return undefined;
     const trimmedValue = value.trim();
@@ -41,23 +41,23 @@
   }
 
   // Resolve and validate the accessible name at render time so all three
-  // invariants — non-empty ariaLabel, non-empty labelledBy, and exactly one of
+  // invariants — non-empty label, non-empty labelledBy, and exactly one of
   // the two — are enforced in a single place on both server and client, rather
   // than splitting the exclusivity check into a post-paint, SSR-skipped $effect.
   const resolvedAccessibleName = $derived.by(() => {
-    const trimmedAriaLabel = normalizeAccessibleName(ariaLabel, 'ariaLabel');
+    const trimmedLabel = normalizeAccessibleName(label, 'label');
     const trimmedLabelledBy = normalizeAccessibleName(labelledBy, 'labelledBy');
 
-    const namedByLabel = trimmedAriaLabel !== undefined;
+    const namedByLabel = trimmedLabel !== undefined;
     const namedByReference = trimmedLabelledBy !== undefined;
 
     if (namedByLabel === namedByReference) {
       throw new Error(
-        'DropdownGroup requires exactly one accessible naming strategy: ariaLabel or labelledBy.',
+        'DropdownGroup requires exactly one accessible naming strategy: label or labelledBy.',
       );
     }
 
-    return { ariaLabel: trimmedAriaLabel, labelledBy: trimmedLabelledBy };
+    return { label: trimmedLabel, labelledBy: trimmedLabelledBy };
   });
 </script>
 
@@ -65,7 +65,7 @@
   {...rest}
   class={classNames('cinder-dropdown-group', customClassName)}
   role="group"
-  aria-label={resolvedAccessibleName.ariaLabel}
+  aria-label={resolvedAccessibleName.label}
   aria-labelledby={resolvedAccessibleName.labelledBy}
 >
   {#if children}

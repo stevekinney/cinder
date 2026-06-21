@@ -1,8 +1,8 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-/** `danger` is an accepted alias for `error` — both render identically. */
-export type AlertVariant = 'info' | 'success' | 'warning' | 'error' | 'danger';
+/** Visual severity variants for the Alert component. `danger` is the canonical spelling shared by banner and callout. */
+export type AlertVariant = 'info' | 'success' | 'warning' | 'danger';
 
 /**
  * Props for the {@link Alert} component — a live-region notification card.
@@ -37,7 +37,7 @@ export type AlertProps = Omit<
  */
 export interface AlertSchemaProps {
   /**
-   * Visual style. `danger` is an accepted alias for `error` — both render identically.
+   * Visual severity variant. `danger` is the canonical failure-severity spelling, consistent with banner and callout.
    * @default "info"
    */
   variant?: AlertVariant;

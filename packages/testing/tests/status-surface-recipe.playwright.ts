@@ -95,12 +95,12 @@ test.describe('status-surface recipe — composed soft surfaces paint correctly'
     await loadStyledPage(page);
     await inject(
       page,
-      `<div class="cinder-alert cinder-_status-surface" data-cinder-variant="error" role="alert">error</div>
+      `<div class="cinder-alert cinder-_status-surface" data-cinder-variant="danger" role="alert">danger</div>
        <div class="cinder-alert cinder-_status-surface" data-cinder-variant="success" role="alert">success</div>`,
     );
 
-    const errorBorder = await page
-      .locator(".cinder-alert[data-cinder-variant='error']")
+    const dangerBorder = await page
+      .locator(".cinder-alert[data-cinder-variant='danger']")
       .first()
       .evaluate((node) => getComputedStyle(node).borderTopColor);
     const successBorder = await page
@@ -108,10 +108,10 @@ test.describe('status-surface recipe — composed soft surfaces paint correctly'
       .first()
       .evaluate((node) => getComputedStyle(node).borderTopColor);
 
-    expect(errorBorder).not.toBe('');
+    expect(dangerBorder).not.toBe('');
     // Alert composes the surface only — its border stays the neutral base border,
     // identical across variants (the variant tint is background + text only).
-    expect(errorBorder).toBe(successBorder);
+    expect(dangerBorder).toBe(successBorder);
   });
 
   test('forced-colors: the recipe yields to system colors (border/stripe → CanvasText)', async ({

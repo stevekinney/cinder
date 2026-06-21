@@ -2,14 +2,15 @@ import type { Snippet } from 'svelte';
 import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
 /**
- * Visual variant of the FAB.
+ * Visual palette of the FAB.
  *
- * `filled` renders a circle with equal width and height — the classic FAB shape.
- * `extended` renders a pill with auto-width that accommodates icon + label side by side.
+ * - `primary` — uses the primary accent color (solid fill, contrast foreground).
+ * - `secondary` — uses the surface-raised background with standard text color.
+ * - `surface` — uses the neutral surface color, suited for floating over content.
  *
- * @default `"filled"`
+ * @default `"primary"`
  */
-export type FloatingActionButtonVariant = 'filled' | 'extended';
+export type FloatingActionButtonVariant = 'primary' | 'secondary' | 'surface';
 
 /**
  * Size of the FAB. Controls the diameter (`filled`) or height (`extended`).
@@ -19,30 +20,29 @@ export type FloatingActionButtonVariant = 'filled' | 'extended';
 export type FloatingActionButtonSize = 'sm' | 'md' | 'lg';
 
 /**
- * Color palette of the FAB.
+ * Shape of the FAB.
  *
- * - `primary` — uses the primary accent color (solid fill, contrast foreground).
- * - `secondary` — uses the surface-raised background with standard text color.
- * - `surface` — uses the neutral surface color, suited for floating over content.
+ * `filled` renders a circle with equal width and height — the classic FAB shape.
+ * `extended` renders a pill with auto-width that accommodates icon + label side by side.
  *
- * @default `"primary"`
+ * @default `"filled"`
  */
-export type FloatingActionButtonColor = 'primary' | 'secondary' | 'surface';
+export type FloatingActionButtonShape = 'filled' | 'extended';
 
 type SharedBase = {
-  /** Visual variant. `filled` = circle, `extended` = pill with icon + label. */
-  variant?: FloatingActionButtonVariant;
+  /** Shape. `filled` = circle, `extended` = pill with icon + label. */
+  shape?: FloatingActionButtonShape;
   /** Size — controls diameter for filled, height for extended. */
   size?: FloatingActionButtonSize;
-  /** Color palette. */
-  color?: FloatingActionButtonColor;
+  /** Color palette (primary, secondary, or surface). */
+  variant?: FloatingActionButtonVariant;
   /** When true, disables the button and prevents interaction. */
   disabled?: boolean;
   /** Custom class merged with `.cinder-fab`. */
   class?: string;
   /**
-   * The icon (or icon + label for extended variant). Always provide `aria-label` when
-   * the FAB renders an icon without visible text — i.e. the `filled` variant.
+   * The icon (or icon + label for extended shape). Always provide `aria-label` when
+   * the FAB renders an icon without visible text — i.e. the `filled` shape.
    */
   children?: Snippet;
 };
@@ -62,7 +62,7 @@ type FloatingActionButtonLink = SharedBase & Omit<HTMLAnchorAttributes, 'class'>
 /**
  * Props for the FloatingActionButton component.
  *
- * Icon-only usage (i.e. `variant="filled"`) requires an accessible name via
+ * Icon-only usage (i.e. `shape="filled"`) requires an accessible name via
  * `aria-label` or `aria-labelledby`. The component emits a dev-mode warning when
  * neither is present.
  */
@@ -74,10 +74,10 @@ export type FloatingActionButtonProps = FloatingActionButtonOnly | FloatingActio
  */
 export interface FloatingActionButtonSchemaProps {
   /**
-   * Visual variant. `filled` = circle, `extended` = pill.
+   * Shape. `filled` = circle, `extended` = pill.
    * @default "filled"
    */
-  variant?: FloatingActionButtonVariant;
+  shape?: FloatingActionButtonShape;
   /**
    * Size of the FAB.
    * @default "md"
@@ -87,7 +87,7 @@ export interface FloatingActionButtonSchemaProps {
    * Color palette.
    * @default "primary"
    */
-  color?: FloatingActionButtonColor;
+  variant?: FloatingActionButtonVariant;
   /**
    * When true, disables the button and prevents interaction.
    * @default false
