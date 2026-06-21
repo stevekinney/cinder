@@ -39,8 +39,9 @@ const schema = {
       {
         name: 'key',
         reason: 'function-or-snippet',
+        required: true,
         description:
-          'Key extractor for efficient DOM updates. Svelte uses this to identify each\nrow when the list is reordered, filtered, or updated — without it, rows are\nmatched by index and the wrong row instances may receive updated props.\n\nStrongly recommended for any list that can change after initial render:\n\n```svelte\n<DataList {items} key={(m) => m.id}>\n```\n\nOmit only for truly static, never-reordered lists (e.g. a fixed reference\nlist). When omitted, Svelte falls back to index-based reconciliation.',
+          'Key extractor for stable DOM reconciliation. Svelte uses this to identify\neach row when the list is reordered, filtered, or updated. Without a key,\nrows are matched by index and the wrong row instances may receive updated\nprops, causing O(n) churn and incorrect rendering.\n\n```svelte\n<DataList {items} key={(m) => m.id}>\n```',
       },
     ],
   },

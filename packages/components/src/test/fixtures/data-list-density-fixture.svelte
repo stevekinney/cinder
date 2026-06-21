@@ -21,7 +21,7 @@
 
 <!-- Spread density only when set: exactOptionalPropertyTypes forbids passing
      `undefined` to the optional `density?` prop. -->
-<DataList items={rows} {...density ? { density } : {}}>
+<DataList items={rows} key={(row) => row} {...density ? { density } : {}}>
   {#snippet children(row)}
     {#if row === 'three'}
       <StackedListItem density="comfortable">

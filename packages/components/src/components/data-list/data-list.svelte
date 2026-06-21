@@ -49,15 +49,9 @@
 -->
 <ul {...rest} class={classNames('cinder-data-list', className)} role="list">
   {#if items.length > 0}
-    {#if key}
-      {#each items as entry (key(entry))}
-        {@render children(entry)}
-      {/each}
-    {:else}
-      {#each items as entry}
-        {@render children(entry)}
-      {/each}
-    {/if}
+    {#each items as entry (key(entry))}
+      {@render children(entry)}
+    {/each}
   {:else if empty}
     <li class="cinder-data-list-empty">
       {@render empty()}

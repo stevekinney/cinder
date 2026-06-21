@@ -13,7 +13,7 @@
       "id": "empty",
       "title": "Empty state fallback",
       "description": "When items is empty, the empty snippet renders inside a component-owned `<li class=\"cinder-data-list-empty\">` — centered, muted padding, no inline styles required.",
-      "code": "<script lang=\"ts\">\n  import { DataList } from '@lostgradient/cinder/data-list';\n  import { StackedListItem } from '@lostgradient/cinder/stacked-list-item';\n\n  const members: { id: string; name: string }[] = [];\n</script>\n\n<DataList items={members}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n    </StackedListItem>\n  {/snippet}\n  {#snippet empty()}\n    No team members yet.\n  {/snippet}\n</DataList>\n"
+      "code": "<script lang=\"ts\">\n  import { DataList } from '@lostgradient/cinder/data-list';\n  import { StackedListItem } from '@lostgradient/cinder/stacked-list-item';\n\n  const members: { id: string; name: string }[] = [];\n</script>\n\n<DataList items={members} key={(m) => m.id}>\n  {#snippet children(member)}\n    <StackedListItem>\n      {#snippet title()}{member.name}{/snippet}\n    </StackedListItem>\n  {/snippet}\n  {#snippet empty()}\n    No team members yet.\n  {/snippet}\n</DataList>\n"
     }
   ]
 }

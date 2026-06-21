@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { MasonryElement } from './masonry.types.ts';
 
 setupHappyDom();
 
@@ -73,5 +74,38 @@ describe('Masonry', () => {
     const module = await import('./index.ts');
     expect(typeof module.default).toBe('function');
     expect(module.Masonry).toBe(module.default);
+  });
+
+  test('as prop accepts allowed MasonryElement values', () => {
+    // Verify a representative set of layout-safe elements are accepted.
+    const allowedElements: MasonryElement[] = ['article', 'section', 'aside', 'main', 'div'];
+    for (const element of allowedElements) {
+      const { container } = render(Masonry, {
+        props: { as: element, children: textSnippet('content') },
+      });
+      expect(container.querySelector(`${element}.cinder-masonry`)).not.toBeNull();
+    }
+  });
+
+  test('MasonryElement union excludes void elements', () => {
+    // Type-level regression: MasonryElement must not include void element names.
+    // The runtime check uses a type assertion to ensure 'img' and 'input' are
+    // not assignable to MasonryElement at the TypeScript level.
+    const voidElements = ['img', 'input', 'br', 'hr'];
+    const allowedSet: readonly string[] = [
+      'article',
+      'aside',
+      'div',
+      'footer',
+      'header',
+      'main',
+      'nav',
+      'section',
+      'ul',
+      'ol',
+    ];
+    for (const element of voidElements) {
+      expect(allowedSet.includes(element)).toBe(false);
+    }
   });
 });

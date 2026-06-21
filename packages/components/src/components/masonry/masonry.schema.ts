@@ -13,8 +13,9 @@ const schema = {
       description: 'Gap between columns and between direct children.',
     },
     as: {
-      type: 'string',
-      description: 'Rendered HTML tag.',
+      enum: ['article', 'aside', 'div', 'footer', 'header', 'main', 'nav', 'section', 'ul', 'ol'],
+      description:
+        "Rendered HTML tag. Constrained to layout-safe container elements;\nvoid elements such as `img`, `input`, `br`, and `hr` are excluded.\nDefaults to `'div'`.",
     },
     class: {
       type: 'string',

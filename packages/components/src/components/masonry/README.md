@@ -22,13 +22,13 @@ top-to-bottom through each column rather than left-to-right across visual rows.
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                  |
-| ---------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------- |
-| `as`       | `string`   | no       | —       | Rendered HTML tag.                                                                           |
-| `class`    | `string`   | no       | —       | Custom class merged with `.cinder-masonry`.                                                  |
-| `columns`  | `string`   | no       | —       | CSS column count value.                                                                      |
-| `gap`      | `string`   | no       | —       | Gap between columns and between direct children.                                             |
-| `children` | `(opaque)` | yes      | —       | Masonry contents. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop       | Type                                                                                                                      | Required | Default | Description                                                                                                                                               |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `as`       | `"article"` \| `"aside"` \| `"div"` \| `"footer"` \| `"header"` \| `"main"` \| `"nav"` \| `"section"` \| `"ul"` \| `"ol"` | no       | —       | Rendered HTML tag. Constrained to layout-safe container elements; void elements such as `img`, `input`, `br`, and `hr` are excluded. Defaults to `'div'`. |
+| `class`    | `string`                                                                                                                  | no       | —       | Custom class merged with `.cinder-masonry`.                                                                                                               |
+| `columns`  | `string`                                                                                                                  | no       | —       | CSS column count value.                                                                                                                                   |
+| `gap`      | `string`                                                                                                                  | no       | —       | Gap between columns and between direct children.                                                                                                          |
+| `children` | `(opaque)`                                                                                                                | yes      | —       | Masonry contents. Not expressible in JSON Schema; see the component types for the signature.                                                              |
 
 <!-- generated:props:end -->
 

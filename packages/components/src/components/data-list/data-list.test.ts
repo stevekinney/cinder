@@ -27,10 +27,16 @@ function itemSnippet(transform: (item: unknown) => string) {
   }));
 }
 
+// Key extractor for string items used in tests. Typed as `unknown` to match
+// how svelte-check infers T=unknown for generic components in render() calls.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const stringKey = (item: any): string => String(item);
+
 describe('DataList', () => {
   test('renders a <ul role="list"> container', () => {
     const { container } = render(DataList, {
       items: ['a'],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
     });
     const list = container.querySelector('.cinder-data-list');
@@ -44,6 +50,7 @@ describe('DataList', () => {
     const items = ['alpha', 'beta', 'gamma'];
     const { container } = render(DataList, {
       items,
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
     });
     const list = container.querySelector('.cinder-data-list');
@@ -57,6 +64,7 @@ describe('DataList', () => {
   test('wraps the empty snippet in an <li class="cinder-data-list-empty"> when items is []', () => {
     const { container } = render(DataList, {
       items: [],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
       empty: textSnippet('Nothing here'),
     });
@@ -72,6 +80,7 @@ describe('DataList', () => {
   test('does not render the empty snippet when items is non-empty', () => {
     const { container } = render(DataList, {
       items: ['one'],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
       empty: textSnippet('Nothing here'),
     });
@@ -85,6 +94,7 @@ describe('DataList', () => {
   test('applies class prop', () => {
     const { container } = render(DataList, {
       items: [],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
       class: 'my-custom-class',
     });
@@ -97,6 +107,7 @@ describe('DataList', () => {
   test('forwards rest attributes (aria-label) onto the <ul> without overriding role', () => {
     const { container } = render(DataList, {
       items: ['one'],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
       'aria-label': 'Team members',
     });
@@ -105,6 +116,27 @@ describe('DataList', () => {
     expect(list?.getAttribute('aria-label')).toBe('Team members');
     // The component-enforced role wins over any forwarded role.
     expect(list?.getAttribute('role')).toBe('list');
+  });
+
+  test('uses stable keyed reconciliation — key prop is required', () => {
+    // Regression test: DataList must always use a keyed {#each} block.
+    // Omitting key is now a TypeScript compile error; this test verifies
+    // the rendered output when a key extractor is provided.
+    const items = [
+      { id: 'x1', label: 'First' },
+      { id: 'x2', label: 'Second' },
+    ];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const idKey = (item: any): string => String(item?.id ?? item);
+    const { container } = render(DataList, {
+      items,
+      key: idKey,
+      children: itemSnippet((item) => String((item as { id: string; label: string }).label)),
+    });
+    const listItems = container.querySelectorAll('.cinder-data-list li');
+    expect(listItems).toHaveLength(2);
+    expect(listItems[0]?.textContent).toContain('First');
+    expect(listItems[1]?.textContent).toContain('Second');
   });
 });
 
