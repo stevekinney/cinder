@@ -58,6 +58,20 @@ const barChartCss = loadCss('../components/bar-chart/bar-chart.css');
 const lineChartCss = loadCss('../components/line-chart/line-chart.css');
 const tokensBaseCss = loadCss('../styles/tokens-base.css');
 
+// Issue #460 — forced-colors fallback additions for 9 components that used
+// transparent-outline + box-shadow without a @media (forced-colors: active) block.
+const capabilityGateCss = loadCss('../components/capability-gate/capability-gate.css');
+const kanbanBoardCss = loadCss('../components/kanban-board/kanban-board.css');
+const mediaControlsCss = loadCss('../components/media-controls/media-controls.css');
+const permissionMatrixCss = loadCss('../components/permission-matrix/permission-matrix.css');
+const shareCardCss = loadCss('../components/share-card/share-card.css');
+const transferListCss = loadCss('../components/transfer-list/transfer-list.css');
+const tableCss = loadCss('../components/table/table.css');
+const menuBarCss = loadCss('../components/menu-bar/menu-bar.css');
+const chatConversationListCss = loadCss(
+  '../components/chat-conversation-list/chat-conversation-list.css',
+);
+
 // Focus-ring sweep targets (15f4d777) — colored outline-only recipes converted
 // to the shared Strategy B / B-inset recipe.
 const accordionItemCss = loadCss('../components/accordion-item/accordion-item.css');
@@ -1149,4 +1163,117 @@ describe('focus-ring lint rule gates at error severity', () => {
     );
     expect(warningsFor(result)).toEqual([]);
   });
+});
+
+// ============================================================================
+// Issue #460 — forced-colors fallbacks for 9 components with box-shadow focus
+// rings and no prior forced-colors media block.
+// ============================================================================
+
+/**
+ * Assert a focus-visible selector has a forced-colors fallback that repaints
+ * the outline with ButtonText. This is a lighter version of assertOuterRecipe
+ * that does NOT require the shared `var(--_cinder-focus-ring-shadow)` token —
+ * some of the issue #460 components use the inline two-shadow form, which is
+ * semantically identical but written out explicitly.
+ */
+function assertForcedColorsFallback(css: string, selector: string): void {
+  const root = parse(css);
+
+  // The base (non-forced) rule must have a transparent outline and box-shadow.
+  const baseRules = findRules(root, selector).filter((rule) => !isUnderForcedColors(rule));
+  expect(baseRules.length).toBeGreaterThanOrEqual(1);
+  const base = baseRules[0]!;
+  const outlineValue = declValue(base, 'outline');
+  expect(outlineValue).toBeDefined();
+  expect(outlineValue).toContain('transparent');
+  expect(declValue(base, 'box-shadow')).toBeDefined();
+
+  // The forced-colors block must have a non-transparent ButtonText outline.
+  const fallbackRules = findRules(root, selector).filter((rule) => isUnderForcedColors(rule));
+  expect(fallbackRules.length).toBeGreaterThanOrEqual(1);
+  const fallback = fallbackRules[0]!;
+  const outline = declValue(fallback, 'outline');
+  expect(outline).toBeDefined();
+  expect(outline).not.toContain('transparent');
+  expect(outline).toBe('var(--cinder-ring-width) solid ButtonText');
+}
+
+describe('forced-colors fallbacks — issue #460 (9 affected components)', () => {
+  // Each entry asserts: transparent-outline + box-shadow in normal mode, plus
+  // a non-transparent ButtonText outline in @media (forced-colors: active).
+  const cases: Array<{ name: string; css: string; selector: string }> = [
+    {
+      name: 'capability-gate primary action',
+      css: capabilityGateCss,
+      selector: '.cinder-capability-gate__primary:focus-visible',
+    },
+    {
+      name: 'capability-gate fallback action',
+      css: capabilityGateCss,
+      selector: '.cinder-capability-gate__fallback:focus-visible',
+    },
+    {
+      name: 'capability-gate dismiss action',
+      css: capabilityGateCss,
+      selector: '.cinder-capability-gate__dismiss:focus-visible',
+    },
+    {
+      name: 'kanban-board column-handle',
+      css: kanbanBoardCss,
+      selector: '.cinder-kanban-board__column-handle:focus-visible',
+    },
+    {
+      name: 'kanban-board collapse',
+      css: kanbanBoardCss,
+      selector: '.cinder-kanban-board__collapse:focus-visible',
+    },
+    {
+      name: 'media-controls button',
+      css: mediaControlsCss,
+      selector: '.cinder-media-controls__button:focus-visible',
+    },
+    {
+      name: 'permission-matrix cell-control button',
+      css: permissionMatrixCss,
+      selector: 'button.cinder-permission-matrix__cell-control:focus-visible',
+    },
+    {
+      name: 'share-card action',
+      css: shareCardCss,
+      selector: '.cinder-share-card__action:focus-visible',
+    },
+    {
+      name: 'transfer-list list',
+      css: transferListCss,
+      selector: '.cinder-transfer-list__list:focus-visible',
+    },
+    {
+      name: 'transfer-list control',
+      css: transferListCss,
+      selector: '.cinder-transfer-list__control:focus-visible',
+    },
+    {
+      name: 'table sort-button',
+      css: tableCss,
+      selector: '.cinder-table__sort-button:focus-visible',
+    },
+    {
+      name: 'menu-bar trigger',
+      css: menuBarCss,
+      selector: '.cinder-menu-bar__trigger:focus-visible',
+    },
+    {
+      name: 'chat-conversation-list interactive button',
+      css: chatConversationListCss,
+      selector:
+        '.cinder-chat-conversation-list__button[data-cinder-conversation-interactive]:focus-visible',
+    },
+  ];
+
+  for (const { name, css, selector } of cases) {
+    test(`${name}: ${selector} has a forced-colors fallback that repaints the outline`, () => {
+      assertForcedColorsFallback(css, selector);
+    });
+  }
 });

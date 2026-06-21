@@ -53,6 +53,13 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  @media (forced-colors: active) {
+    .cinder-chat-conversation-list__button[data-cinder-conversation-interactive]:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
   .cinder-chat-conversation-list__title {
     grid-column: 1;
     grid-row: 1;

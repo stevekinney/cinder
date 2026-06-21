@@ -107,6 +107,15 @@
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
+  @media (forced-colors: active) {
+    .cinder-capability-gate__primary:focus-visible,
+    .cinder-capability-gate__fallback:focus-visible,
+    .cinder-capability-gate__dismiss:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
   .cinder-capability-gate__fallback {
     background-color: transparent;
     color: var(--cinder-text);

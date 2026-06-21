@@ -42,6 +42,13 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  @media (forced-colors: active) {
+    .cinder-transfer-list__list:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
   .cinder-transfer-list__option {
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border-radius: var(--cinder-radius-sm);
@@ -99,6 +106,13 @@
   .cinder-transfer-list__control:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-transfer-list__control:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
   }
 
   @container cinder-transfer-list (max-width: 42rem) {

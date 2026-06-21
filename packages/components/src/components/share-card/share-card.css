@@ -97,6 +97,13 @@
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
+  @media (forced-colors: active) {
+    .cinder-share-card__action:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
   .cinder-share-card__action[data-cinder-copied] {
     color: var(--cinder-color-success-fg);
     border-color: var(--cinder-color-success-border);

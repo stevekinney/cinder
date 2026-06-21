@@ -119,6 +119,13 @@
     z-index: 1;
   }
 
+  @media (forced-colors: active) {
+    button.cinder-permission-matrix__cell-control:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
   @media (hover: hover) {
     button.cinder-permission-matrix__cell-control:hover {
       background: var(--cinder-surface-hover);

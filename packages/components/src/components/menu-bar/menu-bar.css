@@ -50,6 +50,13 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  @media (forced-colors: active) {
+    .cinder-menu-bar__trigger:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
   .cinder-menu-bar__access-key {
     text-decoration: underline;
     text-underline-offset: 0.125em;

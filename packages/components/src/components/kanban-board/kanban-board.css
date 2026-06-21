@@ -85,6 +85,14 @@
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
+  @media (forced-colors: active) {
+    .cinder-kanban-board__column-handle:focus-visible,
+    .cinder-kanban-board__collapse:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
   @media (hover: hover) {
     .cinder-kanban-board__column-handle:hover,
     .cinder-kanban-board__collapse:hover {
