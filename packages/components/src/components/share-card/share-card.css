@@ -24,7 +24,7 @@
   }
 
   .cinder-share-card__title {
-    font-weight: 600;
+    font-weight: var(--cinder-font-semibold);
     font-size: var(--cinder-text-sm);
     margin: 0;
     color: var(--cinder-text);
@@ -76,10 +76,10 @@
     color: var(--cinder-text);
     cursor: pointer;
     font-size: var(--cinder-text-sm);
-    font-weight: 500;
+    font-weight: var(--cinder-font-medium);
     transition:
-      background-color 0.15s ease,
-      border-color 0.15s ease;
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
     white-space: nowrap;
   }
 

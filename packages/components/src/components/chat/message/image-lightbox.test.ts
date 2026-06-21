@@ -1,10 +1,16 @@
 /**
- * Regression tests for image-lightbox scroll-lock integration.
+ * Regression tests for image-lightbox scroll-lock integration and
+ * reduced-motion behavior.
  *
  * These tests verify that the lightbox uses `createBodyScrollLock()` (the
  * counted factory that delegates to `lockBodyScroll()` in `_internal/overlay`)
  * rather than a plain `overflow: hidden` assignment that would bypass the
  * global counter and prematurely restore scroll when nested overlays close.
+ *
+ * They also verify the reduced-motion contract: the lightbox derives its
+ * `fade` transition duration from `useReducedMotion()` so that the JS-driven
+ * transition (which is NOT affected by CSS `@media (prefers-reduced-motion)`)
+ * collapses to zero for users who have opted out of motion.
  */
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -39,6 +45,27 @@ describe('image-lightbox source contract', () => {
 
   test('attaches createBodyScrollLock() to the overlay element', () => {
     expect(source).toContain('{@attach createBodyScrollLock()}');
+  });
+
+  test('imports useReducedMotion for the JS-driven fade transition', () => {
+    // The JS fade transition is not covered by CSS @media (prefers-reduced-motion),
+    // so it must be handled imperatively via useReducedMotion().
+    expect(source).toContain('import { useReducedMotion }');
+  });
+
+  test('derives fadeDuration from useReducedMotion to zero it under reduced-motion', () => {
+    // The derived fadeDuration must collapse to 0 when reducedMotion.current is true.
+    // We check the structural contract (both the derived variable and the reactive
+    // conditional) rather than importing the component (which requires a full Svelte
+    // render environment not available in this harness).
+    expect(source).toContain('fadeDuration = $derived(reducedMotion.current ? 0 :');
+  });
+
+  test('uses fadeDuration as the transition:fade duration, not a hardcoded literal', () => {
+    // Regression guard: the fade must read from fadeDuration, not a raw number.
+    expect(source).toContain('transition:fade={{ duration: fadeDuration }}');
+    // Ensure the original hardcoded literal is gone.
+    expect(source).not.toContain('transition:fade={{ duration: 150 }}');
   });
 });
 

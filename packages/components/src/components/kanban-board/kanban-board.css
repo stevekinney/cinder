@@ -48,7 +48,7 @@
     min-inline-size: 0;
     overflow-wrap: anywhere;
     font-size: var(--cinder-text-sm);
-    font-weight: 600;
+    font-weight: var(--cinder-font-semibold);
     color: var(--cinder-text);
   }
 

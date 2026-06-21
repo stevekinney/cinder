@@ -224,8 +224,8 @@
   }
 
   .diff-line[data-selected='true'] {
-    outline: 2px solid var(--cinder-accent);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid var(--cinder-accent);
+    outline-offset: calc(var(--cinder-ring-width) * -1);
     background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
     z-index: 1;
   }

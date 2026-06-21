@@ -187,7 +187,7 @@
     border-radius: var(--cinder-radius-md);
     /* Use contain to preserve full image content and avoid cropping */
     object-fit: contain;
-    transition: opacity 150ms ease;
+    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   .message-attachment-button:hover .message-attachment-image {

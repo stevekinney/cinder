@@ -23,8 +23,17 @@
   import X from 'lucide-svelte/icons/x';
   import { createFocusTrap } from '../../focus-trap/index.ts';
   import { createBodyScrollLock } from '../../../utilities/attachments.ts';
+  import { useReducedMotion } from '../../../utilities/use-reduced-motion.svelte.ts';
 
   let { images, initialIndex = 0, open = $bindable(false), onclose }: ImageLightboxProps = $props();
+
+  // Respect prefers-reduced-motion: collapse the fade to an instant show/hide so
+  // the lightbox does not animate for users who have opted out of motion.
+  // CSS @media (prefers-reduced-motion) overrides do not cover JS-driven Svelte
+  // transitions, so we must derive the duration imperatively here.
+  const reducedMotion = useReducedMotion();
+  const LIGHTBOX_FADE_MS = 150;
+  const fadeDuration = $derived(reducedMotion.current ? 0 : LIGHTBOX_FADE_MS);
 
   // currentIndex tracks navigation within the session; resets to initialIndex when lightbox opens
   let currentIndex = $state(0);
@@ -93,7 +102,7 @@
     onclick={handleOverlayClick}
     onkeydown={handleKeyDown}
     tabindex="-1"
-    transition:fade={{ duration: 150 }}
+    transition:fade={{ duration: fadeDuration }}
     {@attach createBodyScrollLock()}
     {@attach createFocusTrap()}
   >
@@ -174,7 +183,7 @@
     border-radius: var(--cinder-radius-sm);
     color: white;
     cursor: pointer;
-    transition: background 150ms ease;
+    transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
     z-index: 1;
   }
 
@@ -210,7 +219,7 @@
     border-radius: var(--cinder-radius-sm);
     color: white;
     cursor: pointer;
-    transition: background 150ms ease;
+    transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
     z-index: 1;
   }
 

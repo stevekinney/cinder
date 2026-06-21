@@ -18,9 +18,9 @@
     background: var(--cinder-file-upload-background);
     padding: var(--cinder-space-4);
     transition:
-      border-color 150ms ease,
-      background-color 150ms ease,
-      box-shadow 150ms ease;
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   .cinder-file-upload__dropzone[data-drag-active] {
@@ -35,7 +35,7 @@
   }
 
   .cinder-file-upload__dropzone:focus-within {
-    outline: 2px solid transparent;
+    outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -169,7 +169,7 @@
     block-size: 100%;
     background: var(--cinder-file-upload-progress-fill);
     inline-size: calc(clamp(0, var(--cinder-file-upload-progress, 0), 100) * 1%);
-    transition: inline-size 150ms ease;
+    transition: inline-size var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   .cinder-file-upload__error {
