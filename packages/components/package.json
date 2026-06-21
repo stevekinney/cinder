@@ -386,6 +386,10 @@
     "./banner/styles": {
       "default": "./dist/components/banner/banner.css"
     },
+    "./banner/examples": {
+      "import": "./src/components/banner/banner.examples.json",
+      "default": "./src/components/banner/banner.examples.json"
+    },
     "./bar-chart": {
       "types": "./dist/components/bar-chart/index.d.ts",
       "svelte": "./src/components/bar-chart/index.ts",
@@ -510,6 +514,10 @@
     },
     "./callout/styles": {
       "default": "./dist/components/callout/callout.css"
+    },
+    "./callout/examples": {
+      "import": "./src/components/callout/callout.examples.json",
+      "default": "./src/components/callout/callout.examples.json"
     },
     "./capability-gate": {
       "types": "./dist/components/capability-gate/index.d.ts",
@@ -678,6 +686,10 @@
     },
     "./checkbox-group/styles": {
       "default": "./dist/components/checkbox-group/checkbox-group.css"
+    },
+    "./checkbox-group/examples": {
+      "import": "./src/components/checkbox-group/checkbox-group.examples.json",
+      "default": "./src/components/checkbox-group/checkbox-group.examples.json"
     },
     "./chip": {
       "types": "./dist/components/chip/index.d.ts",
@@ -893,6 +905,10 @@
     "./color-swatch-picker/styles": {
       "default": "./dist/components/color-swatch-picker/color-swatch-picker.css"
     },
+    "./color-swatch-picker/examples": {
+      "import": "./src/components/color-swatch-picker/color-swatch-picker.examples.json",
+      "default": "./src/components/color-swatch-picker/color-swatch-picker.examples.json"
+    },
     "./combobox": {
       "types": "./dist/components/combobox/index.d.ts",
       "svelte": "./src/components/combobox/index.ts",
@@ -1034,6 +1050,10 @@
     },
     "./connection-indicator/styles": {
       "default": "./dist/components/connection-indicator/connection-indicator.css"
+    },
+    "./connection-indicator/examples": {
+      "import": "./src/components/connection-indicator/connection-indicator.examples.json",
+      "default": "./src/components/connection-indicator/connection-indicator.examples.json"
     },
     "./container": {
       "types": "./dist/components/container/index.d.ts",
@@ -1622,6 +1642,10 @@
     "./file-upload/styles": {
       "default": "./dist/components/file-upload/file-upload.css"
     },
+    "./file-upload/examples": {
+      "import": "./src/components/file-upload/file-upload.examples.json",
+      "default": "./src/components/file-upload/file-upload.examples.json"
+    },
     "./floating-action-button": {
       "types": "./dist/components/floating-action-button/index.d.ts",
       "svelte": "./src/components/floating-action-button/index.ts",
@@ -1850,6 +1874,10 @@
     },
     "./image/styles": {
       "default": "./dist/components/image/image.css"
+    },
+    "./image/examples": {
+      "import": "./src/components/image/image.examples.json",
+      "default": "./src/components/image/image.examples.json"
     },
     "./input": {
       "types": "./dist/components/input/index.d.ts",
@@ -2368,6 +2396,10 @@
     },
     "./number-input/styles": {
       "default": "./dist/components/number-input/number-input.css"
+    },
+    "./number-input/examples": {
+      "import": "./src/components/number-input/number-input.examples.json",
+      "default": "./src/components/number-input/number-input.examples.json"
     },
     "./pagination": {
       "types": "./dist/components/pagination/index.d.ts",
@@ -3190,6 +3222,10 @@
     },
     "./sortable-list/styles": {
       "default": "./dist/components/sortable-list/sortable-list.css"
+    },
+    "./sortable-list/examples": {
+      "import": "./src/components/sortable-list/sortable-list.examples.json",
+      "default": "./src/components/sortable-list/sortable-list.examples.json"
     },
     "./spectrogram": {
       "types": "./dist/components/spectrogram/index.d.ts",

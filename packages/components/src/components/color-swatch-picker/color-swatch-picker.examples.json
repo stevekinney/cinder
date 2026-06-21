@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "color-swatch-picker",
+  "import": "@lostgradient/cinder/color-swatch-picker",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic color swatch picker",
+      "description": "Keyboard-navigable preset palette constrained to brand colors.",
+      "code": "<script lang=\"ts\">\n  import { ColorSwatchPicker } from '@lostgradient/cinder/color-swatch-picker';\n\n  const palette = [\n    { color: '#ef4444', name: 'Red' },\n    { color: '#f97316', name: 'Orange' },\n    { color: '#eab308', name: 'Yellow' },\n    { color: '#22c55e', name: 'Green' },\n    { color: '#3b82f6', name: 'Blue' },\n    { color: '#8b5cf6', name: 'Violet' },\n  ];\n\n  let selected = $state('#3b82f6');\n</script>\n\n<ColorSwatchPicker\n  colors={palette}\n  value={selected}\n  label=\"Accent color\"\n  onchange={(color) => (selected = color)}\n/>\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Selected: {selected}</p>\n"
+    }
+  ]
+}

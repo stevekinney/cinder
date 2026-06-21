@@ -469,10 +469,11 @@
       ],
       "related": ["alert", "callout", "toast-region"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/banner/schema",
-        "variables": "@lostgradient/cinder/banner/variables"
+        "variables": "@lostgradient/cinder/banner/variables",
+        "examples": "@lostgradient/cinder/banner/examples"
       }
     },
     {
@@ -619,10 +620,11 @@
       ],
       "related": ["alert", "banner"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/callout/schema",
-        "variables": "@lostgradient/cinder/callout/variables"
+        "variables": "@lostgradient/cinder/callout/variables",
+        "examples": "@lostgradient/cinder/callout/examples"
       }
     },
     {
@@ -825,10 +827,11 @@
       ],
       "related": ["checkbox", "radio-group", "form-field"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/checkbox-group/schema",
-        "variables": "@lostgradient/cinder/checkbox-group/variables"
+        "variables": "@lostgradient/cinder/checkbox-group/variables",
+        "examples": "@lostgradient/cinder/checkbox-group/examples"
       }
     },
     {
@@ -1074,10 +1077,11 @@
       ],
       "related": ["color-picker"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/color-swatch-picker/schema",
-        "variables": "@lostgradient/cinder/color-swatch-picker/variables"
+        "variables": "@lostgradient/cinder/color-swatch-picker/variables",
+        "examples": "@lostgradient/cinder/color-swatch-picker/examples"
       }
     },
     {
@@ -1249,10 +1253,11 @@
       ],
       "related": ["status-dot", "spinner"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/connection-indicator/schema",
-        "variables": "@lostgradient/cinder/connection-indicator/variables"
+        "variables": "@lostgradient/cinder/connection-indicator/variables",
+        "examples": "@lostgradient/cinder/connection-indicator/examples"
       }
     },
     {
@@ -2028,10 +2033,11 @@
       ],
       "related": ["form-field", "progress", "input"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/file-upload/schema",
-        "variables": "@lostgradient/cinder/file-upload/variables"
+        "variables": "@lostgradient/cinder/file-upload/variables",
+        "examples": "@lostgradient/cinder/file-upload/examples"
       }
     },
     {
@@ -2307,10 +2313,11 @@
       ],
       "related": ["avatar"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/image/schema",
-        "variables": "@lostgradient/cinder/image/variables"
+        "variables": "@lostgradient/cinder/image/variables",
+        "examples": "@lostgradient/cinder/image/examples"
       }
     },
     {
@@ -2917,10 +2924,11 @@
       ],
       "related": ["input", "slider"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/number-input/schema",
-        "variables": "@lostgradient/cinder/number-input/variables"
+        "variables": "@lostgradient/cinder/number-input/variables",
+        "examples": "@lostgradient/cinder/number-input/examples"
       }
     },
     {
@@ -3933,10 +3941,11 @@
       ],
       "related": ["grid-list"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/sortable-list/schema",
-        "variables": "@lostgradient/cinder/sortable-list/variables"
+        "variables": "@lostgradient/cinder/sortable-list/variables",
+        "examples": "@lostgradient/cinder/sortable-list/examples"
       }
     },
     {
