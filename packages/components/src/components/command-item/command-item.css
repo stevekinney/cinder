@@ -29,6 +29,7 @@
   .cinder-command-item[data-cinder-active] {
     background: var(--cinder-accent);
     color: var(--cinder-accent-contrast);
+    box-shadow: inset 0 0 0 1px var(--cinder-ring-color);
   }
 
   @media (forced-colors: active) {
