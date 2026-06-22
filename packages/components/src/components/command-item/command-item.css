@@ -29,6 +29,16 @@
   .cinder-command-item[data-cinder-active] {
     background: var(--cinder-accent);
     color: var(--cinder-accent-contrast);
+    /* Keyboard-cursor ring for WCAG 1.4.11 (non-text contrast, ≥3:1). The ring
+       sits ON the accent fill, so it must contrast against --cinder-accent — NOT
+       against a neutral surface. --cinder-ring-color is engineered for ~4.5:1
+       against near-white surfaces and collapses to ~1.1–1.3:1 on the accent fill
+       (invisible), which is why the shared _floating-surface.css ring works there
+       (it sits on a neutral hover surface) but cannot be reused here verbatim.
+       --cinder-accent-contrast is the only token already proven to clear AA on the
+       accent fill (it is the text color on this fill; check-token-contrast.test.ts
+       gates it), giving ~6.5:1 (light) / ~7.8:1 (dark) for the ring. */
+    box-shadow: inset 0 0 0 1px var(--cinder-accent-contrast);
   }
 
   @media (forced-colors: active) {

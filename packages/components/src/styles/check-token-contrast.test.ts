@@ -410,10 +410,17 @@ describe('accent + accent-text contrast (both arms)', () => {
     }
   });
 
-  it('active command-palette item: accent-contrast on accent fill clears AA (light arm)', () => {
-    const ratio = contrastRatio(wcagLuminance(accent.light), wcagLuminance(accentContrast.light));
-    expect(ratio).toBeGreaterThanOrEqual(AA_TEXT);
-  });
+  // The active command-palette item paints accent-contrast text AND (since #461)
+  // an accent-contrast keyboard-cursor ring on the accent fill. The text needs
+  // AA (4.5:1); the ring needs only the WCAG 1.4.11 non-text floor (3:1). Both
+  // arms must hold — the existing per-arm AA loop above already covers the text
+  // pair in both arms, which is the stronger bound, so it transitively guarantees
+  // the ring's 3:1 too. We therefore do NOT repeat a weaker 3:1 assertion here.
+  //
+  // This file gates the *token contrast*; it does not read command-item.css. The
+  // CSS-source test (command-item.css.test.ts) is what pins the ring to
+  // `--cinder-accent-contrast` so a swap back to a low-contrast token like
+  // `--cinder-ring-color` (~1.1:1 on the accent fill) is caught there.
 });
 
 describe('status color contrast', () => {
