@@ -8,13 +8,16 @@
  * sits on a neutral hover surface and uses `--cinder-ring-color`), it must
  * contrast against `--cinder-accent` itself. `--cinder-ring-color` collapses to
  * ~1.1:1 on the accent fill (invisible); `--cinder-accent-contrast` is the token
- * already proven to clear AA on that fill. This test pins both the declaration
- * AND the actual computed ring/fill contrast so a future edit cannot silently
- * reintroduce an invisible ring.
+ * already proven to clear AA on that fill.
  *
- * Parser-based assertions via `postcss` (happy-dom does not compute styles from
- * stylesheets, and the package has no browser test harness for unit CSS). The
- * contrast assertion resolves the oklch token definitions from tokens-base.css.
+ * This file is parser-only: it pins the CSS *declaration* (that the ring uses
+ * `--cinder-accent-contrast`, the accent fill is preserved, and the forced-colors
+ * fallback is intact) via `postcss`. happy-dom does not compute styles from
+ * stylesheets and the package has no browser harness for unit CSS, so the actual
+ * *contrast ratio* is gated separately in `check-token-contrast.test.ts`, which
+ * parses the oklch token definitions and asserts the accent/accent-contrast pair
+ * clears the WCAG thresholds. The two together — declaration here, ratio there —
+ * are what prevent a silent regression to an invisible ring.
  */
 
 import { readFileSync } from 'node:fs';
@@ -87,7 +90,7 @@ describe('command-item active state — WCAG 1.4.11 ring', () => {
     // position. It must use `--cinder-accent-contrast` — the only token proven to
     // contrast against the accent fill the ring sits on — as an inset box-shadow
     // so it follows the element's border-radius. (`--cinder-ring-color` would be
-    // invisible here; see the contrast test below.)
+    // invisible here; the actual ratio is asserted in check-token-contrast.test.ts.)
     const rule = findTopLevelRule(ACTIVE_SELECTOR);
     const shadow = declValue(rule, 'box-shadow');
     expect(

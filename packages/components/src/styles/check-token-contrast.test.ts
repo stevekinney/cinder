@@ -410,24 +410,17 @@ describe('accent + accent-text contrast (both arms)', () => {
     }
   });
 
-  it('active command-palette item: accent-contrast on accent fill clears AA (light arm)', () => {
-    const ratio = contrastRatio(wcagLuminance(accent.light), wcagLuminance(accentContrast.light));
-    expect(ratio).toBeGreaterThanOrEqual(AA_TEXT);
-  });
-
-  // #461: the active command-item keyboard-cursor RING (box-shadow:
-  // inset 0 0 0 1px var(--cinder-accent-contrast) in command-item.css) sits on
-  // the accent fill and is the sole geometric keyboard-position affordance, so it
-  // must clear the WCAG 1.4.11 non-text floor (3:1) against --cinder-accent in
-  // BOTH arms. --cinder-ring-color (engineered for near-white surfaces) only
-  // reaches ~1.1–1.3:1 here, which is why the ring uses accent-contrast instead;
-  // this gate fails if a future edit swaps the ring back to a low-contrast token.
-  for (const arm of ['light', 'dark'] as const) {
-    it(`${arm}: command-item active ring (accent-contrast) clears non-text 3:1 on accent fill`, () => {
-      const ratio = contrastRatio(wcagLuminance(accent[arm]), wcagLuminance(accentContrast[arm]));
-      expect(ratio).toBeGreaterThanOrEqual(NON_TEXT);
-    });
-  }
+  // The active command-palette item paints accent-contrast text AND (since #461)
+  // an accent-contrast keyboard-cursor ring on the accent fill. The text needs
+  // AA (4.5:1); the ring needs only the WCAG 1.4.11 non-text floor (3:1). Both
+  // arms must hold — the existing per-arm AA loop above already covers the text
+  // pair in both arms, which is the stronger bound, so it transitively guarantees
+  // the ring's 3:1 too. We therefore do NOT repeat a weaker 3:1 assertion here.
+  //
+  // This file gates the *token contrast*; it does not read command-item.css. The
+  // CSS-source test (command-item.css.test.ts) is what pins the ring to
+  // `--cinder-accent-contrast` so a swap back to a low-contrast token like
+  // `--cinder-ring-color` (~1.1:1 on the accent fill) is caught there.
 });
 
 describe('status color contrast', () => {
