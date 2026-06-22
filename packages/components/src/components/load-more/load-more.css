@@ -43,11 +43,11 @@
   }
 
   .cinder-load-more__button:focus-visible {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    outline-offset: var(--cinder-ring-offset);
     box-shadow:
-      0 0 0 2px var(--cinder-ring-offset-color),
-      0 0 0 4px var(--cinder-ring-color);
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
   .cinder-load-more__button:disabled {
@@ -65,7 +65,7 @@
 
   @media (prefers-reduced-motion: no-preference) {
     .cinder-load-more__spinner {
-      animation: cinder-load-more-spin 0.8s linear infinite;
+      animation: cinder-load-more-spin var(--cinder-duration-spin) linear infinite;
     }
   }
 

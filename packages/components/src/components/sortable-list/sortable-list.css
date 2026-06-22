@@ -50,7 +50,7 @@
   }
 
   .cinder-sortable-item--shifting {
-    transition: transform 150ms ease;
+    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   @media (prefers-reduced-motion: reduce) {

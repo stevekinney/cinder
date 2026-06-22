@@ -952,7 +952,7 @@
 
   .markdown-editor :global(.template-completion-item-path) {
     font-family: var(--cinder-font-mono);
-    font-weight: 500;
+    font-weight: var(--cinder-font-medium);
     color: var(--cinder-text, #1a1a1a);
   }
 

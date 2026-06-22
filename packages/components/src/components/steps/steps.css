@@ -191,14 +191,14 @@
     /* Ring uses --cinder-ring-color: the bright fill-accent (L 0.72) is only
        ~1.8:1 against the white marker surface, so the current-step indicator
        would be near-invisible in light mode. */
-    box-shadow: 0 0 0 2px var(--cinder-ring-color);
+    box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
     color: var(--cinder-accent-text);
   }
 
   @media (forced-colors: active) {
     [data-cinder-state='current'] .cinder-steps__marker {
-      outline: 2px solid ButtonText;
-      outline-offset: 2px;
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: var(--cinder-ring-width);
       box-shadow: none;
     }
   }

@@ -8,7 +8,7 @@
 
   .cinder-keyboard-shortcuts__heading {
     font-size: var(--cinder-text-lg);
-    font-weight: 600;
+    font-weight: var(--cinder-font-semibold);
     color: var(--cinder-text);
     margin: 0;
   }
@@ -26,7 +26,7 @@
 
   .cinder-keyboard-shortcuts__group-label {
     font-size: var(--cinder-text-xs);
-    font-weight: 600;
+    font-weight: var(--cinder-font-semibold);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--cinder-text-muted);

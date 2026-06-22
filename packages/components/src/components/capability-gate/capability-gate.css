@@ -49,7 +49,7 @@
   }
 
   .cinder-capability-gate__feature {
-    font-weight: 600;
+    font-weight: var(--cinder-font-semibold);
     font-size: var(--cinder-text-sm);
     /* No text-transform: `feature` is consumer-owned text — capitalizing it
        would corrupt names like "MIDI" → "Midi" or "iOS" → "Ios". */
@@ -79,7 +79,7 @@
     padding: var(--cinder-space-1) var(--cinder-space-2);
     border-radius: var(--cinder-radius-sm);
     font-size: var(--cinder-text-sm);
-    font-weight: 500;
+    font-weight: var(--cinder-font-medium);
     cursor: pointer;
     border: 1px solid transparent;
     text-decoration: none;
