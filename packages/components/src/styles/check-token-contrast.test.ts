@@ -414,6 +414,20 @@ describe('accent + accent-text contrast (both arms)', () => {
     const ratio = contrastRatio(wcagLuminance(accent.light), wcagLuminance(accentContrast.light));
     expect(ratio).toBeGreaterThanOrEqual(AA_TEXT);
   });
+
+  // #461: the active command-item keyboard-cursor RING (box-shadow:
+  // inset 0 0 0 1px var(--cinder-accent-contrast) in command-item.css) sits on
+  // the accent fill and is the sole geometric keyboard-position affordance, so it
+  // must clear the WCAG 1.4.11 non-text floor (3:1) against --cinder-accent in
+  // BOTH arms. --cinder-ring-color (engineered for near-white surfaces) only
+  // reaches ~1.1–1.3:1 here, which is why the ring uses accent-contrast instead;
+  // this gate fails if a future edit swaps the ring back to a low-contrast token.
+  for (const arm of ['light', 'dark'] as const) {
+    it(`${arm}: command-item active ring (accent-contrast) clears non-text 3:1 on accent fill`, () => {
+      const ratio = contrastRatio(wcagLuminance(accent[arm]), wcagLuminance(accentContrast[arm]));
+      expect(ratio).toBeGreaterThanOrEqual(NON_TEXT);
+    });
+  }
 });
 
 describe('status color contrast', () => {
