@@ -278,6 +278,19 @@
     z-index: 1;
   }
 
+  /* Forced-colors: selected/pressed segments also need outline fallback. Selection
+   * semantics apply (the segment represents a chosen option) → Highlight. */
+  @media (forced-colors: active) {
+    .cinder-segmented-control:not([data-cinder-variant='tablist'])
+      .cinder-segmented-control-option[data-cinder-selected]:focus-visible,
+    .cinder-segmented-control:not([data-cinder-variant='tablist'])
+      .cinder-segmented-control-option[data-cinder-pressed]:focus-visible {
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 1px;
+      box-shadow: none;
+    }
+  }
+
   /* ── Tablist variant (single mode only) ─────────────────────────────────────
  * See docs/decisions/segmented-control-tablist-variant.md. The tablist variant
  * carries tab semantics for externally owned panels, so it must read as a
@@ -349,6 +362,14 @@
     .cinder-segmented-control-option:focus-visible {
       outline: var(--cinder-ring-width) solid Highlight;
       outline-offset: 1px;
+    }
+
+    /* Forced-colors: selected+focused tab in tablist → selection semantics → Highlight. */
+    .cinder-segmented-control[data-cinder-selection-mode='single'][data-cinder-variant='tablist']
+      .cinder-segmented-control-option[data-cinder-selected]:focus-visible {
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 1px;
+      box-shadow: none;
     }
   }
 

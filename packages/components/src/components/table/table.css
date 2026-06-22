@@ -162,6 +162,16 @@
     z-index: 2;
   }
 
+  @media (forced-colors: active) {
+    .cinder-table__sort-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      /* 2px is correct here: sort-button has border:none so there is no
+         ButtonBorder to merge with at 2px. */
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+  }
+
   @media (hover: hover) {
     .cinder-table__sort-button:hover {
       background: var(--cinder-surface-hover);

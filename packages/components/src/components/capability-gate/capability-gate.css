@@ -107,6 +107,19 @@
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
+  @media (forced-colors: active) {
+    .cinder-capability-gate__primary:focus-visible,
+    .cinder-capability-gate__fallback:focus-visible,
+    .cinder-capability-gate__dismiss:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      /* 3px separates the outline from ButtonBorder (which renders in forced-colors
+         on all button-like controls and shares the ButtonText color family in HCM);
+         at 2px the ring and border can visually merge. */
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+  }
+
   .cinder-capability-gate__fallback {
     background-color: transparent;
     color: var(--cinder-text);

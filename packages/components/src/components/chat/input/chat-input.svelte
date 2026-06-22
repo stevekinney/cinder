@@ -706,12 +706,10 @@
   }
 
   /* The button is a 44px touch target but the visible chip is the centered
-     1.25rem `::before` circle. Reserve a transparent outline placeholder for
-     forced-colors, and paint the ring on the visible circle (Strategy B-inset)
-     so it hugs the chip rather than the oversized hit area. */
+     1.25rem `::before` circle. Paint the ring on the visible circle so it hugs
+     the chip rather than the oversized hit area. */
   .chat-input-attachment-remove:focus-visible {
     opacity: 1;
-    outline: var(--cinder-ring-width) solid transparent;
   }
 
   .chat-input-attachment-remove:focus-visible::before {
@@ -720,9 +718,14 @@
   }
 
   @media (forced-colors: active) {
-    .chat-input-attachment-remove:focus-visible {
+    /* Forced-colors strips the box-shadow ring, so repaint a system-color
+       outline directly on the visible `::before` circle (which is round via
+       border-radius: full, so the outline follows the chip). Painting on the
+       circle itself avoids depending on fragile parent-to-pseudo offset math. */
+    .chat-input-attachment-remove:focus-visible::before {
+      box-shadow: none;
       outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: -12px;
+      outline-offset: var(--cinder-ring-offset);
     }
   }
 

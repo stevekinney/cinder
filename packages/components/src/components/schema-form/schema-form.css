@@ -110,7 +110,9 @@
 
     .cinder-schema-form__secondary-button:focus-visible,
     .cinder-schema-form__submit:focus-visible {
-      outline-color: Highlight;
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 3px;
+      box-shadow: none;
     }
   }
 }

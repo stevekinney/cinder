@@ -1439,6 +1439,13 @@
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
+  @media (forced-colors: active) {
+    .dx-iconbtn:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+  }
 
   .dx-loading {
     display: flex;
@@ -1599,6 +1606,13 @@
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
+  @media (forced-colors: active) {
+    .dx-import__copy:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+  }
 
   /* ===== Layout + TOC ===== */
   .dx-layout {
@@ -1667,6 +1681,13 @@
   .dx-toc__link:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  @media (forced-colors: active) {
+    .dx-toc__link:focus-visible {
+      outline: var(--cinder-ring-width) solid LinkText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
   }
 
   /* ===== Sections ===== */
@@ -1915,6 +1936,13 @@
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
     border-radius: var(--cinder-radius-sm);
+  }
+  @media (forced-colors: active) {
+    .dx-guide__alt:focus-visible {
+      outline: var(--cinder-ring-width) solid LinkText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
   }
 
   /* ===== Playground ===== */
@@ -2341,6 +2369,13 @@
   .dx-rel:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  @media (forced-colors: active) {
+    .dx-rel:focus-visible {
+      outline: var(--cinder-ring-width) solid LinkText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
   }
   .dx-rel__top {
     display: flex;

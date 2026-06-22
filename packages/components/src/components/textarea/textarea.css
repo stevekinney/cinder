@@ -106,6 +106,14 @@
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);
   }
 
+  @media (forced-colors: active) {
+    .cinder-textarea[aria-invalid='true']:focus-visible {
+      outline: var(--cinder-ring-width) solid Mark;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+  }
+
   /* ----------------------------------------
  * Disabled state
  * ---------------------------------------- */

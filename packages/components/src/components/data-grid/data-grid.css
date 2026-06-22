@@ -23,6 +23,14 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  @media (forced-colors: active) {
+    .cinder-data-grid:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(-1 * var(--cinder-ring-width));
+      box-shadow: none;
+    }
+  }
+
   .cinder-data-grid__header-row,
   .cinder-data-grid__row {
     display: grid;
@@ -115,6 +123,14 @@
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: 2px;
     box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-data-grid__sort-button:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
   }
 
   .cinder-data-grid__header-content {

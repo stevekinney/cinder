@@ -42,6 +42,17 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  @media (forced-colors: active) {
+    .cinder-transfer-list__list:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      /* Negative offset because __list has overflow:auto — a positive offset
+         would be clipped by the scrolling container and the ring can disappear.
+         An inset ring always paints inside the box regardless of overflow. */
+      outline-offset: calc(-1 * var(--cinder-ring-width));
+      box-shadow: none;
+    }
+  }
+
   .cinder-transfer-list__option {
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border-radius: var(--cinder-radius-sm);
@@ -99,6 +110,17 @@
   .cinder-transfer-list__control:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-transfer-list__control:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      /* 3px separates the outline from ButtonBorder (which renders in forced-colors
+         on all bordered controls and shares the ButtonText color family in HCM);
+         at 2px the ring and border can visually merge. */
+      outline-offset: 3px;
+      box-shadow: none;
+    }
   }
 
   @container cinder-transfer-list (max-width: 42rem) {
