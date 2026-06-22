@@ -151,7 +151,15 @@ describe('DataList', () => {
     expect(listItems[0]?.textContent).toContain('First');
     expect(listItems[1]?.textContent).toContain('Second');
 
-    // Reorder: the keyed each must render Second-then-First by identity.
+    // Reorder and assert the rendered order tracks the items.
+    //
+    // NOTE: this asserts rendered ORDER, not DOM-node identity. A true
+    // keyed-vs-unkeyed distinction needs node-reuse identity, but happy-dom does
+    // not preserve node identity through Svelte's keyed-each reconciliation (it
+    // recreates nodes), so that assertion is not reliable in this harness. The
+    // load-bearing guard against "key was removed / made optional" is the
+    // compile-time `@ts-expect-error` test above — that regression cannot reach
+    // runtime, so this test stays an order/behavior check.
     rerender({
       items: [itemsA[1]!, itemsA[0]!],
       key: idKey,
