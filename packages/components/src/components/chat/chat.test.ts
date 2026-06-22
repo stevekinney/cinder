@@ -743,7 +743,8 @@ describe('Chat — SSR safety', () => {
     const source = await Bun.file(resolve(import.meta.dir, 'container', 'chat.svelte')).text();
 
     expect(source).toContain('let hasMounted = $state(false);');
-    expect(source).toContain('onMount(() => {');
+    expect(source).not.toContain('onMount(() => {');
+    expect(source).toContain('hasMounted = true;');
     expect(source).toContain(
       'const isVirtualized = $derived(virtualized && hasMounted && messages.length > 0);',
     );

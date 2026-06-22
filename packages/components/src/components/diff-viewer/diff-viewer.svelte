@@ -13,7 +13,7 @@
    * @avoidWhen Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering.
    * @related diff-statistics, code-block
    */
-  export type { DiffToolbarContext, DiffViewerProps, ViewMode } from './diff-viewer.types.ts';
+  export type { DiffToolbarContext, DiffViewerMode, DiffViewerProps } from './diff-viewer.types.ts';
 </script>
 
 <script lang="ts">
@@ -46,7 +46,7 @@
   import DiffFrontMatter from './diff-front-matter.svelte';
   import DiffLine from './diff-line.svelte';
   import DiffToolbar from './diff-toolbar.svelte';
-  import type { DiffToolbarContext, DiffViewerProps, ViewMode } from './diff-viewer.types.ts';
+  import type { DiffToolbarContext, DiffViewerMode, DiffViewerProps } from './diff-viewer.types.ts';
 
   type LocalFrontMatterBlock = {
     hasFrontMatter: boolean;
@@ -99,7 +99,7 @@
     onreverthunk,
     readonly = false,
     hunks: bindableHunks = $bindable<DiffHunk[]>([]),
-    viewMode = $bindable<ViewMode>('unified'),
+    viewMode = $bindable<DiffViewerMode>('unified'),
     toolbarActions,
     toolbar,
     class: className,
@@ -304,7 +304,7 @@
   // Keyboard shortcuts
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const VIEW_MODES: ViewMode[] = ['unified', 'final', 'original'];
+  const VIEW_MODES: DiffViewerMode[] = ['unified', 'final', 'original'];
 
   function handleKeydown(event: KeyboardEvent) {
     const target = event.target as HTMLElement;

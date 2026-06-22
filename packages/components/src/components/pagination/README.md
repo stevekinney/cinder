@@ -7,9 +7,11 @@ Page-navigation control for stepping through multi-page result sets.
 ```svelte
 <script lang="ts">
   import Pagination from '@lostgradient/cinder/pagination';
+
+  let currentPage = $state(1);
 </script>
 
-<Pagination />
+<Pagination bind:currentPage totalPages={10} />
 ```
 
 ## Props

@@ -25,6 +25,7 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
     value = $bindable(''),
@@ -65,6 +66,14 @@
     select(next) {
       value = next;
     },
+  });
+
+  $effect(() => {
+    if (!legend) {
+      devWarn(
+        '[cinder/RadioGroup] A <fieldset> was rendered without a label prop. The fieldset will have no <legend>, which makes it inaccessible. Provide a label prop to describe the group.',
+      );
+    }
   });
 </script>
 

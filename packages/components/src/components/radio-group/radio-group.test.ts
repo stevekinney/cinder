@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -478,5 +478,42 @@ describe('RadioGroup.Option namespace (public API contract)', () => {
     // This pins the identity contract: importing via the public API must
     // return the same component as the direct .svelte import used in tests.
     expect(RadioGroupPublic.Option).toBe(Radio);
+  });
+});
+
+describe('RadioGroup — missing-label dev warning', () => {
+  let originalWarn: typeof console.warn;
+  let warnings: string[];
+
+  beforeEach(() => {
+    originalWarn = console.warn;
+    warnings = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.join(' '));
+    };
+  });
+
+  afterEach(() => {
+    console.warn = originalWarn;
+  });
+
+  test('warns when label prop is omitted', () => {
+    render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      options: [{ id: 'r-a', value: 'a', label: 'A' }],
+    });
+    expect(warnings.some((w) => w.includes('[cinder/RadioGroup]'))).toBe(true);
+    expect(warnings.some((w) => w.includes('label prop'))).toBe(true);
+  });
+
+  test('does not warn when label prop is provided', () => {
+    render(Wrapper, {
+      name: 'choice',
+      value: 'a',
+      label: 'Choose one',
+      options: [{ id: 'r-a', value: 'a', label: 'A' }],
+    });
+    expect(warnings.some((w) => w.includes('[cinder/RadioGroup]'))).toBe(false);
   });
 });

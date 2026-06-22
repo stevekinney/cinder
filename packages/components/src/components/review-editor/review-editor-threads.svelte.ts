@@ -35,13 +35,13 @@ import {
 } from '@lostgradient/cinder/commentary/comments';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { devWarn } from '../../utilities/dev-warn.ts';
-import type { PopoverPosition, ReviewMode } from './review-editor-types';
+import type { PopoverPosition, ReviewMode } from './review-editor.types.ts';
 
 /** Type alias for thread ID to improve readability */
 type ThreadId = string;
 
 // Re-export PopoverPosition for backwards compatibility
-export type { PopoverPosition } from './review-editor-types';
+export type { PopoverPosition } from './review-editor.types.ts';
 
 /**
  * Options for creating the thread manager.

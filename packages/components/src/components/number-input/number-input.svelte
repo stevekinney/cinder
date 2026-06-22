@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { NumberInputProps } from './number-input.types.ts';
-  import { onMount, untrack } from 'svelte';
+  import { untrack } from 'svelte';
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
@@ -52,6 +52,10 @@
   let isFocused = $state(false);
   let hasMounted = $state(false);
   let inputElement: HTMLInputElement | undefined = $state();
+
+  $effect(() => {
+    hasMounted = true;
+  });
   // Two-part internal-invalid surface: malformed (parse failure) and
   // required-empty (no value when the field demands one). Both drive
   // `aria-invalid` so screen readers stay aligned with native validity.
@@ -64,10 +68,6 @@
     if (value === null && defaultValue !== null) {
       value = defaultValue;
     }
-  });
-
-  onMount(() => {
-    hasMounted = true;
   });
 
   const resolvedLocale = $derived(locale ?? (hasMounted ? navigator.language : 'en-US'));

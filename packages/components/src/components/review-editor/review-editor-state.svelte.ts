@@ -20,7 +20,7 @@ import { normalize } from '@lostgradient/cinder/markdown/pipeline';
 import type {
   ReviewEditorDiffViewMode as DiffViewMode,
   ReviewEditorViewType as ViewType,
-} from './review-editor-types';
+} from './review-editor.types.ts';
 
 /**
  * Diff statistics for tracking content changes.

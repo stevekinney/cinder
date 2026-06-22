@@ -19,7 +19,7 @@
 </script>
 
 <script lang="ts">
-  import { onMount, tick, untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
   import {
     getMessages,
@@ -286,7 +286,7 @@
     });
   });
   let hasMounted = $state(false);
-  onMount(() => {
+  $effect(() => {
     hasMounted = true;
   });
 

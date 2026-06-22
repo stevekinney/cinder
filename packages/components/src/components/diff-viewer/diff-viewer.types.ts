@@ -2,14 +2,14 @@ import type { DiffHunk, LineDiffStats } from '@lostgradient/cinder/markdown/diff
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-export type ViewMode = 'unified' | 'final' | 'original';
+export type DiffViewerMode = 'unified' | 'final' | 'original';
 
 /** Context passed to toolbar snippets for custom rendering */
 export interface DiffToolbarContext {
   hunks: DiffHunk[];
   stats: LineDiffStats;
   hasChanges: boolean;
-  viewMode: ViewMode;
+  viewMode: DiffViewerMode;
 }
 
 export type DiffViewerProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
@@ -39,7 +39,7 @@ export type DiffViewerProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
    * Bindable: reactive access to current view mode.
    * Parent components can bind to control or observe the view mode.
    */
-  viewMode?: ViewMode;
+  viewMode?: DiffViewerMode;
   /**
    * Additional toolbar actions rendered in the toolbar-right section.
    * Use this to inject custom buttons (e.g., export actions) without

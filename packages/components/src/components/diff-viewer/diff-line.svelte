@@ -2,13 +2,13 @@
   import type { Snippet } from 'svelte';
   import type { LineDiff, WordChange } from '@lostgradient/cinder/markdown/diff/line-diff';
 
-  export type ViewMode = 'unified' | 'final' | 'original';
+  import type { DiffViewerMode } from './diff-viewer.types.ts';
 
   export type DiffLineProps = {
     /** The line diff data */
     diff: LineDiff;
     /** Current view mode */
-    viewMode: ViewMode;
+    viewMode: DiffViewerMode;
     /** Whether this line is selected */
     selected?: boolean;
     /** Called when user clicks this line (for navigation) */

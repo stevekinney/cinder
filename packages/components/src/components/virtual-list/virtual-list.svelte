@@ -30,6 +30,7 @@
   import { tick } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type { VirtualListProps } from './virtual-list.types.ts';
   import {
     getFixedVirtualWindow,
@@ -88,13 +89,11 @@
   $effect(() => {
     const element = scrollElement;
     if (!element) return;
-
     syncViewport(element);
-    if (typeof ResizeObserver === 'undefined') return;
+  });
 
-    const observer = new ResizeObserver(() => syncViewport(element));
-    observer.observe(element);
-    return () => observer.disconnect();
+  const observeResize = useResizeObserver(() => {
+    if (scrollElement) syncViewport(scrollElement);
   });
 
   $effect.pre(() => {
@@ -159,6 +158,7 @@
   this={'div'}
   {...rest}
   bind:this={scrollElement}
+  {@attach observeResize}
   class={classNames('cinder-virtual-list', className)}
   {role}
   {tabindex}

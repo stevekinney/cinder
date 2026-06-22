@@ -26,6 +26,13 @@ export type NumberInputProps = Omit<
   max?: number;
   /** Amount added or subtracted per stepper click or arrow-key press. Default `1`. */
   step?: number | undefined;
+  /**
+   * Locale-aware formatting options passed to `Intl.NumberFormat`.
+   * Supports all `Intl.NumberFormatOptions` properties such as `style`
+   * (`'decimal'`, `'currency'`, `'percent'`, `'unit'`), `currency`,
+   * `minimumFractionDigits`, `maximumFractionDigits`, and `notation`.
+   * Defaults to locale-standard decimal formatting when omitted.
+   */
   format?: Intl.NumberFormatOptions;
   /** BCP 47 locale tag used for number formatting and parsing. Defaults to `navigator.language`. */
   locale?: string;
@@ -38,9 +45,9 @@ export type NumberInputProps = Omit<
   /** Visible label text rendered above the input and linked via `for`/`id`. */
   label?: string;
   /** Helper text rendered below the input and associated via `aria-describedby`. */
-  description?: string | undefined;
+  description?: string;
   /** Error message rendered below the input; also sets `aria-invalid` on the input. */
-  error?: string | undefined;
+  error?: string;
   class?: string;
   onchange?: (value: number | null) => void;
 };

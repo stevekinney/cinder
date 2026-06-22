@@ -157,8 +157,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    inline-size: 1.75rem;
-    min-block-size: 1.75rem;
+    inline-size: 2rem;
+    min-block-size: 2rem;
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);

@@ -23,6 +23,7 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   const groupId = $props.id();
 
@@ -39,6 +40,14 @@
   const descriptionId = $derived(describeId(groupId, !!description));
   const errId = $derived(buildErrorId(groupId, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errId));
+
+  $effect(() => {
+    if (!legend) {
+      devWarn(
+        '[cinder/CheckboxGroup] A <fieldset> was rendered without a label prop. The fieldset will have no <legend>, which makes it inaccessible. Provide a label prop to describe the group.',
+      );
+    }
+  });
 </script>
 
 <!--

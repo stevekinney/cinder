@@ -16,8 +16,6 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-
   import { classNames } from '../../utilities/class-names.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
@@ -161,9 +159,9 @@
   // the value actually looks like a URL, otherwise "Text to share".
   const valueRegionLabel = $derived(looksLikeUrl(value) ? 'Link to share' : 'Text to share');
 
-  onDestroy(() => {
+  $effect(() => {
     // clearTimer() clears BOTH resetTimer and announceTimer.
-    clearTimer();
+    return () => clearTimer();
   });
 
   // The action list: explicit `actions` verbatim, else the copy-link default.
