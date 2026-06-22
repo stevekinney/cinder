@@ -87,25 +87,31 @@ describe('Masonry', () => {
     }
   });
 
-  test('MasonryElement union excludes void elements', () => {
-    // Type-level regression: MasonryElement must not include void element names.
-    // The runtime check uses a type assertion to ensure 'img' and 'input' are
-    // not assignable to MasonryElement at the TypeScript level.
-    const voidElements = ['img', 'input', 'br', 'hr'];
-    const allowedSet: readonly string[] = [
-      'article',
-      'aside',
-      'div',
-      'footer',
-      'header',
-      'main',
-      'nav',
-      'section',
-      'ul',
-      'ol',
-    ];
-    for (const element of voidElements) {
-      expect(allowedSet.includes(element)).toBe(false);
-    }
+  test('MasonryElement union excludes void and non-container elements (type-level)', () => {
+    // Type-level regression: these assignments MUST fail to compile. If
+    // MasonryElement is ever widened to `string` or gains one of these members,
+    // the `@ts-expect-error` directives become unused and tsc/svelte-check fail.
+    // The values are never used at runtime — this test's guarantee is compile-time.
+
+    // Void elements cannot contain masonry children.
+    // @ts-expect-error 'img' is not a layout-safe MasonryElement
+    const _img: MasonryElement = 'img';
+    // @ts-expect-error 'input' is not a layout-safe MasonryElement
+    const _input: MasonryElement = 'input';
+    // @ts-expect-error 'br' is not a layout-safe MasonryElement
+    const _br: MasonryElement = 'br';
+    // @ts-expect-error 'hr' is not a layout-safe MasonryElement
+    const _hr: MasonryElement = 'hr';
+    // Inline / non-container elements that cannot validly host block children.
+    // @ts-expect-error 'span' is not a layout-safe MasonryElement
+    const _span: MasonryElement = 'span';
+    // @ts-expect-error 'button' is not a layout-safe MasonryElement
+    const _button: MasonryElement = 'button';
+
+    // A representative allowed value DOES type-check (sanity anchor for the test).
+    const _div: MasonryElement = 'div';
+
+    // Touch the bindings so they are not flagged as unused at runtime lint level.
+    expect([_img, _input, _br, _hr, _span, _button, _div]).toHaveLength(7);
   });
 });

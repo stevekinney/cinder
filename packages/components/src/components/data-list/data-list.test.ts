@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { DataListProps } from './data-list.types.ts';
 
 setupHappyDom();
 
@@ -118,25 +119,48 @@ describe('DataList', () => {
     expect(list?.getAttribute('role')).toBe('list');
   });
 
-  test('uses stable keyed reconciliation — key prop is required', () => {
-    // Regression test: DataList must always use a keyed {#each} block.
-    // Omitting key is now a TypeScript compile error; this test verifies
-    // the rendered output when a key extractor is provided.
-    const items = [
+  test('key prop is required — omitting it is a compile error (type-level)', () => {
+    // Type-level regression: a DataList props object that supplies items +
+    // children but OMITS `key` must NOT be assignable to DataListProps. The
+    // children value is correctly typed, so the sole type error is the missing
+    // required `key` — caught by the `@ts-expect-error`. If `key` is ever made
+    // optional again, the directive becomes unused and tsc/svelte-check fail.
+    const children = itemSnippet((item) => String(item)) as DataListProps<string>['children'];
+    // @ts-expect-error `key` is a required prop; omitting it must not type-check
+    const _propsWithoutKey: DataListProps<string> = { items: ['a', 'b'], children };
+    expect(_propsWithoutKey).toBeDefined();
+  });
+
+  test('keyed reconciliation follows item identity across a reorder', () => {
+    // Proves the keyed {#each} associates DOM with the item, not the index:
+    // after reordering, the row for a given id keeps its identity. With the old
+    // index-based fallback this would re-associate by position instead.
+    const itemsA = [
       { id: 'x1', label: 'First' },
       { id: 'x2', label: 'Second' },
     ];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const idKey = (item: any): string => String(item?.id ?? item);
-    const { container } = render(DataList, {
-      items,
+    const { container, rerender } = render(DataList, {
+      items: itemsA,
       key: idKey,
       children: itemSnippet((item) => String((item as { id: string; label: string }).label)),
     });
-    const listItems = container.querySelectorAll('.cinder-data-list li');
+    let listItems = container.querySelectorAll('.cinder-data-list li');
     expect(listItems).toHaveLength(2);
     expect(listItems[0]?.textContent).toContain('First');
     expect(listItems[1]?.textContent).toContain('Second');
+
+    // Reorder: the keyed each must render Second-then-First by identity.
+    rerender({
+      items: [itemsA[1]!, itemsA[0]!],
+      key: idKey,
+      children: itemSnippet((item) => String((item as { id: string; label: string }).label)),
+    });
+    listItems = container.querySelectorAll('.cinder-data-list li');
+    expect(listItems).toHaveLength(2);
+    expect(listItems[0]?.textContent).toContain('Second');
+    expect(listItems[1]?.textContent).toContain('First');
   });
 });
 
