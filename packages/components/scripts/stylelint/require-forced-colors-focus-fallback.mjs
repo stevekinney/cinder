@@ -38,7 +38,18 @@ const meta = {
 };
 
 function selectorMatchesFocusVisible(selector) {
-  return /:focus-visible(?![\w-])/.test(selector);
+  // A `:focus-visible` that appears only inside `:not(...)` matches elements
+  // that are NOT focus-visible, so the rule must not treat it as a focus ring.
+  // Strip `:not(...)` groups before testing. (Repeated to handle multiple
+  // `:not()` groups in one selector; a fixed iteration count is enough — real
+  // selectors never nest more than a couple.)
+  let stripped = selector;
+  for (let i = 0; i < 5; i += 1) {
+    const next = stripped.replace(/:not\([^()]*\)/g, '');
+    if (next === stripped) break;
+    stripped = next;
+  }
+  return /:focus-visible(?![\w-])/.test(stripped);
 }
 
 /**
@@ -48,6 +59,15 @@ function selectorMatchesFocusVisible(selector) {
  */
 function normalizeSelector(selector) {
   return selector.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Whether an `outline` / `outline-color` value paints a visible ring. `none`
+ * and `transparent` are no-ops and do not count as a forced-colors fallback.
+ */
+function isVisibleOutline(value) {
+  const v = value.toLowerCase().trim();
+  return v !== 'none' && !v.includes('transparent');
 }
 
 const plugin = stylelint.createPlugin(ruleName, (primary) => {
@@ -68,8 +88,10 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       if (!rule.selectors.some((s) => selectorMatchesFocusVisible(s))) return;
 
       let hasBoxShadow = false;
-      rule.walkDecls('box-shadow', () => {
-        hasBoxShadow = true;
+      rule.walkDecls('box-shadow', (decl) => {
+        if (decl.value.trim().toLowerCase() !== 'none') {
+          hasBoxShadow = true;
+        }
       });
       if (!hasBoxShadow) return;
 
@@ -93,9 +115,13 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       if (!isUnderForcedColors(rule)) return;
       if (!rule.selectors.some((s) => selectorMatchesFocusVisible(s))) return;
 
+      // A valid fallback paints a visible outline: the `outline` shorthand OR
+      // the `outline-color` longhand, with a real (non-transparent, non-`none`)
+      // color. `outline: none` and `outline-color: transparent` are no-ops and
+      // do not count as a fallback.
       let hasNonTransparentOutline = false;
-      rule.walkDecls('outline', (decl) => {
-        if (!decl.value.toLowerCase().includes('transparent')) {
+      rule.walkDecls(/^outline(-color)?$/, (decl) => {
+        if (isVisibleOutline(decl.value)) {
           hasNonTransparentOutline = true;
         }
       });

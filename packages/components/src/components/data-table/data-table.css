@@ -48,6 +48,15 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  @media (forced-colors: active) {
+    .cinder-data-table[data-cinder-virtualized]
+      .cinder-table__row[data-cinder-virtual-row]:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(-1 * var(--cinder-ring-width));
+      box-shadow: none;
+    }
+  }
+
   .cinder-data-table__virtual-spacer-cell {
     padding: 0;
     border: 0;

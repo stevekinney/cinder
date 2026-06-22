@@ -50,6 +50,14 @@
       0 0 0 4px var(--cinder-ring-color);
   }
 
+  @media (forced-colors: active) {
+    .cinder-load-more__button:focus-visible {
+      outline: 2px solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+  }
+
   .cinder-load-more__button:disabled {
     cursor: progress;
     opacity: 0.72;

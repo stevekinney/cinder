@@ -89,7 +89,11 @@
     .cinder-kanban-board__column-handle:focus-visible,
     .cinder-kanban-board__collapse:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: 2px;
+      /* 3px separates the outline from ButtonBorder (which renders in forced-colors
+         on all bordered controls and shares the ButtonText color family in HCM);
+         at 2px the ring and border can visually merge. */
+      outline-offset: 3px;
+      box-shadow: none;
     }
   }
 

@@ -56,7 +56,13 @@
   @media (forced-colors: active) {
     .cinder-chat-conversation-list__button[data-cinder-conversation-interactive]:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: 2px;
+      /* ButtonText is correct here: this is a button/navigation control using
+         aria-current="page" (page-nav semantics, not aria-selected list-selection).
+         Highlight/HighlightText would be wrong — those are for selected listbox items.
+         3px separates the ring from ButtonBorder, which renders in forced-colors
+         mode on all button elements regardless of their standard-mode border color. */
+      outline-offset: 3px;
+      box-shadow: none;
     }
   }
 

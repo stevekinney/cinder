@@ -121,7 +121,9 @@ describe('CodeBlock — static structure', () => {
   test('copy button focus ring remains visible in forced-colors mode', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
     expect(css).toContain('@media (forced-colors: active)');
-    expect(css).toContain('outline-color: CanvasText;');
+    // The copy-button forced-colors fallback uses the full outline shorthand (not outline-color)
+    // so the Stylelint rule can detect it as a valid non-transparent outline.
+    expect(css).toContain('outline: var(--cinder-ring-width) solid ButtonText;');
     expect(css).toContain('box-shadow: none;');
   });
 

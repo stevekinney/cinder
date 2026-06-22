@@ -52,6 +52,14 @@
     box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
+  @media (forced-colors: active) {
+    .cinder-tree__filter-input:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+  }
+
   .cinder-tree__selection-controls {
     display: flex;
     flex-wrap: wrap;
@@ -186,6 +194,14 @@
     box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
+  @media (forced-colors: active) {
+    .cinder-tree-item__drag-handle:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+  }
+
   /* Long labels must not force the tree wider than its container or overlap the
    * checkbox at narrow (mobile) widths. The element also carries `cinder-_truncate`
    * (the shared utility), which supplies overflow:hidden / text-overflow:ellipsis /
@@ -271,6 +287,14 @@
   .cinder-tree-item__rename-input:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-tree-item__rename-input:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
   }
 
   .cinder-tree-item__rename-input[aria-invalid='true'] {

@@ -1068,18 +1068,10 @@ describe('focus-ring sweep — selected/current state boundaries', () => {
 
 describe('chat-input attachment-remove — inset ring painted on the visible chip', () => {
   // The button is a 44px touch target with the visible chip rendered by its
-  // `::before`. The base :focus-visible keeps only the transparent placeholder;
-  // the inset ring is painted on `::before` so it hugs the chip, not the
-  // oversized hit area. The forced-colors outline keeps the -12px inset.
-  test('base rule keeps the transparent-outline placeholder', () => {
-    const root = parse(chatInputStyle);
-    const rules = findRules(root, '.chat-input-attachment-remove:focus-visible').filter(
-      (rule) => !isUnderForcedColors(rule),
-    );
-    expect(rules.length).toBeGreaterThanOrEqual(1);
-    expect(declValue(rules[0]!, 'outline')).toBe(TRANSPARENT_OUTLINE);
-  });
-
+  // `::before`. The standard-mode ring is an inset box-shadow on `::before` so it
+  // hugs the chip, not the oversized hit area. In forced-colors the box-shadow is
+  // stripped, so the system-color outline is repainted on the SAME `::before`
+  // selector (the round chip), which avoids fragile parent-to-pseudo offset math.
   test('::before paints an inset ring referencing the ring color', () => {
     const root = parse(chatInputStyle);
     const rules = findRules(root, '.chat-input-attachment-remove:focus-visible::before').filter(
@@ -1093,15 +1085,17 @@ describe('chat-input attachment-remove — inset ring painted on the visible chi
     expect(boxShadow).not.toContain(SHARED_BOX_SHADOW);
   });
 
-  test('forced-colors fallback repaints the outline on the chip', () => {
+  test('forced-colors fallback repaints the outline on the ::before chip', () => {
     const root = parse(chatInputStyle);
-    const rules = findRules(root, '.chat-input-attachment-remove:focus-visible').filter((rule) =>
-      isUnderForcedColors(rule),
+    const rules = findRules(root, '.chat-input-attachment-remove:focus-visible::before').filter(
+      (rule) => isUnderForcedColors(rule),
     );
     expect(rules.length).toBeGreaterThanOrEqual(1);
     const fallback = rules[0]!;
+    // box-shadow stripped, system-color outline painted on the visible chip.
+    expect(declValue(fallback, 'box-shadow')).toBe('none');
     expect(declValue(fallback, 'outline')).toBe('var(--cinder-ring-width) solid ButtonText');
-    expect(declValue(fallback, 'outline-offset')).toBe('-12px');
+    expect(declValue(fallback, 'outline-offset')).toBe('var(--cinder-ring-offset)');
   });
 });
 
@@ -1176,8 +1170,14 @@ describe('focus-ring lint rule gates at error severity', () => {
  * that does NOT require the shared `var(--_cinder-focus-ring-shadow)` token —
  * some of the issue #460 components use the inline two-shadow form, which is
  * semantically identical but written out explicitly.
+ *
+ * @param expectedOffset - The expected `outline-offset` value in the fallback
+ *   block. Bordered controls use `3px` (matches button.css precedent — 3px
+ *   separates the ring from ButtonBorder which shares the ButtonText color
+ *   family in HCM). Borderless controls use `2px`. Overflow-clipped scrollable
+ *   containers use `calc(-1 * var(--cinder-ring-width))` (inset ring).
  */
-function assertForcedColorsFallback(css: string, selector: string): void {
+function assertForcedColorsFallback(css: string, selector: string, expectedOffset: string): void {
   const root = parse(css);
 
   // The base (non-forced) rule must have a transparent outline and box-shadow.
@@ -1189,7 +1189,8 @@ function assertForcedColorsFallback(css: string, selector: string): void {
   expect(outlineValue).toContain('transparent');
   expect(declValue(base, 'box-shadow')).toBeDefined();
 
-  // The forced-colors block must have a non-transparent ButtonText outline.
+  // The forced-colors block must have a non-transparent ButtonText outline,
+  // the correct outline-offset for the control type, and box-shadow:none.
   const fallbackRules = findRules(root, selector).filter((rule) => isUnderForcedColors(rule));
   expect(fallbackRules.length).toBeGreaterThanOrEqual(1);
   const fallback = fallbackRules[0]!;
@@ -1197,83 +1198,112 @@ function assertForcedColorsFallback(css: string, selector: string): void {
   expect(outline).toBeDefined();
   expect(outline).not.toContain('transparent');
   expect(outline).toBe('var(--cinder-ring-width) solid ButtonText');
+  expect(declValue(fallback, 'outline-offset')).toBe(expectedOffset);
+  expect(declValue(fallback, 'box-shadow')).toBe('none');
 }
 
 describe('forced-colors fallbacks — issue #460 (9 affected components)', () => {
   // Each entry asserts: transparent-outline + box-shadow in normal mode, plus
-  // a non-transparent ButtonText outline in @media (forced-colors: active).
-  const cases: Array<{ name: string; css: string; selector: string }> = [
+  // a non-transparent ButtonText outline, the correct per-control outline-offset,
+  // and explicit box-shadow:none in @media (forced-colors: active).
+  //
+  // outline-offset policy:
+  //   3px  — bordered controls (border renders as ButtonBorder in HCM; 2px would merge)
+  //   2px  — borderless controls (no ButtonBorder, so 2px is safe)
+  //   calc(-1 * var(--cinder-ring-width))  — overflow:auto containers (positive offset
+  //          is clipped; inset ring always paints inside the scroll box)
+  const cases: Array<{ name: string; css: string; selector: string; expectedOffset: string }> = [
     {
       name: 'capability-gate primary action',
       css: capabilityGateCss,
       selector: '.cinder-capability-gate__primary:focus-visible',
+      expectedOffset: '3px',
     },
     {
       name: 'capability-gate fallback action',
       css: capabilityGateCss,
       selector: '.cinder-capability-gate__fallback:focus-visible',
+      expectedOffset: '3px',
     },
     {
       name: 'capability-gate dismiss action',
       css: capabilityGateCss,
       selector: '.cinder-capability-gate__dismiss:focus-visible',
+      expectedOffset: '3px',
     },
     {
       name: 'kanban-board column-handle',
       css: kanbanBoardCss,
       selector: '.cinder-kanban-board__column-handle:focus-visible',
+      expectedOffset: '3px',
     },
     {
       name: 'kanban-board collapse',
       css: kanbanBoardCss,
       selector: '.cinder-kanban-board__collapse:focus-visible',
+      expectedOffset: '3px',
     },
     {
       name: 'media-controls button',
       css: mediaControlsCss,
       selector: '.cinder-media-controls__button:focus-visible',
+      expectedOffset: '3px',
     },
     {
       name: 'permission-matrix cell-control button',
       css: permissionMatrixCss,
       selector: 'button.cinder-permission-matrix__cell-control:focus-visible',
+      // border:0 — borderless, no ButtonBorder merge risk
+      expectedOffset: '2px',
     },
     {
       name: 'share-card action',
       css: shareCardCss,
       selector: '.cinder-share-card__action:focus-visible',
+      expectedOffset: '3px',
     },
     {
-      name: 'transfer-list list',
+      name: 'transfer-list list (overflow:auto — uses inset ring)',
       css: transferListCss,
       selector: '.cinder-transfer-list__list:focus-visible',
+      // overflow:auto clips a positive offset; inset ring avoids the clip
+      expectedOffset: 'calc(-1 * var(--cinder-ring-width))',
     },
     {
       name: 'transfer-list control',
       css: transferListCss,
       selector: '.cinder-transfer-list__control:focus-visible',
+      expectedOffset: '3px',
     },
     {
       name: 'table sort-button',
       css: tableCss,
       selector: '.cinder-table__sort-button:focus-visible',
+      // border:none — borderless, no ButtonBorder merge risk
+      expectedOffset: '2px',
     },
     {
       name: 'menu-bar trigger',
       css: menuBarCss,
       selector: '.cinder-menu-bar__trigger:focus-visible',
+      expectedOffset: '3px',
     },
     {
       name: 'chat-conversation-list interactive button',
       css: chatConversationListCss,
       selector:
         '.cinder-chat-conversation-list__button[data-cinder-conversation-interactive]:focus-visible',
+      // Button element: ButtonBorder renders in HCM regardless of standard-mode
+      // border-color:transparent. ButtonText is correct (aria-current="page" nav
+      // semantics, not aria-selected list selection — Highlight/HighlightText
+      // would be wrong here).
+      expectedOffset: '3px',
     },
   ];
 
-  for (const { name, css, selector } of cases) {
+  for (const { name, css, selector, expectedOffset } of cases) {
     test(`${name}: ${selector} has a forced-colors fallback that repaints the outline`, () => {
-      assertForcedColorsFallback(css, selector);
+      assertForcedColorsFallback(css, selector, expectedOffset);
     });
   }
 });

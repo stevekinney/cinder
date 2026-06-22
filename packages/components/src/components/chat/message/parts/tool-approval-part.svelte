@@ -248,6 +248,14 @@
       outline-offset: 2px;
       box-shadow: var(--_cinder-focus-ring-shadow);
     }
+
+    @media (forced-colors: active) {
+      &:focus-visible {
+        outline: var(--cinder-ring-width) solid ButtonText;
+        outline-offset: 3px;
+        box-shadow: none;
+      }
+    }
   }
 
   .chat-tool-approval-btn-approve {

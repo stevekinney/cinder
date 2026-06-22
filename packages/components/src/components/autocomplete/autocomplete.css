@@ -30,6 +30,14 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  @media (forced-colors: active) {
+    .cinder-autocomplete__input:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+  }
+
   .cinder-autocomplete__description,
   .cinder-autocomplete__error {
     margin: 0;
