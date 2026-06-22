@@ -220,6 +220,10 @@
     getJumpThreshold: () => jumpThreshold,
     onScrollStateChange: handleScrollStateChange,
     onReachBottom: () => {
+      // The sentinel fires when the user reaches the bottom via
+      // IntersectionObserver, which does not emit onScrollStateChange.
+      // Update the bindable prop here so it stays in sync with the sentinel path.
+      isAtBottom = true;
       if (unreadState.unreadCount > 0 || unreadState.hasNewMessageIndicator) {
         unreadState.markAllAsRead();
       }

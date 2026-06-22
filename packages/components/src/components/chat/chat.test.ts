@@ -722,8 +722,17 @@ describe('Chat — bindable prop sync without write-back $effect', () => {
     expect(source).not.toContain('unreadCount = unreadState.unreadCount');
     expect(source).not.toContain('hasNewMessageIndicator = unreadState.hasNewMessageIndicator');
 
-    // The replacement: isAtBottom is set inside handleScrollStateChange (at the mutation site).
+    // The replacement for the scroll event path: isAtBottom is set inside
+    // handleScrollStateChange (at the mutation site).
     expect(source).toContain('isAtBottom = event.isAtBottom');
+
+    // The replacement for the IntersectionObserver sentinel path: when the
+    // sentinel fires onReachBottom (without emitting onScrollStateChange),
+    // the bindable isAtBottom must be set to true explicitly.
+    // This guards against regression from handleSentinelEntry bypassing
+    // handleScrollStateChange.
+    expect(source).toContain('isAtBottom = true');
+
     // The replacement: unreadCount and hasNewMessageIndicator are set inside
     // the onUnreadIndicatorChange callback.
     expect(source).toContain('unreadCount = event.unreadCount');
