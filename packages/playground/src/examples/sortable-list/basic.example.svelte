@@ -5,6 +5,7 @@
 
 <script lang="ts">
   import { SortableList } from '@lostgradient/cinder/sortable-list';
+  import type { SortableListProps } from '@lostgradient/cinder/sortable-list';
 
   type Task = { id: string; label: string };
 
@@ -19,17 +20,20 @@
     return item.id;
   }
 
-  function getItemLabel(item: Task): string {
+  function getItemLabel(item: Task, _originalIndex: number): string {
     return item.label;
   }
 
-  function handleReorder(nextItems: Task[]) {
+  // `onreorder` receives the reordered items AND a `change` descriptor (from/to
+  // indices, moved key). This example only needs the new order, but the full
+  // signature is shown so the canonical call shape is accurate.
+  const handleReorder: SortableListProps<Task>['onreorder'] = (nextItems, _change) => {
     items = nextItems;
-  }
+  };
 </script>
 
 <SortableList {items} {getKey} {getItemLabel} onreorder={handleReorder} label="Task priority">
-  {#snippet children(item)}
+  {#snippet children(item, _context)}
     <span style="padding: 0.5rem 0.75rem; display: block;">{item.label}</span>
   {/snippet}
 </SortableList>

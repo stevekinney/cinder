@@ -8,8 +8,8 @@
 </script>
 
 <Image
-  src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80"
-  alt="Snow-capped mountain peaks at sunrise"
+  src="https://picsum.photos/600/338"
+  alt="A randomly selected placeholder photograph"
   ratio="16/9"
   width={600}
   height={338}

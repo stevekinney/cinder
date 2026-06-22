@@ -30,13 +30,13 @@
 />
 
 {#if acceptedNames.length > 0}
-  <p style="margin-top: 0.5rem; color: var(--cinder-text-success);">
+  <p style="margin-top: 0.5rem; color: var(--cinder-color-success-fg);">
     Accepted: {acceptedNames.join(', ')}
   </p>
 {/if}
 
 {#if rejectedMessages.length > 0}
-  <p style="margin-top: 0.5rem; color: var(--cinder-text-danger);">
+  <p style="margin-top: 0.5rem; color: var(--cinder-color-danger-fg);">
     {rejectedMessages.join('; ')}
   </p>
 {/if}
