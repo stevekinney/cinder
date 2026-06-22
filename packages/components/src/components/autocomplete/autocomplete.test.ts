@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -683,5 +683,106 @@ describe('Autocomplete — out-of-portal status live region', () => {
     await waitFor(() => {
       expect(statusRegion()?.textContent?.trim()).toBe('No matches found');
     });
+  });
+});
+
+describe('Autocomplete — each-key behavior', () => {
+  test('deduplicates suggestions and emits a devWarn when the source returns duplicate values', async () => {
+    // With in-flight dedup, duplicate suggestion values are removed before
+    // being assigned to state, so the keyed {#each} never sees a collision
+    // and Svelte cannot throw each_key_duplicate. The test asserts that:
+    //   1. No crash occurs (no try/catch needed).
+    //   2. Only the first occurrence of each value is rendered.
+    //   3. The dropdown opens (stale suggestions are not retained).
+    //   4. The devWarn fires so the developer is notified.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    const duplicateFruits = [
+      { value: 'apple', label: 'Apple' },
+      { value: 'apple', label: 'Apple (duplicate)' },
+      { value: 'banana', label: 'Banana' },
+    ];
+    try {
+      const { container } = render(Autocomplete, {
+        props: {
+          id: 'dup-search',
+          suggestionSource: () => duplicateFruits,
+        },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: 'a' } });
+      // Wait for the deduped suggestions to be committed to state and rendered.
+      await waitFor(() => {
+        const enabledOptions = getOptions().filter((o) => !o.getAttribute('aria-disabled'));
+        expect(enabledOptions).toHaveLength(2);
+      });
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate suggestion values'));
+      // The deduped list (apple + banana) renders; the second 'apple' is dropped.
+      const enabledOptions = getOptions().filter((o) => !o.getAttribute('aria-disabled'));
+      expect(enabledOptions).toHaveLength(2);
+      expect(enabledOptions[0]?.textContent).toContain('Apple');
+      expect(enabledOptions[1]?.textContent).toContain('Banana');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('does not warn when suggestion values are all unique', async () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { container } = render(Autocomplete, {
+        props: {
+          id: 'unique-search',
+          suggestionSource: () => fruits,
+        },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: 'a' } });
+
+      await waitFor(() => {
+        expect(getOptions().length).toBeGreaterThan(0);
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('dedups duplicates beyond the visible window (whole list, not just the slice)', async () => {
+    // Regression for a duplicate value living in the TAIL beyond
+    // maxVisibleSuggestions: deduping only the visible prefix would leave the
+    // tail duplicate in `suggestions`, and a wider re-slice (or a tail value
+    // colliding with the visible prefix) would crash the keyed {#each} with
+    // each_key_duplicate. Deduping the full list prevents that.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // visible window of 2; 'apple' appears at index 0 AND index 2 (the tail).
+      const withTailDuplicate = [
+        { value: 'apple', label: 'Apple' },
+        { value: 'banana', label: 'Banana' },
+        { value: 'apple', label: 'Apple (tail duplicate)' },
+        { value: 'cherry', label: 'Cherry' },
+      ];
+      const { container } = render(Autocomplete, {
+        props: {
+          id: 'tail-dup-search',
+          maxVisibleSuggestions: 2,
+          suggestionSource: () => withTailDuplicate,
+        },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: 'a' } });
+
+      // No crash; the deduped list is apple/banana/cherry, sliced to 2 visible.
+      await waitFor(() => {
+        const enabled = getOptions().filter((o) => !o.getAttribute('aria-disabled'));
+        expect(enabled).toHaveLength(2);
+      });
+      const enabled = getOptions().filter((o) => !o.getAttribute('aria-disabled'));
+      expect(enabled[0]?.textContent).toContain('Apple');
+      expect(enabled[1]?.textContent).toContain('Banana');
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate suggestion values'));
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

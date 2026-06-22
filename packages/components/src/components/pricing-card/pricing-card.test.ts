@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -8,8 +8,13 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: PricingCard } = await import('./pricing-card.svelte');
+
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 
 const BASE_PROPS = {
   name: 'Pro',
@@ -135,6 +140,55 @@ describe('PricingCard', () => {
     expect(caveat?.tagName).toBe('P');
     const features = container.querySelectorAll('.cinder-pricing-card__feature');
     expect(features).toHaveLength(3);
+  });
+});
+
+describe('PricingCard each-key behavior', () => {
+  test('deduplicates features and emits a devWarn when duplicate values are present', async () => {
+    // With $derived.by dedup, the component never passes duplicates to the keyed
+    // {#each}, so Svelte cannot throw each_key_duplicate. The test asserts that:
+    //   1. No crash occurs (no try/catch needed).
+    //   2. Only the first occurrence of each value is rendered.
+    //   3. The devWarn fires so the developer is notified.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { container } = render(PricingCard, {
+        props: { ...BASE_PROPS, features: ['Feature A', 'Feature B', 'Feature A'] },
+      });
+      // Renders the deduped list — 'Feature A' only once.
+      const items = container.querySelectorAll('.cinder-pricing-card__feature');
+      expect(items).toHaveLength(2);
+      expect(items[0]?.textContent?.trim()).toBe('Feature A');
+      expect(items[1]?.textContent?.trim()).toBe('Feature B');
+      // devWarn fires exactly once to notify the developer.
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate feature values'));
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('does not warn when all feature values are unique', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(PricingCard, { props: { ...BASE_PROPS } });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('renders updated features when list is filtered', async () => {
+    const { container, rerender } = render(PricingCard, {
+      props: { ...BASE_PROPS, features: ['Alpha', 'Beta', 'Gamma'] },
+    });
+    let items = container.querySelectorAll('.cinder-pricing-card__feature');
+    expect(items).toHaveLength(3);
+
+    await rerender({ ...BASE_PROPS, features: ['Alpha', 'Gamma'] });
+    items = container.querySelectorAll('.cinder-pricing-card__feature');
+    expect(items).toHaveLength(2);
+    expect(items[0]?.textContent?.trim()).toBe('Alpha');
+    expect(items[1]?.textContent?.trim()).toBe('Gamma');
   });
 });
 

@@ -476,24 +476,33 @@ describe('ColorSwatchPicker empty palette', () => {
 });
 
 describe('ColorSwatchPicker duplicate palette', () => {
-  test('only first matching swatch receives aria-selected (and warns in dev)', () => {
-    // A duplicate palette intentionally trips the dev warning. Scope the spy to
-    // this test so incidental warnings elsewhere still fail their tests.
+  test('deduplicates swatches and emits a devWarn when duplicate color values are present', () => {
+    // With $derived.by dedup, the component never passes duplicates to the keyed
+    // {#each}, so Svelte cannot throw each_key_duplicate. The test asserts that:
+    //   1. No crash occurs (no try/catch needed).
+    //   2. Only the first occurrence of each color is rendered.
+    //   3. The first swatch is aria-selected when its color matches defaultValue.
+    //   4. The devWarn fires so the developer is notified.
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     try {
-      const colors = [
+      const duplicateColors = [
         { color: '#ff0000', name: 'Red 1' },
         { color: '#ff0000', name: 'Red 2' },
-        { color: '#0000ff' },
+        { color: '#0000ff', name: 'Blue' },
       ];
       const { container } = render(ColorSwatchPicker, {
-        colors,
+        colors: duplicateColors,
         label: 'Colors',
         defaultValue: '#ff0000',
       });
+      // Only 2 swatches render: first #ff0000 and #0000ff (duplicate dropped).
       const options = toArray(container.querySelectorAll('[role="option"]'));
-      expect(options[0].getAttribute('aria-selected')).toBe('true');
-      expect(options[1].getAttribute('aria-selected')).toBe('false');
+      expect(options).toHaveLength(2);
+      // First swatch (the first #ff0000) carries aria-selected because
+      // defaultValue matches its color.
+      expect(options[0]?.getAttribute('aria-selected')).toBe('true');
+      expect(options[1]?.getAttribute('aria-selected')).toBe('false');
+      // devWarn fires exactly once to notify the developer.
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate color values'));
     } finally {
       warnSpy.mockRestore();

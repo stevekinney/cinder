@@ -99,6 +99,7 @@
 
   const renderedSuggestions = $derived(suggestions.slice(0, resolvedMaxVisibleSuggestions));
   const enabledIndexes = $derived(getEnabledIndexes(renderedSuggestions));
+
   const activeDescendant = $derived(
     activeIndex === null ? undefined : `${resolvedId}-option-${activeIndex}`,
   );
@@ -218,10 +219,33 @@
         ) {
           return;
         }
-        suggestions = nextSuggestions;
+        // Deduplicate the ENTIRE suggestion list by value (first occurrence
+        // wins), not just the visible window. `renderedSuggestions` re-slices
+        // `suggestions` by maxVisibleSuggestions, so a duplicate anywhere in the
+        // stored list could surface in the keyed {#each} if the window widens or
+        // a tail value collides with the visible prefix — both crash with
+        // each_key_duplicate. Deduping the whole list makes the key globally
+        // unique regardless of window size.
+        const seen = new Set<string>();
+        const deduped: typeof nextSuggestions = [];
+        let hasDuplicates = false;
+        for (const suggestion of nextSuggestions) {
+          if (seen.has(suggestion.value)) {
+            hasDuplicates = true;
+          } else {
+            seen.add(suggestion.value);
+            deduped.push(suggestion);
+          }
+        }
+        if (hasDuplicates) {
+          devWarn(
+            '[cinder/Autocomplete] Duplicate suggestion values detected. Each rendered suggestion must have a unique value. Duplicates were removed; only the first occurrence of each value is shown.',
+          );
+        }
+        suggestions = deduped;
         loading = false;
         open = true;
-        clampActiveIndex(nextSuggestions.slice(0, resolvedMaxVisibleSuggestions));
+        clampActiveIndex(deduped.slice(0, resolvedMaxVisibleSuggestions));
       })
       .catch((errorValue: unknown) => {
         if (
@@ -487,7 +511,7 @@
       {emptyMessage}
     </div>
   {:else}
-    {#each renderedSuggestions as suggestion, index (`${suggestion.value}-${index}`)}
+    {#each renderedSuggestions as suggestion, index (suggestion.value)}
       {@const suggestionLabel = suggestion.label ?? suggestion.value}
       {@const parts = highlightParts(suggestionLabel, value)}
       <div
