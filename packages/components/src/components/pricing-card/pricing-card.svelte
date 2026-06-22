@@ -33,12 +33,28 @@
     ...rest
   }: PricingCardProps = $props();
 
-  $effect.pre(() => {
-    if (new Set(features).size !== features.length) {
+  // Deduplicate features by value (first occurrence wins) so the keyed {#each}
+  // never receives duplicate keys and Svelte cannot throw each_key_duplicate.
+  // A dev warning is emitted when duplicates are found so the data author can fix
+  // their input, but the component continues to render the deduplicated list.
+  const renderableFeatures = $derived.by(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    let hasDuplicates = false;
+    for (const feature of features) {
+      if (seen.has(feature)) {
+        hasDuplicates = true;
+      } else {
+        seen.add(feature);
+        result.push(feature);
+      }
+    }
+    if (hasDuplicates) {
       devWarn(
-        '[cinder/PricingCard] Duplicate feature values detected. Each feature must be unique when used as a list key.',
+        '[cinder/PricingCard] Duplicate feature values detected. Each feature must be unique when used as a list key. Duplicates were removed; only the first occurrence of each value is shown.',
       );
     }
+    return result;
   });
 </script>
 
@@ -63,7 +79,7 @@
 
   <div class="cinder-pricing-card__body">
     <ul class="cinder-pricing-card__features">
-      {#each features as feature (feature)}
+      {#each renderableFeatures as feature (feature)}
         <li class="cinder-pricing-card__feature">{feature}</li>
       {/each}
     </ul>

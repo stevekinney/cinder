@@ -144,24 +144,23 @@ describe('PricingCard', () => {
 });
 
 describe('PricingCard each-key behavior', () => {
-  test('emits a devWarn when features are updated to contain duplicate values', async () => {
-    // The $effect.pre duplicate check runs before DOM mutations, so the warning
-    // fires before Svelte processes the keyed each block. Start with unique
-    // features, then rerender with duplicates to trigger the reactive update path.
+  test('deduplicates features and emits a devWarn when duplicate values are present', async () => {
+    // With $derived.by dedup, the component never passes duplicates to the keyed
+    // {#each}, so Svelte cannot throw each_key_duplicate. The test asserts that:
+    //   1. No crash occurs (no try/catch needed).
+    //   2. Only the first occurrence of each value is rendered.
+    //   3. The devWarn fires so the developer is notified.
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     try {
-      const { rerender } = render(PricingCard, {
-        props: { ...BASE_PROPS, features: ['Feature A', 'Feature B', 'Feature C'] },
+      const { container } = render(PricingCard, {
+        props: { ...BASE_PROPS, features: ['Feature A', 'Feature B', 'Feature A'] },
       });
-      expect(warnSpy).not.toHaveBeenCalled();
-
-      // Rerender with duplicates — $effect.pre fires the devWarn before Svelte
-      // processes the keyed each. Swallow any subsequent Svelte throw.
-      try {
-        await rerender({ ...BASE_PROPS, features: ['Feature A', 'Feature B', 'Feature A'] });
-      } catch {
-        // Svelte may throw each_key_duplicate after our warning has already fired.
-      }
+      // Renders the deduped list — 'Feature A' only once.
+      const items = container.querySelectorAll('.cinder-pricing-card__feature');
+      expect(items).toHaveLength(2);
+      expect(items[0]?.textContent?.trim()).toBe('Feature A');
+      expect(items[1]?.textContent?.trim()).toBe('Feature B');
+      // devWarn fires exactly once to notify the developer.
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate feature values'));
     } finally {
       warnSpy.mockRestore();

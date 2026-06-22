@@ -219,19 +219,33 @@
         ) {
           return;
         }
-        const visibleSlice = nextSuggestions.slice(0, resolvedMaxVisibleSuggestions);
-        const visibleValues = visibleSlice.map((s) => s.value);
-        if (new Set(visibleValues).size !== visibleValues.length) {
-          devWarn(
-            '[cinder/Autocomplete] Duplicate suggestion values detected. Each rendered suggestion must have a unique value.',
-          );
-          loading = false;
-          return;
+        // Deduplicate the ENTIRE suggestion list by value (first occurrence
+        // wins), not just the visible window. `renderedSuggestions` re-slices
+        // `suggestions` by maxVisibleSuggestions, so a duplicate anywhere in the
+        // stored list could surface in the keyed {#each} if the window widens or
+        // a tail value collides with the visible prefix — both crash with
+        // each_key_duplicate. Deduping the whole list makes the key globally
+        // unique regardless of window size.
+        const seen = new Set<string>();
+        const deduped: typeof nextSuggestions = [];
+        let hasDuplicates = false;
+        for (const suggestion of nextSuggestions) {
+          if (seen.has(suggestion.value)) {
+            hasDuplicates = true;
+          } else {
+            seen.add(suggestion.value);
+            deduped.push(suggestion);
+          }
         }
-        suggestions = nextSuggestions;
+        if (hasDuplicates) {
+          devWarn(
+            '[cinder/Autocomplete] Duplicate suggestion values detected. Each rendered suggestion must have a unique value. Duplicates were removed; only the first occurrence of each value is shown.',
+          );
+        }
+        suggestions = deduped;
         loading = false;
         open = true;
-        clampActiveIndex(visibleSlice);
+        clampActiveIndex(deduped.slice(0, resolvedMaxVisibleSuggestions));
       })
       .catch((errorValue: unknown) => {
         if (

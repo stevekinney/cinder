@@ -476,35 +476,33 @@ describe('ColorSwatchPicker empty palette', () => {
 });
 
 describe('ColorSwatchPicker duplicate palette', () => {
-  test('emits a devWarn when the palette is updated to contain duplicate color values', async () => {
-    // The $effect.pre duplicate check runs before DOM mutations, so the warning
-    // fires before Svelte processes the keyed each block. Start with unique colors,
-    // then rerender with duplicates to trigger the reactive update path.
+  test('deduplicates swatches and emits a devWarn when duplicate color values are present', () => {
+    // With $derived.by dedup, the component never passes duplicates to the keyed
+    // {#each}, so Svelte cannot throw each_key_duplicate. The test asserts that:
+    //   1. No crash occurs (no try/catch needed).
+    //   2. Only the first occurrence of each color is rendered.
+    //   3. The first swatch is aria-selected when its color matches defaultValue.
+    //   4. The devWarn fires so the developer is notified.
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     try {
-      const uniqueColors = [
-        { color: '#ff0000', name: 'Red' },
-        { color: '#00ff00', name: 'Green' },
-        { color: '#0000ff', name: 'Blue' },
-      ];
-      const { rerender } = render(ColorSwatchPicker, {
-        colors: uniqueColors,
-        label: 'Colors',
-      });
-      expect(warnSpy).not.toHaveBeenCalled();
-
-      // Rerender with duplicates — $effect.pre fires the devWarn before Svelte
-      // processes the keyed each. Swallow any subsequent Svelte throw.
       const duplicateColors = [
         { color: '#ff0000', name: 'Red 1' },
         { color: '#ff0000', name: 'Red 2' },
         { color: '#0000ff', name: 'Blue' },
       ];
-      try {
-        await rerender({ colors: duplicateColors, label: 'Colors' });
-      } catch {
-        // Svelte may throw each_key_duplicate after our warning has already fired.
-      }
+      const { container } = render(ColorSwatchPicker, {
+        colors: duplicateColors,
+        label: 'Colors',
+        defaultValue: '#ff0000',
+      });
+      // Only 2 swatches render: first #ff0000 and #0000ff (duplicate dropped).
+      const options = toArray(container.querySelectorAll('[role="option"]'));
+      expect(options).toHaveLength(2);
+      // First swatch (the first #ff0000) carries aria-selected because
+      // defaultValue matches its color.
+      expect(options[0]?.getAttribute('aria-selected')).toBe('true');
+      expect(options[1]?.getAttribute('aria-selected')).toBe('false');
+      // devWarn fires exactly once to notify the developer.
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Duplicate color values'));
     } finally {
       warnSpy.mockRestore();

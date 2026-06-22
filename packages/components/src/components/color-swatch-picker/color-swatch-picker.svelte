@@ -15,7 +15,7 @@
 </script>
 
 <script lang="ts">
-  import type { ColorSwatchPickerProps } from './color-swatch-picker.types.ts';
+  import type { ColorSwatch, ColorSwatchPickerProps } from './color-swatch-picker.types.ts';
   import { tick, untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
@@ -43,6 +43,31 @@
   let internalValue = $state(untrack(() => defaultValue) ?? '');
   const selected = $derived(value ?? internalValue);
 
+  // Deduplicate swatches by color (first occurrence wins) so the keyed {#each}
+  // never receives duplicate keys and Svelte cannot throw each_key_duplicate.
+  // A dev warning is emitted when duplicates are found so the data author can fix
+  // their input, but the component continues to render the deduplicated list.
+  const renderableColors = $derived.by(() => {
+    const seen = new Set<string>();
+    const result: ColorSwatch[] = [];
+    let hasDuplicates = false;
+    for (const swatch of colors) {
+      if (seen.has(swatch.color)) {
+        hasDuplicates = true;
+      } else {
+        seen.add(swatch.color);
+        result.push(swatch);
+      }
+    }
+    if (hasDuplicates) {
+      devWarn(
+        '[ColorSwatchPicker] Duplicate color values detected in palette. ' +
+          'Only the first matching swatch will be shown as selected. Duplicates were removed.',
+      );
+    }
+    return result;
+  });
+
   // Track focus index driven by user interaction. null = derive from selection.
   let userFocusIndex = $state<number | null>(null);
 
@@ -53,25 +78,25 @@
   });
 
   const effectiveFocusIndex = $derived.by(() => {
-    if (colors.length === 0) return -1;
+    if (renderableColors.length === 0) return -1;
 
     // 1. User-driven focus if it points to a valid, non-item-disabled option.
     if (
       userFocusIndex !== null &&
-      userFocusIndex < colors.length &&
-      !colors[userFocusIndex]?.disabled
+      userFocusIndex < renderableColors.length &&
+      !renderableColors[userFocusIndex]?.disabled
     ) {
       return userFocusIndex;
     }
 
     // 2. Currently selected swatch if it exists and is not item-disabled.
-    const selectedIndex = colors.findIndex((s) => s.color === selected);
-    if (selectedIndex !== -1 && !colors[selectedIndex]?.disabled) {
+    const selectedIndex = renderableColors.findIndex((s) => s.color === selected);
+    if (selectedIndex !== -1 && !renderableColors[selectedIndex]?.disabled) {
       return selectedIndex;
     }
 
     // 3. First non-item-disabled option.
-    const firstEnabled = colors.findIndex((s) => !s.disabled);
+    const firstEnabled = renderableColors.findIndex((s) => !s.disabled);
     if (firstEnabled !== -1) return firstEnabled;
 
     // 4. First option in DOM order (ensures the control always has a tab stop).
@@ -82,19 +107,19 @@
   let liRefs: (HTMLLIElement | null)[] = $state([]);
 
   // Index of the first swatch (by DOM order) matching `selected` — for aria-selected.
-  const selectedIndex = $derived(colors.findIndex((s) => s.color === selected));
+  const selectedIndex = $derived(renderableColors.findIndex((s) => s.color === selected));
 
   function isItemDisabledForRoving(index: number): boolean {
-    return colors[index]?.disabled === true;
+    return renderableColors[index]?.disabled === true;
   }
 
   function isInteractive(index: number): boolean {
-    return !disabled && !colors[index]?.disabled;
+    return !disabled && !renderableColors[index]?.disabled;
   }
 
   function selectSwatch(index: number): void {
     if (!isInteractive(index)) return;
-    const swatch = colors[index];
+    const swatch = renderableColors[index];
     if (!swatch) return;
     internalValue = swatch.color;
     onchange?.(swatch.color);
@@ -112,7 +137,7 @@
       return;
     }
 
-    const newIndex = handleRovingKeydown(event, effectiveFocusIndex, colors.length, {
+    const newIndex = handleRovingKeydown(event, effectiveFocusIndex, renderableColors.length, {
       vertical: true,
       horizontal: layout === 'grid',
       isDisabled: isItemDisabledForRoving,
@@ -133,17 +158,6 @@
     userFocusIndex = index;
     selectSwatch(index);
   }
-
-  // Warn in dev mode when duplicate colors appear in the palette.
-  $effect.pre(() => {
-    const colorValues = colors.map((c) => c.color);
-    if (new Set(colorValues).size !== colorValues.length) {
-      devWarn(
-        '[ColorSwatchPicker] Duplicate color values detected in palette. ' +
-          'Only the first matching swatch will be shown as selected.',
-      );
-    }
-  });
 </script>
 
 <ul
@@ -157,7 +171,7 @@
   data-cinder-layout={layout}
   onkeydown={handleKeydown}
 >
-  {#each colors as swatch, index (swatch.color)}
+  {#each renderableColors as swatch, index (swatch.color)}
     {@const isSelected = index === selectedIndex}
     {@const isDisabled = swatch.disabled === true}
     {@const contrastColor = pickContrastColor(swatch.color)}
