@@ -28,7 +28,7 @@ export type MasonryProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /**
    * Rendered HTML tag. Constrained to layout-safe container elements;
    * void elements such as `img`, `input`, `br`, and `hr` are excluded.
-   * Defaults to `'div'`.
+   * @default "div"
    */
   as?: MasonryElement;
   /** Custom class merged with `.cinder-masonry`. */

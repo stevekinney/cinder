@@ -24,7 +24,7 @@ for tabular rows and columns use [`Table`](../table/README.md).
   ];
 </script>
 
-<DataList items={members} density="condensed">
+<DataList items={members} key={(member) => member.id} density="condensed">
   {#snippet children(member)}
     <StackedListItem>
       {#snippet title()}{member.name}{/snippet}
