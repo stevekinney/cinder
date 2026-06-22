@@ -227,7 +227,12 @@
   });
 
   const unreadState = useChatUnreadState({
-    onUnreadIndicatorChange: (event) => onunreadindicatorchange?.(event),
+    onUnreadIndicatorChange: (event) => {
+      // Update the bindable props at the mutation site rather than via a $effect.
+      unreadCount = event.unreadCount;
+      hasNewMessageIndicator = event.hasNewMessageIndicator;
+      onunreadindicatorchange?.(event);
+    },
   });
 
   const keyboardNav = useChatKeyboardNav({
@@ -468,25 +473,6 @@
   });
 
   // ==========================================================================
-  // Sync Bindable Props with Helper State
-  // ==========================================================================
-
-  // Sync isAtBottom from scrollState to bindable prop
-  $effect(() => {
-    isAtBottom = scrollState.isAtBottom;
-  });
-
-  // Sync unreadCount from unreadState to bindable prop
-  $effect(() => {
-    unreadCount = unreadState.unreadCount;
-  });
-
-  // Sync hasNewMessageIndicator from unreadState to bindable prop
-  $effect(() => {
-    hasNewMessageIndicator = unreadState.hasNewMessageIndicator;
-  });
-
-  // ==========================================================================
   // Scroll Anchoring via $effect.pre
   // ==========================================================================
 
@@ -648,6 +634,9 @@
     scrollHeight: number;
   }): void {
     clearHistoryAnchorAfterScroll(event.scrollTop);
+
+    // Update the bindable prop at the mutation site rather than via a $effect.
+    isAtBottom = event.isAtBottom;
 
     onscrollstatechange?.(event);
   }

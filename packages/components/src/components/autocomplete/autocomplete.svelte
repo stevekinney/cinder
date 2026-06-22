@@ -87,7 +87,10 @@
   let composing = $state(false);
   let inputFocused = $state(false);
   let suggestions = $state<AutocompleteSuggestion[]>([]);
-  let activeIndex = $state<number | null>(null);
+  // rawActiveIndex tracks the user's chosen index; activeIndex clamps it from
+  // enabledIndexes so no write-back $effect is needed when renderedSuggestions
+  // changes (e.g. when maxVisibleSuggestions is updated by the consumer).
+  let rawActiveIndex = $state<number | null>(null);
   let suppressNextQuery = false;
   let ignoreSyntheticInput = false;
   let completionPointerIndex = $state<number | null>(null);
@@ -99,6 +102,16 @@
 
   const renderedSuggestions = $derived(suggestions.slice(0, resolvedMaxVisibleSuggestions));
   const enabledIndexes = $derived(getEnabledIndexes(renderedSuggestions));
+
+  // activeIndex is always valid for the current renderedSuggestions: if
+  // rawActiveIndex is not in the enabled set, fall back to the first enabled
+  // index (or null when the list is empty). This replaces the write-back
+  // $effect that previously called clampActiveIndex on every suggestions change.
+  const activeIndex = $derived.by(() => {
+    if (enabledIndexes.length === 0) return null;
+    if (rawActiveIndex !== null && enabledIndexes.includes(rawActiveIndex)) return rawActiveIndex;
+    return enabledIndexes[0] ?? null;
+  });
 
   const activeDescendant = $derived(
     activeIndex === null ? undefined : `${resolvedId}-option-${activeIndex}`,
@@ -131,22 +144,6 @@
     return indexes;
   }
 
-  function clampActiveIndex(list: AutocompleteSuggestion[]): void {
-    const availableEnabledIndexes =
-      list === renderedSuggestions ? enabledIndexes : getEnabledIndexes(list);
-    if (availableEnabledIndexes.length === 0) {
-      activeIndex = null;
-      return;
-    }
-    if (activeIndex !== null && availableEnabledIndexes.includes(activeIndex)) return;
-    activeIndex = availableEnabledIndexes[0] ?? null;
-  }
-
-  $effect(() => {
-    void renderedSuggestions;
-    clampActiveIndex(renderedSuggestions);
-  });
-
   $effect(() => {
     const wasOpen = previousOpen;
     previousOpen = open;
@@ -158,7 +155,7 @@
     requestVersion += 1;
     autocompleteDismissed = true;
     loading = false;
-    activeIndex = null;
+    rawActiveIndex = null;
     suggestions = [];
   });
 
@@ -169,7 +166,7 @@
     autocompleteDismissed = true;
     open = false;
     loading = false;
-    activeIndex = null;
+    rawActiveIndex = null;
     suggestions = [];
   }
 
@@ -196,7 +193,7 @@
     loading = true;
     open = true;
     suggestions = [];
-    activeIndex = null;
+    rawActiveIndex = null;
 
     let result: AutocompleteSuggestion[] | Promise<AutocompleteSuggestion[]>;
     try {
@@ -245,7 +242,8 @@
         suggestions = deduped;
         loading = false;
         open = true;
-        clampActiveIndex(deduped.slice(0, resolvedMaxVisibleSuggestions));
+        // rawActiveIndex is reset to null when the query starts; activeIndex is
+        // $derived to auto-clamp, so no explicit clampActiveIndex call is needed.
       })
       .catch((errorValue: unknown) => {
         if (
@@ -290,7 +288,8 @@
 
     open = true;
     if (activeIndex === null) {
-      activeIndex = direction === 1 ? (enabledIndexes[0] ?? null) : (enabledIndexes.at(-1) ?? null);
+      rawActiveIndex =
+        direction === 1 ? (enabledIndexes[0] ?? null) : (enabledIndexes.at(-1) ?? null);
       return;
     }
 
@@ -299,13 +298,13 @@
       currentPosition < 0
         ? 0
         : (currentPosition + direction + enabledIndexes.length) % enabledIndexes.length;
-    activeIndex = enabledIndexes[nextPosition] ?? null;
+    rawActiveIndex = enabledIndexes[nextPosition] ?? null;
   }
 
   function moveToBoundary(direction: 'start' | 'end'): void {
     if (!open) return;
     if (enabledIndexes.length === 0) return;
-    activeIndex =
+    rawActiveIndex =
       direction === 'start' ? (enabledIndexes[0] ?? null) : (enabledIndexes.at(-1) ?? null);
   }
 
@@ -530,7 +529,7 @@
           handleMouseDownFallback(event, index);
         }}
         onmouseenter={() => {
-          if (!suggestion.disabled) activeIndex = index;
+          if (!suggestion.disabled) rawActiveIndex = index;
         }}
       >
         <span class="cinder-autocomplete__option-text">

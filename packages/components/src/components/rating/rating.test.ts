@@ -93,6 +93,32 @@ describe('Rating half-star precision', () => {
   });
 });
 
+describe('Rating normalization without write-back', () => {
+  test('invalid out-of-range value displays clamped star fill without firing onchange', async () => {
+    // Regression: the removed $effect write-back used to set value = resolvedValue,
+    // potentially triggering reactive loops. The display should use resolvedValue
+    // (derived) while the value prop stays as-is; onchange must not fire.
+    const onchange = mock((_value: number) => {});
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 99, count: 5, onchange },
+    });
+    // Resolved to the max (5) — the 5th option is checked.
+    const all = options(container);
+    expect(all[4]?.getAttribute('aria-checked')).toBe('true');
+    // onchange was NOT called during normalization.
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  test('hidden input carries the snapped value even when the prop is out-of-range', () => {
+    const { container } = render(Rating, {
+      props: { id: 'r', label: 'Q', value: 3.7, name: 'score', count: 5 },
+    });
+    // Whole-precision: 3.7 snaps to 4.
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
+    expect(hidden.value).toBe('4');
+  });
+});
+
 describe('Rating interaction', () => {
   test('click commits the value and fires onchange', async () => {
     const onchange = mock((_value: number) => {});

@@ -707,3 +707,26 @@ describe('Chat — SSR safety', () => {
     );
   });
 });
+
+describe('Chat — bindable prop sync without write-back $effect', () => {
+  test('chat.svelte does not use $effect to sync scrollState.isAtBottom to bindable isAtBottom', async () => {
+    // Regression: the old code had three separate $effects that copied
+    // scrollState.isAtBottom, unreadState.unreadCount, and
+    // unreadState.hasNewMessageIndicator into their corresponding bindable
+    // props. These are replaced by explicit setters in the relevant callbacks.
+    const { resolve } = await import('node:path');
+    const source = await Bun.file(resolve(import.meta.dir, 'container', 'chat.svelte')).text();
+
+    // The removed pattern: a standalone $effect block that assigns the bindable prop.
+    expect(source).not.toContain('isAtBottom = scrollState.isAtBottom');
+    expect(source).not.toContain('unreadCount = unreadState.unreadCount');
+    expect(source).not.toContain('hasNewMessageIndicator = unreadState.hasNewMessageIndicator');
+
+    // The replacement: isAtBottom is set inside handleScrollStateChange (at the mutation site).
+    expect(source).toContain('isAtBottom = event.isAtBottom');
+    // The replacement: unreadCount and hasNewMessageIndicator are set inside
+    // the onUnreadIndicatorChange callback.
+    expect(source).toContain('unreadCount = event.unreadCount');
+    expect(source).toContain('hasNewMessageIndicator = event.hasNewMessageIndicator');
+  });
+});

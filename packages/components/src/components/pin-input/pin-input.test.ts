@@ -362,3 +362,29 @@ describe('PinInput accessibility wiring', () => {
     expect(all[0]?.getAttribute('aria-label')).toContain('character 1 of');
   });
 });
+
+describe('PinInput normalization without write-back', () => {
+  test('hidden input carries the filtered value even when the prop contains disallowed chars', () => {
+    // Regression: the removed $effect write-back used to set value = filtered,
+    // normalizing the bound prop in-place. Now the display (segments) and hidden
+    // input use normalizedValue ($derived) without touching the bindable prop.
+    const { container } = renderPin({
+      props: { id: 'otp', value: 'a1b2', name: 'code', length: 4, mode: 'numeric' },
+    });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]')!;
+    expect(hidden.value).toBe('12');
+  });
+
+  test('segments display only filtered characters; onchange is not fired by normalization', () => {
+    const onchange = mock((_value: string) => {});
+    const { container } = renderPin({
+      props: { id: 'otp', value: 'x9y8', length: 4, mode: 'numeric', onchange },
+    });
+    const all = segments(container);
+    // Segments show only digits; letters are filtered from the display.
+    expect(all[0]!.value).toBe('9');
+    expect(all[1]!.value).toBe('8');
+    // onchange was NOT called by normalization — only by user interaction.
+    expect(onchange).not.toHaveBeenCalled();
+  });
+});

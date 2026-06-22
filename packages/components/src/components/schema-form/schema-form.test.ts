@@ -809,3 +809,56 @@ describe('SchemaForm — composed-control regressions', () => {
     expect(submitted).toEqual([{ enabled: false }]);
   });
 });
+
+describe('SchemaForm — initialization without write-back $effect', () => {
+  afterEach(() => cleanup());
+
+  test('initial value populates the form without triggering onsubmit via $effect', async () => {
+    // Regression: the old code ran a $effect on schema change that set formValue,
+    // errors, rawDrafts, and arrayKeys, which could cause reactive-loop risk.
+    // The replacement computes initial state once at script time and uses {#key schema}
+    // for schema changes, so no $effect write-back occurs.
+    const submitted: unknown[] = [];
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { label: { type: 'string', title: 'Label' } },
+          required: ['label'],
+        },
+        value: { label: 'hello' },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    // The initial value is present in the form — initialization worked.
+    expect(screen.getByRole('textbox', { name: /Label/ }).value).toBe('hello');
+    // onsubmit was NOT called during initialization.
+    expect(submitted).toHaveLength(0);
+
+    // Submitting yields the initialized value.
+    await submit(formFrom(container));
+    expect(submitted).toEqual([{ label: 'hello' }]);
+  });
+
+  test('schema-form source does not use a broad $effect to reinitialize formValue on schema change', async () => {
+    // Regression: detect if the removed initialization $effect is re-introduced.
+    const { resolve } = await import('node:path');
+    const source = await Bun.file(resolve(import.meta.dir, 'schema-form.svelte')).text();
+
+    // The old pattern initialized by writing to formValue, rawDrafts, and
+    // arrayKeys inside a single $effect that tracked schema (via model.field).
+    // Ensure none of the removed write-back assignments appear in an $effect context.
+    // Specifically: the old $effect body set all four state vars unconditionally.
+    // We test for the removal of the combined write-back pattern.
+    expect(source).not.toContain('formValue = nextValue');
+    expect(source).not.toContain('rawDrafts = seedRawDrafts(model.field, nextValue)');
+    expect(source).not.toContain('arrayKeys = seedArrayKeys(model.field, nextValue)');
+
+    // The replacement: {#key schema} should be present in the template to handle remount.
+    expect(source).toContain('{#key schema}');
+  });
+});

@@ -78,17 +78,12 @@
   // characters, then pad to the normalized length. Every writer (commit,
   // distributeFrom, handleKeyDown) drives `value`, so deriving segments keeps
   // a single source of truth instead of a $state + sync-$effect pair.
-  const segments = $derived.by(() => {
-    const filtered = filterValue(value ?? '');
-    return Array.from({ length: normalizedLength }, (_, index) => filtered[index] ?? '');
-  });
-
-  $effect(() => {
-    // The only effectful residue: normalize the bound value when an external
-    // setter (or a length/mode change) leaves disallowed characters in it.
-    const filtered = filterValue(value ?? '');
-    if (filtered !== value) value = filtered;
-  });
+  // `normalizedValue` is the canonical form — always filtered and truncated.
+  // It is what gets displayed in segments and stored in the hidden input.
+  const normalizedValue = $derived(filterValue(value ?? ''));
+  const segments = $derived(
+    Array.from({ length: normalizedLength }, (_, index) => normalizedValue[index] ?? ''),
+  );
 
   const groupLabelId = $derived(label ? `${id}-label` : undefined);
   const defaultDescriptionId = $derived(describeId(id, !!description));
@@ -328,7 +323,13 @@
   </div>
 
   {#if name}
-    <input type="hidden" {name} {value} required={resolvedRequired} disabled={resolvedDisabled} />
+    <input
+      type="hidden"
+      {name}
+      value={normalizedValue}
+      required={resolvedRequired}
+      disabled={resolvedDisabled}
+    />
   {/if}
 
   {#if description}

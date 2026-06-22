@@ -35,34 +35,34 @@
   const LIGHTBOX_FADE_MS = 150;
   const fadeDuration = $derived(reducedMotion.current ? 0 : LIGHTBOX_FADE_MS);
 
-  // currentIndex tracks navigation within the session; resets to initialIndex when lightbox opens
-  let currentIndex = $state(0);
+  // clampedInitialIndex is the clamped version of the `initialIndex` prop.
+  const clampedInitialIndex = $derived(
+    images.length > 0 ? Math.max(0, Math.min(initialIndex, images.length - 1)) : 0,
+  );
 
-  // Reset currentIndex to initialIndex whenever the lightbox opens or initialIndex changes
-  let previousOpen = $state(false);
-  $effect(() => {
-    const isOpening = open && !previousOpen;
-    previousOpen = open;
-    if (isOpening) {
-      currentIndex = images.length > 0 ? Math.max(0, Math.min(initialIndex, images.length - 1)) : 0;
-    }
-  });
+  // navigationIndex is null when no user navigation has occurred in the current
+  // session (including on first open). effectiveIndex falls back to
+  // clampedInitialIndex so no $effect write-back is needed to reset on open.
+  // close() resets navigationIndex to null so the next open starts fresh.
+  let navigationIndex = $state<number | null>(null);
+  const effectiveIndex = $derived(navigationIndex ?? clampedInitialIndex);
 
   const hasMultiple = $derived(images.length > 1);
-  const currentImage = $derived(images[currentIndex]);
-  const counterText = $derived(`${currentIndex + 1} of ${images.length}`);
+  const currentImage = $derived(images[effectiveIndex]);
+  const counterText = $derived(`${effectiveIndex + 1} of ${images.length}`);
 
   function close() {
+    navigationIndex = null;
     open = false;
     onclose?.();
   }
 
   function previous() {
-    currentIndex = (currentIndex - 1 + images.length) % images.length;
+    navigationIndex = (effectiveIndex - 1 + images.length) % images.length;
   }
 
   function next() {
-    currentIndex = (currentIndex + 1) % images.length;
+    navigationIndex = (effectiveIndex + 1) % images.length;
   }
 
   function handleOverlayClick(event: MouseEvent) {

@@ -70,32 +70,34 @@
   }: SchemaFormProps<Schema> = $props();
 
   const generatedId = $props.id();
+  // Compute the initial model once for state initialization, then keep a
+  // reactive $derived for template rendering. When `schema` changes, the
+  // {#key schema} block in the template causes a full remount of the form
+  // body, resetting DOM-bound refs — without needing a broad $effect.
+  // The mutable state is initialized once from the initial schema+value.
+  const initialModel = createSchemaFormModel(schema);
+  const initialFormValue = initialValueForField(initialModel.field, value);
   const model = $derived(createSchemaFormModel(schema));
   let formElement = $state<HTMLFormElement>();
   let serializedInputElement = $state<HTMLInputElement>();
-  let formValue = $state<unknown>();
+  let formValue = $state<unknown>(initialFormValue);
   let errors = $state<Record<string, string>>({});
-  let rawDrafts = $state<Record<string, string>>({});
+  let rawDrafts = $state<Record<string, string>>(
+    seedRawDrafts(initialModel.field, initialFormValue),
+  );
   let serializedValue = $state('');
   let submitting = $state(false);
   let allowNativeSubmit = false;
   let activeSubmitId = 0;
   let arrayKeyCounter = 0;
-  let arrayKeys = $state<Record<string, string[]>>({});
+  let arrayKeys = $state<Record<string, string[]>>(
+    seedArrayKeys(initialModel.field, initialFormValue),
+  );
 
   const formId = $derived((rest.id as string | undefined) ?? `${generatedId}-form`);
   const rootFields = $derived(model.field.kind === 'object' ? model.field.fields : [model.field]);
   const rootError = $derived(model.field.kind === 'object' ? errors[pathKey([])] : undefined);
   const rootErrorId = $derived(`${formId}-${pathId([])}-error`);
-
-  $effect(() => {
-    const nextValue = initialValueForField(model.field, value);
-    formValue = nextValue;
-    errors = {};
-    setSerializedValue('');
-    rawDrafts = seedRawDrafts(model.field, nextValue);
-    arrayKeys = seedArrayKeys(model.field, nextValue);
-  });
 
   function fieldDomId(field: SchemaFormField): string {
     return `${formId}-${pathId(field.path)}`;
@@ -548,29 +550,31 @@
   {/if}
 {/snippet}
 
-<form
-  {...rest}
-  id={formId}
-  bind:this={formElement}
-  class={classNames('cinder-schema-form', customClassName)}
-  novalidate={novalidate ?? true}
-  onsubmit={handleSubmit}
->
-  {#if rootError}
-    <p id={rootErrorId} class="cinder-schema-form__error" aria-live="polite" tabindex="-1">
-      {rootError}
-    </p>
-  {/if}
+{#key schema}
+  <form
+    {...rest}
+    id={formId}
+    bind:this={formElement}
+    class={classNames('cinder-schema-form', customClassName)}
+    novalidate={novalidate ?? true}
+    onsubmit={handleSubmit}
+  >
+    {#if rootError}
+      <p id={rootErrorId} class="cinder-schema-form__error" aria-live="polite" tabindex="-1">
+        {rootError}
+      </p>
+    {/if}
 
-  <div class="cinder-schema-form__fields">
-    {#each rootFields as field (pathKey(field.path))}
-      {@render renderField(field)}
-    {/each}
-  </div>
+    <div class="cinder-schema-form__fields">
+      {#each rootFields as field (pathKey(field.path))}
+        {@render renderField(field)}
+      {/each}
+    </div>
 
-  <input bind:this={serializedInputElement} type="hidden" {name} value={serializedValue} />
+    <input bind:this={serializedInputElement} type="hidden" {name} value={serializedValue} />
 
-  <button type="submit" class="cinder-schema-form__submit" disabled={submitting}>
-    {submitting ? 'Validating...' : submitLabel}
-  </button>
-</form>
+    <button type="submit" class="cinder-schema-form__submit" disabled={submitting}>
+      {submitting ? 'Validating...' : submitLabel}
+    </button>
+  </form>
+{/key}
