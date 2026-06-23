@@ -14,6 +14,12 @@ export type RatingProps = {
   /**
    * Bindable rating value. `0` represents an unrated state. External values
    * are clamped into `[0, count]` and snapped to the nearest precision step.
+   *
+   * **No write-back normalization.** The bound prop reflects exactly what the
+   * consumer set — it is NOT mutated back to the clamped/snapped value. The
+   * displayed and submitted value is normalized via `$derived`, but the binding
+   * itself is left untouched. This is intentional: the consumer owns the source
+   * of truth, and silent mutation of a bound prop is a surprising side-effect.
    */
   value?: number;
   /**

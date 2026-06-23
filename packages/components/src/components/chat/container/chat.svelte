@@ -865,8 +865,13 @@
       () => onsubmit?.({ message, attachments }),
     );
 
-    // Auto-scroll after sending
+    // Auto-scroll after sending.
+    // Also update the bindable prop so the parent binding reflects the new
+    // isAtBottom=true state immediately — scrollState.setIsAtBottom() only
+    // updates the internal helper state; the bindable must be written explicitly
+    // (matching the pattern in handleScrollStateChange and onReachBottom).
     scrollState.setIsAtBottom(true);
+    isAtBottom = true;
     tick().then(() => {
       if (isVirtualized) {
         chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });

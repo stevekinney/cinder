@@ -36,7 +36,7 @@ const schema = {
         name: 'value',
         reason: 'unknown-shape',
         description:
-          'Initial form value. Missing fields are seeded from the schema where possible.',
+          'Initial form value. Missing fields are seeded from the schema where possible.\n\n**Seed-only — value changes do not reset form state.** After mount the\nconsumer owns the form state. Changing `value` with the same `schema` does\nNOT reset the form (formValue, errors, rawDrafts). Only changing `schema`\ncauses a remount and resets form state. This is intentional: the form is an\nediting surface and resetting it on every external value change would\nsilently discard in-progress user edits.',
       },
     ],
   },
