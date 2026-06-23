@@ -843,7 +843,9 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     await flush();
 
     // Schema 1 renders a Name field seeded with 'Ada'.
-    const nameInput = screen.getByLabelText(/Name/);
+    const nameField = screen.getByLabelText(/Name/);
+    expect(nameField).toBeInstanceOf(HTMLInputElement);
+    const nameInput = nameField as HTMLInputElement;
     expect(nameInput.value).toBe('Ada');
 
     // Simulate user editing.
@@ -859,10 +861,11 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     expect(container.querySelector('[aria-label*="Name"]')).toBeNull();
 
     // New fields appear.
-    const emailInput = screen.getByLabelText(/Email/);
+    const emailField = screen.getByLabelText(/Email/);
     const ageInput = screen.getByRole('textbox', { name: /Age/ });
-    expect(emailInput).toBeTruthy();
+    expect(emailField).toBeInstanceOf(HTMLInputElement);
     expect(ageInput).toBeTruthy();
+    const emailInput = emailField as HTMLInputElement;
 
     // formValue reset: new fields start empty (or schema-seeded), not carrying
     // stale values from schema1.
@@ -888,7 +891,9 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     });
     await flush();
 
-    const nameInput = screen.getByLabelText(/Name/);
+    const nameField = screen.getByLabelText(/Name/);
+    expect(nameField).toBeInstanceOf(HTMLInputElement);
+    const nameInput = nameField as HTMLInputElement;
     expect(nameInput.value).toBe('Initial');
 
     // User edits the field.
@@ -931,7 +936,9 @@ describe('SchemaForm — initialization without write-back $effect', () => {
     await flush();
 
     // The initial value is present in the form — initialization worked.
-    expect(screen.getByRole('textbox', { name: /Label/ }).value).toBe('hello');
+    const labelInput = screen.getByRole('textbox', { name: /Label/ });
+    expect(labelInput).toBeInstanceOf(HTMLInputElement);
+    expect((labelInput as HTMLInputElement).value).toBe('hello');
     // onsubmit was NOT called during initialization.
     expect(submitted).toHaveLength(0);
 
