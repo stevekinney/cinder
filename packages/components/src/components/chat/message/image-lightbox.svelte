@@ -41,11 +41,25 @@
   );
 
   // navigationIndex is null when no user navigation has occurred in the current
-  // session (including on first open). effectiveIndex falls back to
-  // clampedInitialIndex so no $effect write-back is needed to reset on open.
-  // close() resets navigationIndex to null so the next open starts fresh.
+  // open session. effectiveIndex falls back to clampedInitialIndex.
+  //
+  // Reset semantics WITHOUT a write-back loop: when the lightbox is closed
+  // (`open === false`) effectiveIndex ignores navigationIndex entirely, so the
+  // displayed index is always clampedInitialIndex while closed — regardless of
+  // how it was closed (the close() button OR a parent setting `bind:open`
+  // false). On the next open, a single guarded $effect clears the stale
+  // navigationIndex so navigation starts fresh from initialIndex. This effect
+  // only writes navigationIndex in response to `open` (two distinct values), so
+  // it is not the read-and-write-back-the-same-bindable pattern #464 removes.
   let navigationIndex = $state<number | null>(null);
-  const effectiveIndex = $derived(navigationIndex ?? clampedInitialIndex);
+  const effectiveIndex = $derived(
+    open ? (navigationIndex ?? clampedInitialIndex) : clampedInitialIndex,
+  );
+  $effect(() => {
+    if (!open && navigationIndex !== null) {
+      navigationIndex = null;
+    }
+  });
 
   const hasMultiple = $derived(images.length > 1);
   const currentImage = $derived(images[effectiveIndex]);

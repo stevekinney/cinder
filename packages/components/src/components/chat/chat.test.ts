@@ -512,7 +512,6 @@ describe('Chat — isAtBottom bindable after send', () => {
     // consistent state after sending (no stale isAtBottom causing an unexpected
     // jump button to appear or auto-scroll to fail silently).
     const submitted: string[] = [];
-    const scrollStateChanges: { isAtBottom: boolean }[] = [];
 
     const { container } = render(Chat, {
       props: {
@@ -522,11 +521,6 @@ describe('Chat — isAtBottom bindable after send', () => {
         emptyPrompts: ['Tell me a joke'],
         onsubmit: (event: { message: { content: unknown } }) => {
           submitted.push(String(event.message.content));
-        },
-        // onscrollstatechange fires from real scroll events (not from handleSubmit).
-        // Capture it to ensure no spurious state changes side-effect the send path.
-        onscrollstatechange: (event: { isAtBottom: boolean }) => {
-          scrollStateChanges.push({ isAtBottom: event.isAtBottom });
         },
       },
     });
@@ -543,29 +537,6 @@ describe('Chat — isAtBottom bindable after send', () => {
     // (showJumpButton is derived from scrollState, not from the isAtBottom binding.)
     const jumpButton = container.querySelector('.chat-jump-button');
     expect(jumpButton).toBeNull();
-  });
-
-  test('isAtBottom bindable write is observable via onscrollstatechange on scroll', async () => {
-    // Verify the scroll path (handleScrollStateChange) correctly writes the bindable.
-    // This is a baseline check for the non-send path — already working before the fix.
-    const scrollStateChanges: { isAtBottom: boolean }[] = [];
-
-    const { container } = render(Chat, {
-      props: {
-        id: 'chat-isatbottom-scroll',
-        conversation: createConversation({ id: 'conversation-isatbottom-scroll' }),
-        onscrollstatechange: (event: { isAtBottom: boolean }) => {
-          scrollStateChanges.push({ isAtBottom: event.isAtBottom });
-        },
-      },
-    });
-
-    // The component mounts without errors and the timeline is present.
-    expect(container.querySelector('.chat-timeline')).not.toBeNull();
-
-    // No scroll events fired — the scrollStateChanges array stays empty.
-    // We just verify the wiring did not throw during mount.
-    expect(() => scrollStateChanges).not.toThrow();
   });
 });
 

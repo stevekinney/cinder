@@ -842,8 +842,12 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     });
     await flush();
 
+    // Scope queries to THIS render's container, not the global `screen`
+    // (which searches all of document.body and can see prior leaked renders).
+    const view = within(container);
+
     // Schema 1 renders a Name field seeded with 'Ada'.
-    const nameField = screen.getByLabelText(/Name/);
+    const nameField = view.getByLabelText(/Name/);
     expect(nameField).toBeInstanceOf(HTMLInputElement);
     const nameInput = nameField as HTMLInputElement;
     expect(nameInput.value).toBe('Ada');
@@ -857,12 +861,14 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     await rerender({ schema: schema2 as never });
     await flush();
 
-    // Old field is gone.
-    expect(container.querySelector('[aria-label*="Name"]')).toBeNull();
+    // Old field is gone. SchemaForm labels fields via <label for>, so query by
+    // the accessible label (queryByLabelText returns null when absent) rather
+    // than an aria-label selector that would never match regardless.
+    expect(view.queryByLabelText(/Name/)).toBeNull();
 
     // New fields appear.
-    const emailField = screen.getByLabelText(/Email/);
-    const ageInput = screen.getByRole('textbox', { name: /Age/ });
+    const emailField = view.getByLabelText(/Email/);
+    const ageInput = view.getByRole('textbox', { name: /Age/ });
     expect(emailField).toBeInstanceOf(HTMLInputElement);
     expect(ageInput).toBeTruthy();
     const emailInput = emailField as HTMLInputElement;
