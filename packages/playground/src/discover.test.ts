@@ -263,8 +263,15 @@ describe('discoverSidebarComponents', () => {
     // examples, bringing the measured ceiling to 128.
     // VirtualList adds one standalone windowing primitive with examples,
     // bringing the measured ceiling to 129.
+    // The stable-component example backfill (#463) adds first examples for nine
+    // standalone families that previously had none — banner, callout,
+    // checkbox-group, color-swatch-picker, connection-indicator, file-upload,
+    // image, number-input, and sortable-list — so each now passes the
+    // `exampleCount > 0` filter and surfaces in the sidebar, bringing the measured
+    // ceiling to 138. (segment and command-item were moved to COMPOSE_ONLY in the
+    // same change, so they do NOT add entries.)
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(129);
+    expect(sidebar.length).toBeLessThanOrEqual(138);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -281,6 +288,16 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('access-gate');
     expect(sidebar).toContain('schema-form');
     expect(sidebar).toContain('virtual-list');
+    // Positive anchors for the nine families surfaced by the #463 example backfill.
+    expect(sidebar).toContain('banner');
+    expect(sidebar).toContain('callout');
+    expect(sidebar).toContain('checkbox-group');
+    expect(sidebar).toContain('color-swatch-picker');
+    expect(sidebar).toContain('connection-indicator');
+    expect(sidebar).toContain('file-upload');
+    expect(sidebar).toContain('image');
+    expect(sidebar).toContain('number-input');
+    expect(sidebar).toContain('sortable-list');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

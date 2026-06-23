@@ -8,7 +8,7 @@
 </script>
 
 <Image
-  src="https://picsum.photos/600/338"
+  src="https://picsum.photos/seed/cinder/600/338"
   alt="A randomly selected placeholder photograph"
   ratio="16/9"
   width={600}

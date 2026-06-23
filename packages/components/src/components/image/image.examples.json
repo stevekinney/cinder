@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic image",
       "description": "Responsive image with lazy loading and an explicit aspect ratio.",
-      "code": "<script lang=\"ts\">\n  import { Image } from '@lostgradient/cinder/image';\n</script>\n\n<Image\n  src=\"https://picsum.photos/600/338\"\n  alt=\"A randomly selected placeholder photograph\"\n  ratio=\"16/9\"\n  width={600}\n  height={338}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Image } from '@lostgradient/cinder/image';\n</script>\n\n<Image\n  src=\"https://picsum.photos/seed/cinder/600/338\"\n  alt=\"A randomly selected placeholder photograph\"\n  ratio=\"16/9\"\n  width={600}\n  height={338}\n/>\n"
     }
   ]
 }
