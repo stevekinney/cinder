@@ -51,7 +51,7 @@
 
   function handleClick(): void {
     if (!sortable || !column) return;
-    table.onSortChange(column);
+    table.onsortchange(column);
   }
 </script>
 

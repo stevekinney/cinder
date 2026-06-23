@@ -73,7 +73,7 @@ describe('LoadMore', () => {
   test('renders the manual fallback button', () => {
     const { getByRole } = render(LoadMore, {
       props: {
-        onLoadMore: () => {},
+        onloadmore: () => {},
       },
     });
 
@@ -83,7 +83,7 @@ describe('LoadMore', () => {
   test('uses the provided rootMargin for the sentinel observer', () => {
     const { container } = render(LoadMore, {
       props: {
-        onLoadMore: () => {},
+        onloadmore: () => {},
         rootMargin: '320px 0px',
       },
     });
@@ -99,7 +99,7 @@ describe('LoadMore', () => {
     const scrollContainer = document.createElement('div');
     render(LoadMore, {
       props: {
-        onLoadMore: () => {},
+        onloadmore: () => {},
         root: scrollContainer,
       },
     });
@@ -111,16 +111,16 @@ describe('LoadMore', () => {
   });
 
   test('defaults root to null (viewport) when not provided', () => {
-    render(LoadMore, { props: { onLoadMore: () => {} } });
+    render(LoadMore, { props: { onloadmore: () => {} } });
     const [record] = FakeIntersectionObserver.records;
     expect(record?.options?.root ?? null).toBeNull();
   });
 
-  test('clicking the button calls onLoadMore', async () => {
+  test('clicking the button calls onloadmore', async () => {
     let calls = 0;
     const { getByRole } = render(LoadMore, {
       props: {
-        onLoadMore: () => {
+        onloadmore: () => {
           calls += 1;
         },
       },
@@ -131,11 +131,11 @@ describe('LoadMore', () => {
     expect(calls).toBe(1);
   });
 
-  test('an intersecting sentinel entry calls onLoadMore', async () => {
+  test('an intersecting sentinel entry calls onloadmore', async () => {
     let calls = 0;
     const { container } = render(LoadMore, {
       props: {
-        onLoadMore: () => {
+        onloadmore: () => {
           calls += 1;
         },
       },
@@ -157,7 +157,7 @@ describe('LoadMore', () => {
 
     const rendered = render(LoadMore, {
       props: {
-        onLoadMore: async () => {
+        onloadmore: async () => {
           calls += 1;
           if (rejectNextRequest) {
             throw new Error('network');
@@ -170,7 +170,7 @@ describe('LoadMore', () => {
     const [record] = FakeIntersectionObserver.records;
 
     await rendered.rerender({
-      onLoadMore: async () => {
+      onloadmore: async () => {
         calls += 1;
       },
       loading: true,
@@ -181,7 +181,7 @@ describe('LoadMore', () => {
 
     rejectNextRequest = true;
     await rendered.rerender({
-      onLoadMore: async () => {
+      onloadmore: async () => {
         calls += 1;
         if (rejectNextRequest) {
           throw new Error('network');
@@ -201,11 +201,11 @@ describe('LoadMore', () => {
     expect(calls).toBe(1);
   });
 
-  test('does not call onLoadMore for a non-intersecting sentinel entry', () => {
+  test('does not call onloadmore for a non-intersecting sentinel entry', () => {
     let calls = 0;
     const { container } = render(LoadMore, {
       props: {
-        onLoadMore: () => {
+        onloadmore: () => {
           calls += 1;
         },
       },
@@ -222,7 +222,7 @@ describe('LoadMore', () => {
   test('switches to the retry label after a rejected load', async () => {
     const { getByRole } = render(LoadMore, {
       props: {
-        onLoadMore: async () => {
+        onloadmore: async () => {
           throw new Error('network');
         },
         retryLabel: 'Try again',
@@ -244,7 +244,7 @@ describe('LoadMore', () => {
     const rendered = render(LoadMore, {
       props: {
         maxRetries: 1,
-        onLoadMore: async () => {
+        onloadmore: async () => {
           calls += 1;
           if (shouldFail) {
             throw new Error('network');
@@ -276,14 +276,14 @@ describe('LoadMore', () => {
     });
   });
 
-  test('calls onError when onLoadMore rejects', async () => {
+  test('calls onerror when onloadmore rejects', async () => {
     let seen: unknown;
     const { getByRole } = render(LoadMore, {
       props: {
-        onLoadMore: async () => {
+        onloadmore: async () => {
           throw new Error('failed');
         },
-        onError: (error: unknown) => {
+        onerror: (error: unknown) => {
           seen = error;
         },
       },
@@ -303,7 +303,7 @@ describe('LoadMore', () => {
     // repeated message still re-announces), so waitFor until the text lands.
     const { getByRole } = render(LoadMore, {
       props: {
-        onLoadMore: () => {},
+        onloadmore: () => {},
         hasMore: false,
         endOfListMessage: 'All caught up',
       },
@@ -316,7 +316,7 @@ describe('LoadMore', () => {
   test('announces the end-of-list message only after hasMore transitions to false', async () => {
     const rendered = render(LoadMore, {
       props: {
-        onLoadMore: () => {},
+        onloadmore: () => {},
         hasMore: true,
         endOfListMessage: 'Nothing else to load',
       },
@@ -325,7 +325,7 @@ describe('LoadMore', () => {
     expect(rendered.getByRole('status').textContent?.trim()).toBe('');
 
     await rendered.rerender({
-      onLoadMore: () => {},
+      onloadmore: () => {},
       hasMore: false,
       endOfListMessage: 'Nothing else to load',
     });
@@ -338,7 +338,7 @@ describe('LoadMore', () => {
   test('disables the button while loading unless the component is in retry mode', () => {
     const { getByRole } = render(LoadMore, {
       props: {
-        onLoadMore: () => {},
+        onloadmore: () => {},
         loading: true,
       },
     });
@@ -347,12 +347,12 @@ describe('LoadMore', () => {
     expect(button.disabled).toBe(true);
   });
 
-  test('shows a busy state while awaiting onLoadMore before the parent flips loading', async () => {
+  test('shows a busy state while awaiting onloadmore before the parent flips loading', async () => {
     let resolveRequest: (() => void) | undefined;
 
     const { container, getByRole } = render(LoadMore, {
       props: {
-        onLoadMore: () =>
+        onloadmore: () =>
           new Promise<void>((resolve) => {
             resolveRequest = resolve;
           }),

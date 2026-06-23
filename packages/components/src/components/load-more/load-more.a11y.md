@@ -11,7 +11,7 @@
   `hasMore` flips back to `true`, so later end-of-list transitions can be
   announced cleanly.
 - The manual button remains available whenever `hasMore` is true. After
-  `onLoadMore` rejects, the label switches to `retryLabel` and the button
+  `onloadmore` rejects, the label switches to `retryLabel` and the button
   becomes the recovery path.
 - The built-in spinner animation is disabled automatically for users who prefer
   reduced motion. Any item entrance animation in the caller's list is outside

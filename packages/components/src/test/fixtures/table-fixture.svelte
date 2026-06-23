@@ -81,7 +81,7 @@
 >
   <TableHeader
     {...includeHeaderSelectionState ? { allSelected, someSelected } : {}}
-    {...includeHeaderSelectionHandler ? { onSelectAll } : {}}
+    {...includeHeaderSelectionHandler ? { onselectall: onSelectAll } : {}}
   >
     <TableRow>
       {#each columns as column (column.key)}
@@ -111,7 +111,7 @@
       {:else}
         <TableRow
           selected={selectedIds.has(row.id)}
-          onSelectedChange={(next) => onRowSelectedChange(row.id, next)}
+          onselectedchange={(next) => onRowSelectedChange(row.id, next)}
           selectionLabel={`Select ${row.cells[0]}`}
         >
           {#each row.cells as cell, index (index)}

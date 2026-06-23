@@ -32,7 +32,7 @@ export type BannerProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'cla
   /** Whether the banner shows a dismiss (×) button. Default `true`. */
   dismissible?: boolean;
   /** Called after the dismiss button is clicked. Use to persist state. */
-  onDismiss?: () => void;
+  ondismiss?: () => void;
   /** Banner body content. */
   children: Snippet;
   /** Optional trailing CTA region (e.g., "Renew now" button). */

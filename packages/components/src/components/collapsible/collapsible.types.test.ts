@@ -13,7 +13,7 @@ type SnapshotCollapsibleProps = {
   trigger: string | Snippet<[CollapsibleTriggerState]>;
   children: Snippet;
   open?: boolean;
-  onToggle?: (open: boolean) => void;
+  ontoggle?: (open: boolean) => void;
   disabled?: boolean;
   idBase?: string;
   class?: string;

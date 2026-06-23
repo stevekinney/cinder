@@ -4,7 +4,7 @@
   "properties": {
     "enabled": {
       "type": "boolean",
-      "description": "When false the document listener is detached and `onClickAway` is never\ncalled. Defaults to `true`."
+      "description": "When false the document listener is detached and `onclickaway` is never\ncalled. Defaults to `true`."
     },
     "class": {
       "type": "string",
@@ -21,7 +21,7 @@
         "description": "Content rendered inside the root element. Required."
       },
       {
-        "name": "onClickAway",
+        "name": "onclickaway",
         "reason": "function-or-snippet",
         "required": true,
         "description": "Called with the triggering PointerEvent (or MouseEvent/TouchEvent on\nbrowsers that do not support the Pointer Events API) when the user presses\na pointer device outside the root element."

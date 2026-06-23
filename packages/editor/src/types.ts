@@ -32,16 +32,16 @@ export interface EditorConfig {
   readonly?: boolean;
   /** Accessible label for the editor (applied to ProseMirror element) */
   ariaLabel?: string;
-  /** Debounce interval for onChange callback (ms) */
+  /** Debounce interval for onchange callback (ms) */
   changeDebounceMs?: number;
   /** Callback when content changes (debounced) */
-  onChange?: (markdown: string) => void;
+  onchange?: (markdown: string) => void;
   /** Callback when selection changes */
-  onSelectionChange?: (selection: EditorSelection | null) => void;
+  onselectionchange?: (selection: EditorSelection | null) => void;
   /** Callback when link keyboard shortcut (Mod-k) is pressed */
-  onLinkShortcut?: () => void;
+  onlinkshortcut?: () => void;
   /** Callback when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47) */
-  onCommentShortcut?: () => void;
+  oncommentshortcut?: () => void;
   /**
    * Additional Milkdown plugins to load.
    *
@@ -142,16 +142,16 @@ export interface EditorAttachmentOptions {
   /** Get accessible label for the editor */
   getAriaLabel: () => string;
   /** Called when editor is ready */
-  onReady?: (state: EditorState) => void;
+  onready?: (state: EditorState) => void;
   /** Called when document changes (debounced) */
-  onChange?: (markdown: string) => void;
+  onchange?: (markdown: string) => void;
   /** Called when selection changes */
-  onSelectionChange?: (selection: EditorSelection | null) => void;
+  onselectionchange?: (selection: EditorSelection | null) => void;
   /** Called when link keyboard shortcut (Mod-k) is pressed */
-  onLinkShortcut?: () => void;
+  onlinkshortcut?: () => void;
   /** Called when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47) */
-  onCommentShortcut?: () => void;
-  /** Debounce delay for onChange in ms */
+  oncommentshortcut?: () => void;
+  /** Debounce delay for onchange in ms */
   debounceMs?: number;
   /**
    * Additional Milkdown plugins to load.

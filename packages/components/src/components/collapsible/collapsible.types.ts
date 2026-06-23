@@ -4,7 +4,10 @@ import type { HTMLAttributes } from 'svelte/elements';
 /** State passed to a trigger snippet so labels can react to open/disabled. */
 export type CollapsibleTriggerState = { open: boolean; disabled: boolean };
 
-export type CollapsibleProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
+export type CollapsibleProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'class' | 'children' | 'ontoggle'
+> & {
   /** Trigger label: a plain string, or a snippet receiving `{ open, disabled }`. */
   trigger: string | Snippet<[CollapsibleTriggerState]>;
   /** Panel content shown when open. */
@@ -16,7 +19,7 @@ export type CollapsibleProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'c
    */
   open?: boolean;
   /** Fired on every successful toggle with the next open state. Not called while disabled. */
-  onToggle?: (open: boolean) => void;
+  ontoggle?: (open: boolean) => void;
   /**
    * When true, the trigger cannot be toggled.
    * @default false

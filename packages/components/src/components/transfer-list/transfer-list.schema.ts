@@ -57,7 +57,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onChange',
+        name: 'onchange',
         reason: 'function-or-snippet',
         description: 'Called with the next right-side value after a transfer.',
       },

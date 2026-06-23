@@ -76,11 +76,11 @@
     style: styleAttribute,
     selectionControls,
     filterValue,
-    onFilterChange,
+    onfilterchange,
     filterPlaceholder = 'Search tree',
     showSearch = false,
     filterPredicate = defaultFilterPredicate,
-    onReorder,
+    onreorder,
     children,
     ...rest
   }: TreeProps = $props();
@@ -192,7 +192,7 @@
     () => new Map(flattenedDataItems.map((item) => [item.id, item])),
   );
   const hasTreeChrome = $derived(
-    selectionControls != null || showSearch || filtering || onReorder != null,
+    selectionControls != null || showSearch || filtering || onreorder != null,
   );
   const hasRegisteredItems = $derived(
     isVirtualizedTree ? flattenedDataItems.length > 0 : registry.size > 0,
@@ -430,7 +430,7 @@
   }
 
   $effect(() => {
-    if (!onReorder) {
+    if (!onreorder) {
       dragController = null;
       return;
     }
@@ -443,7 +443,7 @@
         isBranch: (id) => registry.getNode(id)?.isBranch() ?? false,
         focus: focusNode,
         announce: announceDrag,
-        commit: (draggedId, target) => onReorder?.(draggedId, target),
+        commit: (draggedId, target) => onreorder?.(draggedId, target),
       })),
     );
   });
@@ -1053,7 +1053,7 @@
 
   function updateFilterValue(next: string): void {
     if (!isFilterControlled) uncontrolledFilterValue = next;
-    onFilterChange?.(next);
+    onfilterchange?.(next);
   }
 
   function handleFilterInput(event: Event): void {
@@ -1339,7 +1339,7 @@
       </div>
     {/if}
 
-    {#if onReorder}
+    {#if onreorder}
       <div id={dragInstructionsId} class="cinder-sr-only">
         Press Control Shift Space to lift the focused item, or Space from the reorder handle. Use
         arrow keys to move. Press Space to drop, Escape to cancel.
@@ -1358,7 +1358,7 @@
       priority="polite"
     />
 
-    {#if onReorder}
+    {#if onreorder}
       <VisuallyHiddenLiveRegion
         message={dragAnnouncement}
         announcementSequence={dragAnnouncementSequence}

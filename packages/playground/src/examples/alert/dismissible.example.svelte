@@ -1,6 +1,6 @@
 <script lang="ts" module>
   export const title = 'Dismissible alert';
-  export const description = 'An alert with a close button that fires onDismiss.';
+  export const description = 'An alert with a close button that fires ondismiss.';
 </script>
 
 <script lang="ts">
@@ -9,7 +9,7 @@
 </script>
 
 {#if !dismissed}
-  <Alert variant="info" dismissible onDismiss={() => (dismissed = true)}>
+  <Alert variant="info" dismissible ondismiss={() => (dismissed = true)}>
     You have 3 unread notifications.
   </Alert>
 {:else}

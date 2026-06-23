@@ -28,7 +28,7 @@
   let {
     variant = 'info',
     dismissible = false,
-    onDismiss,
+    ondismiss,
     class: className,
     children,
     icon,
@@ -48,7 +48,7 @@
     visible = false;
     await tick();
     if (focusTarget?.isConnected) focusTarget.focus();
-    onDismiss?.();
+    ondismiss?.();
   }
 
   function resolveFocusTarget(alertElement: HTMLElement): HTMLElement | null {

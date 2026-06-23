@@ -10,7 +10,7 @@
 </script>
 
 {#if visible}
-  <Banner variant="info" onDismiss={() => (visible = false)}>
+  <Banner variant="info" ondismiss={() => (visible = false)}>
     Scheduled maintenance is planned for Sunday at 2:00 AM UTC.
   </Banner>
 {:else}

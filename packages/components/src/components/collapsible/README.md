@@ -32,7 +32,7 @@ Controlled — the parent owns the state with `bind:open`:
 
 ### State model
 
-Without `bind:open`, `open` is the initial local value and the component manages subsequent toggles; pass `open={true}` to render initially open. With `bind:open`, the parent owns the state. `onToggle` fires on every toggle with the next boolean, so one-way observers stay in sync.
+Without `bind:open`, `open` is the initial local value and the component manages subsequent toggles; pass `open={true}` to render initially open. With `bind:open`, the parent owns the state. `ontoggle` fires on every toggle with the next boolean, so one-way observers stay in sync.
 
 The `trigger` prop is either a string or a snippet receiving `{ open, disabled }`, letting the label react to state (for example, swapping "Show" and "Hide").
 
@@ -57,7 +57,7 @@ For multiple coordinated sections where opening one may close others, use [`Acco
 | `open`     | `boolean`  | no       | `false` | Bindable open state. Without binding, the initial value the component then manages.                                                                              |
 | `trigger`  | `string`   | yes      | —       | Trigger label text. (The snippet form is template-only; see the type above.)                                                                                     |
 | `children` | `(opaque)` | yes      | —       | Panel content shown when open. Not expressible in JSON Schema; see the component types for the signature.                                                        |
-| `onToggle` | `(opaque)` | no       | —       | Fired on every successful toggle with the next open state. Not called while disabled. Not expressible in JSON Schema; see the component types for the signature. |
+| `ontoggle` | `(opaque)` | no       | —       | Fired on every successful toggle with the next open state. Not called while disabled. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

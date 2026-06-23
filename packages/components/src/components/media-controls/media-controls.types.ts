@@ -4,7 +4,10 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type MediaControlsLayout = 'compact' | 'expanded';
 
 /** Props for the MediaControls component. */
-export type MediaControlsProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
+export type MediaControlsProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'class' | 'children' | 'onplay' | 'onpause'
+> & {
   /** Current playback state. @default "paused" */
   playing?: boolean;
   /** Show a replay action instead of play/pause when the track has ended. @default false */
@@ -22,11 +25,11 @@ export type MediaControlsProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 
   /** Layout mode: `compact` renders icon-only, `expanded` renders icon+label. @default "compact" */
   layout?: MediaControlsLayout;
   /** Called when the user triggers playback. */
-  onPlay?: () => void;
+  onplay?: () => void;
   /** Called when the user pauses playback. */
-  onPause?: () => void;
+  onpause?: () => void;
   /** Called when the user triggers replay. */
-  onReplay?: () => void;
+  onreplay?: () => void;
   /** Additional class names merged with `.cinder-media-controls`. */
   class?: string;
 };
@@ -72,9 +75,9 @@ export interface MediaControlsSchemaProps {
   /** Additional class names merged with `.cinder-media-controls`. */
   class?: string;
   /** Called when the play action is triggered. */
-  onPlay?: () => void;
+  onplay?: () => void;
   /** Called when the pause action is triggered. */
-  onPause?: () => void;
+  onpause?: () => void;
   /** Called when the replay action is triggered. */
-  onReplay?: () => void;
+  onreplay?: () => void;
 }

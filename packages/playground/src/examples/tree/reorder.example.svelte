@@ -31,7 +31,7 @@
 <Tree
   class="reorder-tree"
   aria-label="Reorder files"
-  onReorder={handleReorder}
+  onreorder={handleReorder}
   style="max-block-size: 7rem; overflow: auto; border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-md);"
 >
   {#each items as item (item.id)}

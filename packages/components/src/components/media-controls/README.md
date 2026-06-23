@@ -37,9 +37,9 @@ Accessible playback controls for play, pause, and replay actions with optional p
 | `progressLabel` | `string`                    | no       | —           | Accessible label for the progress bar.                                                                                 |
 | `replay`        | `boolean`                   | no       | `false`     | Show a replay action when the track has ended.                                                                         |
 | `unavailable`   | `boolean`                   | no       | `false`     | Controls are unavailable.                                                                                              |
-| `onPause`       | `(opaque)`                  | no       | —           | Called when the pause action is triggered. Not expressible in JSON Schema; see the component types for the signature.  |
-| `onPlay`        | `(opaque)`                  | no       | —           | Called when the play action is triggered. Not expressible in JSON Schema; see the component types for the signature.   |
-| `onReplay`      | `(opaque)`                  | no       | —           | Called when the replay action is triggered. Not expressible in JSON Schema; see the component types for the signature. |
+| `onpause`       | `(opaque)`                  | no       | —           | Called when the pause action is triggered. Not expressible in JSON Schema; see the component types for the signature.  |
+| `onplay`        | `(opaque)`                  | no       | —           | Called when the play action is triggered. Not expressible in JSON Schema; see the component types for the signature.   |
+| `onreplay`      | `(opaque)`                  | no       | —           | Called when the replay action is triggered. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

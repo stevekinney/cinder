@@ -11,7 +11,7 @@ const schema = {
     selected: {
       type: 'boolean',
       description:
-        "Whether the row's selection checkbox is checked. Required in selectable tables alongside `onSelectedChange` and `selectionLabel`.",
+        "Whether the row's selection checkbox is checked. Required in selectable tables alongside `onselectedchange` and `selectionLabel`.",
     },
     selectionLabel: {
       type: 'string',
@@ -34,7 +34,7 @@ const schema = {
         description: 'Cell children (TableCell or TableHeaderCell).',
       },
       {
-        name: 'onSelectedChange',
+        name: 'onselectedchange',
         reason: 'function-or-snippet',
       },
     ],

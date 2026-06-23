@@ -13,7 +13,10 @@ export type TransferListItem = {
 };
 
 /** Props for the TransferList component. */
-export type TransferListProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'class'> & {
+export type TransferListProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'children' | 'class' | 'onchange'
+> & {
   /** Full item pool. Item IDs must be unique; duplicate IDs after the first are ignored. The component never mutates this array. */
   items: TransferListItem[];
   /** Unique IDs currently assigned to the right-side selected list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next transfer. */
@@ -29,7 +32,7 @@ export type TransferListProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' 
    */
   rightLabel?: string;
   /** Called with the next right-side value after a transfer. */
-  onChange?: (value: string[]) => void;
+  onchange?: (value: string[]) => void;
   /** Custom class merged with `.cinder-transfer-list`. */
   class?: string;
 };

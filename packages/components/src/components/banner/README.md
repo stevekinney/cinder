@@ -23,7 +23,7 @@ Full-width announcement strip for page-level alerts, promotions, or system messa
 | `variant`     | `"info"` \| `"success"` \| `"warning"` \| `"danger"` | no       | —       | Visual + semantic variant. Default `'info'`.                                                                                                                                                    |
 | `actions`     | `(opaque)`                                           | no       | —       | Optional trailing CTA region (e.g., "Renew now" button). Not expressible in JSON Schema; see the component types for the signature.                                                             |
 | `children`    | `(opaque)`                                           | yes      | —       | Banner body content. Not expressible in JSON Schema; see the component types for the signature.                                                                                                 |
-| `onDismiss`   | `(opaque)`                                           | no       | —       | Called after the dismiss button is clicked. Use to persist state. Not expressible in JSON Schema; see the component types for the signature.                                                    |
+| `ondismiss`   | `(opaque)`                                           | no       | —       | Called after the dismiss button is clicked. Use to persist state. Not expressible in JSON Schema; see the component types for the signature.                                                    |
 
 <!-- generated:props:end -->
 

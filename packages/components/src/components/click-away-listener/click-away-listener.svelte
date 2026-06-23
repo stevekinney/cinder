@@ -19,7 +19,7 @@
   import type { ClickAwayListenerProps } from './click-away-listener.types.ts';
 
   let {
-    onClickAway,
+    onclickaway,
     enabled = true,
     class: className,
     children,
@@ -50,7 +50,7 @@
 
       const isInside = target instanceof Node && rootElement.contains(target);
       if (!isInside) {
-        onClickAway(event);
+        onclickaway(event);
       }
     }
 

@@ -30,7 +30,7 @@
     class: className,
     children,
     selected,
-    onSelectedChange,
+    onselectedchange,
     selectionLabel,
     selectionDisabled,
     ...rest
@@ -50,13 +50,13 @@
       if (!hasDisabled) {
         // All three must be present — reject partial trios.
         const hasSelected = selected !== undefined;
-        const hasOnChange = onSelectedChange !== undefined;
+        const hasOnChange = onselectedchange !== undefined;
         const hasLabel = selectionLabel !== undefined;
         if (!hasSelected || !hasOnChange || !hasLabel) {
           throw new Error(
             '[Cinder] TableRow: when Table.selectable is true, each body row must supply ' +
-              'selected + onSelectedChange + selectionLabel together, or set selectionDisabled={true}. ' +
-              `Missing: ${[!hasSelected && 'selected', !hasOnChange && 'onSelectedChange', !hasLabel && 'selectionLabel'].filter(Boolean).join(', ')}.`,
+              'selected + onselectedchange + selectionLabel together, or set selectionDisabled={true}. ' +
+              `Missing: ${[!hasSelected && 'selected', !hasOnChange && 'onselectedchange', !hasLabel && 'selectionLabel'].filter(Boolean).join(', ')}.`,
           );
         }
       }
@@ -73,12 +73,12 @@
 
   function handleSelectAllChange(event: Event): void {
     const input = event.currentTarget as HTMLInputElement;
-    headerSelection?.onSelectAll(input.checked);
+    headerSelection?.onselectall(input.checked);
   }
 
   function handleRowChange(event: Event): void {
     const input = event.currentTarget as HTMLInputElement;
-    onSelectedChange?.(input.checked);
+    onselectedchange?.(input.checked);
   }
 
   const shouldRenderHeaderSelectionCell =

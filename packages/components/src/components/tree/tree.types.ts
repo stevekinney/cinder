@@ -69,7 +69,7 @@ type TreeSharedProps = Omit<
   /** Controlled filter query. When provided, matching is driven by this value. */
   filterValue?: string;
   /** Fires whenever the built-in search input changes the filter query. */
-  onFilterChange?: (value: string) => void;
+  onfilterchange?: (value: string) => void;
   /** Placeholder and accessible label for the built-in search input. Default: 'Search tree'. */
   filterPlaceholder?: string;
   /** Render the built-in search input before the role="tree" element. Default: false. */
@@ -77,7 +77,7 @@ type TreeSharedProps = Omit<
   /** Custom filter predicate. Default: case-insensitive label substring matching. */
   filterPredicate?: TreeFilterPredicate;
   /** Called when a draggable item is dropped before, after, or into another tree item. */
-  onReorder?: (draggedId: string, target: TreeReorderTarget) => void;
+  onreorder?: (draggedId: string, target: TreeReorderTarget) => void;
   /** Additional CSS class merged with `.cinder-tree`. */
   class?: string;
   /** Optional selection controls rendered before the role="tree" element. */

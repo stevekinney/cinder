@@ -8,7 +8,7 @@
     },
     "selected": {
       "type": "boolean",
-      "description": "Whether the row's selection checkbox is checked. Required in selectable tables alongside `onSelectedChange` and `selectionLabel`."
+      "description": "Whether the row's selection checkbox is checked. Required in selectable tables alongside `onselectedchange` and `selectionLabel`."
     },
     "selectionLabel": {
       "type": "string",
@@ -29,7 +29,7 @@
         "description": "Cell children (TableCell or TableHeaderCell)."
       },
       {
-        "name": "onSelectedChange",
+        "name": "onselectedchange",
         "reason": "function-or-snippet"
       }
     ]

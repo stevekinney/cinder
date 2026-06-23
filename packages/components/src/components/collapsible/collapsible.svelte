@@ -27,7 +27,7 @@
     trigger,
     children,
     open = $bindable(false),
-    onToggle,
+    ontoggle,
     disabled = false,
     idBase,
     class: className,
@@ -49,7 +49,7 @@
     if (disabled) return;
     const next = !open;
     open = next;
-    onToggle?.(next);
+    ontoggle?.(next);
   }
 </script>
 

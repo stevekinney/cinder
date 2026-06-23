@@ -14,7 +14,7 @@
 
 {#if open}
   <ClickAwayListener
-    onClickAway={() => (open = false)}
+    onclickaway={() => (open = false)}
     style="
       display: inline-flex;
       flex-direction: column;

@@ -28,7 +28,7 @@
     value = $bindable([]),
     leftLabel = 'Available',
     rightLabel = 'Selected',
-    onChange,
+    onchange,
     class: customClassName,
     ...rest
   }: TransferListProps = $props();
@@ -146,7 +146,7 @@
   function commitValue(nextValue: string[], announcement: string): void {
     const dedupedKnownValue = [...new Set(nextValue)].filter((id) => itemById.has(id));
     value = dedupedKnownValue;
-    onChange?.(dedupedKnownValue);
+    onchange?.(dedupedKnownValue);
     announcer.announce(announcement);
   }
 

@@ -109,12 +109,12 @@ const schema = {
           'Data-driven Tree items. Required when virtualized is true; mutually exclusive with children.',
       },
       {
-        name: 'onFilterChange',
+        name: 'onfilterchange',
         reason: 'function-or-snippet',
         description: 'Fires whenever the built-in search input changes the filter query.',
       },
       {
-        name: 'onReorder',
+        name: 'onreorder',
         reason: 'function-or-snippet',
         description:
           'Called when a draggable item is dropped before, after, or into another tree item.',

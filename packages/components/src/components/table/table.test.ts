@@ -353,7 +353,7 @@ describe('Table selection — structure', () => {
         selectable: true,
         includeHeaderSelectionState: false,
       }),
-    ).toThrow(/`allSelected`, `someSelected`, and `onSelectAll` are required/);
+    ).toThrow(/`allSelected`, `someSelected`, and `onselectall` are required/);
   });
 
   test('selectable header requires a select-all handler', () => {
@@ -364,7 +364,7 @@ describe('Table selection — structure', () => {
         selectable: true,
         includeHeaderSelectionHandler: false,
       }),
-    ).toThrow(/`allSelected`, `someSelected`, and `onSelectAll` are required/);
+    ).toThrow(/`allSelected`, `someSelected`, and `onselectall` are required/);
   });
 
   test('selectable header throws when multiple header rows would duplicate select-all controls', () => {

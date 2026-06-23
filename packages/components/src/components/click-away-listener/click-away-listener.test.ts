@@ -25,14 +25,14 @@ afterEach(() => {
 describe('ClickAwayListener', () => {
   test('renders children inside a wrapping div', () => {
     const { getByTestId } = render(ClickAwayListener, {
-      props: { onClickAway: () => {}, children: simpleChildren },
+      props: { onclickaway: () => {}, children: simpleChildren },
     });
     expect(getByTestId('inside-button')).not.toBeNull();
   });
 
   test('applies a custom class to the root element', () => {
     const { container } = render(ClickAwayListener, {
-      props: { onClickAway: () => {}, class: 'my-wrapper', children: simpleChildren },
+      props: { onclickaway: () => {}, class: 'my-wrapper', children: simpleChildren },
     });
     expect(container.querySelector('.my-wrapper')).not.toBeNull();
   });
@@ -40,7 +40,7 @@ describe('ClickAwayListener', () => {
   test('spreads rest props onto the root div', () => {
     const { container } = render(ClickAwayListener, {
       props: {
-        onClickAway: () => {},
+        onclickaway: () => {},
         'data-testid': 'root-div',
         children: simpleChildren,
       },
@@ -48,11 +48,11 @@ describe('ClickAwayListener', () => {
     expect(container.querySelector('[data-testid="root-div"]')).not.toBeNull();
   });
 
-  test('does not call onClickAway when clicking inside the component', async () => {
+  test('does not call onclickaway when clicking inside the component', async () => {
     let callCount = 0;
     const { getByTestId } = render(ClickAwayListener, {
       props: {
-        onClickAway: () => {
+        onclickaway: () => {
           callCount += 1;
         },
         children: simpleChildren,
@@ -66,11 +66,11 @@ describe('ClickAwayListener', () => {
     expect(callCount).toBe(0);
   });
 
-  test('calls onClickAway when clicking outside the component', async () => {
+  test('calls onclickaway when clicking outside the component', async () => {
     let callCount = 0;
     render(ClickAwayListener, {
       props: {
-        onClickAway: () => {
+        onclickaway: () => {
           callCount += 1;
         },
         children: simpleChildren,
@@ -88,11 +88,11 @@ describe('ClickAwayListener', () => {
     expect(callCount).toBe(1);
   });
 
-  test('passes the event to onClickAway', async () => {
+  test('passes the event to onclickaway', async () => {
     let receivedEvent: PointerEvent | MouseEvent | TouchEvent | null = null;
     render(ClickAwayListener, {
       props: {
-        onClickAway: (event: PointerEvent | MouseEvent | TouchEvent) => {
+        onclickaway: (event: PointerEvent | MouseEvent | TouchEvent) => {
           receivedEvent = event;
         },
         children: simpleChildren,
@@ -109,11 +109,11 @@ describe('ClickAwayListener', () => {
     expect(receivedEvent).not.toBeNull();
   });
 
-  test('does not call onClickAway when enabled is false', async () => {
+  test('does not call onclickaway when enabled is false', async () => {
     let callCount = 0;
     render(ClickAwayListener, {
       props: {
-        onClickAway: () => {
+        onclickaway: () => {
           callCount += 1;
         },
         enabled: false,
@@ -131,12 +131,12 @@ describe('ClickAwayListener', () => {
     expect(callCount).toBe(0);
   });
 
-  test('stops calling onClickAway after enabled flips to false', async () => {
+  test('stops calling onclickaway after enabled flips to false', async () => {
     let callCount = 0;
 
     const { rerender } = render(ClickAwayListener, {
       props: {
-        onClickAway: () => {
+        onclickaway: () => {
           callCount += 1;
         },
         enabled: true,
@@ -153,7 +153,7 @@ describe('ClickAwayListener', () => {
     expect(callCount).toBe(1);
 
     await rerender({
-      onClickAway: () => {
+      onclickaway: () => {
         callCount += 1;
       },
       enabled: false,
@@ -165,15 +165,15 @@ describe('ClickAwayListener', () => {
     expect(callCount).toBe(1);
   });
 
-  test('resumes calling onClickAway after enabled flips back to true', async () => {
+  test('resumes calling onclickaway after enabled flips back to true', async () => {
     let callCount = 0;
 
-    const onClickAway = () => {
+    const onclickaway = () => {
       callCount += 1;
     };
 
     const { rerender } = render(ClickAwayListener, {
-      props: { onClickAway, enabled: false, children: simpleChildren },
+      props: { onclickaway, enabled: false, children: simpleChildren },
     });
 
     await tick();
@@ -184,7 +184,7 @@ describe('ClickAwayListener', () => {
     await fireEvent.pointerDown(outsideElement);
     expect(callCount).toBe(0);
 
-    await rerender({ onClickAway, enabled: true, children: simpleChildren });
+    await rerender({ onclickaway, enabled: true, children: simpleChildren });
     await tick();
 
     await fireEvent.pointerDown(outsideElement);
@@ -196,7 +196,7 @@ describe('ClickAwayListener', () => {
 
     const { unmount } = render(ClickAwayListener, {
       props: {
-        onClickAway: () => {
+        onclickaway: () => {
           callCount += 1;
         },
         children: simpleChildren,
@@ -276,13 +276,13 @@ describe('ClickAwayListener — TouchEvent-undefined regression', () => {
     document.body.replaceChildren();
   });
 
-  test('fires onClickAway for outside mousedown when PointerEvent and TouchEvent are absent', async () => {
+  test('fires onclickaway for outside mousedown when PointerEvent and TouchEvent are absent', async () => {
     let callCount = 0;
     let thrownError: unknown = null;
 
     render(ClickAwayListener, {
       props: {
-        onClickAway: () => {
+        onclickaway: () => {
           callCount += 1;
         },
         children: simpleChildren,
@@ -304,13 +304,13 @@ describe('ClickAwayListener — TouchEvent-undefined regression', () => {
     expect(callCount).toBe(1);
   });
 
-  test('does not throw and does not fire onClickAway for inside mousedown when PointerEvent and TouchEvent are absent', async () => {
+  test('does not throw and does not fire onclickaway for inside mousedown when PointerEvent and TouchEvent are absent', async () => {
     let callCount = 0;
     let thrownError: unknown = null;
 
     const { getByTestId } = render(ClickAwayListener, {
       props: {
-        onClickAway: () => {
+        onclickaway: () => {
           callCount += 1;
         },
         children: simpleChildren,

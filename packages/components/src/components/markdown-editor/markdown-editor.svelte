@@ -82,10 +82,10 @@
     showToolbar = true,
     class: className,
     onchange,
-    onReady,
+    onready,
     onmodechange,
-    onSelectionChange,
-    onCommentShortcut,
+    onselectionchange,
+    oncommentshortcut,
     plugins = [],
     placeholderCompletion,
     placeholderDecoration,
@@ -438,12 +438,12 @@
     getPlugins: () => plugins,
     getPlaceholderCompletion: () => placeholderCompletion,
     getPlaceholderDecoration: () => placeholderDecoration,
-    onReady: (state) => {
+    onready: (state) => {
       editorState = state;
       isInitializing = false;
-      onReady?.();
+      onready?.();
     },
-    onChange: (markdown) => {
+    onchange: (markdown) => {
       isInternalUpdate = true;
       value = markdown;
       onchange?.(markdown);
@@ -455,12 +455,12 @@
         isInternalUpdate = false;
       });
     },
-    onSelectionChange: (selection) => {
+    onselectionchange: (selection) => {
       // Increment version to trigger toolbar state re-derivation
       selectionVersion++;
-      onSelectionChange?.(selection);
+      onselectionchange?.(selection);
     },
-    onLinkShortcut: () => {
+    onlinkshortcut: () => {
       // Mod-k pressed - open link popover with a virtual element anchor
       // derived from the current ProseMirror selection position. Capture the
       // current link range (as handleLinkClick does) so a subsequent Remove
@@ -470,7 +470,7 @@
       linkPopoverOpen = true;
     },
     // DEP-47: Comment shortcut (Ctrl-Alt-c)
-    onCommentShortcut: () => onCommentShortcut?.(),
+    oncommentshortcut: () => oncommentshortcut?.(),
   });
 
   // Track mode transitions to normalize content on switch (DEP-45).

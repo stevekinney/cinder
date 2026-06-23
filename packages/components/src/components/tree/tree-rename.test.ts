@@ -86,11 +86,11 @@ describe('Tree — inline label rename', () => {
     });
   });
 
-  test('Enter commits, calls onRename, remounts with the new label, and restores focus', async () => {
+  test('Enter commits, calls onrename, remounts with the new label, and restores focus', async () => {
     const calls: Array<[string, string]> = [];
     const { container } = render(TreeRenameFixture, {
       props: {
-        onRename: (itemId: string, nextLabel: string) => {
+        onrename: (itemId: string, nextLabel: string) => {
           calls.push([itemId, nextLabel]);
         },
       },
@@ -133,11 +133,11 @@ describe('Tree — inline label rename', () => {
     expect(document.activeElement).not.toBe(itemById(firstTree, 'alpha'));
   });
 
-  test('Escape cancels without calling onRename and restores focus to the item', async () => {
+  test('Escape cancels without calling onrename and restores focus to the item', async () => {
     const calls: Array<[string, string]> = [];
     const { container } = render(TreeRenameFixture, {
       props: {
-        onRename: (itemId: string, nextLabel: string) => {
+        onrename: (itemId: string, nextLabel: string) => {
           calls.push([itemId, nextLabel]);
         },
       },
@@ -158,7 +158,7 @@ describe('Tree — inline label rename', () => {
     const calls: Array<[string, string]> = [];
     const { container } = render(TreeRenameFixture, {
       props: {
-        onRename: (itemId: string, nextLabel: string) => {
+        onrename: (itemId: string, nextLabel: string) => {
           calls.push([itemId, nextLabel]);
         },
       },
@@ -178,7 +178,7 @@ describe('Tree — inline label rename', () => {
     const calls: Array<[string, string]> = [];
     const { container } = render(TreeRenameFixture, {
       props: {
-        onRename: (itemId: string, nextLabel: string) => {
+        onrename: (itemId: string, nextLabel: string) => {
           calls.push([itemId, nextLabel]);
         },
       },
@@ -202,11 +202,11 @@ describe('Tree — inline label rename', () => {
     expect(alert?.textContent).toContain('Label is required.');
   });
 
-  test('onRename rejection keeps edit mode active and exposes the error accessibly', async () => {
+  test('onrename rejection keeps edit mode active and exposes the error accessibly', async () => {
     const calls: Array<[string, string]> = [];
     const { container } = render(TreeRenameFixture, {
       props: {
-        onRename: async (itemId: string, nextLabel: string) => {
+        onrename: async (itemId: string, nextLabel: string) => {
           calls.push([itemId, nextLabel]);
           throw new Error('Name already exists');
         },

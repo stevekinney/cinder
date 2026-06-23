@@ -18,7 +18,7 @@ const schema = {
     },
     draggable: {
       type: 'boolean',
-      description: 'Render a reorder handle when the parent Tree provides onReorder.',
+      description: 'Render a reorder handle when the parent Tree provides onreorder.',
     },
     branch: {
       type: 'boolean',
@@ -51,15 +51,15 @@ const schema = {
         name: 'loadChildren',
         reason: 'function-or-snippet',
         description:
-          'Async loader called the first time the item is expanded. Implies `branch=true`.\nThe loader mutates consumer-owned reactive state; it returns no data.\nErrors are forwarded to `onLoadError` if provided, otherwise logged via\n`console.error` with a `[cinder-tree]` prefix.',
+          'Async loader called the first time the item is expanded. Implies `branch=true`.\nThe loader mutates consumer-owned reactive state; it returns no data.\nErrors are forwarded to `onloaderror` if provided, otherwise logged via\n`console.error` with a `[cinder-tree]` prefix.',
       },
       {
-        name: 'onLoadError',
+        name: 'onloaderror',
         reason: 'function-or-snippet',
         description: 'Called when `loadChildren` rejects with a non-abort error.',
       },
       {
-        name: 'onRename',
+        name: 'onrename',
         reason: 'function-or-snippet',
         description: 'Called when inline label editing commits a new label.',
       },

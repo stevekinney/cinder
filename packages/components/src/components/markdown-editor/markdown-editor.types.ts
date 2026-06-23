@@ -32,7 +32,7 @@ export interface ToolbarContext {
 
 export type MarkdownEditorProps = Omit<
   HTMLAttributes<HTMLDivElement>,
-  'id' | 'class' | 'onchange'
+  'id' | 'class' | 'onchange' | 'onselectionchange'
 > & {
   /** Unique identifier for accessibility (required) */
   id: string;
@@ -57,13 +57,13 @@ export type MarkdownEditorProps = Omit<
   /** Called when content changes */
   onchange?: (value: string) => void;
   /** Called when the editor is ready (Milkdown initialized) */
-  onReady?: () => void;
+  onready?: () => void;
   /** Called when editor mode changes */
   onmodechange?: (mode: EditorMode) => void;
   /** Called when selection changes (stub for DEP-39) */
-  onSelectionChange?: (selection: EditorSelection | null) => void;
+  onselectionchange?: (selection: EditorSelection | null) => void;
   /** Called when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47) */
-  onCommentShortcut?: () => void;
+  oncommentshortcut?: () => void;
   /**
    * Additional Milkdown plugins to load.
    * Used for comment anchoring (DEP-39), decorations, and other extensions.

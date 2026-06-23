@@ -23,7 +23,7 @@ type Item = {
   disabled?: boolean;
   branch?: boolean;
   children?: Item[];
-  onRename?: TreeItemProps['onRename'];
+  onrename?: TreeItemProps['onrename'];
 };
 
 function treeItemsSnippet(items: Item[]): Snippet {
@@ -40,7 +40,7 @@ function treeItemsSnippet(items: Item[]): Snippet {
         if (item.draggable !== undefined) props.draggable = item.draggable;
         if (item.disabled !== undefined) props.disabled = item.disabled;
         if (item.branch !== undefined) props.branch = item.branch;
-        if (item.onRename !== undefined) props.onRename = item.onRename;
+        if (item.onrename !== undefined) props.onrename = item.onrename;
         if (children !== undefined) props.children = children;
         instances.push(
           mount(TreeItem, {
@@ -85,10 +85,10 @@ function renderTree(
     items?: Item[];
     expandedIds?: string[];
     selectionMode?: TreeSelectionMode;
-    onReorder?: (draggedId: string, target: TreeReorderTarget) => void;
+    onreorder?: (draggedId: string, target: TreeReorderTarget) => void;
   } = {},
 ) {
-  const onReorder = options.onReorder ?? mock();
+  const onreorder = options.onreorder ?? mock();
   const items = options.items ?? [
     { id: 'a', label: 'Alpha', draggable: true },
     { id: 'b', label: 'Beta', draggable: true },
@@ -99,11 +99,11 @@ function renderTree(
       'aria-label': 'Reorder tree',
       expandedIds: options.expandedIds ?? [],
       selectionMode: options.selectionMode ?? 'none',
-      onReorder,
+      onreorder,
       children: treeItemsSnippet(items),
     },
   });
-  return { ...result, onReorder };
+  return { ...result, onreorder };
 }
 
 describe('Tree — drag-and-drop reorder', () => {
@@ -143,8 +143,8 @@ describe('Tree — drag-and-drop reorder', () => {
   });
 
   test('Space and Enter on a draggable selectable item keep their selection behavior', async () => {
-    const onReorder = mock();
-    const { container } = renderTree({ selectionMode: 'single', onReorder });
+    const onreorder = mock();
+    const { container } = renderTree({ selectionMode: 'single', onreorder });
     const alpha = treeItem(container, 'Alpha');
 
     alpha.focus();
@@ -156,13 +156,13 @@ describe('Tree — drag-and-drop reorder', () => {
     await fireEvent.keyDown(alpha, { key: 'Enter' });
 
     expect(alpha.getAttribute('aria-selected')).toBe('false');
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onreorder).not.toHaveBeenCalled();
   });
 
   test('Control Shift Space starts a keyboard drag from the focused tree item', async () => {
     const calls: Array<[string, TreeReorderTarget]> = [];
     const { container } = renderTree({
-      onReorder: (draggedId, target) => calls.push([draggedId, target]),
+      onreorder: (draggedId, target) => calls.push([draggedId, target]),
     });
     const alpha = treeItem(container, 'Alpha');
 
@@ -186,8 +186,8 @@ describe('Tree — drag-and-drop reorder', () => {
   });
 
   test('pointerup does not drop a keyboard drag', async () => {
-    const onReorder = mock();
-    const { container } = renderTree({ onReorder });
+    const onreorder = mock();
+    const { container } = renderTree({ onreorder });
     const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
     const alpha = treeItem(container, 'Alpha');
 
@@ -196,20 +196,20 @@ describe('Tree — drag-and-drop reorder', () => {
     await fireEvent.keyDown(alpha, { key: 'ArrowDown' });
     await fireEvent.pointerUp(tree);
 
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onreorder).not.toHaveBeenCalled();
     expect(alpha.hasAttribute('data-cinder-dragging')).toBe(true);
     expect(treeItem(container, 'Beta').getAttribute('data-cinder-drop-target')).toBe('after');
 
     await fireEvent.keyDown(alpha, { key: ' ' });
 
-    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(onreorder).toHaveBeenCalledTimes(1);
   });
 
   test('F2 does not enter rename mode during an active drag', async () => {
-    const onRename = mock();
+    const onrename = mock();
     const { container } = renderTree({
       items: [
-        { id: 'a', label: 'Alpha', draggable: true, onRename },
+        { id: 'a', label: 'Alpha', draggable: true, onrename },
         { id: 'b', label: 'Beta', draggable: true },
       ],
     });
@@ -221,7 +221,7 @@ describe('Tree — drag-and-drop reorder', () => {
 
     expect(alpha.hasAttribute('data-cinder-dragging')).toBe(true);
     expect(container.querySelector('.cinder-tree-item__rename-input')).toBeNull();
-    expect(onRename).not.toHaveBeenCalled();
+    expect(onrename).not.toHaveBeenCalled();
   });
 
   test('Space lifts an item and announces keyboard instructions', async () => {
@@ -242,7 +242,7 @@ describe('Tree — drag-and-drop reorder', () => {
   test('ArrowDown then Space drops after the next visible item', async () => {
     const calls: Array<[string, TreeReorderTarget]> = [];
     const { container } = renderTree({
-      onReorder: (draggedId, target) => calls.push([draggedId, target]),
+      onreorder: (draggedId, target) => calls.push([draggedId, target]),
     });
     const handle = dragHandle(container, 'Alpha');
 
@@ -264,7 +264,7 @@ describe('Tree — drag-and-drop reorder', () => {
   test('Home and End move an active keyboard drag to the visible tree edges', async () => {
     const calls: Array<[string, TreeReorderTarget]> = [];
     const { container } = renderTree({
-      onReorder: (draggedId, target) => calls.push([draggedId, target]),
+      onreorder: (draggedId, target) => calls.push([draggedId, target]),
     });
     const handle = dragHandle(container, 'Beta');
 
@@ -282,15 +282,15 @@ describe('Tree — drag-and-drop reorder', () => {
   });
 
   test('Escape cancels an active keyboard drag without reordering', async () => {
-    const onReorder = mock();
-    const { container } = renderTree({ onReorder });
+    const onreorder = mock();
+    const { container } = renderTree({ onreorder });
     const handle = dragHandle(container, 'Alpha');
 
     handle.focus();
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'Escape' });
 
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onreorder).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(handle.getAttribute('aria-pressed')).toBe('false');
       expect(document.activeElement).toBe(handle);
@@ -298,8 +298,8 @@ describe('Tree — drag-and-drop reorder', () => {
   });
 
   test('Tab cancels an active keyboard drag without trapping focus', async () => {
-    const onReorder = mock();
-    const { container } = renderTree({ onReorder });
+    const onreorder = mock();
+    const { container } = renderTree({ onreorder });
     const handle = dragHandle(container, 'Alpha');
 
     handle.focus();
@@ -314,7 +314,7 @@ describe('Tree — drag-and-drop reorder', () => {
     const defaultAllowed = handle.dispatchEvent(tabEvent);
 
     expect(defaultAllowed).toBe(true);
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onreorder).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(handle.getAttribute('aria-pressed')).toBe('false');
       expect(treeItem(container, 'Alpha').hasAttribute('data-cinder-dragging')).toBe(false);
@@ -322,15 +322,15 @@ describe('Tree — drag-and-drop reorder', () => {
   });
 
   test('dropping immediately after lift does not emit a self-target reorder', async () => {
-    const onReorder = mock();
-    const { container } = renderTree({ onReorder });
+    const onreorder = mock();
+    const { container } = renderTree({ onreorder });
     const handle = dragHandle(container, 'Alpha');
 
     handle.focus();
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: ' ' });
 
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onreorder).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(handle.getAttribute('aria-pressed')).toBe('false');
       expect(document.activeElement).toBe(handle);
@@ -345,7 +345,7 @@ describe('Tree — drag-and-drop reorder', () => {
         { id: 'a', label: 'Alpha', branch: true, draggable: true },
         { id: 'b', label: 'Beta', draggable: true },
       ],
-      onReorder: (draggedId, target) => calls.push([draggedId, target]),
+      onreorder: (draggedId, target) => calls.push([draggedId, target]),
     });
     const handle = dragHandle(container, 'Beta');
 
@@ -373,7 +373,7 @@ describe('Tree — drag-and-drop reorder', () => {
           children: [{ id: 'b', label: 'Beta', draggable: true }],
         },
       ],
-      onReorder: (draggedId, target) => calls.push([draggedId, target]),
+      onreorder: (draggedId, target) => calls.push([draggedId, target]),
     });
     const handle = dragHandle(container, 'Beta');
 

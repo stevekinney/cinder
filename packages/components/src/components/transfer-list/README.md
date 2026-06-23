@@ -31,7 +31,7 @@ from an available pool to a selected set.
 | `leftLabel`  | `string`                                                  | no       | `"Available"` | Accessible and visible label for the left list.                                                                                                 |
 | `rightLabel` | `string`                                                  | no       | `"Selected"`  | Accessible and visible label for the right list.                                                                                                |
 | `value`      | `string`[]                                                | no       | —             | Unique IDs currently assigned to the right-side selected list. Supports `bind:value`. Unknown IDs are ignored and dropped on the next transfer. |
-| `onChange`   | `(opaque)`                                                | no       | —             | Called with the next right-side value after a transfer. Not expressible in JSON Schema; see the component types for the signature.              |
+| `onchange`   | `(opaque)`                                                | no       | —             | Called with the next right-side value after a transfer. Not expressible in JSON Schema; see the component types for the signature.              |
 
 <!-- generated:props:end -->
 

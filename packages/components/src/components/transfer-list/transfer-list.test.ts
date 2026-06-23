@@ -72,10 +72,10 @@ describe('TransferList', () => {
     expect(moveSelectedRightButton?.disabled).toBe(true);
   });
 
-  test('moves selected items right and calls onChange', async () => {
-    const onChange = mock(() => {});
+  test('moves selected items right and calls onchange', async () => {
+    const onchange = mock(() => {});
     const { container } = render(TransferList, {
-      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected', onChange },
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected', onchange },
     });
 
     await fireEvent.click(screen.getByRole('option', { name: 'Read' }));
@@ -83,7 +83,7 @@ describe('TransferList', () => {
 
     const selected = screen.getByRole('listbox', { name: 'Selected' });
     expect(within(selected).getByRole('option', { name: 'Read' })).toBeTruthy();
-    expect(onChange).toHaveBeenCalledWith(['read']);
+    expect(onchange).toHaveBeenCalledWith(['read']);
     const moveSelectedRightButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Move selected items to Selected"]',
     );
@@ -107,9 +107,9 @@ describe('TransferList', () => {
   });
 
   test('move all right excludes disabled available items', async () => {
-    const onChange = mock(() => {});
+    const onchange = mock(() => {});
     render(TransferList, {
-      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected', onChange },
+      props: { items, value: [], leftLabel: 'Available', rightLabel: 'Selected', onchange },
     });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Move all items to Selected' }));
@@ -122,18 +122,18 @@ describe('TransferList', () => {
         .getAllByRole('option')
         .map((option) => option.textContent),
     ).toEqual(['Read', 'Write', 'Admin']);
-    expect(onChange).toHaveBeenCalledWith(['read', 'write', 'admin']);
+    expect(onchange).toHaveBeenCalledWith(['read', 'write', 'admin']);
   });
 
   test('selected disabled items can be removed', async () => {
-    const onChange = mock(() => {});
+    const onchange = mock(() => {});
     render(TransferList, {
       props: {
         items,
         value: ['billing'],
         leftLabel: 'Available',
         rightLabel: 'Selected',
-        onChange,
+        onchange,
       },
     });
 
@@ -143,11 +143,11 @@ describe('TransferList', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Move all items to Available' }));
 
-    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onchange).toHaveBeenCalledWith([]);
   });
 
   test('selected items remain removable after becoming disabled', async () => {
-    const onChange = mock(() => {});
+    const onchange = mock(() => {});
     const enabledBillingItems: TransferListItem[] = items.map((item) =>
       item.id === 'billing' ? { ...item, disabled: false } : item,
     );
@@ -157,7 +157,7 @@ describe('TransferList', () => {
         value: ['billing'],
         leftLabel: 'Available',
         rightLabel: 'Selected',
-        onChange,
+        onchange,
       },
     });
 
@@ -165,27 +165,27 @@ describe('TransferList', () => {
     await rerender({ items, value: ['billing'], leftLabel: 'Available', rightLabel: 'Selected' });
     await fireEvent.click(screen.getByRole('button', { name: 'Move selected items to Available' }));
 
-    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onchange).toHaveBeenCalledWith([]);
   });
 
   test('moves selected and all items left', async () => {
-    const onChange = mock(() => {});
+    const onchange = mock(() => {});
     render(TransferList, {
       props: {
         items,
         value: ['read', 'write', 'admin'],
         leftLabel: 'Available',
         rightLabel: 'Selected',
-        onChange,
+        onchange,
       },
     });
 
     await fireEvent.click(screen.getByRole('option', { name: 'Read' }));
     await fireEvent.click(screen.getByRole('button', { name: 'Move selected items to Available' }));
-    expect(onChange).toHaveBeenLastCalledWith(['write', 'admin']);
+    expect(onchange).toHaveBeenLastCalledWith(['write', 'admin']);
 
     await fireEvent.click(screen.getByRole('button', { name: 'Move all items to Available' }));
-    expect(onChange).toHaveBeenLastCalledWith([]);
+    expect(onchange).toHaveBeenLastCalledWith([]);
   });
 
   test('orders selected items by value order', () => {

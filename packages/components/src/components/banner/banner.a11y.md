@@ -141,7 +141,7 @@ use `alert.svelte` for the contextual ones.
 
 Dismiss state is purely internal to the component. Consumers who need a
 banner to stay dismissed across navigations should persist that state
-themselves via the `onDismiss` callback (e.g., to `localStorage`).
+themselves via the `ondismiss` callback (e.g., to `localStorage`).
 Consumers who need a dismissed banner to reappear must `{#key}`-wrap or
 unmount-and-remount the component — re-rendering with the same props
 does not resurrect a dismissed banner.

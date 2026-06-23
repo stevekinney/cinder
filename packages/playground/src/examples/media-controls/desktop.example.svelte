@@ -68,34 +68,34 @@
       {playing}
       replay={isReplay}
       {progress}
-      onPlay={handlePlay}
-      onPause={handlePause}
-      onReplay={handleReplay}
+      onplay={handlePlay}
+      onpause={handlePause}
+      onreplay={handleReplay}
     />
     <MediaControls
       {playing}
       replay={isReplay}
       {progress}
       layout="expanded"
-      onPlay={handlePlay}
-      onPause={handlePause}
-      onReplay={handleReplay}
+      onplay={handlePlay}
+      onpause={handlePause}
+      onreplay={handleReplay}
     />
   {:else}
     <MediaControls
       {playing}
       replay={isReplay}
-      onPlay={handlePlay}
-      onPause={handlePause}
-      onReplay={handleReplay}
+      onplay={handlePlay}
+      onpause={handlePause}
+      onreplay={handleReplay}
     />
     <MediaControls
       {playing}
       replay={isReplay}
       layout="expanded"
-      onPlay={handlePlay}
-      onPause={handlePause}
-      onReplay={handleReplay}
+      onplay={handlePlay}
+      onpause={handlePause}
+      onreplay={handleReplay}
     />
   {/if}
 </div>

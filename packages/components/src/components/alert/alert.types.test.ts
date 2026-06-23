@@ -31,7 +31,7 @@ type SnapshotAlertProps = Omit<
 > & {
   variant?: _SnapshotAlertVariant;
   dismissible?: boolean;
-  onDismiss?: () => void;
+  ondismiss?: () => void;
   class?: string;
   children: Snippet;
   icon?: Snippet;

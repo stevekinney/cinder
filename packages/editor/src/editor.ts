@@ -65,10 +65,10 @@ export async function createEditor(
     readonly = false,
     ariaLabel,
     changeDebounceMs = DEFAULT_DEBOUNCE_MS,
-    onChange,
-    onSelectionChange,
-    onLinkShortcut,
-    onCommentShortcut,
+    onchange,
+    onselectionchange,
+    onlinkshortcut,
+    oncommentshortcut,
     plugins = [],
     placeholderCompletion,
     placeholderDecoration,
@@ -102,7 +102,7 @@ export async function createEditor(
         if (debounceTimeout) clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
           if (isDestroyed) return; // Guard after debounce
-          onChange?.(markdown);
+          onchange?.(markdown);
         }, changeDebounceMs);
       });
 
@@ -111,7 +111,7 @@ export async function createEditor(
       // 1. selectionUpdated - fires on selection-only changes (user clicks without editing)
       // 2. updated - fires on document changes (which also change the selection position)
       // Together, these ensure the toolbar always reflects the current cursor position.
-      if (onSelectionChange) {
+      if (onselectionchange) {
         const notifySelectionChange = (listenerContext: Ctx) => {
           // Skip if editor is destroyed
           if (isDestroyed) return;
@@ -135,7 +135,7 @@ export async function createEditor(
             isCollapsed: from === to,
           };
 
-          onSelectionChange(selection);
+          onselectionchange(selection);
         };
 
         // Listen for selection-only changes (clicking without editing)
@@ -152,8 +152,8 @@ export async function createEditor(
     .use(history)
     .use(
       createEditorKeymap({
-        ...(onLinkShortcut ? { onLinkShortcut } : {}),
-        ...(onCommentShortcut ? { onCommentShortcut } : {}),
+        ...(onlinkshortcut ? { onlinkshortcut } : {}),
+        ...(oncommentshortcut ? { oncommentshortcut } : {}),
       }),
     ) // DEP-37/47: Keyboard shortcuts
     .use(listener)
