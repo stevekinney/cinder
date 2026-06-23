@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "banner",
+  "import": "@lostgradient/cinder/banner",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic banner",
+      "description": "Informational page-level banner with a dismiss button.",
+      "code": "<script lang=\"ts\">\n  import { Banner } from '@lostgradient/cinder/banner';\n\n  let visible = $state(true);\n</script>\n\n{#if visible}\n  <Banner variant=\"info\" onDismiss={() => (visible = false)}>\n    Scheduled maintenance is planned for Sunday at 2:00 AM UTC.\n  </Banner>\n{:else}\n  <p style=\"color: var(--cinder-text-muted);\">Banner dismissed.</p>\n{/if}\n"
+    },
+    {
+      "id": "variants",
+      "title": "Banner variants",
+      "description": "All four semantic variant styles — info, success, warning, and danger.",
+      "code": "<script lang=\"ts\">\n  import { Banner } from '@lostgradient/cinder/banner';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Banner variant=\"info\" dismissible={false}>Your trial expires in 7 days.</Banner>\n  <Banner variant=\"success\" dismissible={false}>Your changes have been saved successfully.</Banner>\n  <Banner variant=\"warning\" dismissible={false}>Storage is 90% full. Free up space soon.</Banner>\n  <Banner variant=\"danger\" dismissible={false}>Your payment method has expired.</Banner>\n</div>\n"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "checkbox-group",
+  "import": "@lostgradient/cinder/checkbox-group",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic checkbox group",
+      "description": "Grouped checkboxes under a shared legend with independent checked states.",
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n  import { CheckboxGroup } from '@lostgradient/cinder/checkbox-group';\n\n  let email = $state(true);\n  let sms = $state(false);\n  let push = $state(false);\n</script>\n\n<CheckboxGroup label=\"Notification channels\">\n  <Checkbox id=\"email\" label=\"Email\" bind:checked={email} />\n  <Checkbox id=\"sms\" label=\"SMS\" bind:checked={sms} />\n  <Checkbox id=\"push\" label=\"Push notifications\" bind:checked={push} />\n</CheckboxGroup>\n"
+    }
+  ]
+}

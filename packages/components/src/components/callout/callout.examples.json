@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "callout",
+  "import": "@lostgradient/cinder/callout",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic callout",
+      "description": "Inline aside highlighting a tip next to body content.",
+      "code": "<script lang=\"ts\">\n  import { Callout } from '@lostgradient/cinder/callout';\n</script>\n\n<Callout title=\"Note\">\n  This setting applies to all projects in your organization and cannot be overridden per-project.\n</Callout>\n"
+    },
+    {
+      "id": "variants",
+      "title": "Callout variants",
+      "description": "All four semantic variant styles for inline callouts.",
+      "code": "<script lang=\"ts\">\n  import { Callout } from '@lostgradient/cinder/callout';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Callout variant=\"info\" title=\"Info\">Keyboard shortcuts are available for most actions.</Callout>\n  <Callout variant=\"success\" title=\"Success\">Your configuration has been validated.</Callout>\n  <Callout variant=\"warning\" title=\"Warning\">This action cannot be undone once confirmed.</Callout>\n  <Callout variant=\"danger\" title=\"Danger\">Deleting this record cannot be undone.</Callout>\n</div>\n"
+    }
+  ]
+}

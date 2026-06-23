@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "number-input",
+  "import": "@lostgradient/cinder/number-input",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic number input",
+      "description": "Numeric field with label, bounds, and a committed-value display.",
+      "code": "<script lang=\"ts\">\n  import { NumberInput } from '@lostgradient/cinder/number-input';\n\n  let quantity = $state<number | null>(1);\n\n  function handleChange(value: number | null) {\n    quantity = value;\n  }\n</script>\n\n<NumberInput\n  id=\"quantity\"\n  label=\"Quantity\"\n  value={quantity}\n  min={1}\n  max={99}\n  onchange={handleChange}\n/>\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">\n  Value: {quantity ?? 'empty'}\n</p>\n"
+    }
+  ]
+}
