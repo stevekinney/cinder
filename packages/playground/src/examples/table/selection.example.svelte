@@ -55,7 +55,7 @@
   <Table.Header
     {allSelected}
     {someSelected}
-    {onSelectAll}
+    onselectall={onSelectAll}
     selectAllLabel="Select all selectable rows"
   >
     <Table.Row>
@@ -75,7 +75,7 @@
       {:else}
         <Table.Row
           selected={selectedIds.has(person.id)}
-          onSelectedChange={(next) => onRowChange(person.id, next)}
+          onselectedchange={(next) => onRowChange(person.id, next)}
           selectionLabel={`Select ${person.name}`}
         >
           <Table.Cell>{person.name}</Table.Cell>

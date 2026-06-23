@@ -6,8 +6,8 @@
     {
       "id": "dismissible",
       "title": "Dismissible alert",
-      "description": "An alert with a close button that fires onDismiss.",
-      "code": "<script lang=\"ts\">\n  import { Alert } from '@lostgradient/cinder/alert';\n  let dismissed = $state(false);\n</script>\n\n{#if !dismissed}\n  <Alert variant=\"info\" dismissible onDismiss={() => (dismissed = true)}>\n    You have 3 unread notifications.\n  </Alert>\n{:else}\n  <p style=\"color: var(--cinder-text-muted); font-style: italic;\">Alert dismissed.</p>\n{/if}\n"
+      "description": "An alert with a close button that fires ondismiss.",
+      "code": "<script lang=\"ts\">\n  import { Alert } from '@lostgradient/cinder/alert';\n  let dismissed = $state(false);\n</script>\n\n{#if !dismissed}\n  <Alert variant=\"info\" dismissible ondismiss={() => (dismissed = true)}>\n    You have 3 unread notifications.\n  </Alert>\n{:else}\n  <p style=\"color: var(--cinder-text-muted); font-style: italic;\">Alert dismissed.</p>\n{/if}\n"
     },
     {
       "id": "variants",

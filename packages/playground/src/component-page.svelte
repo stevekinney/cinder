@@ -1281,7 +1281,7 @@
             <section class="dx-section dx-raw">
               <Collapsible
                 trigger="Raw artifacts"
-                onToggle={(open) => {
+                ontoggle={(open) => {
                   if (open) hasOpenedRawArtifacts = true;
                 }}
               >

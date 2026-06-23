@@ -31,4 +31,4 @@
   {/each}
 </ul>
 
-<LoadMore onLoadMore={fetchNext} bind:loading bind:hasMore retryLabel="Try again" />
+<LoadMore onloadmore={fetchNext} bind:loading bind:hasMore retryLabel="Try again" />
