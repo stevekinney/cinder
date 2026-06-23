@@ -15,14 +15,15 @@
   let acceptedNames = $state<string[]>([]);
   let rejectedMessages = $state<string[]>([]);
 
+  // A single drop/pick can include both valid and invalid files — FileUpload
+  // fires `onchange` (accepted) AND `onreject` (rejected) for the same batch.
+  // Each handler updates only its own list so a mixed batch shows both results.
   function handleChange(files: File[]) {
     acceptedNames = files.map((file) => file.name);
-    rejectedMessages = [];
   }
 
   function handleReject(rejected: RejectedFile[]) {
     rejectedMessages = rejected.map((entry) => entry.message);
-    acceptedNames = [];
   }
 </script>
 
