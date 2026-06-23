@@ -7,9 +7,9 @@
     ReviewState,
     AnchorUpdate,
   } from '@lostgradient/cinder/commentary/comments';
-  import type { ReviewEditorProps, ReviewFormData } from './review-editor-types.ts';
+  import type { ReviewEditorProps, ReviewFormData } from './review-editor.types.ts';
 
-  export type { ReviewMode, ReviewEditorProps, ReviewFormData } from './review-editor-types.ts';
+  export type { ReviewMode, ReviewEditorProps, ReviewFormData } from './review-editor.types.ts';
 
   /** Type alias for thread ID to improve readability in state declarations */
   type ThreadId = string;
@@ -58,7 +58,7 @@
   import type {
     ReviewEditorDiffViewMode as DiffViewMode,
     ReviewEditorViewType as ViewType,
-  } from './review-editor-types.ts';
+  } from './review-editor.types.ts';
   import {
     getSelectionAnchorPosition,
     type SelectionAnchorPosition,

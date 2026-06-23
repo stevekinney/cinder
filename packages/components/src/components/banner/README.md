@@ -9,7 +9,7 @@ Full-width announcement strip for page-level alerts, promotions, or system messa
   import Banner from '@lostgradient/cinder/banner';
 </script>
 
-<Banner />
+<Banner>Your message here.</Banner>
 ```
 
 ## Props

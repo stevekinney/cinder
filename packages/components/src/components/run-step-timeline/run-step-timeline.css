@@ -35,10 +35,10 @@
   .cinder-run-step-timeline__item::before {
     content: '';
     position: absolute;
-    left: var(--_cinder-rst-rail-center);
-    top: 1rem;
-    bottom: 0;
-    width: 1px;
+    inset-inline-start: var(--_cinder-rst-rail-center);
+    inset-block-start: 1rem;
+    inset-block-end: 0;
+    inline-size: 1px;
     background: var(--cinder-border-muted);
   }
 

@@ -17,7 +17,7 @@ const implementationSource = await Bun.file(
 ).text();
 
 const typesSource = await Bun.file(
-  new URL('./review-editor-types.ts', import.meta.url).pathname,
+  new URL('./review-editor.types.ts', import.meta.url).pathname,
 ).text();
 
 describe('ReviewEditor — snapshotMode contract', () => {

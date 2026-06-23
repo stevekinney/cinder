@@ -89,6 +89,8 @@ const schema = {
       {
         name: 'format',
         reason: 'unknown-shape',
+        description:
+          "Locale-aware formatting options passed to `Intl.NumberFormat`.\nSupports all `Intl.NumberFormatOptions` properties such as `style`\n(`'decimal'`, `'currency'`, `'percent'`, `'unit'`), `currency`,\n`minimumFractionDigits`, `maximumFractionDigits`, and `notation`.\nDefaults to locale-standard decimal formatting when omitted.",
       },
       {
         name: 'onchange',

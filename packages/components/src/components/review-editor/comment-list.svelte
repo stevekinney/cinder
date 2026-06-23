@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { Comment } from '@lostgradient/cinder/commentary/comments';
-  import type { ReviewMode } from './review-editor-types.ts';
+  import type { ReviewMode } from './review-editor.types.ts';
 
   export type CommentListProps = {
     /** Comments to display */

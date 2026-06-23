@@ -9,7 +9,7 @@ Accessible form label that associates descriptive text with its input element.
   import Label from '@lostgradient/cinder/label';
 </script>
 
-<Label />
+<Label for="my-input">Email address</Label>
 ```
 
 ## Props

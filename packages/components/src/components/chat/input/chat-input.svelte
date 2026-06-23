@@ -19,7 +19,7 @@
     /** Whether a submission is in progress */
     sending?: boolean;
     /** Error message to display */
-    error?: string | undefined;
+    error?: string;
     /** Additional CSS class */
     class?: string;
 

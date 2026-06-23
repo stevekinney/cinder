@@ -16,9 +16,9 @@ export type SelectProps<T extends string = string> = HTMLSelectAttributes & {
   /** Visible label rendered in a `<label>` associated via `for`. */
   label?: string;
   /** Helper text rendered below the control; wired via `aria-describedby`. */
-  description?: string | undefined;
+  description?: string;
   /** Validation error message; sets `aria-invalid="true"` and is wired via `aria-describedby`. */
-  error?: string | undefined;
+  error?: string;
   /** Marks the control required and sets the native `required` attribute. */
   required?: boolean;
   /** Disables the control. */

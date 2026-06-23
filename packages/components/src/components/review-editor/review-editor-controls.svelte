@@ -3,7 +3,7 @@
   import type {
     ReviewEditorDiffViewMode as DiffViewMode,
     ReviewEditorViewType as ViewType,
-  } from './review-editor-types.ts';
+  } from './review-editor.types.ts';
 
   export type ReviewEditorControlsProps = {
     /** Unique ID for accessibility */

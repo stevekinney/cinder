@@ -25,7 +25,7 @@ import { extractMentions, generateId } from '@lostgradient/cinder/commentary/com
 import { devWarn } from '../../utilities/dev-warn.ts';
 import { getSelectionAnchorPosition } from './review-editor-selection-geometry.ts';
 import type { SelectionPopover, SelectionPopoverOptions } from './review-editor-selection-types.ts';
-import type { PopoverPosition } from './review-editor-types';
+import type { PopoverPosition } from './review-editor.types.ts';
 
 /** Debounce delay for selection position calculation (ms) */
 const SELECTION_DEBOUNCE_MS = 20;

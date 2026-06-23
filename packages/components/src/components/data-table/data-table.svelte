@@ -32,6 +32,7 @@
     resolveVirtualItemHeight,
     resolveVirtualOverscan,
   } from '../../utilities/fixed-virtual-window.ts';
+  import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type { DataTableColumn, DataTableProps, DataTableRow } from './data-table.types.ts';
 
   let {
@@ -115,12 +116,20 @@
   $effect(() => {
     const element = wrapperElement;
     if (!element || !shouldVirtualizeRows) return;
-
     syncScrollMetrics(element);
-    if (typeof ResizeObserver === 'undefined') return;
+  });
 
+  // Observe wrapper, caption, and header for size changes when virtualized.
+  // The wrapper uses an attachment (see template); caption and header are inner
+  // elements that can only be reached via querySelector after mount.
+  const observeWrapperResize = useResizeObserver(() => {
+    if (wrapperElement && shouldVirtualizeRows) syncScrollMetrics(wrapperElement);
+  });
+
+  $effect(() => {
+    const element = wrapperElement;
+    if (!element || !shouldVirtualizeRows || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => syncScrollMetrics(element));
-    observer.observe(element);
     const caption = element.querySelector('caption');
     if (caption) observer.observe(caption);
     const header = element.querySelector('thead');
@@ -382,6 +391,7 @@
 <div
   {...rest}
   bind:this={wrapperElement}
+  {@attach observeWrapperResize}
   class={classNames(
     'cinder-data-table',
     scrollable || shouldVirtualizeRows ? 'cinder-table-scroll' : undefined,

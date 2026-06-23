@@ -8,7 +8,7 @@ import type {
   PopoverPosition,
   ReviewMode,
   ReviewEditorViewType as ViewType,
-} from './review-editor-types.ts';
+} from './review-editor.types.ts';
 
 /**
  * Options for creating the selection popover manager.

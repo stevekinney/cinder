@@ -4,11 +4,11 @@
   import type { LineDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
   import type { DiffState, DiffTier } from './diff-controller.svelte';
 
-  export type ViewMode = 'unified' | 'final' | 'original';
+  import type { DiffViewerMode } from './diff-viewer.types.ts';
 
   export type DiffToolbarProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /** Current view mode (bindable) */
-    viewMode?: ViewMode;
+    viewMode?: DiffViewerMode;
     /** Diff statistics */
     stats: LineDiffStats;
     /** Number of navigable changes */
@@ -50,7 +50,7 @@
   import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
 
   let {
-    viewMode = $bindable<ViewMode>('unified'),
+    viewMode = $bindable<DiffViewerMode>('unified'),
     stats,
     changeCount,
     currentChangeIndex,

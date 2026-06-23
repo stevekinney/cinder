@@ -7,9 +7,26 @@ Drag-and-drop reorderable list that emits the new order on each change.
 ```svelte
 <script lang="ts">
   import SortableList from '@lostgradient/cinder/sortable-list';
+
+  let items = $state([
+    { id: '1', label: 'First item' },
+    { id: '2', label: 'Second item' },
+    { id: '3', label: 'Third item' },
+  ]);
 </script>
 
-<SortableList />
+<SortableList
+  {items}
+  getKey={(item) => item.id}
+  getItemLabel={(item) => item.label}
+  onreorder={(reordered) => {
+    items = reordered;
+  }}
+>
+  {#snippet row({ item })}
+    <span>{item.label}</span>
+  {/snippet}
+</SortableList>
 ```
 
 ## Props

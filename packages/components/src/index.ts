@@ -251,8 +251,8 @@ export type {
 export { default as DiffViewer } from './components/diff-viewer/index.ts';
 export type {
   DiffToolbarContext,
+  DiffViewerMode,
   DiffViewerProps,
-  ViewMode,
 } from './components/diff-viewer/index.ts';
 
 export { default as Divider } from './components/divider/index.ts';

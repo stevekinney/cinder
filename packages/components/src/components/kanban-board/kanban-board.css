@@ -63,8 +63,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    inline-size: 1.75rem;
-    block-size: 1.75rem;
+    inline-size: 2rem;
+    block-size: 2rem;
     padding: 0;
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-sm);

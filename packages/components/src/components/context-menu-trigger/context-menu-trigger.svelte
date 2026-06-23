@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { ContextMenuTriggerProps } from './context-menu-trigger.types.ts';
-  import { onDestroy } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { getDropdownRegisterTrigger } from '../dropdown/dropdown.context.ts';
   import { getContextMenuContext } from '../context-menu/context-menu.context.ts';
@@ -51,12 +50,14 @@
     currentTarget: EventTarget & HTMLDivElement;
   };
 
-  $effect(() => {
-    registerTrigger(triggerElement);
+  function attachTrigger(node: HTMLDivElement) {
+    registerTrigger(node);
     return () => registerTrigger(null);
-  });
+  }
 
-  onDestroy(clearLongPress);
+  $effect(() => {
+    return () => clearLongPress();
+  });
 
   function clearLongPress() {
     clearTimeout(longPressTimer);
@@ -164,6 +165,7 @@
 
 <div
   bind:this={triggerElement}
+  {@attach attachTrigger}
   class={classNames('cinder-context-menu-trigger', className)}
   aria-haspopup="menu"
   oncontextmenu={handleContextmenu}

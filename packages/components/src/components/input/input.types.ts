@@ -45,9 +45,9 @@ export type InputProps = HTMLInputAttributes &
     /** Visible label text rendered above the input and linked via `for`/`id`. */
     label?: string;
     /** Helper text rendered below the input and associated via `aria-describedby`. */
-    description?: string | undefined;
+    description?: string;
     /** Error message rendered below the input; also sets `aria-invalid` on the input. */
-    error?: string | undefined;
+    error?: string;
     /** When true, disables the input, matching the native `disabled` attribute. */
     disabled?: boolean;
     /** Marks the input as required for form validation, matching the native `required` attribute. */

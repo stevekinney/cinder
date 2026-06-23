@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -220,5 +220,38 @@ describe('CheckboxGroup — required parity', () => {
     const marker = container.querySelector('legend .cinder-_required-marker');
     expect(marker).not.toBeNull();
     expect(marker?.textContent).toBe('*');
+  });
+});
+
+describe('CheckboxGroup — missing-label dev warning', () => {
+  let originalWarn: typeof console.warn;
+  let warnings: string[];
+
+  beforeEach(() => {
+    originalWarn = console.warn;
+    warnings = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.join(' '));
+    };
+  });
+
+  afterEach(() => {
+    console.warn = originalWarn;
+  });
+
+  test('warns when label prop is omitted', () => {
+    render(Wrapper, {
+      options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
+    });
+    expect(warnings.some((w) => w.includes('[cinder/CheckboxGroup]'))).toBe(true);
+    expect(warnings.some((w) => w.includes('label prop'))).toBe(true);
+  });
+
+  test('does not warn when label prop is provided', () => {
+    render(Wrapper, {
+      label: 'Notifications',
+      options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
+    });
+    expect(warnings.some((w) => w.includes('[cinder/CheckboxGroup]'))).toBe(false);
   });
 });

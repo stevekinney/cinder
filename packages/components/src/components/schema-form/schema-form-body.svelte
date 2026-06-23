@@ -425,6 +425,14 @@
 {#snippet renderField(field: SchemaFormField)}
   {@const id = fieldDomId(field)}
   {@const error = fieldError(field)}
+  {@const labelledProps = {
+    label: field.label,
+    // `description`/`error` are optional `string` props (no `| undefined`), and
+    // exactOptionalPropertyTypes rejects passing an explicit `undefined`. Spread
+    // them only when present so the control sees the prop omitted, not undefined.
+    ...(field.description !== undefined ? { description: field.description } : {}),
+    ...(error !== undefined ? { error } : {}),
+  }}
 
   {#if field.kind === 'object'}
     <fieldset class="cinder-schema-form__fieldset">
@@ -476,9 +484,7 @@
       {#if field.kind === 'string'}
         <Input
           {id}
-          label={field.label}
-          description={field.description}
-          {error}
+          {...labelledProps}
           required={field.required}
           disabled={submitting}
           bind:value={() => stringValue(field), (next) => updateValue(field.path, next)}
@@ -486,9 +492,7 @@
       {:else if field.kind === 'number' || field.kind === 'integer'}
         <NumberInput
           {id}
-          label={field.label}
-          description={field.description}
-          {error}
+          {...labelledProps}
           required={field.required}
           disabled={submitting}
           step={field.kind === 'integer' ? 1 : undefined}
@@ -499,9 +503,7 @@
       {:else if field.kind === 'enum'}
         <Select
           {id}
-          label={field.label}
-          description={field.description}
-          {error}
+          {...labelledProps}
           required={field.required}
           disabled={submitting}
           options={selectOptions(field)}
@@ -515,18 +517,14 @@
              presence is enforced by the schema validator on submit. -->
         <Checkbox
           {id}
-          label={field.label}
-          description={field.description}
-          {error}
+          {...labelledProps}
           disabled={submitting}
           bind:checked={() => booleanValue(field), (next) => updateValue(field.path, next)}
         />
       {:else}
         <Textarea
           {id}
-          label={field.label}
-          description={field.description}
-          {error}
+          {...labelledProps}
           required={field.required}
           disabled={submitting}
           rows={6}

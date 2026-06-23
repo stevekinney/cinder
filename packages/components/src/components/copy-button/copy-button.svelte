@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { CopyButtonProps } from './copy-button.types.ts';
-  import { onDestroy } from 'svelte';
 
   import Check from 'lucide-svelte/icons/check';
   import Copy from 'lucide-svelte/icons/copy';
@@ -62,8 +61,10 @@
     }, confirmDuration);
   }
 
-  onDestroy(() => {
-    if (resetTimer) clearTimeout(resetTimer);
+  $effect(() => {
+    return () => {
+      if (resetTimer) clearTimeout(resetTimer);
+    };
   });
 </script>
 

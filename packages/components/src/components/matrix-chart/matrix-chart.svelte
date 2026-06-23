@@ -26,6 +26,7 @@
     toFiniteOrNull,
   } from '../../_internal/chart/heatmap-utilities.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type { MatrixChartProps } from './matrix-chart.types.ts';
 
   let {
@@ -59,27 +60,12 @@
   const marginLeft = 80;
 
   let measuredWidth = $state(400);
-  let rootElement = $state<HTMLElement>();
 
-  $effect(() => {
-    const element = rootElement;
-    if (!element) return;
-    // Guard for SSR / test environments without ResizeObserver — fall back to a
-    // one-shot measurement so the chart still renders at a sensible width.
-    if (typeof ResizeObserver === 'undefined') {
-      const rect = element.getBoundingClientRect();
-      if (rect.width > 0) measuredWidth = rect.width;
-      return;
-    }
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      // Ignore zero-width measurements (element hidden / display:none) so the
-      // last good width is kept instead of collapsing the chart geometry to a
-      // degenerate 1px viewport, matching the getBoundingClientRect fallback.
-      if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
+  const observeResize = useResizeObserver((entries) => {
+    const entry = entries[0];
+    // Ignore zero-width measurements (element hidden / display:none) so the
+    // last good width is kept instead of collapsing the chart geometry.
+    if (entry && entry.contentRect.width > 0) measuredWidth = entry.contentRect.width;
   });
 
   const plotWidth = $derived(Math.max(1, measuredWidth - marginLeft - marginRight));
@@ -224,7 +210,7 @@
 
 <figure
   {...rest}
-  bind:this={rootElement}
+  {@attach observeResize}
   id={rootId}
   class={classNames('cinder-matrix-chart', customClassName)}
   aria-label={label}

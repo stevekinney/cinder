@@ -36,12 +36,10 @@
   const registerTrigger = getDropdownRegisterTrigger();
   const setOpen = getDropdownSetOpen();
 
-  let triggerElement = $state<HTMLButtonElement | null>(null);
-
-  $effect(() => {
-    registerTrigger(triggerElement);
+  function attachTrigger(node: HTMLButtonElement) {
+    registerTrigger(node);
     return () => registerTrigger(null);
-  });
+  }
 
   type DropdownTriggerClickHandler = (
     event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement },
@@ -60,7 +58,7 @@
 </script>
 
 <button
-  bind:this={triggerElement}
+  {@attach attachTrigger}
   type="button"
   class={classNames('cinder-dropdown-trigger', customClassName)}
   style={`anchor-name: --${context.menuId};`}

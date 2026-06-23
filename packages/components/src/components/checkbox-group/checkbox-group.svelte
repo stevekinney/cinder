@@ -23,6 +23,7 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
 
   const groupId = $props.id();
 
@@ -39,6 +40,20 @@
   const descriptionId = $derived(describeId(groupId, !!description));
   const errId = $derived(buildErrorId(groupId, !!error));
   const describedBy = $derived(composeDescribedBy(descriptionId, errId));
+
+  // Warn once when no accessible group name is provided. The `hasWarned` flag
+  // stops the effect re-firing on every `legend` change — matching the
+  // tree.svelte convention and dev-warn.ts's guidance against a warn-only
+  // effect that re-subscribes on each update.
+  let hasWarnedNoLegend = false;
+  $effect(() => {
+    if (!legend && !hasWarnedNoLegend) {
+      hasWarnedNoLegend = true;
+      devWarn(
+        '[cinder/CheckboxGroup] A <fieldset> was rendered without a label prop. The fieldset will have no <legend>, which makes it inaccessible. Provide a label prop to describe the group.',
+      );
+    }
+  });
 </script>
 
 <!--

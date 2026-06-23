@@ -18,7 +18,7 @@ export type {
   ReviewEditorViewType,
   ReviewFormData,
   ReviewMode,
-} from './review-editor-types';
+} from './review-editor.types.ts';
 
 // DEP-422: Extracted runes modules for state management (experimental)
 export { createReviewEditorState } from './review-editor-state.svelte';

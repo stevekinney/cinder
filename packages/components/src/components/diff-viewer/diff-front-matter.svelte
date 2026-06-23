@@ -4,7 +4,7 @@
   import type { LineDiff, WordChange } from '@lostgradient/cinder/markdown/diff/line-diff';
   import type { BadgeVariant } from '../badge/badge.types.ts';
 
-  export type ViewMode = 'unified' | 'final' | 'original';
+  import type { DiffViewerMode } from './diff-viewer.types.ts';
 
   export type DiffFrontMatterProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /** Unique id for the front matter section */
@@ -12,7 +12,7 @@
     /** Line diffs for front matter content */
     diffs: LineDiff[];
     /** Current view mode */
-    viewMode: ViewMode;
+    viewMode: DiffViewerMode;
     /** Whether the section is expanded (bindable) */
     expanded?: boolean;
     /** Badge label to show (e.g., "Changed") */
