@@ -68,8 +68,14 @@
     },
   });
 
+  // Warn once when no accessible group name is provided. The `hasWarned` flag
+  // stops the effect re-firing on every `legend` change — matching the
+  // tree.svelte convention and dev-warn.ts's guidance against a warn-only
+  // effect that re-subscribes on each update.
+  let hasWarnedNoLegend = false;
   $effect(() => {
-    if (!legend) {
+    if (!legend && !hasWarnedNoLegend) {
+      hasWarnedNoLegend = true;
       devWarn(
         '[cinder/RadioGroup] A <fieldset> was rendered without a label prop. The fieldset will have no <legend>, which makes it inaccessible. Provide a label prop to describe the group.',
       );
