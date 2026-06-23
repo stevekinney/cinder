@@ -41,7 +41,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onError',
+        name: 'onerror',
         reason: 'function-or-snippet',
         description: 'Notified when onloadmore throws or rejects.',
       },

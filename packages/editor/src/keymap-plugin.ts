@@ -67,9 +67,9 @@ async function resolveShortcutRuntime(): Promise<ShortcutRuntime> {
  */
 export interface EditorKeymapOptions {
   /** Called when Mod-k (link shortcut) is pressed */
-  onLinkShortcut?: () => void;
+  onlinkshortcut?: () => void;
   /** Called when Ctrl-Alt-c (comment shortcut) is pressed (DEP-47) */
-  onCommentShortcut?: () => void;
+  oncommentshortcut?: () => void;
 }
 
 /**
@@ -106,16 +106,16 @@ export function createEditorKeymap(options: EditorKeymapOptions = {}): MilkdownP
         'Mod-y': () => call(runtime.redoCommand.key),
       };
 
-      if (options.onLinkShortcut) {
+      if (options.onlinkshortcut) {
         bindings['Mod-k'] = () => {
-          options.onLinkShortcut?.();
+          options.onlinkshortcut?.();
           return true;
         };
       }
 
-      if (options.onCommentShortcut) {
+      if (options.oncommentshortcut) {
         bindings['Ctrl-Alt-c'] = () => {
-          options.onCommentShortcut?.();
+          options.oncommentshortcut?.();
           return true;
         };
       }

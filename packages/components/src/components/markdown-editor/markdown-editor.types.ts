@@ -63,7 +63,7 @@ export type MarkdownEditorProps = Omit<
   /** Called when selection changes (stub for DEP-39) */
   onselectionchange?: (selection: EditorSelection | null) => void;
   /** Called when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47) */
-  onCommentShortcut?: () => void;
+  oncommentshortcut?: () => void;
   /**
    * Additional Milkdown plugins to load.
    * Used for comment anchoring (DEP-39), decorations, and other extensions.

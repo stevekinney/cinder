@@ -276,14 +276,14 @@ describe('LoadMore', () => {
     });
   });
 
-  test('calls onError when onloadmore rejects', async () => {
+  test('calls onerror when onloadmore rejects', async () => {
     let seen: unknown;
     const { getByRole } = render(LoadMore, {
       props: {
         onloadmore: async () => {
           throw new Error('failed');
         },
-        onError: (error: unknown) => {
+        onerror: (error: unknown) => {
           seen = error;
         },
       },

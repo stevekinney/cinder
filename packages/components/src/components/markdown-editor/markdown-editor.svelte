@@ -85,7 +85,7 @@
     onready,
     onmodechange,
     onselectionchange,
-    onCommentShortcut,
+    oncommentshortcut,
     plugins = [],
     placeholderCompletion,
     placeholderDecoration,
@@ -460,7 +460,7 @@
       selectionVersion++;
       onselectionchange?.(selection);
     },
-    onLinkShortcut: () => {
+    onlinkshortcut: () => {
       // Mod-k pressed - open link popover with a virtual element anchor
       // derived from the current ProseMirror selection position. Capture the
       // current link range (as handleLinkClick does) so a subsequent Remove
@@ -470,7 +470,7 @@
       linkPopoverOpen = true;
     },
     // DEP-47: Comment shortcut (Ctrl-Alt-c)
-    onCommentShortcut: () => onCommentShortcut?.(),
+    oncommentshortcut: () => oncommentshortcut?.(),
   });
 
   // Track mode transitions to normalize content on switch (DEP-45).

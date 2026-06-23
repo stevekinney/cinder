@@ -60,12 +60,12 @@ const schema = {
         description: 'Called when the gate is dismissed.',
       },
       {
-        name: 'onFallbackAction',
+        name: 'onfallbackaction',
         reason: 'function-or-snippet',
         description: 'Called when the fallback action button is activated.',
       },
       {
-        name: 'onPrimaryAction',
+        name: 'onprimaryaction',
         reason: 'function-or-snippet',
         description: 'Called when the primary action button is activated.',
       },

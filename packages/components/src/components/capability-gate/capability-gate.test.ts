@@ -68,13 +68,13 @@ describe('CapabilityGate', () => {
     expect(button).not.toBeNull();
   });
 
-  test('calls onPrimaryAction when primary button is clicked', () => {
+  test('calls onprimaryaction when primary button is clicked', () => {
     let called = false;
     const { getByRole } = render(CapabilityGate, {
       feature: 'Microphone',
       state: 'permission-needed',
       primaryAction: 'Allow access',
-      onPrimaryAction: () => {
+      onprimaryaction: () => {
         called = true;
       },
     });

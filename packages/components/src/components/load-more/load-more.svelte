@@ -22,7 +22,7 @@
 
   let {
     onloadmore = async () => {},
-    onError,
+    onerror,
     hasMore = $bindable(true),
     loading = $bindable(false),
     root = null,
@@ -97,7 +97,7 @@
       }
     } catch (error) {
       errorState = true;
-      onError?.(error);
+      onerror?.(error);
     } finally {
       // Always clear the in-flight guard once the request settles, regardless of
       // whether the parent has flipped its own `loading` prop yet.

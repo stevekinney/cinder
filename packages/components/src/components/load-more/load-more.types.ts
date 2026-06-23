@@ -23,7 +23,7 @@ export type LoadMoreProps = {
   /** Maximum consecutive sentinel-triggered requests before auto-loading pauses. */
   maxRetries?: number;
   /** Notified when onloadmore throws or rejects. */
-  onError?: (error: unknown) => void;
+  onerror?: (error: unknown) => void;
   /** Custom class merged with `.cinder-load-more`. */
   class?: string;
 };

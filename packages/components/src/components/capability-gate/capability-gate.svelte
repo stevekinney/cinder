@@ -51,10 +51,10 @@
     state: stateProp,
     variant = 'inline',
     primaryAction,
-    onPrimaryAction,
+    onprimaryaction,
     fallbackAction,
     fallbackHref,
-    onFallbackAction,
+    onfallbackaction,
     dismissAction,
     ondismiss,
     children,
@@ -143,7 +143,7 @@
           <button
             type="button"
             class="cinder-capability-gate__primary"
-            onclick={onPrimaryAction}
+            onclick={onprimaryaction}
             aria-label="{primaryAction} for {feature}"
           >
             {primaryAction}
@@ -162,7 +162,7 @@
           <button
             type="button"
             class="cinder-capability-gate__fallback"
-            onclick={onFallbackAction}
+            onclick={onfallbackaction}
             aria-label="{fallbackAction} for {feature}"
           >
             {fallbackAction}

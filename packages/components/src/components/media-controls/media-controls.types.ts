@@ -4,7 +4,10 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type MediaControlsLayout = 'compact' | 'expanded';
 
 /** Props for the MediaControls component. */
-export type MediaControlsProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
+export type MediaControlsProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'class' | 'children' | 'onplay' | 'onpause'
+> & {
   /** Current playback state. @default "paused" */
   playing?: boolean;
   /** Show a replay action instead of play/pause when the track has ended. @default false */

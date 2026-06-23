@@ -67,8 +67,8 @@ export async function createEditor(
     changeDebounceMs = DEFAULT_DEBOUNCE_MS,
     onchange,
     onselectionchange,
-    onLinkShortcut,
-    onCommentShortcut,
+    onlinkshortcut,
+    oncommentshortcut,
     plugins = [],
     placeholderCompletion,
     placeholderDecoration,
@@ -152,8 +152,8 @@ export async function createEditor(
     .use(history)
     .use(
       createEditorKeymap({
-        ...(onLinkShortcut ? { onLinkShortcut } : {}),
-        ...(onCommentShortcut ? { onCommentShortcut } : {}),
+        ...(onlinkshortcut ? { onlinkshortcut } : {}),
+        ...(oncommentshortcut ? { oncommentshortcut } : {}),
       }),
     ) // DEP-37/47: Keyboard shortcuts
     .use(listener)

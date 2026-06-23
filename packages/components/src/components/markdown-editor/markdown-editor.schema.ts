@@ -60,7 +60,7 @@ const schema = {
         description: 'Called when content changes',
       },
       {
-        name: 'onCommentShortcut',
+        name: 'oncommentshortcut',
         reason: 'function-or-snippet',
         description: 'Called when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47)',
       },
