@@ -15,7 +15,16 @@ export type PinInputMode = 'numeric' | 'alphanumeric';
 export type PinInputProps = {
   /** Stable id used as the segment id prefix and as the hidden input id. */
   id: string;
-  /** Bindable code value. Defaults to an empty string. */
+  /**
+   * Bindable code value. Defaults to an empty string.
+   *
+   * **No write-back normalization.** The bound prop reflects exactly what the
+   * consumer set — it is NOT mutated back to the filtered/length-capped value.
+   * The displayed and submitted value is normalized via `$derived`, but the
+   * binding itself is left untouched. This is intentional: the consumer owns
+   * the source of truth, and silent mutation of a bound prop is a surprising
+   * side-effect.
+   */
   value?: string;
   /**
    * Number of segments to render. Normalized to an integer in `[1, 12]`;

@@ -220,6 +220,10 @@
     getJumpThreshold: () => jumpThreshold,
     onScrollStateChange: handleScrollStateChange,
     onReachBottom: () => {
+      // The sentinel fires when the user reaches the bottom via
+      // IntersectionObserver, which does not emit onScrollStateChange.
+      // Update the bindable prop here so it stays in sync with the sentinel path.
+      isAtBottom = true;
       if (unreadState.unreadCount > 0 || unreadState.hasNewMessageIndicator) {
         unreadState.markAllAsRead();
       }
@@ -227,7 +231,12 @@
   });
 
   const unreadState = useChatUnreadState({
-    onUnreadIndicatorChange: (event) => onunreadindicatorchange?.(event),
+    onUnreadIndicatorChange: (event) => {
+      // Update the bindable props at the mutation site rather than via a $effect.
+      unreadCount = event.unreadCount;
+      hasNewMessageIndicator = event.hasNewMessageIndicator;
+      onunreadindicatorchange?.(event);
+    },
   });
 
   const keyboardNav = useChatKeyboardNav({
@@ -468,25 +477,6 @@
   });
 
   // ==========================================================================
-  // Sync Bindable Props with Helper State
-  // ==========================================================================
-
-  // Sync isAtBottom from scrollState to bindable prop
-  $effect(() => {
-    isAtBottom = scrollState.isAtBottom;
-  });
-
-  // Sync unreadCount from unreadState to bindable prop
-  $effect(() => {
-    unreadCount = unreadState.unreadCount;
-  });
-
-  // Sync hasNewMessageIndicator from unreadState to bindable prop
-  $effect(() => {
-    hasNewMessageIndicator = unreadState.hasNewMessageIndicator;
-  });
-
-  // ==========================================================================
   // Scroll Anchoring via $effect.pre
   // ==========================================================================
 
@@ -648,6 +638,9 @@
     scrollHeight: number;
   }): void {
     clearHistoryAnchorAfterScroll(event.scrollTop);
+
+    // Update the bindable prop at the mutation site rather than via a $effect.
+    isAtBottom = event.isAtBottom;
 
     onscrollstatechange?.(event);
   }
@@ -872,8 +865,13 @@
       () => onsubmit?.({ message, attachments }),
     );
 
-    // Auto-scroll after sending
+    // Auto-scroll after sending.
+    // Also update the bindable prop so the parent binding reflects the new
+    // isAtBottom=true state immediately — scrollState.setIsAtBottom() only
+    // updates the internal helper state; the bindable must be written explicitly
+    // (matching the pattern in handleScrollStateChange and onReachBottom).
     scrollState.setIsAtBottom(true);
+    isAtBottom = true;
     tick().then(() => {
       if (isVirtualized) {
         chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });

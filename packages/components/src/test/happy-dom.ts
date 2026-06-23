@@ -51,6 +51,23 @@ function alignElementRemoveWithChildNodeSpec(happyWindow: Window): void {
       originalFn.call(this);
     } catch (error) {
       if (error instanceof Error && error.message.includes('not a child of this node')) {
+        // happy-dom bug: removeChild fails even when the element is in
+        // parent.childNodes and parent.contains(this) is true. This happens
+        // when a sibling insertion (e.g. anchor.before(newNode)) corrupts the
+        // internal parent-child tracking, causing removeChild to lose the
+        // reference even though childNodes still lists it.
+        //
+        // Workaround: move the element into a detached DocumentFragment, which
+        // goes through appendChild's code path rather than removeChild's broken
+        // one, effectively detaching it from the live DOM without needing
+        // removeChild to succeed.
+        try {
+          document.createDocumentFragment().appendChild(this);
+        } catch {
+          // If appendChild also fails (unlikely), there is nothing more to do.
+          // The element may remain in the DOM; this is a pre-existing happy-dom
+          // limitation.
+        }
         return;
       }
       throw error;

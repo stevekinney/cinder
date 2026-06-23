@@ -11,7 +11,7 @@ const schema = {
     value: {
       type: 'number',
       description:
-        'Bindable rating value. `0` represents an unrated state. External values\nare clamped into `[0, count]` and snapped to the nearest precision step.',
+        'Bindable rating value. `0` represents an unrated state. External values\nare clamped into `[0, count]` and snapped to the nearest precision step.\n\n**No write-back normalization.** The bound prop reflects exactly what the\nconsumer set — it is NOT mutated back to the clamped/snapped value. The\ndisplayed and submitted value is normalized via `$derived`, but the binding\nitself is left untouched. This is intentional: the consumer owns the source\nof truth, and silent mutation of a bound prop is a surprising side-effect.',
     },
     count: {
       type: 'number',

@@ -10,7 +10,8 @@ const schema = {
     },
     value: {
       type: 'string',
-      description: 'Bindable code value. Defaults to an empty string.',
+      description:
+        'Bindable code value. Defaults to an empty string.\n\n**No write-back normalization.** The bound prop reflects exactly what the\nconsumer set — it is NOT mutated back to the filtered/length-capped value.\nThe displayed and submitted value is normalized via `$derived`, but the\nbinding itself is left untouched. This is intentional: the consumer owns\nthe source of truth, and silent mutation of a bound prop is a surprising\nside-effect.',
     },
     length: {
       type: 'number',

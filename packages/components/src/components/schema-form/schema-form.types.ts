@@ -23,7 +23,16 @@ export type SchemaFormProps<Schema extends SchemaFormSchema = SchemaFormSchema> 
 > & {
   /** JSON Schema object or Standard Schema object used to render and validate the form. */
   schema: Schema;
-  /** Initial form value. Missing fields are seeded from the schema where possible. */
+  /**
+   * Initial form value. Missing fields are seeded from the schema where possible.
+   *
+   * **Seed-only — value changes do not reset form state.** After mount the
+   * consumer owns the form state. Changing `value` with the same `schema` does
+   * NOT reset the form (formValue, errors, rawDrafts). Only changing `schema`
+   * causes a remount and resets form state. This is intentional: the form is an
+   * editing surface and resetting it on every external value change would
+   * silently discard in-progress user edits.
+   */
   value?: unknown;
   /** Name of the hidden serialized output field. Defaults to `value`. */
   name?: string;

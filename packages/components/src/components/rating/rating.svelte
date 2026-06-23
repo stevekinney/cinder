@@ -79,14 +79,6 @@
 
   const resolvedValue = $derived(snapToOption(value ?? 0));
 
-  // Mirror normalized value back onto the prop without firing onchange so
-  // consumers always see a normalized number even when they pass garbage in.
-  $effect(() => {
-    if (resolvedValue !== value) {
-      value = resolvedValue;
-    }
-  });
-
   let hoverValue = $state<number | null>(null);
   const displayValue = $derived(hoverValue ?? resolvedValue);
 

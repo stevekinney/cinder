@@ -809,3 +809,165 @@ describe('SchemaForm — composed-control regressions', () => {
     expect(submitted).toEqual([{ enabled: false }]);
   });
 });
+
+describe('SchemaForm — schema-change resets form state; value is seed-only', () => {
+  afterEach(() => cleanup());
+
+  test('changing schema resets formValue, errors, and rendered fields', async () => {
+    // Regression: {#key schema} in the OLD code only reconciled the DOM — it did
+    // NOT reset the $state variables (formValue, errors, rawDrafts, arrayKeys)
+    // because they lived in the component script scope, which persists across
+    // key-block remounts. The fix extracts those into a child component so the
+    // key-block genuinely recreates $state.
+
+    const schema1 = {
+      type: 'object',
+      properties: { name: { type: 'string', title: 'Name' } },
+      required: ['name'],
+    };
+    const schema2 = {
+      type: 'object',
+      properties: {
+        email: { type: 'string', title: 'Email' },
+        age: { type: 'integer', title: 'Age' },
+      },
+      required: ['email'],
+    };
+
+    const { rerender, container } = render(SchemaForm, {
+      props: {
+        schema: schema1 as never,
+        value: { name: 'Ada' },
+      },
+    });
+    await flush();
+
+    // Scope queries to THIS render's container, not the global `screen`
+    // (which searches all of document.body and can see prior leaked renders).
+    const view = within(container);
+
+    // Schema 1 renders a Name field seeded with 'Ada'.
+    const nameField = view.getByLabelText(/Name/);
+    expect(nameField).toBeInstanceOf(HTMLInputElement);
+    const nameInput = nameField as HTMLInputElement;
+    expect(nameInput.value).toBe('Ada');
+
+    // Simulate user editing.
+    await fireEvent.input(nameInput, { target: { value: 'Grace' } });
+    expect(nameInput.value).toBe('Grace');
+
+    // Switch to schema2. The form should reset: Name field gone, Email + Age appear,
+    // and form state (formValue, errors) reset to the new schema's initial state.
+    await rerender({ schema: schema2 as never });
+    await flush();
+
+    // Old field is gone. SchemaForm labels fields via <label for>, so query by
+    // the accessible label (queryByLabelText returns null when absent) rather
+    // than an aria-label selector that would never match regardless.
+    expect(view.queryByLabelText(/Name/)).toBeNull();
+
+    // New fields appear.
+    const emailField = view.getByLabelText(/Email/);
+    const ageInput = view.getByRole('textbox', { name: /Age/ });
+    expect(emailField).toBeInstanceOf(HTMLInputElement);
+    expect(ageInput).toBeTruthy();
+    const emailInput = emailField as HTMLInputElement;
+
+    // formValue reset: new fields start empty (or schema-seeded), not carrying
+    // stale values from schema1.
+    expect(emailInput.value).toBe('');
+  });
+
+  test('changing value with same schema does NOT reset form state (seed-only contract)', async () => {
+    // The value prop is a seed: the consumer owns form state after mount.
+    // Changing value externally must NOT reset in-progress user edits — that
+    // would silently discard work-in-progress, which is worse than a stale binding.
+
+    const schema = {
+      type: 'object',
+      properties: { name: { type: 'string', title: 'Name' } },
+      required: ['name'],
+    };
+
+    const { rerender } = render(SchemaForm, {
+      props: {
+        schema: schema as never,
+        value: { name: 'Initial' },
+      },
+    });
+    await flush();
+
+    const nameField = screen.getByLabelText(/Name/);
+    expect(nameField).toBeInstanceOf(HTMLInputElement);
+    const nameInput = nameField as HTMLInputElement;
+    expect(nameInput.value).toBe('Initial');
+
+    // User edits the field.
+    await fireEvent.input(nameInput, { target: { value: 'User edit' } });
+    expect(nameInput.value).toBe('User edit');
+
+    // Consumer changes the value prop externally (same schema) — e.g. the parent
+    // refetches data. The form should NOT reset to the new value because the user
+    // has in-progress edits.
+    await rerender({ schema: schema as never, value: { name: 'Server update' } });
+    await flush();
+
+    // User edit is preserved — value prop change did not reset formValue.
+    expect(nameInput.value).toBe('User edit');
+  });
+});
+
+describe('SchemaForm — initialization without write-back $effect', () => {
+  afterEach(() => cleanup());
+
+  test('initial value populates the form without triggering onsubmit via $effect', async () => {
+    // Regression: the old code ran a $effect on schema change that set formValue,
+    // errors, rawDrafts, and arrayKeys, which could cause reactive-loop risk.
+    // The replacement computes initial state once at script time and uses {#key schema}
+    // for schema changes, so no $effect write-back occurs.
+    const submitted: unknown[] = [];
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { label: { type: 'string', title: 'Label' } },
+          required: ['label'],
+        },
+        value: { label: 'hello' },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    // The initial value is present in the form — initialization worked.
+    const labelInput = screen.getByRole('textbox', { name: /Label/ });
+    expect(labelInput).toBeInstanceOf(HTMLInputElement);
+    expect((labelInput as HTMLInputElement).value).toBe('hello');
+    // onsubmit was NOT called during initialization.
+    expect(submitted).toHaveLength(0);
+
+    // Submitting yields the initialized value.
+    await submit(formFrom(container));
+    expect(submitted).toEqual([{ label: 'hello' }]);
+  });
+
+  test('schema-form source does not use a broad $effect to reinitialize formValue on schema change', async () => {
+    // Regression: detect if the removed initialization $effect is re-introduced.
+    const { resolve } = await import('node:path');
+    const source = await Bun.file(resolve(import.meta.dir, 'schema-form.svelte')).text();
+
+    // The old pattern initialized by writing to formValue, rawDrafts, and
+    // arrayKeys inside a single $effect that tracked schema (via model.field).
+    // Ensure none of the removed write-back assignments appear in an $effect context.
+    // Specifically: the old $effect body set all four state vars unconditionally.
+    // We test for the removal of the combined write-back pattern.
+    expect(source).not.toContain('formValue = nextValue');
+    expect(source).not.toContain('rawDrafts = seedRawDrafts(model.field, nextValue)');
+    expect(source).not.toContain('arrayKeys = seedArrayKeys(model.field, nextValue)');
+
+    // The replacement: {#key schema} should be present in the template to handle remount.
+    expect(source).toContain('{#key schema}');
+  });
+});

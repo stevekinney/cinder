@@ -786,3 +786,60 @@ describe('Autocomplete — each-key behavior', () => {
     }
   });
 });
+
+describe('Autocomplete — active-index clamping via $derived (no write-back $effect)', () => {
+  test('first enabled option is auto-selected when suggestions arrive', async () => {
+    // Regression: the old code used a $effect that called clampActiveIndex on
+    // every renderedSuggestions change. It is replaced by a $derived activeIndex
+    // that auto-clamps from enabledIndexes without a write-back effect.
+    const { promise: pending, resolve: resolveRequest } = deferred<Suggestion[]>();
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'ac-clamp',
+        minQueryLength: 1,
+        suggestionSource: () => pending,
+      },
+    });
+
+    const input = getInput(container);
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'a' } });
+
+    // Resolve with a disabled first option so clamping must skip to second.
+    resolveRequest([
+      { value: 'apple', label: 'Apple', disabled: true },
+      { value: 'apricot', label: 'Apricot' },
+    ]);
+
+    await waitFor(() => {
+      const options = getOptions();
+      expect(options).toHaveLength(2);
+      // The first enabled option (apricot, index 1) must be aria-selected.
+      expect(options[1]?.getAttribute('aria-selected')).toBe('true');
+    });
+  });
+
+  test('active index falls back to null when all suggestions are disabled', async () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'ac-all-disabled',
+        minQueryLength: 1,
+        suggestionSource: () => [
+          { value: 'apple', disabled: true },
+          { value: 'apricot', disabled: true },
+        ],
+      },
+    });
+
+    const input = getInput(container);
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'a' } });
+
+    await waitFor(() => {
+      const options = getOptions();
+      expect(options.every((option) => option.getAttribute('aria-selected') === 'false')).toBe(
+        true,
+      );
+    });
+  });
+});

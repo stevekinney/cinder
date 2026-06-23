@@ -1,16 +1,18 @@
 /**
- * Regression tests for image-lightbox scroll-lock integration and
- * reduced-motion behavior.
+ * Regression tests for image-lightbox scroll-lock integration, reduced-motion
+ * behavior, and index reset.
  *
- * These tests verify that the lightbox uses `createBodyScrollLock()` (the
- * counted factory that delegates to `lockBodyScroll()` in `_internal/overlay`)
- * rather than a plain `overflow: hidden` assignment that would bypass the
- * global counter and prematurely restore scroll when nested overlays close.
- *
- * They also verify the reduced-motion contract: the lightbox derives its
- * `fade` transition duration from `useReducedMotion()` so that the JS-driven
- * transition (which is NOT affected by CSS `@media (prefers-reduced-motion)`)
- * collapses to zero for users who have opted out of motion.
+ * These tests verify that:
+ * - the lightbox uses `createBodyScrollLock()` (the counted factory that
+ *   delegates to `lockBodyScroll()` in `_internal/overlay`) rather than a
+ *   plain `overflow: hidden` assignment that would bypass the global counter
+ *   and prematurely restore scroll when nested overlays close.
+ * - the lightbox derives its `fade` transition duration from `useReducedMotion()`
+ *   so that the JS-driven transition (which is NOT affected by CSS
+ *   `@media (prefers-reduced-motion)`) collapses to zero for users who have
+ *   opted out of motion.
+ * - currentIndex resets to initialIndex when the lightbox reopens without
+ *   using a previousOpen $state + $effect write-back pattern.
  */
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -23,7 +25,12 @@ import { createBodyScrollLock } from '../../../utilities/attachments.ts';
 
 const source = readFileSync(resolve(import.meta.dir, 'image-lightbox.svelte'), 'utf8');
 
+// setupHappyDom() MUST run before any @testing-library/svelte import because
+// testing-library reads globalThis.document/window at module-init time.
 setupHappyDom();
+
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
+const { default: ImageLightbox } = await import('./image-lightbox.svelte');
 
 beforeEach(() => {
   _resetScrollLock();
@@ -66,6 +73,86 @@ describe('image-lightbox source contract', () => {
     expect(source).toContain('transition:fade={{ duration: fadeDuration }}');
     // Ensure the original hardcoded literal is gone.
     expect(source).not.toContain('transition:fade={{ duration: 150 }}');
+  });
+
+  test('does not use previousOpen $state + $effect write-back to reset currentIndex', () => {
+    // Regression: the old code used `let previousOpen = $state(false)` plus an
+    // $effect that wrote `previousOpen = open` (state write-back) to detect the
+    // opening transition. The idiomatic replacement uses a $derived `effectiveIndex`
+    // that falls back to `clampedInitialIndex` when no user navigation has occurred,
+    // and resets `navigationIndex` explicitly in close().
+    expect(source).not.toContain('previousOpen = $state(false)');
+    expect(source).not.toContain('previousOpen = open');
+    // The replacement: navigationIndex (null → clampedInitialIndex fallback) should be present.
+    expect(source).toContain('navigationIndex');
+    expect(source).toContain('clampedInitialIndex');
+    expect(source).toContain('effectiveIndex');
+  });
+});
+
+describe('image-lightbox — behavioral reset on reopen', () => {
+  afterEach(() => {
+    cleanup();
+    document.body.replaceChildren();
+    _resetScrollLock();
+  });
+
+  const images = [
+    { src: '/a.jpg', alt: 'Image A' },
+    { src: '/b.jpg', alt: 'Image B' },
+    { src: '/c.jpg', alt: 'Image C' },
+  ];
+
+  test('displayed index resets to initialIndex after close and reopen', async () => {
+    // Regression: the old code used `let previousOpen = $state(false)` + a
+    // $effect that wrote `previousOpen = open` to detect the open transition.
+    // The fix: navigationIndex = $state(null) + effectiveIndex = $derived(
+    // navigationIndex ?? clampedInitialIndex). close() resets navigationIndex
+    // to null so the next open starts fresh at initialIndex.
+
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+
+    // Initial render: shows image A (index 0).
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+    expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('1 of 3');
+
+    // Navigate forward twice → now on image C (index 2).
+    await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
+    await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
+    expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('3 of 3');
+
+    // Close the lightbox.
+    await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
+    expect(container.querySelector('.lightbox-overlay')).toBeNull();
+
+    // Reopen: must reset to initialIndex (0 → image A), NOT stay on image C.
+    await rerender({ images, initialIndex: 0, open: true });
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+    expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('1 of 3');
+  });
+
+  test('displayed index resets to a non-zero initialIndex after close and reopen', async () => {
+    // Verify the reset works correctly when initialIndex is not 0.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 1, open: true },
+    });
+
+    // Initial render: shows image B (index 1).
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
+
+    // Navigate to image C.
+    await fireEvent.click(container.querySelector('[aria-label="Next image"]')!);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
+
+    // Close and reopen with the same initialIndex=1.
+    await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
+    await rerender({ images, initialIndex: 1, open: true });
+
+    // Must reset to initialIndex=1 (image B), not stay on image C.
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
   });
 });
 
