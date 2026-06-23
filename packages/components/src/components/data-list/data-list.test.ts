@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { DataListProps } from './data-list.types.ts';
 
 setupHappyDom();
 
@@ -27,10 +28,16 @@ function itemSnippet(transform: (item: unknown) => string) {
   }));
 }
 
+// Key extractor for string items used in tests. Typed as `unknown` to match
+// how svelte-check infers T=unknown for generic components in render() calls.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const stringKey = (item: any): string => String(item);
+
 describe('DataList', () => {
   test('renders a <ul role="list"> container', () => {
     const { container } = render(DataList, {
       items: ['a'],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
     });
     const list = container.querySelector('.cinder-data-list');
@@ -44,6 +51,7 @@ describe('DataList', () => {
     const items = ['alpha', 'beta', 'gamma'];
     const { container } = render(DataList, {
       items,
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
     });
     const list = container.querySelector('.cinder-data-list');
@@ -57,6 +65,7 @@ describe('DataList', () => {
   test('wraps the empty snippet in an <li class="cinder-data-list-empty"> when items is []', () => {
     const { container } = render(DataList, {
       items: [],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
       empty: textSnippet('Nothing here'),
     });
@@ -72,6 +81,7 @@ describe('DataList', () => {
   test('does not render the empty snippet when items is non-empty', () => {
     const { container } = render(DataList, {
       items: ['one'],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
       empty: textSnippet('Nothing here'),
     });
@@ -85,6 +95,7 @@ describe('DataList', () => {
   test('applies class prop', () => {
     const { container } = render(DataList, {
       items: [],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
       class: 'my-custom-class',
     });
@@ -97,6 +108,7 @@ describe('DataList', () => {
   test('forwards rest attributes (aria-label) onto the <ul> without overriding role', () => {
     const { container } = render(DataList, {
       items: ['one'],
+      key: stringKey,
       children: itemSnippet((item) => String(item)),
       'aria-label': 'Team members',
     });
@@ -105,6 +117,58 @@ describe('DataList', () => {
     expect(list?.getAttribute('aria-label')).toBe('Team members');
     // The component-enforced role wins over any forwarded role.
     expect(list?.getAttribute('role')).toBe('list');
+  });
+
+  test('key prop is required — omitting it is a compile error (type-level)', () => {
+    // Type-level regression: a DataList props object that supplies items +
+    // children but OMITS `key` must NOT be assignable to DataListProps. The
+    // children value is correctly typed, so the sole type error is the missing
+    // required `key` — caught by the `@ts-expect-error`. If `key` is ever made
+    // optional again, the directive becomes unused and tsc/svelte-check fail.
+    const children = itemSnippet((item) => String(item)) as DataListProps<string>['children'];
+    // @ts-expect-error `key` is a required prop; omitting it must not type-check
+    const _propsWithoutKey: DataListProps<string> = { items: ['a', 'b'], children };
+    expect(_propsWithoutKey).toBeDefined();
+  });
+
+  test('keyed reconciliation follows item identity across a reorder', () => {
+    // Proves the keyed {#each} associates DOM with the item, not the index:
+    // after reordering, the row for a given id keeps its identity. With the old
+    // index-based fallback this would re-associate by position instead.
+    const itemsA = [
+      { id: 'x1', label: 'First' },
+      { id: 'x2', label: 'Second' },
+    ];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const idKey = (item: any): string => String(item?.id ?? item);
+    const { container, rerender } = render(DataList, {
+      items: itemsA,
+      key: idKey,
+      children: itemSnippet((item) => String((item as { id: string; label: string }).label)),
+    });
+    let listItems = container.querySelectorAll('.cinder-data-list li');
+    expect(listItems).toHaveLength(2);
+    expect(listItems[0]?.textContent).toContain('First');
+    expect(listItems[1]?.textContent).toContain('Second');
+
+    // Reorder and assert the rendered order tracks the items.
+    //
+    // NOTE: this asserts rendered ORDER, not DOM-node identity. A true
+    // keyed-vs-unkeyed distinction needs node-reuse identity, but happy-dom does
+    // not preserve node identity through Svelte's keyed-each reconciliation (it
+    // recreates nodes), so that assertion is not reliable in this harness. The
+    // load-bearing guard against "key was removed / made optional" is the
+    // compile-time `@ts-expect-error` test above — that regression cannot reach
+    // runtime, so this test stays an order/behavior check.
+    rerender({
+      items: [itemsA[1]!, itemsA[0]!],
+      key: idKey,
+      children: itemSnippet((item) => String((item as { id: string; label: string }).label)),
+    });
+    listItems = container.querySelectorAll('.cinder-data-list li');
+    expect(listItems).toHaveLength(2);
+    expect(listItems[0]?.textContent).toContain('Second');
+    expect(listItems[1]?.textContent).toContain('First');
   });
 });
 

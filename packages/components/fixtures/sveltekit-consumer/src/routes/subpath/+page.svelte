@@ -60,7 +60,7 @@
   </section>
 
   <section aria-label="DataList">
-    <DataList items={[1, 2, 3]}>
+    <DataList items={[1, 2, 3]} key={(item) => item}>
       {#snippet children(item)}<li>{item}</li>{/snippet}
     </DataList>
   </section>

@@ -13,20 +13,16 @@ export type DataListProps<T> = Omit<
   /** The records to render. Each is passed to `children`. */
   items: T[];
   /**
-   * Key extractor for efficient DOM updates. Svelte uses this to identify each
-   * row when the list is reordered, filtered, or updated — without it, rows are
-   * matched by index and the wrong row instances may receive updated props.
-   *
-   * Strongly recommended for any list that can change after initial render:
+   * Key extractor for stable DOM reconciliation. Svelte uses this to identify
+   * each row when the list is reordered, filtered, or updated. Without a key,
+   * rows are matched by index and the wrong row instances may receive updated
+   * props, causing O(n) churn and incorrect rendering.
    *
    * ```svelte
    * <DataList {items} key={(m) => m.id}>
    * ```
-   *
-   * Omit only for truly static, never-reordered lists (e.g. a fixed reference
-   * list). When omitted, Svelte falls back to index-based reconciliation.
    */
-  key?: (item: T) => string | number;
+  key: (item: T) => string | number;
   /**
    * List-level density inherited by StackedListItem rows that do not set their
    * own `density` prop. Omit to let each row use its own default. A per-row
