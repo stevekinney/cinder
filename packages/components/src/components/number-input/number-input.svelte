@@ -311,6 +311,20 @@
           ? roundToPrecision(value * 100, 12)
           : value,
   );
+  const resolvedAriaValueMin = $derived(
+    Number.isFinite(resolvedMin)
+      ? format?.style === 'percent'
+        ? roundToPrecision(resolvedMin * 100, 12)
+        : resolvedMin
+      : undefined,
+  );
+  const resolvedAriaValueMax = $derived(
+    Number.isFinite(resolvedMax)
+      ? format?.style === 'percent'
+        ? roundToPrecision(resolvedMax * 100, 12)
+        : resolvedMax
+      : undefined,
+  );
 
   function onFocus() {
     // Preserve the editor buffer when re-focusing after a malformed blur so
@@ -543,8 +557,8 @@
       aria-invalid={resolvedAriaInvalid}
       aria-describedby={describedBy}
       aria-valuenow={resolvedAriaValueNow}
-      aria-valuemin={Number.isFinite(resolvedMin) ? resolvedMin : undefined}
-      aria-valuemax={Number.isFinite(resolvedMax) ? resolvedMax : undefined}
+      aria-valuemin={resolvedAriaValueMin}
+      aria-valuemax={resolvedAriaValueMax}
       oninput={onInput}
       onfocus={onFocus}
       onblur={onBlur}

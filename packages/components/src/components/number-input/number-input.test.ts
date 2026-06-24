@@ -711,6 +711,8 @@ describe('Validity and a11y wiring', () => {
       props: {
         id: 'n',
         value: 0.5,
+        min: 0,
+        max: 1,
         locale: 'en-US',
         format: { style: 'percent' },
       },
@@ -719,6 +721,8 @@ describe('Validity and a11y wiring', () => {
 
     expect(input.value).toBe('50%');
     expect(input.getAttribute('aria-valuenow')).toBe('50');
+    expect(input.getAttribute('aria-valuemin')).toBe('0');
+    expect(input.getAttribute('aria-valuemax')).toBe('100');
 
     await focus(input);
     await type(input, '75');
