@@ -19,6 +19,7 @@
   import type { ContextMenuProps } from './context-menu.types.ts';
   import type { VirtualElement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { captureFocus } from '../../_internal/overlay.ts';
   import { isRightToLeftElement } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -49,6 +50,7 @@
   let requestedX = $state(0);
   let requestedY = $state(0);
   let previouslyOpen = false;
+  const localeContext = getLocaleContext();
 
   function setOpen(nextOpen: boolean) {
     if (open === nextOpen) return;
@@ -109,7 +111,10 @@
     open: () => open,
     anchor: () => virtualReference,
     panel: () => menuElement,
-    placement: () => (isRightToLeftElement(triggerElement) ? 'left-start' : 'right-start'),
+    placement: () =>
+      localeContext?.direction === 'rtl' || isRightToLeftElement(triggerElement)
+        ? 'left-start'
+        : 'right-start',
     offset: () => 0,
     widthMode: () => 'menu',
   });

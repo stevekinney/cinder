@@ -8,8 +8,6 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: TimeField } = await import('./time-field.svelte');
-const { default: LocaleProviderFixture } =
-  await import('../../test/fixtures/time-field-locale-provider-fixture.svelte');
 
 afterEach(() => {
   cleanup();
@@ -64,23 +62,64 @@ describe('TimeField', () => {
     expect(changes[0]?.value).toBe('10:45:30');
   });
 
-  test('period select converts the canonical 24-hour value', async () => {
+  test('wires description, error, invalid, and required state to the time input', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        description: 'Used for reminders.',
+        error: 'Choose a valid time.',
+        required: true,
+      },
+    });
+
+    const input = getInput(container);
+    expect(input.getAttribute('aria-describedby')).toBe('reminder-description reminder-error');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.required).toBe(true);
+    expect(container.querySelector('#reminder-description')?.textContent).toBe(
+      'Used for reminders.',
+    );
+    expect(container.querySelector('#reminder-error')?.textContent).toBe('Choose a valid time.');
+  });
+
+  test('disabled state disables both time and timezone controls', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        disabled: true,
+        timezones: ['America/Denver', 'UTC'],
+      },
+    });
+
+    expect(getInput(container).disabled).toBe(true);
+    expect(
+      container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')?.disabled,
+    ).toBe(true);
+  });
+
+  test('readonly state prevents emitted input and timezone changes', async () => {
     const changes: TimeFieldChange[] = [];
     const { container } = render(TimeField, {
       props: {
         id: 'reminder',
         label: 'Reminder time',
-        hourCycle: 'h12',
         value: '09:30',
+        readonly: true,
+        timezones: ['America/Denver', 'UTC'],
         onchange: (detail: TimeFieldChange) => changes.push(detail),
       },
     });
 
-    const period = container.querySelector<HTMLSelectElement>('.cinder-time-field__period')!;
-    expect(period.value).toBe('AM');
-    await fireEvent.change(period, { target: { value: 'PM' } });
+    const timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    expect(getInput(container).readOnly).toBe(true);
+    expect(timezone.disabled).toBe(true);
 
-    expect(changes[0]?.value).toBe('21:30');
+    await fireEvent.change(getInput(container), { target: { value: '10:45' } });
+    expect(changes).toEqual([]);
   });
 
   test('timezone select updates bindable timezone and emits detail', async () => {
@@ -102,9 +141,9 @@ describe('TimeField', () => {
     expect(changes[0]).toEqual({ value: '09:30', timezone: 'UTC' });
   });
 
-  test('uses LocaleProvider to resolve the default hour cycle', () => {
-    const { container } = render(LocaleProviderFixture, {
-      props: { locale: 'de-DE' },
+  test('does not render a second period control around the native time input', () => {
+    const { container } = render(TimeField, {
+      props: { id: 'reminder', label: 'Reminder time', value: '09:30' },
     });
 
     expect(container.querySelector('.cinder-time-field__period')).toBeNull();

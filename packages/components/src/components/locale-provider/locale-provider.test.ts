@@ -39,4 +39,12 @@ describe('LocaleProvider', () => {
     expect(container.querySelector<HTMLInputElement>('#localized-number')?.value).toBe('1,234.5');
     expect(container.querySelector('select')?.textContent).toContain('United States +1');
   });
+
+  test('provides text direction to direction-aware descendants', () => {
+    const { container } = render(LocaleProviderFixture, {
+      props: { locale: 'ar', direction: 'rtl' },
+    });
+
+    expect(container.querySelector('.cinder-slider')?.getAttribute('dir')).toBe('rtl');
+  });
 });

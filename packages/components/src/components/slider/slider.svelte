@@ -25,6 +25,7 @@
   import type { SliderProps, SliderValue } from './slider.types.ts';
   import { untrack } from 'svelte';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { isRightToLeftElement } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
@@ -47,7 +48,9 @@
   }: SliderProps = $props();
 
   const formField = getFormFieldContext();
+  const localeContext = getLocaleContext();
   const disabled = $derived(disabledProp || (formField?.disabled ?? false));
+  const direction = $derived(localeContext?.direction);
 
   // Guarantee a usable step. `0`, `NaN`, and negative values would let the
   // tick generator loop forever, so fall back to `1`. Keep the derived pure — the
@@ -407,6 +410,7 @@
 <div
   class={classNames('cinder-slider', isRange && 'cinder-slider--range', className)}
   data-cinder-disabled={disabled || undefined}
+  dir={direction}
 >
   {#if isRange}
     <span id={lowQualifierId} class="cinder-sr-only">

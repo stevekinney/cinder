@@ -787,7 +787,6 @@ export type { TextareaProps } from './components/textarea/index.ts';
 
 export { default as TimeField } from './components/time-field/index.ts';
 export type {
-  HourCycle,
   TimeFieldChange,
   TimeFieldGranularity,
   TimeFieldProps,

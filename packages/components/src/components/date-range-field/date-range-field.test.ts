@@ -82,6 +82,18 @@ describe('DateRangeField', () => {
       expect(getEndInput(container).step).toBe('1');
     });
 
+    test('sets hour-level datetime step for hour granularity', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'hour',
+      });
+
+      expect(getStartInput(container).type).toBe('datetime-local');
+      expect(getEndInput(container).type).toBe('datetime-local');
+      expect(getStartInput(container).step).toBe('3600');
+      expect(getEndInput(container).step).toBe('3600');
+    });
+
     test('renders a visible label when label prop is provided', () => {
       const { container } = render(DateRangeField, { id: 'drf', label: 'Time window' });
       const legend = container.querySelector('.cinder-date-range-field__legend');

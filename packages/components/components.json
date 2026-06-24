@@ -4669,7 +4669,7 @@
       "exportName": "TimeField",
       "category": "form",
       "status": "stable",
-      "purpose": "Standalone time-of-day field that collects a canonical time string with locale-aware hour-cycle defaults and optional timezone selection.",
+      "purpose": "Standalone time-of-day field that collects a canonical time string with optional timezone selection.",
       "tags": ["form", "time", "internationalization"],
       "useWhen": [
         "Collecting a time of day without a date, such as a reminder time or office-hours boundary.",

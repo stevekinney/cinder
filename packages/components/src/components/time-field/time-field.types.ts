@@ -1,9 +1,5 @@
 import type { HTMLAttributes } from 'svelte/elements';
 
-import type { HourCycle } from '../../_internal/time-parts.ts';
-
-export type { HourCycle } from '../../_internal/time-parts.ts';
-
 export type TimeFieldGranularity = 'minute' | 'second';
 
 export type TimeFieldChange = {
@@ -23,10 +19,6 @@ export type TimeFieldProps = Omit<
   value?: string;
   /** Initial canonical time string used when the component is not controlled. */
   defaultValue?: string;
-  /** BCP 47 locale used to resolve the default hour cycle. */
-  locale?: string;
-  /** Explicit hour cycle. Defaults from the locale, then `h12`. */
-  hourCycle?: HourCycle;
   /** Time precision. Defaults to minute precision. */
   granularity?: TimeFieldGranularity;
   /** Optional timezone select values, such as `America/Denver` or `UTC`. */
@@ -57,8 +49,6 @@ export interface TimeFieldSchemaProps {
   id: string;
   value?: string;
   defaultValue?: string;
-  locale?: string;
-  hourCycle?: HourCycle;
   granularity?: TimeFieldGranularity;
   timezones?: readonly string[];
   timezone?: string | undefined;

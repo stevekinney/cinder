@@ -29,6 +29,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
 
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { isRightToLeftElement } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { DropdownContext } from '../dropdown/dropdown.types.ts';
@@ -76,6 +77,7 @@
   let openSubmenuKey = $state<string | null>(null);
   let initialFocus = $state<'first' | 'last' | 'none' | undefined>(undefined);
   let suppressSubmenuFocusOpen = false;
+  const localeContext = getLocaleContext();
   const menuElements = new Map<string, HTMLElement>();
 
   const enabledIndexes = $derived(
@@ -249,7 +251,10 @@
   function submenuFallbackPlacement(
     submenuTriggerId: string,
   ): DropdownContext['fallbackPlacement'] {
-    return isRightToLeftElement(findElementById(submenuTriggerId)) ? 'left-start' : 'right-start';
+    return localeContext?.direction === 'rtl' ||
+      isRightToLeftElement(findElementById(submenuTriggerId))
+      ? 'left-start'
+      : 'right-start';
   }
 
   function makeMenuRegister(menuId: string): (element: HTMLElement | null) => void {

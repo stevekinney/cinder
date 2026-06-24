@@ -13,12 +13,6 @@ const schema = {
     defaultValue: {
       type: 'string',
     },
-    locale: {
-      type: 'string',
-    },
-    hourCycle: {
-      enum: ['h11', 'h12', 'h23', 'h24'],
-    },
     granularity: {
       enum: ['minute', 'second'],
     },
