@@ -87,14 +87,14 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('25');
   });
 
-  test('server rendering uses provider direction before local DOM is available', async () => {
+  test('server rendering omits provider direction until local DOM can be checked', async () => {
     const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE, {
       localDirection: undefined,
       providerDirection: 'rtl',
     });
     const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
 
-    expect(sliderTag).toContain('dir="rtl"');
+    expect(sliderTag).not.toContain('dir=');
   });
 
   test('server rendering still includes local direction wrappers', async () => {
@@ -105,6 +105,7 @@ describe('Slider (single)', () => {
 
     expect(sliderTag).not.toBe('');
     expect(html).toContain('dir="ltr"');
+    expect(sliderTag).not.toContain('dir=');
   });
 
   test('ArrowUp / ArrowDown also adjust by step', async () => {

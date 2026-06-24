@@ -338,6 +338,21 @@ describe('DateRangeField', () => {
       expect(changes[0]?.end).toBe('2026-06-01T17:45');
     });
 
+    test('manual datetime input appends seconds at second granularity', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'second',
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T09:30' },
+      });
+
+      expect(changes[0]?.start).toBe('2026-06-01T09:30:00');
+    });
+
     test('clicking a preset marks it as aria-pressed="true"', async () => {
       const preset = {
         id: 'last-7d',

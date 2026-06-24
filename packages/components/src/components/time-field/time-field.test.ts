@@ -56,6 +56,21 @@ describe('TimeField', () => {
     expect(changes).toEqual([{ value: '10:45', timezone: undefined }]);
   });
 
+  test('emits an empty value instead of non-canonical time input', async () => {
+    const changes: TimeFieldChange[] = [];
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        value: '09:30',
+        onchange: (detail: TimeFieldChange) => changes.push(detail),
+      },
+    });
+
+    await fireEvent.change(getInput(container), { target: { value: 'not-a-time' } });
+
+    expect(changes).toEqual([{ value: '', timezone: undefined }]);
+  });
+
   test('supports second granularity', async () => {
     const changes: TimeFieldChange[] = [];
     const { container } = render(TimeField, {
@@ -208,6 +223,25 @@ describe('TimeField', () => {
     await fireEvent.change(timezone, { target: { value: 'UTC' } });
 
     expect(changes[0]).toEqual({ value: '09:30', timezone: 'UTC' });
+  });
+
+  test('timezone changes normalize the current time to granularity', async () => {
+    const changes: TimeFieldChange[] = [];
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        granularity: 'second',
+        defaultValue: '09:30',
+        timezones: ['UTC', 'Europe/Berlin'],
+        onchange: (detail: TimeFieldChange) => changes.push(detail),
+      },
+    });
+
+    await fireEvent.change(container.querySelector('select')!, {
+      target: { value: 'Europe/Berlin' },
+    });
+
+    expect(changes).toEqual([{ value: '09:30:00', timezone: 'Europe/Berlin' }]);
   });
 
   test('preserves timezone value when no timezone list is rendered', async () => {

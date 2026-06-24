@@ -107,11 +107,16 @@
     return initialTimezone && options.includes(initialTimezone) ? initialTimezone : options[0];
   }
 
+  function canonicalTimeValue(nextValue: string | undefined): string {
+    if (!nextValue) return '';
+    const parsed = parseTimeString(nextValue);
+    return parsed ? serializeTimeParts(parsed, includeSeconds) : '';
+  }
+
   function handleInputChange(event: Event): void {
     if (resolvedDisabled || readonly) return;
     const target = event.currentTarget as HTMLInputElement;
-    const parsed = parseTimeString(target.value);
-    const nextValue = parsed ? serializeTimeParts(parsed, includeSeconds) : target.value;
+    const nextValue = canonicalTimeValue(target.value);
     value = nextValue;
     emit(nextValue);
   }
@@ -120,7 +125,9 @@
     if (resolvedDisabled || readonly) return;
     const target = event.currentTarget as HTMLSelectElement;
     timezone = target.value;
-    emit(value ?? '', timezone);
+    const nextValue = canonicalTimeValue(value);
+    value = nextValue;
+    emit(nextValue, timezone);
   }
 
   $effect(() => {

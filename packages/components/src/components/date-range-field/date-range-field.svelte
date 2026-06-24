@@ -187,7 +187,7 @@
     if (nextGranularity === 'day') return nextValue.slice(0, 10);
     if (nextGranularity === 'hour') return `${nextValue.slice(0, 13)}:00`;
     if (nextGranularity === 'minute') return nextValue.slice(0, 16);
-    return nextValue.slice(0, 19);
+    return nextValue.length === 16 ? `${nextValue}:00` : nextValue.slice(0, 19);
   }
 
   const inputType = $derived(inputTypeFor(granularity));

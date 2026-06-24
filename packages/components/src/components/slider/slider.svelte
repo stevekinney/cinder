@@ -26,7 +26,7 @@
   import { untrack } from 'svelte';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
-  import { isRightToLeftElement, resolveTextDirection } from '../../_internal/text-direction.ts';
+  import { resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
@@ -51,11 +51,13 @@
   const localeContext = getLocaleContext();
   const disabled = $derived(disabledProp || (formField?.disabled ?? false));
   let rootElement = $state<HTMLDivElement | null>(null);
-  const direction = $derived(
+  const resolvedDirection = $derived(
     rootElement
       ? resolveTextDirection(rootElement.parentElement, localeContext?.direction)
       : localeContext?.direction,
   );
+  const rootDirection = $derived(rootElement ? resolvedDirection : undefined);
+  const isRightToLeft = $derived(resolvedDirection === 'rtl');
 
   // Guarantee a usable step. `0`, `NaN`, and negative values would let the
   // tick generator loop forever, so fall back to `1`. Keep the derived pure — the
@@ -237,7 +239,7 @@
     if (disabled) return;
     const current = thumb === 'high' ? highValue : lowValue;
     const hasTickArray = tickList !== null && tickList.length > 0;
-    const horizontalStepDirection: 1 | -1 = isRightToLeftElement(trackElement) ? -1 : 1;
+    const horizontalStepDirection: 1 | -1 = isRightToLeft ? -1 : 1;
     let next = current;
     switch (event.key) {
       case 'ArrowRight':
@@ -292,7 +294,7 @@
     const rect = trackElement.getBoundingClientRect();
     if (rect.width === 0) return min;
     const physicalRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const ratio = isRightToLeftElement(trackElement) ? 1 - physicalRatio : physicalRatio;
+    const ratio = isRightToLeft ? 1 - physicalRatio : physicalRatio;
     return min + ratio * (max - min);
   }
 
@@ -416,7 +418,7 @@
   bind:this={rootElement}
   class={classNames('cinder-slider', isRange && 'cinder-slider--range', className)}
   data-cinder-disabled={disabled || undefined}
-  dir={direction}
+  dir={rootDirection}
 >
   {#if isRange}
     <span id={lowQualifierId} class="cinder-sr-only">
