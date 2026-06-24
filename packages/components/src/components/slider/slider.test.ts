@@ -78,7 +78,7 @@ describe('Slider (single)', () => {
   });
 
   test('local direction overrides locale provider direction', async () => {
-    const { container } = render(SliderDirectionFixture);
+    const { container } = render(SliderDirectionFixture, { props: { localDirection: 'ltr' } });
     const root = container.querySelector('.cinder-slider');
     const thumb = getThumbs(container)[0]!;
 
@@ -87,13 +87,24 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('25');
   });
 
-  test('server rendering does not serialize provider direction over local override', async () => {
-    const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE);
+  test('server rendering uses provider direction before local DOM is available', async () => {
+    const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE, {
+      localDirection: undefined,
+      providerDirection: 'rtl',
+    });
+    const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
+
+    expect(sliderTag).toContain('dir="rtl"');
+  });
+
+  test('server rendering still includes local direction wrappers', async () => {
+    const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE, {
+      localDirection: 'ltr',
+    });
     const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
 
     expect(sliderTag).not.toBe('');
     expect(html).toContain('dir="ltr"');
-    expect(sliderTag).not.toContain('dir="rtl"');
   });
 
   test('ArrowUp / ArrowDown also adjust by step', async () => {

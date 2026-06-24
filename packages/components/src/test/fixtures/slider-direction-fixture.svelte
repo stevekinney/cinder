@@ -5,15 +5,19 @@
 
   let {
     providerDirection = 'rtl',
-    localDirection = 'ltr',
+    localDirection,
   }: {
     providerDirection?: TextDirection;
-    localDirection?: TextDirection;
+    localDirection?: TextDirection | undefined;
   } = $props();
 </script>
 
 <LocaleProvider direction={providerDirection}>
-  <div dir={localDirection}>
+  {#if localDirection}
+    <div dir={localDirection}>
+      <Slider label="Brightness" defaultValue={20} step={5} />
+    </div>
+  {:else}
     <Slider label="Brightness" defaultValue={20} step={5} />
-  </div>
+  {/if}
 </LocaleProvider>
