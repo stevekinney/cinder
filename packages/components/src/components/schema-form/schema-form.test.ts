@@ -986,6 +986,68 @@ describe('SchemaForm', () => {
 
     expect(submitted).toEqual({ tags: ['two'] });
   });
+
+  test('removing an array item invalidates pending touched validation for shifted rows', async () => {
+    let releaseValidation!: () => void;
+    const validationGate = new Promise<void>((resolve) => {
+      releaseValidation = resolve;
+    });
+    let validationCalls = 0;
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'async-array-remove-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                title: 'Items',
+                items: {
+                  type: 'object',
+                  properties: { name: { type: 'string', title: 'Name' } },
+                  required: ['name'],
+                },
+              },
+            },
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          validationCalls += 1;
+          await validationGate;
+          const firstName = (value as { items?: Array<{ name?: string }> }).items?.[0]?.name;
+          if (firstName === '') {
+            return {
+              issues: [{ message: 'Name is required.', path: ['items', 0, 'name'] }],
+            };
+          }
+          return { value };
+        },
+      },
+    } as const;
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { items: [{ name: '' }, { name: 'kept' }] },
+      },
+    });
+    await flush();
+
+    const nameInputs = within(container).getAllByLabelText(/Name/);
+    await fireEvent.blur(nameInputs[0]!);
+    await flush();
+    await fireEvent.click(within(container).getByRole('button', { name: 'Remove Items item 1' }));
+    releaseValidation();
+    await flush();
+    await flush();
+
+    expect(validationCalls).toBe(1);
+    expect(within(container).getByLabelText(/Name/)).toHaveProperty('value', 'kept');
+    expect(container.textContent).not.toContain('Name is required.');
+  });
 });
 
 describe('SchemaForm — composed-control regressions', () => {

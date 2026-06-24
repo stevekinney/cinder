@@ -133,6 +133,21 @@ describe('JsonViewer', () => {
     expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
   });
 
+  test('tree keydown does not synthesize a second toggle when the inner toggle button owns activation', async () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+    const toggle = rootTreeItem.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')!;
+
+    toggle.focus();
+    await fireEvent.keyDown(toggle, { key: 'Enter' });
+    expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
+
+    await fireEvent.keyDown(toggle, { key: ' ' });
+    expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
+  });
+
   test('renders an array with index labels', () => {
     const { container } = render(JsonViewer, { value: [10, 20, 30] });
     const keys = Array.from(container.querySelectorAll('.cinder-json-viewer__key'));

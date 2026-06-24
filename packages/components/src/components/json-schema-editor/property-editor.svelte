@@ -332,8 +332,10 @@
   function removeCompositionBranch(keyword: 'allOf' | 'anyOf' | 'oneOf', branchIndex: number) {
     const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
     const removedBranchKey = compositionBranchKeys[keyword][branchIndex];
+    const nextBranchKeys = [...compositionBranchKeys[keyword]];
     list.splice(branchIndex, 1);
-    setKeywordKeys(keyword, compositionBranchKeys[keyword].toSpliced(branchIndex, 1));
+    nextBranchKeys.splice(branchIndex, 1);
+    setKeywordKeys(keyword, nextBranchKeys);
     if (removedBranchKey) setChildValidationErrorCount(`${keyword}:${removedBranchKey}`, 0);
     patchComposition(keyword, list.length > 0 ? list : undefined);
   }

@@ -246,6 +246,10 @@
     );
     rawDrafts = reindexArrayPathState(rawDrafts, field.path, index);
     errors = reindexArrayPathState(errors, field.path, index);
+    touchedValidationSequences = bumpPathValidationSequences(
+      reindexArrayPathState(touchedValidationSequences, field.path, index),
+      field.path,
+    );
     const key = pathKey(field.path);
     arrayKeys = {
       ...arrayKeys,
@@ -290,6 +294,21 @@
 
       const shiftedKey = [String(index - 1), ...remainingSegments].join('/');
       next[`${pathPrefix}${shiftedKey}`] = stateValue;
+    }
+
+    return next;
+  }
+
+  function bumpPathValidationSequences(
+    state: Record<string, number>,
+    path: readonly string[],
+  ): Record<string, number> {
+    const prefix = pathKey(path);
+    const pathPrefix = prefix === '' ? '' : `${prefix}/`;
+    const next: Record<string, number> = {};
+
+    for (const [key, sequence] of Object.entries(state)) {
+      next[key] = key === prefix || key.startsWith(pathPrefix) ? sequence + 1 : sequence;
     }
 
     return next;

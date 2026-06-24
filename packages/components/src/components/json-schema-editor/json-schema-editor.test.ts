@@ -87,6 +87,7 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).toContain('{@const branchKey = compositionBranchKeys[keyword][branchIndex]}');
     expect(source).toContain('setChildValidationErrorCount(`${keyword}:${branchKey}`, count)');
     expect(source).toContain('setChildValidationErrorCount(`${keyword}:${removedBranchKey}`, 0)');
+    expect(source).not.toContain('.toSpliced(');
     expect(source).toContain('onvalidationerrorcount?.(0)');
   });
 });
