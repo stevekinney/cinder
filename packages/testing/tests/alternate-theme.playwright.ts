@@ -120,23 +120,25 @@ test.describe('alternate-theme — documented token overrides reach components',
     expect(themed).not.toBe(stock);
   });
 
-  // (c) --cinder-danger reaches an Alert "error" variant's background.
+  // (c) --cinder-danger reaches an Alert "danger" variant's background.
   //
-  // Alert[variant=error] sets `--_cinder-status-base: var(--cinder-danger)` which
+  // Alert[variant=danger] sets `--_cinder-status-base: var(--cinder-danger)` which
   // feeds the _status-surface recipe's `oklch(from var(--_cinder-status-base) ...)`.
   // Overriding --cinder-danger to a different hue changes the synthesized background.
   //
   // Note: Alert composes `.cinder-_status-surface` only (not the border class per P7),
   // so background-color is the most reliable property to assert on.
-  test('overriding --cinder-danger reaches an Alert error-variant background', async ({ page }) => {
+  test('overriding --cinder-danger reaches an Alert danger-variant background', async ({
+    page,
+  }) => {
     await page.goto('/page/alert?tab=examples', { waitUntil: 'load' });
 
-    const errorAlertSelector = ".cinder-alert[data-cinder-variant='error']";
-    const stock = await computed(page, errorAlertSelector, 'background-color');
+    const dangerAlertSelector = ".cinder-alert[data-cinder-variant='danger']";
+    const stock = await computed(page, dangerAlertSelector, 'background-color');
 
     await page.addStyleTag({ content: ALTERNATE_THEME });
 
-    const themed = await computed(page, errorAlertSelector, 'background-color');
+    const themed = await computed(page, dangerAlertSelector, 'background-color');
 
     // The danger token drives the status-surface recipe's hue. A hard-coded
     // background or a broken token chain leaves these equal.

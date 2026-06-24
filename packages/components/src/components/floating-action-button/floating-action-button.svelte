@@ -13,9 +13,9 @@
    */
   export type {
     FloatingActionButtonProps,
+    FloatingActionButtonShape,
     FloatingActionButtonSize,
     FloatingActionButtonVariant,
-    FloatingActionButtonColor,
   } from './floating-action-button.types.ts';
 </script>
 
@@ -27,9 +27,9 @@
   import type { FloatingActionButtonProps } from './floating-action-button.types.ts';
 
   const {
-    variant = 'filled',
+    shape = 'filled',
     size = 'md',
-    color = 'primary',
+    variant = 'primary',
     disabled = false,
     children,
     class: customClassName,
@@ -52,9 +52,9 @@
   const mergedClassName = $derived(classNames('cinder-fab', customClassName));
 
   const dataAttributes = $derived({
-    'data-cinder-variant': variant,
+    'data-cinder-shape': shape,
     'data-cinder-size': size,
-    'data-cinder-color': color,
+    'data-cinder-variant': variant,
   });
 
   // Normalize ARIA label props: empty strings suppress accessible name fallback without
@@ -89,9 +89,9 @@
     const hasAriaLabelledBy = resolvedAriaLabelledBy !== undefined;
 
     // Filled FABs are icon-only by design — they require an accessible name.
-    if (variant === 'filled' && !hasAriaLabel && !hasAriaLabelledBy) {
+    if (shape === 'filled' && !hasAriaLabel && !hasAriaLabelledBy) {
       devWarn(
-        '[cinder/FloatingActionButton] filled variant requires aria-label or aria-labelledby — the icon alone does not provide an accessible name.',
+        '[cinder/FloatingActionButton] filled shape requires aria-label or aria-labelledby — the icon alone does not provide an accessible name.',
       );
     }
 

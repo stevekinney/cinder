@@ -16,7 +16,7 @@ const schema = {
       type: 'string',
       description: 'Maximum inline size of the scroll viewport (any valid CSS length).',
     },
-    ariaLabel: {
+    label: {
       type: 'string',
       description:
         'Accessible name for the scroll region. When provided on neutral\ncontainers, the container also gets `role="region"` so assistive\ntechnology treats it as a landmark. Semantic tags keep their native\nroles. Provide this when the scroll area represents a meaningful section\n(a chat transcript, a code panel) — omit it for purely decorative\nscrolling chrome. This is the single source of truth for the accessible\nname; pass it through this prop rather than the raw `aria-label` HTML\nattribute so the landmark role and label stay coupled.',

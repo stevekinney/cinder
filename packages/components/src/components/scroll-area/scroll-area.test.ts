@@ -55,9 +55,9 @@ describe('ScrollArea', () => {
     ).toBe('both');
   });
 
-  test('adds role="region" and aria-label when ariaLabel is provided', () => {
+  test('adds role="region" and aria-label when label is provided', () => {
     const { container } = render(ScrollArea, {
-      ariaLabel: 'Chat transcript',
+      label: 'Chat transcript',
       children: textSnippet('body'),
     });
     const root = container.querySelector('.cinder-scroll-area');
@@ -65,9 +65,9 @@ describe('ScrollArea', () => {
     expect(root?.getAttribute('aria-label')).toBe('Chat transcript');
   });
 
-  test('trims ariaLabel before deriving the accessible region label', () => {
+  test('trims label before deriving the accessible region label', () => {
     const { container } = render(ScrollArea, {
-      ariaLabel: '  Chat transcript  ',
+      label: '  Chat transcript  ',
       children: textSnippet('body'),
     });
     const root = container.querySelector('.cinder-scroll-area');
@@ -75,9 +75,9 @@ describe('ScrollArea', () => {
     expect(root?.getAttribute('aria-label')).toBe('Chat transcript');
   });
 
-  test('omits role and aria-label when ariaLabel is empty after trimming', () => {
+  test('omits role and aria-label when label is empty after trimming', () => {
     const { container } = render(ScrollArea, {
-      ariaLabel: '   ',
+      label: '   ',
       children: textSnippet('body'),
     });
     const root = container.querySelector('.cinder-scroll-area');
@@ -85,9 +85,9 @@ describe('ScrollArea', () => {
     expect(root?.hasAttribute('aria-label')).toBe(false);
   });
 
-  test('omits role and aria-label when ariaLabel is an empty string', () => {
+  test('omits role and aria-label when label is an empty string', () => {
     const { container } = render(ScrollArea, {
-      ariaLabel: '',
+      label: '',
       children: textSnippet('body'),
     });
     const root = container.querySelector('.cinder-scroll-area');
@@ -95,10 +95,10 @@ describe('ScrollArea', () => {
     expect(root?.hasAttribute('aria-label')).toBe(false);
   });
 
-  test('does not override semantic element roles when ariaLabel is provided', () => {
+  test('does not override semantic element roles when label is provided', () => {
     const { container } = render(ScrollArea, {
       as: 'main',
-      ariaLabel: 'Primary page content',
+      label: 'Primary page content',
       children: textSnippet('body'),
     });
     const root = container.querySelector('main.cinder-scroll-area');
@@ -106,7 +106,7 @@ describe('ScrollArea', () => {
     expect(root?.getAttribute('aria-label')).toBe('Primary page content');
   });
 
-  test('omits role and aria-label when ariaLabel is not provided', () => {
+  test('omits role and aria-label when label is not provided', () => {
     const { container } = render(ScrollArea, { children: textSnippet('body') });
     const root = container.querySelector('.cinder-scroll-area');
     expect(root?.hasAttribute('role')).toBe(false);
@@ -201,7 +201,7 @@ describe('ScrollArea attribute precedence', () => {
     // a consumer reaching past the type to pass it anyway — the runtime
     // contract must still hold.
     const { container } = render(ScrollArea, {
-      ariaLabel: 'Chat transcript',
+      label: 'Chat transcript',
       role: 'complementary',
       children: textSnippet('body'),
     } as any);

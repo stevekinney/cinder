@@ -540,7 +540,7 @@ describe('ChatAdapter — command equivalence', () => {
       id: 'chat-stop',
       conversation,
       adapter,
-      isStreaming: true,
+      streaming: true,
     });
 
     // The stop affordance lives in the composer; find it by its accessible role.
@@ -679,7 +679,7 @@ describe('ChatAdapter — command equivalence', () => {
       id: 'chat-adapter-history',
       conversation,
       adapter,
-      hasMoreHistory: true,
+      moreHistoryAvailable: true,
       loadEarlierLabel: 'Load previous page',
     });
 
@@ -753,7 +753,7 @@ describe('ChatAdapter — command equivalence', () => {
       id: 'chat-adapter-container-state',
       conversation,
       adapter: { sendMessage: async () => {} },
-      isStreaming: true,
+      streaming: true,
       streamingStatus: 'Thinking through the adapter response',
     });
     const root = container.querySelector<HTMLElement>('.chat-container')!;
@@ -815,7 +815,7 @@ describe('ChatAdapter — command equivalence', () => {
       id: 'chat-adapter-file-drag',
       conversation,
       adapter: { sendMessage: async () => {} },
-      allowAttachments: true,
+      capabilities: { attachments: true },
     });
     const root = container.querySelector<HTMLElement>('.chat-container')!;
     const dragOver = createDragEvent('dragover', []);

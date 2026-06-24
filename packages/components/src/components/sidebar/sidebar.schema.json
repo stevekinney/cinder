@@ -6,7 +6,7 @@
       "type": "boolean",
       "description": "Whether the sidebar is collapsed. Bindable via `bind:collapsed`. Default `false`.\n\nOn desktop (>= md breakpoint) `collapsed=true` switches the sidebar to\nicon-only mode. Below the md breakpoint the sidebar renders inside a\n`<Drawer>` and `collapsed=true` means the drawer is closed."
     },
-    "ariaLabel": {
+    "label": {
       "type": "string",
       "description": "Accessible name for the outer landmark and the mobile drawer. Required —\ndefaults to `'Sidebar'` for convenience but must be unique per page. The\ninner `<nav>` landmark derives its own accessible name from this value\nby appending `' navigation'` so screen readers can distinguish the\nouter complementary region from the inner navigation region."
     },

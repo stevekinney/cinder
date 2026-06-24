@@ -1,6 +1,6 @@
 <script lang="ts" module>
   export const title = 'Alert variants';
-  export const description = 'Info, success, warning, and error alerts.';
+  export const description = 'Info, success, warning, and danger alerts.';
 </script>
 
 <script lang="ts">
@@ -11,5 +11,5 @@
   <Alert variant="info">Your account sync is in progress.</Alert>
   <Alert variant="success">Changes saved successfully.</Alert>
   <Alert variant="warning">Your trial expires in 3 days.</Alert>
-  <Alert variant="error">Failed to connect to the server.</Alert>
+  <Alert variant="danger">Failed to connect to the server.</Alert>
 </div>

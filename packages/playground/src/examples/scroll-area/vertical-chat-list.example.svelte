@@ -8,7 +8,7 @@
   import { ScrollArea } from '@lostgradient/cinder/scroll-area';
 </script>
 
-<ScrollArea ariaLabel="Chat transcript" maxHeight="16rem">
+<ScrollArea label="Chat transcript" maxHeight="16rem">
   <p>Avery: morning! ready to pair on the migration?</p>
   <p>Jordan: yep — pulling the branch now.</p>
   <p>Avery: heads up, the seed script changed.</p>

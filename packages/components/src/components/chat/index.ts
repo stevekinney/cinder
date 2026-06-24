@@ -12,7 +12,7 @@
 import Chat from './chat.svelte';
 
 export default Chat;
-export type { ChatProps, ReadReceipt, TypingParticipant } from './chat.types.ts';
+export type { ChatCapabilities, ChatProps, ReadReceipt, TypingParticipant } from './chat.types.ts';
 export { Chat };
 
 // Adapter seam — the optional event/transport boundary around <Chat>. Type-only.

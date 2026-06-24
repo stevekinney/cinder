@@ -44,5 +44,5 @@
 </script>
 
 <div style="height: 34rem;">
-  <Chat id="playground-tool-call-chat" {conversation} allowAttachments={false} />
+  <Chat id="playground-tool-call-chat" {conversation} capabilities={{ attachments: false }} />
 </div>

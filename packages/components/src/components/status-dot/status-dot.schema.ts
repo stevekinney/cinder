@@ -5,7 +5,7 @@ const schema = {
   type: 'object',
   properties: {
     status: {
-      enum: ['online', 'offline', 'warning', 'error', 'pending', 'neutral', 'success', 'accent'],
+      enum: ['online', 'offline', 'warning', 'danger', 'pending', 'neutral', 'success', 'accent'],
       description:
         'Required semantic status. Drives color via `data-cinder-status`. `success` maps to `--cinder-success`; `accent` maps to `--cinder-accent`.',
     },

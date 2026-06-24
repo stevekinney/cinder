@@ -28,8 +28,8 @@
       id: 'cache',
       name: 'Cache cluster',
       detail: 'Node 3 unreachable',
-      status: 'error' as const,
-      statusLabel: 'Error',
+      status: 'danger' as const,
+      statusLabel: 'Danger',
     },
   ];
 </script>

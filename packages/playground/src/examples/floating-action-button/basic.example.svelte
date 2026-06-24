@@ -28,8 +28,8 @@
     </svg>
   </FloatingActionButton>
 
-  <!-- Secondary color -->
-  <FloatingActionButton color="secondary" aria-label="Edit">
+  <!-- Secondary variant -->
+  <FloatingActionButton variant="secondary" aria-label="Edit">
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width="24"
@@ -47,8 +47,8 @@
     </svg>
   </FloatingActionButton>
 
-  <!-- Surface color -->
-  <FloatingActionButton color="surface" aria-label="Share">
+  <!-- Surface variant -->
+  <FloatingActionButton variant="surface" aria-label="Share">
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width="24"
@@ -69,8 +69,8 @@
     </svg>
   </FloatingActionButton>
 
-  <!-- Extended variant with icon + label -->
-  <FloatingActionButton variant="extended" aria-label="Compose new message">
+  <!-- Extended shape with icon + label -->
+  <FloatingActionButton shape="extended" aria-label="Compose new message">
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width="20"

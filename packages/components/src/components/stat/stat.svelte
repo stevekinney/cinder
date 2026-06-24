@@ -51,7 +51,7 @@
 
   const changeAccessibleText = $derived.by(() => {
     if (!change) return '';
-    if (change.ariaLabel) return change.ariaLabel;
+    if (change.label) return change.label;
     const suffix = change.description ? ` ${change.description}` : '';
     if (change.direction === 'up') return `increased by ${change.value}${suffix}`;
     if (change.direction === 'down') return `decreased by ${change.value}${suffix}`;

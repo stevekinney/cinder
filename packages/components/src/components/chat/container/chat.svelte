@@ -71,29 +71,25 @@
   let {
     id,
     conversation,
-    isAtBottom = $bindable(true),
+    atBottom = $bindable(true),
     unreadCount = $bindable(0),
-    hasNewMessageIndicator = $bindable(false),
+    newMessageIndicatorVisible = $bindable(false),
     class: className,
     surfaceMode = 'default',
     density = 'comfortable',
     variant = 'bubble',
     bottomThreshold = DEFAULT_SCROLL_CONFIGURATION.bottomThreshold,
     jumpThreshold = DEFAULT_SCROLL_CONFIGURATION.jumpThreshold,
-    isStreaming = false,
+    streaming = false,
     streamingStatus,
-    allowAttachments = true,
-    allowSearch = true,
+    capabilities,
     virtualized = false,
     virtualizationEstimatedRowHeight = 88,
     virtualizationOverscan = 3,
     virtualizationInitialHeight = 640,
-    hasMoreHistory = true,
+    moreHistoryAvailable = true,
     loadEarlierLabel = 'Load earlier messages',
     loadingEarlierLabel = 'Loading earlier messages',
-    allowCopy = true,
-    allowEditing = true,
-    allowRetry = true,
     header,
     empty,
     emptyPrompts,
@@ -223,8 +219,8 @@
       // The sentinel fires when the user reaches the bottom via
       // IntersectionObserver, which does not emit onScrollStateChange.
       // Update the bindable prop here so it stays in sync with the sentinel path.
-      isAtBottom = true;
-      if (unreadState.unreadCount > 0 || unreadState.hasNewMessageIndicator) {
+      atBottom = true;
+      if (unreadState.unreadCount > 0 || unreadState.newMessageIndicatorVisible) {
         unreadState.markAllAsRead();
       }
     },
@@ -234,7 +230,7 @@
     onUnreadIndicatorChange: (event) => {
       // Update the bindable props at the mutation site rather than via a $effect.
       unreadCount = event.unreadCount;
-      hasNewMessageIndicator = event.hasNewMessageIndicator;
+      newMessageIndicatorVisible = event.newMessageIndicatorVisible;
       onunreadindicatorchange?.(event);
     },
   });
@@ -263,7 +259,14 @@
   // does not tear down and reopen the real-time subscription each render.
   const conversationId = $derived(conversation.id);
 
-  const showTypingIndicator = $derived(isStreaming && !streamingMessageId);
+  const showTypingIndicator = $derived(streaming && !streamingMessageId);
+
+  // Expand capabilities object with per-feature defaults.
+  const allowAttachments = $derived(capabilities?.attachments ?? true);
+  const allowSearch = $derived(capabilities?.search ?? true);
+  const allowCopy = $derived(capabilities?.copy ?? true);
+  const allowEditing = $derived(capabilities?.editing ?? true);
+  const allowRetry = $derived(capabilities?.retry ?? true);
   const toolCallPairsByCallId = $derived.by(() => {
     const toolCallPairs = pairToolCallsWithResults(messages);
     const map = new Map<string, ReturnType<typeof pairToolCallsWithResults>>();
@@ -391,7 +394,7 @@
   // ==========================================================================
 
   const viewportAttach = $derived(viewportAttachment ?? noopAttachment);
-  const effectiveHasMoreHistory = $derived(adapterHasMoreHistory ?? hasMoreHistory);
+  const effectiveHasMoreHistory = $derived(adapterHasMoreHistory ?? moreHistoryAvailable);
   const hasHistoryLoader = $derived(
     onloadhistory !== undefined || adapter?.loadOlderMessages !== undefined,
   );
@@ -499,8 +502,8 @@
     const currentScrollExtent = isVirtualized ? chatVirtualizer.scrollSize : viewport.scrollHeight;
     void currentScrollExtent;
 
-    // Read isAtBottom without making it a dependency (prevents loops)
-    const atBottom = untrack(() => scrollState.isAtBottom);
+    // Read atBottom without making it a dependency (prevents loops)
+    const atBottom = untrack(() => scrollState.atBottom);
 
     // Skip if user initiated a smooth scroll (e.g., via jump button)
     if (scrollState.isUserScrolling) return undefined;
@@ -633,14 +636,14 @@
   }
 
   function handleScrollStateChange(event: {
-    isAtBottom: boolean;
+    atBottom: boolean;
     scrollTop: number;
     scrollHeight: number;
   }): void {
     clearHistoryAnchorAfterScroll(event.scrollTop);
 
     // Update the bindable prop at the mutation site rather than via a $effect.
-    isAtBottom = event.isAtBottom;
+    atBottom = event.atBottom;
 
     onscrollstatechange?.(event);
   }
@@ -687,9 +690,9 @@
   // ==========================================================================
 
   $effect(() => {
-    // Pass a getter function for isAtBottom to avoid creating a scroll dependency.
+    // Pass a getter function for scrollState.atBottom to avoid creating a scroll dependency.
     // The effect should only re-run when messages change, not on every scroll.
-    unreadState.processMessages(messages, conversation.id, () => scrollState.isAtBottom);
+    unreadState.processMessages(messages, conversation.id, () => scrollState.atBottom);
   });
 
   // ==========================================================================
@@ -867,11 +870,11 @@
 
     // Auto-scroll after sending.
     // Also update the bindable prop so the parent binding reflects the new
-    // isAtBottom=true state immediately — scrollState.setIsAtBottom() only
+    // atBottom=true state immediately — scrollState.setAtBottom() only
     // updates the internal helper state; the bindable must be written explicitly
     // (matching the pattern in handleScrollStateChange and onReachBottom).
-    scrollState.setIsAtBottom(true);
-    isAtBottom = true;
+    scrollState.setAtBottom(true);
+    atBottom = true;
     tick().then(() => {
       if (isVirtualized) {
         chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
@@ -1392,7 +1395,7 @@
           });
         }
         // Auto-scroll if at bottom
-        if (scrollState.isAtBottom && viewport) {
+        if (scrollState.atBottom && viewport) {
           if (isVirtualized) {
             chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
           } else {
@@ -1681,7 +1684,7 @@
   <div class="chat-input-wrapper">
     <ChatJumpControls
       showJumpButton={scrollState.showJumpButton}
-      hasNewMessageIndicator={unreadState.hasNewMessageIndicator}
+      hasNewMessageIndicator={unreadState.newMessageIndicatorVisible}
       unreadCount={unreadState.unreadCount}
       displayUnreadCount={unreadState.displayUnreadCount}
       hasLargeCount={unreadState.hasLargeCount}
@@ -1694,10 +1697,10 @@
         id={inputId}
         bind:this={inputRef}
         onsubmit={(message, attachments) => handleSubmit(message, attachments)}
-        disabled={isStreaming}
-        sending={isStreaming}
+        disabled={streaming}
+        sending={streaming}
         {allowAttachments}
-        onstop={isStreaming ? handleStopGenerating : undefined}
+        onstop={streaming ? handleStopGenerating : undefined}
         {onattachmentadd}
         {onattachmentremove}
         {onattachmentfailure}

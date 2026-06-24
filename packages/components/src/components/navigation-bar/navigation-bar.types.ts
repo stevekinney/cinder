@@ -41,5 +41,5 @@ export type NavigationBarProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Two-way bindable open state of the mobile menu. */
   mobileMenuOpen?: boolean;
   /** Accessible name for the <nav> landmark. Wins over any aria-label passed via rest. Default 'Main navigation'. */
-  navAriaLabel?: string;
+  label?: string;
 };

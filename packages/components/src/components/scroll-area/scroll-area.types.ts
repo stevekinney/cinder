@@ -40,7 +40,7 @@ export type ScrollAreaProps = Omit<
    * name; pass it through this prop rather than the raw `aria-label` HTML
    * attribute so the landmark role and label stay coupled.
    */
-  ariaLabel?: string;
+  label?: string;
   /**
    * Override the default focus behavior. The component sets `tabindex="0"`
    * by default so keyboard users can reach the viewport for arrow-key

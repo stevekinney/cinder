@@ -433,7 +433,7 @@ describe('Chat — interactions', () => {
   test('file drag overlay stays hidden when attachments are disabled', async () => {
     const conversation = createConversation({ id: 'conversation-drag-disabled' });
     const { container } = render(Chat, {
-      props: { id: 'chat-drag-disabled', conversation, allowAttachments: false },
+      props: { id: 'chat-drag-disabled', conversation, capabilities: { attachments: false } },
     });
     const root = container.querySelector<HTMLElement>('.chat-container')!;
     const file = new File(['hello'], 'note.txt', { type: 'text/plain' });
@@ -465,7 +465,7 @@ describe('Chat — interactions', () => {
       props: {
         id: 'chat-streaming-status',
         conversation,
-        isStreaming: true,
+        streaming: true,
         streamingStatus: 'Thinking through the answer',
       },
     });
@@ -487,7 +487,7 @@ describe('Chat — interactions', () => {
       props: {
         id: 'chat-stop',
         conversation,
-        isStreaming: true,
+        streaming: true,
         onstopgenerating: (event: { messageId: string }) => stopped.push(event.messageId),
       },
     });
@@ -498,26 +498,26 @@ describe('Chat — interactions', () => {
   });
 });
 
-describe('Chat — isAtBottom bindable after send', () => {
-  test('handleSubmit fires onsubmit and does not throw (isAtBottom write regression guard)', async () => {
+describe('Chat — atBottom bindable after send', () => {
+  test('handleSubmit fires onsubmit and does not throw (atBottom write regression guard)', async () => {
     // Regression: handleSubmit called scrollState.setIsAtBottom(true) but never
-    // wrote to the `isAtBottom` bindable prop. The parent binding went stale:
-    // a consumer with `bind:isAtBottom` would see false even though Chat had set
-    // the internal state to true. The fix adds `isAtBottom = true` immediately
+    // wrote to the `atBottom` bindable prop. The parent binding went stale:
+    // a consumer with `bind:atBottom` would see false even though Chat had set
+    // the internal state to true. The fix adds `atBottom = true` immediately
     // after `scrollState.setIsAtBottom(true)` in handleSubmit.
     //
     // Directly observing a bindable prop update from outside a Svelte parent
     // requires a wrapper component. As a behavioral regression guard, we verify
     // the send path completes correctly and that the component renders in a
-    // consistent state after sending (no stale isAtBottom causing an unexpected
+    // consistent state after sending (no stale atBottom causing an unexpected
     // jump button to appear or auto-scroll to fail silently).
     const submitted: string[] = [];
 
     const { container } = render(Chat, {
       props: {
-        id: 'chat-isatbottom-send',
-        conversation: createConversation({ id: 'conversation-isatbottom-send' }),
-        isAtBottom: false,
+        id: 'chat-atbottom-send',
+        conversation: createConversation({ id: 'conversation-atbottom-send' }),
+        atBottom: false,
         emptyPrompts: ['Tell me a joke'],
         onsubmit: (event: { message: { content: unknown } }) => {
           submitted.push(String(event.message.content));
@@ -533,8 +533,8 @@ describe('Chat — isAtBottom bindable after send', () => {
     expect(submitted).toEqual(['Tell me a joke']);
 
     // After send, the jump button must NOT appear: handleSubmit set
-    // scrollState.setIsAtBottom(true) so showJumpButton remains false.
-    // (showJumpButton is derived from scrollState, not from the isAtBottom binding.)
+    // scrollState.setAtBottom(true) so showJumpButton remains false.
+    // (showJumpButton is derived from scrollState, not from the atBottom binding.)
     const jumpButton = container.querySelector('.chat-jump-button');
     expect(jumpButton).toBeNull();
   });
@@ -752,33 +752,35 @@ describe('Chat — SSR safety', () => {
 });
 
 describe('Chat — bindable prop sync without write-back $effect', () => {
-  test('chat.svelte does not use $effect to sync scrollState.isAtBottom to bindable isAtBottom', async () => {
+  test('chat.svelte does not use $effect to sync scrollState.atBottom to bindable atBottom', async () => {
     // Regression: the old code had three separate $effects that copied
-    // scrollState.isAtBottom, unreadState.unreadCount, and
-    // unreadState.hasNewMessageIndicator into their corresponding bindable
+    // scrollState.atBottom, unreadState.unreadCount, and
+    // unreadState.newMessageIndicatorVisible into their corresponding bindable
     // props. These are replaced by explicit setters in the relevant callbacks.
     const { resolve } = await import('node:path');
     const source = await Bun.file(resolve(import.meta.dir, 'container', 'chat.svelte')).text();
 
     // The removed pattern: a standalone $effect block that assigns the bindable prop.
-    expect(source).not.toContain('isAtBottom = scrollState.isAtBottom');
+    expect(source).not.toContain('atBottom = scrollState.atBottom');
     expect(source).not.toContain('unreadCount = unreadState.unreadCount');
-    expect(source).not.toContain('hasNewMessageIndicator = unreadState.hasNewMessageIndicator');
+    expect(source).not.toContain(
+      'newMessageIndicatorVisible = unreadState.newMessageIndicatorVisible',
+    );
 
-    // The replacement for the scroll event path: isAtBottom is set inside
+    // The replacement for the scroll event path: atBottom is set inside
     // handleScrollStateChange (at the mutation site).
-    expect(source).toContain('isAtBottom = event.isAtBottom');
+    expect(source).toContain('atBottom = event.atBottom');
 
     // The replacement for the IntersectionObserver sentinel path: when the
     // sentinel fires onReachBottom (without emitting onScrollStateChange),
-    // the bindable isAtBottom must be set to true explicitly.
+    // the bindable atBottom must be set to true explicitly.
     // This guards against regression from handleSentinelEntry bypassing
     // handleScrollStateChange.
-    expect(source).toContain('isAtBottom = true');
+    expect(source).toContain('atBottom = true');
 
-    // The replacement: unreadCount and hasNewMessageIndicator are set inside
+    // The replacement: unreadCount and newMessageIndicatorVisible are set inside
     // the onUnreadIndicatorChange callback.
     expect(source).toContain('unreadCount = event.unreadCount');
-    expect(source).toContain('hasNewMessageIndicator = event.hasNewMessageIndicator');
+    expect(source).toContain('newMessageIndicatorVisible = event.newMessageIndicatorVisible');
   });
 });

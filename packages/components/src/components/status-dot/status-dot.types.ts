@@ -6,7 +6,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * The string values are stamped onto the root as `data-cinder-status` and
  * drive color exclusively via CSS — there are no hard-coded color classes
  * on the component. The token mapping (e.g. `online` → `--cinder-success`,
- * `error` → `--cinder-danger`) lives in `status-dot.css` so consumers can
+ * `danger` → `--cinder-danger`) lives in `status-dot.css` so consumers can
  * theme without forking the component.
  *
  * - `success` maps to `--cinder-success` (same hue as `online`).
@@ -19,7 +19,7 @@ export type StatusDotStatus =
   | 'online'
   | 'offline'
   | 'warning'
-  | 'error'
+  | 'danger'
   | 'pending'
   | 'neutral'
   | 'success'

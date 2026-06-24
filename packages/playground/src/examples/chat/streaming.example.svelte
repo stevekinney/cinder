@@ -26,8 +26,8 @@
   <Chat
     id="playground-streaming-chat"
     {conversation}
-    isStreaming
+    streaming
     streamingStatus="Writing response..."
-    allowAttachments={false}
+    capabilities={{ attachments: false }}
   />
 </div>

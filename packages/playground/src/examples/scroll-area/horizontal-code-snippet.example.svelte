@@ -11,6 +11,6 @@
     '$ bun run --filter @cinder/components build && bun run --filter @cinder/components test --coverage --reporter=verbose --bail';
 </script>
 
-<ScrollArea as="pre" direction="horizontal" maxWidth="32rem" ariaLabel="Example command"
+<ScrollArea as="pre" direction="horizontal" maxWidth="32rem" label="Example command"
   ><code>{command}</code></ScrollArea
 >

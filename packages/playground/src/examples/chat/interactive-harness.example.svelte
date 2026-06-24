@@ -33,7 +33,7 @@
   // Out of scope for this harness (documented, not silently dropped):
   // bottomThreshold / jumpThreshold (kept at defaults so overflow + jump are
   // testable without tuning), viewportAttachment (advanced escape hatch), and
-  // the isAtBottom / unreadCount / hasNewMessageIndicator bindables (read-only
+  // the atBottom / unreadCount / newMessageIndicatorVisible bindables (read-only
   // mirrors of behavior the wired callbacks already surface).
 
   // --- Chat instance (for the imperative streaming + scroll API) ---
@@ -44,11 +44,11 @@
   let conversation = $state<ConversationHistory>(createConversation({ id: 'harness' }));
 
   // --- Feature toggles wired straight onto <Chat> ---
-  let allowAttachments = $state(true);
-  let allowSearch = $state(true);
-  let allowCopy = $state(true);
-  let allowEditing = $state(true);
-  let allowRetry = $state(true);
+  let attachments = $state(true);
+  let search = $state(true);
+  let copy = $state(true);
+  let editing = $state(true);
+  let retry = $state(true);
   let transparentSurface = $state(false);
   let withEmptyPrompts = $state(true);
   let autoReply = $state(true);
@@ -60,7 +60,7 @@
   let replyText = $state('Here is the answer, delivered in a few deliberate chunks.');
   let replyMode = $state<'instant' | 'typing' | 'streaming'>('typing');
   let streamMechanism = $state<'imperative' | 'content-mutation'>('imperative');
-  let isStreaming = $state(false);
+  let streaming = $state(false);
   let streamingStatus = $state('');
 
   // --- Tool-call controls ---
@@ -77,7 +77,7 @@
 
   // --- Event log (queryable: data-event + data-payload per entry) ---
   // Chat emits a burst of identical onunreadindicatorchange events while its
-  // empty state settles on mount (all `{unreadCount:0, hasNewMessageIndicator:
+  // empty state settles on mount (all `{unreadCount:0, newMessageIndicatorVisible:
   // false}`). We de-duplicate: a callback whose (event, payload) is identical to
   // the most recent entry for that event is dropped. That kills the mount noise
   // deterministically (no timing dependency) while still recording every real,
@@ -145,7 +145,7 @@
     }
     streamingMessageId = null;
     streamingPartial = '';
-    isStreaming = false;
+    streaming = false;
     streamingStatus = '';
   }
 
@@ -223,13 +223,13 @@
     }
 
     if (replyMode === 'typing') {
-      isStreaming = true;
+      streaming = true;
       streamingStatus = 'Assistant is typing…';
       // A deliberately long-ish window so the "typing" state is comfortably
       // observable (by a person and by a test) before the reply lands.
       later(() => {
         if (operation !== activeOperation) return;
-        isStreaming = false;
+        streaming = false;
         streamingStatus = '';
         conversation = appendAssistantMessage(conversation, trimmed);
       }, 1200);
@@ -241,9 +241,9 @@
     const messageId = lastMessageId(conversation);
     streamingMessageId = messageId;
     streamingPartial = '';
-    // `isStreaming` drives the composer's Stop affordance for BOTH mechanisms;
+    // `streaming` drives the composer's Stop affordance for BOTH mechanisms;
     // only `beginStreaming()` (the rAF-buffered token path) is imperative-only.
-    isStreaming = true;
+    streaming = true;
     streamingStatus = 'Streaming…';
     if (streamMechanism === 'imperative') {
       chat?.beginStreaming(messageId);
@@ -267,7 +267,7 @@
       );
       if (streamMechanism === 'imperative') chat?.endStreaming();
       streamingMessageId = null;
-      isStreaming = false;
+      streaming = false;
       streamingStatus = '';
       return;
     }
@@ -403,7 +403,7 @@
     withEmptyPrompts ? { emptyPrompts: ['Tell me about alpha', 'Summarize the thread'] } : {},
   );
   const historyProps = $derived(
-    historyEnabled ? { hasMoreHistory: true, onloadhistory: handleLoadHistory } : {},
+    historyEnabled ? { moreHistoryAvailable: true, onloadhistory: handleLoadHistory } : {},
   );
 </script>
 
@@ -486,11 +486,11 @@
 
     <section style="display: grid; gap: 0.4rem;">
       <strong>Features</strong>
-      <Toggle id="t-attachments" label="allowAttachments" bind:checked={allowAttachments} />
-      <Toggle id="t-search" label="allowSearch" bind:checked={allowSearch} />
-      <Toggle id="t-copy" label="allowCopy" bind:checked={allowCopy} />
-      <Toggle id="t-editing" label="allowEditing" bind:checked={allowEditing} />
-      <Toggle id="t-retry" label="allowRetry" bind:checked={allowRetry} />
+      <Toggle id="t-attachments" label="attachments" bind:checked={attachments} />
+      <Toggle id="t-search" label="search" bind:checked={search} />
+      <Toggle id="t-copy" label="copy" bind:checked={copy} />
+      <Toggle id="t-editing" label="editing" bind:checked={editing} />
+      <Toggle id="t-retry" label="retry" bind:checked={retry} />
       <Toggle id="t-surface" label="transparent surface" bind:checked={transparentSurface} />
       <Toggle id="t-prompts" label="emptyPrompts" bind:checked={withEmptyPrompts} />
       <Toggle id="t-autoreply" label="auto-reply on submit" bind:checked={autoReply} />
@@ -548,13 +548,9 @@
       bind:this={chat}
       id="harness-chat"
       {conversation}
-      {isStreaming}
+      {streaming}
       {streamingStatus}
-      {allowAttachments}
-      {allowSearch}
-      {allowCopy}
-      {allowEditing}
-      {allowRetry}
+      capabilities={{ attachments, search, copy, editing, retry }}
       {surfaceMode}
       {virtualized}
       virtualizationEstimatedRowHeight={72}
@@ -570,10 +566,12 @@
         record('onstopgenerating', event.messageId);
       }}
       onjumptolatest={() => record('onjumptolatest')}
-      onscrollstatechange={(event: { isAtBottom: boolean }) =>
-        record('onscrollstatechange', { isAtBottom: event.isAtBottom })}
-      onunreadindicatorchange={(event: { unreadCount: number; hasNewMessageIndicator: boolean }) =>
-        record('onunreadindicatorchange', event)}
+      onscrollstatechange={(event: { atBottom: boolean }) =>
+        record('onscrollstatechange', { atBottom: event.atBottom })}
+      onunreadindicatorchange={(event: {
+        unreadCount: number;
+        newMessageIndicatorVisible: boolean;
+      }) => record('onunreadindicatorchange', event)}
       onexpandedchange={(expanded: boolean) => record('onexpandedchange', { expanded })}
       onattachmentadd={(attachment: { id: string }) => record('onattachmentadd', attachment.id)}
       onattachmentremove={(attachment: { id: string }) =>

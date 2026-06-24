@@ -24,7 +24,7 @@ type SnapshotStatusDotStatus =
   | 'online'
   | 'offline'
   | 'warning'
-  | 'error'
+  | 'danger'
   | 'pending'
   | 'neutral'
   | 'success'

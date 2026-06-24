@@ -1,12 +1,8 @@
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 
 import { devWarn } from './dev-warn.ts';
 
 describe('devWarn', () => {
-  afterEach(() => {
-    mock.restore();
-  });
-
   test('forwards the message and extra args to console.warn in DEV', () => {
     // The test runner builds with DEV truthy (esm-env resolves DEV from the
     // bundle condition; under bun:test it is dev), so the call goes through.

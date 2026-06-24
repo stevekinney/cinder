@@ -43,7 +43,7 @@
   <Chat
     id="playground-suggestions-chat"
     {conversation}
-    allowAttachments={false}
+    capabilities={{ attachments: false }}
     onsuggestionselect={handleSuggestionSelect}
     onsubmit={(event) => {
       conversation = appendUserMessage(conversation, event.message.content as string);

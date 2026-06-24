@@ -31,7 +31,7 @@
     direction = 'vertical',
     maxHeight,
     maxWidth,
-    ariaLabel,
+    label,
     tabindex = 0,
     as = 'div',
     class: className,
@@ -40,13 +40,13 @@
   }: ScrollAreaProps = $props();
 
   const normalizedAriaLabel = $derived(
-    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel.trim() : undefined,
+    typeof label === 'string' && label.trim().length > 0 ? label.trim() : undefined,
   );
   // `aria-labelledby` reaches the element through `...rest`. Treat it the same as
-  // `ariaLabel` for landmark purposes: a neutral element (`div`/`pre`) with an
-  // accessible name — whether from `ariaLabel` or `aria-labelledby` — becomes a
+  // the `label` prop for landmark purposes: a neutral element (`div`/`pre`) with an
+  // accessible name — whether from `label` or `aria-labelledby` — becomes a
   // region landmark. Without this, `<ScrollArea as="div" aria-labelledby="…">`
-  // would be a named, focusable, but landmark-less container while the `ariaLabel`
+  // would be a named, focusable, but landmark-less container while the `label`
   // form would not — an asymmetry invisible to the consumer.
   const ariaLabelledby = $derived((rest as { 'aria-labelledby'?: string })['aria-labelledby']);
   const hasAccessibleName = $derived(

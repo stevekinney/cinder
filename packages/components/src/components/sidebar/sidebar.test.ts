@@ -38,25 +38,25 @@ describe('Sidebar (desktop / inline aside)', () => {
     expect(container.querySelector('aside')?.getAttribute('aria-label')).toBe('Sidebar');
   });
 
-  test('aside uses the supplied ariaLabel', () => {
+  test('aside uses the supplied label', () => {
     const { container } = render(Sidebar, {
-      props: { ariaLabel: 'Workspace', navigation: listSnippet('items') },
+      props: { label: 'Workspace', navigation: listSnippet('items') },
     });
     expect(container.querySelector('aside')?.getAttribute('aria-label')).toBe('Workspace');
   });
 
-  test('empty ariaLabel throws on initial render', () => {
+  test('empty label throws on initial render', () => {
     expect(() => {
       render(Sidebar, {
-        props: { ariaLabel: '', navigation: listSnippet('items') },
+        props: { label: '', navigation: listSnippet('items') },
       });
     }).toThrow();
   });
 
-  test('whitespace-only ariaLabel throws on initial render', () => {
+  test('whitespace-only label throws on initial render', () => {
     expect(() => {
       render(Sidebar, {
-        props: { ariaLabel: '   ', navigation: listSnippet('items') },
+        props: { label: '   ', navigation: listSnippet('items') },
       });
     }).toThrow();
   });
@@ -79,7 +79,7 @@ describe('Sidebar (desktop / inline aside)', () => {
 
   test('renders <nav> inside the aside with a distinct aria-label', () => {
     const { container } = render(Sidebar, {
-      props: { ariaLabel: 'Workspace', navigation: listSnippet('items') },
+      props: { label: 'Workspace', navigation: listSnippet('items') },
     });
     const nav = container.querySelector('aside nav.cinder-sidebar__nav');
     expect(nav).not.toBeNull();
@@ -90,7 +90,7 @@ describe('Sidebar (desktop / inline aside)', () => {
 
   test('outer aside aria-label is distinct from inner nav aria-label', () => {
     const { container } = render(Sidebar, {
-      props: { ariaLabel: 'Workspace', navigation: listSnippet('items') },
+      props: { label: 'Workspace', navigation: listSnippet('items') },
     });
     const aside = container.querySelector('aside');
     const nav = container.querySelector('aside nav.cinder-sidebar__nav');
@@ -152,10 +152,10 @@ describe('Sidebar (desktop / inline aside)', () => {
     expect(container.querySelector('aside')?.hasAttribute('data-cinder-collapsed')).toBe(true);
   });
 
-  test('aria-label in rest spread cannot override the component-owned ariaLabel', () => {
+  test('aria-label in rest spread cannot override the component-owned label', () => {
     const { container } = render(Sidebar, {
       props: {
-        ariaLabel: 'Sections',
+        label: 'Sections',
         'aria-label': 'Overridden',
         navigation: listSnippet('items'),
       } as unknown as Parameters<typeof render>[1]['props'],
@@ -166,7 +166,7 @@ describe('Sidebar (desktop / inline aside)', () => {
   test('aria-labelledby in rest spread is not forwarded', () => {
     const { container } = render(Sidebar, {
       props: {
-        ariaLabel: 'Sections',
+        label: 'Sections',
         'aria-labelledby': 'external-id',
         navigation: listSnippet('items'),
       } as unknown as Parameters<typeof render>[1]['props'],
@@ -361,7 +361,7 @@ describe('Sidebar (mobile / drawer)', () => {
   test('mobile nav landmark has the distinct navigation label', () => {
     mock = installMatchMediaMock(true);
     const { container } = render(Sidebar, {
-      props: { ariaLabel: 'Workspace', navigation: listSnippet('items') },
+      props: { label: 'Workspace', navigation: listSnippet('items') },
     });
     expectMobileQueryWasUsed(mock);
     const nav = container.querySelector('dialog nav.cinder-sidebar__nav');
@@ -722,10 +722,10 @@ describe('Sidebar — optional navigation snippet', () => {
   test('omitting navigation renders no <nav> landmark (no empty navigation region)', () => {
     // navigation is now optional (Snippet?). Without it, the <nav> landmark must be
     // absent entirely — an empty <nav> is an a11y violation (screen readers announce
-    // a navigation region with no destinations). Render with a real ariaLabel and NO
+    // a navigation region with no destinations). Render with a real label and NO
     // navigation prop (every other test passes navigation; this one deliberately omits it).
     const { container } = render(Sidebar, {
-      props: { ariaLabel: 'Main' },
+      props: { label: 'Main' },
     });
     // The <aside> renders, but there is no <nav> child because navigation was omitted.
     expect(container.querySelector('aside')).not.toBeNull();

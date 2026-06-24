@@ -2,9 +2,9 @@
 
 ## Landmark Labeling
 
-`NavigationBar` renders a `<nav>` landmark. The accessible name is set via the `navAriaLabel` prop, which defaults to `"Main navigation"`. Pages with more than one `<nav>` landmark must pass distinct values so screen reader users can distinguish them when jumping between landmarks.
+`NavigationBar` renders a `<nav>` landmark. The accessible name is set via the `label` prop, which defaults to `"Main navigation"`. Pages with more than one `<nav>` landmark must pass distinct values so screen reader users can distinguish them when jumping between landmarks.
 
-The `navAriaLabel` prop always wins over any `aria-label` passed via rest props. The rest `aria-label` is stripped before spreading to prevent silent collisions.
+The `label` prop always wins over any `aria-label` passed via rest props. The rest `aria-label` is stripped before spreading to prevent silent collisions.
 
 ## Mobile Toggle Contract
 

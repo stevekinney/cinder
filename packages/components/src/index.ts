@@ -320,8 +320,8 @@ export type { FeedProps } from './components/feed/index.ts';
 
 export { default as FloatingActionButton } from './components/floating-action-button/index.ts';
 export type {
-  FloatingActionButtonColor,
   FloatingActionButtonProps,
+  FloatingActionButtonShape,
   FloatingActionButtonSize,
   FloatingActionButtonVariant,
 } from './components/floating-action-button/index.ts';

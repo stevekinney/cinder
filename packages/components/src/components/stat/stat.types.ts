@@ -15,7 +15,7 @@ export type StatChange = {
    * When omitted, a phrase is synthesized from `direction` + `value` (+ optional `description`).
    * When provided, used verbatim — the caller owns the full wording.
    */
-  ariaLabel?: string;
+  label?: string;
 };
 export type StatProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   /** Short label describing the metric, e.g. "Monthly Revenue". */

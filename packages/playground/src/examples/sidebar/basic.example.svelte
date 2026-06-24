@@ -25,7 +25,7 @@
   <div
     style="display: flex; min-height: 24rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;"
   >
-    <Sidebar bind:collapsed ariaLabel="Workspace">
+    <Sidebar bind:collapsed label="Workspace">
       {#snippet brand()}
         <strong style="font-size: 0.875rem;">Cinder</strong>
       {/snippet}

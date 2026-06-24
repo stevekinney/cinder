@@ -149,7 +149,7 @@
     --_cinder-status-fg-chroma-dark: 0.14;
   }
 
-  .cinder-alert[data-cinder-variant='error'] {
+  .cinder-alert[data-cinder-variant='danger'] {
     --_cinder-alert-ring: var(--cinder-danger);
     --_cinder-status-base: var(--cinder-danger);
     --_cinder-status-fg-chroma-light: 0.18;

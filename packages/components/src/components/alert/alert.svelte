@@ -35,9 +35,7 @@
     ...rest
   }: AlertProps = $props();
 
-  // `danger` is a consumer-friendly alias for `error` — normalize before stamping the
-  // data attribute so the CSS rules only need to handle `error`.
-  const resolvedVariant = $derived(variant === 'danger' ? 'error' : variant);
+  const resolvedVariant = $derived(variant);
 
   let visible = $state(true);
   let rootElement: HTMLDivElement | undefined = $state();

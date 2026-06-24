@@ -144,7 +144,7 @@ function findRule(selector: string): Rule {
   return first;
 }
 
-const VARIANTS = ['info', 'success', 'warning', 'error'];
+const VARIANTS = ['info', 'success', 'warning', 'danger'];
 
 describe('alert chrome reduction — border-equals-base', () => {
   test('inline-start width EQUALS inline-end width (no stripe — relationship, not magic number)', () => {

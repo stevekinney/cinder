@@ -49,7 +49,7 @@
     Mounting the Alert in response to submit triggers the assertive announcement.
   -->
   {#if authError}
-    <Alert variant="error">
+    <Alert variant="danger">
       {authError}
     </Alert>
   {/if}
