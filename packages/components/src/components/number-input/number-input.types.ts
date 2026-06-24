@@ -36,7 +36,8 @@ export type NumberInputProps = Omit<
   format?: Intl.NumberFormatOptions;
   /**
    * BCP 47 locale tag used for number formatting and parsing. Defaults to the
-   * nearest LocaleProvider locale, then `navigator.language`.
+   * nearest LocaleProvider locale, then `navigator.language` after mount and
+   * `en-US` during server rendering.
    */
   locale?: string;
   /** When true, disables the input and stepper buttons, matching the native `disabled` attribute. */
