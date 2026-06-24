@@ -79,6 +79,14 @@
       if (current.getAttribute('aria-expanded') === 'false') {
         event.preventDefault();
         current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')?.click();
+      } else if (current.getAttribute('aria-expanded') === 'true') {
+        const firstChild = current.querySelector<HTMLElement>(
+          '.cinder-json-viewer__children [role="treeitem"]',
+        );
+        if (firstChild) {
+          event.preventDefault();
+          firstChild.focus();
+        }
       }
     } else if (event.key === 'ArrowLeft' && current) {
       if (current.getAttribute('aria-expanded') === 'true') {

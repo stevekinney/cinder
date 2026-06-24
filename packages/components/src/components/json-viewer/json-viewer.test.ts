@@ -1,12 +1,14 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: JsonViewer } = await import('./json-viewer.svelte');
+
+afterEach(() => cleanup());
 
 describe('JsonViewer', () => {
   test('renders a primitive value', () => {
@@ -74,6 +76,18 @@ describe('JsonViewer', () => {
     const childGroup = rootTreeItem.querySelector('.cinder-json-viewer__children[role="group"]');
 
     expect(childGroup).not.toBeNull();
+  });
+
+  test('ArrowRight on an expanded object moves focus to its first child', async () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+
+    rootTreeItem.focus();
+    await fireEvent.keyDown(rootTreeItem, { key: 'ArrowRight' });
+
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('config: object, 1 item');
   });
 
   test('renders an array with index labels', () => {

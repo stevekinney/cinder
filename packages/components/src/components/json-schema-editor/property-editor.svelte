@@ -331,8 +331,10 @@
 
   function removeCompositionBranch(keyword: 'allOf' | 'anyOf' | 'oneOf', branchIndex: number) {
     const list = Array.isArray(objectValue[keyword]) ? [...objectValue[keyword]!] : [];
+    const removedBranchKey = compositionBranchKeys[keyword][branchIndex];
     list.splice(branchIndex, 1);
     setKeywordKeys(keyword, compositionBranchKeys[keyword].toSpliced(branchIndex, 1));
+    if (removedBranchKey) setChildValidationErrorCount(`${keyword}:${removedBranchKey}`, 0);
     patchComposition(keyword, list.length > 0 ? list : undefined);
   }
 
@@ -538,6 +540,7 @@
           <summary class="cinder-jse-section__title">{keyword}</summary>
           <div class="cinder-jse-section__body">
             {#each objectValue[keyword] as branch, branchIndex (compositionBranchKeys[keyword][branchIndex])}
+              {@const branchKey = compositionBranchKeys[keyword][branchIndex]}
               <PropertyEditor
                 idPrefix={`${idPrefix}-${keyword}-${branchIndex}`}
                 path={`${path}/${keyword}/${branchIndex}`}
@@ -545,10 +548,7 @@
                 {readonly}
                 value={branch}
                 onvalidationerrorcount={(count) =>
-                  setChildValidationErrorCount(
-                    `${keyword}:${compositionBranchKeys[keyword][branchIndex]}`,
-                    count,
-                  )}
+                  setChildValidationErrorCount(`${keyword}:${branchKey}`, count)}
                 onchange={(next) => {
                   const list = [...objectValue[keyword]!];
                   list[branchIndex] = next;
