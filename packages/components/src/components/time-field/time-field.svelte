@@ -22,6 +22,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
 
+  import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { parseTimeString, serializeTimeParts } from '../../_internal/time-parts.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -70,22 +71,29 @@
   const includeSeconds = $derived(granularity === 'second');
   const inputStep = $derived(includeSeconds ? 1 : 60);
 
-  const inputId = $derived(formField?.controlId ?? id);
-  const labelId = $derived(label ? `${id}-label` : formField?.labelId);
-  const localIdBase = $derived(formField ? `${inputId}-time-field` : id);
-  const descriptionId = $derived(description ? `${localIdBase}-description` : undefined);
-  const errorId = $derived(error ? `${localIdBase}-error` : undefined);
-  const describedBy = $derived(
-    [formField?.describedBy, consumerDescribedBy, descriptionId, errorId]
-      .filter(Boolean)
-      .join(' ') || undefined,
+  const generatedId = $props.id();
+  const field = $derived(
+    resolveFieldControl({
+      id: formField?.controlId ?? id,
+      generatedId,
+      context: formField,
+      localIdNamespace: 'time-field',
+      hasDescription: !!description,
+      hasError: !!error,
+      consumerDescribedBy,
+      consumerInvalid: consumerAriaInvalid,
+      required: required ? true : undefined,
+      disabled: disabled ? true : undefined,
+    }),
   );
-  const consumerInvalid = $derived(
-    consumerAriaInvalid === true || consumerAriaInvalid === 'true' ? 'true' : undefined,
-  );
-  const invalid = $derived(error || formField?.invalid || consumerInvalid ? 'true' : undefined);
-  const resolvedDisabled = $derived(disabled || (formField?.disabled ?? false));
-  const resolvedRequired = $derived(required || (formField?.required ?? false));
+  const inputId = $derived(field.id);
+  const labelId = $derived(label ? `${inputId}-label` : formField?.labelId);
+  const descriptionId = $derived(field.ownDescriptionId);
+  const errorId = $derived(field.ownErrorId);
+  const describedBy = $derived(field.describedBy);
+  const invalid = $derived(field.ariaInvalid);
+  const resolvedDisabled = $derived(field.disabled);
+  const resolvedRequired = $derived(field.required);
   const inputAriaLabel = $derived(
     label || formField?.labelId ? undefined : normalizeAriaText(ariaLabel),
   );

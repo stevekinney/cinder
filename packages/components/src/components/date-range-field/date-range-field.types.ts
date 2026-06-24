@@ -54,9 +54,9 @@ export type DateRangeFieldProps = Omit<
   value?: DateRangeValue;
   /** Visible legend rendered above the start/end inputs. */
   label?: string;
-  /** Accessible label for the start date input. Defaults to "Start date". */
+  /** Accessible label for the start input. Defaults to "Start date" for day granularity and "Start date and time" for datetime granularities. */
   startLabel?: string;
-  /** Accessible label for the end date input. Defaults to "End date". */
+  /** Accessible label for the end input. Defaults to "End date" for day granularity and "End date and time" for datetime granularities. */
   endLabel?: string;
   /** Date-time precision. Defaults to day precision. */
   granularity?: DateRangeGranularity;

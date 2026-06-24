@@ -40,8 +40,8 @@
     id,
     value = $bindable<DateRangeValue>({ start: undefined, end: undefined }),
     label,
-    startLabel = 'Start date',
-    endLabel = 'End date',
+    startLabel,
+    endLabel,
     granularity = 'day',
     presets,
     hidePresets = false,
@@ -192,6 +192,10 @@
 
   const inputType = $derived(inputTypeFor(granularity));
   const inputStep = $derived(inputStepFor(granularity));
+  const defaultStartLabel = $derived(granularity === 'day' ? 'Start date' : 'Start date and time');
+  const defaultEndLabel = $derived(granularity === 'day' ? 'End date' : 'End date and time');
+  const resolvedStartLabel = $derived(startLabel ?? defaultStartLabel);
+  const resolvedEndLabel = $derived(endLabel ?? defaultEndLabel);
 
   // ──────────────────────────────────────────────────────────────────────────
   // Event handlers
@@ -270,7 +274,7 @@
         class="cinder-date-range-field__input-label"
         data-disabled={disabled || undefined}
       >
-        {startLabel}
+        {resolvedStartLabel}
       </label>
       <input
         id={startId}
@@ -294,7 +298,7 @@
         class="cinder-date-range-field__input-label"
         data-disabled={disabled || undefined}
       >
-        {endLabel}
+        {resolvedEndLabel}
       </label>
       <input
         id={endId}

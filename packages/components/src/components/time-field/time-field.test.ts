@@ -123,7 +123,7 @@ describe('TimeField', () => {
     });
 
     expect(getInput(container).getAttribute('aria-describedby')).toBe(
-      'external-hint reminder-description',
+      'reminder-description external-hint',
     );
     expect(container.querySelector('.cinder-time-field')?.getAttribute('aria-describedby')).toBe(
       null,
@@ -142,7 +142,7 @@ describe('TimeField', () => {
     });
 
     expect(container.querySelector('select')?.getAttribute('aria-describedby')).toBe(
-      'external-hint reminder-description',
+      'reminder-description external-hint',
     );
   });
 
@@ -178,7 +178,7 @@ describe('TimeField', () => {
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(getInput(container).getAttribute('aria-describedby')).toBe(
-      'reminder-control-description reminder-control-error reminder-control-time-field-description reminder-control-time-field-error',
+      'reminder-control-time-field-description reminder-control-time-field-error reminder-control-description reminder-control-error',
     );
   });
 

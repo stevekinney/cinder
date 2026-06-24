@@ -233,6 +233,18 @@ describe('DateRangeField', () => {
       expect(labelTexts).toContain('To');
     });
 
+    test('uses datetime-aware default labels for datetime granularities', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+      });
+      const labelTexts = Array.from(
+        container.querySelectorAll('.cinder-date-range-field__input-label'),
+      ).map((labelElement) => labelElement.textContent?.trim());
+
+      expect(labelTexts).toEqual(['Start date and time', 'End date and time']);
+    });
+
     test('renders description paragraph when description is provided', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
