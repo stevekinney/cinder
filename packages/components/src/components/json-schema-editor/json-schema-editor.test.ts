@@ -67,6 +67,16 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).toContain('role="toolbar"');
     expect(source).toContain('aria-label=');
   });
+
+  test('json-schema-editor-impl.svelte scopes form validation count to the form view', async () => {
+    const source = await Bun.file(
+      new URL('./json-schema-editor-impl.svelte', import.meta.url),
+    ).text();
+
+    expect(source).toContain('const toolbarValidationErrorCount = $derived');
+    expect(source).toContain("view === 'form' ? localValidationErrorCount : 0");
+    expect(source).toContain('localValidationErrorCount={toolbarValidationErrorCount}');
+  });
 });
 
 // ---------------------------------------------------------------------------

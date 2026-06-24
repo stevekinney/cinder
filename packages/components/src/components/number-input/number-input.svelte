@@ -304,10 +304,11 @@
     isFocused = true;
   }
 
-  function onBlur() {
+  function onBlur(event: FocusEvent & { currentTarget: EventTarget & HTMLInputElement }) {
     const buffered = editorBuffer;
     isFocused = false;
     commitFromText('typed', buffered);
+    rest.onblur?.(event);
   }
 
   function onInput(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {

@@ -11,7 +11,6 @@ export type NumberInputProps = Omit<
   | 'oninput'
   | 'onchange'
   | 'onfocus'
-  | 'onblur'
   | 'onkeydown'
 > & {
   /** HTML `id` for the underlying input, used to associate the `<label>` and ARIA attributes. Required. */

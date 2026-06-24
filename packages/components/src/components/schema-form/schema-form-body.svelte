@@ -534,6 +534,7 @@
           min={finiteSchemaNumber(field, 'minimum')}
           max={finiteSchemaNumber(field, 'maximum')}
           step={field.kind === 'integer' ? 1 : undefined}
+          onblur={() => validateTouchedField(field)}
           bind:value={
             () => numberFieldValue(field), (next) => updateValue(field.path, next ?? undefined)
           }

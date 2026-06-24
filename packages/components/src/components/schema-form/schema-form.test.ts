@@ -593,6 +593,44 @@ describe('SchemaForm', () => {
     expect(screen.queryByText('Name is unavailable.')).toBeNull();
   });
 
+  test('validates number fields on blur', async () => {
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'number-blur-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { count: { type: 'number', title: 'Count' } },
+            required: ['count'],
+          }),
+          output: () => ({}),
+        },
+        validate(value: unknown) {
+          const count = (value as { count?: number }).count;
+          return count === undefined || count >= 10
+            ? { value }
+            : { issues: [{ path: ['count'], message: 'Count must be at least 10.' }] };
+        },
+      },
+    } as const;
+
+    render(SchemaForm, {
+      props: {
+        schema,
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '5' } });
+    await fireEvent.blur(countInput);
+    await flush();
+
+    expect(countInput.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Count must be at least 10.')).toBeTruthy();
+  });
+
   test('keeps controls frozen when a new submit starts during invalid-submit focus', async () => {
     let releaseFirstValidation!: () => void;
     let releaseSecondValidation!: () => void;

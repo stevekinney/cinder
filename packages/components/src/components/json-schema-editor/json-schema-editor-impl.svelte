@@ -111,6 +111,7 @@
 
   let localValidationErrorCount = $state(0);
   const editorState = createEditorState(stateOptions);
+  const toolbarValidationErrorCount = $derived(view === 'form' ? localValidationErrorCount : 0);
 
   // Sync `readonly` into the state container whenever the prop changes.
   // `setReadonly` only assigns the flag, so re-applying the construction-seeded
@@ -230,7 +231,7 @@
 >
   <JsonSchemaToolbar
     state={editorState}
-    {localValidationErrorCount}
+    localValidationErrorCount={toolbarValidationErrorCount}
     onUndo={handleUndo}
     onRedo={handleRedo}
     onRevert={handleRevert}

@@ -55,6 +55,7 @@
 
   /** Announcement text for the live region. */
   let announcement = $state('');
+  let ruleLabelDrafts = $state<Record<string, string>>({});
 
   function announce(message: string): void {
     announcement = '';
@@ -127,9 +128,15 @@
 
   function handleRenameRule(ruleId: string, label: string): void {
     const nextLabel = label.trim() || 'Untitled rule';
+    const { [ruleId]: _removedDraft, ...remainingDrafts } = ruleLabelDrafts;
+    ruleLabelDrafts = remainingDrafts;
     const nextRules = updateRules(ruleId, (rule) => ({ ...rule, label: nextLabel }));
     const change: InvocationRuleChange = { type: 'rename-rule', ruleId };
     onchange(nextRules, change);
+  }
+
+  function ruleLabelDraft(rule: InvocationRule): string {
+    return ruleLabelDrafts[rule.id] ?? rule.label;
   }
 
   // ---------------------------------------------------------------------------
@@ -294,8 +301,13 @@
             <span class="cinder-sr-only">Rule name</span>
             <input
               class="cinder-invocation-rule-builder__rule-label-input"
-              value={rule.label}
+              value={ruleLabelDraft(rule)}
               aria-label={`Rule name for ${rule.label}`}
+              oninput={(event) =>
+                (ruleLabelDrafts = {
+                  ...ruleLabelDrafts,
+                  [rule.id]: (event.target as HTMLInputElement).value,
+                })}
               onblur={(event) =>
                 handleRenameRule(rule.id, (event.target as HTMLInputElement).value)}
               onkeydown={(event) => {

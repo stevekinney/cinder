@@ -247,6 +247,26 @@ describe('InvocationRuleBuilder', () => {
       expect(change.ruleId).toBe('r1');
     });
 
+    test('editing a rule name keeps the draft value until blur commits it', async () => {
+      const { container, onchange } = renderBuilder([makeRule()]);
+      const ruleNameInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Rule name for PR Review Rule"]',
+      )!;
+
+      await fireEvent.input(ruleNameInput, { target: { value: 'Security Rule' } });
+
+      expect(ruleNameInput.value).toBe('Security Rule');
+      expect(onchange).not.toHaveBeenCalled();
+
+      await fireEvent.blur(ruleNameInput);
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(nextRules[0].label).toBe('Security Rule');
+      expect(change.type).toBe('rename-rule');
+      expect(change.ruleId).toBe('r1');
+    });
+
     test('add-condition button calls onchange with add-condition change', async () => {
       const { container, onchange } = renderBuilder([makeRule()]);
       const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
