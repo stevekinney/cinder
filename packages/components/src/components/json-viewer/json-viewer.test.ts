@@ -90,6 +90,20 @@ describe('JsonViewer', () => {
     expect(document.activeElement?.getAttribute('aria-label')).toBe('config: object, 1 item');
   });
 
+  test('Enter and Space toggle a focused expandable treeitem', async () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+
+    rootTreeItem.focus();
+    await fireEvent.keyDown(rootTreeItem, { key: 'Enter' });
+    expect(rootTreeItem.getAttribute('aria-expanded')).toBe('false');
+
+    await fireEvent.keyDown(rootTreeItem, { key: ' ' });
+    expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
+  });
+
   test('renders an array with index labels', () => {
     const { container } = render(JsonViewer, { value: [10, 20, 30] });
     const keys = Array.from(container.querySelectorAll('.cinder-json-viewer__key'));

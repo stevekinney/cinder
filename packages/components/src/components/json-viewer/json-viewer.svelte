@@ -93,6 +93,15 @@
         event.preventDefault();
         current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')?.click();
       }
+    } else if (
+      (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') &&
+      current
+    ) {
+      const toggle = current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle');
+      if (toggle) {
+        event.preventDefault();
+        toggle.click();
+      }
     }
   }
 </script>
