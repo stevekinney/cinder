@@ -68,6 +68,7 @@
 </script>
 
 {#if isObject && !tooDeep}
+  <!-- svelte-ignore a11y_role_has_required_aria_props -->
   <span
     class={classNames('cinder-json-viewer__node')}
     role="treeitem"
@@ -76,7 +77,6 @@
     aria-level={depth + 1}
     aria-posinset={position}
     aria-setsize={setSize}
-    aria-selected="false"
     tabindex={root ? 0 : -1}
   >
     <button
@@ -127,6 +127,7 @@
     {/if}
   </span>
 {:else if isObject && tooDeep}
+  <!-- svelte-ignore a11y_role_has_required_aria_props -->
   <span
     class="cinder-json-viewer__node"
     role="treeitem"
@@ -134,7 +135,6 @@
     aria-level={depth + 1}
     aria-posinset={position}
     aria-setsize={setSize}
-    aria-selected="false"
   >
     {#if keyName !== undefined}
       <span class="cinder-json-viewer__key">{keyName}:</span>
@@ -142,6 +142,7 @@
     <span class="cinder-json-viewer__too-deep">…</span>
   </span>
 {:else}
+  <!-- svelte-ignore a11y_role_has_required_aria_props -->
   <span
     class="cinder-json-viewer__node"
     role="treeitem"
@@ -149,7 +150,6 @@
     aria-level={depth + 1}
     aria-posinset={position}
     aria-setsize={setSize}
-    aria-selected="false"
   >
     {#if keyName !== undefined}
       <span class="cinder-json-viewer__key">{keyName}:</span>

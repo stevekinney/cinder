@@ -135,14 +135,19 @@
     return JSON.stringify(getValueAtPath(formValue, field.path) ?? null, null, 2);
   }
 
-  function updateValue(path: readonly string[], next: unknown) {
-    if (submitting) return;
-    formValue = setValueAtPath(formValue, path, next);
+  function bumpTouchedValidationSequence(path: readonly string[]) {
     const key = pathKey(path);
     touchedValidationSequences = {
       ...touchedValidationSequences,
       [key]: (touchedValidationSequences[key] ?? 0) + 1,
     };
+  }
+
+  function updateValue(path: readonly string[], next: unknown) {
+    if (submitting) return;
+    formValue = setValueAtPath(formValue, path, next);
+    const key = pathKey(path);
+    bumpTouchedValidationSequence(path);
     if (errors[key]) {
       const { [key]: _removed, ...remaining } = errors;
       errors = remaining;
@@ -203,10 +208,7 @@
     if (submitting) return;
     const key = pathKey(field.path);
     rawDrafts = { ...rawDrafts, [key]: next };
-    touchedValidationSequences = {
-      ...touchedValidationSequences,
-      [key]: (touchedValidationSequences[key] ?? 0) + 1,
-    };
+    bumpTouchedValidationSequence(field.path);
     if (errors[key]) {
       const { [key]: _removed, ...remaining } = errors;
       errors = remaining;
@@ -527,7 +529,10 @@
       </button>
     </fieldset>
   {:else}
-    <div class="cinder-schema-form__field">
+    <div
+      class="cinder-schema-form__field"
+      oninput={() => bumpTouchedValidationSequence(field.path)}
+    >
       {#if field.kind === 'string'}
         <Input
           {id}

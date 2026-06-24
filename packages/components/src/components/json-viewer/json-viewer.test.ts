@@ -90,6 +90,35 @@ describe('JsonViewer', () => {
     expect(document.activeElement?.getAttribute('aria-label')).toBe('config: object, 1 item');
   });
 
+  test('ArrowLeft on a leaf moves focus to its parent treeitem', async () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+    const configTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="config: object, 1 item"]',
+    )!;
+    rootTreeItem.focus();
+    await fireEvent.keyDown(rootTreeItem, { key: 'ArrowRight' });
+    configTreeItem.focus();
+    await fireEvent.keyDown(configTreeItem, { key: 'ArrowRight' });
+    const nestedTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-level="3"]',
+    )!;
+    nestedTreeItem.focus();
+    await fireEvent.keyDown(nestedTreeItem, { key: 'ArrowLeft' });
+
+    expect(document.activeElement).toBe(configTreeItem);
+  });
+
+  test('does not expose selection state without a selection model', () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const treeItems = Array.from(container.querySelectorAll('[role="treeitem"]'));
+
+    expect(treeItems.length).toBeGreaterThan(0);
+    expect(treeItems.every((item) => item.getAttribute('aria-selected') === null)).toBe(true);
+  });
+
   test('Enter and Space toggle a focused expandable treeitem', async () => {
     const { container } = render(JsonViewer, { value: { config: { nested: true } } });
     const rootTreeItem = container.querySelector<HTMLElement>(

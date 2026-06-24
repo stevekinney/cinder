@@ -92,6 +92,12 @@
       if (current.getAttribute('aria-expanded') === 'true') {
         event.preventDefault();
         current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')?.click();
+      } else {
+        const parent = current.parentElement?.closest<HTMLElement>('[role="treeitem"]');
+        if (parent) {
+          event.preventDefault();
+          parent.focus();
+        }
       }
     } else if (
       (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') &&
@@ -123,7 +129,7 @@
       <p>Use the consumer's download or copy action to inspect the raw JSON.</p>
     </div>
   {:else}
-    <div role="tree" aria-label="JSON tree" onkeydown={handleTreeKeydown}>
+    <div role="tree" aria-label="JSON tree" tabindex="-1" onkeydown={handleTreeKeydown}>
       <JsonViewerNode {value} depth={0} {initialDepth} {maxDepth} position={1} setSize={1} root />
     </div>
   {/if}

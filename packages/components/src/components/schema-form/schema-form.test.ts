@@ -718,6 +718,58 @@ describe('SchemaForm', () => {
     expect(screen.getByText('Count must be at least 10.')).toBeTruthy();
   });
 
+  test('ignores stale async blur validation after a focused number edit', async () => {
+    const validations: Array<{
+      value: unknown;
+      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
+    }> = [];
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'number-blur-stale-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { count: { type: 'number', title: 'Count' } },
+            required: ['count'],
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
+            (resolve) => {
+              validations.push({ value, resolve });
+            },
+          );
+        },
+      },
+    } as const;
+
+    render(SchemaForm, {
+      props: {
+        schema,
+        value: { count: 5 },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '5' } });
+    await fireEvent.blur(countInput);
+    await flush();
+    expect(validations).toHaveLength(1);
+
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: '12' } });
+    validations[0]!.resolve({ issues: [{ path: ['count'], message: 'Count is unavailable.' }] });
+    await flush();
+    await flush();
+
+    expect((countInput as HTMLInputElement).value).toBe('12');
+    expect(countInput.getAttribute('aria-invalid')).not.toBe('true');
+    expect(screen.queryByText('Count is unavailable.')).toBeNull();
+  });
+
   test('reports schema number bounds instead of clamping typed values', async () => {
     const schema = {
       '~standard': {
