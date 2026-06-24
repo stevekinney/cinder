@@ -90,6 +90,13 @@
         ),
   );
   const rootDirection = $derived(providedDirection === 'auto' ? 'auto' : resolvedDirection);
+  const renderedRootDirection = $derived(
+    providedDirection === 'auto' || providedDirection === 'rtl' || providedDirection === 'ltr'
+      ? rootDirection
+      : rootElement
+        ? resolvedDirection
+        : undefined,
+  );
 
   const enabledIndexes = $derived(
     menus.map((menu, index) => ({ menu, index })).filter(({ menu }) => !menu.disabled),
@@ -426,7 +433,7 @@
   bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-menu-bar', customClassName)}
-  dir={rootDirection}
+  dir={renderedRootDirection}
   role="menubar"
   aria-label={labelledBy ? undefined : label}
   aria-labelledby={labelledBy}

@@ -61,6 +61,9 @@ const schema = {
     'aria-describedby': {
       type: 'string',
     },
+    'aria-invalid': {
+      enum: [false, true, 'true', 'false'],
+    },
   },
   additionalProperties: false,
   required: ['id'],

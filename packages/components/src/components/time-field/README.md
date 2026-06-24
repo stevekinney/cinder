@@ -18,27 +18,28 @@ Standalone time-of-day input with optional timezone selection.
 
 <!-- generated:props:start -->
 
-| Prop               | Type                     | Required | Default | Description                                                                                                                        |
-| ------------------ | ------------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `aria-describedby` | `string`                 | no       | —       |                                                                                                                                    |
-| `aria-label`       | `string`                 | no       | —       |                                                                                                                                    |
-| `aria-labelledby`  | `string`                 | no       | —       |                                                                                                                                    |
-| `class`            | `string`                 | no       | —       |                                                                                                                                    |
-| `defaultValue`     | `string`                 | no       | —       |                                                                                                                                    |
-| `description`      | `string`                 | no       | —       |                                                                                                                                    |
-| `disabled`         | `boolean`                | no       | —       |                                                                                                                                    |
-| `error`            | `string`                 | no       | —       |                                                                                                                                    |
-| `granularity`      | `"minute"` \| `"second"` | no       | —       |                                                                                                                                    |
-| `id`               | `string`                 | yes      | —       |                                                                                                                                    |
-| `label`            | `string`                 | no       | —       |                                                                                                                                    |
-| `name`             | `string`                 | no       | —       |                                                                                                                                    |
-| `readonly`         | `boolean`                | no       | —       |                                                                                                                                    |
-| `required`         | `boolean`                | no       | —       |                                                                                                                                    |
-| `timezone`         | `string`                 | no       | —       |                                                                                                                                    |
-| `timezoneName`     | `string`                 | no       | —       |                                                                                                                                    |
-| `timezones`        | `string`[]               | no       | —       |                                                                                                                                    |
-| `value`            | `string`                 | no       | —       |                                                                                                                                    |
-| `onchange`         | `(opaque)`               | no       | —       | Called when the user commits a time or timezone change. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop               | Type                                       | Required | Default | Description                                                                                                                        |
+| ------------------ | ------------------------------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `aria-describedby` | `string`                                   | no       | —       |                                                                                                                                    |
+| `aria-invalid`     | `false` \| `true` \| `"true"` \| `"false"` | no       | —       |                                                                                                                                    |
+| `aria-label`       | `string`                                   | no       | —       |                                                                                                                                    |
+| `aria-labelledby`  | `string`                                   | no       | —       |                                                                                                                                    |
+| `class`            | `string`                                   | no       | —       |                                                                                                                                    |
+| `defaultValue`     | `string`                                   | no       | —       |                                                                                                                                    |
+| `description`      | `string`                                   | no       | —       |                                                                                                                                    |
+| `disabled`         | `boolean`                                  | no       | —       |                                                                                                                                    |
+| `error`            | `string`                                   | no       | —       |                                                                                                                                    |
+| `granularity`      | `"minute"` \| `"second"`                   | no       | —       |                                                                                                                                    |
+| `id`               | `string`                                   | yes      | —       |                                                                                                                                    |
+| `label`            | `string`                                   | no       | —       |                                                                                                                                    |
+| `name`             | `string`                                   | no       | —       |                                                                                                                                    |
+| `readonly`         | `boolean`                                  | no       | —       |                                                                                                                                    |
+| `required`         | `boolean`                                  | no       | —       |                                                                                                                                    |
+| `timezone`         | `string`                                   | no       | —       |                                                                                                                                    |
+| `timezoneName`     | `string`                                   | no       | —       |                                                                                                                                    |
+| `timezones`        | `string`[]                                 | no       | —       |                                                                                                                                    |
+| `value`            | `string`                                   | no       | —       |                                                                                                                                    |
+| `onchange`         | `(opaque)`                                 | no       | —       | Called when the user commits a time or timezone change. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

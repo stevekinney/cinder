@@ -28,8 +28,10 @@ mock.module('@floating-ui/dom', () => ({
 }));
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { renderToServerHtml } = await import('../../test/server-render.ts');
 const { tick } = await import('svelte');
 const { default: MenuBar } = await import('./menu-bar.svelte');
+const MENU_BAR_SOURCE = `${import.meta.dir}/menu-bar.svelte`;
 
 function fileEditViewMenus(onOpenRecent = () => {}) {
   return [
@@ -193,6 +195,17 @@ describe('MenuBar', () => {
     const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'auto' } as any);
 
     expect(getByRole('menubar').getAttribute('dir')).toBe('auto');
+  });
+
+  test('server rendering omits provider fallback direction until local DOM can be checked', async () => {
+    const html = await renderToServerHtml(MENU_BAR_SOURCE, {
+      menus: fileEditViewMenus(),
+      label: 'Application menu',
+    });
+    const menuBarTag = html.match(/<div[^>]*class="[^"]*cinder-menu-bar[^"]*"[^>]*>/)?.[0] ?? '';
+
+    expect(menuBarTag).not.toBe('');
+    expect(menuBarTag).not.toContain('dir=');
   });
 
   test('uses the computed menubar root direction for dir auto keyboard behavior', async () => {

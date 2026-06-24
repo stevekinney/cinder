@@ -130,6 +130,22 @@ describe('TimeField', () => {
     );
   });
 
+  test('wires descriptions to the timezone select', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        value: '09:30',
+        timezones: ['UTC', 'Europe/Berlin'],
+        description: 'Used for reminders.',
+        'aria-describedby': 'external-hint',
+      },
+    });
+
+    expect(container.querySelector('select')?.getAttribute('aria-describedby')).toBe(
+      'external-hint reminder-description',
+    );
+  });
+
   test('omits empty accessible-name attributes on the time input', () => {
     const { container } = render(TimeField, {
       props: {
@@ -142,6 +158,14 @@ describe('TimeField', () => {
 
     expect(getInput(container).getAttribute('aria-label')).toBeNull();
     expect(getInput(container).getAttribute('aria-labelledby')).toBeNull();
+  });
+
+  test('falls back to FormField label id when aria-labelledby is empty', () => {
+    const { container } = render(TimeFieldFormFieldFixture, {
+      props: { timeFieldAriaLabelledBy: '' },
+    });
+
+    expect(getInput(container).getAttribute('aria-labelledby')).toBe('reminder-label');
   });
 
   test('namespaces local description and error ids inside FormField', () => {
@@ -165,6 +189,15 @@ describe('TimeField', () => {
 
     expect(getInput(container).getAttribute('aria-label')).toBe('Reminder time');
     expect(container.querySelector('.cinder-time-field')?.getAttribute('aria-label')).toBeNull();
+  });
+
+  test('forwards consumer invalid state to the time input', () => {
+    const { container } = render(TimeField, {
+      props: { id: 'reminder', value: '09:30', 'aria-invalid': true },
+    });
+
+    expect(getInput(container).getAttribute('aria-invalid')).toBe('true');
+    expect(container.querySelector('.cinder-time-field')?.getAttribute('aria-invalid')).toBeNull();
   });
 
   test('disabled state disables both time and timezone controls', () => {

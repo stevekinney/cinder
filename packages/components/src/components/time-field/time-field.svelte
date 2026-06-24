@@ -46,6 +46,7 @@
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     'aria-describedby': consumerDescribedBy,
+    'aria-invalid': consumerAriaInvalid,
     onchange,
     ...rest
   }: TimeFieldProps = $props();
@@ -79,14 +80,17 @@
       .filter(Boolean)
       .join(' ') || undefined,
   );
-  const invalid = $derived(error || formField?.invalid ? 'true' : undefined);
+  const consumerInvalid = $derived(
+    consumerAriaInvalid === true || consumerAriaInvalid === 'true' ? 'true' : undefined,
+  );
+  const invalid = $derived(error || formField?.invalid || consumerInvalid ? 'true' : undefined);
   const resolvedDisabled = $derived(disabled || (formField?.disabled ?? false));
   const resolvedRequired = $derived(required || (formField?.required ?? false));
   const inputAriaLabel = $derived(
     label || formField?.labelId ? undefined : normalizeAriaText(ariaLabel),
   );
   const inputAriaLabelledBy = $derived(
-    label ? undefined : normalizeAriaText(ariaLabelledBy ?? formField?.labelId),
+    label ? undefined : (normalizeAriaText(ariaLabelledBy) ?? formField?.labelId),
   );
   const resolvedTimezoneName = $derived(
     timezones && timezones.length > 0 && timezone !== undefined
@@ -175,6 +179,7 @@
       <select
         class="cinder-time-field__timezone"
         aria-label="Timezone"
+        aria-describedby={describedBy}
         value={timezone}
         disabled={resolvedDisabled || readonly}
         onchange={handleTimezoneChange}
