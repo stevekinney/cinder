@@ -89,7 +89,7 @@
    * gesture for scrolling when pointerdown lands directly on the thumb. */
     touch-action: none;
     transition:
-      left var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease),
+      inset-inline-start var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease),
       box-shadow var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease);
   }
 

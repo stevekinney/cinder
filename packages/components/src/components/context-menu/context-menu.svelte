@@ -21,7 +21,7 @@
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { captureFocus } from '../../_internal/overlay.ts';
-  import { isRightToLeftElement } from '../../_internal/text-direction.ts';
+  import { resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
@@ -106,15 +106,15 @@
   const virtualReference: VirtualElement | null = $derived(
     open ? makeVirtualReference(anchorPoint?.x ?? requestedX, anchorPoint?.y ?? requestedY) : null,
   );
+  const resolvedDirection = $derived(
+    resolveTextDirection(triggerElement, localeContext?.direction),
+  );
 
   const anchoredOverlay = createAnchoredOverlay({
     open: () => open,
     anchor: () => virtualReference,
     panel: () => menuElement,
-    placement: () =>
-      localeContext?.direction === 'rtl' || isRightToLeftElement(triggerElement)
-        ? 'left-start'
-        : 'right-start',
+    placement: () => (resolvedDirection === 'rtl' ? 'left-start' : 'right-start'),
     offset: () => 0,
     widthMode: () => 'menu',
   });
@@ -158,6 +158,9 @@
     get longPressDelay() {
       return longPressDelay;
     },
+    get direction() {
+      return resolvedDirection;
+    },
     openAt,
     close,
   });
@@ -175,9 +178,15 @@
     menu.setAttribute('data-cinder-position-ready', String(anchoredOverlay.positionReady));
     menu.setAttribute('data-cinder-requested-x', String(x));
     menu.setAttribute('data-cinder-requested-y', String(y));
+    if (resolvedDirection) {
+      menu.setAttribute('dir', resolvedDirection);
+    } else {
+      menu.removeAttribute('dir');
+    }
     return () => {
       menu.removeAttribute('style');
       menu.removeAttribute('data-cinder-position-ready');
+      menu.removeAttribute('dir');
       menu.removeAttribute('data-cinder-requested-x');
       menu.removeAttribute('data-cinder-requested-y');
     };

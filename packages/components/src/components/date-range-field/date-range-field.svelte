@@ -63,7 +63,10 @@
       label: 'Today',
       resolve: () => {
         const now = new Date();
-        return { start: toISODate(now), end: toISODate(now) };
+        return {
+          start: formatDateRangePresetValue(startOfDay(now), granularity),
+          end: formatDateRangePresetValue(now, granularity),
+        };
       },
     },
     {
@@ -76,7 +79,10 @@
         const now = new Date();
         const yesterday = new Date(now);
         yesterday.setDate(now.getDate() - 1);
-        return { start: toISODate(yesterday), end: toISODate(now) };
+        return {
+          start: formatDateRangePresetValue(startOfDay(yesterday), granularity),
+          end: formatDateRangePresetValue(now, granularity),
+        };
       },
     },
     {
@@ -86,7 +92,10 @@
         const now = new Date();
         const sixDaysAgo = new Date(now);
         sixDaysAgo.setDate(now.getDate() - 6);
-        return { start: toISODate(sixDaysAgo), end: toISODate(now) };
+        return {
+          start: formatDateRangePresetValue(startOfDay(sixDaysAgo), granularity),
+          end: formatDateRangePresetValue(now, granularity),
+        };
       },
     },
   ];
@@ -124,6 +133,27 @@
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  function startOfDay(date: Date): Date {
+    const next = new Date(date);
+    next.setHours(0, 0, 0, 0);
+    return next;
+  }
+
+  function toISODateTime(date: Date, nextGranularity: DateRangeGranularity): string {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    if (nextGranularity === 'hour') return `${toISODate(date)}T${hours}:00`;
+    const base = `${toISODate(date)}T${hours}:${minutes}`;
+    if (nextGranularity === 'second') {
+      return `${base}:${String(date.getSeconds()).padStart(2, '0')}`;
+    }
+    return base;
+  }
+
+  function formatDateRangePresetValue(date: Date, nextGranularity: DateRangeGranularity): string {
+    return nextGranularity === 'day' ? toISODate(date) : toISODateTime(date, nextGranularity);
   }
 
   function inputTypeFor(nextGranularity: DateRangeGranularity): 'date' | 'datetime-local' {

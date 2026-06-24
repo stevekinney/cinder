@@ -145,13 +145,15 @@ describe('MenuBar', () => {
   test('right-to-left submenus fall back to the inline-start side', async () => {
     const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
     const file = getByRole('menuitem', { name: 'File' });
+    const root = getByRole('menubar');
 
+    expect(root.getAttribute('dir')).toBe('rtl');
     await fireEvent.click(file);
     await tick();
     computePositionSpy.mockClear();
 
     const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
-    await fireEvent.keyDown(submenuTrigger, { key: 'ArrowRight' });
+    await fireEvent.keyDown(submenuTrigger, { key: 'ArrowLeft' });
     await tick();
 
     const submenuCall = computePositionSpy.mock.calls.find((call) => {
@@ -159,6 +161,25 @@ describe('MenuBar', () => {
       return options?.placement === 'left-start';
     });
     expect(submenuCall).toBeDefined();
+    expect(getByRole('menu', { name: 'Open Recent' }).getAttribute('dir')).toBe('rtl');
+  });
+
+  test('right-to-left submenu ArrowRight returns focus to the submenu trigger', async () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
+    await fireEvent.keyDown(submenuTrigger, { key: 'ArrowLeft' });
+    await tick();
+    await fireEvent.keyDown(getByRole('menuitem', { name: 'Cinder workspace' }), {
+      key: 'ArrowRight',
+    });
+    await tick();
+
+    expect(document.activeElement).toBe(submenuTrigger);
+    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('false');
   });
 
   test('opens a submenu on the first enabled item after opening the parent menu from ArrowUp', async () => {

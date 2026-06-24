@@ -128,6 +128,28 @@ describe('DateRangeField', () => {
       expect(inclusiveDays).toBe(7);
     });
 
+    test('built-in presets emit datetime-local values when granularity includes time', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+      const today = getPresetButtons(container).find(
+        (button) => button.textContent?.trim() === 'Today',
+      );
+      if (!today) throw new Error('Today preset not found');
+
+      await fireEvent.click(today);
+
+      const change = changes[0];
+      if (!change?.start || !change.end) throw new Error('Expected complete date range');
+      expect(change.start).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+      expect(change.end).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+      expect(getStartInput(container).value).toBe(change.start);
+      expect(getEndInput(container).value).toBe(change.end);
+    });
+
     test('built-in Yesterday & today preset covers two inclusive calendar dates', async () => {
       const changes: DateRangeValue[] = [];
       const { container } = render(DateRangeField, {

@@ -30,7 +30,7 @@
   import { tick } from 'svelte';
 
   import { getLocaleContext } from '../../_internal/locale-context.ts';
-  import { isRightToLeftElement } from '../../_internal/text-direction.ts';
+  import { resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { DropdownContext } from '../dropdown/dropdown.types.ts';
   import DropdownItem from '../dropdown-item/dropdown-item.svelte';
@@ -49,6 +49,7 @@
 
   type RestSafeProps = MenuBarProps & {
     role?: string;
+    dir?: 'ltr' | 'rtl' | 'auto';
     'aria-label'?: string;
     'aria-labelledby'?: string;
     'aria-orientation'?: string;
@@ -61,6 +62,7 @@
     labelledBy,
     class: customClassName,
     role: _role,
+    dir: providedDirection,
     'aria-label': _ariaLabel,
     'aria-labelledby': _ariaLabelledBy,
     'aria-orientation': _ariaOrientation,
@@ -79,6 +81,11 @@
   let suppressSubmenuFocusOpen = false;
   const localeContext = getLocaleContext();
   const menuElements = new Map<string, HTMLElement>();
+  const resolvedDirection = $derived(
+    providedDirection === 'rtl' || providedDirection === 'ltr'
+      ? providedDirection
+      : resolveTextDirection(rootElement?.parentElement ?? rootElement, localeContext?.direction),
+  );
 
   const enabledIndexes = $derived(
     menus.map((menu, index) => ({ menu, index })).filter(({ menu }) => !menu.disabled),
@@ -248,13 +255,18 @@
     };
   }
 
+  function submenuDirection(submenuTriggerId: string): 'ltr' | 'rtl' | undefined {
+    return resolveTextDirection(findElementById(submenuTriggerId), resolvedDirection);
+  }
+
   function submenuFallbackPlacement(
     submenuTriggerId: string,
   ): DropdownContext['fallbackPlacement'] {
-    return localeContext?.direction === 'rtl' ||
-      isRightToLeftElement(findElementById(submenuTriggerId))
-      ? 'left-start'
-      : 'right-start';
+    return submenuDirection(submenuTriggerId) === 'rtl' ? 'left-start' : 'right-start';
+  }
+
+  function submenuOpenArrow(submenuTriggerId: string): 'ArrowLeft' | 'ArrowRight' {
+    return submenuDirection(submenuTriggerId) === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
   }
 
   function makeMenuRegister(menuId: string): (element: HTMLElement | null) => void {
@@ -337,17 +349,27 @@
 
     if (openMenuIndex !== null && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
       const target = event.target instanceof HTMLElement ? event.target : null;
-      if (target?.closest('.cinder-menu-bar__submenu-menu')) {
-        if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          const triggerId = target
+      const submenuMenu = target?.closest<HTMLElement>('.cinder-menu-bar__submenu-menu');
+      if (submenuMenu) {
+        const triggerId =
+          submenuMenu.dataset['cinderMenuBarSubmenuTriggerId'] ??
+          submenuMenu
             .closest<HTMLElement>('.cinder-menu-bar__submenu')
             ?.querySelector<HTMLElement>('[data-cinder-menu-bar-submenu-trigger]')?.id;
+        const closeArrow =
+          resolveTextDirection(submenuMenu, resolvedDirection) === 'rtl'
+            ? 'ArrowRight'
+            : 'ArrowLeft';
+        if (event.key === closeArrow) {
+          event.preventDefault();
           openSubmenuKey = null;
-          if (triggerId) void tick().then(() => focusElement(triggerId));
+          if (triggerId) focusSubmenuTriggerAfterClose(triggerId);
         } else {
           event.preventDefault();
-          const nextIndex = nextEnabledMenuIndex(openMenuIndex, 1);
+          const nextIndex = nextEnabledMenuIndex(
+            openMenuIndex,
+            event.key === 'ArrowRight' ? 1 : -1,
+          );
           if (nextIndex !== -1) openMenu(nextIndex, 'first');
         }
         return;
@@ -395,6 +417,7 @@
   bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-menu-bar', customClassName)}
+  dir={resolvedDirection}
   role="menubar"
   aria-label={labelledBy ? undefined : label}
   aria-labelledby={labelledBy}
@@ -501,7 +524,7 @@
                     onkeydown={(event) => {
                       if (entry.disabled) return;
                       if (
-                        event.key === 'ArrowRight' ||
+                        event.key === submenuOpenArrow(submenuTrigger) ||
                         event.key === 'Enter' ||
                         event.key === ' '
                       ) {
@@ -533,6 +556,8 @@
                   >
                     <DropdownMenu
                       class="cinder-menu-bar__submenu-menu"
+                      dir={submenuDirection(submenuTrigger)}
+                      data-cinder-menu-bar-submenu-trigger-id={submenuTrigger}
                       aria-labelledby={submenuTrigger}
                     >
                       {#each entry.items as submenuEntry, submenuEntryIndex (ancestryKey('submenu', submenuKey, submenuEntryIndex, submenuEntry.id))}

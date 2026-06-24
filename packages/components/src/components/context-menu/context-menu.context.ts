@@ -1,9 +1,11 @@
 import { createContext } from 'svelte';
+import type { TextDirection } from '../../_internal/locale-context.ts';
 
 export type ContextMenuContext = {
   get disabled(): boolean;
   get isOpen(): boolean;
   get longPressDelay(): number;
+  get direction(): TextDirection | undefined;
   openAt: (x: number, y: number) => void;
   close: () => void;
 };

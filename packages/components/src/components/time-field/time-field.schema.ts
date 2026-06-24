@@ -25,6 +25,9 @@ const schema = {
     timezone: {
       type: 'string',
     },
+    timezoneName: {
+      type: 'string',
+    },
     label: {
       type: 'string',
     },

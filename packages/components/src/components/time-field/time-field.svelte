@@ -34,6 +34,7 @@
     granularity = 'minute',
     timezones,
     timezone = $bindable<string | undefined>(undefined),
+    timezoneName,
     label,
     description,
     error,
@@ -42,6 +43,8 @@
     required = false,
     name,
     class: className,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
     onchange,
     ...rest
   }: TimeFieldProps = $props();
@@ -50,6 +53,16 @@
   untrack(() => {
     if (value === '' && defaultValue !== '') value = defaultValue;
     if (timezone === undefined && timezones && timezones.length > 0) timezone = timezones[0];
+  });
+
+  $effect(() => {
+    if (!timezones || timezones.length === 0) {
+      if (timezone !== undefined) timezone = undefined;
+      return;
+    }
+    if (timezone === undefined || !timezones.includes(timezone)) {
+      timezone = timezones[0];
+    }
   });
 
   const includeSeconds = $derived(granularity === 'second');
@@ -65,6 +78,13 @@
   const invalid = $derived(error || formField?.invalid ? 'true' : undefined);
   const resolvedDisabled = $derived(disabled || (formField?.disabled ?? false));
   const resolvedRequired = $derived(required || (formField?.required ?? false));
+  const inputAriaLabel = $derived(label || formField?.labelId ? undefined : ariaLabel);
+  const inputAriaLabelledBy = $derived(label ? undefined : (ariaLabelledBy ?? formField?.labelId));
+  const resolvedTimezoneName = $derived(
+    timezones && timezones.length > 0 && timezone !== undefined
+      ? (timezoneName ?? (name ? `${name}-timezone` : undefined))
+      : undefined,
+  );
 
   function emit(nextValue: string, nextTimezone = timezone): void {
     onchange?.({ value: nextValue, timezone: nextTimezone });
@@ -80,6 +100,7 @@
   }
 
   function handleTimezoneChange(event: Event): void {
+    if (resolvedDisabled || readonly) return;
     const target = event.currentTarget as HTMLSelectElement;
     timezone = target.value;
     emit(value, timezone);
@@ -102,6 +123,8 @@
       disabled={resolvedDisabled}
       {readonly}
       required={resolvedRequired}
+      aria-label={inputAriaLabel}
+      aria-labelledby={inputAriaLabelledBy}
       aria-describedby={describedBy}
       aria-invalid={invalid}
       onchange={handleInputChange}
@@ -119,6 +142,14 @@
           <option value={option}>{option}</option>
         {/each}
       </select>
+      {#if resolvedTimezoneName}
+        <input
+          type="hidden"
+          name={resolvedTimezoneName}
+          value={timezone ?? ''}
+          disabled={resolvedDisabled}
+        />
+      {/if}
     {/if}
   </div>
 

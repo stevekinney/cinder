@@ -84,6 +84,15 @@ describe('TimeField', () => {
     expect(container.querySelector('#reminder-error')?.textContent).toBe('Choose a valid time.');
   });
 
+  test('forwards caller-provided accessible name props to the native time input', () => {
+    const { container } = render(TimeField, {
+      props: { id: 'reminder', value: '09:30', 'aria-label': 'Reminder time' },
+    });
+
+    expect(getInput(container).getAttribute('aria-label')).toBe('Reminder time');
+    expect(container.querySelector('.cinder-time-field')?.getAttribute('aria-label')).toBeNull();
+  });
+
   test('disabled state disables both time and timezone controls', () => {
     const { container } = render(TimeField, {
       props: {
@@ -119,6 +128,7 @@ describe('TimeField', () => {
     expect(timezone.disabled).toBe(true);
 
     await fireEvent.change(getInput(container), { target: { value: '10:45' } });
+    await fireEvent.change(timezone, { target: { value: 'UTC' } });
     expect(changes).toEqual([]);
   });
 
@@ -139,6 +149,56 @@ describe('TimeField', () => {
     await fireEvent.change(timezone, { target: { value: 'UTC' } });
 
     expect(changes[0]).toEqual({ value: '09:30', timezone: 'UTC' });
+  });
+
+  test('normalizes selected timezone when timezone options appear or change', async () => {
+    const view = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        timezones: [],
+      },
+    });
+    const { container, rerender } = view;
+
+    await rerender({
+      id: 'reminder',
+      label: 'Reminder time',
+      value: '09:30',
+      timezones: ['America/Denver', 'UTC'],
+    });
+
+    let timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    expect(timezone.value).toBe('America/Denver');
+
+    await rerender({
+      id: 'reminder',
+      label: 'Reminder time',
+      value: '09:30',
+      timezones: ['UTC'],
+    });
+
+    timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    expect(timezone.value).toBe('UTC');
+  });
+
+  test('submits selected timezone with native forms when name is provided', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        name: 'reminder_time',
+        timezones: ['America/Denver', 'UTC'],
+        timezone: 'UTC',
+      },
+    });
+
+    const timezoneInput = container.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="reminder_time-timezone"]',
+    );
+    expect(timezoneInput?.value).toBe('UTC');
   });
 
   test('does not render a second period control around the native time input', () => {

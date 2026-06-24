@@ -25,6 +25,8 @@ export type TimeFieldProps = Omit<
   timezones?: readonly string[];
   /** Bindable selected timezone. Defaults to the first timezone when provided. */
   timezone?: string | undefined;
+  /** Name for the timezone value in native form submission. Defaults to `${name}-timezone`. */
+  timezoneName?: string;
   /** Visible label text rendered above the input. */
   label?: string;
   /** Helper text rendered below the control. */
@@ -52,6 +54,7 @@ export interface TimeFieldSchemaProps {
   granularity?: TimeFieldGranularity;
   timezones?: readonly string[];
   timezone?: string | undefined;
+  timezoneName?: string;
   label?: string;
   description?: string;
   error?: string;
