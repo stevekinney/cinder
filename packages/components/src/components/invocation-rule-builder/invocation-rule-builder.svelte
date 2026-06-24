@@ -55,7 +55,7 @@
 
   /** Announcement text for the live region. */
   let announcement = $state('');
-  let ruleLabelDrafts = $state<Record<string, string>>({});
+  let ruleLabelDrafts = $state<Record<string, { baseLabel: string; value: string }>>({});
 
   function announce(message: string): void {
     announcement = '';
@@ -138,7 +138,8 @@
   }
 
   function ruleLabelDraft(rule: InvocationRule): string {
-    return ruleLabelDrafts[rule.id] ?? rule.label;
+    const draft = ruleLabelDrafts[rule.id];
+    return draft?.baseLabel === rule.label ? draft.value : rule.label;
   }
 
   // ---------------------------------------------------------------------------
@@ -308,7 +309,10 @@
               oninput={(event) =>
                 (ruleLabelDrafts = {
                   ...ruleLabelDrafts,
-                  [rule.id]: (event.target as HTMLInputElement).value,
+                  [rule.id]: {
+                    baseLabel: rule.label,
+                    value: (event.target as HTMLInputElement).value,
+                  },
                 })}
               onblur={(event) =>
                 handleRenameRule(rule.id, (event.target as HTMLInputElement).value)}

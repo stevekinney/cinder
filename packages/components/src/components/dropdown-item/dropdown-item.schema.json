@@ -10,6 +10,10 @@
       "enum": ["menuitem", "menuitemradio"],
       "description": "ARIA role for the row. Use `menuitemradio` for mutually exclusive menu selections."
     },
+    "checked": {
+      "type": "boolean",
+      "description": "Checked state for `itemRole=\"menuitemradio\"`. Omitted for normal menu items."
+    },
     "inset": {
       "type": "boolean",
       "description": "When true, adds leading padding to align the item with items that have a leading icon or indicator. Default `false`."

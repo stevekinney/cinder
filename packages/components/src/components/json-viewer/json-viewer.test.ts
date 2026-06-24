@@ -66,6 +66,16 @@ describe('JsonViewer', () => {
     expect(nestedToggle?.getAttribute('tabindex')).toBe('-1');
   });
 
+  test('expanded child groups are nested inside their owning treeitem', () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+    const childGroup = rootTreeItem.querySelector('.cinder-json-viewer__children[role="group"]');
+
+    expect(childGroup).not.toBeNull();
+  });
+
   test('renders an array with index labels', () => {
     const { container } = render(JsonViewer, { value: [10, 20, 30] });
     const keys = Array.from(container.querySelectorAll('.cinder-json-viewer__key'));

@@ -42,6 +42,7 @@
     error,
     class: className,
     onchange,
+    onblur: consumerBlur,
     'aria-describedby': consumerDescribedBy,
     ...rest
   }: NumberInputProps = $props();
@@ -295,18 +296,20 @@
     return formatNumber(v, resolvedLocale, editFormat);
   }
 
-  function canonicalValueFromText(text: string): number | undefined {
+  function ariaValueNowFromText(text: string): number | undefined {
     const result = parseLocaleNumber(text, resolvedLocale, format);
     if (result.status !== 'valid') return undefined;
-    const canonical =
-      format?.style === 'percent'
-        ? roundToPrecision(result.value / 100, Math.max(2, fractionalDigits(result.value) + 2))
-        : result.value;
-    return Number.isFinite(canonical) ? canonical : undefined;
+    return Number.isFinite(result.value) ? result.value : undefined;
   }
 
   const resolvedAriaValueNow = $derived(
-    isFocused ? canonicalValueFromText(editorBuffer) : (value ?? undefined),
+    isFocused
+      ? ariaValueNowFromText(editorBuffer)
+      : value === null || value === undefined
+        ? undefined
+        : format?.style === 'percent'
+          ? roundToPrecision(value * 100, 12)
+          : value,
   );
 
   function onFocus() {
@@ -322,7 +325,7 @@
     const buffered = editorBuffer;
     isFocused = false;
     commitFromText('typed', buffered);
-    rest.onblur?.(event);
+    consumerBlur?.(event);
   }
 
   function onInput(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {

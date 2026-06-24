@@ -8,6 +8,12 @@
   import { CommandItem } from '@lostgradient/cinder/command-item';
   import { CommandPalette } from '@lostgradient/cinder/command-palette';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+
+  const uid = $props.id();
+  let recentFilesHeadingId = $derived(`${mountIdPrefix ?? uid}-recent-files-heading`);
+  let actionsHeadingId = $derived(`${mountIdPrefix ?? uid}-actions-heading`);
+
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
   let lastSelected = $state('');
@@ -56,10 +62,8 @@
 
     {#if filteredRecentItems.length > 0}
       <li role="presentation" class="cinder-command-group">
-        <span id="command-palette-recent-files-heading" class="cinder-command-group__label">
-          Recent files
-        </span>
-        <ul role="group" aria-labelledby="command-palette-recent-files-heading">
+        <span id={recentFilesHeadingId} class="cinder-command-group__label">Recent files</span>
+        <ul role="group" aria-labelledby={recentFilesHeadingId}>
           {#each filteredRecentItems as item (item.id)}
             <CommandItem
               value={item.id}
@@ -75,10 +79,8 @@
 
     {#if filteredActions.length > 0}
       <li role="presentation" class="cinder-command-group">
-        <span id="command-palette-actions-heading" class="cinder-command-group__label">
-          Actions
-        </span>
-        <ul role="group" aria-labelledby="command-palette-actions-heading">
+        <span id={actionsHeadingId} class="cinder-command-group__label">Actions</span>
+        <ul role="group" aria-labelledby={actionsHeadingId}>
           {#each filteredActions as action (action.id)}
             <CommandItem
               value={action.id}

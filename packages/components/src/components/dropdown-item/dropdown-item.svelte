@@ -31,6 +31,7 @@
   let {
     variant = 'default',
     itemRole = 'menuitem',
+    checked = false,
     inset = false,
     disabled,
     closeOnSelect = true,
@@ -109,15 +110,14 @@
     event.currentTarget.click();
   }
 
-  const anchorAttributes = rest as Omit<
-    HTMLAnchorAttributes,
-    'class' | 'href' | 'onclick' | 'onkeydown'
-  >;
-  const buttonAttributes = rest as Omit<
-    HTMLButtonAttributes,
-    'class' | 'type' | 'disabled' | 'onclick'
-  >;
+  const anchorAttributes = $derived(
+    rest as Omit<HTMLAnchorAttributes, 'class' | 'href' | 'onclick' | 'onkeydown'>,
+  );
+  const buttonAttributes = $derived(
+    rest as Omit<HTMLButtonAttributes, 'class' | 'type' | 'disabled' | 'onclick'>,
+  );
   const buttonType = $derived((rest as { type?: HTMLButtonAttributes['type'] }).type ?? 'button');
+  const ariaChecked = $derived(itemRole === 'menuitemradio' ? checked : undefined);
 </script>
 
 <!--
@@ -130,6 +130,7 @@
     {...anchorAttributes}
     {href}
     role={itemRole}
+    aria-checked={ariaChecked}
     class={sharedClass}
     data-cinder-variant={variant}
     tabindex={-1}
@@ -147,6 +148,7 @@
     {...buttonAttributes}
     type={buttonType}
     role={itemRole}
+    aria-checked={ariaChecked}
     class={sharedClass}
     data-cinder-variant={variant}
     tabindex={-1}

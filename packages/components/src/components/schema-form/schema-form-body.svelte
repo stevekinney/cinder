@@ -201,7 +201,16 @@
    *  textarea's value flows into `rawDrafts` rather than the typed value tree. */
   function updateRawJsonValue(field: SchemaFormField, next: string) {
     if (submitting) return;
-    rawDrafts = { ...rawDrafts, [pathKey(field.path)]: next };
+    const key = pathKey(field.path);
+    rawDrafts = { ...rawDrafts, [key]: next };
+    touchedValidationSequences = {
+      ...touchedValidationSequences,
+      [key]: (touchedValidationSequences[key] ?? 0) + 1,
+    };
+    if (errors[key]) {
+      const { [key]: _removed, ...remaining } = errors;
+      errors = remaining;
+    }
     setSerializedValue('');
   }
 

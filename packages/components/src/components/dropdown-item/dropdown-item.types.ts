@@ -15,6 +15,8 @@ type DropdownItemBase = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   variant?: DropdownItemVariant;
   /** ARIA role for the row. Use `menuitemradio` for mutually exclusive menu selections. */
   itemRole?: DropdownItemRole;
+  /** Checked state for `itemRole="menuitemradio"`. Omitted for normal menu items. */
+  checked?: boolean;
   /** When true, adds leading padding to align the item with items that have a leading icon or indicator. Default `false`. */
   inset?: boolean;
   /** When true, the parent dropdown closes after this item is activated. Default `true`. */

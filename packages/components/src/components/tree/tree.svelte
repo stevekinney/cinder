@@ -386,6 +386,17 @@
     );
   }
 
+  function virtualizedFilterForcedOpen(item: FlattenedTreeDataItem): boolean {
+    return (
+      item.branch &&
+      filtering &&
+      !expandedIds.includes(item.id) &&
+      visibleDataItems.some(
+        (visibleItem) => visibleItem.id !== item.id && visibleItem.ancestorIds.includes(item.id),
+      )
+    );
+  }
+
   function firstVisibleVirtualizedChildIndex(parentId: string): number {
     return visibleDataItems.findIndex((item) => item.parentId === parentId);
   }
@@ -1266,7 +1277,7 @@
         onkeydown={(event) => handleVirtualizedItemKeydown(item, event)}
       >
         <div class="cinder-tree-item__row" style={`padding-inline-start: ${item.level * 1.25}rem;`}>
-          {#if item.branch}
+          {#if item.branch && !virtualizedFilterForcedOpen(item)}
             <button
               type="button"
               class="cinder-tree-item__disclosure"

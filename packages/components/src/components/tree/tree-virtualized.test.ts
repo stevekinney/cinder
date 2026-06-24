@@ -262,6 +262,35 @@ describe('Tree — virtualized data path', () => {
     expect(expandedIds).toEqual([]);
   });
 
+  test('filter-forced open virtualized branches suppress stale disclosure controls', async () => {
+    let expandedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        items: nestedItems(),
+        filterValue: 'old',
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 100,
+        get expandedIds() {
+          return expandedIds;
+        },
+        set expandedIds(value: string[]) {
+          expandedIds = value;
+        },
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleItemIds(container)).toEqual(['archive', 'old-apollo']);
+    });
+
+    const archive = treeItemById(container, 'archive');
+    expect(archive.getAttribute('aria-expanded')).toBe('true');
+    expect(archive.querySelector('.cinder-tree-item__disclosure')).toBeNull();
+    expect(expandedIds).toEqual([]);
+  });
+
   test('ArrowRight on a filter-revealed virtualized branch focuses the visible child without mutating expandedIds', async () => {
     let expandedIds: string[] = [];
     const { container } = render(Tree, {

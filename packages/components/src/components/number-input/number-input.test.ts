@@ -706,6 +706,47 @@ describe('Validity and a11y wiring', () => {
     expect(input.getAttribute('aria-valuenow')).toBe('9');
   });
 
+  test('spinbutton aria-valuenow uses display units for percent formatting', async () => {
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 0.5,
+        locale: 'en-US',
+        format: { style: 'percent' },
+      },
+    });
+    const input = getInput(container);
+
+    expect(input.value).toBe('50%');
+    expect(input.getAttribute('aria-valuenow')).toBe('50');
+
+    await focus(input);
+    await type(input, '75');
+
+    expect(input.value).toBe('75');
+    expect(input.getAttribute('aria-valuenow')).toBe('75');
+  });
+
+  test('consumer blur handler fires once', async () => {
+    let blurCount = 0;
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 5,
+        locale: 'en-US',
+        onblur: () => {
+          blurCount += 1;
+        },
+      },
+    });
+    const input = getInput(container);
+
+    await focus(input);
+    await blur(input);
+
+    expect(blurCount).toBe(1);
+  });
+
   test('malformed customError cleared by external value change', async () => {
     const { container, rerender } = render(NumberInput, {
       props: { id: 'n', locale: 'en-US' },

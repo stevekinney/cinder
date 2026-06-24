@@ -468,6 +468,71 @@ describe('SchemaForm', () => {
     expect(screen.getByText(/JSON|Expected|position/i)).toBeTruthy();
   });
 
+  test('ignores stale async blur validation after raw JSON drafts change', async () => {
+    const validations: Array<{
+      value: unknown;
+      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
+    }> = [];
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'raw-json-stale-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { raw: { title: 'Raw payload' } },
+            required: ['raw'],
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
+            (resolve) => {
+              validations.push({ value, resolve });
+            },
+          );
+        },
+      },
+    } as const;
+
+    render(SchemaForm, { props: { schema, value: { raw: { ok: true } } } });
+    await flush();
+
+    const rawTextarea = screen.getByLabelText(/Raw payload/);
+    await fireEvent.input(rawTextarea, { target: { value: '{"ok":false}' } });
+    await fireEvent.blur(rawTextarea);
+    await flush();
+    expect(validations).toHaveLength(1);
+
+    await fireEvent.input(rawTextarea, { target: { value: '{"ok":true}' } });
+    validations[0]!.resolve({
+      issues: [{ path: ['raw'], message: 'Raw payload is unavailable.' }],
+    });
+    await flush();
+    await flush();
+
+    expect(rawTextarea.getAttribute('aria-invalid')).not.toBe('true');
+    expect(screen.queryByText('Raw payload is unavailable.')).toBeNull();
+  });
+
+  test('humanizes dashed AJV field names without throwing', async () => {
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { 'user-name': { type: 'string', minLength: 2 } },
+          required: ['user-name'],
+        },
+        value: { 'user-name': '' },
+      },
+    });
+    await flush();
+
+    await submit(formFrom(container));
+
+    expect(screen.getByText(/User name is too short/i)).toBeTruthy();
+  });
+
   test('awaits async Standard Schema validation before calling onsubmit', async () => {
     let releaseValidation!: () => void;
     const validationGate = new Promise<void>((resolve) => {

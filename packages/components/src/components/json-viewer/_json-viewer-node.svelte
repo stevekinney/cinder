@@ -68,18 +68,22 @@
 </script>
 
 {#if isObject && !tooDeep}
-  <span class={classNames('cinder-json-viewer__node')}>
+  <span
+    class={classNames('cinder-json-viewer__node')}
+    role="treeitem"
+    aria-expanded={!collapsed}
+    aria-label={toggleLabel}
+    aria-level={depth + 1}
+    aria-posinset={position}
+    aria-setsize={setSize}
+    aria-selected="false"
+    tabindex={root ? 0 : -1}
+  >
     <button
       type="button"
       class="cinder-json-viewer__toggle"
-      role="treeitem"
-      aria-expanded={!collapsed}
       aria-label={toggleLabel}
-      aria-level={depth + 1}
-      aria-posinset={position}
-      aria-setsize={setSize}
-      aria-selected="false"
-      tabindex={root ? 0 : -1}
+      tabindex="-1"
       onclick={() => (collapsed = !collapsed)}
     >
       {#if keyName !== undefined}

@@ -278,6 +278,30 @@ describe('InvocationRuleBuilder', () => {
       expect(onchange).not.toHaveBeenCalled();
     });
 
+    test('external rule label updates clear stale in-progress drafts', async () => {
+      const rule = makeRule();
+      const { container, rerender } = renderBuilder([rule]);
+      const ruleNameInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Rule name for PR Review Rule"]',
+      )!;
+
+      await fireEvent.input(ruleNameInput, { target: { value: 'Draft label' } });
+      expect(ruleNameInput.value).toBe('Draft label');
+
+      await rerender({
+        rules: [{ ...rule, label: 'Server label' }],
+        fieldOptions,
+        operatorOptions,
+        actionOptions,
+        onchange: () => {},
+      });
+
+      const updatedInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Rule name for Server label"]',
+      )!;
+      expect(updatedInput.value).toBe('Server label');
+    });
+
     test('add-condition button calls onchange with add-condition change', async () => {
       const { container, onchange } = renderBuilder([makeRule()]);
       const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;

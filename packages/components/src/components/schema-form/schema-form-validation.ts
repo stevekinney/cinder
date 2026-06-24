@@ -131,8 +131,8 @@ function readableAjvMessage(error: ErrorObject): string {
 
 function humanizeFieldName(name: string): string {
   return name
-    .replaceAll(/[_-]+/g, ' ')
-    .replaceAll(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/^./, (character) => character.toUpperCase());
 }
 

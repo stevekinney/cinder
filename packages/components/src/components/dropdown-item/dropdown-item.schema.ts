@@ -14,6 +14,10 @@ const schema = {
       description:
         'ARIA role for the row. Use `menuitemradio` for mutually exclusive menu selections.',
     },
+    checked: {
+      type: 'boolean',
+      description: 'Checked state for `itemRole="menuitemradio"`. Omitted for normal menu items.',
+    },
     inset: {
       type: 'boolean',
       description:

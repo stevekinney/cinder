@@ -75,15 +75,15 @@
     } else if (event.key === 'End') {
       event.preventDefault();
       focusItem(items.length - 1);
-    } else if (event.key === 'ArrowRight' && current instanceof HTMLButtonElement) {
+    } else if (event.key === 'ArrowRight' && current) {
       if (current.getAttribute('aria-expanded') === 'false') {
         event.preventDefault();
-        current.click();
+        current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')?.click();
       }
-    } else if (event.key === 'ArrowLeft' && current instanceof HTMLButtonElement) {
+    } else if (event.key === 'ArrowLeft' && current) {
       if (current.getAttribute('aria-expanded') === 'true') {
         event.preventDefault();
-        current.click();
+        current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')?.click();
       }
     }
   }
