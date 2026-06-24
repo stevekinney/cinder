@@ -55,4 +55,13 @@ describe('PropertyList', () => {
       ),
     ).toBe(4);
   });
+
+  test('property-list.svelte clears nested validation counts on collapse and unmount', async () => {
+    const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
+
+    expect(source).toContain('onDestroy(() =>');
+    expect(source).toContain('onvalidationerrorcount?.(0)');
+    expect(source).toContain('function toggleExpanded');
+    expect(source).toContain('if (isOpen) setChildValidationErrorCount(key, 0)');
+  });
 });

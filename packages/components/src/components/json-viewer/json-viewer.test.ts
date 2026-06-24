@@ -53,6 +53,19 @@ describe('JsonViewer', () => {
     expect(itemsButton?.getAttribute('aria-label')).toBe('items: array, 3 items');
   });
 
+  test('only the root expandable treeitem is tabbable', () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const treeItems = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+    const tabbableTreeItems = treeItems.filter((item) => item.getAttribute('tabindex') === '0');
+
+    expect(tabbableTreeItems).toHaveLength(1);
+    expect(tabbableTreeItems[0]?.getAttribute('aria-label')).toBe('object, 1 item');
+    const nestedToggle = treeItems.find((item) =>
+      item.getAttribute('aria-label')?.startsWith('config:'),
+    );
+    expect(nestedToggle?.getAttribute('tabindex')).toBe('-1');
+  });
+
   test('renders an array with index labels', () => {
     const { container } = render(JsonViewer, { value: [10, 20, 30] });
     const keys = Array.from(container.querySelectorAll('.cinder-json-viewer__key'));

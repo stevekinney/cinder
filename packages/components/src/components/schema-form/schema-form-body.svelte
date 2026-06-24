@@ -161,6 +161,14 @@
     const sequence = (touchedValidationSequences[fieldKey] ?? 0) + 1;
     touchedValidationSequences = { ...touchedValidationSequences, [fieldKey]: sequence };
     const raw = rawJsonIssues();
+    const rawIssue = raw.issues.find((candidateIssue) => {
+      const candidateKey = pathKey(candidateIssue.path);
+      return candidateKey === fieldKey || candidateKey.startsWith(`${fieldKey}/`);
+    });
+    if (rawIssue) {
+      errors = { ...errors, [fieldKey]: rawIssue.message };
+      return;
+    }
     const candidate = pruneUndefined(raw.value);
     const result = await validateSchemaValue(schema, candidate);
     if (touchedValidationSequences[fieldKey] !== sequence) return;

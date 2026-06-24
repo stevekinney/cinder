@@ -5,9 +5,6 @@ export function calculatePropertyValidationErrorCount(
 ): number {
   return (
     (hasRenameError ? 1 : 0) +
-    Object.entries(childValidationCounts).reduce(
-      (total, [key, count]) => total + (propertyNames.includes(key) ? count : 0),
-      0,
-    )
+    propertyNames.reduce((total, key) => total + (childValidationCounts[key] ?? 0), 0)
   );
 }

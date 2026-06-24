@@ -295,6 +295,20 @@
     return formatNumber(v, resolvedLocale, editFormat);
   }
 
+  function canonicalValueFromText(text: string): number | undefined {
+    const result = parseLocaleNumber(text, resolvedLocale, format);
+    if (result.status !== 'valid') return undefined;
+    const canonical =
+      format?.style === 'percent'
+        ? roundToPrecision(result.value / 100, Math.max(2, fractionalDigits(result.value) + 2))
+        : result.value;
+    return Number.isFinite(canonical) ? canonical : undefined;
+  }
+
+  const resolvedAriaValueNow = $derived(
+    isFocused ? canonicalValueFromText(editorBuffer) : (value ?? undefined),
+  );
+
   function onFocus() {
     // Preserve the editor buffer when re-focusing after a malformed blur so
     // the user can correct their own text instead of having it disappear.
@@ -525,7 +539,7 @@
       {...rest}
       aria-invalid={resolvedAriaInvalid}
       aria-describedby={describedBy}
-      aria-valuenow={value ?? undefined}
+      aria-valuenow={resolvedAriaValueNow}
       aria-valuemin={Number.isFinite(resolvedMin) ? resolvedMin : undefined}
       aria-valuemax={Number.isFinite(resolvedMax) ? resolvedMax : undefined}
       oninput={onInput}

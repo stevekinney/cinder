@@ -14,6 +14,7 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
@@ -51,6 +52,10 @@
 
   $effect(() => {
     onvalidationerrorcount?.(validationErrorCount);
+  });
+
+  onDestroy(() => {
+    onvalidationerrorcount?.(0);
   });
 
   function getDraftName(key: string): string {
@@ -117,7 +122,17 @@
 
   function setChildValidationErrorCount(key: string, count: number): void {
     if ((childValidationCounts[key] ?? 0) === count) return;
+    if (count === 0) {
+      const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
+      childValidationCounts = remainingChildCounts;
+      return;
+    }
     childValidationCounts = { ...childValidationCounts, [key]: count };
+  }
+
+  function toggleExpanded(key: string, isOpen: boolean): void {
+    expanded[key] = !isOpen;
+    if (isOpen) setChildValidationErrorCount(key, 0);
   }
 
   function moveProperty(key: string, direction: -1 | 1) {
@@ -215,7 +230,7 @@
           aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property`}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          onclick={() => (expanded[key] = !isOpen)}
+          onclick={() => toggleExpanded(key, isOpen)}
         >
           <span class="cinder-jse-property-row__chevron" aria-hidden="true">▸</span>
           <span class="cinder-jse-property-row__name">{key}</span>

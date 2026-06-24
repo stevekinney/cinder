@@ -446,6 +446,28 @@ describe('SchemaForm', () => {
     expect(screen.getByText(/JSON|Expected|position/i)).toBeTruthy();
   });
 
+  test('reports raw JSON parse errors on blur', async () => {
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { raw: { title: 'Raw payload' } },
+          required: ['raw'],
+        },
+        value: { raw: { ok: true } },
+      },
+    });
+    await flush();
+
+    const rawTextarea = screen.getByLabelText(/Raw payload/);
+    await fireEvent.input(rawTextarea, { target: { value: '{' } });
+    await fireEvent.blur(rawTextarea);
+    await flush();
+
+    expect(rawTextarea.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText(/JSON|Expected|position/i)).toBeTruthy();
+  });
+
   test('awaits async Standard Schema validation before calling onsubmit', async () => {
     let releaseValidation!: () => void;
     const validationGate = new Promise<void>((resolve) => {

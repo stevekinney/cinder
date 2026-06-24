@@ -115,6 +115,7 @@
   );
   const hasVisibleDescendant = $derived(context.hasVisibleDescendant(id));
   const renderedExpanded = $derived(isExpanded || (isFiltering && hasVisibleDescendant));
+  const filterForcedOpen = $derived(isBranch && isFiltering && hasVisibleDescendant && !isExpanded);
   const shouldProbeFilterChildren = $derived(
     isBranch && isFiltering && !isExpanded && probedFilterValue !== context.filterValue,
   );
@@ -792,12 +793,12 @@
 >
   <span id={`${treeItemElementId}-label`} class="cinder-sr-only">{label}</span>
   <div class="cinder-tree-item__row">
-    {#if isBranch}
+    {#if isBranch && !filterForcedOpen}
       <button
         type="button"
         class="cinder-tree-item__disclosure"
-        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${label}`}
-        aria-expanded={isExpanded}
+        aria-label={`${renderedExpanded ? 'Collapse' : 'Expand'} ${label}`}
+        aria-expanded={renderedExpanded}
         tabindex="-1"
         onclick={handleDisclosureClick}
       >

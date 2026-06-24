@@ -78,6 +78,8 @@
       aria-level={depth + 1}
       aria-posinset={position}
       aria-setsize={setSize}
+      aria-selected="false"
+      tabindex={root ? 0 : -1}
       onclick={() => (collapsed = !collapsed)}
     >
       {#if keyName !== undefined}
@@ -128,6 +130,7 @@
     aria-level={depth + 1}
     aria-posinset={position}
     aria-setsize={setSize}
+    aria-selected="false"
   >
     {#if keyName !== undefined}
       <span class="cinder-json-viewer__key">{keyName}:</span>
@@ -142,6 +145,7 @@
     aria-level={depth + 1}
     aria-posinset={position}
     aria-setsize={setSize}
+    aria-selected="false"
   >
     {#if keyName !== undefined}
       <span class="cinder-json-viewer__key">{keyName}:</span>

@@ -79,6 +79,13 @@
   };
 
   const isActive = $derived(itemId !== null && commandList.activeItemId === itemId);
+  const normalizedAccessibleLabel = $derived(normalizeOptionalAttribute(accessibleLabel));
+  const normalizedKeyboardShortcut = $derived(normalizeOptionalAttribute(keyboardShortcut));
+
+  function normalizeOptionalAttribute(value: string | undefined): string | undefined {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : undefined;
+  }
 
   function handlePointerEnter() {
     if (!disabled && itemId !== null) {
@@ -106,8 +113,8 @@
   class={classNames('cinder-command-item', className)}
   aria-selected={isActive}
   aria-disabled={disabled || undefined}
-  aria-label={accessibleLabel}
-  aria-keyshortcuts={keyboardShortcut}
+  aria-label={normalizedAccessibleLabel}
+  aria-keyshortcuts={normalizedKeyboardShortcut}
   data-cinder-active={isActive ? '' : undefined}
   data-cinder-disabled={disabled || undefined}
   onpointerenter={handlePointerEnter}

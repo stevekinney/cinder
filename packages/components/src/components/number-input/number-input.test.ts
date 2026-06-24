@@ -693,6 +693,19 @@ describe('Validity and a11y wiring', () => {
     expect(input.getAttribute('aria-valuenow')).toBe('5');
   });
 
+  test('spinbutton aria-valuenow follows valid focused edits', async () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', value: 5, min: 0, max: 10, locale: 'en-US' },
+    });
+    const input = getInput(container);
+
+    await focus(input);
+    await type(input, '9');
+
+    expect(input.value).toBe('9');
+    expect(input.getAttribute('aria-valuenow')).toBe('9');
+  });
+
   test('malformed customError cleared by external value change', async () => {
     const { container, rerender } = render(NumberInput, {
       props: { id: 'n', locale: 'en-US' },

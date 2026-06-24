@@ -806,12 +806,12 @@
       return effectiveFocusedId === id;
     },
     positionInSet(id) {
-      const siblings = registry.siblingsOf(id);
+      const siblings = registry.siblingsOf(id).filter((siblingId) => visibleIdSet.has(siblingId));
       const index = siblings.indexOf(id);
       return index === -1 ? undefined : index + 1;
     },
     setSize(id) {
-      const siblings = registry.siblingsOf(id);
+      const siblings = registry.siblingsOf(id).filter((siblingId) => visibleIdSet.has(siblingId));
       return siblings.length || undefined;
     },
     isVisible(id) {
