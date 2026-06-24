@@ -653,6 +653,56 @@ describe('SchemaForm', () => {
     expect(screen.getByText('Count must be at least 10.')).toBeTruthy();
   });
 
+  test('reports schema number bounds instead of clamping typed values', async () => {
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'number-bounds-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: {
+              count: { type: 'number', title: 'Count', maximum: 10 },
+            },
+            required: ['count'],
+          }),
+          output: () => ({}),
+        },
+        validate(value: unknown) {
+          const count = (value as { count?: number }).count;
+          return count === undefined || count <= 10
+            ? { value }
+            : { issues: [{ path: ['count'], message: 'Count must be at most 10.' }] };
+        },
+      },
+    } as const;
+    const submitted: unknown[] = [];
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '999' } });
+    await fireEvent.blur(countInput);
+    await flush();
+
+    expect((countInput as HTMLInputElement).value).toBe('999');
+
+    const form = formFrom(container);
+    await submit(form);
+
+    expect(submitted).toHaveLength(0);
+    expect(countInput.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Count must be at most 10.')).toBeTruthy();
+  });
+
   test('keeps controls frozen when a new submit starts during invalid-submit focus', async () => {
     let releaseFirstValidation!: () => void;
     let releaseSecondValidation!: () => void;

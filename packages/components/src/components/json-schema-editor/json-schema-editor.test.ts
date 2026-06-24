@@ -77,6 +77,16 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).toContain("view === 'form' ? localValidationErrorCount : 0");
     expect(source).toContain('localValidationErrorCount={toolbarValidationErrorCount}');
   });
+
+  test('property-editor.svelte aggregates nested validation counts from every child editor path', async () => {
+    const source = await Bun.file(new URL('./property-editor.svelte', import.meta.url)).text();
+
+    expect(source).toContain('let childValidationCounts = $state<Record<string, number>>({})');
+    expect(source).toContain("setChildValidationErrorCount('properties', count)");
+    expect(source).toContain("setChildValidationErrorCount('items', count)");
+    expect(source).toContain('`${keyword}:${compositionBranchKeys[keyword][branchIndex]}`');
+    expect(source).toContain('onvalidationerrorcount?.(0)');
+  });
 });
 
 // ---------------------------------------------------------------------------

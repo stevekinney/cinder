@@ -130,6 +130,8 @@
     const nextLabel = label.trim() || 'Untitled rule';
     const { [ruleId]: _removedDraft, ...remainingDrafts } = ruleLabelDrafts;
     ruleLabelDrafts = remainingDrafts;
+    const currentLabel = rules.find((rule) => rule.id === ruleId)?.label;
+    if (currentLabel === nextLabel) return;
     const nextRules = updateRules(ruleId, (rule) => ({ ...rule, label: nextLabel }));
     const change: InvocationRuleChange = { type: 'rename-rule', ruleId };
     onchange(nextRules, change);

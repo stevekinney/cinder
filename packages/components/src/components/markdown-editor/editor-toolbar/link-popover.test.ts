@@ -215,6 +215,16 @@ describe('LinkPopover — Floating UI positioning', () => {
 // ---------------------------------------------------------------------------
 
 describe('LinkPopover — CSS contract', () => {
+  test('autofocus is applied once per mounted popover', async () => {
+    const source = await Bun.file(
+      new URL('./link-popover.svelte', import.meta.url).pathname,
+    ).text();
+
+    expect(source).toContain('let initialFocusApplied = false');
+    expect(source).toContain('if (initialFocusApplied) return');
+    expect(source).toContain('initialFocusApplied = true');
+  });
+
   test('link-popover.svelte main .link-popover rule no longer uses hardcoded top: 20% positioning', async () => {
     const source = await Bun.file(
       new URL('./link-popover.svelte', import.meta.url).pathname,

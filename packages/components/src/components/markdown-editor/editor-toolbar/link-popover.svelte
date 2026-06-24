@@ -72,12 +72,16 @@
   // in-progress edits if `initialUrl` / `initialText` recomputed mid-open.
   let url = $state(initialUrl);
   let text = $state(initialText);
+  let initialFocusApplied = false;
 
   $effect(() => {
+    if (initialFocusApplied) return;
     if (!popoverElement) return;
     if (anchorElement && !anchoredOverlay.positionReady) return;
     tick().then(() => {
+      if (initialFocusApplied) return;
       document.getElementById(`${id}-url`)?.focus();
+      initialFocusApplied = true;
     });
   });
 

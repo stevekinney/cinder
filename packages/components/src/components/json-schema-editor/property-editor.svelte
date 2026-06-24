@@ -85,6 +85,7 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert/alert.svelte';
   import Badge from '../badge/badge.svelte';
@@ -240,6 +241,29 @@
   }
 
   // ===== Children (object/array) =====
+  let childValidationCounts = $state<Record<string, number>>({});
+  const validationErrorCount = $derived(
+    Object.values(childValidationCounts).reduce((total, count) => total + count, 0),
+  );
+
+  $effect(() => {
+    onvalidationerrorcount?.(validationErrorCount);
+  });
+
+  onDestroy(() => {
+    onvalidationerrorcount?.(0);
+  });
+
+  function setChildValidationErrorCount(key: string, count: number): void {
+    if ((childValidationCounts[key] ?? 0) === count) return;
+    if (count === 0) {
+      const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
+      childValidationCounts = remainingChildCounts;
+      return;
+    }
+    childValidationCounts = { ...childValidationCounts, [key]: count };
+  }
+
   function patchProperties(properties: Record<string, JsonSchemaValue>, required: string[]) {
     const edits: Partial<JsonSchemaObject> = { properties };
     edits.required = required.length > 0 ? required : undefined;
@@ -405,7 +429,7 @@
           path={`${path}/properties`}
           properties={objectValue.properties ?? {}}
           required={objectValue.required ?? []}
-          {onvalidationerrorcount}
+          onvalidationerrorcount={(count) => setChildValidationErrorCount('properties', count)}
           onchange={patchProperties}
         />
       </div>
@@ -421,6 +445,7 @@
           depth={depth + 1}
           {readonly}
           value={objectValue.items ?? {}}
+          onvalidationerrorcount={(count) => setChildValidationErrorCount('items', count)}
           onchange={(next) => setItems(next)}
         />
       </div>
@@ -519,6 +544,11 @@
                 depth={depth + 1}
                 {readonly}
                 value={branch}
+                onvalidationerrorcount={(count) =>
+                  setChildValidationErrorCount(
+                    `${keyword}:${compositionBranchKeys[keyword][branchIndex]}`,
+                    count,
+                  )}
                 onchange={(next) => {
                   const list = [...objectValue[keyword]!];
                   list[branchIndex] = next;

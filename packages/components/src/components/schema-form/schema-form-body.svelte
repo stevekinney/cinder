@@ -129,11 +129,6 @@
     return numberValue(field) ?? null;
   }
 
-  function finiteSchemaNumber(field: SchemaFormField, key: string): number | undefined {
-    const value = field.schema[key];
-    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-  }
-
   function rawJsonValue(field: SchemaFormField): string {
     const key = pathKey(field.path);
     if (rawDrafts[key] !== undefined) return rawDrafts[key];
@@ -539,8 +534,6 @@
           {...labelledProps}
           required={field.required}
           disabled={submitting}
-          min={finiteSchemaNumber(field, 'minimum')}
-          max={finiteSchemaNumber(field, 'maximum')}
           step={field.kind === 'integer' ? 1 : undefined}
           onblur={() => validateTouchedField(field)}
           bind:value={

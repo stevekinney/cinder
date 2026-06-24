@@ -267,6 +267,17 @@ describe('InvocationRuleBuilder', () => {
       expect(change.ruleId).toBe('r1');
     });
 
+    test('blurring an unchanged rule name does not emit a rename change', async () => {
+      const { container, onchange } = renderBuilder([makeRule()]);
+      const ruleNameInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Rule name for PR Review Rule"]',
+      )!;
+
+      await fireEvent.blur(ruleNameInput);
+
+      expect(onchange).not.toHaveBeenCalled();
+    });
+
     test('add-condition button calls onchange with add-condition change', async () => {
       const { container, onchange } = renderBuilder([makeRule()]);
       const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
