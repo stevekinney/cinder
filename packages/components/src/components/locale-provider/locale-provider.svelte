@@ -15,17 +15,22 @@
 </script>
 
 <script lang="ts">
-  import { setLocaleContext, type LocaleContext } from '../../_internal/locale-context.ts';
+  import {
+    getLocaleContext,
+    setLocaleContext,
+    type LocaleContext,
+  } from '../../_internal/locale-context.ts';
   import type { LocaleProviderProps } from './locale-provider.types.ts';
 
   let { locale, direction, children }: LocaleProviderProps = $props();
+  const parentContext = getLocaleContext();
 
   const context: LocaleContext = {
     get locale() {
-      return locale;
+      return locale ?? parentContext?.locale;
     },
     get direction() {
-      return direction;
+      return direction ?? parentContext?.direction;
     },
   };
 

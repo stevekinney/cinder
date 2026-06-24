@@ -79,6 +79,18 @@ describe('ContextMenu', () => {
     expect(options?.placement).toBe('left-start');
   });
 
+  test('provider-only right-to-left context menus open toward inline-start', async () => {
+    const { container } = render(ContextMenuHarness, { props: { providerDirection: 'rtl' } });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('left-start');
+    expect(queryMenu()?.getAttribute('dir')).toBe('rtl');
+  });
+
   test('local left-to-right direction overrides right-to-left provider placement', async () => {
     const { container } = render(ContextMenuHarness, {
       props: { direction: 'ltr', providerDirection: 'rtl' },

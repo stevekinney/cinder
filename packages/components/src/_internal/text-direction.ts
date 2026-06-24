@@ -11,12 +11,14 @@ export function resolveTextDirection(
     currentElement = currentElement.parentElement;
   }
 
+  if (fallback) return fallback;
+
   if (typeof getComputedStyle === 'function' && element) {
     const direction = getComputedStyle(element).direction;
     if (direction === 'rtl' || direction === 'ltr') return direction;
   }
 
-  return fallback;
+  return undefined;
 }
 
 export function isRightToLeftElement(element: HTMLElement | null | undefined): boolean {

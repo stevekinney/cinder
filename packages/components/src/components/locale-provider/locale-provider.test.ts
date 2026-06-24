@@ -47,4 +47,14 @@ describe('LocaleProvider', () => {
 
     expect(container.querySelector('.cinder-slider')?.getAttribute('dir')).toBe('rtl');
   });
+
+  test('nested providers inherit omitted locale values from their parent', () => {
+    const { container } = render(LocaleProviderFixture, {
+      props: { locale: 'de-DE', nestedDirection: 'rtl' },
+    });
+
+    expect(container.querySelector('.cinder-stat__value')?.textContent).toBe('1.234,5');
+    expect(container.querySelector<HTMLInputElement>('#localized-number')?.value).toBe('1.234,5');
+    expect(container.querySelector('.cinder-slider')?.getAttribute('dir')).toBe('rtl');
+  });
 });

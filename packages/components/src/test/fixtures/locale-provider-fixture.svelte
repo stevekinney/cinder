@@ -9,12 +9,14 @@
   let {
     locale = 'de-DE',
     direction,
+    nestedDirection,
     explicitStatLocale,
     explicitNumberLocale,
     explicitPhoneLocale,
   }: {
     locale?: string;
     direction?: TextDirection;
+    nestedDirection?: TextDirection;
     explicitStatLocale?: string;
     explicitNumberLocale?: string;
     explicitPhoneLocale?: string;
@@ -31,9 +33,19 @@
   );
 </script>
 
-<LocaleProvider {locale} {direction}>
+{#snippet controls()}
   <Stat label="Revenue" value={1234.5} {...statLocaleProps} />
   <NumberInput id="localized-number" label="Amount" value={1234.5} {...numberLocaleProps} />
   <PhoneInput id="localized-phone" label="Phone" countries={['US']} {...phoneLocaleProps} />
   <Slider label="Progress" value={25} />
+{/snippet}
+
+<LocaleProvider {locale} {direction}>
+  {#if nestedDirection}
+    <LocaleProvider direction={nestedDirection}>
+      {@render controls()}
+    </LocaleProvider>
+  {:else}
+    {@render controls()}
+  {/if}
 </LocaleProvider>

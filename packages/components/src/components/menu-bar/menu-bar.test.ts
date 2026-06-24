@@ -164,6 +164,12 @@ describe('MenuBar', () => {
     expect(getByRole('menu', { name: 'Open Recent' }).getAttribute('dir')).toBe('rtl');
   });
 
+  test('preserves explicit auto direction on the menubar root', () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'auto' } as any);
+
+    expect(getByRole('menubar').getAttribute('dir')).toBe('auto');
+  });
+
   test('right-to-left submenu ArrowRight returns focus to the submenu trigger', async () => {
     const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
     const file = getByRole('menuitem', { name: 'File' });

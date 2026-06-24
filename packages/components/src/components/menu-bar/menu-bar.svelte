@@ -86,6 +86,7 @@
       ? providedDirection
       : resolveTextDirection(rootElement?.parentElement ?? rootElement, localeContext?.direction),
   );
+  const rootDirection = $derived(providedDirection === 'auto' ? 'auto' : resolvedDirection);
 
   const enabledIndexes = $derived(
     menus.map((menu, index) => ({ menu, index })).filter(({ menu }) => !menu.disabled),
@@ -417,7 +418,7 @@
   bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-menu-bar', customClassName)}
-  dir={resolvedDirection}
+  dir={rootDirection}
   role="menubar"
   aria-label={labelledBy ? undefined : label}
   aria-labelledby={labelledBy}
