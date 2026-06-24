@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Multi-select segmented control';
   export const description =
-    'Multiple options can be toggled independently. Bind a SvelteSet to track selection.';
+    'Multiple options can be toggled independently. Pass a SvelteSet to track selection.';
 </script>
 
 <script lang="ts">
@@ -18,7 +18,7 @@
   <SegmentedControl
     id="playground-format"
     selectionMode="multiple"
-    bind:value={formats}
+    value={formats}
     label="Text formatting"
   >
     <Segment value="bold">Bold</Segment>

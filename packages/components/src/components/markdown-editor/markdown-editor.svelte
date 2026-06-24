@@ -385,7 +385,7 @@
     editorState?.focus();
   }
 
-  function handleLinkInsert(url: string, text?: string) {
+  function handleLinkInsert(url: string, text: string | undefined = undefined) {
     if (!editorContext) return;
 
     if (text) {

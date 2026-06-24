@@ -423,13 +423,13 @@
     },
   });
 
-  function cancelCardLift(itemLabel?: string): void {
+  function cancelCardLift(itemLabel: string | undefined = undefined): void {
     cardController.cancel(itemLabel);
     cardTarget = null;
     pointerColumnIndex = null;
   }
 
-  function cancelColumnLift(columnTitle?: string): void {
+  function cancelColumnLift(columnTitle: string | undefined = undefined): void {
     columnLiftedKey = null;
     columnTargetIndex = null;
     if (columnTitle) announcer.announce(`${columnTitle} column move cancelled.`);

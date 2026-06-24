@@ -76,6 +76,27 @@ describe('DataGrid ARIA', () => {
     expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual(['1', '2']);
   });
 
+  test('renders row-header columns with role=rowheader', () => {
+    const { container } = render(IssueDataGrid, {
+      rows,
+      columns: [
+        { key: 'title', header: 'Title', rowHeader: true },
+        { key: 'owner', header: 'Owner' },
+      ],
+      getRowId: getIssueId,
+      'aria-label': 'Issues',
+    });
+
+    const firstDataRow = container.querySelector('[role="row"][aria-rowindex="2"]');
+    const rowHeader = firstDataRow?.querySelector('[role="rowheader"]');
+    const gridCells = firstDataRow?.querySelectorAll('[role="gridcell"]');
+
+    expect(rowHeader?.textContent?.trim()).toBe('Keyboard navigation');
+    expect(rowHeader?.getAttribute('aria-colindex')).toBe('1');
+    expect(gridCells).toHaveLength(1);
+    expect(gridCells?.[0]?.textContent?.trim()).toBe('Ada');
+  });
+
   test('wraps body rows in a rowgroup owned by the grid', () => {
     const { container } = render(IssueDataGrid, {
       rows,

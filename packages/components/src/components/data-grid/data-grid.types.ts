@@ -43,6 +43,12 @@ type DataGridBaseColumnDef<TRow> = {
   maxWidth?: number;
   /** Pin this column to the left or right edge of the horizontal scroller. */
   pin?: DataGridColumnPin;
+  /**
+   * Render body cells in this column as row headers (`role="rowheader"`).
+   * Use this for the column that uniquely identifies each row, such as the
+   * value returned by `getRowId`.
+   */
+  rowHeader?: boolean;
   /** Enables header-click sorting for this column. */
   sortable?: boolean;
 };

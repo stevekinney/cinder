@@ -33,7 +33,7 @@
     };
   };
 
-  export function focus(options?: FocusOptions): void {
+  export function focus(options: FocusOptions | undefined = undefined): void {
     buttonElement?.focus(options);
   }
 </script>

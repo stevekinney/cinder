@@ -561,7 +561,7 @@
     focusItem(id);
   }
 
-  function scrollToRow(id: string, options?: ScrollIntoViewOptions): void {
+  function scrollToRow(id: string, options: ScrollIntoViewOptions | undefined = undefined): void {
     if (isVirtualizedTree) {
       const index = visibleIds.indexOf(id);
       if (index !== -1) {

@@ -352,7 +352,7 @@
     announceRename(`Editing ${label}. Press Enter to confirm, Escape to cancel.`);
   }
 
-  function finishEdit(afterFocus?: () => void): void {
+  function finishEdit(afterFocus: (() => void) | undefined = undefined): void {
     editing = false;
     renameError = '';
     renamePending = false;
@@ -368,7 +368,7 @@
     finishEdit();
   }
 
-  async function commitEdit(afterFocus?: () => void): Promise<boolean> {
+  async function commitEdit(afterFocus: (() => void) | undefined = undefined): Promise<boolean> {
     if (!editing || renamePending) return false;
 
     if (editValue.trim().length === 0) {

@@ -12,8 +12,8 @@
     {
       "id": "multiple",
       "title": "Multi-select segmented control",
-      "description": "Multiple options can be toggled independently. Bind a SvelteSet to track selection.",
-      "code": "<script lang=\"ts\">\n  import { SvelteSet } from 'svelte/reactivity';\n  import { Segment } from '@lostgradient/cinder/segment';\n  import { SegmentedControl } from '@lostgradient/cinder/segmented-control';\n\n  let formats = new SvelteSet<string>();\n\n  const selected = $derived([...formats].join(', ') || 'none');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; justify-items: start;\">\n  <SegmentedControl\n    id=\"playground-format\"\n    selectionMode=\"multiple\"\n    bind:value={formats}\n    label=\"Text formatting\"\n  >\n    <Segment value=\"bold\">Bold</Segment>\n    <Segment value=\"italic\">Italic</Segment>\n    <Segment value=\"underline\">Underline</Segment>\n    <Segment value=\"strikethrough\">Strike</Segment>\n  </SegmentedControl>\n  <p style=\"margin: 0; color: var(--cinder-text-muted);\">Active formats: {selected}</p>\n</div>\n"
+      "description": "Multiple options can be toggled independently. Pass a SvelteSet to track selection.",
+      "code": "<script lang=\"ts\">\n  import { SvelteSet } from 'svelte/reactivity';\n  import { Segment } from '@lostgradient/cinder/segment';\n  import { SegmentedControl } from '@lostgradient/cinder/segmented-control';\n\n  let formats = new SvelteSet<string>();\n\n  const selected = $derived([...formats].join(', ') || 'none');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; justify-items: start;\">\n  <SegmentedControl\n    id=\"playground-format\"\n    selectionMode=\"multiple\"\n    value={formats}\n    label=\"Text formatting\"\n  >\n    <Segment value=\"bold\">Bold</Segment>\n    <Segment value=\"italic\">Italic</Segment>\n    <Segment value=\"underline\">Underline</Segment>\n    <Segment value=\"strikethrough\">Strike</Segment>\n  </SegmentedControl>\n  <p style=\"margin: 0; color: var(--cinder-text-muted);\">Active formats: {selected}</p>\n</div>\n"
     },
     {
       "id": "sizing",

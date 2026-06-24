@@ -222,9 +222,9 @@ describe('hasA11yDoc', () => {
   });
 
   test('returns false for a component without an a11y doc', () => {
-    // container is layout (non-interactive) and lacks an a11y doc
-    const dir = componentDirectory('container');
-    expect(hasA11yDoc(dir, 'container')).toBe(false);
+    // table-cell is a compose-only leaf whose accessibility contract lives on Table.
+    const dir = componentDirectory('table-cell');
+    expect(hasA11yDoc(dir, 'table-cell')).toBe(false);
   });
 });
 
