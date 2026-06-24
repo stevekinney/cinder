@@ -103,11 +103,9 @@
       current &&
       !targetIsToggle
     ) {
+      event.preventDefault();
       const toggle = current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle');
-      if (toggle) {
-        event.preventDefault();
-        toggle.click();
-      }
+      toggle?.click();
     }
   }
 </script>

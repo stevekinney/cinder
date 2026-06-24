@@ -564,6 +564,7 @@
           data-stop
           onclick={onstop}
           aria-label="Stop generating"
+          aria-describedby={shortcutDescriptionId}
         >
           <Square class="icon-sm" />
         </button>

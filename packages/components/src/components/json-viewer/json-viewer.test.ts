@@ -133,6 +133,25 @@ describe('JsonViewer', () => {
     expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
   });
 
+  test('Space on a focused leaf treeitem prevents browser default scrolling', () => {
+    const { container } = render(JsonViewer, {
+      value: { config: { nested: true } },
+      initialDepth: 999,
+    });
+    const leafTreeItem = container.querySelector<HTMLElement>('[role="treeitem"][aria-level="3"]')!;
+    const event = new KeyboardEvent('keydown', {
+      key: ' ',
+      bubbles: true,
+      cancelable: true,
+    });
+
+    leafTreeItem.focus();
+    leafTreeItem.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(leafTreeItem.getAttribute('aria-expanded')).toBeNull();
+  });
+
   test('tree keydown does not synthesize a second toggle when the inner toggle button owns activation', async () => {
     const { container } = render(JsonViewer, { value: { config: { nested: true } } });
     const rootTreeItem = container.querySelector<HTMLElement>(
