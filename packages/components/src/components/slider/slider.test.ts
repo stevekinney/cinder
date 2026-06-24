@@ -7,6 +7,8 @@ setupHappyDom();
 
 const { fireEvent, render, cleanup } = await import('@testing-library/svelte');
 const { default: Slider } = await import('./slider.svelte');
+const { default: SliderDirectionFixture } =
+  await import('../../test/fixtures/slider-direction-fixture.svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -71,6 +73,16 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('15');
     await fireEvent.keyDown(thumb, { key: 'ArrowLeft' });
     expect(thumb.getAttribute('aria-valuenow')).toBe('20');
+  });
+
+  test('local direction overrides locale provider direction', async () => {
+    const { container } = render(SliderDirectionFixture);
+    const root = container.querySelector('.cinder-slider');
+    const thumb = getThumbs(container)[0]!;
+
+    expect(root?.getAttribute('dir')).toBe('ltr');
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('25');
   });
 
   test('ArrowUp / ArrowDown also adjust by step', async () => {

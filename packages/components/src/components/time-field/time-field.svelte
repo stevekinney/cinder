@@ -176,6 +176,6 @@
   {/if}
 
   {#if error}
-    <p id={errorId} class="cinder-time-field__error">{error}</p>
+    <p id={errorId} class="cinder-time-field__error" aria-live="polite">{error}</p>
   {/if}
 </div>

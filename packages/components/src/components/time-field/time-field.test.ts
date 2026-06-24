@@ -91,6 +91,7 @@ describe('TimeField', () => {
       'Used for reminders.',
     );
     expect(container.querySelector('#reminder-error')?.textContent).toBe('Choose a valid time.');
+    expect(container.querySelector('#reminder-error')?.getAttribute('aria-live')).toBe('polite');
   });
 
   test('includes consumer descriptions on the time input', () => {

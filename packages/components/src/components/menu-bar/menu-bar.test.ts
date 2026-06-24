@@ -195,6 +195,36 @@ describe('MenuBar', () => {
     expect(getByRole('menubar').getAttribute('dir')).toBe('auto');
   });
 
+  test('uses the computed menubar root direction for dir auto keyboard behavior', async () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      if (target instanceof HTMLElement && target.getAttribute('role') === 'menubar') {
+        Object.defineProperty(style, 'direction', { value: 'rtl', configurable: true });
+      }
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const { getByRole } = render(MenuBar, {
+        menus: fileEditViewMenus(),
+        dir: 'auto',
+      } as any);
+      const file = getByRole('menuitem', { name: 'File' });
+      const edit = getByRole('menuitem', { name: 'Edit' });
+
+      file.focus();
+      await fireEvent.keyDown(file, { key: 'ArrowLeft' });
+      expect(document.activeElement).toBe(edit);
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('right-to-left submenu ArrowRight returns focus to the submenu trigger', async () => {
     const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
     const file = getByRole('menuitem', { name: 'File' });

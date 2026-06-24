@@ -84,7 +84,10 @@
   const resolvedDirection = $derived(
     providedDirection === 'rtl' || providedDirection === 'ltr'
       ? providedDirection
-      : resolveTextDirection(rootElement?.parentElement ?? rootElement, localeContext?.direction),
+      : resolveTextDirection(
+          providedDirection === 'auto' ? rootElement : (rootElement?.parentElement ?? rootElement),
+          localeContext?.direction,
+        ),
   );
   const rootDirection = $derived(providedDirection === 'auto' ? 'auto' : resolvedDirection);
 

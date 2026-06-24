@@ -26,7 +26,7 @@
   import { untrack } from 'svelte';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
-  import { isRightToLeftElement } from '../../_internal/text-direction.ts';
+  import { isRightToLeftElement, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
@@ -50,7 +50,10 @@
   const formField = getFormFieldContext();
   const localeContext = getLocaleContext();
   const disabled = $derived(disabledProp || (formField?.disabled ?? false));
-  const direction = $derived(localeContext?.direction);
+  let rootElement = $state<HTMLDivElement | null>(null);
+  const direction = $derived(
+    resolveTextDirection(rootElement?.parentElement, localeContext?.direction),
+  );
 
   // Guarantee a usable step. `0`, `NaN`, and negative values would let the
   // tick generator loop forever, so fall back to `1`. Keep the derived pure — the
@@ -408,6 +411,7 @@
 />
 
 <div
+  bind:this={rootElement}
   class={classNames('cinder-slider', isRange && 'cinder-slider--range', className)}
   data-cinder-disabled={disabled || undefined}
   dir={direction}
