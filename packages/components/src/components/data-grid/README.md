@@ -33,7 +33,7 @@ ARIA data grid foundation for spreadsheet-like datasets with stable row identity
 ### Avoid When
 
 - You only need a semantic read-only table — use DataTable or the Table family instead.
-- You need sorting, virtualization, resize handles, drag-to-reorder controls, or editing today.
+- You need resize handles, drag-to-reorder controls, or editing today.
 
 ## Props
 

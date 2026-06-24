@@ -41,7 +41,7 @@
    * Build a screen-reader–friendly label for a key combo.
    * Falls back to joining keys with " plus " when no keysLabel is provided.
    */
-  function resolveKeysLabel(keys: string[], keysLabel?: string): string {
+  function resolveKeysLabel(keys: string[], keysLabel: string | undefined = undefined): string {
     if (keysLabel) return keysLabel;
     return keys.join(' plus ');
   }

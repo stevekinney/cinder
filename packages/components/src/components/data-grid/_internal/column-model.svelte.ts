@@ -13,6 +13,7 @@ export const DEFAULT_DATA_GRID_COLUMN_MIN_WIDTH = 60;
 
 export type DataGridValueColumn<TRow> = {
   key: string;
+  rowHeader?: boolean;
   sortable?: boolean;
   sortComparator?: DataGridSortComparator<TRow>;
   getValue?: (row: TRow) => unknown;
@@ -148,6 +149,7 @@ function resolveColumn<TRow>(
   };
   if (column.cell !== undefined) resolvedColumn.cell = column.cell;
   if (column.maxWidth !== undefined) resolvedColumn.maxWidth = column.maxWidth;
+  if (column.rowHeader !== undefined) resolvedColumn.rowHeader = column.rowHeader;
   if (column.sortable !== undefined) resolvedColumn.sortable = column.sortable;
   if (column.sortComparator !== undefined) resolvedColumn.sortComparator = column.sortComparator;
   if (column.getValue !== undefined) resolvedColumn.getValue = column.getValue;

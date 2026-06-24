@@ -231,7 +231,9 @@
       moveFocusOffControl(control);
     }
 
-    function syncDisabledControls(stateRefreshes?: ConsumerStateRefreshes): void {
+    function syncDisabledControls(
+      stateRefreshes: ConsumerStateRefreshes | undefined = undefined,
+    ): void {
       const currentControls = new Set(element.querySelectorAll<HTMLElement>(INTERACTIVE_SELECTOR));
 
       for (const control of currentControls) {

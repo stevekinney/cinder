@@ -134,6 +134,16 @@ describe('DataTable — column headers', () => {
     expect(headerCells[0]?.getAttribute('aria-sort')).toBe('ascending');
     expect(headerCells[2]?.getAttribute('aria-sort')).toBe('none');
   });
+
+  test('sortable header buttons describe their next sort action', async () => {
+    const { container } = render(DataTable, { columns, rows });
+    const button = container.querySelector('thead th button') as HTMLButtonElement;
+
+    expect(button.getAttribute('aria-description')).toBe('Activate to sort ascending');
+
+    await fireEvent.click(button);
+    expect(button.getAttribute('aria-description')).toBe('Activate to sort descending');
+  });
 });
 
 describe('DataTable — sort interaction', () => {

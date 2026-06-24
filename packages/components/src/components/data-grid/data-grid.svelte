@@ -994,7 +994,7 @@
           <div
             id={cellId}
             class="cinder-data-grid__cell"
-            role="gridcell"
+            role={column.rowHeader ? 'rowheader' : 'gridcell'}
             aria-colindex={column.colIndex}
             aria-selected={isSelectedCell ? 'true' : undefined}
             tabindex="-1"

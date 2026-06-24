@@ -139,7 +139,7 @@
   // ===== Mutation helpers =====
   function patch(
     edits: Partial<JsonSchemaObject>,
-    opts?: { coalesceKey?: string; label?: string },
+    opts: { coalesceKey?: string; label?: string } | undefined = undefined,
   ) {
     if (readonly) return;
     const next: JsonSchemaObject = { ...objectValue, ...edits };

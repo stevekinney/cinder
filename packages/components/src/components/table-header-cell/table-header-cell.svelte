@@ -48,6 +48,12 @@
         ? 'none'
         : undefined,
   );
+  const nextSortDescription = $derived(
+    ariaSort === 'ascending' ? 'Activate to sort descending' : 'Activate to sort ascending',
+  );
+  const sortButtonDescriptionAttributes = $derived({
+    'aria-description': nextSortDescription,
+  });
 
   function handleClick(): void {
     if (!sortable || !column) return;
@@ -64,7 +70,12 @@
   aria-sort={ariaSort}
 >
   {#if isSortable}
-    <button type="button" class="cinder-table__sort-button" onclick={handleClick}>
+    <button
+      {...sortButtonDescriptionAttributes}
+      type="button"
+      class="cinder-table__sort-button"
+      onclick={handleClick}
+    >
       {@render children()}
       <span
         class="cinder-table__sort-indicator"

@@ -142,7 +142,7 @@
   // top handler, so this combobox consumes Escape and `preventDefault()`s it
   // before the parent overlay ever sees the key — Escape dismisses just the
   // combobox, never the enclosing overlay.
-  function handleEscape(event?: KeyboardEvent): void {
+  function handleEscape(event: KeyboardEvent | undefined = undefined): void {
     const wasOpen = open;
     open = false;
     // Restore the committed label whenever the live text drifted from it.

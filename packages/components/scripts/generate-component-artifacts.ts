@@ -41,6 +41,30 @@ import { renderComponentReadme } from './render-component-readme.ts';
 
 export { discoverComponentDirectories, type DiscoveredComponent };
 
+const COMPOSE_ONLY_ACCESSIBILITY_DOCUMENTATION_EXEMPTIONS = new Set([
+  'accordion-item',
+  'dropdown-group',
+  'dropdown-item',
+  'dropdown-label',
+  'dropdown-menu',
+  'dropdown-separator',
+  'dropdown-trigger',
+  'feed-event',
+  'grid-list-item',
+  'side-navigation-group',
+  'side-navigation-item',
+  'stat',
+  'tab',
+  'tab-list',
+  'tab-panel',
+  'table-body',
+  'table-cell',
+  'table-header',
+  'table-header-cell',
+  'table-row',
+  'tree-item',
+]);
+
 /**
  * Run prettier over the generated content using the repo's prettier config.
  * Without this, lint-staged's prettier --write pass reformats our generated
@@ -156,6 +180,16 @@ export async function checkComponentArtifacts(): Promise<DriftIssue[]> {
     // to fill the generated regions.)
     if (!existsSync(join(component.directory, 'README.md'))) {
       issues.push({ component: component.name, file: 'README.md', reason: 'missing' });
+    }
+    if (
+      !COMPOSE_ONLY_ACCESSIBILITY_DOCUMENTATION_EXEMPTIONS.has(component.name) &&
+      !existsSync(join(component.directory, `${component.name}.a11y.md`))
+    ) {
+      issues.push({
+        component: component.name,
+        file: `${component.name}.a11y.md`,
+        reason: 'missing',
+      });
     }
 
     for (const { filename, expected } of files) {

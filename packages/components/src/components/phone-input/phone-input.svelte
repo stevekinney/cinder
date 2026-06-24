@@ -116,7 +116,7 @@
 
   function synchronizeNationalDigitsToCountry(
     nextCountry: PhoneInputCountryCode,
-    options?: { recomputeValue?: boolean },
+    options: { recomputeValue?: boolean } | undefined = undefined,
   ): void {
     const { recomputeValue = true } = options ?? {};
     const nationalDigits = digitsOnly(nationalDisplay);

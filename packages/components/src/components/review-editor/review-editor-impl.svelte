@@ -1000,7 +1000,9 @@
    * Includes document changes and comment threads
    * in a structured format suitable for LLM analysis.
    */
-  export function exportMarkdownSummary(options?: MarkdownSummaryOptions): MarkdownSummaryResult {
+  export function exportMarkdownSummary(
+    options: MarkdownSummaryOptions | undefined = undefined,
+  ): MarkdownSummaryResult {
     return generateMarkdownSummary(getState(), options);
   }
 
@@ -1008,7 +1010,9 @@
    * Export a Git-compatible unified diff.
    * The output can be applied with `git apply` or `patch` command.
    */
-  export function exportUnifiedDiff(options?: UnifiedDiffOptions): UnifiedDiffResult {
+  export function exportUnifiedDiff(
+    options: UnifiedDiffOptions | undefined = undefined,
+  ): UnifiedDiffResult {
     return generateUnifiedDiff(getState(), options);
   }
 

@@ -42,6 +42,10 @@
     block-size: var(--_cinder-data-table-row-height, 44px);
   }
 
+  .cinder-data-table tbody .cinder-table__row:focus-within {
+    background: var(--cinder-surface-hover);
+  }
+
   .cinder-data-table[data-cinder-virtualized]
     .cinder-table__row[data-cinder-virtual-row]:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
