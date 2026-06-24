@@ -259,18 +259,21 @@
   }
 
   .chat-tool-approval-btn-approve {
-    background: var(--cinder-color-success-bg, var(--cinder-surface-raised));
+    background: var(--cinder-success);
     color: var(--cinder-success-contrast, var(--cinder-text));
-    border-color: var(--cinder-color-success-border, var(--cinder-chat-tool-approval-border));
+    border-color: var(--cinder-success);
 
-    /* Background darkening, not opacity, so foreground text contrast is
-       preserved (opacity would dim text + bg together, risking WCAG 1.4.11). */
     @media (hover: hover) {
       &:not(:disabled):hover {
-        background: color-mix(
-          in oklch,
-          var(--cinder-color-success-bg, var(--cinder-surface-raised)),
-          currentColor 8%
+        /* cinder-allow-raw-color: structural-pattern — neutral hover overlay tint, not a themeable surface */
+        --_cinder-chat-tool-approval-hover-overlay: light-dark(
+          oklch(0% 0 0 / 0.08),
+          oklch(100% 0 0 / 0.1)
+        );
+
+        background-image: linear-gradient(
+          var(--_cinder-chat-tool-approval-hover-overlay),
+          var(--_cinder-chat-tool-approval-hover-overlay)
         );
       }
     }

@@ -260,10 +260,14 @@ describe('ToolApprovalPart — resolved states', () => {
     expect(title?.textContent).toContain('Approved');
   });
 
-  test('approve button uses the defined success contrast token', async () => {
+  test('approve button pairs the solid success fill with the success contrast token', async () => {
     const source = await Bun.file(new URL('./tool-approval-part.svelte', import.meta.url)).text();
 
+    expect(source).toContain('background: var(--cinder-success)');
     expect(source).toContain('color: var(--cinder-success-contrast, var(--cinder-text))');
+    expect(source).not.toContain(
+      'background: var(--cinder-color-success-bg, var(--cinder-surface-raised))',
+    );
     expect(source).not.toContain('--cinder-color-success-contrast');
   });
 
