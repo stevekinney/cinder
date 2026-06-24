@@ -682,14 +682,15 @@ describe('Validity and a11y wiring', () => {
     expect(input.validity.customError).toBe(true);
   });
 
-  test('regression: no aria-value* attributes', () => {
+  test('spinbutton exposes bounded numeric value attributes', () => {
     const { container } = render(NumberInput, {
       props: { id: 'n', value: 5, min: 0, max: 10, locale: 'en-US' },
     });
     const input = getInput(container);
-    expect(input.hasAttribute('aria-valuemin')).toBe(false);
-    expect(input.hasAttribute('aria-valuemax')).toBe(false);
-    expect(input.hasAttribute('aria-valuenow')).toBe(false);
+    expect(input.getAttribute('role')).toBe('spinbutton');
+    expect(input.getAttribute('aria-valuemin')).toBe('0');
+    expect(input.getAttribute('aria-valuemax')).toBe('10');
+    expect(input.getAttribute('aria-valuenow')).toBe('5');
   });
 
   test('malformed customError cleared by external value change', async () => {

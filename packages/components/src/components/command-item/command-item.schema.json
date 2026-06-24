@@ -14,6 +14,14 @@
       "type": "string",
       "description": "Optional secondary text shown below the main label."
     },
+    "accessibleLabel": {
+      "type": "string",
+      "description": "Accessible name for the option when the rendered row contains secondary text or rich content."
+    },
+    "keyboardShortcut": {
+      "type": "string",
+      "description": "Keyboard shortcut exposed through `aria-keyshortcuts`, e.g. `Meta+N`."
+    },
     "class": {
       "type": "string",
       "description": "Class merged with `.cinder-command-item`."

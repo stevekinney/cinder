@@ -9,6 +9,8 @@
     depth: number;
     initialDepth: number;
     maxDepth: number;
+    position: number;
+    setSize: number;
   };
 </script>
 
@@ -17,7 +19,8 @@
   import Self from './_json-viewer-node.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { value, keyName, depth, initialDepth, maxDepth }: JsonViewerNodeProps = $props();
+  let { value, keyName, depth, initialDepth, maxDepth, position, setSize }: JsonViewerNodeProps =
+    $props();
 
   const isObject = $derived(value !== null && typeof value === 'object');
   const isArray = $derived(Array.isArray(value));
@@ -60,8 +63,12 @@
     <button
       type="button"
       class="cinder-json-viewer__toggle"
+      role="treeitem"
       aria-expanded={!collapsed}
       aria-label={toggleLabel}
+      aria-level={depth + 1}
+      aria-posinset={position}
+      aria-setsize={setSize}
       onclick={() => (collapsed = !collapsed)}
     >
       {#if keyName !== undefined}
@@ -79,7 +86,7 @@
       {/if}
     </button>
     {#if !collapsed}
-      <ul class="cinder-json-viewer__children">
+      <ul class="cinder-json-viewer__children" role="group">
         <!--
           For objects `k` is the property name — a stable, correct key. For arrays
           `k` is the index: JSON array elements carry no intrinsic identity, so if
@@ -87,9 +94,17 @@
           stays associated with its position rather than its value. This is an
           accepted tradeoff given arrays have no stable per-item key.
         -->
-        {#each entries as [k, v] (k)}
-          <li>
-            <Self value={v} keyName={k} depth={depth + 1} {initialDepth} {maxDepth} />
+        {#each entries as [k, v], index (k)}
+          <li role="none">
+            <Self
+              value={v}
+              keyName={k}
+              depth={depth + 1}
+              {initialDepth}
+              {maxDepth}
+              position={index + 1}
+              setSize={entries.length}
+            />
           </li>
         {/each}
       </ul>
@@ -97,14 +112,28 @@
     {/if}
   </span>
 {:else if isObject && tooDeep}
-  <span class="cinder-json-viewer__node">
+  <span
+    class="cinder-json-viewer__node"
+    role="treeitem"
+    tabindex="-1"
+    aria-level={depth + 1}
+    aria-posinset={position}
+    aria-setsize={setSize}
+  >
     {#if keyName !== undefined}
       <span class="cinder-json-viewer__key">{keyName}:</span>
     {/if}
     <span class="cinder-json-viewer__too-deep">…</span>
   </span>
 {:else}
-  <span class="cinder-json-viewer__node">
+  <span
+    class="cinder-json-viewer__node"
+    role="treeitem"
+    tabindex="-1"
+    aria-level={depth + 1}
+    aria-posinset={position}
+    aria-setsize={setSize}
+  >
     {#if keyName !== undefined}
       <span class="cinder-json-viewer__key">{keyName}:</span>
     {/if}

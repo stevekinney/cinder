@@ -50,7 +50,7 @@ describe('SchemaForm', () => {
 
     await fireEvent.input(screen.getByLabelText(/Name/), { target: { value: 'Ada' } });
     // NumberInput commits its parsed value on blur (it buffers while editing).
-    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countInput, { target: { value: '3' } });
     await fireEvent.blur(countInput);
 
@@ -114,7 +114,7 @@ describe('SchemaForm', () => {
     });
     await flush();
 
-    const input = screen.getByRole('textbox', { name: /Count/ });
+    const input = screen.getByRole('spinbutton', { name: /Count/ });
     expect(input).toBeInstanceOf(HTMLInputElement);
     expect((input as HTMLInputElement).value).toBe('');
   });
@@ -325,7 +325,7 @@ describe('SchemaForm', () => {
       const form = formFrom(container);
       const event = await submit(form);
       const input = screen.getByLabelText(/Name/);
-      const error = screen.getByText(/fewer than 1 characters|required/i);
+      const error = screen.getByText(/Name is too short|Name is required/i);
 
       expect(event.defaultPrevented).toBe(true);
       expect(onsubmitCalls).toHaveLength(0);
@@ -380,10 +380,10 @@ describe('SchemaForm', () => {
 
     await fireEvent.input(screen.getByLabelText(/Name/), { target: { value: 'Updated' } });
     // NumberInput commits the parsed value on blur, so commit each before submit.
-    const ratioInput = screen.getByRole('textbox', { name: /Ratio/ });
+    const ratioInput = screen.getByRole('spinbutton', { name: /Ratio/ });
     await fireEvent.input(ratioInput, { target: { value: '2.5' } });
     await fireEvent.blur(ratioInput);
-    const countField = screen.getByRole('textbox', { name: /Count/ });
+    const countField = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countField, { target: { value: '4' } });
     await fireEvent.blur(countField);
     const activeCheckbox = screen.getByRole('checkbox', { name: /Active/ });
@@ -741,7 +741,7 @@ describe('SchemaForm — composed-control regressions', () => {
     await fireEvent.input(nameInput, { target: { value: 'Ada' } });
     expect((nameInput as HTMLInputElement).value).toBe('Ada'); // does not revert
 
-    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countInput, { target: { value: '7' } });
     await fireEvent.blur(countInput);
     expect((countInput as HTMLInputElement).value).toBe('7'); // does not revert after blur commit
@@ -773,7 +773,7 @@ describe('SchemaForm — composed-control regressions', () => {
     });
     await flush();
 
-    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countInput, { target: { value: '2.5' } });
     await fireEvent.blur(countInput);
     expect((countInput as HTMLInputElement).value).toBe('3'); // snapped to an integer
@@ -868,7 +868,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
 
     // New fields appear.
     const emailField = view.getByLabelText(/Email/);
-    const ageInput = view.getByRole('textbox', { name: /Age/ });
+    const ageInput = view.getByRole('spinbutton', { name: /Age/ });
     expect(emailField).toBeInstanceOf(HTMLInputElement);
     expect(ageInput).toBeTruthy();
     const emailInput = emailField as HTMLInputElement;

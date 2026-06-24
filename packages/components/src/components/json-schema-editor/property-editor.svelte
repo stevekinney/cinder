@@ -12,6 +12,8 @@
     depth?: number;
     /** Whether the editor is read-only. */
     readonly?: boolean;
+    /** Called when nested form-only validation errors change. */
+    onvalidationerrorcount?: ((count: number) => void) | undefined;
     /** Called whenever the value changes. */
     onchange: (next: JsonSchemaValue, options?: { coalesceKey?: string; label?: string }) => void;
     class?: string;
@@ -102,6 +104,7 @@
     path,
     depth = 0,
     readonly = false,
+    onvalidationerrorcount,
     onchange,
     class: className,
   }: PropertyEditorProps = $props();
@@ -402,6 +405,7 @@
           path={`${path}/properties`}
           properties={objectValue.properties ?? {}}
           required={objectValue.required ?? []}
+          {onvalidationerrorcount}
           onchange={patchProperties}
         />
       </div>

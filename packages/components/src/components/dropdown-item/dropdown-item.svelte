@@ -30,6 +30,7 @@
 
   let {
     variant = 'default',
+    itemRole = 'menuitem',
     inset = false,
     disabled,
     closeOnSelect = true,
@@ -121,14 +122,14 @@
 
 <!--
   {...rest} is spread BEFORE the component-controlled attributes so a consumer
-  cannot override role="menuitem", tabindex (the roving-focus model), aria-disabled,
+  cannot override the menu role, tabindex (the roving-focus model), aria-disabled,
   or the click handler — overriding any of those would break menu semantics.
 -->
 {#if isLink}
   <a
     {...anchorAttributes}
     {href}
-    role="menuitem"
+    role={itemRole}
     class={sharedClass}
     data-cinder-variant={variant}
     tabindex={-1}
@@ -145,7 +146,7 @@
   <button
     {...buttonAttributes}
     type={buttonType}
-    role="menuitem"
+    role={itemRole}
     class={sharedClass}
     data-cinder-variant={variant}
     tabindex={-1}

@@ -128,6 +128,11 @@
     return numberValue(field) ?? null;
   }
 
+  function finiteSchemaNumber(field: SchemaFormField, key: string): number | undefined {
+    const value = field.schema[key];
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  }
+
   function rawJsonValue(field: SchemaFormField): string {
     const key = pathKey(field.path);
     if (rawDrafts[key] !== undefined) return rawDrafts[key];
@@ -143,6 +148,28 @@
       errors = remaining;
     }
     setSerializedValue('');
+  }
+
+  async function validateTouchedField(field: SchemaFormField) {
+    if (submitting) return;
+    const raw = rawJsonIssues();
+    const candidate = pruneUndefined(raw.value);
+    const result = await validateSchemaValue(schema, candidate);
+    const fieldKey = pathKey(field.path);
+    const issue = (result.valid ? [] : result.issues).find((candidateIssue) => {
+      const candidateKey = pathKey(candidateIssue.path);
+      return candidateKey === fieldKey || candidateKey.startsWith(`${fieldKey}/`);
+    });
+
+    if (issue) {
+      errors = { ...errors, [fieldKey]: issue.message };
+      return;
+    }
+
+    if (errors[fieldKey]) {
+      const { [fieldKey]: _removed, ...remaining } = errors;
+      errors = remaining;
+    }
   }
 
   function setSerializedValue(next: string) {
@@ -487,6 +514,7 @@
           {...labelledProps}
           required={field.required}
           disabled={submitting}
+          onblur={() => validateTouchedField(field)}
           bind:value={() => stringValue(field), (next) => updateValue(field.path, next)}
         />
       {:else if field.kind === 'number' || field.kind === 'integer'}
@@ -495,6 +523,8 @@
           {...labelledProps}
           required={field.required}
           disabled={submitting}
+          min={finiteSchemaNumber(field, 'minimum')}
+          max={finiteSchemaNumber(field, 'maximum')}
           step={field.kind === 'integer' ? 1 : undefined}
           bind:value={
             () => numberFieldValue(field), (next) => updateValue(field.path, next ?? undefined)
@@ -509,6 +539,7 @@
           options={selectOptions(field)}
           value={enumValue(field)}
           onchange={(event) => updateEnum(field, event)}
+          onblur={() => validateTouchedField(field)}
         />
       {:else if field.kind === 'boolean'}
         <!-- A required boolean schema property means "the value must be present",
@@ -530,6 +561,7 @@
           rows={6}
           spellcheck={false}
           class="cinder-schema-form__json-control"
+          onblur={() => validateTouchedField(field)}
           bind:value={() => rawJsonValue(field), (next) => updateRawJsonValue(field, next)}
         />
       {/if}
@@ -546,7 +578,13 @@
   onsubmit={handleSubmit}
 >
   {#if rootError}
-    <p id={rootErrorId} class="cinder-schema-form__error" aria-live="polite" tabindex="-1">
+    <p
+      id={rootErrorId}
+      class="cinder-schema-form__error"
+      role="alert"
+      aria-live="polite"
+      tabindex="-1"
+    >
       {rootError}
     </p>
   {/if}

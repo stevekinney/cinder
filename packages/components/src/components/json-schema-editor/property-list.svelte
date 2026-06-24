@@ -8,6 +8,7 @@
     path: string;
     depth?: number;
     readonly?: boolean;
+    onvalidationerrorcount?: ((count: number) => void) | undefined;
     onchange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
   };
 </script>
@@ -26,6 +27,7 @@
     path,
     depth = 0,
     readonly = false,
+    onvalidationerrorcount,
     onchange,
   }: PropertyListProps = $props();
 
@@ -36,6 +38,10 @@
   let draftNames = $state<Record<string, string>>({});
   let renameError = $state<string | null>(null);
   let expanded = $state<Record<string, boolean>>({});
+
+  $effect(() => {
+    onvalidationerrorcount?.(renameError ? 1 : 0);
+  });
 
   function getDraftName(key: string): string {
     return draftNames[key] ?? key;
@@ -180,10 +186,11 @@
       interactive" violation.
     -->
     <div class="cinder-jse-property-row" data-cinder-required={isRequired ? '' : undefined}>
-      <div class="cinder-jse-property-row__summary">
+      <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
         <button
           type="button"
           class="cinder-jse-property-row__trigger"
+          aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property`}
           aria-expanded={isOpen}
           aria-controls={panelId}
           onclick={() => (expanded[key] = !isOpen)}
@@ -248,6 +255,7 @@
             depth={depth + 1}
             {readonly}
             value={properties[key] ?? {}}
+            {onvalidationerrorcount}
             onchange={(next) => setPropertySchema(key, next)}
           />
         </div>

@@ -66,6 +66,8 @@
       <DropdownItem
         onclick={() => handleSelect(option.type)}
         data-active={isActive ? '' : undefined}
+        itemRole="menuitemradio"
+        aria-checked={isActive}
       >
         <option.icon class="icon-sm" />
         <span class="dropdown-item-label">{option.label}</span>

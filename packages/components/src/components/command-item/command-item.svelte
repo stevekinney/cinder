@@ -36,6 +36,8 @@
     selectionMode = 'item',
     disabled = false,
     description,
+    accessibleLabel,
+    keyboardShortcut,
     leading,
     trailing,
     children,
@@ -104,6 +106,8 @@
   class={classNames('cinder-command-item', className)}
   aria-selected={isActive}
   aria-disabled={disabled || undefined}
+  aria-label={accessibleLabel}
+  aria-keyshortcuts={keyboardShortcut}
   data-cinder-active={isActive ? '' : undefined}
   data-cinder-disabled={disabled || undefined}
   onpointerenter={handlePointerEnter}

@@ -659,6 +659,7 @@
           {activeBlockType}
           {canUndo}
           {canRedo}
+          {linkPopoverOpen}
           disabled={!editorContext}
           onLinkClick={handleLinkClick}
           onUndo={handleUndo}
@@ -701,6 +702,7 @@
         style:--editor-placeholder="'{escapedPlaceholder}'"
         role="application"
         aria-label={label || 'Markdown editor'}
+        aria-multiline="true"
         tabindex="0"
         {@attach editorAttachment}
       ></div>
@@ -714,6 +716,7 @@
         readonly={readonly || undefined}
         aria-label={label}
         aria-describedby={ariaDescribedby}
+        aria-multiline="true"
       ></textarea>
     {/if}
   {:else}

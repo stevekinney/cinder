@@ -9,6 +9,27 @@
     display: block;
     overflow-x: auto;
     padding-block-end: var(--cinder-space-2);
+    background:
+      linear-gradient(90deg, var(--cinder-surface) 30%, transparent) left center / 2rem 100%
+        no-repeat local,
+      linear-gradient(270deg, var(--cinder-surface) 30%, transparent) right center / 2rem 100%
+        no-repeat local,
+      linear-gradient(90deg, oklch(0% 0 0 / 12%), transparent) left center / 1rem 100% no-repeat
+        scroll,
+      linear-gradient(270deg, oklch(0% 0 0 / 12%), transparent) right center / 1rem 100% no-repeat
+        scroll;
+  }
+
+  .cinder-kanban-board__keyboard-hint {
+    margin: 0 0 var(--cinder-space-2);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    opacity: 0;
+    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-kanban-board:focus-within .cinder-kanban-board__keyboard-hint {
+    opacity: 1;
   }
 
   .cinder-kanban-board__columns {
@@ -50,6 +71,20 @@
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
     color: var(--cinder-text);
+  }
+
+  .cinder-kanban-board__card-count {
+    display: inline-flex;
+    align-items: center;
+    margin-inline-start: var(--cinder-space-2);
+    min-block-size: 1.25rem;
+    padding-inline: var(--cinder-space-1-5);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-sm);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    white-space: nowrap;
   }
 
   .cinder-kanban-board__column-actions {

@@ -515,6 +515,7 @@
       bind:this={inputElement}
       {id}
       type="text"
+      role="spinbutton"
       inputmode="decimal"
       value={displayValue}
       disabled={resolvedDisabled}
@@ -523,6 +524,9 @@
       {...rest}
       aria-invalid={resolvedAriaInvalid}
       aria-describedby={describedBy}
+      aria-valuenow={value ?? undefined}
+      aria-valuemin={Number.isFinite(resolvedMin) ? resolvedMin : undefined}
+      aria-valuemax={Number.isFinite(resolvedMax) ? resolvedMax : undefined}
       oninput={onInput}
       onfocus={onFocus}
       onblur={onBlur}
@@ -533,6 +537,7 @@
       class="cinder-number-input__stepper cinder-number-input__stepper--increment"
       aria-label={`Increment${stepperLabelSuffix}`}
       disabled={incrementDisabled}
+      tabindex="-1"
       onclick={() => stepBy('increment')}
     >
       <span aria-hidden="true">+</span>
@@ -542,6 +547,7 @@
       class="cinder-number-input__stepper cinder-number-input__stepper--decrement"
       aria-label={`Decrement${stepperLabelSuffix}`}
       disabled={decrementDisabled}
+      tabindex="-1"
       onclick={() => stepBy('decrement')}
     >
       <span aria-hidden="true">&#x2212;</span>

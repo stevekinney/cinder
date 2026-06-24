@@ -111,8 +111,29 @@ function propertyKeyPathSegment(value: unknown): string {
 function ajvIssues(errors: readonly ErrorObject[]): SchemaFormValidationIssue[] {
   return errors.map((error) => ({
     path: ajvErrorPath(error),
-    message: error.message ?? 'Invalid value',
+    message: readableAjvMessage(error),
   }));
+}
+
+function readableAjvMessage(error: ErrorObject): string {
+  const fieldName = ajvErrorPath(error).at(-1) ?? 'Value';
+  const label = humanizeFieldName(fieldName);
+
+  if (error.keyword === 'required') return `${label} is required.`;
+  if (error.keyword === 'minLength') return `${label} is too short.`;
+  if (error.keyword === 'maxLength') return `${label} is too long.`;
+  if (error.keyword === 'minimum') return `${label} must be at least ${error.params?.['limit']}.`;
+  if (error.keyword === 'maximum') return `${label} must be at most ${error.params?.['limit']}.`;
+  if (error.keyword === 'type') return `${label} must be ${error.params?.['type']}.`;
+
+  return error.message ?? 'Invalid value';
+}
+
+function humanizeFieldName(name: string): string {
+  return name
+    .replaceAll(/[_-]+/g, ' ')
+    .replaceAll(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^./, (character) => character.toUpperCase());
 }
 
 function ajvErrorPath(error: ErrorObject): string[] {

@@ -6,6 +6,7 @@
 <script lang="ts">
   import {
     Chat,
+    type ChatSubmitEvent,
     appendAssistantMessage,
     appendUserMessage,
     createConversation,
@@ -28,8 +29,12 @@
 3. Keep the public API importable by subpath.`,
     ),
   );
+
+  function handleSubmit(event: ChatSubmitEvent): void {
+    conversation = appendUserMessage(conversation, event.message.content);
+  }
 </script>
 
 <div style="height: 34rem;">
-  <Chat id={chatId} {conversation} capabilities={{ attachments: false }} />
+  <Chat id={chatId} {conversation} capabilities={{ attachments: false }} onsubmit={handleSubmit} />
 </div>

@@ -159,7 +159,11 @@ describe('InvocationRuleBuilder', () => {
 
     test('displays rule label in the header', () => {
       const { container } = renderBuilder([makeRule()]);
-      expect(container.textContent).toContain('PR Review Rule');
+      expect(
+        container.querySelector<HTMLInputElement>(
+          'input[aria-label="Rule name for PR Review Rule"]',
+        )?.value,
+      ).toBe('PR Review Rule');
     });
 
     test('renders condition rows for each condition', () => {

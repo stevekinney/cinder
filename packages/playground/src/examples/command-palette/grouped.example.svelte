@@ -56,10 +56,16 @@
 
     {#if filteredRecentItems.length > 0}
       <li role="presentation" class="cinder-command-group">
-        <span class="cinder-command-group__label">Recent files</span>
-        <ul role="group" aria-label="Recent files">
+        <span id="command-palette-recent-files-heading" class="cinder-command-group__label">
+          Recent files
+        </span>
+        <ul role="group" aria-labelledby="command-palette-recent-files-heading">
           {#each filteredRecentItems as item (item.id)}
-            <CommandItem value={item.id} onselect={() => select(item.label)}>
+            <CommandItem
+              value={item.id}
+              accessibleLabel={item.label}
+              onselect={() => select(item.label)}
+            >
               {item.label}
             </CommandItem>
           {/each}
@@ -69,12 +75,15 @@
 
     {#if filteredActions.length > 0}
       <li role="presentation" class="cinder-command-group">
-        <span class="cinder-command-group__label">Actions</span>
-        <ul role="group" aria-label="Actions">
+        <span id="command-palette-actions-heading" class="cinder-command-group__label">
+          Actions
+        </span>
+        <ul role="group" aria-labelledby="command-palette-actions-heading">
           {#each filteredActions as action (action.id)}
             <CommandItem
               value={action.id}
               description={action.description}
+              accessibleLabel={action.label}
               onselect={() => select(action.label)}
             >
               {action.label}

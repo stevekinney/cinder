@@ -9,6 +9,11 @@ const schema = {
       description:
         'Visual style of the item. Use `danger` to signal a destructive action. Default `default`.',
     },
+    itemRole: {
+      enum: ['menuitem', 'menuitemradio'],
+      description:
+        'ARIA role for the row. Use `menuitemradio` for mutually exclusive menu selections.',
+    },
     inset: {
       type: 'boolean',
       description:

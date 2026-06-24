@@ -125,6 +125,13 @@
     announce(`${moved!.label} moved to position ${toIndex + 1} of ${nextRules.length}.`);
   }
 
+  function handleRenameRule(ruleId: string, label: string): void {
+    const nextLabel = label.trim() || 'Untitled rule';
+    const nextRules = updateRules(ruleId, (rule) => ({ ...rule, label: nextLabel }));
+    const change: InvocationRuleChange = { type: 'rename-rule', ruleId };
+    onchange(nextRules, change);
+  }
+
   // ---------------------------------------------------------------------------
   // Condition handlers
   // ---------------------------------------------------------------------------
@@ -268,6 +275,10 @@
   function actionSummary(action: InvocationRuleAction): string {
     return `Invoke ${actionTargetLabel(action.target)}`;
   }
+
+  function conditionValueInvalid(condition: InvocationRuleCondition): boolean {
+    return condition.value.trim().length === 0;
+  }
 </script>
 
 <section
@@ -280,7 +291,26 @@
   {#each rules as rule, ruleIndex (rule.id)}
     <div class="cinder-invocation-rule-builder__rule" data-irb-rule={ruleIndex}>
       <div class="cinder-invocation-rule-builder__rule-header">
-        <span class="cinder-invocation-rule-builder__rule-label">{rule.label}</span>
+        {#if readonly}
+          <h3 class="cinder-invocation-rule-builder__rule-label">{rule.label}</h3>
+        {:else}
+          <label class="cinder-invocation-rule-builder__rule-label-field">
+            <span class="cinder-sr-only">Rule name</span>
+            <input
+              class="cinder-invocation-rule-builder__rule-label-input"
+              value={rule.label}
+              aria-label={`Rule name for ${rule.label}`}
+              onblur={(event) =>
+                handleRenameRule(rule.id, (event.target as HTMLInputElement).value)}
+              onkeydown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  (event.currentTarget as HTMLInputElement).blur();
+                }
+              }}
+            />
+          </label>
+        {/if}
 
         {#if !readonly}
           <div class="cinder-invocation-rule-builder__rule-controls">
@@ -329,6 +359,11 @@
         >
           Conditions
         </span>
+        {#if !readonly && rule.conditions.length === 0}
+          <p class="cinder-invocation-rule-builder__validation" role="status">
+            Add at least one condition or this rule will always fire.
+          </p>
+        {/if}
 
         {#if readonly}
           <div
@@ -393,6 +428,8 @@
                   type="text"
                   class="cinder-invocation-rule-builder__condition-value"
                   aria-label={`Value for condition ${conditionIndex + 1} of ${rule.label}`}
+                  aria-invalid={conditionValueInvalid(condition) ? 'true' : undefined}
+                  placeholder="Value to compare"
                   value={condition.value}
                   oninput={(event) =>
                     handleUpdateCondition(
@@ -444,6 +481,11 @@
         >
           Actions
         </span>
+        {#if !readonly && rule.actions.length === 0}
+          <p class="cinder-invocation-rule-builder__validation" role="status">
+            Add at least one action for this rule.
+          </p>
+        {/if}
 
         {#if readonly}
           <div

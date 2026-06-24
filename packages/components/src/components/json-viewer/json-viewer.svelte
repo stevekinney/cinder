@@ -48,6 +48,45 @@
 
   const unserializable = $derived(!serialized.ok);
   const tooLarge = $derived(serialized.ok && serialized.size > maxBytes);
+
+  function handleTreeKeydown(event: KeyboardEvent): void {
+    const tree = event.currentTarget as HTMLElement;
+    const items = Array.from(tree.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+    const current =
+      event.target instanceof HTMLElement
+        ? event.target.closest<HTMLElement>('[role="treeitem"]')
+        : null;
+    const currentIndex = current ? items.indexOf(current) : -1;
+
+    function focusItem(index: number): void {
+      const item = items[index];
+      item?.focus();
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusItem(Math.min(currentIndex + 1, items.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusItem(Math.max(currentIndex - 1, 0));
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      focusItem(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      focusItem(items.length - 1);
+    } else if (event.key === 'ArrowRight' && current instanceof HTMLButtonElement) {
+      if (current.getAttribute('aria-expanded') === 'false') {
+        event.preventDefault();
+        current.click();
+      }
+    } else if (event.key === 'ArrowLeft' && current instanceof HTMLButtonElement) {
+      if (current.getAttribute('aria-expanded') === 'true') {
+        event.preventDefault();
+        current.click();
+      }
+    }
+  }
 </script>
 
 <div class={classNames('cinder-json-viewer', className)}>
@@ -67,6 +106,8 @@
       <p>Use the consumer's download or copy action to inspect the raw JSON.</p>
     </div>
   {:else}
-    <JsonViewerNode {value} depth={0} {initialDepth} {maxDepth} />
+    <div role="tree" aria-label="JSON tree" onkeydown={handleTreeKeydown}>
+      <JsonViewerNode {value} depth={0} {initialDepth} {maxDepth} position={1} setSize={1} />
+    </div>
   {/if}
 </div>

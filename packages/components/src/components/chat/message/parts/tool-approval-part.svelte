@@ -260,7 +260,7 @@
 
   .chat-tool-approval-btn-approve {
     background: var(--cinder-color-success-bg, var(--cinder-surface-raised));
-    color: var(--cinder-chat-tool-approval-approve-color);
+    color: var(--cinder-color-success-contrast, var(--cinder-text));
     border-color: var(--cinder-color-success-border, var(--cinder-chat-tool-approval-border));
 
     /* Background darkening, not opacity, so foreground text contrast is
