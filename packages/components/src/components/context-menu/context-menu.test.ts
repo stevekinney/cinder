@@ -68,6 +68,17 @@ describe('ContextMenu', () => {
     expect(computePositionSpy).toHaveBeenCalled();
   });
 
+  test('right-to-left context menus open toward inline-start by default', async () => {
+    const { container } = render(ContextMenuHarness, { props: { direction: 'rtl' } });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('left-start');
+  });
+
   test('fallback menu portals virtual-anchor surfaces before they are positioned', async () => {
     computePositionSpy.mockImplementationOnce(async () => {
       throw new Error('detached panel');

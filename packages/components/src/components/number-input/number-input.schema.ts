@@ -59,7 +59,7 @@ const schema = {
     locale: {
       type: 'string',
       description:
-        'BCP 47 locale tag used for number formatting and parsing. Defaults to `navigator.language`.',
+        'BCP 47 locale tag used for number formatting and parsing. Defaults to the\nnearest LocaleProvider locale, then `navigator.language`.',
     },
     name: {
       type: 'string',

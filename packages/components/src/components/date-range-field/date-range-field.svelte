@@ -10,12 +10,13 @@
    * @useWhen Filtering a list or dashboard by a start and end date (e.g. created between, updated between).
    * @useWhen Offering common presets (last 7 days, last 24 hours) alongside a manual date range.
    * @avoidWhen A single date is sufficient — use a plain date input instead.
-   * @avoidWhen Date-time precision (hours/minutes/timezone) is required — this v1 is date-only.
+   * @avoidWhen Timezone conversion or a standalone time-of-day value is required — use time-field for the latter.
    * @related input, form-field, chip, segmented-control
    */
   export type {
     DateRangeDatePreset,
     DateRangeFieldProps,
+    DateRangeGranularity,
     DateRangeValue,
   } from './date-range-field.types.ts';
 </script>
@@ -24,6 +25,7 @@
   import type {
     DateRangeDatePreset,
     DateRangeFieldProps,
+    DateRangeGranularity,
     DateRangeValue,
   } from './date-range-field.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -40,6 +42,7 @@
     label,
     startLabel = 'Start date',
     endLabel = 'End date',
+    granularity = 'day',
     presets,
     hidePresets = false,
     description,
@@ -123,6 +126,20 @@
     return `${year}-${month}-${day}`;
   }
 
+  function inputTypeFor(nextGranularity: DateRangeGranularity): 'date' | 'datetime-local' {
+    return nextGranularity === 'day' ? 'date' : 'datetime-local';
+  }
+
+  function inputStepFor(nextGranularity: DateRangeGranularity): number | undefined {
+    if (nextGranularity === 'hour') return 3600;
+    if (nextGranularity === 'minute') return 60;
+    if (nextGranularity === 'second') return 1;
+    return undefined;
+  }
+
+  const inputType = $derived(inputTypeFor(granularity));
+  const inputStep = $derived(inputStepFor(granularity));
+
   // ──────────────────────────────────────────────────────────────────────────
   // Event handlers
   // ──────────────────────────────────────────────────────────────────────────
@@ -195,10 +212,11 @@
       </label>
       <input
         id={startId}
-        type="date"
+        type={inputType}
         class="cinder-date-range-field__date-input"
         value={value.start ?? ''}
         max={value.end ?? undefined}
+        step={inputStep}
         {disabled}
         aria-invalid={invalid}
         aria-describedby={describedBy}
@@ -218,10 +236,11 @@
       </label>
       <input
         id={endId}
-        type="date"
+        type={inputType}
         class="cinder-date-range-field__date-input"
         value={value.end ?? ''}
         min={value.start ?? undefined}
+        step={inputStep}
         {disabled}
         aria-invalid={invalid}
         aria-describedby={describedBy}

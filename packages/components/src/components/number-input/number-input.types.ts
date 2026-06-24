@@ -34,7 +34,10 @@ export type NumberInputProps = Omit<
    * Defaults to locale-standard decimal formatting when omitted.
    */
   format?: Intl.NumberFormatOptions;
-  /** BCP 47 locale tag used for number formatting and parsing. Defaults to `navigator.language`. */
+  /**
+   * BCP 47 locale tag used for number formatting and parsing. Defaults to the
+   * nearest LocaleProvider locale, then `navigator.language`.
+   */
   locale?: string;
   /** When true, disables the input and stepper buttons, matching the native `disabled` attribute. */
   disabled?: boolean;

@@ -1492,7 +1492,7 @@
           "reason": "A single date is sufficient — use a plain date input instead."
         },
         {
-          "reason": "Date-time precision (hours/minutes/timezone) is required — this v1 is date-only."
+          "reason": "Timezone conversion or a standalone time-of-day value is required — use time-field for the latter."
         }
       ],
       "related": ["input", "form-field", "chip", "segmented-control"],
@@ -2622,6 +2622,32 @@
         "schema": "@lostgradient/cinder/load-more/schema",
         "variables": "@lostgradient/cinder/load-more/variables",
         "examples": "@lostgradient/cinder/load-more/examples"
+      }
+    },
+    {
+      "name": "LocaleProvider",
+      "id": "locale-provider",
+      "import": "@lostgradient/cinder/locale-provider",
+      "exportName": "LocaleProvider",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Context provider that supplies a shared locale and text direction default to locale-aware descendant components.",
+      "tags": ["locale", "internationalization"],
+      "useWhen": [
+        "Setting one application or subtree locale for number, region, date, or time formatting.",
+        "Providing text direction once for direction-aware descendants while still allowing local overrides."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Only one component needs a non-default locale — pass that component's locale prop directly instead."
+        }
+      ],
+      "related": ["number-input", "phone-input", "stat"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/locale-provider/schema",
+        "variables": "@lostgradient/cinder/locale-provider/variables"
       }
     },
     {
@@ -4634,6 +4660,33 @@
         "schema": "@lostgradient/cinder/textarea/schema",
         "variables": "@lostgradient/cinder/textarea/variables",
         "examples": "@lostgradient/cinder/textarea/examples"
+      }
+    },
+    {
+      "name": "TimeField",
+      "id": "time-field",
+      "import": "@lostgradient/cinder/time-field",
+      "exportName": "TimeField",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Standalone time-of-day field that collects a canonical time string with locale-aware hour-cycle defaults and optional timezone selection.",
+      "tags": ["form", "time", "internationalization"],
+      "useWhen": [
+        "Collecting a time of day without a date, such as a reminder time or office-hours boundary.",
+        "Pairing a time value with an optional timezone while keeping a canonical `HH:mm` or `HH:mm:ss` value."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Collecting a full date range — use date-range-field instead."
+        }
+      ],
+      "related": ["date-range-field", "number-input"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/time-field/schema",
+        "variables": "@lostgradient/cinder/time-field/variables",
+        "examples": "@lostgradient/cinder/time-field/examples"
       }
     },
     {

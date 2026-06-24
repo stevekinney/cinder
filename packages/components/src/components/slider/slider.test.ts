@@ -61,6 +61,18 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('15');
   });
 
+  test('ArrowRight decrements and ArrowLeft increments under dir=rtl', async () => {
+    const { container } = render(Slider, {
+      target: Object.assign(document.createElement('div'), { dir: 'rtl' }),
+      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+    });
+    const thumb = getThumbs(container)[0]!;
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('15');
+    await fireEvent.keyDown(thumb, { key: 'ArrowLeft' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('20');
+  });
+
   test('ArrowUp / ArrowDown also adjust by step', async () => {
     const { container } = render(Slider, {
       props: { label: 'Volume', defaultValue: 50, step: 2 },
@@ -603,6 +615,38 @@ describe('Slider (pointer)', () => {
     const [low, high] = getThumbs(container);
     expect(low!.getAttribute('aria-valuenow')).toBe('10');
     expect(high!.getAttribute('aria-valuenow')).toBe('80');
+  });
+
+  test('track click maps the visual max edge to the maximum under dir=rtl', async () => {
+    const target = Object.assign(document.createElement('div'), { dir: 'rtl' });
+    const { container } = render(Slider, {
+      target,
+      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    mockTrackRect(track, 200);
+
+    await fireEvent.pointerDown(track, { clientX: 0 });
+
+    const thumb = getThumbs(container)[0]!;
+    expect(thumb.getAttribute('aria-valuenow')).toBe('100');
+  });
+
+  test('pointer drag decreases while moving right under dir=rtl', async () => {
+    const target = Object.assign(document.createElement('div'), { dir: 'rtl' });
+    const { container } = render(Slider, {
+      target,
+      props: { label: 'Volume', defaultValue: 100, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    const thumb = getThumbs(container)[0]!;
+    mockTrackRect(track, 200);
+
+    await fireEvent.pointerDown(thumb, { clientX: 0 });
+    await fireEvent(document, new PointerEvent('pointermove', { clientX: 150, bubbles: true }));
+
+    expect(thumb.getAttribute('aria-valuenow')).toBe('25');
+    await fireEvent(document, new PointerEvent('pointerup', { bubbles: true }));
   });
 
   test('document listeners are cleaned up on unmount during drag', async () => {

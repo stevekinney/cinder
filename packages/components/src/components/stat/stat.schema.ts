@@ -21,7 +21,8 @@ const schema = {
     },
     valueLocale: {
       type: 'string',
-      description: 'Locale forwarded to formatNumber (defaults to en-US).',
+      description:
+        'Locale forwarded to formatNumber. Defaults to the nearest LocaleProvider locale, then en-US.',
     },
     class: {
       type: 'string',

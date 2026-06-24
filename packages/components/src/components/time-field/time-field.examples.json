@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "time-field",
+  "import": "@lostgradient/cinder/time-field",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic time field",
+      "description": "Standalone time input with optional timezone selection.",
+      "code": "<script lang=\"ts\">\n  import { TimeField } from '@lostgradient/cinder/time-field';\n\n  let time = $state('09:30');\n  let timezone = $state<string | undefined>('America/Denver');\n</script>\n\n<TimeField\n  id=\"time-field\"\n  label=\"Reminder time\"\n  bind:value={time}\n  bind:timezone\n  timezones={['America/Denver', 'UTC']}\n  description=\"Stored as a canonical 24-hour time string.\"\n/>\n\n<p style=\"margin-block: 0; color: var(--cinder-text-muted);\">\n  Value: {time}\n  {timezone}\n</p>\n"
+    }
+  ]
+}

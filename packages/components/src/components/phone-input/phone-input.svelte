@@ -36,6 +36,7 @@
     errorId as buildErrorId,
   } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
     computeNationalResult,
@@ -67,6 +68,7 @@
   }: PhoneInputProps = $props();
 
   const context = getFormFieldContext();
+  const localeContext = getLocaleContext();
 
   const { countries: allowedCountries, usedFallback } = $derived.by(() =>
     resolveCountryList(countries),
@@ -82,6 +84,7 @@
 
   const resolvedLocale = $derived.by(() => {
     if (locale) return locale;
+    if (localeContext?.locale) return localeContext.locale;
     if (typeof navigator !== 'undefined' && typeof navigator.language === 'string') {
       return navigator.language;
     }

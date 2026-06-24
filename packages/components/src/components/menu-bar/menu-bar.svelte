@@ -29,6 +29,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
 
+  import { isRightToLeftElement } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { DropdownContext } from '../dropdown/dropdown.types.ts';
   import DropdownItem from '../dropdown-item/dropdown-item.svelte';
@@ -209,7 +210,9 @@
   function makeContext(options: {
     menuId: string;
     anchorElement: () => HTMLElement | null;
-    fallbackPlacement?: DropdownContext['fallbackPlacement'];
+    fallbackPlacement?:
+      | DropdownContext['fallbackPlacement']
+      | (() => DropdownContext['fallbackPlacement']);
     isOpen: () => boolean;
     close: () => void;
     focusTrigger: () => void;
@@ -228,7 +231,9 @@
         return options.anchorElement();
       },
       get fallbackPlacement() {
-        return options.fallbackPlacement ?? 'bottom-start';
+        return typeof options.fallbackPlacement === 'function'
+          ? options.fallbackPlacement()
+          : (options.fallbackPlacement ?? 'bottom-start');
       },
       get widthMode() {
         return 'menu' as const;
@@ -239,6 +244,12 @@
       close: options.close,
       focusTrigger: options.focusTrigger,
     };
+  }
+
+  function submenuFallbackPlacement(
+    submenuTriggerId: string,
+  ): DropdownContext['fallbackPlacement'] {
+    return isRightToLeftElement(findElementById(submenuTriggerId)) ? 'left-start' : 'right-start';
   }
 
   function makeMenuRegister(menuId: string): (element: HTMLElement | null) => void {
@@ -503,7 +514,7 @@
                     context={makeContext({
                       menuId: submenuKey,
                       anchorElement: () => findElementById(submenuTrigger),
-                      fallbackPlacement: 'right-start',
+                      fallbackPlacement: () => submenuFallbackPlacement(submenuTrigger),
                       isOpen: () => openSubmenuKey === submenuKey,
                       close: () => closeMenuAndFocusTrigger(menuIndex),
                       focusTrigger: () => focusSubmenuTriggerAfterClose(submenuTrigger),

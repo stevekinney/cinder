@@ -25,6 +25,7 @@
   import type { SliderProps, SliderValue } from './slider.types.ts';
   import { untrack } from 'svelte';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import { isRightToLeftElement } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
@@ -228,13 +229,22 @@
     if (disabled) return;
     const current = thumb === 'high' ? highValue : lowValue;
     const hasTickArray = tickList !== null && tickList.length > 0;
+    const horizontalStepDirection: 1 | -1 = isRightToLeftElement(trackElement) ? -1 : 1;
     let next = current;
     switch (event.key) {
       case 'ArrowRight':
+        next = hasTickArray
+          ? neighborTick(current, horizontalStepDirection)
+          : current + horizontalStepDirection * safeStep;
+        break;
+      case 'ArrowLeft':
+        next = hasTickArray
+          ? neighborTick(current, horizontalStepDirection === 1 ? -1 : 1)
+          : current - horizontalStepDirection * safeStep;
+        break;
       case 'ArrowUp':
         next = hasTickArray ? neighborTick(current, 1) : current + safeStep;
         break;
-      case 'ArrowLeft':
       case 'ArrowDown':
         next = hasTickArray ? neighborTick(current, -1) : current - safeStep;
         break;
@@ -273,7 +283,8 @@
     if (!trackElement) return min;
     const rect = trackElement.getBoundingClientRect();
     if (rect.width === 0) return min;
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const physicalRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const ratio = isRightToLeftElement(trackElement) ? 1 - physicalRatio : physicalRatio;
     return min + ratio * (max - min);
   }
 

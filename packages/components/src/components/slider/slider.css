@@ -40,18 +40,18 @@
   .cinder-slider__range {
     position: absolute;
     inset-block: 0;
-    left: var(--_cinder-slider-low);
-    right: calc(100% - var(--_cinder-slider-high));
+    inset-inline-start: var(--_cinder-slider-low);
+    inset-inline-end: calc(100% - var(--_cinder-slider-high));
     background: var(--cinder-accent);
     border-radius: var(--cinder-radius-full);
     transition:
-      left var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease),
-      right var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease);
+      inset-inline-start var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease),
+      inset-inline-end var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease);
   }
 
   .cinder-slider:not(.cinder-slider--range) .cinder-slider__range {
-    left: 0;
-    right: calc(100% - var(--_cinder-slider-low));
+    inset-inline-start: 0;
+    inset-inline-end: calc(100% - var(--_cinder-slider-low));
   }
 
   .cinder-slider__ticks {
@@ -63,7 +63,7 @@
   .cinder-slider__tick {
     position: absolute;
     top: 50%;
-    left: var(--_cinder-slider-tick);
+    inset-inline-start: var(--_cinder-slider-tick);
     width: 2px;
     height: 0.5rem;
     background: var(--cinder-border, currentColor);
@@ -75,7 +75,7 @@
   .cinder-slider__thumb {
     position: absolute;
     top: 50%;
-    left: var(--_cinder-slider-pos);
+    inset-inline-start: var(--_cinder-slider-pos);
     width: var(--_cinder-slider-thumb-size);
     height: var(--_cinder-slider-thumb-size);
     background: var(--cinder-surface-raised, white);
@@ -91,6 +91,11 @@
     transition:
       left var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease),
       box-shadow var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease);
+  }
+
+  .cinder-slider__tick:dir(rtl),
+  .cinder-slider__thumb:dir(rtl) {
+    transform: translate(50%, -50%);
   }
 
   /* The most recently moved thumb in range mode is raised above its sibling

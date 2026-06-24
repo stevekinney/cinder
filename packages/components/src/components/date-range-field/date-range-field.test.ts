@@ -55,6 +55,33 @@ describe('DateRangeField', () => {
       expect(endInput.type).toBe('date');
     });
 
+    test('renders datetime-local inputs when granularity includes time', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
+      });
+      const startInput = getStartInput(container);
+      const endInput = getEndInput(container);
+
+      expect(startInput.type).toBe('datetime-local');
+      expect(endInput.type).toBe('datetime-local');
+      expect(startInput.step).toBe('60');
+      expect(endInput.step).toBe('60');
+      expect(startInput.value).toBe('2026-06-01T09:30');
+      expect(endInput.value).toBe('2026-06-01T17:45');
+    });
+
+    test('sets second-level datetime step for second granularity', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'second',
+      });
+
+      expect(getStartInput(container).step).toBe('1');
+      expect(getEndInput(container).step).toBe('1');
+    });
+
     test('renders a visible label when label prop is provided', () => {
       const { container } = render(DateRangeField, { id: 'drf', label: 'Time window' });
       const legend = container.querySelector('.cinder-date-range-field__legend');
@@ -196,6 +223,27 @@ describe('DateRangeField', () => {
       expect(changes.length).toBe(1);
       expect(changes[0]?.start).toBe('2026-05-31');
       expect(changes[0]?.end).toBe('2026-06-07');
+    });
+
+    test('manual datetime input emits date-time values', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T09:30' },
+      });
+      await fireEvent.change(getEndInput(container), {
+        target: { value: '2026-06-01T17:45' },
+      });
+
+      expect(changes).toEqual([
+        { start: '2026-06-01T09:30', end: undefined },
+        { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
+      ]);
     });
 
     test('clicking a preset marks it as aria-pressed="true"', async () => {

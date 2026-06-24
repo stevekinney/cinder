@@ -20,6 +20,7 @@
   import type { VirtualElement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { captureFocus } from '../../_internal/overlay.ts';
+  import { isRightToLeftElement } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
@@ -108,7 +109,7 @@
     open: () => open,
     anchor: () => virtualReference,
     panel: () => menuElement,
-    placement: () => 'right-start',
+    placement: () => (isRightToLeftElement(triggerElement) ? 'left-start' : 'right-start'),
     offset: () => 0,
     widthMode: () => 'menu',
   });

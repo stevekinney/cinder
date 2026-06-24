@@ -204,7 +204,7 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
-  it('keeps the sidebar at or below the 129-entry product gate', async () => {
+  it('keeps the sidebar at or below the documented product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
@@ -270,14 +270,18 @@ describe('discoverSidebarComponents', () => {
     // `exampleCount > 0` filter and surfaces in the sidebar, bringing the measured
     // ceiling to 138. (segment and command-item were moved to COMPOSE_ONLY in the
     // same change, so they do NOT add entries.)
+    // TimeField adds one standalone internationalized time-entry family with
+    // examples, bringing the measured ceiling to 139. LocaleProvider is
+    // context-only and does not add a playground sidebar entry.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(138);
+    expect(sidebar.length).toBeLessThanOrEqual(139);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
     // from the sidebar also dropped some other family in its place.
     expect(sidebar).toContain('stacked-list-item');
     expect(sidebar).toContain('data-grid');
+    expect(sidebar).toContain('time-field');
     expect(sidebar).toContain('grid');
     expect(sidebar).toContain('masonry');
     expect(sidebar).toContain('speed-dial');

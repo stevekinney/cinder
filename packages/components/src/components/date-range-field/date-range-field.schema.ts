@@ -21,6 +21,10 @@ const schema = {
       type: 'string',
       description: 'Accessible label for the end date input. Defaults to "End date".',
     },
+    granularity: {
+      enum: ['day', 'hour', 'minute', 'second'],
+      description: 'Date-time precision. Defaults to day precision.',
+    },
     hidePresets: {
       type: 'boolean',
       description: 'When true, hides the preset buttons and shows only the date inputs.',

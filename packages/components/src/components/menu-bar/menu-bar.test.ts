@@ -1,9 +1,31 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
+
+const computePositionSpy = mock(
+  async (_reference: unknown, _menu: HTMLElement, options: unknown) => ({
+    x: 32,
+    y: 48,
+    placement: (options as { placement?: string })?.placement ?? 'bottom-start',
+  }),
+);
+const autoUpdateTeardown = mock(() => {});
+const autoUpdateSpy = mock((_reference: unknown, _menu: HTMLElement, update: () => void) => {
+  update();
+  return autoUpdateTeardown;
+});
+
+mock.module('@floating-ui/dom', () => ({
+  arrow: () => ({ name: 'arrow', fn: () => ({}) }),
+  autoUpdate: autoUpdateSpy,
+  computePosition: computePositionSpy,
+  flip: () => ({ name: 'flip', fn: () => ({}) }),
+  offset: (options: unknown) => ({ name: 'offset', options, fn: () => ({}) }),
+  shift: (options: unknown) => ({ name: 'shift', options, fn: () => ({}) }),
+}));
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
@@ -49,6 +71,12 @@ function fileEditViewMenus(onOpenRecent = () => {}) {
 }
 
 describe('MenuBar', () => {
+  beforeEach(() => {
+    computePositionSpy.mockClear();
+    autoUpdateSpy.mockClear();
+    autoUpdateTeardown.mockClear();
+  });
+
   // Unmount AFTER each test so the last test's render doesn't leak into the next
   // file (cleanup() in beforeEach never runs after the final test).
   afterEach(() => {
@@ -112,6 +140,25 @@ describe('MenuBar', () => {
 
     await fireEvent.keyDown(submenuTrigger, { key: 'ArrowDown' });
     expect(queryByRole('menuitem', { name: 'Cinder workspace' })).not.toBe(document.activeElement);
+  });
+
+  test('right-to-left submenus fall back to the inline-start side', async () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    computePositionSpy.mockClear();
+
+    const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
+    await fireEvent.keyDown(submenuTrigger, { key: 'ArrowRight' });
+    await tick();
+
+    const submenuCall = computePositionSpy.mock.calls.find((call) => {
+      const options = call.at(2) as { placement?: string } | undefined;
+      return options?.placement === 'left-start';
+    });
+    expect(submenuCall).toBeDefined();
   });
 
   test('opens a submenu on the first enabled item after opening the parent menu from ArrowUp', async () => {

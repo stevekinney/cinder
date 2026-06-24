@@ -231,6 +231,7 @@ export { default as DateRangeField } from './components/date-range-field/index.t
 export type {
   DateRangeDatePreset,
   DateRangeFieldProps,
+  DateRangeGranularity,
   DateRangeValue,
 } from './components/date-range-field/index.ts';
 
@@ -433,6 +434,9 @@ export type { LinkColor, LinkProps, LinkUnderline } from './components/link/inde
 
 export { default as LineChart } from './components/line-chart/index.ts';
 export type { LineChartProps, LineChartSchemaProps } from './components/line-chart/index.ts';
+
+export { default as LocaleProvider } from './components/locale-provider/index.ts';
+export type { LocaleProviderProps, TextDirection } from './components/locale-provider/index.ts';
 
 export { default as LoadMore } from './components/load-more/index.ts';
 export type { LoadMoreProps } from './components/load-more/index.ts';
@@ -780,6 +784,14 @@ export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs/
 
 export { default as Textarea } from './components/textarea/index.ts';
 export type { TextareaProps } from './components/textarea/index.ts';
+
+export { default as TimeField } from './components/time-field/index.ts';
+export type {
+  HourCycle,
+  TimeFieldChange,
+  TimeFieldGranularity,
+  TimeFieldProps,
+} from './components/time-field/index.ts';
 
 export { default as ToastRegion } from './components/toast-region/index.ts';
 export type {

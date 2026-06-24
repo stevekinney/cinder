@@ -9,12 +9,14 @@
     longPressDelay = 500,
     open = false,
     anchorPoint,
+    direction,
     triggerHandlers = {},
   }: {
     disabled?: boolean;
     longPressDelay?: number;
     open?: boolean;
     anchorPoint?: { x: number; y: number };
+    direction?: 'ltr' | 'rtl';
     triggerHandlers?: {
       onclick?: (event: MouseEvent) => void;
       oncontextmenu?: (event: MouseEvent) => void;
@@ -35,7 +37,7 @@
   <DropdownItem onclick={() => (selected = 'delete')}>Delete</DropdownItem>
 {/snippet}
 
-<div>
+<div dir={direction}>
   <ContextMenu {disabled} {longPressDelay} {open} {anchorPoint}>
     <ContextMenuTrigger class="context-menu-region" {...triggerHandlers}>
       <button type="button" class="context-menu-button">File one.txt</button>
