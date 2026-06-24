@@ -14,6 +14,7 @@ describe('JsonViewer', () => {
     expect(container.querySelector('.cinder-json-viewer__value')?.textContent?.trim()).toContain(
       'hello',
     );
+    expect(container.querySelector('[role="treeitem"]')?.getAttribute('tabindex')).toBe('0');
   });
 
   test('renders an object with key labels', () => {
@@ -75,6 +76,17 @@ describe('JsonViewer', () => {
     }
     const { container } = render(JsonViewer, { value: deep, maxDepth: 3, initialDepth: 999 });
     expect(container.querySelector('.cinder-json-viewer__too-deep')).not.toBeNull();
+  });
+
+  test('root too-deep marker remains tabbable', () => {
+    const { container } = render(JsonViewer, {
+      value: { nested: true },
+      maxDepth: 0,
+      initialDepth: 999,
+    });
+    const root = container.querySelector('[role="treeitem"]');
+    expect(root?.querySelector('.cinder-json-viewer__too-deep')).not.toBeNull();
+    expect(root?.getAttribute('tabindex')).toBe('0');
   });
 });
 

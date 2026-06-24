@@ -19,6 +19,7 @@
   import Chip from '../chip/chip.svelte';
   import Input from '../input/input.svelte';
   import PropertyEditor from './property-editor.svelte';
+  import { calculatePropertyValidationErrorCount } from './property-list-validation.ts';
 
   let {
     idPrefix,
@@ -38,9 +39,18 @@
   let draftNames = $state<Record<string, string>>({});
   let renameError = $state<string | null>(null);
   let expanded = $state<Record<string, boolean>>({});
+  let childValidationCounts = $state<Record<string, number>>({});
+
+  const validationErrorCount = $derived(
+    calculatePropertyValidationErrorCount(
+      propertyNames,
+      childValidationCounts,
+      renameError !== null,
+    ),
+  );
 
   $effect(() => {
-    onvalidationerrorcount?.(renameError ? 1 : 0);
+    onvalidationerrorcount?.(validationErrorCount);
   });
 
   function getDraftName(key: string): string {
@@ -85,6 +95,11 @@
       expanded[draft] = true;
       delete expanded[oldKey];
     }
+    const childCount = childValidationCounts[oldKey];
+    if (childCount !== undefined) {
+      const { [oldKey]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
+      childValidationCounts = { ...remainingChildCounts, [draft]: childCount };
+    }
     onchange(next, nextRequired);
   }
 
@@ -95,7 +110,14 @@
     const nextRequired = required.filter((name) => name !== key);
     delete draftNames[key];
     delete expanded[key];
+    const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
+    childValidationCounts = remainingChildCounts;
     onchange(next, nextRequired);
+  }
+
+  function setChildValidationErrorCount(key: string, count: number): void {
+    if ((childValidationCounts[key] ?? 0) === count) return;
+    childValidationCounts = { ...childValidationCounts, [key]: count };
   }
 
   function moveProperty(key: string, direction: -1 | 1) {
@@ -255,7 +277,7 @@
             depth={depth + 1}
             {readonly}
             value={properties[key] ?? {}}
-            {onvalidationerrorcount}
+            onvalidationerrorcount={(count) => setChildValidationErrorCount(key, count)}
             onchange={(next) => setPropertySchema(key, next)}
           />
         </div>

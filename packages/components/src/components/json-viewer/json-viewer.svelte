@@ -107,7 +107,7 @@
     </div>
   {:else}
     <div role="tree" aria-label="JSON tree" onkeydown={handleTreeKeydown}>
-      <JsonViewerNode {value} depth={0} {initialDepth} {maxDepth} position={1} setSize={1} />
+      <JsonViewerNode {value} depth={0} {initialDepth} {maxDepth} position={1} setSize={1} root />
     </div>
   {/if}
 </div>

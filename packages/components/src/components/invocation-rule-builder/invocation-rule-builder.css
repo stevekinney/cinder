@@ -154,11 +154,6 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
-  .cinder-invocation-rule-builder__condition-value[aria-invalid='true'] {
-    border-color: var(--cinder-color-danger-border);
-    box-shadow: inset 0 0 0 1px var(--cinder-color-danger-border);
-  }
-
   @media (forced-colors: active) {
     .cinder-invocation-rule-builder__condition-value:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;

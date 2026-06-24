@@ -275,10 +275,6 @@
   function actionSummary(action: InvocationRuleAction): string {
     return `Invoke ${actionTargetLabel(action.target)}`;
   }
-
-  function conditionValueInvalid(condition: InvocationRuleCondition): boolean {
-    return condition.value.trim().length === 0;
-  }
 </script>
 
 <section
@@ -428,7 +424,6 @@
                   type="text"
                   class="cinder-invocation-rule-builder__condition-value"
                   aria-label={`Value for condition ${conditionIndex + 1} of ${rule.label}`}
-                  aria-invalid={conditionValueInvalid(condition) ? 'true' : undefined}
                   placeholder="Value to compare"
                   value={condition.value}
                   oninput={(event) =>

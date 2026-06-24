@@ -389,6 +389,33 @@ describe('Tree — virtualized data path', () => {
     expect(treeItemById(container, 'projects').getAttribute('aria-expanded')).toBe('true');
   });
 
+  test('virtualized branch rows select and expand on plain click', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Virtual files',
+        virtualized: true,
+        selectionMode: 'single',
+        items: nestedItems(),
+        virtualizationEstimatedRowHeight: 20,
+        virtualizationHeight: 120,
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+      },
+    });
+
+    await fireEvent.click(treeItemById(container, 'projects'));
+    await waitFor(() => {
+      expect(treeItemById(container, 'projects').getAttribute('aria-expanded')).toBe('true');
+    });
+
+    expect(selectedIds).toEqual(['projects']);
+  });
+
   test('cascade selection includes virtualized descendants and skips disabled descendants', async () => {
     const { container } = render(Tree, {
       props: {

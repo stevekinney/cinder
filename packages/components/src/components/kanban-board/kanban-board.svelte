@@ -591,7 +591,7 @@
               {column.title}
             {/if}
             <span class="cinder-kanban-board__card-count">
-              {column.cards.length}
+              {column.cards.length}{' '}
               {column.cards.length === 1 ? 'card' : 'cards'}
             </span>
           </div>

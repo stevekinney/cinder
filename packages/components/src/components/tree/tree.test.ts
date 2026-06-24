@@ -2600,6 +2600,36 @@ describe('Tree — disabled items', () => {
     expect(branch.getAttribute('aria-expanded')).toBe('true');
     expect(selectedIds).toEqual([]);
   });
+
+  test('enabled branches select and expand on plain click', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'branch',
+            label: 'Branch',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    const branch = treeItem(container, 'Branch') as HTMLElement;
+
+    await fireEvent.click(branch);
+
+    expect(branch.getAttribute('aria-expanded')).toBe('true');
+    expect(selectedIds).toEqual(['branch']);
+  });
 });
 
 // ---------------------------------------------------------------------------

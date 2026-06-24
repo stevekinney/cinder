@@ -11,6 +11,7 @@
     maxDepth: number;
     position: number;
     setSize: number;
+    root?: boolean;
   };
 </script>
 
@@ -19,8 +20,16 @@
   import Self from './_json-viewer-node.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { value, keyName, depth, initialDepth, maxDepth, position, setSize }: JsonViewerNodeProps =
-    $props();
+  let {
+    value,
+    keyName,
+    depth,
+    initialDepth,
+    maxDepth,
+    position,
+    setSize,
+    root = false,
+  }: JsonViewerNodeProps = $props();
 
   const isObject = $derived(value !== null && typeof value === 'object');
   const isArray = $derived(Array.isArray(value));
@@ -115,7 +124,7 @@
   <span
     class="cinder-json-viewer__node"
     role="treeitem"
-    tabindex="-1"
+    tabindex={root ? 0 : -1}
     aria-level={depth + 1}
     aria-posinset={position}
     aria-setsize={setSize}
@@ -129,7 +138,7 @@
   <span
     class="cinder-json-viewer__node"
     role="treeitem"
-    tabindex="-1"
+    tabindex={root ? 0 : -1}
     aria-level={depth + 1}
     aria-posinset={position}
     aria-setsize={setSize}

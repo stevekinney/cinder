@@ -679,6 +679,10 @@
     }
 
     if (!checkboxSelectionActive) context.toggleSelected(id, event);
+
+    if (isBranch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      context.setExpanded(id, !isExpanded);
+    }
   }
 
   function handleDisclosureClick(event: MouseEvent): void {

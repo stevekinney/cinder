@@ -74,6 +74,7 @@
   let rawDrafts = $state<Record<string, string>>(
     seedRawDrafts(initialModel.field, initialFormValue),
   );
+  let touchedValidationSequences = $state<Record<string, number>>({});
   let serializedValue = $state('');
   let submitting = $state(false);
   let allowNativeSubmit = false;
@@ -143,6 +144,10 @@
     if (submitting) return;
     formValue = setValueAtPath(formValue, path, next);
     const key = pathKey(path);
+    touchedValidationSequences = {
+      ...touchedValidationSequences,
+      [key]: (touchedValidationSequences[key] ?? 0) + 1,
+    };
     if (errors[key]) {
       const { [key]: _removed, ...remaining } = errors;
       errors = remaining;
@@ -152,10 +157,13 @@
 
   async function validateTouchedField(field: SchemaFormField) {
     if (submitting) return;
+    const fieldKey = pathKey(field.path);
+    const sequence = (touchedValidationSequences[fieldKey] ?? 0) + 1;
+    touchedValidationSequences = { ...touchedValidationSequences, [fieldKey]: sequence };
     const raw = rawJsonIssues();
     const candidate = pruneUndefined(raw.value);
     const result = await validateSchemaValue(schema, candidate);
-    const fieldKey = pathKey(field.path);
+    if (touchedValidationSequences[fieldKey] !== sequence) return;
     const issue = (result.valid ? [] : result.issues).find((candidateIssue) => {
       const candidateKey = pathKey(candidateIssue.path);
       return candidateKey === fieldKey || candidateKey.startsWith(`${fieldKey}/`);

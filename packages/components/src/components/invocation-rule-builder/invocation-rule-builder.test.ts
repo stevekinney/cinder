@@ -468,6 +468,15 @@ describe('InvocationRuleBuilder', () => {
       expect(valueInput).not.toBeNull();
     });
 
+    test('empty condition value is not marked invalid by the builder', () => {
+      const rule = makeRule({ conditions: [makeCondition({ value: '' })] });
+      const { container } = renderBuilder([rule]);
+      const valueInput = container.querySelector(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      );
+      expect(valueInput?.hasAttribute('aria-invalid')).toBe(false);
+    });
+
     test('condition remove button has descriptive aria-label', () => {
       const { container } = renderBuilder([makeRule()]);
       const removeBtn = container.querySelector(

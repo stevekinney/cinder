@@ -36,7 +36,7 @@
   .cinder-faceted-filter-bar__facet-label {
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-xs);
-    font-weight: var(--cinder-font-weight-medium);
+    font-weight: var(--cinder-font-medium);
     line-height: var(--cinder-leading-tight);
     white-space: nowrap;
   }

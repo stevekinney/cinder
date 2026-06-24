@@ -1174,11 +1174,12 @@
     focusedId = item.id;
     treeElement?.focus();
     if (event.detail > 1) return;
-    if (item.branch) {
-      setExpandedInternal(item.id, !expandedIds.includes(item.id));
-      return;
-    }
+
     if (!item.disabled) toggleSelectedInternal(item.id, event);
+
+    if (item.branch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      setExpandedInternal(item.id, !expandedIds.includes(item.id));
+    }
   }
 
   function handleVirtualizedDisclosureClick(item: FlattenedTreeDataItem, event: MouseEvent): void {

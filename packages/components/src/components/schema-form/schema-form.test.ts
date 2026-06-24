@@ -543,6 +543,56 @@ describe('SchemaForm', () => {
     expect(screen.getByText('Name is unavailable.')).toBeTruthy();
   });
 
+  test('ignores stale async blur validation after the field value changes', async () => {
+    const validations: Array<{
+      value: unknown;
+      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
+    }> = [];
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'async-blur-stale-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { name: { type: 'string', title: 'Name' } },
+            required: ['name'],
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
+            (resolve) => {
+              validations.push({ value, resolve });
+            },
+          );
+        },
+      },
+    } as const;
+
+    render(SchemaForm, {
+      props: {
+        schema,
+        value: { name: 'Ada' },
+      },
+    });
+    await flush();
+
+    const nameInput = screen.getByLabelText(/Name/);
+    await fireEvent.input(nameInput, { target: { value: '' } });
+    await fireEvent.blur(nameInput);
+    await flush();
+    expect(validations).toHaveLength(1);
+
+    await fireEvent.input(nameInput, { target: { value: 'Ada' } });
+    validations[0]!.resolve({ issues: [{ path: ['name'], message: 'Name is unavailable.' }] });
+    await flush();
+    await flush();
+
+    expect(nameInput.getAttribute('aria-invalid')).not.toBe('true');
+    expect(screen.queryByText('Name is unavailable.')).toBeNull();
+  });
+
   test('keeps controls frozen when a new submit starts during invalid-submit focus', async () => {
     let releaseFirstValidation!: () => void;
     let releaseSecondValidation!: () => void;
