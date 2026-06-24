@@ -4,12 +4,14 @@
 
   let {
     id = 'reminder',
+    timeFieldId = id,
     fieldDescription = 'Choose when to send the reminder.',
     fieldError = 'Required by policy.',
     description = 'Stored as local time.',
     error = 'Choose a valid time.',
   }: {
     id?: string;
+    timeFieldId?: string;
     fieldDescription?: string;
     fieldError?: string;
     description?: string;
@@ -18,5 +20,5 @@
 </script>
 
 <FormField {id} label="Reminder time" description={fieldDescription} error={fieldError}>
-  <TimeField {id} value="09:30" {description} {error} />
+  <TimeField id={timeFieldId} value="09:30" {description} {error} />
 </FormField>

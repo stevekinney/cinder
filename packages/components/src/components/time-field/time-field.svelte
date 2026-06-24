@@ -71,7 +71,7 @@
 
   const inputId = $derived(formField?.controlId ?? id);
   const labelId = $derived(label ? `${id}-label` : formField?.labelId);
-  const localIdBase = $derived(formField ? `${id}-time-field` : id);
+  const localIdBase = $derived(formField ? `${inputId}-time-field` : id);
   const descriptionId = $derived(description ? `${localIdBase}-description` : undefined);
   const errorId = $derived(error ? `${localIdBase}-error` : undefined);
   const describedBy = $derived(

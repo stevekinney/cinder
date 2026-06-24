@@ -130,14 +130,16 @@ describe('TimeField', () => {
   });
 
   test('namespaces local description and error ids inside FormField', () => {
-    const { container } = render(TimeFieldFormFieldFixture);
+    const { container } = render(TimeFieldFormFieldFixture, {
+      props: { id: 'reminder-control', timeFieldId: 'reminder' },
+    });
     const ids = Array.from(container.querySelectorAll<HTMLElement>('[id]')).map(
       (element) => element.id,
     );
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(getInput(container).getAttribute('aria-describedby')).toBe(
-      'reminder-description reminder-error reminder-time-field-description reminder-time-field-error',
+      'reminder-control-description reminder-control-error reminder-control-time-field-description reminder-control-time-field-error',
     );
   });
 
