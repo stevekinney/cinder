@@ -178,15 +178,14 @@
     menu.setAttribute('data-cinder-position-ready', String(anchoredOverlay.positionReady));
     menu.setAttribute('data-cinder-requested-x', String(x));
     menu.setAttribute('data-cinder-requested-y', String(y));
-    if (resolvedDirection) {
+    const ownsDirection = menu.dataset['cinderExplicitDirection'] !== 'true';
+    if (ownsDirection && resolvedDirection) {
       menu.setAttribute('dir', resolvedDirection);
-    } else {
-      menu.removeAttribute('dir');
     }
     return () => {
       menu.removeAttribute('style');
       menu.removeAttribute('data-cinder-position-ready');
-      menu.removeAttribute('dir');
+      if (ownsDirection) menu.removeAttribute('dir');
       menu.removeAttribute('data-cinder-requested-x');
       menu.removeAttribute('data-cinder-requested-y');
     };

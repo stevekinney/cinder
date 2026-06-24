@@ -29,7 +29,7 @@
 
   let {
     id,
-    value = $bindable(''),
+    value = $bindable<string | undefined>(undefined),
     defaultValue = '',
     granularity = 'minute',
     timezones,
@@ -45,13 +45,14 @@
     class: className,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': consumerDescribedBy,
     onchange,
     ...rest
   }: TimeFieldProps = $props();
 
   const formField = getFormFieldContext();
   untrack(() => {
-    if (value === '' && defaultValue !== '') value = defaultValue;
+    if (value === undefined) value = defaultValue;
     if (timezone === undefined && timezones && timezones.length > 0) timezone = timezones[0];
   });
 
@@ -73,7 +74,9 @@
   const descriptionId = $derived(description ? `${id}-description` : undefined);
   const errorId = $derived(error ? `${id}-error` : undefined);
   const describedBy = $derived(
-    [formField?.describedBy, descriptionId, errorId].filter(Boolean).join(' ') || undefined,
+    [formField?.describedBy, consumerDescribedBy, descriptionId, errorId]
+      .filter(Boolean)
+      .join(' ') || undefined,
   );
   const invalid = $derived(error || formField?.invalid ? 'true' : undefined);
   const resolvedDisabled = $derived(disabled || (formField?.disabled ?? false));
@@ -103,8 +106,23 @@
     if (resolvedDisabled || readonly) return;
     const target = event.currentTarget as HTMLSelectElement;
     timezone = target.value;
-    emit(value, timezone);
+    emit(value ?? '', timezone);
   }
+
+  $effect(() => {
+    const input = document.getElementById(inputId);
+    const form = input instanceof HTMLInputElement ? input.form : null;
+    if (!form) return;
+
+    const handleReset = () => {
+      if (resolvedDisabled) return;
+      value = defaultValue;
+      timezone = timezones && timezones.length > 0 ? timezones[0] : undefined;
+    };
+
+    form.addEventListener('reset', handleReset);
+    return () => form.removeEventListener('reset', handleReset);
+  });
 </script>
 
 <div {...rest} class={classNames('cinder-time-field', className)}>
@@ -117,7 +135,7 @@
       id={inputId}
       class="cinder-time-field__input"
       type="time"
-      {value}
+      value={value ?? ''}
       step={inputStep}
       {name}
       disabled={resolvedDisabled}

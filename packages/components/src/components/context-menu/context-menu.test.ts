@@ -91,6 +91,20 @@ describe('ContextMenu', () => {
     expect(queryMenu()?.getAttribute('dir')).toBe('rtl');
   });
 
+  test('preserves explicit dropdown menu direction while using provider direction for placement', async () => {
+    const { container } = render(ContextMenuHarness, {
+      props: { providerDirection: 'rtl', menuDirection: 'ltr' },
+    });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('left-start');
+    expect(queryMenu()?.getAttribute('dir')).toBe('ltr');
+  });
+
   test('local left-to-right direction overrides right-to-left provider placement', async () => {
     const { container } = render(ContextMenuHarness, {
       props: { direction: 'ltr', providerDirection: 'rtl' },

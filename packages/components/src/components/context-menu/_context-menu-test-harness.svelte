@@ -12,6 +12,7 @@
     anchorPoint,
     direction,
     providerDirection,
+    menuDirection,
     triggerHandlers = {},
   }: {
     disabled?: boolean;
@@ -20,6 +21,7 @@
     anchorPoint?: { x: number; y: number };
     direction?: 'ltr' | 'rtl';
     providerDirection?: 'ltr' | 'rtl';
+    menuDirection?: 'ltr' | 'rtl' | 'auto';
     triggerHandlers?: {
       onclick?: (event: MouseEvent) => void;
       oncontextmenu?: (event: MouseEvent) => void;
@@ -46,7 +48,7 @@
       <ContextMenuTrigger class="context-menu-region" {...triggerHandlers}>
         <button type="button" class="context-menu-button">File one.txt</button>
       </ContextMenuTrigger>
-      <DropdownMenu>
+      <DropdownMenu dir={menuDirection}>
         {@render menuContent()}
       </DropdownMenu>
     </ContextMenu>

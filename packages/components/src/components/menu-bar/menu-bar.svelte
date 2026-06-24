@@ -164,6 +164,11 @@
     return indexes[(currentPosition + direction + indexes.length) % indexes.length] ?? -1;
   }
 
+  function horizontalArrowDirection(key: 'ArrowLeft' | 'ArrowRight'): -1 | 1 {
+    if (key === 'ArrowRight') return resolvedDirection === 'rtl' ? -1 : 1;
+    return resolvedDirection === 'rtl' ? 1 : -1;
+  }
+
   function firstEnabledMenuIndex(): number {
     return enabledIndexes[0]?.index ?? -1;
   }
@@ -287,7 +292,7 @@
   function handleTriggerKeydown(event: KeyboardEvent, index: number): void {
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
       event.preventDefault();
-      const nextIndex = nextEnabledMenuIndex(index, event.key === 'ArrowRight' ? 1 : -1);
+      const nextIndex = nextEnabledMenuIndex(index, horizontalArrowDirection(event.key));
       if (nextIndex === -1) return;
       activeMenuIndex = nextIndex;
       focusTopLevelTrigger(nextIndex);
@@ -369,7 +374,7 @@
           event.preventDefault();
           const nextIndex = nextEnabledMenuIndex(
             openMenuIndex,
-            event.key === 'ArrowRight' ? 1 : -1,
+            horizontalArrowDirection(event.key),
           );
           if (nextIndex !== -1) openMenu(nextIndex, 'first');
         }
@@ -378,7 +383,7 @@
 
       if (target?.closest('[role="menu"]')) {
         event.preventDefault();
-        const nextIndex = nextEnabledMenuIndex(openMenuIndex, event.key === 'ArrowRight' ? 1 : -1);
+        const nextIndex = nextEnabledMenuIndex(openMenuIndex, horizontalArrowDirection(event.key));
         if (nextIndex !== -1) openMenu(nextIndex, 'first');
       }
     }

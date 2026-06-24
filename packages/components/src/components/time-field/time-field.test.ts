@@ -7,6 +7,7 @@ import type { TimeFieldChange } from './time-field.types.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: TimeField } = await import('./time-field.svelte');
 
 afterEach(() => {
@@ -27,6 +28,14 @@ describe('TimeField', () => {
     expect(container.querySelector('label')?.getAttribute('for')).toBe('reminder');
     expect(getInput(container).value).toBe('09:30');
     expect(getInput(container).step).toBe('60');
+  });
+
+  test('does not replace a controlled empty value with defaultValue', () => {
+    const { container } = render(TimeField, {
+      props: { id: 'reminder', label: 'Reminder time', value: '', defaultValue: '09:30' },
+    });
+
+    expect(getInput(container).value).toBe('');
   });
 
   test('emits a canonical minute value when the input changes', async () => {
@@ -82,6 +91,25 @@ describe('TimeField', () => {
       'Used for reminders.',
     );
     expect(container.querySelector('#reminder-error')?.textContent).toBe('Choose a valid time.');
+  });
+
+  test('includes consumer descriptions on the time input', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        description: 'Used for reminders.',
+        'aria-describedby': 'external-hint',
+      },
+    });
+
+    expect(getInput(container).getAttribute('aria-describedby')).toBe(
+      'external-hint reminder-description',
+    );
+    expect(container.querySelector('.cinder-time-field')?.getAttribute('aria-describedby')).toBe(
+      null,
+    );
   });
 
   test('forwards caller-provided accessible name props to the native time input', () => {
@@ -149,6 +177,40 @@ describe('TimeField', () => {
     await fireEvent.change(timezone, { target: { value: 'UTC' } });
 
     expect(changes[0]).toEqual({ value: '09:30', timezone: 'UTC' });
+  });
+
+  test('native form reset restores default value and initial timezone', async () => {
+    const changes: TimeFieldChange[] = [];
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const { container } = render(TimeField, {
+      target: form,
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        defaultValue: '09:30',
+        timezones: ['America/Denver', 'UTC'],
+        onchange: (detail: TimeFieldChange) => changes.push(detail),
+      },
+    });
+
+    const input = getInput(container);
+    const timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    await fireEvent.change(input, { target: { value: '10:45' } });
+    await fireEvent.change(timezone, { target: { value: 'UTC' } });
+    expect(changes.at(-1)).toEqual({ value: '10:45', timezone: 'UTC' });
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+    const resetTimezone = container.querySelector<HTMLSelectElement>(
+      '.cinder-time-field__timezone',
+    )!;
+    expect(resetTimezone.value).toBe('America/Denver');
+
+    resetTimezone.value = 'UTC';
+    await fireEvent.change(resetTimezone);
+
+    expect(changes.at(-1)).toEqual({ value: '09:30', timezone: 'UTC' });
   });
 
   test('normalizes selected timezone when timezone options appear or change', async () => {

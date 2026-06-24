@@ -67,8 +67,11 @@ export function copyInheritedPortalAttributes(
     theme: element.getAttribute('data-cinder-theme'),
   },
 ) {
+  const preservesExplicitDirection = element.dataset['cinderExplicitDirection'] === 'true';
   const inheritedDir =
-    inheritAttributes && source ? source.closest<HTMLElement>('[dir]')?.getAttribute('dir') : null;
+    inheritAttributes && source && !preservesExplicitDirection
+      ? source.closest<HTMLElement>('[dir]')?.getAttribute('dir')
+      : null;
   const nextDir = inheritedDir ?? fallbackAttributes.dir;
   if (nextDir) {
     element.setAttribute('dir', nextDir);

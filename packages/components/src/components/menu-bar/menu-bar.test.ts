@@ -125,6 +125,31 @@ describe('MenuBar', () => {
     expect(document.activeElement).toBe(file);
   });
 
+  test('mirrors top-level trigger arrows in right-to-left direction', async () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
+    const file = getByRole('menuitem', { name: 'File' });
+    const edit = getByRole('menuitem', { name: 'Edit' });
+
+    file.focus();
+    await fireEvent.keyDown(file, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(edit);
+
+    await fireEvent.keyDown(edit, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(file);
+  });
+
+  test('mirrors open-menu top-level traversal in right-to-left direction', async () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    await fireEvent.keyDown(getByRole('menuitem', { name: 'New' }), { key: 'ArrowLeft' });
+    await tick();
+
+    expect(getByRole('menuitem', { name: 'Edit' }).getAttribute('aria-expanded')).toBe('true');
+  });
+
   test('opens a submenu and keeps parent menu traversal scoped to parent items', async () => {
     const { getByRole, queryByRole } = render(MenuBar, { menus: fileEditViewMenus() });
     const file = getByRole('menuitem', { name: 'File' });

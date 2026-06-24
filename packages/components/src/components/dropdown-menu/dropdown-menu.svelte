@@ -28,7 +28,7 @@
   } from '../dropdown/dropdown.context.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
-  let { class: customClassName, children, ...rest }: DropdownMenuProps = $props();
+  let { class: customClassName, children, dir: direction, ...rest }: DropdownMenuProps = $props();
 
   const context = getDropdownContext();
   const registerMenu = getDropdownRegister();
@@ -154,6 +154,8 @@
     ontoggle={context.supportsPopover ? handleToggle : undefined}
     {@attach fallbackPortalAttachment}
     {...rest}
+    dir={direction}
+    data-cinder-explicit-direction={direction ? 'true' : undefined}
   >
     {#if children}
       {@render children()}
