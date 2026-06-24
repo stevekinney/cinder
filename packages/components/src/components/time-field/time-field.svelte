@@ -55,6 +55,7 @@
     if (value === undefined) value = defaultValue;
     if (timezone === undefined && timezones && timezones.length > 0) timezone = timezones[0];
   });
+  const initialTimezone = untrack(() => timezone);
 
   $effect(() => {
     if (!timezones || timezones.length === 0) {
@@ -71,8 +72,9 @@
 
   const inputId = $derived(formField?.controlId ?? id);
   const labelId = $derived(label ? `${id}-label` : formField?.labelId);
-  const descriptionId = $derived(description ? `${id}-description` : undefined);
-  const errorId = $derived(error ? `${id}-error` : undefined);
+  const localIdBase = $derived(formField ? `${id}-time-field` : id);
+  const descriptionId = $derived(description ? `${localIdBase}-description` : undefined);
+  const errorId = $derived(error ? `${localIdBase}-error` : undefined);
   const describedBy = $derived(
     [formField?.describedBy, consumerDescribedBy, descriptionId, errorId]
       .filter(Boolean)
@@ -81,8 +83,12 @@
   const invalid = $derived(error || formField?.invalid ? 'true' : undefined);
   const resolvedDisabled = $derived(disabled || (formField?.disabled ?? false));
   const resolvedRequired = $derived(required || (formField?.required ?? false));
-  const inputAriaLabel = $derived(label || formField?.labelId ? undefined : ariaLabel);
-  const inputAriaLabelledBy = $derived(label ? undefined : (ariaLabelledBy ?? formField?.labelId));
+  const inputAriaLabel = $derived(
+    label || formField?.labelId ? undefined : normalizeAriaText(ariaLabel),
+  );
+  const inputAriaLabelledBy = $derived(
+    label ? undefined : normalizeAriaText(ariaLabelledBy ?? formField?.labelId),
+  );
   const resolvedTimezoneName = $derived(
     timezones && timezones.length > 0 && timezone !== undefined
       ? (timezoneName ?? (name ? `${name}-timezone` : undefined))
@@ -91,6 +97,15 @@
 
   function emit(nextValue: string, nextTimezone = timezone): void {
     onchange?.({ value: nextValue, timezone: nextTimezone });
+  }
+
+  function normalizeAriaText(text: string | undefined | null): string | undefined {
+    return typeof text === 'string' && text.trim().length > 0 ? text : undefined;
+  }
+
+  function resetTimezoneFor(options: readonly string[] | undefined): string | undefined {
+    if (!options || options.length === 0) return undefined;
+    return initialTimezone && options.includes(initialTimezone) ? initialTimezone : options[0];
   }
 
   function handleInputChange(event: Event): void {
@@ -113,11 +128,13 @@
     const input = document.getElementById(inputId);
     const form = input instanceof HTMLInputElement ? input.form : null;
     if (!form) return;
+    const resetValue = defaultValue;
+    const resetTimezone = resetTimezoneFor(timezones);
 
     const handleReset = () => {
       if (resolvedDisabled) return;
-      value = defaultValue;
-      timezone = timezones && timezones.length > 0 ? timezones[0] : undefined;
+      value = resetValue;
+      timezone = resetTimezone;
     };
 
     form.addEventListener('reset', handleReset);

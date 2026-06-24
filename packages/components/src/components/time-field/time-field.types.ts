@@ -63,4 +63,7 @@ export interface TimeFieldSchemaProps {
   required?: boolean;
   name?: string;
   class?: string;
+  'aria-label'?: string;
+  'aria-labelledby'?: string;
+  'aria-describedby'?: string;
 }

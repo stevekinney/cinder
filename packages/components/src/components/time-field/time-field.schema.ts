@@ -52,6 +52,15 @@ const schema = {
     class: {
       type: 'string',
     },
+    'aria-label': {
+      type: 'string',
+    },
+    'aria-labelledby': {
+      type: 'string',
+    },
+    'aria-describedby': {
+      type: 'string',
+    },
   },
   additionalProperties: false,
   required: ['id'],

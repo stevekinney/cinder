@@ -179,6 +179,17 @@
     return undefined;
   }
 
+  function normalizeInputValue(
+    nextValue: string,
+    nextGranularity: DateRangeGranularity,
+  ): string | undefined {
+    if (!nextValue) return undefined;
+    if (nextGranularity === 'day') return nextValue.slice(0, 10);
+    if (nextGranularity === 'hour') return `${nextValue.slice(0, 13)}:00`;
+    if (nextGranularity === 'minute') return nextValue.slice(0, 16);
+    return nextValue.slice(0, 19);
+  }
+
   const inputType = $derived(inputTypeFor(granularity));
   const inputStep = $derived(inputStepFor(granularity));
 
@@ -195,7 +206,10 @@
 
   function handleStartChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const next: DateRangeValue = { start: target.value || undefined, end: value.end };
+    const next: DateRangeValue = {
+      start: normalizeInputValue(target.value, granularity),
+      end: value.end,
+    };
     selectedPresetSnapshot = null;
     value = next;
     onchange?.(next);
@@ -203,7 +217,10 @@
 
   function handleEndChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const next: DateRangeValue = { start: value.start, end: target.value || undefined };
+    const next: DateRangeValue = {
+      start: value.start,
+      end: normalizeInputValue(target.value, granularity),
+    };
     selectedPresetSnapshot = null;
     value = next;
     onchange?.(next);

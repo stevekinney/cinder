@@ -308,6 +308,36 @@ describe('DateRangeField', () => {
       ]);
     });
 
+    test('manual datetime input truncates to hour granularity', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'hour',
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T09:30' },
+      });
+
+      expect(changes[0]?.start).toBe('2026-06-01T09:00');
+    });
+
+    test('manual datetime input truncates seconds at minute granularity', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getEndInput(container), {
+        target: { value: '2026-06-01T17:45:30' },
+      });
+
+      expect(changes[0]?.end).toBe('2026-06-01T17:45');
+    });
+
     test('clicking a preset marks it as aria-pressed="true"', async () => {
       const preset = {
         id: 'last-7d',
