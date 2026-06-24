@@ -15,11 +15,7 @@ export function resolveTextDirection(
       }
       return direction;
     }
-    if (
-      currentElement === element &&
-      direction === 'auto' &&
-      typeof getComputedStyle === 'function'
-    ) {
+    if (direction === 'auto' && typeof getComputedStyle === 'function') {
       const computedDirection = getComputedStyle(currentElement).direction;
       if (computedDirection === 'rtl' || computedDirection === 'ltr') return computedDirection;
     }

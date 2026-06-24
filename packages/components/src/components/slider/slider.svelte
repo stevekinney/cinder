@@ -52,7 +52,9 @@
   const disabled = $derived(disabledProp || (formField?.disabled ?? false));
   let rootElement = $state<HTMLDivElement | null>(null);
   const direction = $derived(
-    resolveTextDirection(rootElement?.parentElement, localeContext?.direction),
+    rootElement
+      ? resolveTextDirection(rootElement.parentElement, localeContext?.direction)
+      : undefined,
   );
 
   // Guarantee a usable step. `0`, `NaN`, and negative values would let the

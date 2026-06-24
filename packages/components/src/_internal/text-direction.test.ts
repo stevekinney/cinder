@@ -65,4 +65,31 @@ describe('resolveTextDirection', () => {
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;
     }
   });
+
+  test('uses computed direction from an auto ancestor before provider fallback', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      if (target instanceof HTMLElement && target.dir === 'auto') {
+        Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      }
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const wrapper = document.createElement('div');
+      wrapper.dir = 'auto';
+      const element = document.createElement('div');
+      wrapper.appendChild(element);
+      document.body.appendChild(wrapper);
+
+      expect(resolveTextDirection(element, 'rtl')).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
 });

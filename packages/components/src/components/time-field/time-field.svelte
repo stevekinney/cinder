@@ -59,7 +59,6 @@
 
   $effect(() => {
     if (!timezones || timezones.length === 0) {
-      if (timezone !== undefined) timezone = undefined;
       return;
     }
     if (timezone === undefined || !timezones.includes(timezone)) {
@@ -104,7 +103,7 @@
   }
 
   function resetTimezoneFor(options: readonly string[] | undefined): string | undefined {
-    if (!options || options.length === 0) return undefined;
+    if (!options || options.length === 0) return initialTimezone;
     return initialTimezone && options.includes(initialTimezone) ? initialTimezone : options[0];
   }
 

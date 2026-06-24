@@ -208,6 +208,24 @@ describe('TimeField', () => {
     expect(changes[0]).toEqual({ value: '09:30', timezone: 'UTC' });
   });
 
+  test('preserves timezone value when no timezone list is rendered', async () => {
+    const changes: TimeFieldChange[] = [];
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        timezone: 'UTC',
+        onchange: (detail: TimeFieldChange) => changes.push(detail),
+      },
+    });
+
+    expect(container.querySelector('.cinder-time-field__timezone')).toBeNull();
+    await fireEvent.change(getInput(container), { target: { value: '10:45' } });
+
+    expect(changes[0]).toEqual({ value: '10:45', timezone: 'UTC' });
+  });
+
   test('native form reset restores default value and initial timezone', async () => {
     const changes: TimeFieldChange[] = [];
     const form = document.createElement('form');

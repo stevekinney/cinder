@@ -6,9 +6,11 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { fireEvent, render, cleanup } = await import('@testing-library/svelte');
+const { renderToServerHtml } = await import('../../test/server-render.ts');
 const { default: Slider } = await import('./slider.svelte');
 const { default: SliderDirectionFixture } =
   await import('../../test/fixtures/slider-direction-fixture.svelte');
+const SLIDER_DIRECTION_FIXTURE_SOURCE = `${import.meta.dir}/../../test/fixtures/slider-direction-fixture.svelte`;
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -83,6 +85,15 @@ describe('Slider (single)', () => {
     expect(root?.getAttribute('dir')).toBe('ltr');
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
     expect(thumb.getAttribute('aria-valuenow')).toBe('25');
+  });
+
+  test('server rendering does not serialize provider direction over local override', async () => {
+    const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE);
+    const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
+
+    expect(sliderTag).not.toBe('');
+    expect(html).toContain('dir="ltr"');
+    expect(sliderTag).not.toContain('dir="rtl"');
   });
 
   test('ArrowUp / ArrowDown also adjust by step', async () => {
