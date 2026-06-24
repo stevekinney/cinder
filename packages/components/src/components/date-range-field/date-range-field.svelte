@@ -101,6 +101,10 @@
   ];
 
   const resolvedPresets = $derived(presets ?? defaultPresets);
+  let selectedPresetSnapshot = $state<{
+    id: string;
+    value: DateRangeValue;
+  } | null>(null);
 
   // ──────────────────────────────────────────────────────────────────────────
   // Accessible IDs
@@ -118,9 +122,13 @@
   // Active preset tracking: which preset (if any) matches the current controlled value.
   // ──────────────────────────────────────────────────────────────────────────
   const activePresetId = $derived.by(() => {
+    if (selectedPresetSnapshot && dateRangeValuesMatch(selectedPresetSnapshot.value, value)) {
+      return selectedPresetSnapshot.id;
+    }
+
     const match = resolvedPresets.find((preset) => {
       const resolved = preset.resolve();
-      return resolved.start === value.start && resolved.end === value.end;
+      return dateRangeValuesMatch(resolved, value);
     });
     return match?.id;
   });
@@ -156,6 +164,10 @@
     return nextGranularity === 'day' ? toISODate(date) : toISODateTime(date, nextGranularity);
   }
 
+  function dateRangeValuesMatch(left: DateRangeValue, right: DateRangeValue): boolean {
+    return left.start === right.start && left.end === right.end;
+  }
+
   function inputTypeFor(nextGranularity: DateRangeGranularity): 'date' | 'datetime-local' {
     return nextGranularity === 'day' ? 'date' : 'datetime-local';
   }
@@ -176,6 +188,7 @@
   function handlePresetClick(preset: DateRangeDatePreset) {
     if (disabled) return;
     const next = preset.resolve();
+    selectedPresetSnapshot = { id: preset.id, value: next };
     value = next;
     onchange?.(next);
   }
@@ -183,6 +196,7 @@
   function handleStartChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const next: DateRangeValue = { start: target.value || undefined, end: value.end };
+    selectedPresetSnapshot = null;
     value = next;
     onchange?.(next);
   }
@@ -190,6 +204,7 @@
   function handleEndChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const next: DateRangeValue = { start: value.start, end: target.value || undefined };
+    selectedPresetSnapshot = null;
     value = next;
     onchange?.(next);
   }

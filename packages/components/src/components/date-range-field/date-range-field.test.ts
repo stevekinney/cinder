@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { DateRangeValue } from './date-range-field.types.ts';
+import type { DateRangeDatePreset, DateRangeValue } from './date-range-field.types.ts';
 
 expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 
@@ -148,6 +148,34 @@ describe('DateRangeField', () => {
       expect(change.end).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
       expect(getStartInput(container).value).toBe(change.start);
       expect(getEndInput(container).value).toBe(change.end);
+    });
+
+    test('moving datetime presets keep their pressed state after selection', async () => {
+      let callCount = 0;
+      const presets: DateRangeDatePreset[] = [
+        {
+          id: 'moving',
+          label: 'Moving',
+          resolve: () => {
+            callCount += 1;
+            return {
+              start: '2026-06-24T00:00',
+              end: `2026-06-24T00:${String(callCount).padStart(2, '0')}`,
+            };
+          },
+        },
+      ];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        presets,
+      });
+      const moving = getPresetButtons(container)[0];
+      if (!moving) throw new Error('Moving preset not found');
+
+      await fireEvent.click(moving);
+
+      expect(moving.getAttribute('aria-pressed')).toBe('true');
     });
 
     test('built-in Yesterday & today preset covers two inclusive calendar dates', async () => {
