@@ -702,7 +702,6 @@
         style:--editor-placeholder="'{escapedPlaceholder}'"
         role="application"
         aria-label={label || 'Markdown editor'}
-        aria-multiline="true"
         tabindex="0"
         {@attach editorAttachment}
       ></div>
