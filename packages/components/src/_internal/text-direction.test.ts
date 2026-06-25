@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
-import { resolveTextDirection } from './text-direction.ts';
+import { observeTextDirection, resolveTextDirection } from './text-direction.ts';
 
 setupHappyDom();
 
@@ -145,5 +145,25 @@ describe('resolveTextDirection', () => {
     document.body.appendChild(outer);
 
     expect(resolveTextDirection(element)).toBe('ltr');
+  });
+
+  test('observes text mutations under auto direction sources', async () => {
+    const wrapper = document.createElement('section');
+    wrapper.dir = 'auto';
+    wrapper.textContent = 'Schedule';
+    const element = document.createElement('div');
+    wrapper.appendChild(element);
+    document.body.appendChild(wrapper);
+
+    let changes = 0;
+    const disconnect = observeTextDirection(element, () => {
+      changes += 1;
+    });
+
+    wrapper.firstChild!.textContent = 'جدول';
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    disconnect?.();
+
+    expect(changes).toBeGreaterThan(0);
   });
 });

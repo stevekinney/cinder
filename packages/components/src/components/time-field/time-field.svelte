@@ -56,6 +56,7 @@
   const includeSeconds = $derived(granularity === 'second');
   const inputStep = $derived(includeSeconds ? 1 : 60);
   let inputMirrorValue = $state<string | undefined>(undefined);
+  let inputMirrorSourceValue = $state<string | undefined>(undefined);
   const submittedValue = $derived(canonicalTimeValue(inputMirrorValue ?? value));
   let resetTimezoneBaseline = $state<string | undefined>(undefined);
   let skipTimezoneBaselineUpdate = false;
@@ -84,10 +85,18 @@
   });
 
   $effect(() => {
+    if (inputMirrorValue === undefined) return;
+    if (inputMirrorSourceValue === value) return;
+    inputMirrorValue = undefined;
+    inputMirrorSourceValue = undefined;
+  });
+
+  $effect(() => {
     if (value === undefined) return;
     const nextValue = canonicalTimeValue(value);
     if (value === nextValue) return;
     inputMirrorValue = undefined;
+    inputMirrorSourceValue = undefined;
     value = nextValue;
   });
 
@@ -161,12 +170,14 @@
     const target = event.currentTarget as HTMLInputElement;
     const nextValue = canonicalTimeValue(target.value);
     inputMirrorValue = undefined;
+    inputMirrorSourceValue = undefined;
     value = nextValue;
     emit(nextValue);
   }
 
   function handleInput(event: Event): void {
     if (resolvedDisabled || readonly) return;
+    inputMirrorSourceValue = value;
     inputMirrorValue = (event.currentTarget as HTMLInputElement).value;
   }
 
@@ -177,6 +188,7 @@
     timezone = target.value;
     const nextValue = canonicalTimeValue(value);
     inputMirrorValue = undefined;
+    inputMirrorSourceValue = undefined;
     value = nextValue;
     emit(nextValue, timezone);
   }
@@ -191,6 +203,7 @@
     const handleReset = () => {
       if (resolvedDisabled) return;
       inputMirrorValue = undefined;
+      inputMirrorSourceValue = undefined;
       value = resetValue;
       timezone = resetTimezone;
     };

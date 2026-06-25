@@ -160,6 +160,34 @@ describe('TimeField', () => {
     expect(submittedTime?.value).toBe('10:45');
   });
 
+  test('clears mirrored native submission when controlled value changes', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const { rerender } = render(TimeField, {
+      target: form,
+      props: {
+        id: 'reminder',
+        value: '09:30',
+        name: 'reminder_time',
+      },
+    });
+
+    const input = getInput(form);
+    input.value = '10:45';
+    await fireEvent.input(input);
+    await rerender({
+      id: 'reminder',
+      value: '08:00',
+      name: 'reminder_time',
+    });
+    await tick();
+
+    const submittedTime = form.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="reminder_time"]',
+    );
+    expect(submittedTime?.value).toBe('08:00');
+  });
+
   test('wires description, error, invalid, and required state to the time input', () => {
     const { container } = render(TimeField, {
       props: {

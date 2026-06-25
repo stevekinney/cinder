@@ -64,11 +64,34 @@ export function observeTextDirection(
   onChange: () => void,
 ): (() => void) | undefined {
   if (!element || typeof MutationObserver === 'undefined') return undefined;
-  const observer = new MutationObserver(onChange);
-  let currentElement: HTMLElement | null = element;
-  while (currentElement) {
-    observer.observe(currentElement, { attributes: true, attributeFilter: ['dir', 'style'] });
-    currentElement = currentElement.parentElement;
+  const observedElement = element;
+  const observer = new MutationObserver((mutations) => {
+    if (
+      mutations.some(
+        (mutation) => mutation.type === 'attributes' && mutation.attributeName === 'dir',
+      )
+    ) {
+      observeDirectionChain();
+    }
+    onChange();
+  });
+
+  function observeDirectionChain(): void {
+    observer.disconnect();
+    let currentElement: HTMLElement | null = observedElement;
+    while (currentElement) {
+      const isAutoDirection = currentElement.getAttribute('dir')?.toLowerCase() === 'auto';
+      observer.observe(currentElement, {
+        attributes: true,
+        attributeFilter: ['dir', 'style', 'class'],
+        childList: isAutoDirection,
+        characterData: isAutoDirection,
+        subtree: isAutoDirection,
+      });
+      currentElement = currentElement.parentElement;
+    }
   }
+
+  observeDirectionChain();
   return () => observer.disconnect();
 }
