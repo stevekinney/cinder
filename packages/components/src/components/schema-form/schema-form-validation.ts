@@ -77,8 +77,9 @@ function isLegacyStandardSchema(schema: JsonSchemaObject): boolean {
 }
 
 function readableSchemaError(error: unknown): string {
-  const message = error instanceof Error ? error.message : 'Invalid JSON Schema.';
-  return `Invalid JSON Schema: ${message}`;
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  if (message.startsWith('Invalid JSON Schema')) return message;
+  return message === '' ? 'Invalid JSON Schema.' : `Invalid JSON Schema: ${message}`;
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
