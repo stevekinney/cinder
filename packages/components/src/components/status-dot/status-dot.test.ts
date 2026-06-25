@@ -245,6 +245,18 @@ describe('StatusDot connection preset', () => {
     expect(root?.getAttribute('aria-label')).toBe('Connected');
     expect(root?.hasAttribute('aria-live')).toBe(false);
   });
+
+  test('showLabel=false keeps hidden text for the live-region connection preset', () => {
+    const { container } = render(StatusDot, {
+      props: { connectionState: 'connected', showLabel: false },
+    });
+    const root = container.querySelector('.cinder-status-dot');
+
+    expect(root?.getAttribute('role')).toBe('status');
+    expect(root?.getAttribute('aria-label')).toBeNull();
+    expect(root?.textContent).toContain('Connected');
+    expect(container.querySelector('.cinder-sr-only')?.textContent).toBe('Connected');
+  });
 });
 
 describe('StatusDot CSS contract', () => {

@@ -4,6 +4,8 @@ export function commitValue<T>(
   proposed: T,
   onValueChange: ValueChangeHandler<T> | undefined,
   setValue: (next: T) => void,
-): void {
-  setValue(onValueChange?.(proposed) ?? proposed);
+): T {
+  const committed = onValueChange?.(proposed) ?? proposed;
+  setValue(committed);
+  return committed;
 }

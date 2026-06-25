@@ -92,6 +92,36 @@ describe('Checkbox', () => {
     expect(input.checked).toBe(true);
   });
 
+  test('onValueChange can veto a native toggle and re-sync checked state', async () => {
+    const { container } = render(Checkbox, {
+      id: 'c',
+      checked: false,
+      onValueChange: () => false,
+    });
+    const input = container.querySelector('#c') as HTMLInputElement;
+
+    await fireEvent.click(input);
+
+    expect(input.checked).toBe(false);
+  });
+
+  test('consumer onchange runs without replacing the bindable update path', async () => {
+    let calls = 0;
+    const { container } = render(Checkbox, {
+      id: 'c',
+      checked: false,
+      onchange: () => {
+        calls += 1;
+      },
+    });
+    const input = container.querySelector('#c') as HTMLInputElement;
+
+    await fireEvent.click(input);
+
+    expect(input.checked).toBe(true);
+    expect(calls).toBe(1);
+  });
+
   test('indeterminate prop applies as a DOM property', () => {
     const { container } = render(Checkbox, {
       id: 'c',

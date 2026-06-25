@@ -36,8 +36,7 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
-        description:
-          'Badge content — intentionally required. A badge without content is\nsemantically meaningless. The render site uses optional chaining\n(`children?.()`) as a runtime safety net for JS consumers.',
+        description: 'Optional content override for the subscription preset label.',
       },
     ],
   },

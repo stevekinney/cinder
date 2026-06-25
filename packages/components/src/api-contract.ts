@@ -39,7 +39,8 @@ export type PropSpec = {
     | 'TSTypeReference'
     | 'TSArrayType'
     | 'TSFunctionType'
-    | 'TSTypeOperator';
+    | 'TSTypeOperator'
+    | 'TSUndefinedKeyword';
   default?: DefaultSpec;
 };
 
@@ -114,16 +115,41 @@ export const CONTRACT: Record<string, ComponentContract> = {
   },
 
   badge: {
-    kind: 'intersection',
-    html_attrs: 'HTMLAttributes',
-    props: {
-      variant: { optional: true, type_kind: 'TSTypeReference', default: L('neutral') },
-      size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
-      class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-    },
-    snippets: {
-      children: s0(false),
-    },
+    kind: 'union',
+    arms: [
+      {
+        kind: 'intersection',
+        html_attrs: 'HTMLAttributes',
+        props: {
+          variant: { optional: true, type_kind: 'TSTypeReference', default: L('neutral') },
+          size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
+          mono: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+          subscriptionState: { optional: false, type_kind: 'TSTypeReference', default: REQUIRED },
+        },
+        snippets: {
+          children: s0(true),
+        },
+      },
+      {
+        kind: 'intersection',
+        html_attrs: 'HTMLAttributes',
+        props: {
+          variant: { optional: true, type_kind: 'TSTypeReference', default: L('neutral') },
+          size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
+          mono: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+          subscriptionState: {
+            optional: true,
+            type_kind: 'TSUndefinedKeyword',
+            default: NO_DEFAULT,
+          },
+        },
+        snippets: {
+          children: s0(false),
+        },
+      },
+    ],
   },
 
   button: {

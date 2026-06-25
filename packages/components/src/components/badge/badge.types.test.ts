@@ -5,13 +5,23 @@ import type { HTMLAttributes } from 'svelte/elements';
 import Badge from './badge.svelte';
 import type { BadgeProps, BadgeSize, BadgeSubscriptionState, BadgeVariant } from './badge.types.ts';
 
-type SnapshotBadgeProps = HTMLAttributes<HTMLSpanElement> & {
+type SnapshotBadgeBaseProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
   size?: BadgeSize;
-  subscriptionState?: BadgeSubscriptionState;
   class?: string;
-  children?: Snippet;
 };
+
+type SnapshotBadgeProps = SnapshotBadgeBaseProps &
+  (
+    | {
+        subscriptionState: BadgeSubscriptionState;
+        children?: Snippet;
+      }
+    | {
+        subscriptionState?: undefined;
+        children: Snippet;
+      }
+  );
 
 type Assignable<A, B> = A extends B ? true : false;
 

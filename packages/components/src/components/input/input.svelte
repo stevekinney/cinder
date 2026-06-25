@@ -41,6 +41,7 @@
     trailingInteractive = false,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
+    oninput: consumerOninput,
     ...rest
   }: InputProps = $props();
 
@@ -83,9 +84,11 @@
 
   function handleInput(event: Event): void {
     const target = event.currentTarget as HTMLInputElement;
-    commitValue(target.value, onValueChange, (next) => {
+    const committed = commitValue(target.value, onValueChange, (next) => {
       value = next;
     });
+    target.value = committed;
+    consumerOninput?.(event as Parameters<NonNullable<InputProps['oninput']>>[0]);
   }
 </script>
 
@@ -113,6 +116,7 @@
   <input
     {id}
     {type}
+    {...rest}
     disabled={resolvedDisabled}
     required={resolvedRequired}
     {value}
@@ -121,7 +125,6 @@
     data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
-    {...rest}
   />
 {/snippet}
 

@@ -124,9 +124,10 @@ export class CommandListState {
     }
 
     if (event.key === 'Enter') {
-      if (this.activeItemId === null) return false;
+      if (!onEnter) return false;
       event.preventDefault();
       event.stopPropagation();
+      if (this.activeItemId === null) return true;
       onEnter?.(this.activeItemId);
       return true;
     }

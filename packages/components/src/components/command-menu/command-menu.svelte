@@ -113,9 +113,8 @@
   function activateItemById(id: string) {
     const record = commandList.activateItemById(id);
     if (!record) return;
-    // Fire the per-item `onselect` callback first (matching command-palette's
-    // shared-context contract), then the menu-level `onselect` prop. Without the
-    // first call, an item's own onselect is silently dropped on activation.
+    // The command list activates the item callback first; the menu-level
+    // `onselect` prop then receives the committed value and query.
     onselect?.({ value: record.getValue(), query });
   }
 

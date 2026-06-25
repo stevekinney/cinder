@@ -36,6 +36,7 @@
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
+    onchange: consumerOnchange,
     ...rest
   }: CheckboxProps = $props();
 
@@ -87,9 +88,12 @@
 
   function handleChange(event: Event): void {
     const target = event.currentTarget as HTMLInputElement;
-    commitValue(target.checked, onValueChange, (next) => {
+    const committed = commitValue(target.checked, onValueChange, (next) => {
       checked = next;
     });
+    target.checked = committed;
+    target.indeterminate = indeterminate && !committed;
+    consumerOnchange?.(event as Parameters<NonNullable<CheckboxProps['onchange']>>[0]);
   }
 </script>
 
@@ -100,6 +104,7 @@
         bind:this={inputElement}
         id={field.id}
         type="checkbox"
+        {...rest}
         disabled={field.disabled}
         required={field.required}
         {checked}
@@ -107,7 +112,6 @@
         class={classNames('cinder-checkbox', className)}
         aria-invalid={field.ariaInvalid}
         aria-describedby={field.describedBy}
-        {...rest}
       />
       <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
     </span>

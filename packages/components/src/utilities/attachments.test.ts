@@ -407,6 +407,22 @@ describe('createClickOutside', () => {
     outside.remove();
   });
 
+  test('eventType: "touchstart" ignores non-cancelable touches', () => {
+    let calls = 0;
+    attach({ handler: () => (calls += 1), eventType: 'touchstart' });
+
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    const event = new (globalThis.TouchEvent ?? Event)('touchstart', {
+      bubbles: true,
+      cancelable: false,
+    });
+    outside.dispatchEvent(event);
+
+    expect(calls).toBe(0);
+    outside.remove();
+  });
+
   test('treats composedPath entries contained by the node as inside', () => {
     let calls = 0;
     attach({ handler: () => (calls += 1), eventType: 'pointerdown' });

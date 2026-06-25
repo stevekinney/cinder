@@ -86,6 +86,7 @@ export function createClickOutside(options: ClickOutsideOptions): Attachment<HTM
     function handleEvent(event: MouseEvent | PointerEvent | TouchEvent) {
       const isEnabled = typeof enabled === 'function' ? enabled() : enabled;
       if (!isEnabled) return;
+      if (event.type === 'touchstart' && !event.cancelable) return;
       const target = event.target;
       // A non-Node (or null) target is treated as outside the node.
       if (!(target instanceof Node)) {

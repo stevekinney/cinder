@@ -127,6 +127,36 @@ describe('Input rendering', () => {
     expect(input.value).toBe('ALICE');
   });
 
+  test('onValueChange can veto the native edit and re-sync the input value', async () => {
+    const { container } = render(Input, {
+      props: { id: 'name', value: 'Alice', onValueChange: () => 'Alice' },
+    });
+    const input = container.querySelector('#name') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'Alice!' } });
+
+    expect(input.value).toBe('Alice');
+  });
+
+  test('consumer oninput runs without replacing the bindable update path', async () => {
+    let calls = 0;
+    const { container } = render(Input, {
+      props: {
+        id: 'name',
+        value: '',
+        oninput: () => {
+          calls += 1;
+        },
+      },
+    });
+    const input = container.querySelector('#name') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'Alice' } });
+
+    expect(input.value).toBe('Alice');
+    expect(calls).toBe(1);
+  });
+
   test('applies class prop alongside cinder-input', () => {
     const { container } = render(Input, {
       props: { id: 'search', value: '', class: 'my-custom-class' },

@@ -92,5 +92,7 @@
   <span class="cinder-status-dot__indicator" aria-hidden="true"></span>
   {#if hasVisibleLabel}
     <span class="cinder-status-dot__label">{normalizedLabel}</span>
+  {:else if resolvedLive}
+    <span class="cinder-sr-only">{resolvedAriaLabel}</span>
   {/if}
 </span>

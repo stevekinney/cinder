@@ -40,7 +40,7 @@ export type StatusDotConnectionState = 'connected' | 'connecting' | 'disconnecte
  * fallback.
  */
 export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
-  /** Required semantic status. Drives color via `data-cinder-status`. */
+  /** Semantic status. Drives color via `data-cinder-status`; defaults to a neutral dot or derives from `connectionState`. */
   status?: StatusDotStatus;
   /** Realtime connection preset. Sets status, default label, and live-region semantics. */
   connectionState?: StatusDotConnectionState;
@@ -57,7 +57,7 @@ export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
 };
 
 export interface StatusDotSchemaProps {
-  /** Required semantic status. Drives color via `data-cinder-status`. `success` maps to `--cinder-success`; `accent` maps to `--cinder-accent`. */
+  /** Semantic status. Drives color via `data-cinder-status`; defaults to a neutral dot or derives from `connectionState`. `success` maps to `--cinder-success`; `accent` maps to `--cinder-accent`. */
   status?: StatusDotStatus;
   /** Realtime connection preset. Sets status, default label, and live-region semantics. */
   connectionState?: StatusDotConnectionState;
