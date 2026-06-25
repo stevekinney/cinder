@@ -243,7 +243,9 @@
     const datePart = nextValue.slice(0, 10);
     if (!isValidDatePart(datePart)) return undefined;
     if (nextGranularity === 'day') return datePart;
-    const timePart = nextValue.includes('T') ? nextValue.slice(11) : '00:00';
+    const timePart =
+      nextValue.length === 10 ? '00:00' : nextValue[10] === 'T' ? nextValue.slice(11) : undefined;
+    if (!timePart) return undefined;
     if (!isValidTimePart(timePart)) return undefined;
     const [rawHour = '00', rawMinute = '00', rawSecond = '00'] = timePart.split(':');
     const hour = rawHour.padStart(2, '0').slice(0, 2);

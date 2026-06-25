@@ -112,6 +112,17 @@ describe('DateRangeField', () => {
       expect(getEndInput(container).value).toBe('');
     });
 
+    test('clears malformed datetime values with non-T separators', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01 09:30', end: '2026-06-02T10:45' },
+      });
+
+      expect(getStartInput(container).value).toBe('');
+      expect(getEndInput(container).value).toBe('2026-06-02T10:45');
+    });
+
     test('clears impossible controlled datetime values before emitting preserved endpoints', async () => {
       const changes: DateRangeValue[] = [];
       const { container } = render(DateRangeField, {

@@ -105,7 +105,13 @@ function matchesDirectionStyleRuleList(
     }
 
     const nestedRules = readNestedCssRules(rule);
-    if (nestedRules && matchesDirectionStyleRuleList(element, nestedRules)) return true;
+    if (
+      nestedRules &&
+      isConditionalRuleActive(rule) &&
+      matchesDirectionStyleRuleList(element, nestedRules)
+    ) {
+      return true;
+    }
   }
   return false;
 }
@@ -140,6 +146,29 @@ function isCssStyleRule(rule: CSSRule): rule is CSSStyleRule {
     typeof Reflect.get(rule, 'style') === 'object' &&
     Reflect.get(rule, 'style') !== null
   );
+}
+
+function isConditionalRuleActive(rule: CSSRule): boolean {
+  const conditionText = Reflect.get(rule, 'conditionText');
+  if (typeof conditionText !== 'string' || !conditionText.trim()) return true;
+
+  if (isMediaRule(rule) && typeof matchMedia === 'function') {
+    return matchMedia(conditionText).matches;
+  }
+
+  if (isSupportsRule(rule) && typeof CSS !== 'undefined' && typeof CSS.supports === 'function') {
+    return CSS.supports(conditionText);
+  }
+
+  return true;
+}
+
+function isMediaRule(rule: CSSRule): boolean {
+  return typeof Reflect.get(rule, 'media') === 'object' && Reflect.get(rule, 'media') !== null;
+}
+
+function isSupportsRule(rule: CSSRule): boolean {
+  return rule.constructor.name === 'CSSSupportsRule' || Reflect.get(rule, 'type') === 12;
 }
 
 export function isRightToLeftElement(element: HTMLElement | null | undefined): boolean {

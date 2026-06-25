@@ -192,6 +192,50 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('ignores grouped CSS direction rules inside inactive media conditions', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const originalMatchMedia = globalThis.matchMedia;
+    const styleElement = document.createElement('style');
+    styleElement.textContent =
+      '@media (min-width: 99999px) { .inactive-ltr-reset { direction: ltr; } }';
+    document.head.appendChild(styleElement);
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    const matchMediaOverride = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => true,
+      }) satisfies MediaQueryList) as typeof globalThis.matchMedia;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    globalThis.matchMedia = matchMediaOverride;
+
+    try {
+      const wrapper = document.createElement('section');
+      wrapper.className = 'inactive-ltr-reset';
+      const element = document.createElement('div');
+      wrapper.appendChild(element);
+      document.body.appendChild(wrapper);
+
+      expect(resolveTextDirection(element, 'rtl')).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+      globalThis.matchMedia = originalMatchMedia;
+      styleElement.remove();
+    }
+  });
+
   test('uses provider fallback before unrelated app classes with default computed direction', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
