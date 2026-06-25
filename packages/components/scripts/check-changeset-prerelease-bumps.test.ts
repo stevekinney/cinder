@@ -40,6 +40,11 @@ describe('bumpLevelForPackage', () => {
     expect(bumpLevelForPackage(`---\n${PACKAGE}: patch\n---\n`, PACKAGE)).toBe('patch');
   });
 
+  it('reads a quoted bump value (Changesets accepts a quoted scalar)', () => {
+    expect(bumpLevelForPackage(`---\n'${PACKAGE}': "major"\n---\n`, PACKAGE)).toBe('major');
+    expect(bumpLevelForPackage(`---\n"${PACKAGE}": 'minor'\n---\n`, PACKAGE)).toBe('minor');
+  });
+
   it('returns null when the package is not mentioned', () => {
     expect(bumpLevelForPackage(`---\n'@other/pkg': major\n---\n`, PACKAGE)).toBeNull();
   });

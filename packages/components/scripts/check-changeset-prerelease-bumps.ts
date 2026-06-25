@@ -43,11 +43,13 @@ export type ChangesetBumpViolation = {
  * `null` if the changeset does not mention the package.
  */
 export function bumpLevelForPackage(source: string, packageName: string): string | null {
-  // Match `'<pkg>': <level>` or `"<pkg>": <level>` (quotes optional), tolerant of
-  // surrounding whitespace. Only the frontmatter uses this shape, so scanning the
-  // whole file is safe and survives Prettier reformatting of the prose body.
+  // Match `'<pkg>': <level>` or `"<pkg>": <level>`, with quotes optional around
+  // BOTH the package name and the bump level — Changesets' YAML parser accepts a
+  // quoted scalar (`'@lostgradient/cinder': "major"`), so the guard must too.
+  // Tolerant of surrounding whitespace. Only the frontmatter uses this shape, so
+  // scanning the whole file is safe and survives Prettier reformatting of the body.
   const pattern = new RegExp(
-    `["']?${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\s*:\\s*(major|minor|patch)`,
+    `["']?${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\s*:\\s*["']?(major|minor|patch)["']?`,
   );
   const match = source.match(pattern);
   return match?.[1] ?? null;
@@ -118,8 +120,13 @@ async function main(): Promise<void> {
   });
 
   if (violations.length === 0) {
+    // Once the package is stable (>= 1.0.0) the guard does not scan and major
+    // bumps are allowed — say so explicitly rather than implying "no majors exist".
+    const reason = isPreRelease(version)
+      ? `no major changesets while ${PACKAGE_NAME} is pre-1.0`
+      : `${PACKAGE_NAME} is stable (>= 1.0.0); major bumps allowed, guard not applied`;
     process.stdout.write(
-      `check-changeset-prerelease-bumps — OK (no major changesets while ${PACKAGE_NAME} is at ${version}).\n`,
+      `check-changeset-prerelease-bumps — OK (${reason}; version ${version}).\n`,
     );
     return;
   }
