@@ -81,17 +81,65 @@ function matchesDirectionStyleRule(element: HTMLElement): boolean {
     } catch {
       continue;
     }
-    for (const rule of Array.from(rules)) {
-      if (!(rule instanceof CSSStyleRule)) continue;
-      if (!rule.style.direction) continue;
+    if (matchesDirectionStyleRuleList(element, rules)) return true;
+  }
+  return false;
+}
+
+function matchesDirectionStyleRuleList(
+  element: HTMLElement,
+  rules: CSSRuleList | Iterable<CSSRule>,
+): boolean {
+  for (const rule of Array.from(rules)) {
+    if (isCssStyleRule(rule)) {
+      if (!rule.style.direction) {
+        const nestedRules = readNestedCssRules(rule);
+        if (nestedRules && matchesDirectionStyleRuleList(element, nestedRules)) return true;
+        continue;
+      }
       try {
         if (element.matches(rule.selectorText)) return true;
       } catch {
         continue;
       }
     }
+
+    const nestedRules = readNestedCssRules(rule);
+    if (nestedRules && matchesDirectionStyleRuleList(element, nestedRules)) return true;
   }
   return false;
+}
+
+function readNestedCssRules(rule: CSSRule): CSSRuleList | Iterable<CSSRule> | undefined {
+  if (!('cssRules' in rule)) return undefined;
+  try {
+    const nestedRules: unknown = Reflect.get(rule, 'cssRules');
+    return isCssRuleCollection(nestedRules) ? nestedRules : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isCssRuleCollection(value: unknown): value is CSSRuleList | Iterable<CSSRule> {
+  if (typeof CSSRuleList !== 'undefined' && value instanceof CSSRuleList) return true;
+  return Array.isArray(value) && value.every(isCssRule);
+}
+
+function isCssRule(value: unknown): value is CSSRule {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'cssText') === 'string' &&
+    typeof Reflect.get(value, 'type') === 'number'
+  );
+}
+
+function isCssStyleRule(rule: CSSRule): rule is CSSStyleRule {
+  return (
+    typeof Reflect.get(rule, 'selectorText') === 'string' &&
+    typeof Reflect.get(rule, 'style') === 'object' &&
+    Reflect.get(rule, 'style') !== null
+  );
 }
 
 export function isRightToLeftElement(element: HTMLElement | null | undefined): boolean {
