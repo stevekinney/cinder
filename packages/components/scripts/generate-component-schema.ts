@@ -165,11 +165,13 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
       continue;
     }
 
-    const converted = convertType(
-      propType,
-      0,
-      hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
-    );
+    const converted = hasJsDocTag(symbol, 'schemaPermissive')
+      ? { kind: 'ok' as const, schema: {} }
+      : convertType(
+          propType,
+          0,
+          hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
+        );
     if (converted.kind === 'unsupported') {
       unsupportedProps.push(makeUnsupportedProp(symbol, propName, converted.reason));
       continue;
@@ -415,13 +417,15 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     for (const property of type.getProperties()) {
       const propertyType = getPropType(property);
       if (!propertyType) return { kind: 'unsupported', reason: 'unknown-shape' };
-      const converted = convertType(
-        propertyType,
-        depth + 1,
-        expandObjectShapes ||
-          hasJsDocTag(property, 'schemaObject') ||
-          hasSchemaObjectTagDeep(propertyType),
-      );
+      const converted = hasJsDocTag(property, 'schemaPermissive')
+        ? { kind: 'ok' as const, schema: {} }
+        : convertType(
+            propertyType,
+            depth + 1,
+            expandObjectShapes ||
+              hasJsDocTag(property, 'schemaObject') ||
+              hasSchemaObjectTagDeep(propertyType),
+          );
       if (converted.kind === 'unsupported') return converted;
 
       const schemaEntry: PropertySchema = { ...converted.schema };

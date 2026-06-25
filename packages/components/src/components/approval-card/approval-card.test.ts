@@ -104,6 +104,25 @@ describe('ApprovalCard', () => {
     expect(validate.errors).toBeNull();
   });
 
+  test('schema accepts deeply nested argument previews without a depth boundary', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(approvalCardSchema);
+
+    expect(
+      validate({
+        tool: { name: 'deploy-cloud', risk: 'medium' },
+        operation: {
+          kind: 'other',
+          argsPreview: [[[[[['branch', 'main']]]]]],
+        },
+        policyVersion: 'policy-2026-06',
+        idempotencyKey: 'approval-card-test-key',
+        state: 'pending',
+      }),
+    ).toBe(true);
+    expect(validate.errors).toBeNull();
+  });
+
   test('keeps expiring approvals non-actionable until the clock is initialized', () => {
     const expirationTimestamp = Date.parse('2026-06-24T12:00:00.000Z');
 

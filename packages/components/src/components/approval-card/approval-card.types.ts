@@ -22,40 +22,6 @@ export type ApprovalSandbox = {
 
 export type ApprovalOperationKind = 'command' | 'file-write' | 'patch' | 'other';
 
-export type ApprovalSchemaArgumentPrimitive = string | number | boolean | null;
-
-/**
- * Open object boundary for JSON argument previews.
- *
- * The runtime prop accepts `unknown`; the schema surface keeps objects
- * permissive so schema-driven consumers accept deep JSON that PayloadInspector
- * can already render and edit.
- *
- * @schemaObject
- */
-export type ApprovalSchemaArgumentObject = {};
-
-export type ApprovalSchemaArgumentArrayLevel4 = Array<
-  ApprovalSchemaArgumentPrimitive | ApprovalSchemaArgumentObject
->;
-
-export type ApprovalSchemaArgumentArrayLevel3 = Array<
-  ApprovalSchemaArgumentPrimitive | ApprovalSchemaArgumentObject | ApprovalSchemaArgumentArrayLevel4
->;
-
-export type ApprovalSchemaArgumentArrayLevel2 = Array<
-  ApprovalSchemaArgumentPrimitive | ApprovalSchemaArgumentObject | ApprovalSchemaArgumentArrayLevel3
->;
-
-export type ApprovalSchemaArgumentArrayLevel1 = Array<
-  ApprovalSchemaArgumentPrimitive | ApprovalSchemaArgumentObject | ApprovalSchemaArgumentArrayLevel2
->;
-
-export type ApprovalSchemaArgumentValue =
-  | ApprovalSchemaArgumentPrimitive
-  | ApprovalSchemaArgumentArrayLevel1
-  | ApprovalSchemaArgumentObject;
-
 /** @schemaObject */
 export type ApprovalOperation = {
   /** Operation family being approved. */
@@ -64,7 +30,11 @@ export type ApprovalOperation = {
   command?: string;
   /** File paths that the operation may read or write. */
   filesTouched?: string[];
-  /** JSON-like argument preview shown to the approver. */
+  /**
+   * JSON-like argument preview shown to the approver.
+   *
+   * @schemaPermissive
+   */
   argsPreview?: unknown;
   /** Patch diff for patch approvals. */
   diff?: string;
@@ -78,8 +48,12 @@ export type ApprovalOperationSchema = {
   command?: string;
   /** File paths that the operation may read or write. */
   filesTouched?: string[];
-  /** JSON-like argument preview shown to the approver. */
-  argsPreview?: ApprovalSchemaArgumentValue;
+  /**
+   * JSON-like argument preview shown to the approver.
+   *
+   * @schemaPermissive
+   */
+  argsPreview?: unknown;
   /** Patch diff for patch approvals. */
   diff?: string;
 };
