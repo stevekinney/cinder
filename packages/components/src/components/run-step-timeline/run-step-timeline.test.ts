@@ -397,6 +397,38 @@ describe('behavior', () => {
     expect(items[3]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
   });
 
+  test('hides a nested lane connector before returning to a shallower row', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: 'workflow',
+          label: 'Workflow',
+          status: 'succeeded',
+          children: [
+            {
+              id: 'activity',
+              label: 'Activity',
+              status: 'succeeded',
+            },
+          ],
+        },
+        {
+          id: 'next-workflow',
+          label: 'Next workflow',
+          status: 'pending',
+        },
+      ],
+    });
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-run-step-timeline__item'),
+    );
+
+    expect(items.map((item) => item.getAttribute('data-cinder-depth'))).toEqual(['0', '1', '0']);
+    expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[1]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+    expect(items[2]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
   test('caps rendered child workflow depth', () => {
     const deeplyNested: RunStep = {
       id: 'root',
@@ -605,6 +637,33 @@ describe('accessibility', () => {
     const currentItems = items.filter((li) => li.getAttribute('aria-current') === 'step');
     expect(currentItems.length).toBe(1);
     expect(currentItems[0]?.getAttribute('data-cinder-status')).toBe('waiting_approval');
+  });
+
+  test('sets aria-current on only one active row in nested workflows', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: 'workflow',
+          label: 'Workflow',
+          status: 'running',
+          children: [
+            {
+              id: 'approval',
+              label: 'Approve tool call',
+              status: 'waiting_approval',
+            },
+          ],
+        },
+      ],
+    });
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-run-step-timeline__item'),
+    );
+    const currentItems = items.filter((li) => li.getAttribute('aria-current') === 'step');
+
+    expect(currentItems).toHaveLength(1);
+    expect(currentItems[0]?.getAttribute('data-cinder-path')).toBe('workflow');
+    expect(items[1]?.hasAttribute('aria-current')).toBe(false);
   });
 
   test('does not set aria-current on succeeded, failed, pending, or skipped steps', () => {

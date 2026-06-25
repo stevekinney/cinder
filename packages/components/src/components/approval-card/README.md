@@ -38,7 +38,7 @@ the supplied context and invokes callback props for host-owned actions.
 ## Operation rendering
 
 - `operation.kind: 'command'` renders the command with `CodeBlock`.
-- `operation.kind: 'patch'` renders the supplied diff with `DiffViewer`.
+- `operation.kind: 'patch'` renders the supplied unified patch as diff code.
 - `operation.argsPreview` renders through `PayloadInspector`; oversized previews
   are replaced with a bounded truncation notice before rendering.
 - `env` renders variable names only. Values are not accepted and are stripped if

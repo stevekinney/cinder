@@ -11,7 +11,7 @@
    * @useWhen Showing policy, sandbox, idempotency, environment-name, and argument context for an approval request.
    * @avoidWhen The action has already completed and only needs historical display — use event-stream-viewer or run-step-timeline instead.
    * @avoidWhen Collecting arbitrary form input for a workflow — compose form controls directly instead.
-   * @related card, badge, status-dot, payload-inspector, secret-value-field, code-block, diff-viewer
+   * @related card, badge, status-dot, payload-inspector, secret-value-field, code-block
    * @a11yNote Uses a named region and native button controls so approval actions are discoverable by assistive technology.
    * @a11yNote Expiration changes update the visible state but do not fire approval callbacks automatically.
    */
@@ -37,7 +37,6 @@
   import ButtonGroup from '../button-group/button-group.svelte';
   import Card from '../card/card.svelte';
   import CodeBlock from '../code-block/code-block.svelte';
-  import DiffViewer from '../diff-viewer/diff-viewer.svelte';
   import PayloadInspector from '../payload-inspector/payload-inspector.svelte';
   import SecretValueField from '../secret-value-field/secret-value-field.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
@@ -82,7 +81,7 @@
   const editDescriptionId = $derived(`${rootId}-edit-description`);
   const editErrorId = $derived(`${rootId}-edit-error`);
 
-  let currentTime = $state(Date.now());
+  let currentTime = $state<number | undefined>();
   let editingArgumentsSeedKey = $state<string | null>(null);
   let editedArgumentsDrafts = $state<Record<string, string>>({});
   let expirationTimer: ReturnType<typeof setInterval> | undefined;
@@ -91,6 +90,7 @@
   const effectiveState = $derived<ApprovalState>(
     approvalState === 'pending' &&
       expirationTimestamp !== undefined &&
+      currentTime !== undefined &&
       currentTime >= expirationTimestamp
       ? 'expired'
       : approvalState,
@@ -106,17 +106,26 @@
   );
   const expirationText = $derived.by(() => {
     if (effectiveState === 'expired') return 'Expired';
-    if (approvalState !== 'pending' || expirationTimestamp === undefined) return undefined;
+    if (
+      approvalState !== 'pending' ||
+      expirationTimestamp === undefined ||
+      currentTime === undefined
+    ) {
+      return undefined;
+    }
     return `Expires in ${formatRemainingTime(expirationTimestamp - currentTime)}`;
   });
-  const argumentsPreview = $derived(prepareArgumentsPreview(operation.argsPreview ?? {}));
+  const editableArgumentsValue = $derived(
+    operation.argsPreview === undefined ? {} : operation.argsPreview,
+  );
+  const argumentsPreview = $derived(prepareArgumentsPreview(editableArgumentsValue));
   const filesTouched = $derived(operation.filesTouched ?? []);
   const visibleFilesTouched = $derived(filesTouched.slice(0, FILE_PREVIEW_LIMIT));
   const remainingFileCount = $derived(
     Math.max(0, filesTouched.length - visibleFilesTouched.length),
   );
   const environmentNames = $derived(env.map(sanitizeEnvironmentName).filter(Boolean));
-  const currentEditedArgumentsText = $derived(formatEditableArguments(operation.argsPreview ?? {}));
+  const currentEditedArgumentsText = $derived(formatEditableArguments(editableArgumentsValue));
   const currentEditedArgumentsSeedKey = $derived(
     `${idempotencyKey}\u0000${currentEditedArgumentsText}`,
   );
@@ -132,18 +141,20 @@
   $effect(() => {
     clearExpirationTimer();
 
-    if (
-      approvalState === 'pending' &&
-      expirationTimestamp !== undefined &&
-      expirationTimestamp > Date.now()
-    ) {
-      currentTime = Date.now();
-      expirationTimer = setInterval(() => {
-        currentTime = Date.now();
-        if (currentTime >= expirationTimestamp) {
+    if (approvalState === 'pending' && expirationTimestamp !== undefined) {
+      const updateCurrentTime = () => {
+        const nextCurrentTime = Date.now();
+        currentTime = nextCurrentTime;
+        if (nextCurrentTime >= expirationTimestamp) {
           clearExpirationTimer();
         }
-      }, 1_000);
+      };
+
+      updateCurrentTime();
+
+      if (currentTime !== undefined && currentTime < expirationTimestamp) {
+        expirationTimer = setInterval(updateCurrentTime, 1_000);
+      }
     }
 
     return clearExpirationTimer;
@@ -389,11 +400,15 @@
         {#if operation.kind === 'command' && operation.command}
           <CodeBlock code={operation.command} language="shell" highlight={false} />
         {:else if operation.kind === 'patch' && operation.diff}
-          <div class="cinder-approval-card__diff">
-            <DiffViewer original="" current={operation.diff} normalizeInputs={false} readonly />
-          </div>
+          <CodeBlock code={operation.diff} language="diff" highlight={false} />
+        {:else if operation.kind === 'file-write'}
+          <p class="cinder-approval-card__muted">
+            Review the touched files and arguments before approving this file write.
+          </p>
         {:else}
-          <p class="cinder-approval-card__muted">No command or patch body was provided.</p>
+          <p class="cinder-approval-card__muted">
+            Review the arguments and metadata before approving this operation.
+          </p>
         {/if}
 
         {#if filesTouched.length > 0}

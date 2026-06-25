@@ -266,8 +266,7 @@
         "status-dot",
         "payload-inspector",
         "secret-value-field",
-        "code-block",
-        "diff-viewer"
+        "code-block"
       ],
       "hasConstraints": false,
       "hasExamples": true,

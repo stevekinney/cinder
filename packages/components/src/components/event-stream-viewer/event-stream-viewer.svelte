@@ -35,11 +35,18 @@
   import ConnectionIndicator from '../connection-indicator/connection-indicator.svelte';
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
+  import {
+    detailsIdForKey,
+    reconnectedBoundaryKey,
+    sequenceGapKey,
+    streamEventKey,
+    uniqueRenderedKey,
+  } from './event-stream-viewer-keys.ts';
 
   type RenderedEventEntry = {
     type: 'event';
     key: string;
-    sourceIndex: number;
+    detailsId: string;
     event: StreamEvent;
   };
 
@@ -48,6 +55,7 @@
     key: string;
     boundary: StreamReconnectedBoundary;
     label: string;
+    datetime: string | undefined;
   };
 
   type RenderedSequenceGap = {
@@ -63,7 +71,7 @@
   // Stable per-instance id namespace for generated DOM ids (details panels).
   // Event ids are consumer-supplied and may contain spaces, punctuation, or
   // duplicates across composed viewers, so we never use them directly in an
-  // `id`/`aria-controls` — we scope by this instance id plus the row index.
+  // `id`/`aria-controls` — we scope by this instance id plus the stable row key.
   const instanceId = $props.id();
 
   let {
@@ -80,9 +88,9 @@
     ...rest
   }: EventStreamViewerProps = $props();
 
-  // IDs for expanded details panels — keyed by rendered row identity.
-  // Event ids can repeat in replayed streams, so row identity also includes the
-  // source index used by the keyed each block and details panel id.
+  // IDs for expanded details panels — keyed by rendered row identity. The row
+  // identity is derived from stable event fields so retained streams can drop
+  // older entries without collapsing details for unchanged visible events.
   const expandedIds = new SvelteSet<string>();
 
   // Track the scroll container element for auto-scroll
@@ -104,27 +112,39 @@
 
   const renderedEntries = $derived.by<RenderedEntry[]>(() => {
     const entries: RenderedEntry[] = [];
+    const keyOccurrences = new Map<string, number>();
     let previousSequence: number | undefined;
     let previousEventId: string | undefined;
+    const detectSequenceGaps = onfilter === undefined;
 
-    for (const [sourceIndex, entry] of events.entries()) {
+    for (const entry of events) {
       if (isReconnectedBoundary(entry)) {
+        const key = uniqueRenderedKey(reconnectedBoundaryKey(entry), keyOccurrences);
         entries.push({
           type: 'reconnected',
-          key: `reconnected:${entry.id}:${sourceIndex}`,
+          key,
           boundary: entry,
           label: formatReconnectedBoundaryLabel(entry),
+          datetime: boundaryDateTime(entry),
         });
         continue;
       }
 
       const currentSequence = entry.sequence;
-      if (typeof previousSequence === 'number' && typeof currentSequence === 'number') {
+      if (
+        detectSequenceGaps &&
+        typeof previousSequence === 'number' &&
+        typeof currentSequence === 'number'
+      ) {
         const expectedSequence = previousSequence + 1;
         if (currentSequence !== expectedSequence) {
+          const key = uniqueRenderedKey(
+            sequenceGapKey(previousEventId, entry, expectedSequence, currentSequence),
+            keyOccurrences,
+          );
           entries.push({
             type: 'sequence-gap',
-            key: `sequence-gap:${previousEventId ?? 'unknown'}:${entry.id}:${sourceIndex}:${expectedSequence}:${currentSequence}`,
+            key,
             expectedSequence,
             actualSequence: currentSequence,
             label: formatSequenceGapLabel(expectedSequence, currentSequence),
@@ -140,10 +160,11 @@
         previousEventId = undefined;
       }
 
+      const key = uniqueRenderedKey(streamEventKey(entry), keyOccurrences);
       entries.push({
         type: 'event',
-        key: `event:${entry.id}:${sourceIndex}`,
-        sourceIndex,
+        key,
+        detailsId: detailsIdForKey(instanceId, key),
         event: entry,
       });
     }
@@ -174,6 +195,10 @@
 
   function formatSequenceGapLabel(expectedSequence: number, actualSequence: number): string {
     return `Sequence gap — expected ${expectedSequence}, received ${actualSequence}`;
+  }
+
+  function boundaryDateTime(boundary: StreamReconnectedBoundary): string | undefined {
+    return boundary.datetime ?? boundary.timestamp;
   }
 
   function formatEventAsText(event: StreamEvent): string {
@@ -348,8 +373,8 @@
                 {#if entry.boundary.timestamp || entry.boundary.datetime}
                   <time
                     class="cinder-event-stream-viewer__marker-time"
-                    datetime={entry.boundary.datetime}
-                    title={entry.boundary.datetime}
+                    datetime={entry.datetime}
+                    title={entry.datetime}
                   >
                     {entry.boundary.timestamp ?? entry.boundary.datetime}
                   </time>
@@ -370,7 +395,7 @@
           {:else}
             {@const event = entry.event}
             {@const isExpanded = expandedIds.has(entry.key)}
-            {@const detailsId = `${instanceId}-details-${entry.sourceIndex}`}
+            {@const detailsId = entry.detailsId}
             <li
               class="cinder-event-stream-viewer__event"
               data-cinder-severity={event.severity ?? 'info'}

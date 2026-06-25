@@ -9,12 +9,6 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
-const { default: DiffViewerTestDouble } = await import('../../test/diff-viewer-test-double.svelte');
-
-mock.module('../diff-viewer/diff-viewer.svelte', () => ({
-  default: DiffViewerTestDouble,
-}));
-
 const { default: ApprovalCard } = await import('./approval-card.svelte');
 
 afterEach(() => {
@@ -117,10 +111,14 @@ describe('ApprovalCard', () => {
     });
 
     expect(container.textContent).toContain('Truncated');
+    expect(container.textContent).toContain(
+      'Review the touched files and arguments before approving this file write.',
+    );
     expect(container.textContent).toContain('Showing 5 of 8 files');
     expect(container.textContent).toContain('src/file-5.ts');
     expect(container.textContent).toContain('3 more files');
     expect(container.textContent).not.toContain('src/file-8.ts');
+    expect(container.textContent).not.toContain('No command or patch body was provided.');
   });
 
   test('renders environment names through masked fields without leaking supplied values', () => {
@@ -153,7 +151,7 @@ describe('ApprovalCard', () => {
     );
   });
 
-  test('renders patch operations through DiffViewer', () => {
+  test('renders patch operations as unified diff code', () => {
     const { container } = render(ApprovalCard, {
       ...approvalCardProps({
         operation: {
@@ -165,14 +163,11 @@ describe('ApprovalCard', () => {
       }),
     });
 
-    const diffViewer = container.querySelector<HTMLElement>('.cinder-diff-viewer-test-double');
-    expect(diffViewer).not.toBeNull();
-    expect(diffViewer?.getAttribute('data-original')).toBe('');
-    expect(diffViewer?.getAttribute('data-current')).toBe(
-      'diff --git a/src/approval.ts b/src/approval.ts\n+export const approved = true;',
+    const codeBlock = container.querySelector<HTMLElement>('.cinder-code-block');
+    expect(codeBlock).not.toBeNull();
+    expect(codeBlock?.querySelector('.cinder-code-block__language')?.textContent?.trim()).toBe(
+      'diff',
     );
-    expect(diffViewer?.getAttribute('data-normalize-inputs')).toBe('false');
-    expect(diffViewer?.getAttribute('data-readonly')).toBe('true');
     expect(container.textContent).toContain('diff --git a/src/approval.ts b/src/approval.ts');
     expect(container.textContent).toContain('export const approved = true;');
   });
@@ -189,6 +184,7 @@ describe('ApprovalCard', () => {
       }),
     });
 
+    await tick();
     expect(getByText('Expires in 1s')).toBeTruthy();
 
     jest.advanceTimersByTime(1_000);
@@ -200,6 +196,26 @@ describe('ApprovalCard', () => {
     expect(getByRole('img', { name: 'Expired' })).toBeTruthy();
     expect(queryByRole('button', { name: 'Approve' })).toBeNull();
     expect(onApprove).not.toHaveBeenCalled();
+  });
+
+  test('renders past expiration as expired after mount without action buttons', async () => {
+    const now = new Date('2026-06-24T12:00:00.000Z');
+    jest.useFakeTimers({ now });
+
+    const { getByRole, getByText, queryByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        expiresAt: new Date(now.getTime() - 1_000).toISOString(),
+        onApprove: mock(),
+      }),
+    });
+
+    await tick();
+
+    expect(
+      getByText('No approval actions are available because this request is expired.'),
+    ).toBeTruthy();
+    expect(getByRole('img', { name: 'Expired' })).toBeTruthy();
+    expect(queryByRole('button', { name: 'Approve' })).toBeNull();
   });
 
   test('cleans up countdown timers on destroy', async () => {
@@ -253,6 +269,29 @@ describe('ApprovalCard', () => {
     await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
 
     expect(onApproveWithEdits).toHaveBeenCalledWith({ force: true });
+  });
+
+  test('preserves null arguments when approving with edits without changes', async () => {
+    const onApproveWithEdits = mock();
+    const { getByLabelText, getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        editableArgs: true,
+        onApproveWithEdits,
+        operation: {
+          kind: 'other',
+          argsPreview: null,
+        },
+      }),
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Approve with edits' }));
+
+    const textarea = getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    expect(textarea.value).toBe('null');
+
+    await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
+
+    expect(onApproveWithEdits).toHaveBeenCalledWith(null);
   });
 
   test('reseeds editable arguments when the approval request changes', async () => {

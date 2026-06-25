@@ -39,6 +39,7 @@
     depth: number;
     pathKey: string;
     connectorAfter: 'hidden' | 'visible';
+    ariaCurrent: boolean;
   };
 
   let {
@@ -186,16 +187,21 @@
   }
 
   function flattenRunSteps(steps: RunStep[]): RenderedRunStep[] {
-    const rows: Omit<RenderedRunStep, 'connectorAfter'>[] = [];
+    const rows: Omit<RenderedRunStep, 'connectorAfter' | 'ariaCurrent'>[] = [];
     appendRunStepRows(rows, steps, 0, '');
+    const currentRowIndex = rows.findIndex((row) => isCurrent(row.step.status));
     return rows.map((row, index) => ({
       ...row,
-      connectorAfter: index === rows.length - 1 ? 'hidden' : 'visible',
+      connectorAfter:
+        rows[index + 1] === undefined || (rows[index + 1]?.depth ?? 0) < row.depth
+          ? 'hidden'
+          : 'visible',
+      ariaCurrent: index === currentRowIndex,
     }));
   }
 
   function appendRunStepRows(
-    rows: Omit<RenderedRunStep, 'connectorAfter'>[],
+    rows: Omit<RenderedRunStep, 'connectorAfter' | 'ariaCurrent'>[],
     steps: RunStep[],
     depth: number,
     pathPrefix: string,
@@ -218,7 +224,6 @@
 >
   {#each renderedSteps as row (row.pathKey)}
     {@const step = row.step}
-    {@const current = isCurrent(step.status)}
     {@const terminal = isTerminal(step.status)}
     {@const metadata = metadataItems(step)}
     <li
@@ -228,7 +233,7 @@
       data-cinder-path={row.pathKey}
       data-cinder-terminal={terminal ? '' : undefined}
       data-cinder-connector-after={row.connectorAfter}
-      aria-current={current ? 'step' : undefined}
+      aria-current={row.ariaCurrent ? 'step' : undefined}
       style:--_cinder-rst-depth={row.depth}
     >
       <div class="cinder-run-step-timeline__event">

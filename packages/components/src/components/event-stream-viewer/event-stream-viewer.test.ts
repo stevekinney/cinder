@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { reconnectedBoundaryKey, streamEventKey } from './event-stream-viewer-keys.ts';
 import type { EventStreamEntry, StreamEvent } from './event-stream-viewer.types.ts';
 
 setupHappyDom();
@@ -220,6 +221,27 @@ describe('EventStreamViewer', () => {
       expect(marker?.textContent).toContain('Reconnected — 2 events replayed');
     });
 
+    test('reconnect boundary timestamp is exposed as machine-readable time when datetime is omitted', () => {
+      const entries: EventStreamEntry[] = [
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '14:30:10',
+          replayedCount: 2,
+        },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+      const time = container.querySelector<HTMLTimeElement>(
+        '.cinder-event-stream-viewer__marker-time',
+      );
+
+      expect(time?.textContent?.trim()).toBe('14:30:10');
+      expect(time?.getAttribute('datetime')).toBe('14:30:10');
+      expect(time?.getAttribute('title')).toBe('14:30:10');
+    });
+
     test('non-contiguous sequence renders distinct accessible gap marker', () => {
       const entries: EventStreamEntry[] = [
         { ...baseEvent, id: 'evt-1', sequence: 7 },
@@ -234,6 +256,24 @@ describe('EventStreamViewer', () => {
       expect(marker).not.toBeNull();
       expect(marker?.getAttribute('aria-label')).toBe('Sequence gap — expected 8, received 10');
       expect(marker?.textContent).toContain('Sequence gap — expected 8, received 10');
+    });
+
+    test('filtered subsets do not synthesize sequence gaps from omitted events', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 7 },
+        { ...warningEvent, id: 'evt-2', sequence: 10 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: {
+          events: entries,
+          onfilter: () => {},
+          filterQuery: 'retry',
+        },
+      });
+
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
     });
   });
 
@@ -381,6 +421,47 @@ describe('EventStreamViewer', () => {
       );
       expect(firstPanel?.hasAttribute('hidden')).toBe(false);
       expect(secondPanel?.hasAttribute('hidden')).toBe(true);
+    });
+
+    test('event and reconnect boundary keys do not depend on source index', () => {
+      const firstEvent: StreamEvent = {
+        ...baseEvent,
+        id: 'event-1',
+        sequence: 1,
+        summary: 'First event',
+        details: { index: 1 },
+      };
+      const retainedEvent: StreamEvent = {
+        ...errorEvent,
+        id: 'event-2',
+        sequence: 2,
+        summary: 'Retained event',
+        details: { index: 2 },
+      };
+      const nextEvent: StreamEvent = {
+        ...warningEvent,
+        id: 'event-3',
+        sequence: 3,
+        summary: 'Next event',
+        details: { index: 3 },
+      };
+
+      const firstWindowKeys = [firstEvent, retainedEvent].map(streamEventKey);
+      const retainedWindowKeys = [retainedEvent, nextEvent].map(streamEventKey);
+
+      expect(firstWindowKeys[1]).toBe(retainedWindowKeys[0]);
+      expect(retainedWindowKeys[0]).toBe(
+        'event|id=event-2|sequence=2|datetime=2026-05-12T14:31:00Z|timestamp=14:31:00|summary=Retained event',
+      );
+
+      expect(
+        reconnectedBoundaryKey({
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '14:31:10',
+          replayedCount: 2,
+        }),
+      ).toBe('reconnected|id=reconnect-1|datetime=|timestamp=14:31:10|replayed=2');
     });
   });
 
