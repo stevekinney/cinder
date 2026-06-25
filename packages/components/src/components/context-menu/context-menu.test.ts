@@ -566,7 +566,7 @@ describe('ContextMenu', () => {
     });
   });
 
-  test('keyboard context menu keys use the inline-end edge in right-to-left direction', async () => {
+  test('keyboard context menu keys use the inline-start edge in right-to-left direction', async () => {
     const { container } = render(ContextMenuHarness, { props: { direction: 'rtl' } });
     const button = container.querySelector('.context-menu-button') as HTMLButtonElement;
     button.getBoundingClientRect = () =>

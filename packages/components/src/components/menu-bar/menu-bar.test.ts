@@ -88,12 +88,14 @@ describe('MenuBar', () => {
 
   test('renders a labelled menubar with top-level menuitem triggers', () => {
     const { container, getByRole } = render(MenuBar, {
-      id: 'application-menu',
-      menus: fileEditViewMenus(),
-      label: 'Workspace menu',
-      'data-testid': 'menu-root',
-      role: 'presentation',
-    } as any);
+      props: {
+        id: 'application-menu',
+        menus: fileEditViewMenus(),
+        label: 'Workspace menu',
+        'data-testid': 'menu-root',
+        role: 'presentation',
+      },
+    });
 
     const root = getByRole('menubar', { name: 'Workspace menu' });
     expect(root.id).toBe('application-menu');
@@ -105,7 +107,7 @@ describe('MenuBar', () => {
   });
 
   test('opens a menu with ArrowDown and focuses the first enabled item', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.keyDown(file, { key: 'ArrowDown' });
@@ -116,7 +118,7 @@ describe('MenuBar', () => {
   });
 
   test('moves between enabled top-level triggers and skips disabled triggers', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
     const edit = getByRole('menuitem', { name: 'Edit' });
 
@@ -129,7 +131,7 @@ describe('MenuBar', () => {
   });
 
   test('mirrors top-level trigger arrows in right-to-left direction', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus(), dir: 'rtl' } });
     const file = getByRole('menuitem', { name: 'File' });
     const edit = getByRole('menuitem', { name: 'Edit' });
 
@@ -164,7 +166,7 @@ describe('MenuBar', () => {
   });
 
   test('mirrors open-menu top-level traversal in right-to-left direction', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus(), dir: 'rtl' } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -176,7 +178,7 @@ describe('MenuBar', () => {
   });
 
   test('opens a submenu and keeps parent menu traversal scoped to parent items', async () => {
-    const { getByRole, queryByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole, queryByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -193,7 +195,7 @@ describe('MenuBar', () => {
   });
 
   test('right-to-left submenus fall back to the inline-start side', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus(), dir: 'rtl' } });
     const file = getByRole('menuitem', { name: 'File' });
     const root = getByRole('menubar');
 
@@ -215,7 +217,7 @@ describe('MenuBar', () => {
   });
 
   test('preserves explicit auto direction on the menubar root', () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'auto' } as any);
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus(), dir: 'auto' } });
 
     expect(getByRole('menubar').getAttribute('dir')).toBe('auto');
   });
@@ -256,9 +258,11 @@ describe('MenuBar', () => {
 
     try {
       const { getByRole } = render(MenuBar, {
-        menus: fileEditViewMenus(),
-        dir: 'auto',
-      } as any);
+        props: {
+          menus: fileEditViewMenus(),
+          dir: 'auto',
+        },
+      });
       const file = getByRole('menuitem', { name: 'File' });
       const edit = getByRole('menuitem', { name: 'Edit' });
 
@@ -272,7 +276,7 @@ describe('MenuBar', () => {
   });
 
   test('right-to-left submenu ArrowRight returns focus to the submenu trigger', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus(), dir: 'rtl' } as any);
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus(), dir: 'rtl' } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -290,7 +294,7 @@ describe('MenuBar', () => {
   });
 
   test('opens a submenu on the first enabled item after opening the parent menu from ArrowUp', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.keyDown(file, { key: 'ArrowUp' });
@@ -303,7 +307,7 @@ describe('MenuBar', () => {
   });
 
   test('returns focus to the submenu trigger when Escape closes a submenu', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -319,7 +323,7 @@ describe('MenuBar', () => {
   });
 
   test('closes an open submenu when focus moves to a sibling menu item', async () => {
-    const { getByRole, queryByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole, queryByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -335,7 +339,7 @@ describe('MenuBar', () => {
   });
 
   test('does not move focus into a submenu when focus lands on the submenu trigger', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.keyDown(file, { key: 'ArrowDown' });
@@ -349,7 +353,7 @@ describe('MenuBar', () => {
   });
 
   test('moves focus into an already disclosed submenu on explicit keyboard activation', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.keyDown(file, { key: 'ArrowDown' });
@@ -364,7 +368,7 @@ describe('MenuBar', () => {
   });
 
   test('moves from an open submenu to the next top-level menu with ArrowRight', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
     const edit = getByRole('menuitem', { name: 'Edit' });
 
@@ -382,7 +386,7 @@ describe('MenuBar', () => {
   });
 
   test('closes all menus and restores top-level focus when a submenu item is selected', async () => {
-    const { getByRole, queryByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole, queryByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -398,7 +402,7 @@ describe('MenuBar', () => {
   });
 
   test('closes the menu and restores top-level focus when a top-level item is selected', async () => {
-    const { getByRole, queryByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole, queryByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -412,7 +416,7 @@ describe('MenuBar', () => {
   });
 
   test('opens a submenu on pointer entry while the parent menu is open', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -428,10 +432,12 @@ describe('MenuBar', () => {
 
   test('Alt access key opens the first enabled matching menu', async () => {
     const { getByRole } = render(MenuBar, {
-      menus: [
-        { id: 'disabled-file', label: 'Format', accessKey: 'f', disabled: true, items: [] },
-        ...fileEditViewMenus(),
-      ],
+      props: {
+        menus: [
+          { id: 'disabled-file', label: 'Format', accessKey: 'f', disabled: true, items: [] },
+          ...fileEditViewMenus(),
+        ],
+      },
     });
     const root = getByRole('menubar');
 
@@ -442,7 +448,7 @@ describe('MenuBar', () => {
   });
 
   test('closes on outside pointer down', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
 
     await fireEvent.click(file);
@@ -453,7 +459,7 @@ describe('MenuBar', () => {
   });
 
   test('Escape closes the open top-level menu when focus is on the trigger button', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const fileButton = getByRole('menuitem', { name: 'File' });
 
     // Open the File menu
@@ -468,7 +474,7 @@ describe('MenuBar', () => {
   });
 
   test('Escape on a closed menubar item is not consumed, so enclosing handlers still run', async () => {
-    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const fileButton = getByRole('menuitem', { name: 'File' });
     fileButton.focus();
     expect(fileButton.getAttribute('aria-expanded')).toBe('false');
