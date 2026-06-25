@@ -39,33 +39,100 @@
       "description": "Optional sandbox context in which the operation will run."
     },
     "operation": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "enum": ["command", "file-write", "patch", "other"],
-          "description": "Operation family being approved."
-        },
-        "command": {
-          "type": "string",
-          "description": "Shell command for command approvals."
-        },
-        "filesTouched": {
-          "type": "array",
-          "items": {
-            "type": "string"
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "command",
+              "description": "Operation family being approved."
+            },
+            "command": {
+              "type": "string",
+              "description": "Shell command for command approvals."
+            },
+            "filesTouched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "File paths that the operation may read or write."
+            },
+            "argsPreview": {
+              "description": "JSON-like argument preview shown to the approver."
+            }
           },
-          "description": "File paths that the operation may read or write."
+          "additionalProperties": false,
+          "required": ["command", "kind"]
         },
-        "argsPreview": {
-          "description": "JSON-like argument preview shown to the approver."
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "file-write",
+              "description": "Operation family being approved."
+            },
+            "filesTouched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "File paths that the operation may read or write."
+            },
+            "argsPreview": {
+              "description": "JSON-like argument preview shown to the approver."
+            }
+          },
+          "additionalProperties": false,
+          "required": ["kind"]
         },
-        "diff": {
-          "type": "string",
-          "description": "Patch diff for patch approvals."
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "patch",
+              "description": "Operation family being approved."
+            },
+            "filesTouched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "File paths that the operation may read or write."
+            },
+            "argsPreview": {
+              "description": "JSON-like argument preview shown to the approver."
+            },
+            "diff": {
+              "type": "string",
+              "description": "Patch diff for patch approvals."
+            }
+          },
+          "additionalProperties": false,
+          "required": ["diff", "kind"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "other",
+              "description": "Operation family being approved."
+            },
+            "filesTouched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "File paths that the operation may read or write."
+            },
+            "argsPreview": {
+              "description": "JSON-like argument preview shown to the approver."
+            }
+          },
+          "additionalProperties": false,
+          "required": ["kind"]
         }
-      },
-      "additionalProperties": false,
-      "required": ["kind"],
+      ],
       "description": "Operation details shown to the approver."
     },
     "env": {

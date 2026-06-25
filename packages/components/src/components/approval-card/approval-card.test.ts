@@ -5,11 +5,7 @@ import Ajv2020 from 'ajv/dist/2020';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
-import {
-  isApprovalActionable,
-  isApprovalExpirationCheckPending,
-  resolveEffectiveApprovalState,
-} from './approval-card-state.ts';
+import { isApprovalActionable, resolveEffectiveApprovalState } from './approval-card-state.ts';
 import type { ApprovalCardProps } from './approval-card.types.ts';
 
 setupHappyDom();
@@ -123,13 +119,47 @@ describe('ApprovalCard', () => {
     expect(validate.errors).toBeNull();
   });
 
-  test('keeps expiring approvals non-actionable until the clock is initialized', () => {
+  test('schema rejects command approvals without command payloads', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(approvalCardSchema);
+
+    expect(
+      validate({
+        tool: { name: 'deploy-cloud', risk: 'medium' },
+        operation: {
+          kind: 'command',
+        },
+        policyVersion: 'policy-2026-06',
+        idempotencyKey: 'approval-card-test-key',
+        state: 'pending',
+      }),
+    ).toBe(false);
+  });
+
+  test('schema rejects patch approvals without diff payloads', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(approvalCardSchema);
+
+    expect(
+      validate({
+        tool: { name: 'deploy-cloud', risk: 'medium' },
+        operation: {
+          kind: 'patch',
+        },
+        policyVersion: 'policy-2026-06',
+        idempotencyKey: 'approval-card-test-key',
+        state: 'pending',
+      }),
+    ).toBe(false);
+  });
+
+  test('resolves already-expired approvals before timer state initializes', () => {
     const expirationTimestamp = Date.parse('2026-06-24T12:00:00.000Z');
+    jest.spyOn(Date, 'now').mockReturnValue(expirationTimestamp);
 
     expect(resolveEffectiveApprovalState('pending', expirationTimestamp, undefined)).toBe(
-      'pending',
+      'expired',
     );
-    expect(isApprovalExpirationCheckPending('pending', expirationTimestamp, undefined)).toBe(true);
     expect(isApprovalActionable('pending', expirationTimestamp, undefined)).toBe(false);
     expect(isApprovalActionable('pending', expirationTimestamp, expirationTimestamp - 1)).toBe(
       true,

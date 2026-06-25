@@ -6,18 +6,7 @@ export function resolveEffectiveApprovalState(
   currentTime: number | undefined,
 ): ApprovalState {
   if (approvalState !== 'pending' || expirationTimestamp === undefined) return approvalState;
-  if (currentTime === undefined) return approvalState;
-  return currentTime >= expirationTimestamp ? 'expired' : approvalState;
-}
-
-export function isApprovalExpirationCheckPending(
-  approvalState: ApprovalState,
-  expirationTimestamp: number | undefined,
-  currentTime: number | undefined,
-): boolean {
-  return (
-    approvalState === 'pending' && expirationTimestamp !== undefined && currentTime === undefined
-  );
+  return resolveComparisonTime(currentTime) >= expirationTimestamp ? 'expired' : approvalState;
 }
 
 export function isApprovalActionable(
@@ -27,6 +16,9 @@ export function isApprovalActionable(
 ): boolean {
   if (approvalState !== 'pending') return false;
   if (expirationTimestamp === undefined) return true;
-  if (currentTime === undefined) return false;
-  return currentTime < expirationTimestamp;
+  return resolveComparisonTime(currentTime) < expirationTimestamp;
+}
+
+function resolveComparisonTime(currentTime: number | undefined): number {
+  return currentTime ?? Date.now();
 }

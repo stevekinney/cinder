@@ -23,11 +23,11 @@ export type ApprovalSandbox = {
 export type ApprovalOperationKind = 'command' | 'file-write' | 'patch' | 'other';
 
 /** @schemaObject */
-export type ApprovalOperation = {
+export type ApprovalCommandOperation = {
   /** Operation family being approved. */
-  kind: ApprovalOperationKind;
+  kind: 'command';
   /** Shell command for command approvals. */
-  command?: string;
+  command: string;
   /** File paths that the operation may read or write. */
   filesTouched?: string[];
   /**
@@ -36,16 +36,26 @@ export type ApprovalOperation = {
    * @schemaPermissive
    */
   argsPreview?: unknown;
-  /** Patch diff for patch approvals. */
-  diff?: string;
 };
 
 /** @schemaObject */
-export type ApprovalOperationSchema = {
+export type ApprovalFileWriteOperation = {
   /** Operation family being approved. */
-  kind: ApprovalOperationKind;
-  /** Shell command for command approvals. */
-  command?: string;
+  kind: 'file-write';
+  /** File paths that the operation may read or write. */
+  filesTouched?: string[];
+  /**
+   * JSON-like argument preview shown to the approver.
+   *
+   * @schemaPermissive
+   */
+  argsPreview?: unknown;
+};
+
+/** @schemaObject */
+export type ApprovalPatchOperation = {
+  /** Operation family being approved. */
+  kind: 'patch';
   /** File paths that the operation may read or write. */
   filesTouched?: string[];
   /**
@@ -55,8 +65,30 @@ export type ApprovalOperationSchema = {
    */
   argsPreview?: unknown;
   /** Patch diff for patch approvals. */
-  diff?: string;
+  diff: string;
 };
+
+/** @schemaObject */
+export type ApprovalOtherOperation = {
+  /** Operation family being approved. */
+  kind: 'other';
+  /** File paths that the operation may read or write. */
+  filesTouched?: string[];
+  /**
+   * JSON-like argument preview shown to the approver.
+   *
+   * @schemaPermissive
+   */
+  argsPreview?: unknown;
+};
+
+export type ApprovalOperation =
+  | ApprovalCommandOperation
+  | ApprovalFileWriteOperation
+  | ApprovalPatchOperation
+  | ApprovalOtherOperation;
+
+export type ApprovalOperationSchema = ApprovalOperation;
 
 export type ApprovalState =
   | 'pending'
