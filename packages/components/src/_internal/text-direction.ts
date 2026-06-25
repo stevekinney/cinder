@@ -41,3 +41,17 @@ export function resolveTextDirection(
 export function isRightToLeftElement(element: HTMLElement | null | undefined): boolean {
   return resolveTextDirection(element) === 'rtl';
 }
+
+export function observeTextDirection(
+  element: HTMLElement | null | undefined,
+  onChange: () => void,
+): (() => void) | undefined {
+  if (!element || typeof MutationObserver === 'undefined') return undefined;
+  const observer = new MutationObserver(onChange);
+  let currentElement: HTMLElement | null = element;
+  while (currentElement) {
+    observer.observe(currentElement, { attributes: true, attributeFilter: ['dir', 'style'] });
+    currentElement = currentElement.parentElement;
+  }
+  return () => observer.disconnect();
+}

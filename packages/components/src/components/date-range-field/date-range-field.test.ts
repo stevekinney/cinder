@@ -432,6 +432,34 @@ describe('DateRangeField', () => {
       expect(changes[0]?.end).toBe('2026-06-01T17:45');
     });
 
+    test('manual datetime input normalizes the preserved endpoint before emitting', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01T09:30:15', end: '2026-06-01T17:45:30' },
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T10:15:45' },
+      });
+
+      expect(changes[0]).toEqual({
+        start: '2026-06-01T10:15',
+        end: '2026-06-01T17:45',
+      });
+
+      await fireEvent.change(getEndInput(container), {
+        target: { value: '2026-06-01T18:30:45' },
+      });
+
+      expect(changes[1]).toEqual({
+        start: '2026-06-01T10:15',
+        end: '2026-06-01T18:30',
+      });
+    });
+
     test('manual datetime input appends seconds at second granularity', async () => {
       const changes: DateRangeValue[] = [];
       const { container } = render(DateRangeField, {
@@ -521,6 +549,36 @@ describe('DateRangeField', () => {
       await rerender({
         id: 'drf',
         presets: [preset],
+        value: { start: '2026-06-01', end: '2026-06-07' },
+      });
+
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    test('does not keep a stale pressed preset when same-id presets change', async () => {
+      const originalPreset = {
+        id: 'custom',
+        label: 'Custom',
+        resolve: () => ({ start: '2026-06-01', end: '2026-06-07' }),
+      };
+      const replacementPreset = {
+        id: 'custom',
+        label: 'Custom',
+        resolve: () => ({ start: '2026-06-08', end: '2026-06-14' }),
+      };
+      const { container, rerender } = render(DateRangeField, {
+        id: 'drf',
+        presets: [originalPreset],
+      });
+      const btn = getPresetButtons(container)[0];
+      if (!btn) throw new Error('No preset button found');
+
+      await fireEvent.click(btn);
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+
+      await rerender({
+        id: 'drf',
+        presets: [replacementPreset],
         value: { start: '2026-06-01', end: '2026-06-07' },
       });
 

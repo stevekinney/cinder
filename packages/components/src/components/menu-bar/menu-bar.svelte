@@ -30,7 +30,7 @@
   import { tick } from 'svelte';
 
   import { getLocaleContext } from '../../_internal/locale-context.ts';
-  import { resolveTextDirection } from '../../_internal/text-direction.ts';
+  import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { DropdownContext } from '../dropdown/dropdown.types.ts';
   import DropdownItem from '../dropdown-item/dropdown-item.svelte';
@@ -78,17 +78,19 @@
   let openMenuIndex = $state<number | null>(null);
   let openSubmenuKey = $state<string | null>(null);
   let initialFocus = $state<'first' | 'last' | 'none' | undefined>(undefined);
+  let directionRevision = $state(0);
   let suppressSubmenuFocusOpen = false;
   const localeContext = getLocaleContext();
   const menuElements = new Map<string, HTMLElement>();
-  const resolvedDirection = $derived(
-    providedDirection === 'rtl' || providedDirection === 'ltr'
-      ? providedDirection
-      : resolveTextDirection(
-          providedDirection === 'auto' ? rootElement : (rootElement?.parentElement ?? rootElement),
-          localeContext?.direction,
-        ),
+  const directionElement = $derived(
+    providedDirection === 'auto' ? rootElement : (rootElement?.parentElement ?? rootElement),
   );
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    return providedDirection === 'rtl' || providedDirection === 'ltr'
+      ? providedDirection
+      : resolveTextDirection(directionElement, localeContext?.direction);
+  });
   const rootDirection = $derived(providedDirection === 'auto' ? 'auto' : resolvedDirection);
   const renderedRootDirection = $derived(
     providedDirection === 'auto' || providedDirection === 'rtl' || providedDirection === 'ltr'
@@ -97,6 +99,13 @@
         ? resolvedDirection
         : undefined,
   );
+
+  $effect(() => {
+    if (providedDirection === 'rtl' || providedDirection === 'ltr') return;
+    return observeTextDirection(directionElement, () => {
+      directionRevision += 1;
+    });
+  });
 
   const enabledIndexes = $derived(
     menus.map((menu, index) => ({ menu, index })).filter(({ menu }) => !menu.disabled),

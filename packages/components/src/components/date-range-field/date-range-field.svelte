@@ -101,8 +101,9 @@
   ];
 
   const resolvedPresets = $derived(presets ?? defaultPresets);
-  let selectedPresetSnapshot = $state<{
+  let selectedPresetSnapshot = $state.raw<{
     id: string;
+    preset: DateRangeDatePreset;
     value: DateRangeValue;
   } | null>(null);
 
@@ -123,11 +124,14 @@
   // ──────────────────────────────────────────────────────────────────────────
   const activePresetId = $derived.by(() => {
     const normalizedValue = normalizeDateRangeValue(value, granularity);
-    if (
-      selectedPresetSnapshot &&
-      dateRangeValuesMatch(selectedPresetSnapshot.value, normalizedValue)
-    ) {
-      return selectedPresetSnapshot.id;
+    const snapshot = selectedPresetSnapshot;
+    if (snapshot && dateRangeValuesMatch(snapshot.value, normalizedValue)) {
+      const selectedPreset = resolvedPresets.find((preset) => {
+        return preset.id === snapshot.id && preset === snapshot.preset;
+      });
+      if (selectedPreset) {
+        return snapshot.id;
+      }
     }
 
     const match = resolvedPresets.find((preset) => {
@@ -241,17 +245,20 @@
   function handlePresetClick(preset: DateRangeDatePreset) {
     if (disabled) return;
     const next = normalizeDateRangeValue(preset.resolve(), granularity);
-    selectedPresetSnapshot = { id: preset.id, value: next };
+    selectedPresetSnapshot = { id: preset.id, preset, value: next };
     value = next;
     onchange?.(next);
   }
 
   function handleStartChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const next: DateRangeValue = {
-      start: normalizeInputValue(target.value, granularity),
-      end: value.end,
-    };
+    const next = normalizeDateRangeValue(
+      {
+        start: target.value,
+        end: value.end,
+      },
+      granularity,
+    );
     selectedPresetSnapshot = null;
     value = next;
     onchange?.(next);
@@ -259,10 +266,13 @@
 
   function handleEndChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const next: DateRangeValue = {
-      start: value.start,
-      end: normalizeInputValue(target.value, granularity),
-    };
+    const next = normalizeDateRangeValue(
+      {
+        start: value.start,
+        end: target.value,
+      },
+      granularity,
+    );
     selectedPresetSnapshot = null;
     value = next;
     onchange?.(next);

@@ -96,6 +96,27 @@ describe('TimeField', () => {
     expect(changes[0]?.value).toBe('10:45:30');
   });
 
+  test('canonicalizes uncontrolled default values before native form submission', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    render(TimeField, {
+      target: form,
+      props: {
+        id: 'reminder',
+        granularity: 'second',
+        defaultValue: '09:30',
+        name: 'reminder_time',
+      },
+    });
+    await tick();
+
+    const submittedTime = form.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="reminder_time"]',
+    );
+    expect(submittedTime?.value).toBe('09:30:00');
+    expect(getInput(form).getAttribute('name')).toBeNull();
+  });
+
   test('wires description, error, invalid, and required state to the time input', () => {
     const { container } = render(TimeField, {
       props: {

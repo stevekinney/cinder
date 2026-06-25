@@ -27,7 +27,7 @@ mock.module('@floating-ui/dom', () => ({
   shift: (options: unknown) => ({ name: 'shift', options, fn: () => ({}) }),
 }));
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { renderToServerHtml } = await import('../../test/server-render.ts');
 const { tick } = await import('svelte');
 const { default: MenuBar } = await import('./menu-bar.svelte');
@@ -138,6 +138,28 @@ describe('MenuBar', () => {
 
     await fireEvent.keyDown(edit, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(file);
+  });
+
+  test('reacts to ancestor direction changes after mount', async () => {
+    const target = Object.assign(document.createElement('div'), { dir: 'ltr' });
+    document.body.appendChild(target);
+    const { getByRole } = render(MenuBar, {
+      target,
+      props: { menus: fileEditViewMenus() },
+    });
+    const root = getByRole('menubar');
+    const file = getByRole('menuitem', { name: 'File' });
+    const edit = getByRole('menuitem', { name: 'Edit' });
+
+    expect(root.getAttribute('dir')).toBe('ltr');
+
+    await tick();
+    target.setAttribute('dir', 'rtl');
+    await waitFor(() => expect(root.getAttribute('dir')).toBe('rtl'));
+
+    file.focus();
+    await fireEvent.keyDown(file, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(edit);
   });
 
   test('mirrors open-menu top-level traversal in right-to-left direction', async () => {

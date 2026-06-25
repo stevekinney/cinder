@@ -30,6 +30,7 @@ mock.module('@floating-ui/dom', () => ({
 }));
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: ContextMenuHarness } = await import('./_context-menu-test-harness.svelte');
 
 function queryMenu(): HTMLElement | null {
@@ -117,6 +118,22 @@ describe('ContextMenu', () => {
     const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
     expect(options?.placement).toBe('right-start');
     expect(queryMenu()?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('reacts to ancestor direction changes after mount', async () => {
+    const { container, rerender } = render(ContextMenuHarness, {
+      props: { direction: 'ltr' },
+    });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await tick();
+    await rerender({ direction: 'rtl' });
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('left-start');
+    expect(queryMenu()?.getAttribute('dir')).toBe('rtl');
   });
 
   test('fallback menu portals virtual-anchor surfaces before they are positioned', async () => {

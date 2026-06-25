@@ -53,8 +53,11 @@
   }: TimeFieldProps = $props();
 
   const formField = getFormFieldContext();
+  const includeSeconds = $derived(granularity === 'second');
+  const inputStep = $derived(includeSeconds ? 1 : 60);
+
   untrack(() => {
-    if (value === undefined) value = defaultValue;
+    if (value === undefined) value = canonicalTimeValue(defaultValue);
     if (timezone === undefined && timezones && timezones.length > 0) timezone = timezones[0];
   });
   const initialTimezone = untrack(() => timezone);
@@ -67,9 +70,6 @@
       timezone = timezones[0];
     }
   });
-
-  const includeSeconds = $derived(granularity === 'second');
-  const inputStep = $derived(includeSeconds ? 1 : 60);
 
   const generatedId = $props.id();
   const field = $derived(
@@ -145,7 +145,7 @@
     const input = document.getElementById(inputId);
     const form = input instanceof HTMLInputElement ? input.form : null;
     if (!form) return;
-    const resetValue = defaultValue;
+    const resetValue = canonicalTimeValue(defaultValue);
     const resetTimezone = resetTimezoneFor(timezones);
 
     const handleReset = () => {
@@ -169,9 +169,8 @@
       id={inputId}
       class="cinder-time-field__input"
       type="time"
-      value={value ?? ''}
       step={inputStep}
-      {name}
+      value={value ?? ''}
       disabled={resolvedDisabled}
       {readonly}
       required={resolvedRequired}
@@ -181,6 +180,10 @@
       aria-invalid={invalid}
       onchange={handleInputChange}
     />
+
+    {#if name}
+      <input type="hidden" {name} value={value ?? ''} disabled={resolvedDisabled} />
+    {/if}
 
     {#if timezones && timezones.length > 0}
       {#if labelId}

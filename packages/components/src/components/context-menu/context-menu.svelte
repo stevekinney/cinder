@@ -21,7 +21,7 @@
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { captureFocus } from '../../_internal/overlay.ts';
-  import { resolveTextDirection } from '../../_internal/text-direction.ts';
+  import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
@@ -49,6 +49,7 @@
   let capturedFocus: HTMLElement | null = null;
   let requestedX = $state(0);
   let requestedY = $state(0);
+  let directionRevision = $state(0);
   let previouslyOpen = false;
   const localeContext = getLocaleContext();
 
@@ -106,9 +107,16 @@
   const virtualReference: VirtualElement | null = $derived(
     open ? makeVirtualReference(anchorPoint?.x ?? requestedX, anchorPoint?.y ?? requestedY) : null,
   );
-  const resolvedDirection = $derived(
-    resolveTextDirection(triggerElement, localeContext?.direction),
-  );
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    return resolveTextDirection(triggerElement, localeContext?.direction);
+  });
+
+  $effect(() => {
+    return observeTextDirection(triggerElement, () => {
+      directionRevision += 1;
+    });
+  });
 
   const anchoredOverlay = createAnchoredOverlay({
     open: () => open,

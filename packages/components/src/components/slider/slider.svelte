@@ -58,7 +58,7 @@
       ? resolveTextDirection(rootElement.parentElement, localeContext?.direction)
       : localeContext?.direction;
   });
-  const rootDirection = $derived(rootElement ? resolvedDirection : undefined);
+  const rootDirection = $derived(resolvedDirection);
   const isRightToLeft = $derived(resolvedDirection === 'rtl');
 
   $effect(() => {
