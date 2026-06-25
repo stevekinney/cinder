@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, setSystemTime, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -148,6 +148,32 @@ describe('DateRangeField', () => {
       expect(change.end).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
       expect(getStartInput(container).value).toBe(change.start);
       expect(getEndInput(container).value).toBe(change.end);
+    });
+
+    test('built-in hour presets include the active hour in their end value', async () => {
+      setSystemTime(new Date(2026, 5, 24, 9, 45, 30));
+
+      try {
+        const changes: DateRangeValue[] = [];
+        const { container } = render(DateRangeField, {
+          id: 'drf',
+          granularity: 'hour',
+          onchange: (next: DateRangeValue) => changes.push(next),
+        });
+        const today = getPresetButtons(container).find(
+          (button) => button.textContent?.trim() === 'Today',
+        );
+        if (!today) throw new Error('Today preset not found');
+
+        await fireEvent.click(today);
+
+        expect(changes[0]).toEqual({
+          start: '2026-06-24T00:00',
+          end: '2026-06-24T10:00',
+        });
+      } finally {
+        setSystemTime();
+      }
     });
 
     test('moving datetime presets keep their pressed state after selection', async () => {

@@ -65,7 +65,7 @@
         const now = new Date();
         return {
           start: formatDateRangePresetValue(startOfDay(now), granularity),
-          end: formatDateRangePresetValue(now, granularity),
+          end: formatDateRangePresetEndValue(now, granularity),
         };
       },
     },
@@ -81,7 +81,7 @@
         yesterday.setDate(now.getDate() - 1);
         return {
           start: formatDateRangePresetValue(startOfDay(yesterday), granularity),
-          end: formatDateRangePresetValue(now, granularity),
+          end: formatDateRangePresetEndValue(now, granularity),
         };
       },
     },
@@ -94,7 +94,7 @@
         sixDaysAgo.setDate(now.getDate() - 6);
         return {
           start: formatDateRangePresetValue(startOfDay(sixDaysAgo), granularity),
-          end: formatDateRangePresetValue(now, granularity),
+          end: formatDateRangePresetEndValue(now, granularity),
         };
       },
     },
@@ -162,6 +162,24 @@
 
   function formatDateRangePresetValue(date: Date, nextGranularity: DateRangeGranularity): string {
     return nextGranularity === 'day' ? toISODate(date) : toISODateTime(date, nextGranularity);
+  }
+
+  function endOfActiveHour(date: Date): Date {
+    const next = new Date(date);
+    if (next.getMinutes() > 0 || next.getSeconds() > 0 || next.getMilliseconds() > 0) {
+      next.setHours(next.getHours() + 1, 0, 0, 0);
+    }
+    return next;
+  }
+
+  function formatDateRangePresetEndValue(
+    date: Date,
+    nextGranularity: DateRangeGranularity,
+  ): string {
+    return formatDateRangePresetValue(
+      nextGranularity === 'hour' ? endOfActiveHour(date) : date,
+      nextGranularity,
+    );
   }
 
   function dateRangeValuesMatch(left: DateRangeValue, right: DateRangeValue): boolean {
