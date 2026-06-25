@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, jest, mock, test } from 'bun:test';
 
+import Ajv2020 from 'ajv/dist/2020';
+
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
 import {
@@ -56,6 +58,30 @@ describe('ApprovalCard', () => {
     expect(approvalCardSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).not.toContain(
       'operation',
     );
+  });
+
+  test('schema accepts nested JSON argument previews', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(approvalCardSchema);
+
+    expect(
+      validate({
+        tool: { name: 'deploy-cloud', risk: 'medium' },
+        operation: {
+          kind: 'other',
+          argsPreview: {
+            filters: {
+              branch: 'main',
+              includeDrafts: false,
+            },
+          },
+        },
+        policyVersion: 'policy-2026-06',
+        idempotencyKey: 'approval-card-test-key',
+        state: 'pending',
+      }),
+    ).toBe(true);
+    expect(validate.errors).toBeNull();
   });
 
   test('keeps expiring approvals non-actionable until the clock is initialized', () => {
@@ -167,17 +193,39 @@ describe('ApprovalCard', () => {
     expect(container.textContent).not.toContain('Parse error');
   });
 
-  test('renders environment names through masked fields without leaking supplied values', () => {
+  test('renders environment names through masked fields without leaking supplied values', async () => {
+    const writeText = mock(async () => undefined);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
     const { container } = render(ApprovalCard, {
       ...approvalCardProps({
         env: ['DATABASE_URL=postgres://fake-secret-value', 'ANTHROPIC_API_KEY'],
       }),
     });
 
-    expect(container.textContent).toContain('DATABASE_URL');
-    expect(container.textContent).toContain('ANTHROPIC_API_KEY');
-    expect(container.querySelectorAll('.cinder-secret-value-field')).toHaveLength(2);
-    expect(container.innerHTML).not.toContain('postgres://fake-secret-value');
+    try {
+      expect(container.textContent).toContain('DATABASE_URL');
+      expect(container.textContent).toContain('ANTHROPIC_API_KEY');
+      expect(container.querySelectorAll('.cinder-secret-value-field')).toHaveLength(2);
+      expect(container.innerHTML).not.toContain('postgres://fake-secret-value');
+
+      const copyButton = container.querySelector<HTMLButtonElement>(
+        '.cinder-secret-value-field__copy',
+      );
+      expect(copyButton).not.toBeNull();
+      await fireEvent.click(copyButton as HTMLButtonElement);
+      expect(writeText).toHaveBeenCalledWith('DATABASE_URL');
+      expect(writeText).not.toHaveBeenCalledWith('');
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      });
+    }
   });
 
   test('renders commands with CodeBlock', () => {
@@ -286,6 +334,26 @@ describe('ApprovalCard', () => {
     ).toBeTruthy();
     expect(getByRole('img', { name: 'Expired' })).toBeTruthy();
     expect(queryByRole('button', { name: 'Approve' })).toBeNull();
+  });
+
+  test('treats invalid expiration timestamps as expired without action buttons', async () => {
+    const onApprove = mock();
+
+    const { getByRole, getByText, queryByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        expiresAt: 'not-an-iso-date',
+        onApprove,
+      }),
+    });
+
+    await tick();
+
+    expect(
+      getByText('No approval actions are available because this request is expired.'),
+    ).toBeTruthy();
+    expect(getByRole('img', { name: 'Expired' })).toBeTruthy();
+    expect(queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(onApprove).not.toHaveBeenCalled();
   });
 
   test('renders already-expired approvals read-only on the initial render', () => {

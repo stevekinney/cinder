@@ -114,6 +114,7 @@ describe('structure', () => {
 
     expect(childProperties).toHaveProperty('details');
     expect(childProperties).toHaveProperty('link');
+    expect(childProperties).toHaveProperty('children');
   });
 
   test('renders an ordered list with one item per step', () => {
@@ -491,7 +492,14 @@ describe('behavior', () => {
       (element) => element.textContent?.trim(),
     );
 
-    expect(labels).toEqual(['Root', 'Child', 'Grandchild', 'Great grandchild']);
+    expect(labels).toEqual([
+      'Root',
+      'Child',
+      'Grandchild',
+      'Great grandchild',
+      '1 nested step hidden',
+    ]);
+    expect(container.querySelector('[data-cinder-depth-limit]')).not.toBeNull();
   });
 
   test('renders step links with the Link component', () => {
@@ -684,8 +692,8 @@ describe('accessibility', () => {
     const currentItems = items.filter((li) => li.getAttribute('aria-current') === 'step');
 
     expect(currentItems).toHaveLength(1);
-    expect(currentItems[0]?.getAttribute('data-cinder-path')).toBe('workflow');
-    expect(items[1]?.hasAttribute('aria-current')).toBe(false);
+    expect(currentItems[0]?.getAttribute('data-cinder-path')).toBe('workflow/approval');
+    expect(items[0]?.hasAttribute('aria-current')).toBe(false);
   });
 
   test('does not set aria-current on succeeded, failed, pending, or skipped steps', () => {

@@ -23,11 +23,14 @@ export type ApprovalSandbox = {
 export type ApprovalOperationKind = 'command' | 'file-write' | 'patch' | 'other';
 
 export type ApprovalSchemaArgumentPrimitive = string | number | boolean | null;
-export type ApprovalSchemaArgumentValue =
+export type ApprovalSchemaNestedArgumentValue =
   | ApprovalSchemaArgumentPrimitive
   | ApprovalSchemaArgumentPrimitive[]
-  | Record<string, ApprovalSchemaArgumentPrimitive>
-  | Record<string, ApprovalSchemaArgumentPrimitive>[];
+  | Record<string, ApprovalSchemaArgumentPrimitive>;
+export type ApprovalSchemaArgumentValue =
+  | ApprovalSchemaArgumentPrimitive
+  | ApprovalSchemaNestedArgumentValue[]
+  | Record<string, ApprovalSchemaNestedArgumentValue>;
 
 /** @schemaObject */
 export type ApprovalOperation = {

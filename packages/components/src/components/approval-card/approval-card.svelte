@@ -179,7 +179,7 @@
   function parseExpirationTimestamp(value: string | undefined): number | undefined {
     if (!value) return undefined;
     const timestamp = Date.parse(value);
-    return Number.isFinite(timestamp) ? timestamp : undefined;
+    return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
   }
 
   function formatRemainingTime(milliseconds: number): string {
@@ -480,7 +480,7 @@
           <h4 class="cinder-approval-card__section-title">Environment</h4>
           <div class="cinder-approval-card__environment-list">
             {#each environmentNames as environmentName (environmentName)}
-              <SecretValueField value="" label={environmentName} />
+              <SecretValueField value={environmentName} label={environmentName} />
             {/each}
           </div>
         </section>
