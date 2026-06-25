@@ -8,6 +8,8 @@ setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Fixture } = await import('../../test/fixtures/dropdown-compound-fixture.svelte');
+const { default: DropdownDirectionFixture } =
+  await import('../../test/fixtures/dropdown-direction-fixture.svelte');
 const { default: DropdownMenu } = await import('./dropdown-menu.svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
@@ -48,5 +50,17 @@ describe('DropdownMenu', () => {
 
     await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
     expect(document.activeElement?.textContent).toContain('Invite people');
+  });
+
+  test('uses locale provider direction when no explicit direction is supplied', async () => {
+    render(DropdownDirectionFixture, {
+      props: { providerDirection: 'rtl' },
+    });
+    const container = document.body;
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+    expect(container.querySelector('[role="menu"]')?.getAttribute('dir')).toBe('rtl');
   });
 });

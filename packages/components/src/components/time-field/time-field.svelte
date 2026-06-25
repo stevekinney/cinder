@@ -55,6 +55,7 @@
   const formField = getFormFieldContext();
   const includeSeconds = $derived(granularity === 'second');
   const inputStep = $derived(includeSeconds ? 1 : 60);
+  const submittedValue = $derived(canonicalTimeValue(value));
 
   untrack(() => {
     if (value === undefined) value = canonicalTimeValue(defaultValue);
@@ -182,7 +183,7 @@
     />
 
     {#if name}
-      <input type="hidden" {name} value={value ?? ''} disabled={resolvedDisabled} />
+      <input type="hidden" {name} value={submittedValue} disabled={resolvedDisabled} />
     {/if}
 
     {#if timezones && timezones.length > 0}

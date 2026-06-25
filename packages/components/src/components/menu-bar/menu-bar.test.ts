@@ -32,6 +32,7 @@ const { renderToServerHtml } = await import('../../test/server-render.ts');
 const { tick } = await import('svelte');
 const { default: MenuBar } = await import('./menu-bar.svelte');
 const MENU_BAR_SOURCE = `${import.meta.dir}/menu-bar.svelte`;
+const MENU_BAR_DIRECTION_FIXTURE_SOURCE = `${import.meta.dir}/../../test/fixtures/menu-bar-direction-fixture.svelte`;
 
 function fileEditViewMenus(onOpenRecent = () => {}) {
   return [
@@ -228,6 +229,16 @@ describe('MenuBar', () => {
 
     expect(menuBarTag).not.toBe('');
     expect(menuBarTag).not.toContain('dir=');
+  });
+
+  test('server rendering uses provider direction before local DOM can be checked', async () => {
+    const html = await renderToServerHtml(MENU_BAR_DIRECTION_FIXTURE_SOURCE, {
+      menus: fileEditViewMenus(),
+      providerDirection: 'rtl',
+    });
+    const menuBarTag = html.match(/<div[^>]*class="[^"]*cinder-menu-bar[^"]*"[^>]*>/)?.[0] ?? '';
+
+    expect(menuBarTag).toContain('dir="rtl"');
   });
 
   test('uses the computed menubar root direction for dir auto keyboard behavior', async () => {

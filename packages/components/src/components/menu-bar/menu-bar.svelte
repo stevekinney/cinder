@@ -95,9 +95,7 @@
   const renderedRootDirection = $derived(
     providedDirection === 'auto' || providedDirection === 'rtl' || providedDirection === 'ltr'
       ? rootDirection
-      : rootElement
-        ? resolvedDirection
-        : undefined,
+      : resolvedDirection,
   );
 
   $effect(() => {

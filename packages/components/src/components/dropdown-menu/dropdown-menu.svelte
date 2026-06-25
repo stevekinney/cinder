@@ -20,6 +20,7 @@
   import { tick } from 'svelte';
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
     getDropdownContext,
@@ -33,6 +34,8 @@
   const context = getDropdownContext();
   const registerMenu = getDropdownRegister();
   const setOpen = getDropdownSetOpen();
+  const localeContext = getLocaleContext();
+  const resolvedDirection = $derived(direction ?? localeContext?.direction);
 
   let menuElement = $state<HTMLDivElement | null>(null);
   let focusedFallbackOpen = false;
@@ -156,7 +159,7 @@
     ontoggle={context.supportsPopover ? handleToggle : undefined}
     {@attach fallbackPortalAttachment}
     {...rest}
-    dir={direction}
+    dir={resolvedDirection}
     data-cinder-explicit-direction={direction ? 'true' : undefined}
   >
     {#if children}

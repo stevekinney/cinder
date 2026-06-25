@@ -11,6 +11,8 @@ const { tick } = await import('svelte');
 const { default: TimeField } = await import('./time-field.svelte');
 const { default: TimeFieldFormFieldFixture } =
   await import('../../test/fixtures/time-field-form-field-fixture.svelte');
+const { default: TimeFieldGranularityFixture } =
+  await import('../../test/fixtures/time-field-granularity-fixture.svelte');
 
 afterEach(() => {
   cleanup();
@@ -115,6 +117,24 @@ describe('TimeField', () => {
     );
     expect(submittedTime?.value).toBe('09:30:00');
     expect(getInput(form).getAttribute('name')).toBeNull();
+  });
+
+  test('canonicalizes native submitted values after granularity changes', async () => {
+    const { container } = render(TimeFieldGranularityFixture);
+    await tick();
+
+    let submittedTime = container.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="reminder_time"]',
+    );
+    expect(submittedTime?.value).toBe('09:30:45');
+
+    await fireEvent.click(container.querySelector<HTMLButtonElement>('.toggle-granularity')!);
+    await tick();
+
+    submittedTime = container.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="reminder_time"]',
+    );
+    expect(submittedTime?.value).toBe('09:30');
   });
 
   test('wires description, error, invalid, and required state to the time input', () => {

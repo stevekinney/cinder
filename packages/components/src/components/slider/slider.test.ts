@@ -108,6 +108,27 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('15');
   });
 
+  test('reacts to ancestor style direction changes after mount', async () => {
+    const target = document.createElement('div');
+    target.style.direction = 'ltr';
+    document.body.appendChild(target);
+    const { container } = render(Slider, {
+      target,
+      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+    });
+    const root = container.querySelector('.cinder-slider');
+    const thumb = getThumbs(container)[0]!;
+
+    expect(root?.getAttribute('dir')).toBe('ltr');
+
+    await tick();
+    target.style.direction = 'rtl';
+    await waitFor(() => expect(root?.getAttribute('dir')).toBe('rtl'));
+
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('15');
+  });
+
   test('server rendering uses provider direction before local DOM can be checked', async () => {
     const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE, {
       localDirection: undefined,
