@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test';
-import { z } from 'zod';
 
 import {
   arrayValueAtPath,
@@ -12,8 +11,6 @@ import {
   getValueAtPath,
   initialValueForField,
   isJsonSchemaObject,
-  isStandardSchema,
-  jsonSchemaFromStandardSchema,
   pathId,
   pathKey,
   pruneUndefined,
@@ -43,51 +40,8 @@ describe('schema-form model', () => {
     required: ['name', 'count', 'active', 'mode', 'nested'],
   } satisfies JsonSchemaObject;
 
-  test('detects JSON Schema and Standard Schema inputs', () => {
-    const standard = z.object({ name: z.string() });
+  test('detects JSON Schema object inputs', () => {
     expect(isJsonSchemaObject(schema)).toBe(true);
-    expect(isStandardSchema(standard)).toBe(true);
-    expect(isJsonSchemaObject(standard)).toBe(false);
-  });
-
-  test('extracts an inspectable JSON Schema from Zod Standard Schema', () => {
-    const standard = z.object({ name: z.string().min(1), count: z.number().int() });
-    const extracted = jsonSchemaFromStandardSchema(standard);
-    expect(extracted?.['type']).toBe('object');
-    expect(extracted?.['properties']).toMatchObject({
-      name: { type: 'string', minLength: 1 },
-      count: { type: 'integer' },
-    });
-  });
-
-  test('ignores invalid or throwing Standard Schema JSON Schema converters', () => {
-    const nonObjectSchema = {
-      '~standard': {
-        version: 1,
-        vendor: 'test',
-        validate: (value: unknown) => ({ value }),
-        jsonSchema: {
-          input: () => 'not-json-schema',
-          output: () => ({}),
-        },
-      },
-    } as const;
-    const throwingSchema = {
-      '~standard': {
-        version: 1,
-        vendor: 'test',
-        validate: (value: unknown) => ({ value }),
-        jsonSchema: {
-          input: () => {
-            throw new Error('cannot inspect');
-          },
-          output: () => ({}),
-        },
-      },
-    } as const;
-
-    expect(jsonSchemaFromStandardSchema(nonObjectSchema)).toBeNull();
-    expect(jsonSchemaFromStandardSchema(throwingSchema)).toBeNull();
   });
 
   test('builds fields for every supported field type and preserves raw JSON fallbacks', () => {
@@ -130,20 +84,6 @@ describe('schema-form model', () => {
       ['invalid', 'json'],
       ['optionalName', 'string'],
     ]);
-  });
-
-  test('falls back to a raw JSON field when a Standard Schema cannot expose JSON Schema', () => {
-    const standard = {
-      '~standard': {
-        version: 1,
-        vendor: 'test',
-        validate: (value: unknown) => ({ value }),
-      },
-    } as const;
-
-    const model = createSchemaFormModel(standard);
-    expect(model.field.kind).toBe('json');
-    expect(model.field.description).toContain('cannot be inspected');
   });
 
   test('creates defaults and preserves caller-provided initial values', () => {

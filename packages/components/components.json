@@ -3352,10 +3352,10 @@
       "exportName": "SchemaForm",
       "category": "form",
       "status": "beta",
-      "purpose": "Schema-driven form that renders accessible controls from JSON Schema or Standard Schema and submits one validated value object.",
+      "purpose": "Schema-driven form that renders accessible controls from JSON Schema and submits one validated value object.",
       "tags": ["form", "schema", "validation"],
       "useWhen": [
-        "Capturing a payload whose shape is already described by a workflow, API, or Standard Schema validator.",
+        "Capturing a payload whose shape is already described by a workflow, API, or JSON Schema document.",
         "You need callback submission and native FormData submission to expose the same validated object."
       ],
       "avoidWhen": [

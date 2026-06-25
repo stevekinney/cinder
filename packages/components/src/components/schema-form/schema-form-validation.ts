@@ -1,7 +1,6 @@
-import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { ErrorObject, ValidateFunction } from 'ajv';
 
-import { isRecord, isStandardSchema, pathKey, type JsonSchemaObject } from './schema-form-model.ts';
+import { isRecord, pathKey, type JsonSchemaObject } from './schema-form-model.ts';
 
 export type SchemaFormValidationIssue = {
   path: string[];
@@ -15,35 +14,47 @@ export type SchemaFormValidationResult =
 const validatorCache = new WeakMap<JsonSchemaObject, Promise<ValidateFunction>>();
 
 export async function validateSchemaValue(
-  schema: JsonSchemaObject | StandardSchemaV1,
+  schema: JsonSchemaObject,
   value: unknown,
 ): Promise<SchemaFormValidationResult> {
-  if (isStandardSchema(schema)) return validateStandardSchemaValue(schema, value);
-  return validateJsonSchemaValue(schema, value);
-}
+  if (!isRecord(schema)) {
+    return validationFailure(value, 'SchemaForm only accepts JSON Schema objects.');
+  }
 
-async function validateStandardSchemaValue(
-  schema: StandardSchemaV1,
-  value: unknown,
-): Promise<SchemaFormValidationResult> {
-  const result = await schema['~standard'].validate(value);
-  if (!result.issues) return { valid: true, value: result.value, issues: [] };
-  return {
-    valid: false,
-    value,
-    issues: result.issues.map((issue) => ({
-      path: standardIssuePath(issue.path),
-      message: issue.message,
-    })),
-  };
+  if (isLegacyStandardSchema(schema)) {
+    return validationFailure(value, 'SchemaForm only accepts JSON Schema objects.');
+  }
+
+  return validateJsonSchemaValue(schema, value);
 }
 
 async function validateJsonSchemaValue(
   schema: JsonSchemaObject,
   value: unknown,
 ): Promise<SchemaFormValidationResult> {
-  const validate = await validatorForSchema(schema);
-  const valid = validate(value);
+  let validate: ValidateFunction;
+  try {
+    validate = await validatorForSchema(schema);
+  } catch (error) {
+    return validationFailure(value, readableSchemaError(error));
+  }
+
+  let valid: unknown;
+  try {
+    const result = validate(value) as unknown;
+    valid = isPromiseLike(result) ? (await result, true) : result;
+  } catch (error) {
+    if (isAjvValidationError(error)) {
+      return {
+        valid: false,
+        value,
+        issues: ajvIssues(error.errors),
+      };
+    }
+
+    return validationFailure(value, readableSchemaError(error));
+  }
+
   if (valid) return { valid: true, value, issues: [] };
   return {
     valid: false,
@@ -52,11 +63,41 @@ async function validateJsonSchemaValue(
   };
 }
 
+function validationFailure(value: unknown, message: string): SchemaFormValidationResult {
+  return {
+    valid: false,
+    value,
+    issues: [{ path: [], message }],
+  };
+}
+
+function isLegacyStandardSchema(schema: JsonSchemaObject): boolean {
+  const standard = schema['~standard'];
+  return isRecord(standard) && standard['version'] === 1;
+}
+
+function readableSchemaError(error: unknown): string {
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  if (message.startsWith('Invalid JSON Schema')) return message;
+  return message === '' ? 'Invalid JSON Schema.' : `Invalid JSON Schema: ${message}`;
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return isRecord(value) && typeof value['then'] === 'function';
+}
+
+function isAjvValidationError(error: unknown): error is { errors: ErrorObject[] } {
+  return isRecord(error) && Array.isArray(error['errors']);
+}
+
 function validatorForSchema(schema: JsonSchemaObject): Promise<ValidateFunction> {
   const cached = validatorCache.get(schema);
   if (cached) return cached;
 
-  const promise = createValidator(schema);
+  const promise = createValidator(schema).catch((error: unknown) => {
+    validatorCache.delete(schema);
+    throw error;
+  });
   validatorCache.set(schema, promise);
   return promise;
 }
@@ -81,31 +122,6 @@ function jsonSchemaDraft(schema: JsonSchemaObject): '2020-12' | '2019-09' | 'dra
   if (id.includes('draft-07')) return 'draft-07';
   if (id.includes('2019-09')) return '2019-09';
   return '2020-12';
-}
-
-function standardIssuePath(
-  path: ReadonlyArray<PropertyKey | StandardSchemaV1.PathSegment> | undefined,
-): string[] {
-  if (!path) return [];
-  return path.map((segment) => {
-    if (isRecord(segment) && 'key' in segment) return propertyKeyPathSegment(segment.key);
-    return propertyKeyPathSegment(segment);
-  });
-}
-
-function propertyKeyPathSegment(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-    return String(value);
-  }
-  if (typeof value === 'symbol') return value.description ?? value.toString();
-  if (value === null || value === undefined) return '';
-
-  try {
-    return JSON.stringify(value) ?? '';
-  } catch {
-    return '';
-  }
 }
 
 function ajvIssues(errors: readonly ErrorObject[]): SchemaFormValidationIssue[] {

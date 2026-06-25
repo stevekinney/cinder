@@ -1,18 +1,13 @@
-import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { HTMLFormAttributes } from 'svelte/elements';
 
 import type { JsonSchemaObject } from './schema-form-model.ts';
 
-export type SchemaFormStandardSchema<Output = unknown> = StandardSchemaV1<unknown, Output>;
+export type SchemaFormSchema = JsonSchemaObject;
 
-export type SchemaFormSchema = JsonSchemaObject | SchemaFormStandardSchema;
+export type SchemaFormOutput = unknown;
 
-export type SchemaFormOutput<Schema extends SchemaFormSchema> = Schema extends StandardSchemaV1
-  ? StandardSchemaV1.InferOutput<Schema>
-  : unknown;
-
-export type SchemaFormSubmitHandler<Schema extends SchemaFormSchema> = (
-  value: SchemaFormOutput<Schema>,
+export type SchemaFormSubmitHandler = (
+  value: SchemaFormOutput,
   event: SubmitEvent,
 ) => void | Promise<void>;
 
@@ -21,7 +16,7 @@ export type SchemaFormProps<Schema extends SchemaFormSchema = SchemaFormSchema> 
   HTMLFormAttributes,
   'class' | 'onsubmit'
 > & {
-  /** JSON Schema object or Standard Schema object used to render and validate the form. */
+  /** JSON Schema object used to render and validate the form. */
   schema: Schema;
   /**
    * Initial form value. Missing fields are seeded from the schema where possible.
@@ -41,5 +36,5 @@ export type SchemaFormProps<Schema extends SchemaFormSchema = SchemaFormSchema> 
   /** Custom class merged with `.cinder-schema-form`. */
   class?: string;
   /** Called after validation passes with the schema-conformant output value. */
-  onsubmit?: SchemaFormSubmitHandler<Schema>;
+  onsubmit?: SchemaFormSubmitHandler;
 };

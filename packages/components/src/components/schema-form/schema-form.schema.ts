@@ -29,8 +29,7 @@ const schema = {
         name: 'schema',
         reason: 'generic-type-parameter',
         required: true,
-        description:
-          'JSON Schema object or Standard Schema object used to render and validate the form.',
+        description: 'JSON Schema object used to render and validate the form.',
       },
       {
         name: 'value',

@@ -597,7 +597,6 @@ export type {
   SchemaFormOutput,
   SchemaFormProps,
   SchemaFormSchema,
-  SchemaFormStandardSchema,
   SchemaFormSubmitHandler,
 } from './components/schema-form/index.ts';
 
