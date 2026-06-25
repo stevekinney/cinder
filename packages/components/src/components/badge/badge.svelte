@@ -16,13 +16,9 @@
 </script>
 
 <script lang="ts">
-  import type CircleCheck from 'lucide-svelte/icons/circle-check';
-
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { BadgeProps, BadgeSubscriptionState, BadgeVariant } from './badge.types.ts';
-
-  type IconComponent = typeof CircleCheck;
 
   type SubscriptionStateConfiguration = {
     variant: BadgeVariant;
@@ -41,16 +37,25 @@
     refunded: { variant: 'neutral', label: 'Refunded' },
   };
 
-  const subscriptionStateIconLoaders: Record<BadgeSubscriptionState, () => Promise<IconComponent>> =
-    {
-      active: () => import('lucide-svelte/icons/circle-check').then((module) => module.default),
-      trialing: () => import('lucide-svelte/icons/clock').then((module) => module.default),
-      'past-due': () =>
-        import('lucide-svelte/icons/triangle-alert').then((module) => module.default),
-      canceled: () => import('lucide-svelte/icons/circle-x').then((module) => module.default),
-      expired: () => import('lucide-svelte/icons/calendar-x').then((module) => module.default),
-      refunded: () => import('lucide-svelte/icons/rotate-ccw').then((module) => module.default),
-    };
+  const subscriptionStateIconPaths: Record<BadgeSubscriptionState, string[]> = {
+    active: ['M21.801 10A10 10 0 1 1 17 3.335', 'm9 11 3 3L22 4'],
+    trialing: ['M12 6v6l4 2', 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
+    'past-due': [
+      'm21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z',
+      'M12 9v4',
+      'M12 17h.01',
+    ],
+    canceled: ['M15 9 9 15', 'M9 9l6 6', 'M22 12A10 10 0 1 1 12 2a10 10 0 0 1 10 10Z'],
+    expired: [
+      'M8 2v4',
+      'M16 2v4',
+      'M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8',
+      'M3 10h18',
+      'm17 14-5-5',
+      'm12 14 5 5',
+    ],
+    refunded: ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5'],
+  };
 
   let {
     variant = 'neutral',
@@ -68,8 +73,8 @@
       : subscriptionStateConfigurations[subscriptionState],
   );
   const resolvedVariant = $derived(subscriptionStateConfiguration?.variant ?? variant);
-  const subscriptionIconPromise = $derived(
-    subscriptionState === undefined ? undefined : subscriptionStateIconLoaders[subscriptionState](),
+  const resolvedSubscriptionIconPaths = $derived(
+    subscriptionState === undefined ? undefined : subscriptionStateIconPaths[subscriptionState],
   );
 </script>
 
@@ -82,10 +87,21 @@
   {...rest}
 >
   {#if subscriptionStateConfiguration}
-    {#if subscriptionIconPromise}
-      {#await subscriptionIconPromise then SubscriptionIcon}
-        <SubscriptionIcon class="icon-sm" aria-hidden="true" />
-      {/await}
+    {#if resolvedSubscriptionIconPaths}
+      <svg
+        class="icon-sm"
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        {#each resolvedSubscriptionIconPaths as iconPath (iconPath)}
+          <path d={iconPath}></path>
+        {/each}
+      </svg>
     {/if}
     {#if children}
       {@render children()}

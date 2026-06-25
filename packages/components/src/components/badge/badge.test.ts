@@ -151,9 +151,15 @@ describe('Badge — subscription state preset', () => {
     expect(badge?.textContent).not.toContain('Active');
   });
 
+  test('subscriptionState renders its icon synchronously', () => {
+    const { container } = render(Badge, { subscriptionState: 'active' });
+    expect(container.querySelector('.cinder-badge svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   test('base Badge module does not statically import subscription icon modules', async () => {
     const source = await Bun.file(new URL('./badge.svelte', import.meta.url)).text();
     expect(source).not.toMatch(/import\s+\w+\s+from\s+['"]lucide-svelte\/icons\//);
+    expect(source).not.toContain('{#await');
   });
 });
 

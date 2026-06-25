@@ -7,6 +7,8 @@ setupHappyDom();
 
 const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Checkbox } = await import('./checkbox.svelte');
+const { default: CheckboxIndeterminateFormResetFixture } =
+  await import('../../test/fixtures/checkbox-indeterminate-form-reset-fixture.svelte');
 const { default: CheckboxFormResetFixture } =
   await import('../../test/fixtures/checkbox-form-reset-fixture.svelte');
 const { default: FormFieldCheckboxFixture } =
@@ -135,6 +137,22 @@ describe('Checkbox', () => {
 
     await waitFor(() => expect(getByTestId('checked').textContent).toBe('false'));
     expect(input.checked).toBe(false);
+  });
+
+  test('native form reset reapplies bindable indeterminate state', async () => {
+    const { container, getByTestId } = render(CheckboxIndeterminateFormResetFixture);
+    const input = container.querySelector('#mixed') as HTMLInputElement;
+
+    expect(input.indeterminate).toBe(true);
+
+    await fireEvent.click(input);
+    expect(input.indeterminate).toBe(false);
+
+    (getByTestId('form') as HTMLFormElement).reset();
+
+    await waitFor(() => expect(input.indeterminate).toBe(true));
+    expect(getByTestId('checked').textContent).toBe('false');
+    expect(getByTestId('indeterminate').textContent).toBe('true');
   });
 
   test('indeterminate prop applies as a DOM property', () => {

@@ -93,7 +93,7 @@
       resetSyncTimeout = undefined;
       if (!inputElement) return;
       checked = inputElement.checked;
-      indeterminate = inputElement.indeterminate;
+      inputElement.indeterminate = indeterminate && !inputElement.checked;
     }, 0);
   }
 
