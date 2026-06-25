@@ -153,6 +153,12 @@
     get fallbackAnchorElement() {
       return null;
     },
+    get fallbackPositionStyle() {
+      return anchoredOverlay.positionStyle;
+    },
+    get fallbackPositionReady() {
+      return anchoredOverlay.positionReady;
+    },
     get initialFocus() {
       return 'first' as const;
     },
@@ -184,12 +190,6 @@
     const x = anchorPoint?.x ?? requestedX;
     const y = anchorPoint?.y ?? requestedY;
     const menu = menuElement;
-    if (anchoredOverlay.positionStyle) {
-      menu.setAttribute('style', anchoredOverlay.positionStyle);
-    } else {
-      menu.removeAttribute('style');
-    }
-    menu.setAttribute('data-cinder-position-ready', String(anchoredOverlay.positionReady));
     menu.setAttribute('data-cinder-requested-x', String(x));
     menu.setAttribute('data-cinder-requested-y', String(y));
     const ownsDirection = menu.dataset['cinderExplicitDirection'] !== 'true';
@@ -197,8 +197,6 @@
       menu.setAttribute('dir', resolvedDirection);
     }
     return () => {
-      menu.removeAttribute('style');
-      menu.removeAttribute('data-cinder-position-ready');
       if (ownsDirection) menu.removeAttribute('dir');
       menu.removeAttribute('data-cinder-requested-x');
       menu.removeAttribute('data-cinder-requested-y');

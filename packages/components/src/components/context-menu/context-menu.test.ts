@@ -162,7 +162,7 @@ describe('ContextMenu', () => {
       expect(menu?.getAttribute('data-cinder-position-ready')).toBe('false');
       expect(menu?.getAttribute('data-cinder-requested-x')).toBe('24');
       expect(menu?.getAttribute('data-cinder-requested-y')).toBe('36');
-      expect(menu?.getAttribute('style')).toBeNull();
+      expect(menu?.getAttribute('style')).toBe('');
     });
   });
 

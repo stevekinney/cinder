@@ -57,6 +57,14 @@
     offset: () => 4,
     widthMode: () => context.widthMode ?? 'menu',
   });
+  const fallbackPositionStyle = $derived(
+    context.fallbackPositionStyle ??
+      (fallbackAnchorElement ? anchoredFallback.positionStyle : undefined),
+  );
+  const fallbackPositionReady = $derived(
+    context.fallbackPositionReady ??
+      (fallbackAnchorElement ? anchoredFallback.positionReady : undefined),
+  );
   const fallbackPortalAttachment = createPortalAttachment({
     target: () => (typeof document === 'undefined' ? null : document.body),
     source: () => context.anchorElement,
@@ -163,13 +171,11 @@
     class={classNames('cinder-_floating-surface', 'cinder-dropdown-menu', customClassName)}
     style={context.supportsPopover
       ? `position-anchor: --${context.menuId};`
-      : fallbackAnchorElement
-        ? anchoredFallback.positionStyle
-        : undefined}
+      : fallbackPositionStyle}
     role="menu"
     aria-orientation="vertical"
-    data-cinder-position-ready={!context.supportsPopover && fallbackAnchorElement
-      ? anchoredFallback.positionReady
+    data-cinder-position-ready={!context.supportsPopover && fallbackPositionReady !== undefined
+      ? fallbackPositionReady
       : undefined}
     tabindex={-1}
     onkeydown={handleKeydown}

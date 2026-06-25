@@ -9,6 +9,8 @@ export type DropdownContext = {
   get supportsPopover(): boolean;
   readonly anchorElement?: HTMLElement | null | undefined;
   readonly fallbackAnchorElement?: HTMLElement | null | undefined;
+  readonly fallbackPositionStyle?: string | undefined;
+  readonly fallbackPositionReady?: boolean | undefined;
   readonly fallbackPlacement?: Placement | undefined;
   readonly widthMode?: AnchoredOverlayWidthMode | undefined;
   readonly initialFocus?: 'first' | 'last' | 'none' | undefined;

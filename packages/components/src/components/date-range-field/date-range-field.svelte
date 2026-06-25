@@ -235,6 +235,12 @@
   const inputType = $derived(inputTypeFor(granularity));
   const inputStep = $derived(inputStepFor(granularity));
   const normalizedValue = $derived(normalizeDateRangeValue(value, granularity));
+
+  $effect(() => {
+    if (dateRangeValuesMatch(value, normalizedValue)) return;
+    value = normalizedValue;
+  });
+
   const defaultStartLabel = $derived(granularity === 'day' ? 'Start date' : 'Start date and time');
   const defaultEndLabel = $derived(granularity === 'day' ? 'End date' : 'End date and time');
   const resolvedStartLabel = $derived(startLabel ?? defaultStartLabel);

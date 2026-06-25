@@ -12,6 +12,8 @@ setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: DateRangeField } = await import('./date-range-field.svelte');
+const { default: DateRangeFieldBindableFixture } =
+  await import('../../test/fixtures/date-range-field-bindable-fixture.svelte');
 
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
@@ -85,6 +87,18 @@ describe('DateRangeField', () => {
       expect(startInput.max).toBe('2026-06-01T17:45');
       expect(endInput.value).toBe('2026-06-01T17:45');
       expect(endInput.min).toBe('2026-06-01T09:30');
+    });
+
+    test('normalizes bindable range values when granularity changes', async () => {
+      const { container, getByTestId } = render(DateRangeFieldBindableFixture);
+
+      await fireEvent.click(container.querySelector<HTMLButtonElement>('.set-minute-granularity')!);
+
+      await waitFor(() => {
+        expect(getByTestId('range-value').textContent).toBe(
+          '{"start":"2026-06-01T09:30","end":"2026-06-01T10:45"}',
+        );
+      });
     });
 
     test('normalizes controlled datetime values to day inputs before rendering', () => {
