@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import Ajv2020 from 'ajv/dist/2020';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { RunStep } from './run-step-timeline.types.ts';
 
@@ -114,7 +115,75 @@ function makeDeepHiddenChildren(count: number, leafStatus: RunStep['status']): R
 // ---------------------------------------------------------------------------
 
 describe('structure', () => {
-  test('schema allows nested child details and leaves deeper lanes open', () => {
+  test('schema requires step fields through the rendered depth cap', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+
+    expect(
+      validate({
+        steps: [
+          {
+            id: 'workflow',
+            label: 'Workflow',
+            status: 'running',
+            children: [
+              {
+                id: 'activity',
+                label: 'Activity',
+                status: 'succeeded',
+                children: [
+                  {
+                    children: [
+                      {
+                        id: 'hidden-child',
+                        label: 'Hidden child',
+                        status: 'pending',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(false);
+
+    expect(
+      validate({
+        steps: [
+          {
+            id: 'workflow',
+            label: 'Workflow',
+            status: 'running',
+            children: [
+              {
+                id: 'activity',
+                label: 'Activity',
+                status: 'succeeded',
+                children: [
+                  {
+                    id: 'tool-call',
+                    label: 'Tool call',
+                    status: 'waiting_approval',
+                    children: [
+                      {
+                        id: 'nested-subagent',
+                        label: 'Nested subagent',
+                        status: 'running',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  test('schema allows nested child details and stops at the rendered depth cap', () => {
     const stepsSchema = runStepTimelineSchema.properties['steps'] as
       | {
           items: {
@@ -129,6 +198,7 @@ describe('structure', () => {
         | {
             items: {
               additionalProperties?: boolean;
+              required?: string[];
               type?: string;
               properties: Record<string, unknown>;
             };
@@ -139,13 +209,19 @@ describe('structure', () => {
 
     const depthOneSchema = childSchemaAt(stepsSchema?.items.properties ?? {});
     const depthOneProperties = depthOneSchema?.properties ?? {};
-    const deeperSchema = childSchemaAt(depthOneProperties);
+    const depthTwoSchema = childSchemaAt(depthOneProperties);
+    const depthTwoProperties = depthTwoSchema?.properties ?? {};
+    const depthThreeSchema = childSchemaAt(depthTwoProperties);
+    const depthThreeProperties = depthThreeSchema?.properties ?? {};
 
     expect(depthOneProperties).toHaveProperty('details');
     expect(depthOneProperties).toHaveProperty('link');
     expect(depthOneProperties).toHaveProperty('children');
-    expect(deeperSchema?.type).toBe('object');
-    expect(deeperSchema?.additionalProperties).not.toBe(false);
+    expect(depthTwoSchema?.required).toEqual(['id', 'label', 'status']);
+    expect(depthThreeSchema?.required).toEqual(['id', 'label', 'status']);
+    expect(depthThreeProperties).toHaveProperty('details');
+    expect(depthThreeProperties).toHaveProperty('link');
+    expect(depthThreeProperties).not.toHaveProperty('children');
   });
 
   test('renders an ordered list with one item per step', () => {
@@ -659,8 +735,8 @@ describe('behavior', () => {
     expect(label?.textContent?.trim()).toBe('Open logs');
   });
 
-  test('renders backslash scheme-relative step links as non-interactive text', () => {
-    const unsafeHrefs = ['\\\\evil.example/path', '/\\evil.example/path'];
+  test('renders backslash step links as non-interactive text', () => {
+    const unsafeHrefs = ['\\evil.example/path', '\\\\evil.example/path', '/\\evil.example/path'];
 
     for (const href of unsafeHrefs) {
       cleanup();

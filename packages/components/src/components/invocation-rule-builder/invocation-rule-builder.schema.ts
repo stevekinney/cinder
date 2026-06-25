@@ -131,9 +131,9 @@ const schema = {
         'Options for the action target selector. Consumer-provided list of\ntargets, e.g. review-agent slugs or step identifiers.',
     },
     readonly: {
-      type: 'boolean',
+      const: true,
       description:
-        'When true, renders a readonly summary of each rule instead of editable\ncontrols. Default is false (editable mode).',
+        'Must be true for schema-driven usage because editable mode requires\nthe unsupported `onchange` callback. Runtime consumers may omit this\nwhen passing `onchange` directly.',
     },
     addRuleLabel: {
       type: 'string',
@@ -157,7 +157,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['actionOptions', 'fieldOptions', 'operatorOptions', 'rules'],
+  required: ['actionOptions', 'fieldOptions', 'operatorOptions', 'readonly', 'rules'],
   metadata: {
     unsupportedProps: [
       {

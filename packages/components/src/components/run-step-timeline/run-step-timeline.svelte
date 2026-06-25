@@ -198,6 +198,7 @@
     const trimmedHref = href.trim();
     if (trimmedHref === '') return undefined;
     if (/[\u0000-\u001F\u007F]/.test(trimmedHref)) return undefined;
+    if (trimmedHref.includes('\\')) return undefined;
     const leadingSeparators = trimmedHref.match(/^[\\/]+/)?.[0] ?? '';
     if (leadingSeparators.length > 1) return undefined;
 

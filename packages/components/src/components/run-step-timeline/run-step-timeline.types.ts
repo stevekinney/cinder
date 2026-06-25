@@ -170,7 +170,7 @@ export type RunStepTimelineSchemaStep = {
 };
 
 /**
- * Schema generator surface for one nested child step.
+ * Schema generator surface for one nested child step rendered at depth 1.
  * @schemaObject
  */
 export type RunStepTimelineSchemaChildStep = {
@@ -199,18 +199,76 @@ export type RunStepTimelineSchemaChildStep = {
   /** Optional link to logs, traces, or a step detail route. */
   link?: RunStepLink | undefined;
   /**
-   * Deeper child-workflow steps. Left open in JSON Schema so the generated
-   * schema accepts valid rendered descendants through the runtime depth cap
-   * without exceeding the global schema-generator depth ceiling.
+   * Nested child-workflow steps rendered at depth 2.
    */
-  children?: RunStepTimelineSchemaOpenChildStep[] | undefined;
+  children?: RunStepTimelineSchemaGrandchildStep[] | undefined;
 };
 
 /**
- * Schema generator surface for deeper child steps.
+ * Schema generator surface for one nested child step rendered at depth 2.
  * @schemaObject
  */
-export type RunStepTimelineSchemaOpenChildStep = {};
+export type RunStepTimelineSchemaGrandchildStep = {
+  /** Stable identity; used as the keyed list identity. */
+  id: string;
+  /** Display label for this step. */
+  label: string;
+  /** Generic execution state. */
+  status: RunStepStatus;
+  /** ISO datetime string for when this step started. */
+  startTime?: string | undefined;
+  /** ISO datetime string for when this step ended. */
+  endTime?: string | undefined;
+  /** Human-readable duration string, e.g. "1m 23s". */
+  duration?: string | undefined;
+  /** Number of attempts made so far, including any retries. */
+  attemptCount?: number | undefined;
+  /** Number of actions associated with this step. */
+  actionsCount?: number | undefined;
+  /** Optional determinate progress value between 0 and `progressMax`. */
+  progress?: number | undefined;
+  /** Maximum value for the progress bar. Defaults to 100. */
+  progressMax?: number | undefined;
+  /** Expandable detail panels (logs, payloads, errors) shown inline. */
+  details?: RunStepDetail[] | undefined;
+  /** Optional link to logs, traces, or a step detail route. */
+  link?: RunStepLink | undefined;
+  /**
+   * Nested child-workflow steps rendered at depth 3.
+   */
+  children?: RunStepTimelineSchemaGreatGrandchildStep[] | undefined;
+};
+
+/**
+ * Schema generator surface for one nested child step rendered at depth 3.
+ * @schemaObject
+ */
+export type RunStepTimelineSchemaGreatGrandchildStep = {
+  /** Stable identity; used as the keyed list identity. */
+  id: string;
+  /** Display label for this step. */
+  label: string;
+  /** Generic execution state. */
+  status: RunStepStatus;
+  /** ISO datetime string for when this step started. */
+  startTime?: string | undefined;
+  /** ISO datetime string for when this step ended. */
+  endTime?: string | undefined;
+  /** Human-readable duration string, e.g. "1m 23s". */
+  duration?: string | undefined;
+  /** Number of attempts made so far, including any retries. */
+  attemptCount?: number | undefined;
+  /** Number of actions associated with this step. */
+  actionsCount?: number | undefined;
+  /** Optional determinate progress value between 0 and `progressMax`. */
+  progress?: number | undefined;
+  /** Maximum value for the progress bar. Defaults to 100. */
+  progressMax?: number | undefined;
+  /** Expandable detail panels (logs, payloads, errors) shown inline. */
+  details?: RunStepDetail[] | undefined;
+  /** Optional link to logs, traces, or a step detail route. */
+  link?: RunStepLink | undefined;
+};
 
 /**
  * Props for the RunStepTimeline component.

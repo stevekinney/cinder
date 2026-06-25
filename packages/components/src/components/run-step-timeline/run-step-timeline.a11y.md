@@ -12,7 +12,7 @@ The outer element is an `ol` (ordered list). It receives its accessible name fro
 2. `aria-label` (explicit override)
 3. `label` prop (falls back to this as `aria-label` when neither of the above is present)
 
-Each step is an `li`. Current non-terminal steps (`running`, `retrying`, or `waiting_approval`) receive `aria-current="step"` to communicate the active position in the sequence.
+Each step is an `li`. When one or more non-terminal steps are current (`running`, `retrying`, or `waiting_approval`), only the deepest current row receives `aria-current="step"` so nested child-workflow lanes announce a single active position.
 
 The status dot on the rail is wrapped in a `span` with `aria-hidden="true"` and `inert`. It is purely decorative. The status text badge communicates the step state as text and includes an accessible label such as "Status: Waiting approval", so state is never conveyed by color alone (WCAG 1.4.1).
 

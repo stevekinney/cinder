@@ -184,10 +184,11 @@ export type InvocationRuleBuilderSchemaProps = {
   actionOptions: InvocationRuleOption[];
 
   /**
-   * When true, renders a readonly summary of each rule instead of editable
-   * controls. Default is false (editable mode).
+   * Must be true for schema-driven usage because editable mode requires
+   * the unsupported `onchange` callback. Runtime consumers may omit this
+   * when passing `onchange` directly.
    */
-  readonly?: boolean;
+  readonly: true;
 
   /**
    * Label for the "Add rule" button. Defaults to "Add rule".

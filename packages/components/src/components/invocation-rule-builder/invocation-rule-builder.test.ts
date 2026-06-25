@@ -80,7 +80,7 @@ afterEach(() => cleanup());
 
 describe('InvocationRuleBuilder', () => {
   describe('schema', () => {
-    test('models required rules and selector options as supported input', () => {
+    test('models readonly rules and selector options as supported input', () => {
       const ajv = new Ajv2020({ strict: false });
       const validate = ajv.compile(invocationRuleBuilderSchema);
 
@@ -88,6 +88,7 @@ describe('InvocationRuleBuilder', () => {
         'actionOptions',
         'fieldOptions',
         'operatorOptions',
+        'readonly',
         'rules',
       ]);
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('rules');
@@ -104,9 +105,34 @@ describe('InvocationRuleBuilder', () => {
           fieldOptions,
           operatorOptions,
           actionOptions,
+          readonly: true,
         }),
       ).toBe(true);
       expect(validate.errors).toBeNull();
+    });
+
+    test('rejects editable schema-driven configurations without onchange', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(invocationRuleBuilderSchema);
+
+      expect(
+        validate({
+          rules: [makeRule()],
+          fieldOptions,
+          operatorOptions,
+          actionOptions,
+        }),
+      ).toBe(false);
+
+      expect(
+        validate({
+          rules: [makeRule()],
+          fieldOptions,
+          operatorOptions,
+          actionOptions,
+          readonly: false,
+        }),
+      ).toBe(false);
     });
   });
 

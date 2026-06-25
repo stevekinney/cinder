@@ -276,6 +276,11 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'run-step-timeline') {
+    applyRunStepTimelineSchemaRules(schema);
+    return;
+  }
+
   if (componentName !== 'modal') return;
 
   schema.allOf = [
@@ -292,6 +297,145 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       },
     },
   ];
+}
+
+function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
+  const depthThreeStepSchema = makeRunStepTimelineStepSchema();
+  const depthTwoStepSchema = makeRunStepTimelineStepSchema({
+    type: 'array',
+    items: depthThreeStepSchema,
+    description: 'Nested child-workflow steps rendered at depth 3.',
+  });
+  const depthOneStepSchema = makeRunStepTimelineStepSchema({
+    type: 'array',
+    items: depthTwoStepSchema,
+    description: 'Nested child-workflow steps rendered at depth 2.',
+  });
+  const topLevelStepSchema = makeRunStepTimelineStepSchema({
+    type: 'array',
+    items: depthOneStepSchema,
+    description: 'Schema-bounded nested child-workflow steps.',
+  });
+
+  schema.properties['steps'] = {
+    type: 'array',
+    items: topLevelStepSchema,
+    description: 'Ordered list of steps to render.',
+  };
+  schema.required = [...new Set([...(schema.required ?? []), 'steps'])].toSorted();
+
+  const unsupportedProps = schema.metadata?.unsupportedProps?.filter(
+    (property) => property.name !== 'steps',
+  );
+  if (unsupportedProps && unsupportedProps.length > 0) {
+    schema.metadata = { unsupportedProps };
+  } else {
+    delete schema.metadata;
+  }
+}
+
+function makeRunStepTimelineStepSchema(childrenSchema?: PropertySchema): PropertySchema {
+  const properties: Record<string, PropertySchema> = {
+    id: {
+      type: 'string',
+      description: 'Stable identity; used as the keyed list identity.',
+    },
+    label: {
+      type: 'string',
+      description: 'Display label for this step.',
+    },
+    status: {
+      enum: [
+        'pending',
+        'running',
+        'succeeded',
+        'failed',
+        'cancelled',
+        'skipped',
+        'retrying',
+        'waiting_approval',
+      ],
+      description: 'Generic execution state.',
+    },
+    startTime: {
+      type: 'string',
+      description: 'ISO datetime string for when this step started.',
+    },
+    endTime: {
+      type: 'string',
+      description: 'ISO datetime string for when this step ended.',
+    },
+    duration: {
+      type: 'string',
+      description: 'Human-readable duration string, e.g. "1m 23s".',
+    },
+    attemptCount: {
+      type: 'number',
+      description: 'Number of attempts made so far, including any retries.',
+    },
+    actionsCount: {
+      type: 'number',
+      description: 'Number of actions associated with this step.',
+    },
+    progress: {
+      type: 'number',
+      description: 'Optional determinate progress value between 0 and `progressMax`.',
+    },
+    progressMax: {
+      type: 'number',
+      description: 'Maximum value for the progress bar. Defaults to 100.',
+    },
+    details: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable identity for this detail panel.',
+          },
+          label: {
+            type: 'string',
+            description: 'Trigger label rendered on the Collapsible header.',
+          },
+          content: {
+            type: 'string',
+            description: 'Pre-formatted content shown inside the panel.',
+          },
+        },
+        additionalProperties: false,
+        required: ['content', 'id', 'label'],
+      },
+      description: 'Expandable detail panels (logs, payloads, errors) shown inline.',
+    },
+    link: {
+      type: 'object',
+      properties: {
+        href: {
+          type: 'string',
+          description: 'Destination URL for the step link.',
+        },
+        label: {
+          type: 'string',
+          description: 'Visible text for the step link.',
+        },
+      },
+      additionalProperties: false,
+      required: ['href', 'label'],
+      description: 'Optional link to logs, traces, or a step detail route.',
+    },
+  };
+
+  if (childrenSchema) {
+    properties['children'] = childrenSchema;
+  }
+
+  return {
+    type: 'object',
+    properties,
+    additionalProperties: false,
+    required: ['id', 'label', 'status'],
+  };
 }
 
 interface ConvertSuccess {

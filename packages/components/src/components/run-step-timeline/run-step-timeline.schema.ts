@@ -4,6 +4,14 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    label: {
+      type: 'string',
+      description: 'Accessible label for the timeline list.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional CSS classes applied to the root element.',
+    },
     steps: {
       type: 'array',
       items: {
@@ -32,33 +40,27 @@ const schema = {
           },
           startTime: {
             type: 'string',
-            description:
-              'ISO datetime string for when this step started.\nAbsent for pending steps.',
+            description: 'ISO datetime string for when this step started.',
           },
           endTime: {
             type: 'string',
-            description:
-              'ISO datetime string for when this step ended.\nAbsent for pending and running steps.',
+            description: 'ISO datetime string for when this step ended.',
           },
           duration: {
             type: 'string',
-            description:
-              'Human-readable duration string, e.g. "1m 23s".\nAbsent for pending steps.',
+            description: 'Human-readable duration string, e.g. "1m 23s".',
           },
           attemptCount: {
             type: 'number',
-            description:
-              'Number of attempts made so far, including any retries.\nDisplayed when greater than 1.',
+            description: 'Number of attempts made so far, including any retries.',
           },
           actionsCount: {
             type: 'number',
-            description:
-              'Number of actions associated with this step.\nDisplayed when greater than 0.',
+            description: 'Number of actions associated with this step.',
           },
           progress: {
             type: 'number',
-            description:
-              'Optional determinate progress value between 0 and `progressMax`.\nWhen supplied, a Progress bar is rendered for the step.',
+            description: 'Optional determinate progress value between 0 and `progressMax`.',
           },
           progressMax: {
             type: 'number',
@@ -200,9 +202,204 @@ const schema = {
                   type: 'array',
                   items: {
                     type: 'object',
+                    properties: {
+                      id: {
+                        type: 'string',
+                        description: 'Stable identity; used as the keyed list identity.',
+                      },
+                      label: {
+                        type: 'string',
+                        description: 'Display label for this step.',
+                      },
+                      status: {
+                        enum: [
+                          'pending',
+                          'running',
+                          'succeeded',
+                          'failed',
+                          'cancelled',
+                          'skipped',
+                          'retrying',
+                          'waiting_approval',
+                        ],
+                        description: 'Generic execution state.',
+                      },
+                      startTime: {
+                        type: 'string',
+                        description: 'ISO datetime string for when this step started.',
+                      },
+                      endTime: {
+                        type: 'string',
+                        description: 'ISO datetime string for when this step ended.',
+                      },
+                      duration: {
+                        type: 'string',
+                        description: 'Human-readable duration string, e.g. "1m 23s".',
+                      },
+                      attemptCount: {
+                        type: 'number',
+                        description: 'Number of attempts made so far, including any retries.',
+                      },
+                      actionsCount: {
+                        type: 'number',
+                        description: 'Number of actions associated with this step.',
+                      },
+                      progress: {
+                        type: 'number',
+                        description:
+                          'Optional determinate progress value between 0 and `progressMax`.',
+                      },
+                      progressMax: {
+                        type: 'number',
+                        description: 'Maximum value for the progress bar. Defaults to 100.',
+                      },
+                      details: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: {
+                              type: 'string',
+                              description: 'Stable identity for this detail panel.',
+                            },
+                            label: {
+                              type: 'string',
+                              description: 'Trigger label rendered on the Collapsible header.',
+                            },
+                            content: {
+                              type: 'string',
+                              description: 'Pre-formatted content shown inside the panel.',
+                            },
+                          },
+                          additionalProperties: false,
+                          required: ['content', 'id', 'label'],
+                        },
+                        description:
+                          'Expandable detail panels (logs, payloads, errors) shown inline.',
+                      },
+                      link: {
+                        type: 'object',
+                        properties: {
+                          href: {
+                            type: 'string',
+                            description: 'Destination URL for the step link.',
+                          },
+                          label: {
+                            type: 'string',
+                            description: 'Visible text for the step link.',
+                          },
+                        },
+                        additionalProperties: false,
+                        required: ['href', 'label'],
+                        description: 'Optional link to logs, traces, or a step detail route.',
+                      },
+                      children: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: {
+                              type: 'string',
+                              description: 'Stable identity; used as the keyed list identity.',
+                            },
+                            label: {
+                              type: 'string',
+                              description: 'Display label for this step.',
+                            },
+                            status: {
+                              enum: [
+                                'pending',
+                                'running',
+                                'succeeded',
+                                'failed',
+                                'cancelled',
+                                'skipped',
+                                'retrying',
+                                'waiting_approval',
+                              ],
+                              description: 'Generic execution state.',
+                            },
+                            startTime: {
+                              type: 'string',
+                              description: 'ISO datetime string for when this step started.',
+                            },
+                            endTime: {
+                              type: 'string',
+                              description: 'ISO datetime string for when this step ended.',
+                            },
+                            duration: {
+                              type: 'string',
+                              description: 'Human-readable duration string, e.g. "1m 23s".',
+                            },
+                            attemptCount: {
+                              type: 'number',
+                              description: 'Number of attempts made so far, including any retries.',
+                            },
+                            actionsCount: {
+                              type: 'number',
+                              description: 'Number of actions associated with this step.',
+                            },
+                            progress: {
+                              type: 'number',
+                              description:
+                                'Optional determinate progress value between 0 and `progressMax`.',
+                            },
+                            progressMax: {
+                              type: 'number',
+                              description: 'Maximum value for the progress bar. Defaults to 100.',
+                            },
+                            details: {
+                              type: 'array',
+                              items: {
+                                type: 'object',
+                                properties: {
+                                  id: {
+                                    type: 'string',
+                                    description: 'Stable identity for this detail panel.',
+                                  },
+                                  label: {
+                                    type: 'string',
+                                    description:
+                                      'Trigger label rendered on the Collapsible header.',
+                                  },
+                                  content: {
+                                    type: 'string',
+                                    description: 'Pre-formatted content shown inside the panel.',
+                                  },
+                                },
+                                additionalProperties: false,
+                                required: ['content', 'id', 'label'],
+                              },
+                              description:
+                                'Expandable detail panels (logs, payloads, errors) shown inline.',
+                            },
+                            link: {
+                              type: 'object',
+                              properties: {
+                                href: {
+                                  type: 'string',
+                                  description: 'Destination URL for the step link.',
+                                },
+                                label: {
+                                  type: 'string',
+                                  description: 'Visible text for the step link.',
+                                },
+                              },
+                              additionalProperties: false,
+                              required: ['href', 'label'],
+                              description: 'Optional link to logs, traces, or a step detail route.',
+                            },
+                          },
+                          additionalProperties: false,
+                          required: ['id', 'label', 'status'],
+                        },
+                        description: 'Nested child-workflow steps rendered at depth 3.',
+                      },
+                    },
+                    additionalProperties: false,
+                    required: ['id', 'label', 'status'],
                   },
-                  description:
-                    'Deeper child-workflow steps. Left open in JSON Schema so the generated\nschema accepts valid rendered descendants through the runtime depth cap\nwithout exceeding the global schema-generator depth ceiling.',
+                  description: 'Nested child-workflow steps rendered at depth 2.',
                 },
               },
               additionalProperties: false,
@@ -216,17 +413,8 @@ const schema = {
       },
       description: 'Ordered list of steps to render.',
     },
-    label: {
-      type: 'string',
-      description: 'Accessible label for the timeline list.',
-    },
-    class: {
-      type: 'string',
-      description: 'Additional CSS classes applied to the root element.',
-    },
   },
   additionalProperties: false,
-  required: ['steps'],
   metadata: {
     unsupportedProps: [
       {
@@ -236,6 +424,7 @@ const schema = {
       },
     ],
   },
+  required: ['steps'],
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;
