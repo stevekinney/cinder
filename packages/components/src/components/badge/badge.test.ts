@@ -8,7 +8,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, waitFor } = await import('@testing-library/svelte');
 const { default: Badge } = await import('./badge.svelte');
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
 // the svelte package to resolve to the client build) applies before this import resolves.
@@ -116,13 +116,15 @@ describe('Badge — subscription state preset', () => {
 
   test.each(states)(
     'subscriptionState="%s" renders tone, state, icon, and label',
-    (subscriptionState, variant, label) => {
+    async (subscriptionState, variant, label) => {
       const { container } = render(Badge, { subscriptionState });
       const badge = container.querySelector('.cinder-badge');
 
       expect(badge?.getAttribute('data-cinder-subscription-state')).toBe(subscriptionState);
       expect(badge?.getAttribute('data-cinder-variant')).toBe(variant);
-      expect(badge?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+      await waitFor(() =>
+        expect(badge?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true'),
+      );
       expect(badge?.innerHTML).toContain(label);
     },
   );
@@ -135,6 +137,23 @@ describe('Badge — subscription state preset', () => {
     expect(container.querySelector('.cinder-badge')?.getAttribute('data-cinder-variant')).toBe(
       'success',
     );
+  });
+
+  test('subscriptionState children override the preset label', async () => {
+    const { container } = render(Badge, {
+      subscriptionState: 'active',
+      children: textSnippet('Current'),
+    });
+    const badge = container.querySelector('.cinder-badge');
+
+    await waitFor(() => expect(badge?.querySelector('svg')).not.toBeNull());
+    expect(badge?.textContent).toContain('Current');
+    expect(badge?.textContent).not.toContain('Active');
+  });
+
+  test('base Badge module does not statically import subscription icon modules', async () => {
+    const source = await Bun.file(new URL('./badge.svelte', import.meta.url)).text();
+    expect(source).not.toMatch(/import\s+\w+\s+from\s+['"]lucide-svelte\/icons\//);
   });
 });
 

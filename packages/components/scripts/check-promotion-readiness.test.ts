@@ -336,6 +336,19 @@ describe('hasBrowserGuard', () => {
     }
   });
 
+  test('returns true for a component with a member-expression hydrated template guard', () => {
+    const tempPath = join(tmpdir(), `browser-guard-member-hydrated-${Date.now()}.svelte`);
+    writeFileSync(
+      tempPath,
+      `<script lang="ts">\n  const dialogState = { hydrated: true };\n</script>\n{#if dialogState.hydrated}<div />{/if}\n`,
+    );
+    try {
+      expect(hasBrowserGuard(tempPath)).toBe(true);
+    } finally {
+      rmSync(tempPath, { force: true });
+    }
+  });
+
   test('returns true for markdown-editor (imports BROWSER from esm-env)', () => {
     const sveltePath = join(componentDirectory('markdown-editor'), 'markdown-editor.svelte');
     expect(hasBrowserGuard(sveltePath)).toBe(true);

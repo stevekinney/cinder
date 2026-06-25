@@ -257,6 +257,20 @@ describe('StatusDot connection preset', () => {
     expect(root?.textContent).toContain('Connected');
     expect(container.querySelector('.cinder-sr-only')?.textContent).toBe('Connected');
   });
+
+  test('consumer aria-label is preserved as live-region text', () => {
+    const { container } = render(StatusDot, {
+      props: { connectionState: 'connected', 'aria-label': 'WebSocket connected' },
+    });
+    const root = container.querySelector('.cinder-status-dot');
+    const visibleLabel = container.querySelector('.cinder-status-dot__label');
+
+    expect(root?.getAttribute('role')).toBe('status');
+    expect(root?.getAttribute('aria-label')).toBeNull();
+    expect(visibleLabel?.textContent).toBe('Connected');
+    expect(visibleLabel?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('.cinder-sr-only')?.textContent).toBe('WebSocket connected');
+  });
 });
 
 describe('StatusDot CSS contract', () => {

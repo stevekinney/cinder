@@ -148,6 +148,7 @@
     commandList.handleKeydown({
       event,
       onEnter: (id) => commandList.activateItemById(id),
+      preventDefaultOnEmptyEnter: true,
     });
   }
 

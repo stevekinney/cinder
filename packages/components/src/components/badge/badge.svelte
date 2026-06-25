@@ -16,12 +16,7 @@
 </script>
 
 <script lang="ts">
-  import CalendarX from 'lucide-svelte/icons/calendar-x';
-  import CircleCheck from 'lucide-svelte/icons/circle-check';
-  import CircleX from 'lucide-svelte/icons/circle-x';
-  import Clock from 'lucide-svelte/icons/clock';
-  import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
-  import TriangleAlert from 'lucide-svelte/icons/triangle-alert';
+  import type CircleCheck from 'lucide-svelte/icons/circle-check';
 
   import { classNames } from '../../utilities/class-names.ts';
 
@@ -31,7 +26,6 @@
 
   type SubscriptionStateConfiguration = {
     variant: BadgeVariant;
-    icon: IconComponent;
     label: string;
   };
 
@@ -39,13 +33,24 @@
     BadgeSubscriptionState,
     SubscriptionStateConfiguration
   > = {
-    active: { variant: 'success', icon: CircleCheck, label: 'Active' },
-    trialing: { variant: 'info', icon: Clock, label: 'Trialing' },
-    'past-due': { variant: 'warning', icon: TriangleAlert, label: 'Past due' },
-    canceled: { variant: 'neutral', icon: CircleX, label: 'Canceled' },
-    expired: { variant: 'danger', icon: CalendarX, label: 'Expired' },
-    refunded: { variant: 'neutral', icon: RotateCcw, label: 'Refunded' },
+    active: { variant: 'success', label: 'Active' },
+    trialing: { variant: 'info', label: 'Trialing' },
+    'past-due': { variant: 'warning', label: 'Past due' },
+    canceled: { variant: 'neutral', label: 'Canceled' },
+    expired: { variant: 'danger', label: 'Expired' },
+    refunded: { variant: 'neutral', label: 'Refunded' },
   };
+
+  const subscriptionStateIconLoaders: Record<BadgeSubscriptionState, () => Promise<IconComponent>> =
+    {
+      active: () => import('lucide-svelte/icons/circle-check').then((module) => module.default),
+      trialing: () => import('lucide-svelte/icons/clock').then((module) => module.default),
+      'past-due': () =>
+        import('lucide-svelte/icons/triangle-alert').then((module) => module.default),
+      canceled: () => import('lucide-svelte/icons/circle-x').then((module) => module.default),
+      expired: () => import('lucide-svelte/icons/calendar-x').then((module) => module.default),
+      refunded: () => import('lucide-svelte/icons/rotate-ccw').then((module) => module.default),
+    };
 
   let {
     variant = 'neutral',
@@ -63,7 +68,9 @@
       : subscriptionStateConfigurations[subscriptionState],
   );
   const resolvedVariant = $derived(subscriptionStateConfiguration?.variant ?? variant);
-  const SubscriptionIcon = $derived(subscriptionStateConfiguration?.icon);
+  const subscriptionIconPromise = $derived(
+    subscriptionState === undefined ? undefined : subscriptionStateIconLoaders[subscriptionState](),
+  );
 </script>
 
 <span
@@ -75,10 +82,16 @@
   {...rest}
 >
   {#if subscriptionStateConfiguration}
-    {#if SubscriptionIcon}
-      <SubscriptionIcon class="icon-sm" aria-hidden="true" />
+    {#if subscriptionIconPromise}
+      {#await subscriptionIconPromise then SubscriptionIcon}
+        <SubscriptionIcon class="icon-sm" aria-hidden="true" />
+      {/await}
     {/if}
-    {subscriptionStateConfiguration.label}
+    {#if children}
+      {@render children()}
+    {:else}
+      {subscriptionStateConfiguration.label}
+    {/if}
   {:else}
     {@render children?.()}
   {/if}

@@ -66,6 +66,12 @@
   // `role="img"` needs an author-provided name. Blank labels are treated as
   // absent so status is never communicated by color alone.
   const resolvedAriaLabel = $derived(normalizedAriaLabel ?? normalizedLabel ?? resolvedStatus);
+  const visibleLabelIsLiveDuplicate = $derived(
+    resolvedLive && normalizedLabel !== undefined && resolvedAriaLabel !== normalizedLabel,
+  );
+  const needsHiddenLiveLabel = $derived(
+    resolvedLive && (!hasVisibleLabel || visibleLabelIsLiveDuplicate),
+  );
 </script>
 
 <!--
@@ -91,8 +97,12 @@
 >
   <span class="cinder-status-dot__indicator" aria-hidden="true"></span>
   {#if hasVisibleLabel}
-    <span class="cinder-status-dot__label">{normalizedLabel}</span>
-  {:else if resolvedLive}
+    <span
+      class="cinder-status-dot__label"
+      aria-hidden={visibleLabelIsLiveDuplicate ? 'true' : undefined}>{normalizedLabel}</span
+    >
+  {/if}
+  {#if needsHiddenLiveLabel}
     <span class="cinder-sr-only">{resolvedAriaLabel}</span>
   {/if}
 </span>

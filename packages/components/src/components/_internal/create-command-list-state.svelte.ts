@@ -8,6 +8,7 @@ export type CommandListKeyboardOptions = {
   onEnter?: (id: string) => void;
   onEscape?: () => void;
   ignoreModifiedNavigation?: boolean;
+  preventDefaultOnEmptyEnter?: boolean;
 };
 
 export class CommandListState {
@@ -86,6 +87,7 @@ export class CommandListState {
     onEnter,
     onEscape,
     ignoreModifiedNavigation = false,
+    preventDefaultOnEmptyEnter = false,
   }: CommandListKeyboardOptions): boolean {
     if (event.isComposing || event.keyCode === 229) return false;
     const isModified = event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
@@ -125,6 +127,7 @@ export class CommandListState {
 
     if (event.key === 'Enter') {
       if (!onEnter) return false;
+      if (this.activeItemId === null && !preventDefaultOnEmptyEnter) return false;
       event.preventDefault();
       event.stopPropagation();
       if (this.activeItemId === null) return true;
