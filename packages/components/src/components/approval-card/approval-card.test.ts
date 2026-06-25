@@ -233,7 +233,26 @@ describe('ApprovalCard', () => {
 
     expect(container.textContent).toContain('plain string argument');
     expect(container.textContent).toContain('string');
+    expect(container.textContent).not.toContain('"plain string argument"');
     expect(container.textContent).not.toContain('Parse error');
+  });
+
+  test('does not fabricate editable arguments when no preview is provided', () => {
+    const onapprovewithedits = mock();
+    const { container, queryByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        editableArgs: true,
+        onapprovewithedits,
+        operation: {
+          kind: 'other',
+        },
+      }),
+    });
+
+    expect(queryByRole('button', { name: 'Approve with edits' })).toBeNull();
+    expect(container.textContent).toContain('No arguments were provided.');
+    expect(container.textContent).not.toContain('{}');
+    expect(onapprovewithedits).not.toHaveBeenCalled();
   });
 
   test('renders environment names through masked fields without leaking supplied values', async () => {

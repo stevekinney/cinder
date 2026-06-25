@@ -122,9 +122,8 @@
     }
     return `Expires in ${formatRemainingTime(expirationTimestamp - currentTime)}`;
   });
-  const editableArgumentsValue = $derived(
-    operation.argsPreview === undefined ? {} : operation.argsPreview,
-  );
+  const hasArgumentsPreview = $derived(operation.argsPreview !== undefined);
+  const editableArgumentsValue = $derived(operation.argsPreview);
   const argumentsPreview = $derived(prepareArgumentsPreview(editableArgumentsValue));
   const filesTouched = $derived(operation.filesTouched ?? []);
   const visibleFilesTouched = $derived(filesTouched.slice(0, FILE_PREVIEW_LIMIT));
@@ -136,15 +135,16 @@
   const currentEditedArgumentsSeedKey = $derived(
     `${idempotencyKey}\u0000${currentEditedArgumentsText}`,
   );
+  const canEditArguments = $derived(editableArgs && hasArgumentsPreview);
   const editingArguments = $derived(
-    editableArgs && editingArgumentsSeedKey === currentEditedArgumentsSeedKey,
+    canEditArguments && editingArgumentsSeedKey === currentEditedArgumentsSeedKey,
   );
   const editedArgumentsText = $derived(
     editedArgumentsDrafts[currentEditedArgumentsSeedKey] ?? currentEditedArgumentsText,
   );
   const editParseResult = $derived(parseJsonText(editedArgumentsText));
   const canConfirmEditedApproval = $derived(
-    editableArgs && editParseResult.ok && typeof onapprovewithedits === 'function',
+    canEditArguments && editParseResult.ok && typeof onapprovewithedits === 'function',
   );
 
   $effect(() => {
@@ -267,7 +267,7 @@
     try {
       const serialized = JSON.stringify(value);
       if (typeof serialized !== 'string' || serialized.length <= ARGUMENTS_PREVIEW_MAX_CHARACTERS) {
-        return { value: typeof value === 'string' ? serialized : value, truncated: false };
+        return { value, truncated: false };
       }
       return {
         value: {
@@ -301,6 +301,10 @@
     }
   }
 
+  function parseArgumentPreviewString(value: string): string {
+    return value;
+  }
+
   function sanitizeEnvironmentName(name: string): string {
     const [firstPart] = name.split('=');
     return firstPart?.trim() ?? '';
@@ -313,7 +317,7 @@
 
   function beginEditingArguments(): void {
     if (!currentApprovalIsActionable()) return;
-    if (!editableArgs) return;
+    if (!canEditArguments) return;
     if (!(currentEditedArgumentsSeedKey in editedArgumentsDrafts)) {
       editedArgumentsDrafts = {
         ...editedArgumentsDrafts,
@@ -337,7 +341,7 @@
 
   function handleApproveWithEdits(): void {
     if (!currentApprovalIsActionable()) return;
-    if (!editableArgs) return;
+    if (!canEditArguments) return;
     if (!editParseResult.ok) return;
     onapprovewithedits?.(editParseResult.value);
   }
@@ -472,11 +476,16 @@
       </section>
 
       <section class="cinder-approval-card__section" aria-label="Arguments preview">
-        <PayloadInspector
-          value={argumentsPreview.value}
-          truncated={argumentsPreview.truncated}
-          label="Arguments preview"
-        />
+        {#if hasArgumentsPreview}
+          <PayloadInspector
+            value={argumentsPreview.value}
+            truncated={argumentsPreview.truncated}
+            label="Arguments preview"
+            parse={parseArgumentPreviewString}
+          />
+        {:else}
+          <p class="cinder-approval-card__muted">No arguments were provided.</p>
+        {/if}
       </section>
 
       {#if environmentNames.length > 0}
@@ -496,7 +505,7 @@
             <Button type="button" variant="primary" onclick={handleApprove} disabled={!onapprove}>
               Approve
             </Button>
-            {#if editableArgs}
+            {#if canEditArguments}
               <Button
                 type="button"
                 variant="secondary"
