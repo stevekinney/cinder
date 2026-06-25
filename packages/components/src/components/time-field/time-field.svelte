@@ -224,7 +224,7 @@
       class="cinder-time-field__input"
       type="time"
       step={inputStep}
-      value={value ?? ''}
+      value={inputMirrorValue ?? value ?? ''}
       disabled={resolvedDisabled}
       {readonly}
       required={resolvedRequired}

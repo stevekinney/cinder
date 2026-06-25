@@ -153,11 +153,13 @@ describe('TimeField', () => {
     const input = getInput(form);
     input.value = '10:45';
     await fireEvent.input(input);
+    await tick();
 
     const submittedTime = form.querySelector<HTMLInputElement>(
       'input[type="hidden"][name="reminder_time"]',
     );
     expect(submittedTime?.value).toBe('10:45');
+    expect(input.value).toBe('10:45');
   });
 
   test('clears mirrored native submission when controlled value changes', async () => {
