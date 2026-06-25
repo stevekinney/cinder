@@ -101,6 +101,17 @@ describe('DateRangeField', () => {
       });
     });
 
+    test('clears invalid controlled datetime values during normalization', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: 'not-a-date', end: '2026-06-01Tbad' },
+      });
+
+      expect(getStartInput(container).value).toBe('');
+      expect(getEndInput(container).value).toBe('');
+    });
+
     test('normalizes controlled datetime values to day inputs before rendering', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
