@@ -102,4 +102,17 @@ describe('resolveTextDirection', () => {
 
     expect(resolveTextDirection(element, 'rtl')).toBe('ltr');
   });
+
+  test('prefers nearer inline style direction over farther dir ancestor', () => {
+    const outer = document.createElement('div');
+    outer.dir = 'rtl';
+    const wrapper = document.createElement('section');
+    wrapper.style.direction = 'ltr';
+    const element = document.createElement('div');
+    wrapper.appendChild(element);
+    outer.appendChild(wrapper);
+    document.body.appendChild(outer);
+
+    expect(resolveTextDirection(element)).toBe('ltr');
+  });
 });

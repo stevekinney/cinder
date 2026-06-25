@@ -6,14 +6,31 @@
   import DropdownTrigger from '../../components/dropdown-trigger/dropdown-trigger.svelte';
   import LocaleProvider from '../../components/locale-provider/locale-provider.svelte';
 
-  let { providerDirection = 'rtl' }: { providerDirection?: TextDirection } = $props();
+  let {
+    providerDirection = 'rtl',
+    localDirection,
+  }: {
+    providerDirection?: TextDirection;
+    localDirection?: TextDirection | undefined;
+  } = $props();
 </script>
 
 <LocaleProvider direction={providerDirection}>
-  <Dropdown id="provider-direction-menu">
-    <DropdownTrigger class="trigger">Actions</DropdownTrigger>
-    <DropdownMenu>
-      <DropdownItem>Copy link</DropdownItem>
-    </DropdownMenu>
-  </Dropdown>
+  {#if localDirection}
+    <div dir={localDirection}>
+      <Dropdown id="provider-direction-menu">
+        <DropdownTrigger class="trigger">Actions</DropdownTrigger>
+        <DropdownMenu>
+          <DropdownItem>Copy link</DropdownItem>
+        </DropdownMenu>
+      </Dropdown>
+    </div>
+  {:else}
+    <Dropdown id="provider-direction-menu">
+      <DropdownTrigger class="trigger">Actions</DropdownTrigger>
+      <DropdownMenu>
+        <DropdownItem>Copy link</DropdownItem>
+      </DropdownMenu>
+    </Dropdown>
+  {/if}
 </LocaleProvider>

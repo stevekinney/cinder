@@ -10,6 +10,10 @@ export function resolveTextDirection(
   while (currentElement) {
     const direction = currentElement.getAttribute('dir')?.toLowerCase();
     if (direction === 'rtl' || direction === 'ltr') {
+      if (typeof getComputedStyle === 'function' && styledDirectionElement) {
+        const styledDirection = getComputedStyle(styledDirectionElement).direction;
+        if (styledDirection === 'rtl' || styledDirection === 'ltr') return styledDirection;
+      }
       if (currentElement === currentElement.ownerDocument.documentElement) {
         documentDirection = direction;
         break;

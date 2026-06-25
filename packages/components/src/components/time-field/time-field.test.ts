@@ -137,6 +137,28 @@ describe('TimeField', () => {
     expect(submittedTime?.value).toBe('09:30');
   });
 
+  test('mirrors typed input values to native form submission before change commits', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    render(TimeField, {
+      target: form,
+      props: {
+        id: 'reminder',
+        defaultValue: '09:30',
+        name: 'reminder_time',
+      },
+    });
+
+    const input = getInput(form);
+    input.value = '10:45';
+    await fireEvent.input(input);
+
+    const submittedTime = form.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="reminder_time"]',
+    );
+    expect(submittedTime?.value).toBe('10:45');
+  });
+
   test('wires description, error, invalid, and required state to the time input', () => {
     const { container } = render(TimeField, {
       props: {
@@ -210,6 +232,42 @@ describe('TimeField', () => {
     expect(labelledBy).not.toBeNull();
     expect(timezone.getAttribute('aria-label')).toBeNull();
     expect(textForLabelledBy(container, labelledBy!)).toBe('Reminder time timezone');
+  });
+
+  test('qualifies timezone select accessible name with the standalone aria-label', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'start',
+        value: '09:30',
+        'aria-label': 'Start time',
+        timezones: ['UTC', 'Europe/Berlin'],
+      },
+    });
+
+    const timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    expect(timezone.getAttribute('aria-label')).toBe('Start time timezone');
+    expect(timezone.getAttribute('aria-labelledby')).toBeNull();
+  });
+
+  test('qualifies timezone select accessible name with standalone labelledby text', () => {
+    const target = document.createElement('div');
+    target.innerHTML = '<span id="field-name">Start time</span>';
+    document.body.appendChild(target);
+    const { container } = render(TimeField, {
+      target,
+      props: {
+        id: 'start',
+        value: '09:30',
+        'aria-labelledby': 'field-name',
+        timezones: ['UTC', 'Europe/Berlin'],
+      },
+    });
+
+    const timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    const labelledBy = timezone.getAttribute('aria-labelledby');
+    expect(labelledBy).toBe('field-name start-timezone-label');
+    expect(timezone.getAttribute('aria-label')).toBeNull();
+    expect(textForLabelledBy(container, labelledBy!)).toBe('Start time timezone');
   });
 
   test('keeps a generic timezone select label when no field label is available', () => {

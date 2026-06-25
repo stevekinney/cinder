@@ -21,6 +21,7 @@
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
+  import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
     getDropdownContext,
@@ -35,7 +36,11 @@
   const registerMenu = getDropdownRegister();
   const setOpen = getDropdownSetOpen();
   const localeContext = getLocaleContext();
-  const resolvedDirection = $derived(direction ?? localeContext?.direction);
+  let directionRevision = $state(0);
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    return direction ?? resolveTextDirection(context.anchorElement, localeContext?.direction);
+  });
 
   let menuElement = $state<HTMLDivElement | null>(null);
   let focusedFallbackOpen = false;
@@ -57,6 +62,13 @@
   $effect(() => {
     registerMenu(menuElement);
     return () => registerMenu(null);
+  });
+
+  $effect(() => {
+    if (direction) return;
+    return observeTextDirection(context.anchorElement, () => {
+      directionRevision += 1;
+    });
   });
 
   $effect(() => {

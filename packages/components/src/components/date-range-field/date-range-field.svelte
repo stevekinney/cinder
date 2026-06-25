@@ -234,6 +234,7 @@
 
   const inputType = $derived(inputTypeFor(granularity));
   const inputStep = $derived(inputStepFor(granularity));
+  const normalizedValue = $derived(normalizeDateRangeValue(value, granularity));
   const defaultStartLabel = $derived(granularity === 'day' ? 'Start date' : 'Start date and time');
   const defaultEndLabel = $derived(granularity === 'day' ? 'End date' : 'End date and time');
   const resolvedStartLabel = $derived(startLabel ?? defaultStartLabel);
@@ -328,8 +329,8 @@
         id={startId}
         type={inputType}
         class="cinder-date-range-field__date-input"
-        value={value.start ?? ''}
-        max={value.end ?? undefined}
+        value={normalizedValue.start ?? ''}
+        max={normalizedValue.end ?? undefined}
         step={inputStep}
         {disabled}
         aria-invalid={invalid}
@@ -352,8 +353,8 @@
         id={endId}
         type={inputType}
         class="cinder-date-range-field__date-input"
-        value={value.end ?? ''}
-        min={value.start ?? undefined}
+        value={normalizedValue.end ?? ''}
+        min={normalizedValue.start ?? undefined}
         step={inputStep}
         {disabled}
         aria-invalid={invalid}

@@ -72,6 +72,36 @@ describe('DateRangeField', () => {
       expect(endInput.value).toBe('2026-06-01T17:45');
     });
 
+    test('normalizes controlled datetime values and constraints before rendering', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01T09:30:15', end: '2026-06-01T17:45:30' },
+      });
+      const startInput = getStartInput(container);
+      const endInput = getEndInput(container);
+
+      expect(startInput.value).toBe('2026-06-01T09:30');
+      expect(startInput.max).toBe('2026-06-01T17:45');
+      expect(endInput.value).toBe('2026-06-01T17:45');
+      expect(endInput.min).toBe('2026-06-01T09:30');
+    });
+
+    test('normalizes controlled datetime values to day inputs before rendering', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'day',
+        value: { start: '2026-06-01T09:30:15', end: '2026-06-07T17:45:30' },
+      });
+      const startInput = getStartInput(container);
+      const endInput = getEndInput(container);
+
+      expect(startInput.value).toBe('2026-06-01');
+      expect(startInput.max).toBe('2026-06-07');
+      expect(endInput.value).toBe('2026-06-07');
+      expect(endInput.min).toBe('2026-06-01');
+    });
+
     test('sets second-level datetime step for second granularity', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',

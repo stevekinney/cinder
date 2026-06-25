@@ -55,7 +55,8 @@
   const formField = getFormFieldContext();
   const includeSeconds = $derived(granularity === 'second');
   const inputStep = $derived(includeSeconds ? 1 : 60);
-  const submittedValue = $derived(canonicalTimeValue(value));
+  let inputMirrorValue = $state<string | undefined>(undefined);
+  const submittedValue = $derived(canonicalTimeValue(inputMirrorValue ?? value));
 
   untrack(() => {
     if (value === undefined) value = canonicalTimeValue(defaultValue);
@@ -102,6 +103,16 @@
   const inputAriaLabelledBy = $derived(
     label ? undefined : (normalizeAriaText(ariaLabelledBy) ?? formField?.labelId),
   );
+  const timezoneAriaLabelledBy = $derived(
+    labelId
+      ? `${labelId} ${timezoneLabelId}`
+      : inputAriaLabelledBy
+        ? `${inputAriaLabelledBy} ${timezoneLabelId}`
+        : undefined,
+  );
+  const timezoneAriaLabel = $derived(
+    timezoneAriaLabelledBy ? undefined : inputAriaLabel ? `${inputAriaLabel} timezone` : 'Timezone',
+  );
   const resolvedTimezoneName = $derived(
     timezone !== undefined ? (timezoneName ?? (name ? `${name}-timezone` : undefined)) : undefined,
   );
@@ -129,8 +140,14 @@
     if (resolvedDisabled || readonly) return;
     const target = event.currentTarget as HTMLInputElement;
     const nextValue = canonicalTimeValue(target.value);
+    inputMirrorValue = undefined;
     value = nextValue;
     emit(nextValue);
+  }
+
+  function handleInput(event: Event): void {
+    if (resolvedDisabled || readonly) return;
+    inputMirrorValue = (event.currentTarget as HTMLInputElement).value;
   }
 
   function handleTimezoneChange(event: Event): void {
@@ -138,6 +155,7 @@
     const target = event.currentTarget as HTMLSelectElement;
     timezone = target.value;
     const nextValue = canonicalTimeValue(value);
+    inputMirrorValue = undefined;
     value = nextValue;
     emit(nextValue, timezone);
   }
@@ -151,6 +169,7 @@
 
     const handleReset = () => {
       if (resolvedDisabled) return;
+      inputMirrorValue = undefined;
       value = resetValue;
       timezone = resetTimezone;
     };
@@ -179,6 +198,7 @@
       aria-labelledby={inputAriaLabelledBy}
       aria-describedby={describedBy}
       aria-invalid={invalid}
+      oninput={handleInput}
       onchange={handleInputChange}
     />
 
@@ -187,34 +207,20 @@
     {/if}
 
     {#if timezones && timezones.length > 0}
-      {#if labelId}
-        <span id={timezoneLabelId} class="cinder-sr-only">timezone</span>
-        <select
-          class="cinder-time-field__timezone"
-          aria-labelledby={`${labelId} ${timezoneLabelId}`}
-          aria-describedby={describedBy}
-          value={timezone}
-          disabled={resolvedDisabled || readonly}
-          onchange={handleTimezoneChange}
-        >
-          {#each timezones as option (option)}
-            <option value={option}>{option}</option>
-          {/each}
-        </select>
-      {:else}
-        <select
-          class="cinder-time-field__timezone"
-          aria-label="Timezone"
-          aria-describedby={describedBy}
-          value={timezone}
-          disabled={resolvedDisabled || readonly}
-          onchange={handleTimezoneChange}
-        >
-          {#each timezones as option (option)}
-            <option value={option}>{option}</option>
-          {/each}
-        </select>
-      {/if}
+      <span id={timezoneLabelId} class="cinder-sr-only">timezone</span>
+      <select
+        class="cinder-time-field__timezone"
+        aria-label={timezoneAriaLabel}
+        aria-labelledby={timezoneAriaLabelledBy}
+        aria-describedby={describedBy}
+        value={timezone}
+        disabled={resolvedDisabled || readonly}
+        onchange={handleTimezoneChange}
+      >
+        {#each timezones as option (option)}
+          <option value={option}>{option}</option>
+        {/each}
+      </select>
     {/if}
 
     {#if resolvedTimezoneName}
