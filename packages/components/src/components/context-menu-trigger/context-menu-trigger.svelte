@@ -143,7 +143,8 @@
     event.preventDefault();
     const target = event.target instanceof HTMLElement ? event.target : triggerElement;
     const rect = target?.getBoundingClientRect() ?? triggerElement?.getBoundingClientRect();
-    context.openAt(rect?.left ?? 0, rect?.bottom ?? 0);
+    const x = context.direction === 'rtl' ? rect?.right : rect?.left;
+    context.openAt(x ?? 0, rect?.bottom ?? 0);
     callTriggerHandler(onkeydown, event);
   }
 

@@ -2179,6 +2179,24 @@
       "import": "./src/components/load-more/load-more.examples.json",
       "default": "./src/components/load-more/load-more.examples.json"
     },
+    "./locale-provider": {
+      "types": "./dist/components/locale-provider/index.d.ts",
+      "svelte": "./src/components/locale-provider/index.ts",
+      "node": "./dist/server/components/locale-provider/index.js",
+      "default": "./dist/components/locale-provider/index.js"
+    },
+    "./locale-provider/schema": {
+      "types": "./dist/components/locale-provider/locale-provider.schema.d.ts",
+      "svelte": "./src/components/locale-provider/locale-provider.schema.ts",
+      "node": "./dist/server/components/locale-provider/locale-provider.schema.js",
+      "default": "./dist/components/locale-provider/locale-provider.schema.js"
+    },
+    "./locale-provider/variables": {
+      "types": "./dist/components/locale-provider/locale-provider.variables.d.ts",
+      "svelte": "./src/components/locale-provider/locale-provider.variables.ts",
+      "node": "./dist/server/components/locale-provider/locale-provider.variables.js",
+      "default": "./dist/components/locale-provider/locale-provider.variables.js"
+    },
     "./markdown-editor": {
       "types": "./dist/components/markdown-editor/index.d.ts",
       "svelte": "./src/components/markdown-editor/index.ts",
@@ -3809,6 +3827,31 @@
       "import": "./src/components/textarea/textarea.examples.json",
       "default": "./src/components/textarea/textarea.examples.json"
     },
+    "./time-field": {
+      "types": "./dist/components/time-field/index.d.ts",
+      "svelte": "./src/components/time-field/index.ts",
+      "node": "./dist/server/components/time-field/index.js",
+      "default": "./dist/components/time-field/index.js"
+    },
+    "./time-field/schema": {
+      "types": "./dist/components/time-field/time-field.schema.d.ts",
+      "svelte": "./src/components/time-field/time-field.schema.ts",
+      "node": "./dist/server/components/time-field/time-field.schema.js",
+      "default": "./dist/components/time-field/time-field.schema.js"
+    },
+    "./time-field/variables": {
+      "types": "./dist/components/time-field/time-field.variables.d.ts",
+      "svelte": "./src/components/time-field/time-field.variables.ts",
+      "node": "./dist/server/components/time-field/time-field.variables.js",
+      "default": "./dist/components/time-field/time-field.variables.js"
+    },
+    "./time-field/styles": {
+      "default": "./dist/components/time-field/time-field.css"
+    },
+    "./time-field/examples": {
+      "import": "./src/components/time-field/time-field.examples.json",
+      "default": "./src/components/time-field/time-field.examples.json"
+    },
     "./timeline": {
       "types": "./dist/components/timeline/index.d.ts",
       "svelte": "./src/components/timeline/index.ts",
@@ -4424,7 +4467,6 @@
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
     "@shikijs/rehype": "^3.21.0",
-    "@standard-schema/spec": "^1.1.0",
     "@tanstack/virtual-core": "^3.17.1",
     "ajv": "^8",
     "comlink": "^4.4.2",

@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import type { StatProps } from './stat.types.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { formatNumber } from '../../utilities/format-number.ts';
 
@@ -37,12 +38,16 @@
     ...rest
   }: StatProps = $props();
 
+  const localeContext = getLocaleContext();
+
   const stableId = $derived(id ?? generatedId);
   const labelId = $derived(`${stableId}-label`);
   const valueId = $derived(`${stableId}-value`);
 
   const displayValue = $derived(
-    typeof value === 'number' ? formatNumber(value, valueLocale, valueFormatOptions) : value,
+    typeof value === 'number'
+      ? formatNumber(value, valueLocale ?? localeContext?.locale, valueFormatOptions)
+      : value,
   );
 
   const arrowGlyph = $derived(

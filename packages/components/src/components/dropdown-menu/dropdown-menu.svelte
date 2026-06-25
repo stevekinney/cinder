@@ -20,6 +20,8 @@
   import { tick } from 'svelte';
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
+  import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
     getDropdownContext,
@@ -28,22 +30,44 @@
   } from '../dropdown/dropdown.context.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
-  let { class: customClassName, children, ...rest }: DropdownMenuProps = $props();
+  let { class: customClassName, children, dir: direction, ...rest }: DropdownMenuProps = $props();
 
   const context = getDropdownContext();
   const registerMenu = getDropdownRegister();
   const setOpen = getDropdownSetOpen();
+  const localeContext = getLocaleContext();
+  let directionRevision = $state(0);
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    if (direction === 'auto') {
+      return resolveTextDirection(context.anchorElement, localeContext?.direction) ?? direction;
+    }
+    return direction ?? resolveTextDirection(context.anchorElement, localeContext?.direction);
+  });
+  const fallbackAnchorElement = $derived(
+    context.fallbackAnchorElement === undefined
+      ? context.anchorElement
+      : context.fallbackAnchorElement,
+  );
 
   let menuElement = $state<HTMLDivElement | null>(null);
   let focusedFallbackOpen = false;
   const anchoredFallback = createAnchoredOverlay({
-    open: () => context.isOpen && !context.supportsPopover && Boolean(context.anchorElement),
-    anchor: () => context.anchorElement,
+    open: () => context.isOpen && !context.supportsPopover && Boolean(fallbackAnchorElement),
+    anchor: () => fallbackAnchorElement,
     panel: () => menuElement,
     placement: () => context.fallbackPlacement ?? 'bottom-end',
     offset: () => 4,
     widthMode: () => context.widthMode ?? 'menu',
   });
+  const fallbackPositionStyle = $derived(
+    context.fallbackPositionStyle ??
+      (fallbackAnchorElement ? anchoredFallback.positionStyle : undefined),
+  );
+  const fallbackPositionReady = $derived(
+    context.fallbackPositionReady ??
+      (fallbackAnchorElement ? anchoredFallback.positionReady : undefined),
+  );
   const fallbackPortalAttachment = createPortalAttachment({
     target: () => (typeof document === 'undefined' ? null : document.body),
     source: () => context.anchorElement,
@@ -54,6 +78,13 @@
   $effect(() => {
     registerMenu(menuElement);
     return () => registerMenu(null);
+  });
+
+  $effect(() => {
+    if (direction && direction !== 'auto') return;
+    return observeTextDirection(context.anchorElement, () => {
+      directionRevision += 1;
+    });
   });
 
   $effect(() => {
@@ -143,19 +174,19 @@
     class={classNames('cinder-_floating-surface', 'cinder-dropdown-menu', customClassName)}
     style={context.supportsPopover
       ? `position-anchor: --${context.menuId};`
-      : context.anchorElement
-        ? anchoredFallback.positionStyle
-        : undefined}
+      : fallbackPositionStyle}
     role="menu"
     aria-orientation="vertical"
-    data-cinder-position-ready={!context.supportsPopover && context.anchorElement
-      ? anchoredFallback.positionReady
+    data-cinder-position-ready={!context.supportsPopover && fallbackPositionReady !== undefined
+      ? fallbackPositionReady
       : undefined}
     tabindex={-1}
     onkeydown={handleKeydown}
     ontoggle={context.supportsPopover ? handleToggle : undefined}
     {@attach fallbackPortalAttachment}
     {...rest}
+    dir={resolvedDirection}
+    data-cinder-explicit-direction={resolvedDirection ? 'true' : undefined}
   >
     {#if children}
       {@render children()}

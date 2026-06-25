@@ -6,7 +6,12 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { fireEvent, render, cleanup } = await import('@testing-library/svelte');
+const { renderToServerHtml } = await import('../../test/server-render.ts');
+const { tick } = await import('svelte');
 const { default: Slider } = await import('./slider.svelte');
+const { default: SliderDirectionFixture } =
+  await import('../../test/fixtures/slider-direction-fixture.svelte');
+const SLIDER_DIRECTION_FIXTURE_SOURCE = `${import.meta.dir}/../../test/fixtures/slider-direction-fixture.svelte`;
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -59,6 +64,105 @@ describe('Slider (single)', () => {
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'ArrowLeft' });
     expect(thumb.getAttribute('aria-valuenow')).toBe('15');
+  });
+
+  test('ArrowRight decrements and ArrowLeft increments under dir=rtl', async () => {
+    const { container } = render(Slider, {
+      target: Object.assign(document.createElement('div'), { dir: 'rtl' }),
+      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+    });
+    const thumb = getThumbs(container)[0]!;
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('15');
+    await fireEvent.keyDown(thumb, { key: 'ArrowLeft' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('20');
+  });
+
+  test('local direction overrides locale provider direction', async () => {
+    const { container } = render(SliderDirectionFixture, { props: { localDirection: 'ltr' } });
+    const root = container.querySelector('.cinder-slider');
+    const thumb = getThumbs(container)[0]!;
+
+    expect(root?.getAttribute('dir')).toBe('ltr');
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('25');
+  });
+
+  test('reacts to ancestor direction changes after mount', async () => {
+    const target = Object.assign(document.createElement('div'), { dir: 'ltr' });
+    document.body.appendChild(target);
+    const { container } = render(Slider, {
+      target,
+      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+    });
+    const root = container.querySelector('.cinder-slider');
+    const thumb = getThumbs(container)[0]!;
+
+    expect(root?.getAttribute('dir')).toBeNull();
+
+    await tick();
+    target.setAttribute('dir', 'rtl');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(root?.getAttribute('dir')).toBeNull();
+
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('15');
+  });
+
+  test('reacts to ancestor style direction changes after mount', async () => {
+    const target = document.createElement('div');
+    target.style.direction = 'ltr';
+    document.body.appendChild(target);
+    const { container } = render(Slider, {
+      target,
+      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+    });
+    const root = container.querySelector('.cinder-slider');
+    const thumb = getThumbs(container)[0]!;
+
+    expect(root?.getAttribute('dir')).toBeNull();
+
+    await tick();
+    target.style.direction = 'rtl';
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(root?.getAttribute('dir')).toBeNull();
+
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('15');
+  });
+
+  test('omits document-only direction from the slider root after mount', () => {
+    document.documentElement.dir = 'ltr';
+    try {
+      const { container } = render(Slider, {
+        props: { label: 'Brightness', defaultValue: 20, step: 5 },
+      });
+
+      expect(container.querySelector('.cinder-slider')?.getAttribute('dir')).toBeNull();
+    } finally {
+      document.documentElement.removeAttribute('dir');
+    }
+  });
+
+  test('server rendering uses provider direction before local DOM can be checked', async () => {
+    const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE, {
+      localDirection: undefined,
+      providerDirection: 'rtl',
+    });
+    const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
+
+    expect(sliderTag).toContain('dir="rtl"');
+  });
+
+  test('server rendering still includes local direction wrappers', async () => {
+    const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE, {
+      localDirection: 'ltr',
+    });
+    const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
+
+    expect(sliderTag).not.toBe('');
+    expect(html).toContain('dir="ltr"');
+    expect(sliderTag).toContain('dir="rtl"');
   });
 
   test('ArrowUp / ArrowDown also adjust by step', async () => {
@@ -603,6 +707,38 @@ describe('Slider (pointer)', () => {
     const [low, high] = getThumbs(container);
     expect(low!.getAttribute('aria-valuenow')).toBe('10');
     expect(high!.getAttribute('aria-valuenow')).toBe('80');
+  });
+
+  test('track click maps the visual max edge to the maximum under dir=rtl', async () => {
+    const target = Object.assign(document.createElement('div'), { dir: 'rtl' });
+    const { container } = render(Slider, {
+      target,
+      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    mockTrackRect(track, 200);
+
+    await fireEvent.pointerDown(track, { clientX: 0 });
+
+    const thumb = getThumbs(container)[0]!;
+    expect(thumb.getAttribute('aria-valuenow')).toBe('100');
+  });
+
+  test('pointer drag decreases while moving right under dir=rtl', async () => {
+    const target = Object.assign(document.createElement('div'), { dir: 'rtl' });
+    const { container } = render(Slider, {
+      target,
+      props: { label: 'Volume', defaultValue: 100, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    const thumb = getThumbs(container)[0]!;
+    mockTrackRect(track, 200);
+
+    await fireEvent.pointerDown(thumb, { clientX: 0 });
+    await fireEvent(document, new PointerEvent('pointermove', { clientX: 150, bubbles: true }));
+
+    expect(thumb.getAttribute('aria-valuenow')).toBe('25');
+    await fireEvent(document, new PointerEvent('pointerup', { bubbles: true }));
   });
 
   test('document listeners are cleaned up on unmount during drag', async () => {

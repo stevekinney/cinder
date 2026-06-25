@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -30,6 +31,7 @@ mock.module('@floating-ui/dom', () => ({
 }));
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 const { default: ContextMenuHarness } = await import('./_context-menu-test-harness.svelte');
 
 function queryMenu(): HTMLElement | null {
@@ -68,6 +70,82 @@ describe('ContextMenu', () => {
     expect(computePositionSpy).toHaveBeenCalled();
   });
 
+  test('right-to-left context menus open toward inline-start by default', async () => {
+    const { container } = render(ContextMenuHarness, { props: { direction: 'rtl' } });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('left-start');
+  });
+
+  test('provider-only right-to-left context menus open toward inline-start', async () => {
+    const { container } = render(ContextMenuHarness, { props: { providerDirection: 'rtl' } });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('left-start');
+    expect(queryMenu()?.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('preserves explicit dropdown menu direction while using provider direction for placement', async () => {
+    const { container } = render(ContextMenuHarness, {
+      props: { providerDirection: 'rtl', menuDirection: 'ltr' },
+    });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('left-start');
+    expect(queryMenu()?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('local left-to-right direction overrides right-to-left provider placement', async () => {
+    const { container } = render(ContextMenuHarness, {
+      props: { direction: 'ltr', providerDirection: 'rtl' },
+    });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('right-start');
+    expect(queryMenu()?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('reacts to ancestor direction changes after mount', async () => {
+    const { container, rerender } = render(ContextMenuHarness, {
+      props: { direction: 'ltr' },
+    });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await tick();
+    await rerender({ direction: 'rtl' });
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    expect(options?.placement).toBe('left-start');
+    expect(queryMenu()?.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('exposes the trigger as the dropdown direction anchor without taking over pointer positioning', () => {
+    const source = readFileSync(new URL('./context-menu.svelte', import.meta.url), 'utf8');
+
+    expect(source).toContain('get anchorElement()');
+    expect(source).toContain('return triggerElement;');
+    expect(source).toContain('get fallbackAnchorElement()');
+    expect(source).toContain('return null;');
+  });
+
   test('fallback menu portals virtual-anchor surfaces before they are positioned', async () => {
     computePositionSpy.mockImplementationOnce(async () => {
       throw new Error('detached panel');
@@ -84,7 +162,7 @@ describe('ContextMenu', () => {
       expect(menu?.getAttribute('data-cinder-position-ready')).toBe('false');
       expect(menu?.getAttribute('data-cinder-requested-x')).toBe('24');
       expect(menu?.getAttribute('data-cinder-requested-y')).toBe('36');
-      expect(menu?.getAttribute('style')).toBeNull();
+      expect(menu?.getAttribute('style')).toBe('');
     });
   });
 
@@ -484,6 +562,30 @@ describe('ContextMenu', () => {
 
     await waitFor(() => {
       expect(queryMenu()?.getAttribute('data-cinder-requested-x')).toBe('10');
+      expect(queryMenu()?.getAttribute('data-cinder-requested-y')).toBe('32');
+    });
+  });
+
+  test('keyboard context menu keys use the inline-start edge in right-to-left direction', async () => {
+    const { container } = render(ContextMenuHarness, { props: { direction: 'rtl' } });
+    const button = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    button.getBoundingClientRect = () =>
+      ({
+        x: 10,
+        y: 12,
+        top: 12,
+        left: 10,
+        right: 110,
+        bottom: 32,
+        width: 100,
+        height: 20,
+      }) as DOMRect;
+    button.focus();
+
+    await fireEvent.keyDown(button, { key: 'F10', shiftKey: true });
+
+    await waitFor(() => {
+      expect(queryMenu()?.getAttribute('data-cinder-requested-x')).toBe('110');
       expect(queryMenu()?.getAttribute('data-cinder-requested-y')).toBe('32');
     });
   });

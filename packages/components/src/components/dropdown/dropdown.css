@@ -265,8 +265,14 @@
       position: fixed;
       inset: auto;
       top: calc(anchor(bottom) + var(--cinder-space-1));
+      left: auto;
       right: anchor(right);
       position-try-fallbacks: flip-block, flip-inline;
+    }
+
+    .cinder-dropdown-menu[popover][dir='rtl'] {
+      right: auto;
+      left: anchor(left);
     }
 
     .cinder-dropdown__menu[popover] {

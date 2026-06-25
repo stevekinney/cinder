@@ -25,6 +25,8 @@
   import type { SliderProps, SliderValue } from './slider.types.ts';
   import { untrack } from 'svelte';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
+  import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
@@ -46,7 +48,24 @@
   }: SliderProps = $props();
 
   const formField = getFormFieldContext();
+  const localeContext = getLocaleContext();
   const disabled = $derived(disabledProp || (formField?.disabled ?? false));
+  let rootElement = $state<HTMLDivElement | null>(null);
+  let directionRevision = $state(0);
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    return rootElement
+      ? resolveTextDirection(rootElement.parentElement, localeContext?.direction)
+      : localeContext?.direction;
+  });
+  const rootDirection = $derived(localeContext?.direction ? resolvedDirection : null);
+  const isRightToLeft = $derived(resolvedDirection === 'rtl');
+
+  $effect(() => {
+    return observeTextDirection(rootElement?.parentElement, () => {
+      directionRevision += 1;
+    });
+  });
 
   // Guarantee a usable step. `0`, `NaN`, and negative values would let the
   // tick generator loop forever, so fall back to `1`. Keep the derived pure — the
@@ -228,13 +247,22 @@
     if (disabled) return;
     const current = thumb === 'high' ? highValue : lowValue;
     const hasTickArray = tickList !== null && tickList.length > 0;
+    const horizontalStepDirection: 1 | -1 = isRightToLeft ? -1 : 1;
     let next = current;
     switch (event.key) {
       case 'ArrowRight':
+        next = hasTickArray
+          ? neighborTick(current, horizontalStepDirection)
+          : current + horizontalStepDirection * safeStep;
+        break;
+      case 'ArrowLeft':
+        next = hasTickArray
+          ? neighborTick(current, horizontalStepDirection === 1 ? -1 : 1)
+          : current - horizontalStepDirection * safeStep;
+        break;
       case 'ArrowUp':
         next = hasTickArray ? neighborTick(current, 1) : current + safeStep;
         break;
-      case 'ArrowLeft':
       case 'ArrowDown':
         next = hasTickArray ? neighborTick(current, -1) : current - safeStep;
         break;
@@ -273,7 +301,8 @@
     if (!trackElement) return min;
     const rect = trackElement.getBoundingClientRect();
     if (rect.width === 0) return min;
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const physicalRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const ratio = isRightToLeft ? 1 - physicalRatio : physicalRatio;
     return min + ratio * (max - min);
   }
 
@@ -394,8 +423,10 @@
 />
 
 <div
+  bind:this={rootElement}
   class={classNames('cinder-slider', isRange && 'cinder-slider--range', className)}
   data-cinder-disabled={disabled || undefined}
+  {...rootDirection ? { dir: rootDirection } : {}}
 >
   {#if isRange}
     <span id={lowQualifierId} class="cinder-sr-only">

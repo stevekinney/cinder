@@ -1535,7 +1535,7 @@
           "reason": "A single date is sufficient — use a plain date input instead."
         },
         {
-          "reason": "Date-time precision (hours/minutes/timezone) is required — this v1 is date-only."
+          "reason": "Timezone conversion or a standalone time-of-day value is required — use time-field for the latter."
         }
       ],
       "related": ["input", "form-field", "chip", "segmented-control"],
@@ -2668,6 +2668,32 @@
       }
     },
     {
+      "name": "LocaleProvider",
+      "id": "locale-provider",
+      "import": "@lostgradient/cinder/locale-provider",
+      "exportName": "LocaleProvider",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Context provider that supplies a shared locale and text direction default to locale-aware descendant components.",
+      "tags": ["locale", "internationalization"],
+      "useWhen": [
+        "Setting one application or subtree locale for number, region, date, or time formatting.",
+        "Providing text direction once for direction-aware descendants while still allowing local overrides."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Only one component needs a non-default locale — pass that component's locale prop directly instead."
+        }
+      ],
+      "related": ["number-input", "phone-input", "stat"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/locale-provider/schema",
+        "variables": "@lostgradient/cinder/locale-provider/variables"
+      }
+    },
+    {
       "name": "MarkdownEditor",
       "id": "markdown-editor",
       "import": "@lostgradient/cinder/markdown-editor",
@@ -3395,10 +3421,10 @@
       "exportName": "SchemaForm",
       "category": "form",
       "status": "beta",
-      "purpose": "Schema-driven form that renders accessible controls from JSON Schema or Standard Schema and submits one validated value object.",
+      "purpose": "Schema-driven form that renders accessible controls from JSON Schema and submits one validated value object.",
       "tags": ["form", "schema", "validation"],
       "useWhen": [
-        "Capturing a payload whose shape is already described by a workflow, API, or Standard Schema validator.",
+        "Capturing a payload whose shape is already described by a workflow, API, or JSON Schema document.",
         "You need callback submission and native FormData submission to expose the same validated object."
       ],
       "avoidWhen": [
@@ -4677,6 +4703,33 @@
         "schema": "@lostgradient/cinder/textarea/schema",
         "variables": "@lostgradient/cinder/textarea/variables",
         "examples": "@lostgradient/cinder/textarea/examples"
+      }
+    },
+    {
+      "name": "TimeField",
+      "id": "time-field",
+      "import": "@lostgradient/cinder/time-field",
+      "exportName": "TimeField",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Standalone time-of-day field that collects a canonical time string with optional timezone selection.",
+      "tags": ["form", "time", "internationalization"],
+      "useWhen": [
+        "Collecting a time of day without a date, such as a reminder time or office-hours boundary.",
+        "Pairing a time value with an optional timezone while keeping a canonical `HH:mm` or `HH:mm:ss` value."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Collecting a full date range — use date-range-field instead."
+        }
+      ],
+      "related": ["date-range-field", "number-input"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/time-field/schema",
+        "variables": "@lostgradient/cinder/time-field/variables",
+        "examples": "@lostgradient/cinder/time-field/examples"
       }
     },
     {

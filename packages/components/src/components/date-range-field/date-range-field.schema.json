@@ -12,11 +12,15 @@
     },
     "startLabel": {
       "type": "string",
-      "description": "Accessible label for the start date input. Defaults to \"Start date\"."
+      "description": "Accessible label for the start input. Defaults to \"Start date\" for day granularity and \"Start date and time\" for datetime granularities."
     },
     "endLabel": {
       "type": "string",
-      "description": "Accessible label for the end date input. Defaults to \"End date\"."
+      "description": "Accessible label for the end input. Defaults to \"End date\" for day granularity and \"End date and time\" for datetime granularities."
+    },
+    "granularity": {
+      "enum": ["day", "hour", "minute", "second"],
+      "description": "Date-time precision. Defaults to day precision."
     },
     "hidePresets": {
       "type": "boolean",

@@ -146,6 +146,7 @@
 @import '../components/table-row/table-row.css';
 @import '../components/tabs/tabs.css';
 @import '../components/textarea/textarea.css';
+@import '../components/time-field/time-field.css';
 @import '../components/timeline/timeline.css';
 @import '../components/toast-region/toast-region.css';
 @import '../components/transfer-list/transfer-list.css';

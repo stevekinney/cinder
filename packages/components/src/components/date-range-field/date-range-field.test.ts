@@ -1,10 +1,10 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, setSystemTime, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { DateRangeValue } from './date-range-field.types.ts';
+import type { DateRangeDatePreset, DateRangeValue } from './date-range-field.types.ts';
 
 expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 
@@ -12,6 +12,8 @@ setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: DateRangeField } = await import('./date-range-field.svelte');
+const { default: DateRangeFieldBindableFixture } =
+  await import('../../test/fixtures/date-range-field-bindable-fixture.svelte');
 
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
@@ -55,6 +57,131 @@ describe('DateRangeField', () => {
       expect(endInput.type).toBe('date');
     });
 
+    test('renders datetime-local inputs when granularity includes time', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
+      });
+      const startInput = getStartInput(container);
+      const endInput = getEndInput(container);
+
+      expect(startInput.type).toBe('datetime-local');
+      expect(endInput.type).toBe('datetime-local');
+      expect(startInput.step).toBe('60');
+      expect(endInput.step).toBe('60');
+      expect(startInput.value).toBe('2026-06-01T09:30');
+      expect(endInput.value).toBe('2026-06-01T17:45');
+    });
+
+    test('normalizes controlled datetime values and constraints before rendering', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01T09:30:15', end: '2026-06-01T17:45:30' },
+      });
+      const startInput = getStartInput(container);
+      const endInput = getEndInput(container);
+
+      expect(startInput.value).toBe('2026-06-01T09:30');
+      expect(startInput.max).toBe('2026-06-01T17:45');
+      expect(endInput.value).toBe('2026-06-01T17:45');
+      expect(endInput.min).toBe('2026-06-01T09:30');
+    });
+
+    test('normalizes bindable range values when granularity changes', async () => {
+      const { container, getByTestId } = render(DateRangeFieldBindableFixture);
+
+      await fireEvent.click(container.querySelector<HTMLButtonElement>('.set-minute-granularity')!);
+
+      await waitFor(() => {
+        expect(getByTestId('range-value').textContent).toBe(
+          '{"start":"2026-06-01T09:30","end":"2026-06-01T10:45"}',
+        );
+      });
+    });
+
+    test('clears invalid controlled datetime values during normalization', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: 'not-a-date', end: '2026-06-01Tbad' },
+      });
+
+      expect(getStartInput(container).value).toBe('');
+      expect(getEndInput(container).value).toBe('');
+    });
+
+    test('clears malformed datetime values with non-T separators', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01 09:30', end: '2026-06-02T10:45' },
+      });
+
+      expect(getStartInput(container).value).toBe('');
+      expect(getEndInput(container).value).toBe('2026-06-02T10:45');
+    });
+
+    test('clears impossible controlled datetime values before emitting preserved endpoints', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-02-30T09:30', end: '2026-06-01T99:99' },
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+
+      expect(getStartInput(container).value).toBe('');
+      expect(getEndInput(container).value).toBe('');
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T09:30' },
+      });
+
+      expect(changes[0]).toEqual({
+        start: '2026-06-01T09:30',
+        end: undefined,
+      });
+    });
+
+    test('normalizes controlled datetime values to day inputs before rendering', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'day',
+        value: { start: '2026-06-01T09:30:15', end: '2026-06-07T17:45:30' },
+      });
+      const startInput = getStartInput(container);
+      const endInput = getEndInput(container);
+
+      expect(startInput.value).toBe('2026-06-01');
+      expect(startInput.max).toBe('2026-06-07');
+      expect(endInput.value).toBe('2026-06-07');
+      expect(endInput.min).toBe('2026-06-01');
+    });
+
+    test('sets second-level datetime step for second granularity', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'second',
+      });
+
+      expect(getStartInput(container).step).toBe('1');
+      expect(getEndInput(container).step).toBe('1');
+    });
+
+    test('sets hour-level datetime step for hour granularity', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'hour',
+      });
+
+      expect(getStartInput(container).type).toBe('datetime-local');
+      expect(getEndInput(container).type).toBe('datetime-local');
+      expect(getStartInput(container).step).toBe('3600');
+      expect(getEndInput(container).step).toBe('3600');
+    });
+
     test('renders a visible label when label prop is provided', () => {
       const { container } = render(DateRangeField, { id: 'drf', label: 'Time window' });
       const legend = container.querySelector('.cinder-date-range-field__legend');
@@ -87,6 +214,168 @@ describe('DateRangeField', () => {
       const inclusiveDays = (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000) + 1;
 
       expect(inclusiveDays).toBe(7);
+    });
+
+    test('built-in presets emit datetime-local values when granularity includes time', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+      const today = getPresetButtons(container).find(
+        (button) => button.textContent?.trim() === 'Today',
+      );
+      if (!today) throw new Error('Today preset not found');
+
+      await fireEvent.click(today);
+
+      const change = changes[0];
+      if (!change?.start || !change.end) throw new Error('Expected complete date range');
+      expect(change.start).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+      expect(change.end).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+      expect(getStartInput(container).value).toBe(change.start);
+      expect(getEndInput(container).value).toBe(change.end);
+    });
+
+    test('built-in hour presets include the active hour in their end value', async () => {
+      setSystemTime(new Date(2026, 5, 24, 9, 45, 30));
+
+      try {
+        const changes: DateRangeValue[] = [];
+        const { container } = render(DateRangeField, {
+          id: 'drf',
+          granularity: 'hour',
+          onchange: (next: DateRangeValue) => changes.push(next),
+        });
+        const today = getPresetButtons(container).find(
+          (button) => button.textContent?.trim() === 'Today',
+        );
+        if (!today) throw new Error('Today preset not found');
+
+        await fireEvent.click(today);
+
+        expect(changes[0]).toEqual({
+          start: '2026-06-24T00:00',
+          end: '2026-06-24T10:00',
+        });
+      } finally {
+        setSystemTime();
+      }
+    });
+
+    test('built-in hour presets do not spill into the next calendar day', async () => {
+      setSystemTime(new Date(2026, 5, 24, 23, 45, 30));
+
+      try {
+        const changes: DateRangeValue[] = [];
+        const { container } = render(DateRangeField, {
+          id: 'drf',
+          granularity: 'hour',
+          onchange: (next: DateRangeValue) => changes.push(next),
+        });
+        const today = getPresetButtons(container).find(
+          (button) => button.textContent?.trim() === 'Today',
+        );
+        if (!today) throw new Error('Today preset not found');
+
+        await fireEvent.click(today);
+
+        expect(changes[0]).toEqual({
+          start: '2026-06-24T00:00',
+          end: '2026-06-24T23:00',
+        });
+      } finally {
+        setSystemTime();
+      }
+    });
+
+    test('custom presets normalize values to the current granularity', async () => {
+      const changes: DateRangeValue[] = [];
+      const presets: DateRangeDatePreset[] = [
+        {
+          id: 'custom',
+          label: 'Custom',
+          resolve: () => ({
+            start: '2026-06-24',
+            end: '2026-06-24T09:45:30',
+          }),
+        },
+      ];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        presets,
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+      const custom = getPresetButtons(container)[0];
+      if (!custom) throw new Error('Custom preset not found');
+
+      await fireEvent.click(custom);
+
+      expect(changes[0]).toEqual({
+        start: '2026-06-24T00:00',
+        end: '2026-06-24T09:45',
+      });
+      expect(custom.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('custom presets clear impossible datetime values before emitting', async () => {
+      const changes: DateRangeValue[] = [];
+      const presets: DateRangeDatePreset[] = [
+        {
+          id: 'custom',
+          label: 'Custom',
+          resolve: () => ({
+            start: '2026-06-24T09:45',
+            end: '2026-06-31T99:99',
+          }),
+        },
+      ];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        presets,
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+      const custom = getPresetButtons(container)[0];
+      if (!custom) throw new Error('Custom preset not found');
+
+      await fireEvent.click(custom);
+
+      expect(changes[0]).toEqual({
+        start: '2026-06-24T09:45',
+        end: undefined,
+      });
+      expect(custom.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('moving datetime presets keep their pressed state after selection', async () => {
+      let callCount = 0;
+      const presets: DateRangeDatePreset[] = [
+        {
+          id: 'moving',
+          label: 'Moving',
+          resolve: () => {
+            callCount += 1;
+            return {
+              start: '2026-06-24T00:00',
+              end: `2026-06-24T00:${String(callCount).padStart(2, '0')}`,
+            };
+          },
+        },
+      ];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        presets,
+      });
+      const moving = getPresetButtons(container)[0];
+      if (!moving) throw new Error('Moving preset not found');
+
+      await fireEvent.click(moving);
+
+      expect(moving.getAttribute('aria-pressed')).toBe('true');
     });
 
     test('built-in Yesterday & today preset covers two inclusive calendar dates', async () => {
@@ -144,6 +433,18 @@ describe('DateRangeField', () => {
       expect(labelTexts).toContain('To');
     });
 
+    test('uses datetime-aware default labels for datetime granularities', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+      });
+      const labelTexts = Array.from(
+        container.querySelectorAll('.cinder-date-range-field__input-label'),
+      ).map((labelElement) => labelElement.textContent?.trim());
+
+      expect(labelTexts).toEqual(['Start date and time', 'End date and time']);
+    });
+
     test('renders description paragraph when description is provided', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
@@ -198,6 +499,100 @@ describe('DateRangeField', () => {
       expect(changes[0]?.end).toBe('2026-06-07');
     });
 
+    test('manual datetime input emits date-time values', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T09:30' },
+      });
+      await fireEvent.change(getEndInput(container), {
+        target: { value: '2026-06-01T17:45' },
+      });
+
+      expect(changes).toEqual([
+        { start: '2026-06-01T09:30', end: undefined },
+        { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
+      ]);
+    });
+
+    test('manual datetime input truncates to hour granularity', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'hour',
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T09:30' },
+      });
+
+      expect(changes[0]?.start).toBe('2026-06-01T09:00');
+    });
+
+    test('manual datetime input truncates seconds at minute granularity', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getEndInput(container), {
+        target: { value: '2026-06-01T17:45:30' },
+      });
+
+      expect(changes[0]?.end).toBe('2026-06-01T17:45');
+    });
+
+    test('manual datetime input normalizes the preserved endpoint before emitting', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-01T09:30:15', end: '2026-06-01T17:45:30' },
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T10:15:45' },
+      });
+
+      expect(changes[0]).toEqual({
+        start: '2026-06-01T10:15',
+        end: '2026-06-01T17:45',
+      });
+
+      await fireEvent.change(getEndInput(container), {
+        target: { value: '2026-06-01T18:30:45' },
+      });
+
+      expect(changes[1]).toEqual({
+        start: '2026-06-01T10:15',
+        end: '2026-06-01T18:30',
+      });
+    });
+
+    test('manual datetime input appends seconds at second granularity', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'second',
+        onchange: (v: DateRangeValue) => changes.push(v),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T09:30' },
+      });
+
+      expect(changes[0]?.start).toBe('2026-06-01T09:30:00');
+    });
+
     test('clicking a preset marks it as aria-pressed="true"', async () => {
       const preset = {
         id: 'last-7d',
@@ -237,6 +632,24 @@ describe('DateRangeField', () => {
       expect(btn.getAttribute('aria-pressed')).toBe('true');
     });
 
+    test('matches controlled preset values after granularity normalization', () => {
+      const preset = {
+        id: 'custom',
+        label: 'Custom',
+        resolve: () => ({ start: '2026-06-01T09:30', end: '2026-06-07T17:45' }),
+      };
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        presets: [preset],
+        value: { start: '2026-06-01T09:30:15', end: '2026-06-07T17:45:30' },
+      });
+
+      const btn = getPresetButtons(container)[0];
+      if (!btn) throw new Error('No preset button found');
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+    });
+
     test('clears preset pressed state when the controlled value no longer matches it', async () => {
       const preset = {
         id: 'last-7d',
@@ -254,6 +667,36 @@ describe('DateRangeField', () => {
       await rerender({
         id: 'drf',
         presets: [preset],
+        value: { start: '2026-06-01', end: '2026-06-07' },
+      });
+
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    test('does not keep a stale pressed preset when same-id presets change', async () => {
+      const originalPreset = {
+        id: 'custom',
+        label: 'Custom',
+        resolve: () => ({ start: '2026-06-01', end: '2026-06-07' }),
+      };
+      const replacementPreset = {
+        id: 'custom',
+        label: 'Custom',
+        resolve: () => ({ start: '2026-06-08', end: '2026-06-14' }),
+      };
+      const { container, rerender } = render(DateRangeField, {
+        id: 'drf',
+        presets: [originalPreset],
+      });
+      const btn = getPresetButtons(container)[0];
+      if (!btn) throw new Error('No preset button found');
+
+      await fireEvent.click(btn);
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+
+      await rerender({
+        id: 'drf',
+        presets: [replacementPreset],
         value: { start: '2026-06-01', end: '2026-06-07' },
       });
 
