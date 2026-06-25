@@ -147,6 +147,12 @@
     get supportsPopover() {
       return false;
     },
+    get anchorElement() {
+      return triggerElement;
+    },
+    get fallbackAnchorElement() {
+      return null;
+    },
     get initialFocus() {
       return 'first' as const;
     },

@@ -8,6 +8,7 @@ export type DropdownContext = {
   get isOpen(): boolean;
   get supportsPopover(): boolean;
   readonly anchorElement?: HTMLElement | null | undefined;
+  readonly fallbackAnchorElement?: HTMLElement | null | undefined;
   readonly fallbackPlacement?: Placement | undefined;
   readonly widthMode?: AnchoredOverlayWidthMode | undefined;
   readonly initialFocus?: 'first' | 'last' | 'none' | undefined;

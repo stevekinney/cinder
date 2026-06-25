@@ -41,12 +41,17 @@
     directionRevision;
     return direction ?? resolveTextDirection(context.anchorElement, localeContext?.direction);
   });
+  const fallbackAnchorElement = $derived(
+    context.fallbackAnchorElement === undefined
+      ? context.anchorElement
+      : context.fallbackAnchorElement,
+  );
 
   let menuElement = $state<HTMLDivElement | null>(null);
   let focusedFallbackOpen = false;
   const anchoredFallback = createAnchoredOverlay({
-    open: () => context.isOpen && !context.supportsPopover && Boolean(context.anchorElement),
-    anchor: () => context.anchorElement,
+    open: () => context.isOpen && !context.supportsPopover && Boolean(fallbackAnchorElement),
+    anchor: () => fallbackAnchorElement,
     panel: () => menuElement,
     placement: () => context.fallbackPlacement ?? 'bottom-end',
     offset: () => 4,
@@ -158,12 +163,12 @@
     class={classNames('cinder-_floating-surface', 'cinder-dropdown-menu', customClassName)}
     style={context.supportsPopover
       ? `position-anchor: --${context.menuId};`
-      : context.anchorElement
+      : fallbackAnchorElement
         ? anchoredFallback.positionStyle
         : undefined}
     role="menu"
     aria-orientation="vertical"
-    data-cinder-position-ready={!context.supportsPopover && context.anchorElement
+    data-cinder-position-ready={!context.supportsPopover && fallbackAnchorElement
       ? anchoredFallback.positionReady
       : undefined}
     tabindex={-1}

@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -134,6 +135,15 @@ describe('ContextMenu', () => {
     const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
     expect(options?.placement).toBe('left-start');
     expect(queryMenu()?.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('exposes the trigger as the dropdown direction anchor without taking over pointer positioning', () => {
+    const source = readFileSync(new URL('./context-menu.svelte', import.meta.url), 'utf8');
+
+    expect(source).toContain('get anchorElement()');
+    expect(source).toContain('return triggerElement;');
+    expect(source).toContain('get fallbackAnchorElement()');
+    expect(source).toContain('return null;');
   });
 
   test('fallback menu portals virtual-anchor surfaces before they are positioned', async () => {
