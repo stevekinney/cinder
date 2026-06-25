@@ -301,10 +301,6 @@
     }
   }
 
-  function parseArgumentPreviewString(value: string): string {
-    return value;
-  }
-
   function sanitizeEnvironmentName(name: string): string {
     const [firstPart] = name.split('=');
     return firstPart?.trim() ?? '';
@@ -495,7 +491,6 @@
             value={argumentsPreview.value}
             truncated={argumentsPreview.truncated}
             label="Arguments preview"
-            parse={parseArgumentPreviewString}
           />
         {:else}
           <p class="cinder-approval-card__muted">No arguments were provided.</p>
