@@ -21,6 +21,7 @@
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { formatNumber } from '../../utilities/format-number.ts';
   import { parseLocaleNumber } from '../../utilities/parse-locale-number.ts';
@@ -48,6 +49,7 @@
   }: NumberInputProps = $props();
 
   const context = getFormFieldContext();
+  const localeContext = getLocaleContext();
 
   let editorBuffer = $state('');
   let isFocused = $state(false);
@@ -71,7 +73,9 @@
     }
   });
 
-  const resolvedLocale = $derived(locale ?? (hasMounted ? navigator.language : 'en-US'));
+  const resolvedLocale = $derived(
+    locale ?? localeContext?.locale ?? (hasMounted ? navigator.language : 'en-US'),
+  );
 
   const resolvedMin = $derived(typeof min === 'number' && Number.isFinite(min) ? min : -Infinity);
   const resolvedMax = $derived(typeof max === 'number' && Number.isFinite(max) ? max : Infinity);

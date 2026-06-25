@@ -4,9 +4,9 @@ Controlled start/end date range picker with preset shortcuts and validation feed
 
 ## Overview
 
-`DateRangeField` renders two native date inputs (start and end) along with a row of preset shortcut buttons (Today, Yesterday & today, Last 7 days by default). It is fully controlled: the consumer owns the `value` and responds to `onchange` callbacks. It does not own routing, query-string synchronization, or data fetching.
+`DateRangeField` renders two native date or date-time inputs (start and end) along with a row of preset shortcut buttons (Today, Yesterday & today, Last 7 days by default). It is fully controlled: the consumer owns the `value` and responds to `onchange` callbacks. It does not own routing, query-string synchronization, timezone conversion, or data fetching.
 
-**v1 ships date-only.** Dates are expressed as ISO-8601 date strings (`YYYY-MM-DD`). Date-time support (hours, minutes, seconds, timezone) is a planned follow-up — it doubles the surface area with timezone complexity and time-picker UI. See the open GitHub issue for tracking demand.
+Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; `granularity="hour"`, `"minute"`, and `"second"` use native `datetime-local` inputs and emit values truncated to the selected precision.
 
 ## Usage
 
@@ -96,6 +96,7 @@ value        DateRangeValue       no        Current range. Bindable. Both fields
 label        string               no        Visible legend rendered above the inputs.
 startLabel   string               no        Label for the start input. Default: "Start date".
 endLabel     string               no        Label for the end input. Default: "End date".
+granularity  DateRangeGranularity no        Precision for native inputs: day, hour, minute, or second. Default: day.
 presets      DateRangeDatePreset[]  no      Custom preset buttons. Defaults to today, yesterday-today, last-7d.
 hidePresets  boolean              no        When true, hides the preset row. Default: false.
 description  string               no        Helper text below the field, wired via aria-describedby.
@@ -109,8 +110,8 @@ onchange     (value) => void      no        Called when the range changes via pr
 
 ```ts
 type DateRangeValue = {
-  start: string | undefined; // ISO-8601 date: YYYY-MM-DD
-  end: string | undefined; // ISO-8601 date: YYYY-MM-DD
+  start: string | undefined; // ISO-8601 local date or datetime string
+  end: string | undefined; // ISO-8601 local date or datetime string
 };
 
 type DateRangeDatePreset = {
@@ -134,8 +135,8 @@ The component implements accessible form labelling throughout:
 - `description` and `error` elements are wired into each input via `aria-describedby`, so a screen reader user tabbing to an input hears the description and any active error.
 - Forced-colors (Windows High Contrast) mode: inputs and preset buttons receive a solid `outline` instead of `box-shadow` focus rings, which are ignored in that mode.
 
-## v1 scope limits
+## Scope limits
 
-Date-time support (hours/minutes/seconds/timezone) is out of scope for v1. The added complexity of timezone handling and a time-picker UI warrants a separate design iteration. The `DateRangeValue` type uses ISO-8601 date strings (`YYYY-MM-DD`) only.
-
-If your use case requires sub-day precision, please add a comment on the GitHub issue to register demand for date-time mode.
+- Timezone conversion is caller-owned. Native `datetime-local` values are local wall-clock strings without timezone offsets.
+- The browser owns the date and date-time picker UI. Keyboard behavior inside those native pickers is browser-controlled.
+- No range constraint enforcement. The component sets `min`/`max` on the inputs to hint the browser's picker (end min = start, start max = end), but does not block the user from entering out-of-order values programmatically. Validation is the consumer's responsibility via the `error` prop.

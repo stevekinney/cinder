@@ -650,4 +650,11 @@ describe('Dropdown', () => {
       /\.cinder-dropdown-menu\[data-cinder-position-ready\]\s*\{[^}]*inset:\s*auto;/,
     );
   });
+
+  test('popover dropdown menu mirrors anchor edge in right-to-left direction', async () => {
+    const css = await readDropdownCss();
+    expect(css).toMatch(
+      /\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\s*\{[^}]*right:\s*auto;[^}]*left:\s*anchor\(left\);/,
+    );
+  });
 });

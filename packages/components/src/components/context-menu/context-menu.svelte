@@ -19,7 +19,9 @@
   import type { ContextMenuProps } from './context-menu.types.ts';
   import type { VirtualElement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { captureFocus } from '../../_internal/overlay.ts';
+  import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
@@ -47,7 +49,9 @@
   let capturedFocus: HTMLElement | null = null;
   let requestedX = $state(0);
   let requestedY = $state(0);
+  let directionRevision = $state(0);
   let previouslyOpen = false;
+  const localeContext = getLocaleContext();
 
   function setOpen(nextOpen: boolean) {
     if (open === nextOpen) return;
@@ -103,12 +107,22 @@
   const virtualReference: VirtualElement | null = $derived(
     open ? makeVirtualReference(anchorPoint?.x ?? requestedX, anchorPoint?.y ?? requestedY) : null,
   );
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    return resolveTextDirection(triggerElement, localeContext?.direction);
+  });
+
+  $effect(() => {
+    return observeTextDirection(triggerElement, () => {
+      directionRevision += 1;
+    });
+  });
 
   const anchoredOverlay = createAnchoredOverlay({
     open: () => open,
     anchor: () => virtualReference,
     panel: () => menuElement,
-    placement: () => 'right-start',
+    placement: () => (resolvedDirection === 'rtl' ? 'left-start' : 'right-start'),
     offset: () => 0,
     widthMode: () => 'menu',
   });
@@ -133,6 +147,18 @@
     get supportsPopover() {
       return false;
     },
+    get anchorElement() {
+      return triggerElement;
+    },
+    get fallbackAnchorElement() {
+      return null;
+    },
+    get fallbackPositionStyle() {
+      return anchoredOverlay.positionStyle;
+    },
+    get fallbackPositionReady() {
+      return anchoredOverlay.positionReady;
+    },
     get initialFocus() {
       return 'first' as const;
     },
@@ -152,6 +178,9 @@
     get longPressDelay() {
       return longPressDelay;
     },
+    get direction() {
+      return resolvedDirection;
+    },
     openAt,
     close,
   });
@@ -161,17 +190,14 @@
     const x = anchorPoint?.x ?? requestedX;
     const y = anchorPoint?.y ?? requestedY;
     const menu = menuElement;
-    if (anchoredOverlay.positionStyle) {
-      menu.setAttribute('style', anchoredOverlay.positionStyle);
-    } else {
-      menu.removeAttribute('style');
-    }
-    menu.setAttribute('data-cinder-position-ready', String(anchoredOverlay.positionReady));
     menu.setAttribute('data-cinder-requested-x', String(x));
     menu.setAttribute('data-cinder-requested-y', String(y));
+    const ownsDirection = menu.dataset['cinderExplicitDirection'] !== 'true';
+    if (ownsDirection && resolvedDirection) {
+      menu.setAttribute('dir', resolvedDirection);
+    }
     return () => {
-      menu.removeAttribute('style');
-      menu.removeAttribute('data-cinder-position-ready');
+      if (ownsDirection) menu.removeAttribute('dir');
       menu.removeAttribute('data-cinder-requested-x');
       menu.removeAttribute('data-cinder-requested-y');
     };

@@ -518,7 +518,7 @@ const schema = {
     locale: {
       type: 'string',
       description:
-        "BCP-47 locale used to resolve `Intl.DisplayNames`. Defaults to\n`navigator.language` after mount and `'en-US'` during SSR.",
+        "BCP-47 locale used to resolve `Intl.DisplayNames`. Defaults to the nearest\nLocaleProvider locale, then `navigator.language` after mount and `'en-US'`\nduring SSR.",
     },
     label: {
       type: 'string',

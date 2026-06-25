@@ -75,6 +75,9 @@ const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
  * `class` prop via `classNames()` rather than land on this list.
  */
 const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([
+  // locale-provider.svelte is intentionally context-only and renders only its
+  // children snippet, so it has no class-bearing root element of its own.
+  'locale-provider',
   // schema-form.svelte is a thin wrapper that only renders
   // `{#key schema}<SchemaFormBody {...rest} />{/key}` so a schema change recreates
   // the body's $state (issue #464). It has no class-bearing root element of its own —

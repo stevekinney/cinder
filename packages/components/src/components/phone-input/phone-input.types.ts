@@ -57,8 +57,9 @@ export type PhoneInputProps = {
   /** Optional allow-list constraining which countries appear in the dropdown. */
   countries?: readonly PhoneInputCountryCode[];
   /**
-   * BCP-47 locale used to resolve `Intl.DisplayNames`. Defaults to
-   * `navigator.language` after mount and `'en-US'` during SSR.
+   * BCP-47 locale used to resolve `Intl.DisplayNames`. Defaults to the nearest
+   * LocaleProvider locale, then `navigator.language` after mount and `'en-US'`
+   * during SSR.
    */
   locale?: string;
   /** Visible group label rendered above the controls. */

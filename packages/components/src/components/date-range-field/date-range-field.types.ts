@@ -1,15 +1,17 @@
 import type { HTMLAttributes } from 'svelte/elements';
 
 /**
- * A date-only range value expressed as ISO-8601 date strings (YYYY-MM-DD).
+ * A date or date-time range value expressed as ISO-8601 local strings.
  * Both `start` and `end` are optional so the consumer can represent partial input.
  */
 export type DateRangeValue = {
-  /** Start of the range as an ISO-8601 date string (YYYY-MM-DD), or undefined when not set. */
+  /** Start of the range as an ISO-8601 local string, or undefined when not set. */
   start: string | undefined;
-  /** End of the range as an ISO-8601 date string (YYYY-MM-DD), or undefined when not set. */
+  /** End of the range as an ISO-8601 local string, or undefined when not set. */
   end: string | undefined;
 };
+
+export type DateRangeGranularity = 'day' | 'hour' | 'minute' | 'second';
 
 /**
  * A preset time-window option that the consumer can offer to the user.
@@ -26,11 +28,13 @@ export type DateRangeDatePreset = {
 /**
  * Props for the DateRangeField component.
  *
- * v1 scope (date-only):
- * - Accepts and emits ISO-8601 date strings (YYYY-MM-DD) for start and end.
- * - Does not support date-time (hours/minutes/seconds/timezone). That adds
- *   timezone + time-picker complexity that doubles the surface area; it is
- *   tracked as a follow-up.
+ * Scope:
+ * - Accepts and emits ISO-8601 local strings for start and end.
+ * - `granularity="day"` uses native date inputs and emits `YYYY-MM-DD`.
+ * - `granularity="hour" | "minute" | "second"` uses native datetime-local
+ *   inputs and emits `YYYY-MM-DDTHH:mm` or `YYYY-MM-DDTHH:mm:ss`.
+ * - Timezone conversion is caller-owned; browser `datetime-local` values are
+ *   local wall-clock values by design.
  * - Sets the native inputs' min/max so the browser picker hints valid bounds
  *   (end's min = start, start's max = end), but does NOT block out-of-order
  *   entry. Validation feedback is the consumer's responsibility via `error`.
@@ -50,10 +54,12 @@ export type DateRangeFieldProps = Omit<
   value?: DateRangeValue;
   /** Visible legend rendered above the start/end inputs. */
   label?: string;
-  /** Accessible label for the start date input. Defaults to "Start date". */
+  /** Accessible label for the start input. Defaults to "Start date" for day granularity and "Start date and time" for datetime granularities. */
   startLabel?: string;
-  /** Accessible label for the end date input. Defaults to "End date". */
+  /** Accessible label for the end input. Defaults to "End date" for day granularity and "End date and time" for datetime granularities. */
   endLabel?: string;
+  /** Date-time precision. Defaults to day precision. */
+  granularity?: DateRangeGranularity;
   /**
    * Consumer-defined preset options shown above the date inputs.
    * Each preset has a label and a resolve() function that returns a DateRangeValue.

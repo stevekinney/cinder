@@ -28,7 +28,7 @@ export type StatProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   icon?: Snippet;
   /** Intl.NumberFormat options applied only when `value` is a number. */
   valueFormatOptions?: Intl.NumberFormatOptions;
-  /** Locale forwarded to formatNumber (defaults to en-US). */
+  /** Locale forwarded to formatNumber. Defaults to the nearest LocaleProvider locale, then en-US. */
   valueLocale?: string;
   /** Additional class names merged with `.cinder-stat`. */
   class?: string;

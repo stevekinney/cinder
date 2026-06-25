@@ -10,12 +10,13 @@
    * @useWhen Filtering a list or dashboard by a start and end date (e.g. created between, updated between).
    * @useWhen Offering common presets (last 7 days, last 24 hours) alongside a manual date range.
    * @avoidWhen A single date is sufficient — use a plain date input instead.
-   * @avoidWhen Date-time precision (hours/minutes/timezone) is required — this v1 is date-only.
+   * @avoidWhen Timezone conversion or a standalone time-of-day value is required — use time-field for the latter.
    * @related input, form-field, chip, segmented-control
    */
   export type {
     DateRangeDatePreset,
     DateRangeFieldProps,
+    DateRangeGranularity,
     DateRangeValue,
   } from './date-range-field.types.ts';
 </script>
@@ -24,6 +25,7 @@
   import type {
     DateRangeDatePreset,
     DateRangeFieldProps,
+    DateRangeGranularity,
     DateRangeValue,
   } from './date-range-field.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -38,8 +40,9 @@
     id,
     value = $bindable<DateRangeValue>({ start: undefined, end: undefined }),
     label,
-    startLabel = 'Start date',
-    endLabel = 'End date',
+    startLabel,
+    endLabel,
+    granularity = 'day',
     presets,
     hidePresets = false,
     description,
@@ -60,7 +63,10 @@
       label: 'Today',
       resolve: () => {
         const now = new Date();
-        return { start: toISODate(now), end: toISODate(now) };
+        return {
+          start: formatDateRangePresetValue(startOfDay(now), granularity),
+          end: formatDateRangePresetEndValue(now, granularity),
+        };
       },
     },
     {
@@ -73,7 +79,10 @@
         const now = new Date();
         const yesterday = new Date(now);
         yesterday.setDate(now.getDate() - 1);
-        return { start: toISODate(yesterday), end: toISODate(now) };
+        return {
+          start: formatDateRangePresetValue(startOfDay(yesterday), granularity),
+          end: formatDateRangePresetEndValue(now, granularity),
+        };
       },
     },
     {
@@ -83,12 +92,20 @@
         const now = new Date();
         const sixDaysAgo = new Date(now);
         sixDaysAgo.setDate(now.getDate() - 6);
-        return { start: toISODate(sixDaysAgo), end: toISODate(now) };
+        return {
+          start: formatDateRangePresetValue(startOfDay(sixDaysAgo), granularity),
+          end: formatDateRangePresetEndValue(now, granularity),
+        };
       },
     },
   ];
 
   const resolvedPresets = $derived(presets ?? defaultPresets);
+  let selectedPresetSnapshot = $state.raw<{
+    id: string;
+    preset: DateRangeDatePreset;
+    value: DateRangeValue;
+  } | null>(null);
 
   // ──────────────────────────────────────────────────────────────────────────
   // Accessible IDs
@@ -106,9 +123,20 @@
   // Active preset tracking: which preset (if any) matches the current controlled value.
   // ──────────────────────────────────────────────────────────────────────────
   const activePresetId = $derived.by(() => {
+    const normalizedValue = normalizeDateRangeValue(value, granularity);
+    const snapshot = selectedPresetSnapshot;
+    if (snapshot && dateRangeValuesMatch(snapshot.value, normalizedValue)) {
+      const selectedPreset = resolvedPresets.find((preset) => {
+        return preset.id === snapshot.id && preset === snapshot.preset;
+      });
+      if (selectedPreset) {
+        return snapshot.id;
+      }
+    }
+
     const match = resolvedPresets.find((preset) => {
-      const resolved = preset.resolve();
-      return resolved.start === value.start && resolved.end === value.end;
+      const resolved = normalizeDateRangeValue(preset.resolve(), granularity);
+      return dateRangeValuesMatch(resolved, normalizedValue);
     });
     return match?.id;
   });
@@ -123,26 +151,170 @@
     return `${year}-${month}-${day}`;
   }
 
+  function startOfDay(date: Date): Date {
+    const next = new Date(date);
+    next.setHours(0, 0, 0, 0);
+    return next;
+  }
+
+  function toISODateTime(date: Date, nextGranularity: DateRangeGranularity): string {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    if (nextGranularity === 'hour') return `${toISODate(date)}T${hours}:00`;
+    const base = `${toISODate(date)}T${hours}:${minutes}`;
+    if (nextGranularity === 'second') {
+      return `${base}:${String(date.getSeconds()).padStart(2, '0')}`;
+    }
+    return base;
+  }
+
+  function formatDateRangePresetValue(date: Date, nextGranularity: DateRangeGranularity): string {
+    return nextGranularity === 'day' ? toISODate(date) : toISODateTime(date, nextGranularity);
+  }
+
+  function endOfActiveHour(date: Date): Date {
+    const next = new Date(date);
+    if (next.getMinutes() > 0 || next.getSeconds() > 0 || next.getMilliseconds() > 0) {
+      next.setHours(Math.min(next.getHours() + 1, 23), 0, 0, 0);
+    }
+    return next;
+  }
+
+  function formatDateRangePresetEndValue(
+    date: Date,
+    nextGranularity: DateRangeGranularity,
+  ): string {
+    return formatDateRangePresetValue(
+      nextGranularity === 'hour' ? endOfActiveHour(date) : date,
+      nextGranularity,
+    );
+  }
+
+  function dateRangeValuesMatch(left: DateRangeValue, right: DateRangeValue): boolean {
+    return left.start === right.start && left.end === right.end;
+  }
+
+  function inputTypeFor(nextGranularity: DateRangeGranularity): 'date' | 'datetime-local' {
+    return nextGranularity === 'day' ? 'date' : 'datetime-local';
+  }
+
+  function inputStepFor(nextGranularity: DateRangeGranularity): number | undefined {
+    if (nextGranularity === 'hour') return 3600;
+    if (nextGranularity === 'minute') return 60;
+    if (nextGranularity === 'second') return 1;
+    return undefined;
+  }
+
+  function isLeapYear(year: number): boolean {
+    return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  }
+
+  function daysInMonth(year: number, month: number): number {
+    if (month === 2) return isLeapYear(year) ? 29 : 28;
+    if ([4, 6, 9, 11].includes(month)) return 30;
+    return 31;
+  }
+
+  function isValidDatePart(datePart: string): boolean {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+    if (!match) return false;
+    const [, rawYear, rawMonth, rawDay] = match;
+    const year = Number(rawYear);
+    const month = Number(rawMonth);
+    const day = Number(rawDay);
+    return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month);
+  }
+
+  function isValidTimePart(timePart: string): boolean {
+    const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(timePart);
+    if (!match) return false;
+    const [, rawHour, rawMinute, rawSecond = '00'] = match;
+    const hour = Number(rawHour);
+    const minute = Number(rawMinute);
+    const second = Number(rawSecond);
+    return hour <= 23 && minute <= 59 && second <= 59;
+  }
+
+  function normalizeInputValue(
+    nextValue: string,
+    nextGranularity: DateRangeGranularity,
+  ): string | undefined {
+    if (!nextValue) return undefined;
+    const datePart = nextValue.slice(0, 10);
+    if (!isValidDatePart(datePart)) return undefined;
+    if (nextGranularity === 'day') return datePart;
+    const timePart =
+      nextValue.length === 10 ? '00:00' : nextValue[10] === 'T' ? nextValue.slice(11) : undefined;
+    if (!timePart) return undefined;
+    if (!isValidTimePart(timePart)) return undefined;
+    const [rawHour = '00', rawMinute = '00', rawSecond = '00'] = timePart.split(':');
+    const hour = rawHour.padStart(2, '0').slice(0, 2);
+    const minute = rawMinute.padStart(2, '0').slice(0, 2);
+    const second = rawSecond.padStart(2, '0').slice(0, 2);
+    if (nextGranularity === 'hour') return `${datePart}T${hour}:00`;
+    if (nextGranularity === 'minute') return `${datePart}T${hour}:${minute}`;
+    return `${datePart}T${hour}:${minute}:${second}`;
+  }
+
+  function normalizeDateRangeValue(
+    nextValue: DateRangeValue,
+    nextGranularity: DateRangeGranularity,
+  ): DateRangeValue {
+    return {
+      start: nextValue.start ? normalizeInputValue(nextValue.start, nextGranularity) : undefined,
+      end: nextValue.end ? normalizeInputValue(nextValue.end, nextGranularity) : undefined,
+    };
+  }
+
+  const inputType = $derived(inputTypeFor(granularity));
+  const inputStep = $derived(inputStepFor(granularity));
+  const normalizedValue = $derived(normalizeDateRangeValue(value, granularity));
+
+  $effect(() => {
+    if (dateRangeValuesMatch(value, normalizedValue)) return;
+    value = normalizedValue;
+  });
+
+  const defaultStartLabel = $derived(granularity === 'day' ? 'Start date' : 'Start date and time');
+  const defaultEndLabel = $derived(granularity === 'day' ? 'End date' : 'End date and time');
+  const resolvedStartLabel = $derived(startLabel ?? defaultStartLabel);
+  const resolvedEndLabel = $derived(endLabel ?? defaultEndLabel);
+
   // ──────────────────────────────────────────────────────────────────────────
   // Event handlers
   // ──────────────────────────────────────────────────────────────────────────
   function handlePresetClick(preset: DateRangeDatePreset) {
     if (disabled) return;
-    const next = preset.resolve();
+    const next = normalizeDateRangeValue(preset.resolve(), granularity);
+    selectedPresetSnapshot = { id: preset.id, preset, value: next };
     value = next;
     onchange?.(next);
   }
 
   function handleStartChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const next: DateRangeValue = { start: target.value || undefined, end: value.end };
+    const next = normalizeDateRangeValue(
+      {
+        start: target.value,
+        end: value.end,
+      },
+      granularity,
+    );
+    selectedPresetSnapshot = null;
     value = next;
     onchange?.(next);
   }
 
   function handleEndChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const next: DateRangeValue = { start: value.start, end: target.value || undefined };
+    const next = normalizeDateRangeValue(
+      {
+        start: value.start,
+        end: target.value,
+      },
+      granularity,
+    );
+    selectedPresetSnapshot = null;
     value = next;
     onchange?.(next);
   }
@@ -191,14 +363,15 @@
         class="cinder-date-range-field__input-label"
         data-disabled={disabled || undefined}
       >
-        {startLabel}
+        {resolvedStartLabel}
       </label>
       <input
         id={startId}
-        type="date"
+        type={inputType}
         class="cinder-date-range-field__date-input"
-        value={value.start ?? ''}
-        max={value.end ?? undefined}
+        value={normalizedValue.start ?? ''}
+        max={normalizedValue.end ?? undefined}
+        step={inputStep}
         {disabled}
         aria-invalid={invalid}
         aria-describedby={describedBy}
@@ -214,14 +387,15 @@
         class="cinder-date-range-field__input-label"
         data-disabled={disabled || undefined}
       >
-        {endLabel}
+        {resolvedEndLabel}
       </label>
       <input
         id={endId}
-        type="date"
+        type={inputType}
         class="cinder-date-range-field__date-input"
-        value={value.end ?? ''}
-        min={value.start ?? undefined}
+        value={normalizedValue.end ?? ''}
+        min={normalizedValue.start ?? undefined}
+        step={inputStep}
         {disabled}
         aria-invalid={invalid}
         aria-describedby={describedBy}
