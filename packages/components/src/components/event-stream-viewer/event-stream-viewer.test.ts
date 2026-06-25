@@ -297,6 +297,30 @@ describe('EventStreamViewer', () => {
       expect(marker?.textContent).toContain('Reconnected — 2 events replayed');
     });
 
+    test('reconnect boundary resets sequence gap detection for replayed events', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 10 },
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '14:30:10',
+          replayedCount: 2,
+        },
+        { ...warningEvent, id: 'evt-2', sequence: 13 },
+      ];
+
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+
+      expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).not.toBe(
+        null,
+      );
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
+    });
+
     test('reconnect boundary timestamp stays visible-only when datetime is omitted', () => {
       const entries: EventStreamEntry[] = [
         {
@@ -828,6 +852,7 @@ describe('EventStreamViewer', () => {
           replayedCount: 1,
         },
         { ...warningEvent, id: 'evt-2', sequence: 4 },
+        { ...errorEvent, id: 'evt-3', sequence: 6 },
       ];
       const { container } = render(EventStreamViewer, {
         props: {
@@ -842,10 +867,10 @@ describe('EventStreamViewer', () => {
       );
       await fireEvent.click(btn!);
       expect(received).toContain('Reconnected — 1 event replayed');
-      expect(received).toContain('Sequence gap — expected 2, received 4');
+      expect(received).toContain('Sequence gap — expected 5, received 6');
       expect(received).toContain('Retry attempt 2 of 3');
       const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
-      expect(liveRegion?.textContent).toBe('4 stream entries sent to copy handler');
+      expect(liveRegion?.textContent).toBe('5 stream entries sent to copy handler');
     });
   });
 

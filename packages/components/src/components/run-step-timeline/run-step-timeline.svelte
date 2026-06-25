@@ -59,6 +59,11 @@
     ariaCurrent: boolean;
   };
 
+  type NestedRunStepSummary = {
+    count: number;
+    hasCurrent: boolean;
+  };
+
   let {
     steps,
     label,
@@ -237,12 +242,13 @@
         if (depth < MAX_NESTED_STEP_DEPTH) {
           appendRunStepRows(rows, step.children, depth + 1, pathKey);
         } else {
+          const hiddenSummary = summarizeNestedRunSteps(step.children);
           rows.push({
             kind: 'depth-limit',
             depth,
             pathKey: `${pathKey}/__cinder-depth-limit`,
-            hiddenStepCount: countNestedRunSteps(step.children),
-            hiddenCurrent: hasCurrentRunStep(step.children),
+            hiddenStepCount: hiddenSummary.count,
+            hiddenCurrent: hiddenSummary.hasCurrent,
           });
         }
       }
@@ -254,20 +260,28 @@
     return pathPrefix === '' ? encodedStepId : `${pathPrefix}/${encodedStepId}`;
   }
 
-  function countNestedRunSteps(steps: RunStep[]): number {
+  function summarizeNestedRunSteps(steps: RunStep[]): NestedRunStepSummary {
     let count = 0;
-    for (const step of steps) {
-      count += 1;
-      if (step.children) count += countNestedRunSteps(step.children);
-    }
-    return count;
-  }
+    let hasCurrent = false;
+    const stack = [...steps];
 
-  function hasCurrentRunStep(steps: RunStep[]): boolean {
-    return steps.some(
-      (step) =>
-        isCurrent(step.status) || (step.children ? hasCurrentRunStep(step.children) : false),
-    );
+    while (stack.length > 0) {
+      const step = stack.pop();
+      if (step === undefined) continue;
+
+      count += 1;
+      if (isCurrent(step.status)) hasCurrent = true;
+
+      const children = step.children;
+      if (children) {
+        for (let index = children.length - 1; index >= 0; index -= 1) {
+          const child = children[index];
+          if (child) stack.push(child);
+        }
+      }
+    }
+
+    return { count, hasCurrent };
   }
 
   function deepestCurrentStepIndex(rows: PendingRenderedRunStep[]): number {

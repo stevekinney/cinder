@@ -181,7 +181,7 @@
   function parseExpirationTimestamp(value: string | undefined): number | undefined {
     if (!value) return undefined;
     const timestamp = Date.parse(value);
-    return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+    return Number.isFinite(timestamp) ? timestamp : undefined;
   }
 
   function formatRemainingTime(milliseconds: number): string {

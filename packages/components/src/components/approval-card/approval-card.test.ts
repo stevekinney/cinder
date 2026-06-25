@@ -451,10 +451,10 @@ describe('ApprovalCard', () => {
     expect(queryByRole('button', { name: 'Approve' })).toBeNull();
   });
 
-  test('treats invalid expiration timestamps as expired without action buttons', async () => {
+  test('treats invalid expiration timestamps as no expiration', async () => {
     const onapprove = mock();
 
-    const { getByRole, getByText, queryByRole } = render(ApprovalCard, {
+    const { getByRole, queryByText } = render(ApprovalCard, {
       ...approvalCardProps({
         expiresAt: 'not-an-iso-date',
         onapprove,
@@ -464,11 +464,13 @@ describe('ApprovalCard', () => {
     await tick();
 
     expect(
-      getByText('No approval actions are available because this request is expired.'),
-    ).toBeTruthy();
-    expect(getByRole('img', { name: 'Expired' })).toBeTruthy();
-    expect(queryByRole('button', { name: 'Approve' })).toBeNull();
-    expect(onapprove).not.toHaveBeenCalled();
+      queryByText('No approval actions are available because this request is expired.'),
+    ).toBeNull();
+    expect(getByRole('img', { name: 'Pending' })).toBeTruthy();
+
+    await fireEvent.click(getByRole('button', { name: 'Approve' }));
+
+    expect(onapprove).toHaveBeenCalledTimes(1);
   });
 
   test('renders already-expired approvals read-only on the initial render', () => {

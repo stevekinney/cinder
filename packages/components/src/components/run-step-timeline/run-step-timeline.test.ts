@@ -90,6 +90,25 @@ const waitingApprovalStep: RunStep = {
   startTime: '2026-06-01T11:45:00Z',
 };
 
+function makeDeepHiddenChildren(count: number, leafStatus: RunStep['status']): RunStep[] {
+  let currentStep: RunStep = {
+    id: `hidden-${count}`,
+    label: `Hidden ${count}`,
+    status: leafStatus,
+  };
+
+  for (let index = count - 1; index >= 1; index -= 1) {
+    currentStep = {
+      id: `hidden-${index}`,
+      label: `Hidden ${index}`,
+      status: 'succeeded',
+      children: [currentStep],
+    };
+  }
+
+  return [currentStep];
+}
+
 // ---------------------------------------------------------------------------
 // Structure
 // ---------------------------------------------------------------------------
@@ -545,6 +564,44 @@ describe('behavior', () => {
       '1 nested step hidden',
     ]);
     expect(container.querySelector('[data-cinder-depth-limit]')).not.toBeNull();
+  });
+
+  test('summarizes deeply nested hidden lanes without recursive traversal overflow', () => {
+    const hiddenChildren = makeDeepHiddenChildren(20_000, 'waiting_approval');
+    const deeplyNested: RunStep = {
+      id: 'root',
+      label: 'Root',
+      status: 'succeeded',
+      children: [
+        {
+          id: 'child',
+          label: 'Child',
+          status: 'succeeded',
+          children: [
+            {
+              id: 'grandchild',
+              label: 'Grandchild',
+              status: 'succeeded',
+              children: [
+                {
+                  id: 'great-grandchild',
+                  label: 'Great grandchild',
+                  status: 'succeeded',
+                  children: hiddenChildren,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = render(RunStepTimeline, { steps: [deeplyNested] });
+    const depthLimitRow = container.querySelector<HTMLElement>('[data-cinder-depth-limit]');
+
+    expect(depthLimitRow).not.toBeNull();
+    expect(depthLimitRow?.textContent).toContain('20000 nested steps hidden');
+    expect(depthLimitRow?.getAttribute('aria-current')).toBe('step');
   });
 
   test('renders step links with the Link component', () => {

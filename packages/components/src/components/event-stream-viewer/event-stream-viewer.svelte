@@ -131,6 +131,8 @@
           label: formatReconnectedBoundaryLabel(entry),
           datetime: boundaryDateTime(entry),
         });
+        previousSequence = undefined;
+        previousEventId = undefined;
         continue;
       }
 
