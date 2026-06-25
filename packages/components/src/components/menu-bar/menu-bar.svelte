@@ -92,11 +92,16 @@
       : resolveTextDirection(directionElement, localeContext?.direction);
   });
   const rootDirection = $derived(providedDirection === 'auto' ? 'auto' : resolvedDirection);
-  const renderedRootDirection = $derived(
-    providedDirection === 'auto' || providedDirection === 'rtl' || providedDirection === 'ltr'
-      ? rootDirection
-      : resolvedDirection,
-  );
+  const renderedRootDirection = $derived.by(() => {
+    if (
+      providedDirection === 'auto' ||
+      providedDirection === 'rtl' ||
+      providedDirection === 'ltr'
+    ) {
+      return rootDirection;
+    }
+    return localeContext?.direction ? resolvedDirection : null;
+  });
 
   $effect(() => {
     if (providedDirection === 'rtl' || providedDirection === 'ltr') return;
@@ -437,10 +442,10 @@
 
 <div
   {...rest}
+  {...renderedRootDirection ? { dir: renderedRootDirection } : {}}
   bind:this={rootElement}
   id={rootId}
   class={classNames('cinder-menu-bar', customClassName)}
-  dir={renderedRootDirection}
   role="menubar"
   aria-label={labelledBy ? undefined : label}
   aria-labelledby={labelledBy}

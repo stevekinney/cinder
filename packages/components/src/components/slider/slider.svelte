@@ -58,7 +58,7 @@
       ? resolveTextDirection(rootElement.parentElement, localeContext?.direction)
       : localeContext?.direction;
   });
-  const rootDirection = $derived(resolvedDirection);
+  const rootDirection = $derived(localeContext?.direction ? resolvedDirection : null);
   const isRightToLeft = $derived(resolvedDirection === 'rtl');
 
   $effect(() => {
@@ -426,7 +426,7 @@
   bind:this={rootElement}
   class={classNames('cinder-slider', isRange && 'cinder-slider--range', className)}
   data-cinder-disabled={disabled || undefined}
-  dir={rootDirection}
+  {...rootDirection ? { dir: rootDirection } : {}}
 >
   {#if isRange}
     <span id={lowQualifierId} class="cinder-sr-only">

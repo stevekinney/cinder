@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { fireEvent, render, cleanup, waitFor } = await import('@testing-library/svelte');
+const { fireEvent, render, cleanup } = await import('@testing-library/svelte');
 const { renderToServerHtml } = await import('../../test/server-render.ts');
 const { tick } = await import('svelte');
 const { default: Slider } = await import('./slider.svelte');
@@ -98,11 +98,12 @@ describe('Slider (single)', () => {
     const root = container.querySelector('.cinder-slider');
     const thumb = getThumbs(container)[0]!;
 
-    expect(root?.getAttribute('dir')).toBe('ltr');
+    expect(root?.getAttribute('dir')).toBeNull();
 
     await tick();
     target.setAttribute('dir', 'rtl');
-    await waitFor(() => expect(root?.getAttribute('dir')).toBe('rtl'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(root?.getAttribute('dir')).toBeNull();
 
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
     expect(thumb.getAttribute('aria-valuenow')).toBe('15');
@@ -119,14 +120,28 @@ describe('Slider (single)', () => {
     const root = container.querySelector('.cinder-slider');
     const thumb = getThumbs(container)[0]!;
 
-    expect(root?.getAttribute('dir')).toBe('ltr');
+    expect(root?.getAttribute('dir')).toBeNull();
 
     await tick();
     target.style.direction = 'rtl';
-    await waitFor(() => expect(root?.getAttribute('dir')).toBe('rtl'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(root?.getAttribute('dir')).toBeNull();
 
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
     expect(thumb.getAttribute('aria-valuenow')).toBe('15');
+  });
+
+  test('omits document-only direction from the slider root after mount', () => {
+    document.documentElement.dir = 'ltr';
+    try {
+      const { container } = render(Slider, {
+        props: { label: 'Brightness', defaultValue: 20, step: 5 },
+      });
+
+      expect(container.querySelector('.cinder-slider')?.getAttribute('dir')).toBeNull();
+    } finally {
+      document.documentElement.removeAttribute('dir');
+    }
   });
 
   test('server rendering uses provider direction before local DOM can be checked', async () => {

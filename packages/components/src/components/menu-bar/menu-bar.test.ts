@@ -27,7 +27,7 @@ mock.module('@floating-ui/dom', () => ({
   shift: (options: unknown) => ({ name: 'shift', options, fn: () => ({}) }),
 }));
 
-const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { renderToServerHtml } = await import('../../test/server-render.ts');
 const { tick } = await import('svelte');
 const { default: MenuBar } = await import('./menu-bar.svelte');
@@ -154,15 +154,29 @@ describe('MenuBar', () => {
     const file = getByRole('menuitem', { name: 'File' });
     const edit = getByRole('menuitem', { name: 'Edit' });
 
-    expect(root.getAttribute('dir')).toBe('ltr');
+    expect(root.getAttribute('dir')).toBeNull();
 
     await tick();
     target.setAttribute('dir', 'rtl');
-    await waitFor(() => expect(root.getAttribute('dir')).toBe('rtl'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(root.getAttribute('dir')).toBeNull();
 
     file.focus();
     await fireEvent.keyDown(file, { key: 'ArrowLeft' });
     expect(document.activeElement).toBe(edit);
+  });
+
+  test('omits document-only direction from the menubar root after mount', () => {
+    document.documentElement.dir = 'ltr';
+    try {
+      const { getByRole } = render(MenuBar, {
+        props: { menus: fileEditViewMenus() },
+      });
+
+      expect(getByRole('menubar').getAttribute('dir')).toBeNull();
+    } finally {
+      document.documentElement.removeAttribute('dir');
+    }
   });
 
   test('mirrors open-menu top-level traversal in right-to-left direction', async () => {
