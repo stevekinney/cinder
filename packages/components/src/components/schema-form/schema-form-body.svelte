@@ -74,6 +74,7 @@
   let rawDrafts = $state<Record<string, string>>(
     seedRawDrafts(initialModel.field, initialFormValue),
   );
+  let touchedValidationSequences = $state<Record<string, number>>({});
   let serializedValue = $state('');
   let submitting = $state(false);
   let allowNativeSubmit = false;
@@ -134,15 +135,57 @@
     return JSON.stringify(getValueAtPath(formValue, field.path) ?? null, null, 2);
   }
 
+  function bumpTouchedValidationSequence(path: readonly string[]) {
+    const key = pathKey(path);
+    touchedValidationSequences = {
+      ...touchedValidationSequences,
+      [key]: (touchedValidationSequences[key] ?? 0) + 1,
+    };
+  }
+
   function updateValue(path: readonly string[], next: unknown) {
     if (submitting) return;
     formValue = setValueAtPath(formValue, path, next);
     const key = pathKey(path);
+    bumpTouchedValidationSequence(path);
     if (errors[key]) {
       const { [key]: _removed, ...remaining } = errors;
       errors = remaining;
     }
     setSerializedValue('');
+  }
+
+  async function validateTouchedField(field: SchemaFormField) {
+    if (submitting) return;
+    const fieldKey = pathKey(field.path);
+    const sequence = (touchedValidationSequences[fieldKey] ?? 0) + 1;
+    touchedValidationSequences = { ...touchedValidationSequences, [fieldKey]: sequence };
+    const raw = rawJsonIssues();
+    const rawIssue = raw.issues.find((candidateIssue) => {
+      const candidateKey = pathKey(candidateIssue.path);
+      return candidateKey === fieldKey || candidateKey.startsWith(`${fieldKey}/`);
+    });
+    if (rawIssue) {
+      errors = { ...errors, [fieldKey]: rawIssue.message };
+      return;
+    }
+    const candidate = pruneUndefined(raw.value);
+    const result = await validateSchemaValue(schema, candidate);
+    if (touchedValidationSequences[fieldKey] !== sequence) return;
+    const issue = (result.valid ? [] : result.issues).find((candidateIssue) => {
+      const candidateKey = pathKey(candidateIssue.path);
+      return candidateKey === fieldKey || candidateKey.startsWith(`${fieldKey}/`);
+    });
+
+    if (issue) {
+      errors = { ...errors, [fieldKey]: issue.message };
+      return;
+    }
+
+    if (errors[fieldKey]) {
+      const { [fieldKey]: _removed, ...remaining } = errors;
+      errors = remaining;
+    }
   }
 
   function setSerializedValue(next: string) {
@@ -163,7 +206,13 @@
    *  textarea's value flows into `rawDrafts` rather than the typed value tree. */
   function updateRawJsonValue(field: SchemaFormField, next: string) {
     if (submitting) return;
-    rawDrafts = { ...rawDrafts, [pathKey(field.path)]: next };
+    const key = pathKey(field.path);
+    rawDrafts = { ...rawDrafts, [key]: next };
+    bumpTouchedValidationSequence(field.path);
+    if (errors[key]) {
+      const { [key]: _removed, ...remaining } = errors;
+      errors = remaining;
+    }
     setSerializedValue('');
   }
 
@@ -197,6 +246,10 @@
     );
     rawDrafts = reindexArrayPathState(rawDrafts, field.path, index);
     errors = reindexArrayPathState(errors, field.path, index);
+    touchedValidationSequences = bumpPathValidationSequences(
+      reindexArrayPathState(touchedValidationSequences, field.path, index),
+      field.path,
+    );
     const key = pathKey(field.path);
     arrayKeys = {
       ...arrayKeys,
@@ -241,6 +294,21 @@
 
       const shiftedKey = [String(index - 1), ...remainingSegments].join('/');
       next[`${pathPrefix}${shiftedKey}`] = stateValue;
+    }
+
+    return next;
+  }
+
+  function bumpPathValidationSequences(
+    state: Record<string, number>,
+    path: readonly string[],
+  ): Record<string, number> {
+    const prefix = pathKey(path);
+    const pathPrefix = prefix === '' ? '' : `${prefix}/`;
+    const next: Record<string, number> = {};
+
+    for (const [key, sequence] of Object.entries(state)) {
+      next[key] = key === prefix || key.startsWith(pathPrefix) ? sequence + 1 : sequence;
     }
 
     return next;
@@ -480,13 +548,17 @@
       </button>
     </fieldset>
   {:else}
-    <div class="cinder-schema-form__field">
+    <div
+      class="cinder-schema-form__field"
+      oninput={() => bumpTouchedValidationSequence(field.path)}
+    >
       {#if field.kind === 'string'}
         <Input
           {id}
           {...labelledProps}
           required={field.required}
           disabled={submitting}
+          onblur={() => validateTouchedField(field)}
           bind:value={() => stringValue(field), (next) => updateValue(field.path, next)}
         />
       {:else if field.kind === 'number' || field.kind === 'integer'}
@@ -496,6 +568,7 @@
           required={field.required}
           disabled={submitting}
           step={field.kind === 'integer' ? 1 : undefined}
+          onblur={() => validateTouchedField(field)}
           bind:value={
             () => numberFieldValue(field), (next) => updateValue(field.path, next ?? undefined)
           }
@@ -509,6 +582,7 @@
           options={selectOptions(field)}
           value={enumValue(field)}
           onchange={(event) => updateEnum(field, event)}
+          onblur={() => validateTouchedField(field)}
         />
       {:else if field.kind === 'boolean'}
         <!-- A required boolean schema property means "the value must be present",
@@ -530,6 +604,7 @@
           rows={6}
           spellcheck={false}
           class="cinder-schema-form__json-control"
+          onblur={() => validateTouchedField(field)}
           bind:value={() => rawJsonValue(field), (next) => updateRawJsonValue(field, next)}
         />
       {/if}
@@ -546,7 +621,13 @@
   onsubmit={handleSubmit}
 >
   {#if rootError}
-    <p id={rootErrorId} class="cinder-schema-form__error" aria-live="polite" tabindex="-1">
+    <p
+      id={rootErrorId}
+      class="cinder-schema-form__error"
+      role="alert"
+      aria-live="polite"
+      tabindex="-1"
+    >
       {rootError}
     </p>
   {/if}

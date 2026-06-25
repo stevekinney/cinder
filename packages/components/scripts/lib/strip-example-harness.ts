@@ -28,7 +28,7 @@
  *
  * The displayed literal is the suffix text: `-field` → `"field"`. Binding sites
  * are rewritten — `id={fieldId}` → `id="field"` (same for `name=` / `target=` /
- * `for=`), and template interpolation `` `#${mainId}` `` → `"#main"`.
+ * `for=` / `aria-labelledby=`), and template interpolation `` `#${mainId}` `` → `"#main"`.
  *
  * ## Fail-closed
  *
@@ -122,10 +122,10 @@ export function stripExampleHarness(source: string, scenarioKey: string): string
       new RegExp(`=\\{\\s*\`([^\`]*)\\$\\{${escaped}\\}([^\`]*)\`\\s*\\}`, 'g'),
       (_full, before: string, after: string) => `="${before}${literal}${after}"`,
     );
-    // Plain attribute binding: `id={fieldId}` → `id="field"` (also name=/target=/for=,
-    // e.g. a `<label for={fieldId}>` paired with the field).
+    // Plain attribute binding: `id={fieldId}` → `id="field"` (also name=/target=/for=/
+    // aria-labelledby=, e.g. a `<label for={fieldId}>` paired with the field).
     stripped = stripped.replace(
-      new RegExp(`(\\b(?:id|name|target|for)=)\\{\\s*${escaped}\\s*\\}`, 'g'),
+      new RegExp(`(\\b(?:id|name|target|for|aria-labelledby)=)\\{\\s*${escaped}\\s*\\}`, 'g'),
       (_full, attribute: string) => `${attribute}"${literal}"`,
     );
   }

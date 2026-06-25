@@ -225,20 +225,25 @@ describe('EventStreamViewer', () => {
       await fireEvent.click(toggle!);
       await fireEvent.click(toggle!);
       expect(toggle?.getAttribute('aria-expanded')).toBe('false');
-      expect(container.querySelector('.cinder-event-stream-viewer__event-details')).toBeNull();
+      expect(
+        container
+          .querySelector('.cinder-event-stream-viewer__event-details')
+          ?.hasAttribute('hidden'),
+      ).toBe(true);
     });
 
-    test('details toggle only controls an existing expanded panel', async () => {
+    test('details toggle always controls the mounted details panel', async () => {
       const { container } = render(EventStreamViewer, { props: { events: [errorEvent] } });
       const toggle = container.querySelector<HTMLButtonElement>(
         '.cinder-event-stream-viewer__details-toggle',
       );
-      expect(toggle?.hasAttribute('aria-controls')).toBe(false);
-      await fireEvent.click(toggle!);
       const controls = toggle?.getAttribute('aria-controls');
       expect(controls).toBeTruthy();
       const panel = container.querySelector(`#${controls}`);
       expect(panel).not.toBeNull();
+      expect(panel?.hasAttribute('hidden')).toBe(true);
+      await fireEvent.click(toggle!);
+      expect(panel?.hasAttribute('hidden')).toBe(false);
     });
 
     test('details panel id is namespaced by the instance, not the raw event id', async () => {
@@ -588,7 +593,7 @@ describe('EventStreamViewer', () => {
         '.cinder-event-stream-viewer__details-toggle',
       );
       expect(toggle?.getAttribute('aria-expanded')).not.toBeNull();
-      expect(toggle?.getAttribute('aria-controls')).toBeNull();
+      expect(toggle?.getAttribute('aria-controls')).not.toBeNull();
       await fireEvent.click(toggle!);
       expect(toggle?.getAttribute('aria-controls')).not.toBeNull();
     });

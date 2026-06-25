@@ -23,6 +23,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
   import SearchField from '../search-field/search-field.svelte';
   import Chip from '../chip/chip.svelte';
@@ -50,6 +51,7 @@
   }: FacetedFilterBarProps = $props();
 
   const searchId = $derived(`${generatedId}-search`);
+  let rootElement: HTMLDivElement | undefined = $state();
 
   // Internal uncontrolled search value when searchQuery is not provided.
   let internalSearchQuery = $state('');
@@ -68,13 +70,21 @@
     return appliedFilters.find((filter) => filter.key === key)?.value ?? '';
   }
 
+  function resolveFilterDisplayValue(key: string, value: string): string {
+    const facet = facets.find((candidate) => candidate.key === key);
+    if (facet?.type !== 'select') return value;
+    return facet.options.find((option) => option.value === value)?.label ?? value;
+  }
+
   const hasAppliedFilters = $derived(appliedFilters.length > 0 || currentSearchQuery.length > 0);
   const totalActiveCount = $derived(appliedFilters.length);
 
   // Live region summary message — always in DOM, content changes when filters change.
   const summaryMessage = $derived.by(() => {
     if (totalActiveCount === 0) return '';
-    const parts = appliedFilters.map((filter) => `${filter.label}: ${filter.value}`);
+    const parts = appliedFilters.map(
+      (filter) => `${filter.label}: ${resolveFilterDisplayValue(filter.key, filter.value)}`,
+    );
     return `${totalActiveCount} active filter${totalActiveCount === 1 ? '' : 's'}: ${parts.join(', ')}`;
   });
 
@@ -85,8 +95,21 @@
     onsearchchange?.(value);
   }
 
-  function handleFilterRemove(key: string): void {
+  async function handleFilterRemove(key: string): Promise<void> {
+    const filterIndex = appliedFilters.findIndex((filter) => filter.key === key);
+    const facetFallbackKey = appliedFilters[filterIndex]?.key;
     onfilterremove?.(key);
+    await tick();
+
+    const removeButtons = Array.from(
+      rootElement?.querySelectorAll<HTMLButtonElement>('.cinder-chip__remove') ?? [],
+    );
+    const nextRemoveButton = removeButtons[Math.min(filterIndex, removeButtons.length - 1)];
+    const facetSelect = facetFallbackKey
+      ? document.getElementById(`${generatedId}-facet-${facetFallbackKey}`)
+      : null;
+    const searchInput = document.getElementById(searchId);
+    (nextRemoveButton ?? facetSelect ?? searchInput)?.focus();
   }
 
   function handleClearAll(): void {
@@ -102,6 +125,7 @@
 </script>
 
 <div
+  bind:this={rootElement}
   {...rest}
   class={classNames('cinder-faceted-filter-bar', className)}
   role="search"
@@ -125,7 +149,7 @@
         {@const selectFacet = facet as SelectFacet}
         <div class="cinder-faceted-filter-bar__facet">
           <label
-            class="cinder-faceted-filter-bar__facet-label cinder-sr-only"
+            class="cinder-faceted-filter-bar__facet-label"
             for={`${generatedId}-facet-${selectFacet.key}`}
           >
             {selectFacet.label}
@@ -165,10 +189,11 @@
   {#if hasAppliedFilters}
     <div class="cinder-faceted-filter-bar__chips" aria-label="Active filter controls">
       {#each appliedFilters as filter (filter.key)}
+        {@const displayValue = resolveFilterDisplayValue(filter.key, filter.value)}
         <Chip
           mode="removable"
-          label={`${filter.label}: ${filter.value}`}
-          removeAriaLabel={`Remove filter: ${filter.label}: ${filter.value}`}
+          label={`${filter.label}: ${displayValue}`}
+          removeAriaLabel={`Remove filter: ${filter.label}: ${displayValue}`}
           {disabled}
           onremove={() => handleFilterRemove(filter.key)}
         />
@@ -179,6 +204,7 @@
         size="sm"
         class="cinder-faceted-filter-bar__clear-all"
         {disabled}
+        aria-label="Clear all filters"
         onclick={handleClearAll}
       >
         Clear all

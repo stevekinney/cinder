@@ -67,6 +67,29 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     expect(source).toContain('role="toolbar"');
     expect(source).toContain('aria-label=');
   });
+
+  test('json-schema-editor-impl.svelte scopes form validation count to the form view', async () => {
+    const source = await Bun.file(
+      new URL('./json-schema-editor-impl.svelte', import.meta.url),
+    ).text();
+
+    expect(source).toContain('const toolbarValidationErrorCount = $derived');
+    expect(source).toContain("view === 'form' ? localValidationErrorCount : 0");
+    expect(source).toContain('localValidationErrorCount={toolbarValidationErrorCount}');
+  });
+
+  test('property-editor.svelte aggregates nested validation counts from every child editor path', async () => {
+    const source = await Bun.file(new URL('./property-editor.svelte', import.meta.url)).text();
+
+    expect(source).toContain('let childValidationCounts = $state<Record<string, number>>({})');
+    expect(source).toContain("setChildValidationErrorCount('properties', count)");
+    expect(source).toContain("setChildValidationErrorCount('items', count)");
+    expect(source).toContain('{@const branchKey = compositionBranchKeys[keyword][branchIndex]}');
+    expect(source).toContain('setChildValidationErrorCount(`${keyword}:${branchKey}`, count)');
+    expect(source).toContain('setChildValidationErrorCount(`${keyword}:${removedBranchKey}`, 0)');
+    expect(source).not.toContain('.toSpliced(');
+    expect(source).toContain('onvalidationerrorcount?.(0)');
+  });
 });
 
 // ---------------------------------------------------------------------------

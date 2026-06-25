@@ -517,6 +517,14 @@ describe('CommandItem — rich row content', () => {
       'Add freeform text',
     );
   });
+
+  test('omits empty optional ARIA labels and shortcuts', () => {
+    const { container } = render(CommandPaletteRichItemFixture);
+    const option = container.querySelector('.cinder-command-item');
+
+    expect(option?.hasAttribute('aria-label')).toBe(false);
+    expect(option?.hasAttribute('aria-keyshortcuts')).toBe(false);
+  });
 });
 
 // ── Empty state timing ────────────────────────────────────────────────────

@@ -155,6 +155,8 @@
   $effect(() => {
     if (!dialogElement) return;
     if (open && !dialogElement.open) {
+      query = '';
+      intendedActiveId = null;
       capturedFocus = captureFocus();
       dialogElement.showModal();
       inputElement?.focus();

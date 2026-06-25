@@ -58,6 +58,7 @@ export type InvocationRuleOption = {
  */
 export type InvocationRuleChange =
   | { type: 'add-rule'; ruleId: string }
+  | { type: 'rename-rule'; ruleId: string }
   | { type: 'remove-rule'; ruleId: string }
   | { type: 'move-rule'; ruleId: string; fromIndex: number; toIndex: number }
   | { type: 'add-condition'; ruleId: string; conditionId: string }

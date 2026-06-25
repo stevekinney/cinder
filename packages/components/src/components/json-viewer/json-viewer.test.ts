@@ -1,12 +1,14 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: JsonViewer } = await import('./json-viewer.svelte');
+
+afterEach(() => cleanup());
 
 describe('JsonViewer', () => {
   test('renders a primitive value', () => {
@@ -14,6 +16,7 @@ describe('JsonViewer', () => {
     expect(container.querySelector('.cinder-json-viewer__value')?.textContent?.trim()).toContain(
       'hello',
     );
+    expect(container.querySelector('[role="treeitem"]')?.getAttribute('tabindex')).toBe('0');
   });
 
   test('renders an object with key labels', () => {
@@ -52,6 +55,118 @@ describe('JsonViewer', () => {
     expect(itemsButton?.getAttribute('aria-label')).toBe('items: array, 3 items');
   });
 
+  test('only the root expandable treeitem is tabbable', () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const treeItems = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+    const tabbableTreeItems = treeItems.filter((item) => item.getAttribute('tabindex') === '0');
+
+    expect(tabbableTreeItems).toHaveLength(1);
+    expect(tabbableTreeItems[0]?.getAttribute('aria-label')).toBe('object, 1 item');
+    const nestedToggle = treeItems.find((item) =>
+      item.getAttribute('aria-label')?.startsWith('config:'),
+    );
+    expect(nestedToggle?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('expanded child groups are nested inside their owning treeitem', () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+    const childGroup = rootTreeItem.querySelector('.cinder-json-viewer__children[role="group"]');
+
+    expect(childGroup).not.toBeNull();
+  });
+
+  test('ArrowRight on an expanded object moves focus to its first child', async () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+
+    rootTreeItem.focus();
+    await fireEvent.keyDown(rootTreeItem, { key: 'ArrowRight' });
+
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('config: object, 1 item');
+  });
+
+  test('ArrowLeft on a leaf moves focus to its parent treeitem', async () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+    const configTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="config: object, 1 item"]',
+    )!;
+    rootTreeItem.focus();
+    await fireEvent.keyDown(rootTreeItem, { key: 'ArrowRight' });
+    configTreeItem.focus();
+    await fireEvent.keyDown(configTreeItem, { key: 'ArrowRight' });
+    const nestedTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-level="3"]',
+    )!;
+    nestedTreeItem.focus();
+    await fireEvent.keyDown(nestedTreeItem, { key: 'ArrowLeft' });
+
+    expect(document.activeElement).toBe(configTreeItem);
+  });
+
+  test('does not expose selection state without a selection model', () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const treeItems = Array.from(container.querySelectorAll('[role="treeitem"]'));
+
+    expect(treeItems.length).toBeGreaterThan(0);
+    expect(treeItems.every((item) => item.getAttribute('aria-selected') === null)).toBe(true);
+  });
+
+  test('Enter and Space toggle a focused expandable treeitem', async () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+
+    rootTreeItem.focus();
+    await fireEvent.keyDown(rootTreeItem, { key: 'Enter' });
+    expect(rootTreeItem.getAttribute('aria-expanded')).toBe('false');
+
+    await fireEvent.keyDown(rootTreeItem, { key: ' ' });
+    expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('Space on a focused leaf treeitem prevents browser default scrolling', () => {
+    const { container } = render(JsonViewer, {
+      value: { config: { nested: true } },
+      initialDepth: 999,
+    });
+    const leafTreeItem = container.querySelector<HTMLElement>('[role="treeitem"][aria-level="3"]')!;
+    const event = new KeyboardEvent('keydown', {
+      key: ' ',
+      bubbles: true,
+      cancelable: true,
+    });
+
+    leafTreeItem.focus();
+    leafTreeItem.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(leafTreeItem.getAttribute('aria-expanded')).toBeNull();
+  });
+
+  test('tree keydown does not synthesize a second toggle when the inner toggle button owns activation', async () => {
+    const { container } = render(JsonViewer, { value: { config: { nested: true } } });
+    const rootTreeItem = container.querySelector<HTMLElement>(
+      '[role="treeitem"][aria-label="object, 1 item"]',
+    )!;
+    const toggle = rootTreeItem.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')!;
+
+    toggle.focus();
+    await fireEvent.keyDown(toggle, { key: 'Enter' });
+    expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
+
+    await fireEvent.keyDown(toggle, { key: ' ' });
+    expect(rootTreeItem.getAttribute('aria-expanded')).toBe('true');
+  });
+
   test('renders an array with index labels', () => {
     const { container } = render(JsonViewer, { value: [10, 20, 30] });
     const keys = Array.from(container.querySelectorAll('.cinder-json-viewer__key'));
@@ -75,6 +190,17 @@ describe('JsonViewer', () => {
     }
     const { container } = render(JsonViewer, { value: deep, maxDepth: 3, initialDepth: 999 });
     expect(container.querySelector('.cinder-json-viewer__too-deep')).not.toBeNull();
+  });
+
+  test('root too-deep marker remains tabbable', () => {
+    const { container } = render(JsonViewer, {
+      value: { nested: true },
+      maxDepth: 0,
+      initialDepth: 999,
+    });
+    const root = container.querySelector('[role="treeitem"]');
+    expect(root?.querySelector('.cinder-json-viewer__too-deep')).not.toBeNull();
+    expect(root?.getAttribute('tabindex')).toBe('0');
   });
 });
 

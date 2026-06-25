@@ -659,6 +659,7 @@
           {activeBlockType}
           {canUndo}
           {canRedo}
+          {linkPopoverOpen}
           disabled={!editorContext}
           onLinkClick={handleLinkClick}
           onUndo={handleUndo}
@@ -714,6 +715,7 @@
         readonly={readonly || undefined}
         aria-label={label}
         aria-describedby={ariaDescribedby}
+        aria-multiline="true"
       ></textarea>
     {/if}
   {:else}

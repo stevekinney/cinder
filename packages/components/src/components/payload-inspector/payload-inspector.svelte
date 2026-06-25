@@ -275,11 +275,18 @@
           value={copyFormattedText}
           label="Copy formatted"
           copiedLabel="Formatted copied"
+          title="Copy formatted payload"
           iconOnly
         />
       {/if}
       {#if canCopyRaw}
-        <CopyButton value={copyRawText} label="Copy raw" copiedLabel="Raw copied" iconOnly />
+        <CopyButton
+          value={copyRawText}
+          label="Copy raw"
+          copiedLabel="Raw copied"
+          title="Copy raw payload"
+          iconOnly
+        />
       {/if}
     </div>
   </div>

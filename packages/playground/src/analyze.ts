@@ -344,6 +344,8 @@ let sharedProject: Project | undefined;
 let projectCreationCount = 0;
 /** Monotonic counter guaranteeing a unique synthetic source-file path per call. */
 let syntheticFileCounter = 0;
+/** Per-generation analyzeAll cache, cleared by resetProject() on watcher invalidation. */
+const analyzeAllCache = new Map<string, Promise<ComponentManifest[]>>();
 
 /**
  * Returns the shared ts-morph `Project`, creating it on first use. Subsequent
@@ -369,6 +371,7 @@ function getSharedProject(): Project {
  */
 export function resetProject(): void {
   sharedProject = undefined;
+  analyzeAllCache.clear();
 }
 
 /**
@@ -641,6 +644,22 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
  * {@link discoverComponentFilePaths} so the two stay in lockstep.
  */
 export async function analyzeAll(componentsDir: string): Promise<ComponentManifest[]> {
+  const cached = analyzeAllCache.get(componentsDir);
+  if (cached) return cached;
+
+  const promise = computeAnalyzeAll(componentsDir);
+  analyzeAllCache.set(componentsDir, promise);
+  try {
+    return await promise;
+  } catch (error) {
+    if (analyzeAllCache.get(componentsDir) === promise) {
+      analyzeAllCache.delete(componentsDir);
+    }
+    throw error;
+  }
+}
+
+async function computeAnalyzeAll(componentsDir: string): Promise<ComponentManifest[]> {
   const filePaths = await discoverComponentFilePaths(componentsDir);
 
   const manifests = await Promise.all(filePaths.map((filePath) => analyzeComponent(filePath)));

@@ -682,14 +682,73 @@ describe('Validity and a11y wiring', () => {
     expect(input.validity.customError).toBe(true);
   });
 
-  test('regression: no aria-value* attributes', () => {
+  test('spinbutton exposes bounded numeric value attributes', () => {
     const { container } = render(NumberInput, {
       props: { id: 'n', value: 5, min: 0, max: 10, locale: 'en-US' },
     });
     const input = getInput(container);
-    expect(input.hasAttribute('aria-valuemin')).toBe(false);
-    expect(input.hasAttribute('aria-valuemax')).toBe(false);
-    expect(input.hasAttribute('aria-valuenow')).toBe(false);
+    expect(input.getAttribute('role')).toBe('spinbutton');
+    expect(input.getAttribute('aria-valuemin')).toBe('0');
+    expect(input.getAttribute('aria-valuemax')).toBe('10');
+    expect(input.getAttribute('aria-valuenow')).toBe('5');
+  });
+
+  test('spinbutton aria-valuenow follows valid focused edits', async () => {
+    const { container } = render(NumberInput, {
+      props: { id: 'n', value: 5, min: 0, max: 10, locale: 'en-US' },
+    });
+    const input = getInput(container);
+
+    await focus(input);
+    await type(input, '9');
+
+    expect(input.value).toBe('9');
+    expect(input.getAttribute('aria-valuenow')).toBe('9');
+  });
+
+  test('spinbutton aria-valuenow uses display units for percent formatting', async () => {
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 0.5,
+        min: 0,
+        max: 1,
+        locale: 'en-US',
+        format: { style: 'percent' },
+      },
+    });
+    const input = getInput(container);
+
+    expect(input.value).toBe('50%');
+    expect(input.getAttribute('aria-valuenow')).toBe('50');
+    expect(input.getAttribute('aria-valuemin')).toBe('0');
+    expect(input.getAttribute('aria-valuemax')).toBe('100');
+
+    await focus(input);
+    await type(input, '75');
+
+    expect(input.value).toBe('75');
+    expect(input.getAttribute('aria-valuenow')).toBe('75');
+  });
+
+  test('consumer blur handler fires once', async () => {
+    let blurCount = 0;
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        value: 5,
+        locale: 'en-US',
+        onblur: () => {
+          blurCount += 1;
+        },
+      },
+    });
+    const input = getInput(container);
+
+    await focus(input);
+    await blur(input);
+
+    expect(blurCount).toBe(1);
   });
 
   test('malformed customError cleared by external value change', async () => {

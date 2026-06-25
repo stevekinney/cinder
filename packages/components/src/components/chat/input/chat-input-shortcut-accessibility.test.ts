@@ -39,6 +39,11 @@ describe('ChatInput — shortcut accessibility', () => {
     expect(chatInputSource).toMatch(/aria-describedby=\{shortcutDescriptionId\}/);
   });
 
+  test('stop button aria-describedby references the hidden streaming shortcut description', () => {
+    const stopButtonMatch = chatInputSource.match(/data-stop[\s\S]*?<\/button>/);
+    expect(stopButtonMatch?.[0]).toMatch(/aria-describedby=\{shortcutDescriptionId\}/);
+  });
+
   test('send button does not reference the visible hint id via aria-describedby', () => {
     // The visible hint should NOT be the aria-describedby target (it can be display:none)
     // We look for the send button context: aria-describedby={hintId} should NOT appear

@@ -495,6 +495,37 @@ describe('Tree — filter/search', () => {
     expect(treeItem(container, 'Archive')?.hasAttribute('data-cinder-hidden')).toBe(true);
   });
 
+  test('filtered tree positions count only visible siblings', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'apollo',
+        children: treeItemsSnippet([
+          {
+            id: 'projects',
+            label: 'Projects',
+            branch: true,
+            children: [
+              { id: 'apollo', label: 'Apollo' },
+              { id: 'borealis', label: 'Borealis' },
+            ],
+          },
+          { id: 'archive', label: 'Archive' },
+        ]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Projects', 'Apollo']);
+    });
+
+    expect(treeItem(container, 'Projects')?.getAttribute('aria-posinset')).toBe('1');
+    expect(treeItem(container, 'Projects')?.getAttribute('aria-setsize')).toBe('1');
+    expect(treeItem(container, 'Apollo')?.getAttribute('aria-posinset')).toBe('1');
+    expect(treeItem(container, 'Apollo')?.getAttribute('aria-setsize')).toBe('1');
+  });
+
   test('shows matching descendants through a view-only expansion without mutating expandedIds', async () => {
     let expandedIds = ['existing'];
     const { container } = render(Tree, {
@@ -530,6 +561,33 @@ describe('Tree — filter/search', () => {
     });
     expect(treeItem(container, 'Projects')?.getAttribute('aria-expanded')).toBe('true');
     expect(expandedIds).toEqual(['existing']);
+  });
+
+  test('filter-forced open branches suppress stale disclosure controls', async () => {
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'Project tree',
+        showSearch: true,
+        filterValue: 'apollo',
+        children: treeItemsSnippet([
+          {
+            id: 'projects',
+            label: 'Projects',
+            branch: true,
+            children: [{ id: 'apollo', label: 'Apollo' }],
+          },
+        ]),
+      },
+    });
+
+    await waitFor(() => {
+      expect(visibleTreeItemLabels(container)).toEqual(['Projects', 'Apollo']);
+    });
+
+    const projects = treeItem(container, 'Projects');
+    expect(projects?.getAttribute('aria-expanded')).toBe('true');
+    expect(projects?.querySelector('.cinder-tree-item__disclosure')).toBeNull();
+    expect(projects?.querySelector('.cinder-tree-item__disclosure-spacer')).not.toBeNull();
   });
 
   test('ArrowRight on a filter-revealed branch focuses the visible child without mutating expandedIds', async () => {
@@ -2599,6 +2657,36 @@ describe('Tree — disabled items', () => {
 
     expect(branch.getAttribute('aria-expanded')).toBe('true');
     expect(selectedIds).toEqual([]);
+  });
+
+  test('enabled branches select and expand on plain click', async () => {
+    let selectedIds: string[] = [];
+    const { container } = render(Tree, {
+      props: {
+        'aria-label': 'T',
+        selectionMode: 'single',
+        get selectedIds() {
+          return selectedIds;
+        },
+        set selectedIds(value: string[]) {
+          selectedIds = value;
+        },
+        children: treeItemsSnippet([
+          {
+            id: 'branch',
+            label: 'Branch',
+            branch: true,
+            children: [{ id: 'child', label: 'Child' }],
+          },
+        ]),
+      },
+    });
+    const branch = treeItem(container, 'Branch') as HTMLElement;
+
+    await fireEvent.click(branch);
+
+    expect(branch.getAttribute('aria-expanded')).toBe('true');
+    expect(selectedIds).toEqual(['branch']);
   });
 });
 

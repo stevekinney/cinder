@@ -7,6 +7,10 @@ type CommandItemBaseProps = {
   disabled?: boolean;
   /** Optional secondary text shown below the main label. */
   description?: string;
+  /** Accessible name for the option when the rendered row contains secondary text or rich content. */
+  accessibleLabel?: string | undefined;
+  /** Keyboard shortcut exposed through `aria-keyshortcuts`, e.g. `Meta+N`. */
+  keyboardShortcut?: string | undefined;
   /** Leading content (icon, avatar). Rendered with aria-hidden. */
   leading?: Snippet;
   /** Trailing content (kbd hint, badge). Rendered with aria-hidden. */

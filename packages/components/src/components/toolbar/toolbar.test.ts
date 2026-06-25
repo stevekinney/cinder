@@ -418,7 +418,7 @@ describe('Toolbar', () => {
     await fireEvent.keyDown(viewportSegment, { key: 'ArrowRight' });
     await flushEffects();
 
-    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Custom width' }));
+    expect(document.activeElement).toBe(screen.getByRole('spinbutton', { name: 'Custom width' }));
   });
 });
 

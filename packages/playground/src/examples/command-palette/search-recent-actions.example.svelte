@@ -127,6 +127,7 @@
         <CommandItem
           value={page.id}
           description={page.description}
+          accessibleLabel={page.label}
           onselect={() => select(page.label)}
         >
           {page.label}
@@ -141,7 +142,11 @@
     {#if showRecent}
       <li role="none" style="{headerBase} {showPages ? headerWithDivider : headerFirst}">Recent</li>
       {#each recentItems as item (item.id)}
-        <CommandItem value={item.id} onselect={() => select(item.label)}>
+        <CommandItem
+          value={item.id}
+          accessibleLabel={item.label}
+          onselect={() => select(item.label)}
+        >
           {item.label}
         </CommandItem>
       {/each}
@@ -161,6 +166,12 @@
         <CommandItem
           value={action.id}
           description={action.description}
+          accessibleLabel={action.label}
+          keyboardShortcut={action.kbd === '⌘N'
+            ? 'Meta+N'
+            : action.kbd === '⌘I'
+              ? 'Meta+I'
+              : undefined}
           onselect={() => select(action.label)}
         >
           {#snippet leading()}

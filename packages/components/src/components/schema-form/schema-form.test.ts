@@ -50,7 +50,7 @@ describe('SchemaForm', () => {
 
     await fireEvent.input(screen.getByLabelText(/Name/), { target: { value: 'Ada' } });
     // NumberInput commits its parsed value on blur (it buffers while editing).
-    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countInput, { target: { value: '3' } });
     await fireEvent.blur(countInput);
 
@@ -114,7 +114,7 @@ describe('SchemaForm', () => {
     });
     await flush();
 
-    const input = screen.getByRole('textbox', { name: /Count/ });
+    const input = screen.getByRole('spinbutton', { name: /Count/ });
     expect(input).toBeInstanceOf(HTMLInputElement);
     expect((input as HTMLInputElement).value).toBe('');
   });
@@ -325,7 +325,7 @@ describe('SchemaForm', () => {
       const form = formFrom(container);
       const event = await submit(form);
       const input = screen.getByLabelText(/Name/);
-      const error = screen.getByText(/fewer than 1 characters|required/i);
+      const error = screen.getByText(/Name is too short|Name is required/i);
 
       expect(event.defaultPrevented).toBe(true);
       expect(onsubmitCalls).toHaveLength(0);
@@ -380,10 +380,10 @@ describe('SchemaForm', () => {
 
     await fireEvent.input(screen.getByLabelText(/Name/), { target: { value: 'Updated' } });
     // NumberInput commits the parsed value on blur, so commit each before submit.
-    const ratioInput = screen.getByRole('textbox', { name: /Ratio/ });
+    const ratioInput = screen.getByRole('spinbutton', { name: /Ratio/ });
     await fireEvent.input(ratioInput, { target: { value: '2.5' } });
     await fireEvent.blur(ratioInput);
-    const countField = screen.getByRole('textbox', { name: /Count/ });
+    const countField = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countField, { target: { value: '4' } });
     await fireEvent.blur(countField);
     const activeCheckbox = screen.getByRole('checkbox', { name: /Active/ });
@@ -444,6 +444,93 @@ describe('SchemaForm', () => {
     expect(calls).toHaveLength(0);
     expect(screen.getByLabelText(/Raw payload/).getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByText(/JSON|Expected|position/i)).toBeTruthy();
+  });
+
+  test('reports raw JSON parse errors on blur', async () => {
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { raw: { title: 'Raw payload' } },
+          required: ['raw'],
+        },
+        value: { raw: { ok: true } },
+      },
+    });
+    await flush();
+
+    const rawTextarea = screen.getByLabelText(/Raw payload/);
+    await fireEvent.input(rawTextarea, { target: { value: '{' } });
+    await fireEvent.blur(rawTextarea);
+    await flush();
+
+    expect(rawTextarea.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText(/JSON|Expected|position/i)).toBeTruthy();
+  });
+
+  test('ignores stale async blur validation after raw JSON drafts change', async () => {
+    const validations: Array<{
+      value: unknown;
+      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
+    }> = [];
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'raw-json-stale-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { raw: { title: 'Raw payload' } },
+            required: ['raw'],
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
+            (resolve) => {
+              validations.push({ value, resolve });
+            },
+          );
+        },
+      },
+    } as const;
+
+    render(SchemaForm, { props: { schema, value: { raw: { ok: true } } } });
+    await flush();
+
+    const rawTextarea = screen.getByLabelText(/Raw payload/);
+    await fireEvent.input(rawTextarea, { target: { value: '{"ok":false}' } });
+    await fireEvent.blur(rawTextarea);
+    await flush();
+    expect(validations).toHaveLength(1);
+
+    await fireEvent.input(rawTextarea, { target: { value: '{"ok":true}' } });
+    validations[0]!.resolve({
+      issues: [{ path: ['raw'], message: 'Raw payload is unavailable.' }],
+    });
+    await flush();
+    await flush();
+
+    expect(rawTextarea.getAttribute('aria-invalid')).not.toBe('true');
+    expect(screen.queryByText('Raw payload is unavailable.')).toBeNull();
+  });
+
+  test('humanizes dashed AJV field names without throwing', async () => {
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { 'user-name': { type: 'string', minLength: 2 } },
+          required: ['user-name'],
+        },
+        value: { 'user-name': '' },
+      },
+    });
+    await flush();
+
+    await submit(formFrom(container));
+
+    expect(screen.getByText(/User name is too short/i)).toBeTruthy();
   });
 
   test('awaits async Standard Schema validation before calling onsubmit', async () => {
@@ -541,6 +628,196 @@ describe('SchemaForm', () => {
     expect(submitted).toEqual([]);
     expect(screen.getByLabelText(/Name/).getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByText('Name is unavailable.')).toBeTruthy();
+  });
+
+  test('ignores stale async blur validation after the field value changes', async () => {
+    const validations: Array<{
+      value: unknown;
+      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
+    }> = [];
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'async-blur-stale-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { name: { type: 'string', title: 'Name' } },
+            required: ['name'],
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
+            (resolve) => {
+              validations.push({ value, resolve });
+            },
+          );
+        },
+      },
+    } as const;
+
+    render(SchemaForm, {
+      props: {
+        schema,
+        value: { name: 'Ada' },
+      },
+    });
+    await flush();
+
+    const nameInput = screen.getByLabelText(/Name/);
+    await fireEvent.input(nameInput, { target: { value: '' } });
+    await fireEvent.blur(nameInput);
+    await flush();
+    expect(validations).toHaveLength(1);
+
+    await fireEvent.input(nameInput, { target: { value: 'Ada' } });
+    validations[0]!.resolve({ issues: [{ path: ['name'], message: 'Name is unavailable.' }] });
+    await flush();
+    await flush();
+
+    expect(nameInput.getAttribute('aria-invalid')).not.toBe('true');
+    expect(screen.queryByText('Name is unavailable.')).toBeNull();
+  });
+
+  test('validates number fields on blur', async () => {
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'number-blur-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { count: { type: 'number', title: 'Count' } },
+            required: ['count'],
+          }),
+          output: () => ({}),
+        },
+        validate(value: unknown) {
+          const count = (value as { count?: number }).count;
+          return count === undefined || count >= 10
+            ? { value }
+            : { issues: [{ path: ['count'], message: 'Count must be at least 10.' }] };
+        },
+      },
+    } as const;
+
+    render(SchemaForm, {
+      props: {
+        schema,
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '5' } });
+    await fireEvent.blur(countInput);
+    await flush();
+
+    expect(countInput.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Count must be at least 10.')).toBeTruthy();
+  });
+
+  test('ignores stale async blur validation after a focused number edit', async () => {
+    const validations: Array<{
+      value: unknown;
+      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
+    }> = [];
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'number-blur-stale-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: { count: { type: 'number', title: 'Count' } },
+            required: ['count'],
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
+            (resolve) => {
+              validations.push({ value, resolve });
+            },
+          );
+        },
+      },
+    } as const;
+
+    render(SchemaForm, {
+      props: {
+        schema,
+        value: { count: 5 },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '5' } });
+    await fireEvent.blur(countInput);
+    await flush();
+    expect(validations).toHaveLength(1);
+
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: '12' } });
+    validations[0]!.resolve({ issues: [{ path: ['count'], message: 'Count is unavailable.' }] });
+    await flush();
+    await flush();
+
+    expect((countInput as HTMLInputElement).value).toBe('12');
+    expect(countInput.getAttribute('aria-invalid')).not.toBe('true');
+    expect(screen.queryByText('Count is unavailable.')).toBeNull();
+  });
+
+  test('reports schema number bounds instead of clamping typed values', async () => {
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'number-bounds-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: {
+              count: { type: 'number', title: 'Count', maximum: 10 },
+            },
+            required: ['count'],
+          }),
+          output: () => ({}),
+        },
+        validate(value: unknown) {
+          const count = (value as { count?: number }).count;
+          return count === undefined || count <= 10
+            ? { value }
+            : { issues: [{ path: ['count'], message: 'Count must be at most 10.' }] };
+        },
+      },
+    } as const;
+    const submitted: unknown[] = [];
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
+    await fireEvent.input(countInput, { target: { value: '999' } });
+    await fireEvent.blur(countInput);
+    await flush();
+
+    expect((countInput as HTMLInputElement).value).toBe('999');
+
+    const form = formFrom(container);
+    await submit(form);
+
+    expect(submitted).toHaveLength(0);
+    expect(countInput.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('Count must be at most 10.')).toBeTruthy();
   });
 
   test('keeps controls frozen when a new submit starts during invalid-submit focus', async () => {
@@ -709,6 +986,68 @@ describe('SchemaForm', () => {
 
     expect(submitted).toEqual({ tags: ['two'] });
   });
+
+  test('removing an array item invalidates pending touched validation for shifted rows', async () => {
+    let releaseValidation!: () => void;
+    const validationGate = new Promise<void>((resolve) => {
+      releaseValidation = resolve;
+    });
+    let validationCalls = 0;
+    const schema = {
+      '~standard': {
+        version: 1,
+        vendor: 'async-array-remove-test',
+        jsonSchema: {
+          input: () => ({
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                title: 'Items',
+                items: {
+                  type: 'object',
+                  properties: { name: { type: 'string', title: 'Name' } },
+                  required: ['name'],
+                },
+              },
+            },
+          }),
+          output: () => ({}),
+        },
+        async validate(value: unknown) {
+          validationCalls += 1;
+          await validationGate;
+          const firstName = (value as { items?: Array<{ name?: string }> }).items?.[0]?.name;
+          if (firstName === '') {
+            return {
+              issues: [{ message: 'Name is required.', path: ['items', 0, 'name'] }],
+            };
+          }
+          return { value };
+        },
+      },
+    } as const;
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema,
+        value: { items: [{ name: '' }, { name: 'kept' }] },
+      },
+    });
+    await flush();
+
+    const nameInputs = within(container).getAllByLabelText(/Name/);
+    await fireEvent.blur(nameInputs[0]!);
+    await flush();
+    await fireEvent.click(within(container).getByRole('button', { name: 'Remove Items item 1' }));
+    releaseValidation();
+    await flush();
+    await flush();
+
+    expect(validationCalls).toBe(1);
+    expect(within(container).getByLabelText(/Name/)).toHaveProperty('value', 'kept');
+    expect(container.textContent).not.toContain('Name is required.');
+  });
 });
 
 describe('SchemaForm — composed-control regressions', () => {
@@ -741,7 +1080,7 @@ describe('SchemaForm — composed-control regressions', () => {
     await fireEvent.input(nameInput, { target: { value: 'Ada' } });
     expect((nameInput as HTMLInputElement).value).toBe('Ada'); // does not revert
 
-    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countInput, { target: { value: '7' } });
     await fireEvent.blur(countInput);
     expect((countInput as HTMLInputElement).value).toBe('7'); // does not revert after blur commit
@@ -773,7 +1112,7 @@ describe('SchemaForm — composed-control regressions', () => {
     });
     await flush();
 
-    const countInput = screen.getByRole('textbox', { name: /Count/ });
+    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countInput, { target: { value: '2.5' } });
     await fireEvent.blur(countInput);
     expect((countInput as HTMLInputElement).value).toBe('3'); // snapped to an integer
@@ -868,7 +1207,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
 
     // New fields appear.
     const emailField = view.getByLabelText(/Email/);
-    const ageInput = view.getByRole('textbox', { name: /Age/ });
+    const ageInput = view.getByRole('spinbutton', { name: /Age/ });
     expect(emailField).toBeInstanceOf(HTMLInputElement);
     expect(ageInput).toBeTruthy();
     const emailInput = emailField as HTMLInputElement;

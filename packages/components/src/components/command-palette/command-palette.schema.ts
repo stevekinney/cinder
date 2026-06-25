@@ -20,7 +20,7 @@ const schema = {
     query: {
       type: 'string',
       description:
-        "Bindable search query. Mutated by the input's oninput handler.\nExposed to the items snippet so consumers can filter.\nNote: query is NOT reset on close — consumers who want a fresh query on\neach open should reset it in their `onclose` callback.",
+        "Bindable search query. Mutated by the input's oninput handler.\nExposed to the items snippet so consumers can filter.\nReset to an empty string each time the palette opens.",
     },
     class: {
       type: 'string',

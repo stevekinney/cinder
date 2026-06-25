@@ -30,6 +30,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { Placement, VirtualElement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../../utilities/class-names.ts';
@@ -71,6 +72,18 @@
   // in-progress edits if `initialUrl` / `initialText` recomputed mid-open.
   let url = $state(initialUrl);
   let text = $state(initialText);
+  let initialFocusApplied = false;
+
+  $effect(() => {
+    if (initialFocusApplied) return;
+    if (!popoverElement) return;
+    if (anchorElement && !anchoredOverlay.positionReady) return;
+    tick().then(() => {
+      if (initialFocusApplied) return;
+      document.getElementById(`${id}-url`)?.focus();
+      initialFocusApplied = true;
+    });
+  });
 
   // Allowed URL protocols (safe for links)
   const ALLOWED_PROTOCOLS = [
