@@ -49,6 +49,16 @@ const schema = {
   },
   additionalProperties: false,
   required: ['id', 'label'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'onValueChange',
+        reason: 'function-or-snippet',
+        description:
+          'Intercept a proposed checked state before the bindable value is written. Return a replacement value to transform it.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

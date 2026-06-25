@@ -20,6 +20,11 @@ const schema = {
         'Render the badge label in a monospace font. Useful for version strings, error codes, or other technical labels.',
       default: false,
     },
+    subscriptionState: {
+      enum: ['active', 'trialing', 'past-due', 'canceled', 'expired', 'refunded'],
+      description:
+        'Render a standardized subscription lifecycle badge without hand-wiring tone, icon, and label.',
+    },
     class: {
       type: 'string',
       description: 'Custom class merged with `.cinder-badge`.',
@@ -31,7 +36,6 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
-        required: true,
         description:
           'Badge content — intentionally required. A badge without content is\nsemantically meaningless. The render site uses optional chaining\n(`children?.()`) as a runtime safety net for JS consumers.',
       },

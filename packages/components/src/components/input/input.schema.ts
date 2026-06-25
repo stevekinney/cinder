@@ -59,6 +59,12 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
+        name: 'onValueChange',
+        reason: 'function-or-snippet',
+        description:
+          'Intercept a proposed value before the bindable value is written. Return a replacement value to transform it.',
+      },
+      {
         name: 'trailing',
         reason: 'function-or-snippet',
       },

@@ -18,6 +18,8 @@ export type ToggleProps = {
   id: string;
   /** Whether the toggle is currently checked. Bindable — defaults to false. */
   checked?: boolean;
+  /** Intercept a proposed checked state before the bindable value is written. Return a replacement value to transform it. */
+  onValueChange?: (next: boolean) => boolean | void;
   /** Visible label text. Always the accessible name, even when `hideLabel` is set. Required. */
   label: string;
   /** Prevents interaction when true. Sets `disabled` attribute. */

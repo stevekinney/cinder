@@ -47,7 +47,7 @@
     transform: translateY(-50%);
   }
 
-  .cinder-speed-dial[data-cinder-open='true'] .cinder-speed-dial__actions {
+  .cinder-speed-dial[data-cinder-open] .cinder-speed-dial__actions {
     pointer-events: auto;
   }
 
@@ -62,7 +62,7 @@
       transform var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .cinder-speed-dial[data-cinder-open='true'] .cinder-speed-dial-action {
+  .cinder-speed-dial[data-cinder-open] .cinder-speed-dial-action {
     opacity: 1;
     transform: none;
   }
@@ -100,7 +100,7 @@
     white-space: nowrap;
   }
 
-  .cinder-speed-dial[data-cinder-open='false'] .cinder-speed-dial-action {
+  .cinder-speed-dial:not([data-cinder-open]) .cinder-speed-dial-action {
     pointer-events: none;
   }
 

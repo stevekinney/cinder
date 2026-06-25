@@ -116,6 +116,17 @@ describe('Input rendering', () => {
     expect(input.value).toBe('Alice');
   });
 
+  test('onValueChange can transform the proposed value before it is written', async () => {
+    const { container } = render(Input, {
+      props: { id: 'name', value: '', onValueChange: (next: string) => next.toUpperCase() },
+    });
+    const input = container.querySelector('#name') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'Alice' } });
+
+    expect(input.value).toBe('ALICE');
+  });
+
   test('applies class prop alongside cinder-input', () => {
     const { container } = render(Input, {
       props: { id: 'search', value: '', class: 'my-custom-class' },

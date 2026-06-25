@@ -62,7 +62,7 @@ Both go in `devDependencies`. `bun pm pack --dry-run` is run in the Phase 1 veri
 - `.` — root.
 - `./styles` — styles entry.
 
-Every other entry is a component subpath. Stable component subpaths plus 3 experimental deprecation aliases: `./experimental/connection-indicator`, `./experimental/json-viewer`, `./experimental/message`. (The `./experimental/timeline` and `./experimental/timeline-item` aliases were removed once their deprecation window closed — import `@lostgradient/cinder/timeline` and `/timeline-item` instead.)
+Every other entry is a component subpath. Stable component subpaths plus 2 experimental deprecation aliases: `./experimental/json-viewer`, `./experimental/message`. (The `./experimental/connection-indicator`, `./experimental/timeline`, and `./experimental/timeline-item` aliases were removed once their deprecation window closed.)
 
 Components whose name suggests they might be subcomponents but are in fact top-level public exports today (and must remain so):
 

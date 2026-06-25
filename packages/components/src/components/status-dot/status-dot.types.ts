@@ -27,6 +27,9 @@ export type StatusDotStatus =
 
 export type StatusDotSize = 'sm' | 'md';
 
+/** Realtime connection states that StatusDot can render as a live-region preset. */
+export type StatusDotConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error';
+
 /**
  * Props for StatusDot.
  *
@@ -38,9 +41,13 @@ export type StatusDotSize = 'sm' | 'md';
  */
 export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
   /** Required semantic status. Drives color via `data-cinder-status`. */
-  status: StatusDotStatus;
+  status?: StatusDotStatus;
+  /** Realtime connection preset. Sets status, default label, and live-region semantics. */
+  connectionState?: StatusDotConnectionState;
   /** Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way. */
   label?: string;
+  /** Use role="status" with polite live-region attributes. Defaults true when connectionState is provided. */
+  live?: boolean;
   /** Whether to render the visible label. Default `true`. */
   showLabel?: boolean;
   /** Dot size. Default `'md'`. */
@@ -51,11 +58,15 @@ export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
 
 export interface StatusDotSchemaProps {
   /** Required semantic status. Drives color via `data-cinder-status`. `success` maps to `--cinder-success`; `accent` maps to `--cinder-accent`. */
-  status: StatusDotStatus;
+  status?: StatusDotStatus;
+  /** Realtime connection preset. Sets status, default label, and live-region semantics. */
+  connectionState?: StatusDotConnectionState;
   /** Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way. */
   label?: string;
   /** Whether to render the visible label. @default true */
   showLabel?: boolean;
+  /** Use role="status" with polite live-region attributes. Defaults true when connectionState is provided. */
+  live?: boolean;
   /** Dot size. @default "md" */
   size?: StatusDotSize;
   /** Extra classes appended to the root element. */

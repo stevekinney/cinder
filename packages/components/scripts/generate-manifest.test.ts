@@ -82,22 +82,22 @@ const SYNTHETIC_COMPONENTS: ManifestComponent[] = [
     },
   },
   {
-    name: 'ConnectionIndicator',
-    id: 'connection-indicator',
-    import: '@lostgradient/cinder/experimental/connection-indicator',
-    exportName: 'ConnectionIndicator',
+    name: 'JsonViewer',
+    id: 'json-viewer',
+    import: '@lostgradient/cinder/experimental/json-viewer',
+    exportName: 'JsonViewer',
     category: 'feedback',
     status: 'alpha',
-    purpose: 'Visual indicator for real-time connection status (connected, degraded, offline).',
-    tags: ['status', 'realtime'],
-    useWhen: ['Showing WebSocket connection health in a dashboard header.'],
-    avoidWhen: [{ reason: 'General status display.', alternative: 'status-dot' }],
-    related: ['status-dot'],
+    purpose: 'Expandable structured payload viewer for debugging operational data.',
+    tags: ['json', 'debugging'],
+    useWhen: ['Showing structured event details in an operational dashboard.'],
+    avoidWhen: [{ reason: 'Showing tabular records.', alternative: 'data-table' }],
+    related: ['event-stream-viewer'],
     hasConstraints: false,
     hasExamples: false,
     artifacts: {
-      schema: '@lostgradient/cinder/experimental/connection-indicator/schema',
-      variables: '@lostgradient/cinder/experimental/connection-indicator/variables',
+      schema: '@lostgradient/cinder/experimental/json-viewer/schema',
+      variables: '@lostgradient/cinder/experimental/json-viewer/variables',
     },
   },
 ];
@@ -286,8 +286,8 @@ describe('manifest schema', () => {
 
   it('accepts a component with no a11y block (a11y is optional)', () => {
     const manifest = buildSyntheticManifest();
-    const indicator = manifest.components.find((c) => c.id === 'connection-indicator');
-    expect(indicator?.a11y).toBeUndefined();
+    const jsonViewer = manifest.components.find((c) => c.id === 'json-viewer');
+    expect(jsonViewer?.a11y).toBeUndefined();
     const valid = validateManifest(manifest);
     expect(valid).toBe(true);
   });
@@ -382,8 +382,8 @@ describe('kebab-to-PascalCase derivation', () => {
   });
 
   it('multi-segment id maps to PascalCase by segment', () => {
-    const component = SYNTHETIC_COMPONENTS.find((c) => c.id === 'connection-indicator');
-    expect(component?.exportName).toBe('ConnectionIndicator');
+    const component = SYNTHETIC_COMPONENTS.find((c) => c.id === 'json-viewer');
+    expect(component?.exportName).toBe('JsonViewer');
   });
 });
 

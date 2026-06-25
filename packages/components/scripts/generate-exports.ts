@@ -286,7 +286,6 @@ export type DeprecatedExperimentalAlias = {
 };
 
 export const DEPRECATED_EXPERIMENTAL_ALIASES: readonly DeprecatedExperimentalAlias[] = [
-  { name: 'connection-indicator', hasCss: true, hasExamples: false },
   { name: 'json-viewer', hasCss: true, hasExamples: false },
   { name: 'message', hasCss: true, hasExamples: false },
 ];

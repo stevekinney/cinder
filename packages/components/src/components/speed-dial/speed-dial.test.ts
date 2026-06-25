@@ -30,7 +30,9 @@ describe('SpeedDial', () => {
     expect(trigger.hasAttribute('aria-haspopup')).toBe(false);
     expect(trigger.getAttribute('aria-controls')).toBe(toolbar.id);
     expect(toolbar.getAttribute('aria-orientation')).toBe('vertical');
-    expect(container.querySelector('[data-cinder-open="false"]')).not.toBeNull();
+    expect(container.querySelector('.cinder-speed-dial')?.hasAttribute('data-cinder-open')).toBe(
+      false,
+    );
   });
 
   test('empty aria-label falls back to the default accessible name', () => {
@@ -150,8 +152,8 @@ describe('SpeedDial', () => {
     await fireEvent.click(document.body);
     await flushQueuedFocus();
     expect(screen.getByTestId('open-state').textContent).toBe('closed');
-    expect(container.querySelector('.cinder-speed-dial')?.getAttribute('data-cinder-open')).toBe(
-      'false',
+    expect(container.querySelector('.cinder-speed-dial')?.hasAttribute('data-cinder-open')).toBe(
+      false,
     );
     expect(document.activeElement).toBe(trigger);
   });

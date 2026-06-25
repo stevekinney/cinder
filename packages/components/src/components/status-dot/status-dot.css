@@ -24,6 +24,14 @@
     vertical-align: middle;
   }
 
+  .cinder-status-dot[data-cinder-state] {
+    padding: var(--cinder-space-0-5) var(--cinder-space-2);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-surface-inset);
+  }
+
   .cinder-status-dot__indicator {
     display: inline-block;
     flex-shrink: 0;
@@ -84,5 +92,25 @@
 
   .cinder-status-dot[data-cinder-status='accent'] {
     --cinder-status-dot-color: var(--cinder-accent);
+  }
+
+  .cinder-status-dot[data-cinder-state='connecting'] .cinder-status-dot__indicator {
+    animation: cinder-status-dot-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes cinder-status-dot-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-status-dot[data-cinder-state='connecting'] .cinder-status-dot__indicator {
+      animation: none;
+    }
   }
 }

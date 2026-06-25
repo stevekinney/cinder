@@ -127,7 +127,7 @@
   aria-disabled={isDisabled || undefined}
   tabindex={tabIndex}
   class={classNames('cinder-choice-grid-item', className)}
-  data-cinder-selected={isSelected || undefined}
+  data-cinder-selected={isSelected ? '' : undefined}
   data-cinder-disabled={isDisabled || undefined}
   data-cinder-state={feedbackState !== 'neutral' ? feedbackState : undefined}
   onclick={handleClick}

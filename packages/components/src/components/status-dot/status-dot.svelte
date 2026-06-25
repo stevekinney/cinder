@@ -17,11 +17,31 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import type { StatusDotProps } from './status-dot.types.ts';
+  import type {
+    StatusDotConnectionState,
+    StatusDotProps,
+    StatusDotStatus,
+  } from './status-dot.types.ts';
+
+  const connectionStatusMap: Record<StatusDotConnectionState, StatusDotStatus> = {
+    connected: 'online',
+    connecting: 'warning',
+    disconnected: 'offline',
+    error: 'danger',
+  };
+
+  const connectionLabels: Record<StatusDotConnectionState, string> = {
+    connected: 'Connected',
+    connecting: 'Connecting',
+    disconnected: 'Disconnected',
+    error: 'Error',
+  };
 
   let {
     status,
+    connectionState,
     label,
+    live,
     showLabel = true,
     size = 'md',
     class: className,
@@ -30,12 +50,22 @@
   }: StatusDotProps = $props();
 
   const normalizedAriaLabel = $derived(ariaLabel?.trim() ? ariaLabel.trim() : undefined);
-  const normalizedLabel = $derived(label?.trim() ? label.trim() : undefined);
+  const resolvedStatus = $derived(
+    status ?? (connectionState === undefined ? 'neutral' : connectionStatusMap[connectionState]),
+  );
+  const resolvedLive = $derived(live ?? connectionState !== undefined);
+  const normalizedLabel = $derived(
+    label?.trim()
+      ? label.trim()
+      : connectionState === undefined
+        ? undefined
+        : connectionLabels[connectionState],
+  );
   const hasVisibleLabel = $derived(showLabel && normalizedLabel !== undefined);
 
   // `role="img"` needs an author-provided name. Blank labels are treated as
   // absent so status is never communicated by color alone.
-  const resolvedAriaLabel = $derived(normalizedAriaLabel ?? normalizedLabel ?? status);
+  const resolvedAriaLabel = $derived(normalizedAriaLabel ?? normalizedLabel ?? resolvedStatus);
 </script>
 
 <!--
@@ -51,10 +81,13 @@
 <span
   {...rest}
   class={classNames('cinder-status-dot', className)}
-  data-cinder-status={status}
+  data-cinder-status={resolvedStatus}
+  data-cinder-state={connectionState}
   data-cinder-size={size}
-  role="img"
-  aria-label={resolvedAriaLabel}
+  role={resolvedLive ? 'status' : 'img'}
+  aria-live={resolvedLive ? 'polite' : undefined}
+  aria-atomic={resolvedLive ? 'true' : undefined}
+  aria-label={resolvedLive ? undefined : resolvedAriaLabel}
 >
   <span class="cinder-status-dot__indicator" aria-hidden="true"></span>
   {#if hasVisibleLabel}

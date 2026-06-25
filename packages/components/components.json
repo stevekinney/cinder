@@ -1234,33 +1234,6 @@
       }
     },
     {
-      "name": "ConnectionIndicator",
-      "id": "connection-indicator",
-      "import": "@lostgradient/cinder/connection-indicator",
-      "exportName": "ConnectionIndicator",
-      "category": "feedback",
-      "status": "stable",
-      "purpose": "Live-status pill pairing a semantic dot with a label to communicate real-time WebSocket, SSE, or polling connection state.",
-      "tags": ["connection", "status", "realtime"],
-      "useWhen": [
-        "Surfacing whether a realtime channel is connected, connecting, disconnected, or errored on a dashboard or app chrome.",
-        "Giving operators an at-a-glance health signal for a long-lived transport."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Communicating generic semantic state with no realtime connection backing it — status-dot is the lower-level primitive."
-        }
-      ],
-      "related": ["status-dot", "spinner"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/connection-indicator/schema",
-        "variables": "@lostgradient/cinder/connection-indicator/variables",
-        "examples": "@lostgradient/cinder/connection-indicator/examples"
-      }
-    },
-    {
       "name": "Container",
       "id": "container",
       "import": "@lostgradient/cinder/container",
@@ -1921,7 +1894,7 @@
           "reason": "Rendering paginated historical records with sorting — use data-table instead."
         }
       ],
-      "related": ["feed", "timeline", "json-viewer", "connection-indicator", "copy-button"],
+      "related": ["feed", "timeline", "json-viewer", "status-dot", "copy-button"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -4272,36 +4245,6 @@
         "schema": "@lostgradient/cinder/steps/schema",
         "variables": "@lostgradient/cinder/steps/variables",
         "examples": "@lostgradient/cinder/steps/examples"
-      }
-    },
-    {
-      "name": "SubscriptionBadge",
-      "id": "subscription-badge",
-      "import": "@lostgradient/cinder/subscription-badge",
-      "exportName": "SubscriptionBadge",
-      "category": "data-display",
-      "status": "alpha",
-      "purpose": "Opinionated Badge variant that communicates billing subscription states with a standardized tone, icon, and human-readable label.",
-      "tags": ["billing", "subscription", "status"],
-      "useWhen": [
-        "Displaying the billing state of a subscription in a dashboard, invoice list, or account settings page.",
-        "Annotating a plan name, customer row, or invoice line with its current payment lifecycle state."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "The subscription state is not one of the six recognized values — use Badge directly with a custom label instead."
-        },
-        {
-          "reason": "You need an interactive control that lets users change the state — use a Button or Select."
-        }
-      ],
-      "related": ["badge", "status-dot", "chip"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/subscription-badge/schema",
-        "variables": "@lostgradient/cinder/subscription-badge/variables",
-        "examples": "@lostgradient/cinder/subscription-badge/examples"
       }
     },
     {

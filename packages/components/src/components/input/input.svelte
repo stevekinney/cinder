@@ -22,10 +22,12 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import { commitValue } from '../../utilities/value-change.ts';
 
   let {
     id,
     value = $bindable(''),
+    onValueChange,
     label,
     description,
     error,
@@ -78,6 +80,13 @@
   const hasTrailing = $derived(!!trailing || isNativeDateInput);
   const hasGroupWrapper = $derived(!!leading || hasTrailing);
   const isInvalid = $derived(resolvedAriaInvalid === 'true');
+
+  function handleInput(event: Event): void {
+    const target = event.currentTarget as HTMLInputElement;
+    commitValue(target.value, onValueChange, (next) => {
+      value = next;
+    });
+  }
 </script>
 
 {#snippet calendarIcon()}
@@ -106,7 +115,8 @@
     {type}
     disabled={resolvedDisabled}
     required={resolvedRequired}
-    bind:value
+    {value}
+    oninput={handleInput}
     class={classNames('cinder-input', className)}
     data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}

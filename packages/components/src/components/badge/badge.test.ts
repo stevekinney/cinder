@@ -104,6 +104,40 @@ describe('Badge — mono affordance', () => {
   });
 });
 
+describe('Badge — subscription state preset', () => {
+  const states = [
+    ['active', 'success', 'Active'],
+    ['trialing', 'info', 'Trialing'],
+    ['past-due', 'warning', 'Past due'],
+    ['canceled', 'neutral', 'Canceled'],
+    ['expired', 'danger', 'Expired'],
+    ['refunded', 'neutral', 'Refunded'],
+  ] as const;
+
+  test.each(states)(
+    'subscriptionState="%s" renders tone, state, icon, and label',
+    (subscriptionState, variant, label) => {
+      const { container } = render(Badge, { subscriptionState });
+      const badge = container.querySelector('.cinder-badge');
+
+      expect(badge?.getAttribute('data-cinder-subscription-state')).toBe(subscriptionState);
+      expect(badge?.getAttribute('data-cinder-variant')).toBe(variant);
+      expect(badge?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+      expect(badge?.innerHTML).toContain(label);
+    },
+  );
+
+  test('subscriptionState overrides the explicit variant', () => {
+    const { container } = render(Badge, {
+      subscriptionState: 'active',
+      variant: 'danger',
+    });
+    expect(container.querySelector('.cinder-badge')?.getAttribute('data-cinder-variant')).toBe(
+      'success',
+    );
+  });
+});
+
 describe('Badge — omitted children (runtime safety net)', () => {
   test('renders without throwing when children is omitted (JS consumer safety)', () => {
     // children: Snippet is required in TypeScript, but the optional-chain guard

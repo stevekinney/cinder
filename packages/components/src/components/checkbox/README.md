@@ -26,6 +26,7 @@ Single boolean toggle for opt-in selections within forms or settings.
 | `indeterminate` | `boolean`  | no       | —       | Bound indeterminate state. Mutually exclusive with `checked` visually.                                                                                                                                                                              |
 | `label`         | `string`   | no       | —       | Visible label rendered in a `<label>` element associated via `for`.                                                                                                                                                                                 |
 | `class`         | `(opaque)` | no       | —       | Extra class names merged with `.cinder-checkbox`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                        |
+| `onValueChange` | `(opaque)` | no       | —       | Intercept a proposed checked state before the bindable value is written. Return a replacement value to transform it. Not expressible in JSON Schema; see the component types for the signature.                                                     |
 
 <!-- generated:props:end -->
 

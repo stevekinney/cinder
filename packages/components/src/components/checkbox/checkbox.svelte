@@ -21,10 +21,12 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import { commitValue } from '../../utilities/value-change.ts';
 
   let {
     id,
     checked = $bindable(false),
+    onValueChange,
     indeterminate = $bindable(false),
     label,
     description,
@@ -82,6 +84,13 @@
       inputElement.indeterminate = indeterminate && !checked;
     }
   });
+
+  function handleChange(event: Event): void {
+    const target = event.currentTarget as HTMLInputElement;
+    commitValue(target.checked, onValueChange, (next) => {
+      checked = next;
+    });
+  }
 </script>
 
 <div class="cinder-checkbox-field">
@@ -93,7 +102,8 @@
         type="checkbox"
         disabled={field.disabled}
         required={field.required}
-        bind:checked
+        {checked}
+        onchange={handleChange}
         class={classNames('cinder-checkbox', className)}
         aria-invalid={field.ariaInvalid}
         aria-describedby={field.describedBy}

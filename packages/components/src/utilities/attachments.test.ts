@@ -313,8 +313,8 @@ describe('createClickOutside', () => {
   }
 
   /**
-   * Dispatch a bubbling, cancelable event of `type` from `target`. Use a MouseEvent/PointerEvent
-   * (not a bare Event) so happy-dom routes it through the full capture→bubble tree to the
+   * Dispatch a bubbling, cancelable event of `type` from `target`. Use a concrete UI event
+   * where possible so happy-dom routes it through the full capture→bubble tree to the
    * document-level capture listener the attachment registers.
    */
   function fire(type: string, target: EventTarget): void {
@@ -322,7 +322,9 @@ describe('createClickOutside', () => {
     const event =
       type === 'pointerdown'
         ? new (globalThis.PointerEvent ?? Event)(type, init)
-        : new (globalThis.MouseEvent ?? Event)(type, init);
+        : type === 'touchstart'
+          ? new (globalThis.TouchEvent ?? Event)(type, init)
+          : new (globalThis.MouseEvent ?? Event)(type, init);
     target.dispatchEvent(event);
   }
 
@@ -387,6 +389,42 @@ describe('createClickOutside', () => {
 
     fire('mousedown', outside);
     expect(calls).toBe(1);
+    outside.remove();
+  });
+
+  test('eventType: "touchstart" listens for touchstart', () => {
+    let calls = 0;
+    attach({ handler: () => (calls += 1), eventType: 'touchstart' });
+
+    const outside = document.createElement('button');
+    document.body.append(outside);
+
+    fire('click', outside);
+    expect(calls).toBe(0);
+
+    fire('touchstart', outside);
+    expect(calls).toBe(1);
+    outside.remove();
+  });
+
+  test('treats composedPath entries contained by the node as inside', () => {
+    let calls = 0;
+    attach({ handler: () => (calls += 1), eventType: 'pointerdown' });
+
+    const inside = document.createElement('button');
+    node.append(inside);
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    const event = new (globalThis.PointerEvent ?? Event)('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, 'target', { value: outside });
+    Object.defineProperty(event, 'composedPath', { value: () => [inside, node, document.body] });
+
+    document.dispatchEvent(event);
+
+    expect(calls).toBe(0);
     outside.remove();
   });
 

@@ -157,8 +157,8 @@
           },
           "import": {
             "type": "string",
-            "description": "The import specifier consumers use to import this component. E.g. 'cinder/button' or 'cinder/experimental/connection-indicator'.",
-            "examples": ["cinder/button", "cinder/experimental/connection-indicator"]
+            "description": "The import specifier consumers use to import this component. E.g. 'cinder/button' or 'cinder/experimental/json-viewer'.",
+            "examples": ["cinder/button", "cinder/experimental/json-viewer"]
           },
           "exportName": {
             "type": "string",

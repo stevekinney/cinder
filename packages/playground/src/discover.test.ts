@@ -229,7 +229,7 @@ describe('discoverSidebarComponents', () => {
     // ships as its own sidebar family alongside keyboard-shortcuts). The gate is
     // `<=` so each PR in the wave can land independently while staying under the
     // final cumulative total.
-    // The features wave (#334-336) adds three more families — data-table,
+    // The features wave (#334-336) added three more families — data-table,
     // pricing-card, and subscription-badge — landing the sidebar at 109,
     // measured empirically via discoverSidebarComponents(). (#337/#338 ship as
     // examples on existing families and do not add sidebar entries.)
@@ -270,11 +270,13 @@ describe('discoverSidebarComponents', () => {
     // `exampleCount > 0` filter and surfaces in the sidebar, bringing the measured
     // ceiling to 138. (segment and command-item were moved to COMPOSE_ONLY in the
     // same change, so they do NOT add entries.)
+    // SubscriptionBadge later folded into Badge and ConnectionIndicator folded
+    // into StatusDot, reducing the measured sidebar count by two.
     // TimeField adds one standalone internationalized time-entry family with
-    // examples, bringing the measured ceiling to 139. LocaleProvider is
+    // examples, bringing the measured ceiling to 137. LocaleProvider is
     // context-only and does not add a playground sidebar entry.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(139);
+    expect(sidebar.length).toBeLessThanOrEqual(137);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -297,7 +299,6 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('callout');
     expect(sidebar).toContain('checkbox-group');
     expect(sidebar).toContain('color-swatch-picker');
-    expect(sidebar).toContain('connection-indicator');
     expect(sidebar).toContain('file-upload');
     expect(sidebar).toContain('image');
     expect(sidebar).toContain('number-input');
