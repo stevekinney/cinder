@@ -20,6 +20,8 @@ export type CheckboxProps = HTMLInputAttributes & {
   id?: string;
   /** Bound checked state. */
   checked?: boolean;
+  /** Intercept a proposed checked state before the bindable value is written. Return a replacement value to transform it. */
+  onValueChange?: (next: boolean) => boolean | void;
   /** Bound indeterminate state. Mutually exclusive with `checked` visually. */
   indeterminate?: boolean;
   /** Visible label rendered in a `<label>` element associated via `for`. */

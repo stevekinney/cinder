@@ -57,7 +57,7 @@
   bind:this={rootElement}
   class={classNames('cinder-speed-dial-action', customClassName)}
   data-cinder-label-placement={labelPlacement}
-  data-cinder-open={context.isOpen ? 'true' : 'false'}
+  data-cinder-open={context.isOpen ? '' : undefined}
   data-cinder-direction={context.direction}
 >
   <FloatingActionButton

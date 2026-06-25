@@ -42,6 +42,8 @@ export type InputProps = HTMLInputAttributes &
     id: string;
     /** Bindable current text value of the input. */
     value: string;
+    /** Intercept a proposed value before the bindable value is written. Return a replacement value to transform it. */
+    onValueChange?: (next: string) => string | void;
     /** Visible label text rendered above the input and linked via `for`/`id`. */
     label?: string;
     /** Helper text rendered below the input and associated via `aria-describedby`. */

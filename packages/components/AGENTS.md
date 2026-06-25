@@ -526,15 +526,18 @@ Dropdown/DropdownTrigger/DropdownMenu/…). For these families:
   under `examples/<parent>/`, never under `examples/<leaf>/`. Leaves
   documented under their parent should also be listed in
   `packages/playground/src/discover.ts`'s `COMPOSE_ONLY_COMPONENTS` set so
-  the sidebar shows one entry per family.
+  the sidebar shows one entry per family. A component in `COMPOSE_ONLY_COMPONENTS`
+  is intentionally exempt from its own `*.examples.json`; the parent example set
+  is the runnable coverage.
 - **README usage snippets show the namespace form.** Parent READMEs
   demonstrate `Parent.Leaf` composition and list every namespaced leaf in
   their `Subcomponents` region. Leaf READMEs point back at the parent for
   composed usage instead of duplicating a standalone snippet.
 - **Context uses `createContext`, never raw `Symbol` keys.** Define the
-  family's context in a dedicated `*-context.ts` module (`<family>.context.ts`
-  beside the parent, or `_internal/<family>-context.ts` for shared internals)
-  with Svelte's `createContext<T>()`:
+  family's context in a dedicated context module with Svelte's
+  `createContext<T>()`. Use `<family>.context.ts` beside the parent when the
+  context belongs to one component family, and use `_internal/<family>-context.ts`
+  when multiple families share the context contract.
 
   ```ts
   import { createContext } from 'svelte';
@@ -557,9 +560,17 @@ Dropdown/DropdownTrigger/DropdownMenu/…). For these families:
   with a manual `if (!ctx) throw` — `createContext` provides the typed get/set
   pair and the throw-on-missing-provider guard for you, and consumers get
   compile-time narrowing without the `rawCtx`→`ctx` two-step cast. The Symbol
-  key must not be exported from the family barrel. See `tabs/tabs-context.ts`,
-  `dropdown/dropdown.context.ts`, and `_internal/side-navigation-group-context.ts`
-  (optional) for the canonical shapes.
+  key must not be exported from the family barrel. See
+  `dropdown/dropdown.context.ts` for a family-local context and
+  `_internal/side-navigation-group-context.ts` for a shared internal context.
+
+- **Rune module suffixes describe ownership.** Use `use-<name>.svelte.ts` for
+  reusable hook-like utilities consumed from multiple unrelated components,
+  `<component>-state.svelte.ts` for a component family's reactive state model,
+  `<component>-controller.svelte.ts` for imperative coordination around a
+  component-specific runtime object, and `<name>.utilities.svelte.ts` only when
+  the module is a small grab bag scoped to one component directory. Do not rename
+  a `.ts` file to `.svelte.ts` unless it uses runes directly.
 
 ### Generators
 

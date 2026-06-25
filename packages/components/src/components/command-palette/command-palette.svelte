@@ -21,13 +21,9 @@
 
   import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { inDocumentOrder } from '../../utilities/document-order.ts';
   import { restoreFocusTo } from '../../utilities/focus.ts';
-  import {
-    setCommandListContext,
-    type CommandItemRegistrationInput,
-    type CommandListContext,
-  } from '../_internal/command-list-context.ts';
+  import { setCommandListContext } from '../_internal/command-list-context.ts';
+  import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
 
   let {
     open = $bindable(false),
@@ -62,58 +58,12 @@
   // ── Focus capture ─────────────────────────────────────────────────────────
   let capturedFocus: HTMLElement | null = null;
 
-  // ── Item registration ─────────────────────────────────────────────────────
-  type RegistrationRecord = CommandItemRegistrationInput & { id: string; node: HTMLElement };
-  let registrations = $state<RegistrationRecord[]>([]);
-
-  // Stable incrementing counter for item ids within this palette instance.
-  let itemCounter = 0;
-
-  // ── Active item (virtual focus) ───────────────────────────────────────────
-  // `intendedActiveId` is the user's last navigation/hover intent. The resolved
-  // `activeItemId` clamps that intent to the currently-enabled set, so it is a
-  // pure function of intent + enabledIds rather than a value repaired one tick
-  // late inside an $effect. Keyboard/hover handlers write intent; everything
-  // downstream reads the resolved derived.
-  let intendedActiveId = $state<string | null>(null);
-
-  // Ordered list of non-disabled item ids. Derived so arrow-key navigation
-  // always walks the current set, including after prop changes (e.g. toggling
-  // disabled on a mounted item).
-  const enabledIds = $derived.by(() => {
-    return inDocumentOrder(registrations)
-      .filter((r) => !r.getDisabled())
-      .map((r) => r.id);
-  });
-
-  // Resolved active id: preserve the user's intent if it's still in the enabled
-  // set, otherwise fall back to the first enabled item (or null). This collapses
-  // the previous read-then-write $effect into a single synchronous derivation.
-  const activeItemId = $derived(
-    intendedActiveId !== null && enabledIds.includes(intendedActiveId)
-      ? intendedActiveId
-      : (enabledIds[0] ?? null),
-  );
-
-  // ── Empty-state flash prevention ─────────────────────────────────────────
-  // `registrationsReady` prevents the empty snippet from flashing on initial
-  // open or when a query change causes a full key-swap of items. It is set
-  // true after one microtask (giving children's $effect registrations time to
-  // settle), and reset on every query change.
-  //
-  // A cycle counter guards against stale microtasks: if the query changes
-  // twice in quick succession, only the most recent microtask sets ready=true.
-  let registrationsReady = $state(false);
-  let readyCycle = 0;
+  const commandList = createCommandListState(listboxId);
 
   $effect(() => {
     // Track query so this re-runs on every query change.
     void query;
-    registrationsReady = false;
-    const cycle = ++readyCycle;
-    queueMicrotask(() => {
-      if (cycle === readyCycle) registrationsReady = true;
-    });
+    commandList.refreshRegistrationsReady();
   });
 
   // ── Escape stack ──────────────────────────────────────────────────────────
@@ -156,7 +106,7 @@
     if (!dialogElement) return;
     if (open && !dialogElement.open) {
       query = '';
-      intendedActiveId = null;
+      commandList.resetActiveItem();
       capturedFocus = captureFocus();
       dialogElement.showModal();
       inputElement?.focus();
@@ -195,40 +145,11 @@
 
   // ── Keyboard routing ──────────────────────────────────────────────────────
   function handleKeydown(event: KeyboardEvent) {
-    const ids = enabledIds;
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      if (ids.length === 0) return;
-      if (activeItemId === null) {
-        const firstId = ids[0];
-        if (firstId !== undefined) intendedActiveId = firstId;
-      } else {
-        const index = ids.indexOf(activeItemId);
-        const nextId = ids[(index + 1) % ids.length];
-        if (nextId !== undefined) intendedActiveId = nextId;
-      }
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      if (ids.length === 0) return;
-      if (activeItemId === null) {
-        const lastId = ids[ids.length - 1];
-        if (lastId !== undefined) intendedActiveId = lastId;
-      } else {
-        const index = ids.indexOf(activeItemId);
-        const previousId = ids[index <= 0 ? ids.length - 1 : index - 1];
-        if (previousId !== undefined) intendedActiveId = previousId;
-      }
-    } else if (event.key === 'Home') {
-      event.preventDefault();
-      intendedActiveId = ids[0] ?? null;
-    } else if (event.key === 'End') {
-      event.preventDefault();
-      intendedActiveId = ids[ids.length - 1] ?? null;
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      if (activeItemId !== null) context.activateItemById(activeItemId);
-    }
+    commandList.handleKeydown({
+      event,
+      onEnter: (id) => commandList.activateItemById(id),
+      preventDefaultOnEmptyEnter: true,
+    });
   }
 
   function handleInput(event: Event) {
@@ -237,55 +158,15 @@
   }
 
   $effect(() => {
-    if (activeItemId === null) return;
-    // Use the node captured at registration time rather than
-    // document.getElementById, which assumes globally-unique ids and breaks in
-    // shadow DOM, iframes, or multi-instance scenarios.
-    const record = registrations.find((r) => r.id === activeItemId);
-    record?.node.scrollIntoView({ block: 'nearest' });
+    commandList.scrollActiveItemIntoView();
   });
 
   // ── Context ───────────────────────────────────────────────────────────────
-  const context: CommandListContext = {
-    get listboxId() {
-      return listboxId;
-    },
-    get activeItemId() {
-      return activeItemId;
-    },
-    register(input: CommandItemRegistrationInput, node: HTMLElement) {
-      const id = `${listboxId}-item-${++itemCounter}`;
-      // Mutate in place: $state wraps the array in a deep reactive proxy that
-      // tracks push/splice, so we avoid allocating a fresh array per register.
-      registrations.push({
-        id,
-        node,
-        getValue: input.getValue,
-        getOnselect: input.getOnselect,
-        getDisabled: input.getDisabled,
-      });
-      return {
-        id,
-        unregister: () => {
-          const index = registrations.findIndex((r) => r.id === id);
-          if (index !== -1) registrations.splice(index, 1);
-        },
-      };
-    },
-    setActiveById(id: string) {
-      intendedActiveId = id;
-    },
-    activateItemById(id: string) {
-      const record = registrations.find((r) => r.id === id);
-      if (record && !record.getDisabled()) {
-        record.getOnselect()();
-      }
-    },
-  };
+  setCommandListContext(commandList.createContext());
 
-  setCommandListContext(context);
-
-  const showEmpty = $derived(mounted && registrationsReady && registrations.length === 0);
+  const showEmpty = $derived(
+    mounted && commandList.registrationsReady && commandList.registrations.length === 0,
+  );
 </script>
 
 {#if mounted || open}
@@ -329,7 +210,7 @@
             aria-autocomplete="list"
             aria-expanded="true"
             aria-controls={listboxId}
-            aria-activedescendant={activeItemId ?? undefined}
+            aria-activedescendant={commandList.activeItemId ?? undefined}
             oninput={handleInput}
             onkeydown={handleKeydown}
           />

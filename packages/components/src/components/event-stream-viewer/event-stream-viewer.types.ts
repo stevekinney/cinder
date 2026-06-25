@@ -37,7 +37,7 @@ export type EventStreamViewerProps = Omit<HTMLAttributes<HTMLDivElement>, 'class
   /** Events to render in chronological order, oldest first. */
   events: StreamEvent[];
   /**
-   * Current connection state. When provided, renders a ConnectionIndicator in
+   * Current connection state. When provided, renders a StatusDot connection preset in
    * the toolbar. Omit when the stream has no live transport.
    */
   connectionState?: EventStreamState;

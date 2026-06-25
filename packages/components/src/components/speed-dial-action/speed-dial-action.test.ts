@@ -48,7 +48,7 @@ describe('SpeedDialAction', () => {
 
     const action = container.querySelector('.cinder-speed-dial-action');
     expect(action?.getAttribute('data-cinder-label-placement')).toBe('start');
-    expect(action?.getAttribute('data-cinder-open')).toBe('false');
+    expect(action?.hasAttribute('data-cinder-open')).toBe(false);
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Quick actions' }));
   });
@@ -66,8 +66,8 @@ describe('SpeedDialAction', () => {
 
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByRole('group', { name: 'Quick actions' }).getAttribute('data-cinder-open'),
-    ).toBe('false');
+      screen.getByRole('group', { name: 'Quick actions' }).hasAttribute('data-cinder-open'),
+    ).toBe(false);
   });
 
   test('omits the visible label when labelPlacement is none', () => {

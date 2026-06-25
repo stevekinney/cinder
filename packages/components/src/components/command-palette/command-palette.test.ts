@@ -364,8 +364,10 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
       },
     });
     const input = container.querySelector('input') as HTMLInputElement;
-    await fireEvent.keyDown(input, { key: 'Enter' });
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    input.dispatchEvent(event);
     expect(closed).toBe(false);
+    expect(event.defaultPrevented).toBe(true);
   });
 
   test('Home with no registered items leaves aria-activedescendant absent', async () => {

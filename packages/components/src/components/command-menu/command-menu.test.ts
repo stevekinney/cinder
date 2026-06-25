@@ -220,6 +220,20 @@ describe('CommandMenu', () => {
     expect(emptyState?.textContent).toContain('No commands');
   });
 
+  test('Enter with no active command passes through to the host field', async () => {
+    const { getByTestId } = render(CommandMenuFixture);
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    await fireEvent.click(getByTestId('empty-query'));
+    await settleCommandMenu();
+    const anchor = document.querySelector('[data-testid="anchor"]') as HTMLTextAreaElement;
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+
+    anchor.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   test.each([{ fieldKind: 'textarea' as const }, { fieldKind: 'input' as const }])(
     'host-owned $fieldKind contract wires ARIA, keyboard selection, and dismissal',
     async ({ fieldKind }) => {

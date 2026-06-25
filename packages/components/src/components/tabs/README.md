@@ -65,6 +65,7 @@ trailing badge alone to convey it.
 | `orientation`     | `"horizontal"` \| `"vertical"` | no       | —       | Layout orientation. Affects which arrow keys move between tabs.                                                                                                                                               |
 | `value`           | `string`                       | no       | —       | Bound active tab value.                                                                                                                                                                                       |
 | `children`        | `(opaque)`                     | yes      | —       | Tab and TabPanel children. Not expressible in JSON Schema; see the component types for the signature.                                                                                                         |
+| `onValueChange`   | `(opaque)`                     | no       | —       | Intercept a proposed tab value before the bindable value is written. Return a replacement value to transform it. Not expressible in JSON Schema; see the component types for the signature.                   |
 
 <!-- generated:props:end -->
 

@@ -19,13 +19,11 @@
   import type { SheetProps } from './sheet.types.ts';
   import { onDestroy, tick } from 'svelte';
 
-  import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
-  import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
+  import { createSlidingDialogState } from '../_internal/create-sliding-dialog-state.svelte.ts';
 
   let {
     open = $bindable(false),
@@ -45,66 +43,33 @@
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
-  let hydrated = $state(false);
-  let renderPanel = $state(open);
-  let isClosing = $state(false);
-  let closeGeneration = $state(0);
   let pendingOpenFocus = $state(false);
-
-  let capturedFocus: HTMLElement | null = null;
-  let releaseScrollLock: (() => void) | null = null;
-  let releaseEscape: (() => void) | null = null;
-  let cancelPendingClose: (() => void) | null = null;
 
   const reducedMotion = useReducedMotion();
   const bodyOverflowFade = overflowFade();
-
-  function acquireScrollLock(): void {
-    if (releaseScrollLock) return;
-    releaseScrollLock = lockBodyScroll();
-  }
-
-  function acquireEscapeMarker(): void {
-    if (releaseEscape) return;
-    // No-op handler: presence marker so stacked non-dialog overlays
-    // route ESC to themselves. Native <dialog> owns the actual ESC close.
-    releaseEscape = pushEscapeHandler(() => {});
-  }
-
-  $effect(() => {
-    hydrated = true;
+  const dialogState = createSlidingDialogState({
+    getOpen: () => open,
+    setOpen: (nextOpen) => {
+      open = nextOpen;
+    },
+    getDialogElement: () => dialogElement,
+    getPanelElement: () => panelElement,
+    getReducedMotion: () => reducedMotion.current,
+    getTriggerRef: () => triggerRef,
+    onOpen: () => {
+      pendingOpenFocus = true;
+    },
+    onClosed: () => {
+      pendingOpenFocus = false;
+    },
   });
 
   $effect(() => {
-    if (!dialogElement) return;
-    if (open) {
-      if (isClosing) {
-        closeGeneration += 1;
-        cancelPendingClose?.();
-        cancelPendingClose = null;
-        isClosing = false;
-      }
+    dialogState.markHydrated();
+  });
 
-      if (!renderPanel) {
-        renderPanel = true;
-      }
-
-      if (!dialogElement.open) {
-        capturedFocus = captureFocus();
-        pendingOpenFocus = true;
-        dialogElement.showModal();
-        acquireScrollLock();
-        acquireEscapeMarker();
-      }
-      return;
-    }
-
-    if (dialogElement.open) {
-      beginClosing();
-    } else {
-      renderPanel = false;
-      pendingOpenFocus = false;
-    }
+  $effect(() => {
+    dialogState.syncOpenState();
   });
 
   $effect(() => {
@@ -123,109 +88,29 @@
     });
   });
 
-  function beginClosing(): void {
-    if (!dialogElement?.open || isClosing) return;
-    if (!panelElement) {
-      finishClosing(closeGeneration);
-      return;
-    }
-
-    isClosing = true;
-    const generation = ++closeGeneration;
-    cancelPendingClose?.();
-    cancelPendingClose = waitForTransitionCompletion({
-      element: panelElement,
-      reducedMotion: reducedMotion.current,
-      onComplete: () => finishClosing(generation),
-    });
-  }
-
-  function finishClosing(generation: number): void {
-    if (generation !== closeGeneration) return;
-    cancelPendingClose?.();
-    cancelPendingClose = null;
-    isClosing = false;
-    renderPanel = false;
-    pendingOpenFocus = false;
-    if (dialogElement?.open) {
-      dialogElement.close();
-    }
-  }
-
-  function handleClose() {
-    if (releaseScrollLock) {
-      releaseScrollLock();
-      releaseScrollLock = null;
-    }
-    if (releaseEscape) {
-      releaseEscape();
-      releaseEscape = null;
-    }
-    open = false;
-    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
-    capturedFocus = null;
-    for (const candidate of candidates) {
-      if (restoreFocusTo(candidate)) break;
-    }
-  }
-
-  function requestClose(): void {
-    if (!open && (isClosing || !dialogElement?.open)) return;
-    open = false;
-    beginClosing();
-  }
-
-  function handleBackdropClick(event: MouseEvent) {
-    if (event.target === dialogElement) {
-      requestClose();
-    }
-  }
-
-  function handleNativeCancel(event: Event) {
-    event.preventDefault();
-    requestClose();
-  }
-
   onDestroy(() => {
-    cancelPendingClose?.();
-    cancelPendingClose = null;
-    const wasOpen = releaseScrollLock !== null || releaseEscape !== null;
-    if (releaseScrollLock) {
-      releaseScrollLock();
-      releaseScrollLock = null;
-    }
-    if (releaseEscape) {
-      releaseEscape();
-      releaseEscape = null;
-    }
-    if (wasOpen) {
-      const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
-      capturedFocus = null;
-      for (const candidate of candidates) {
-        if (restoreFocusTo(candidate)) break;
-      }
-    }
+    dialogState.destroy();
   });
 </script>
 
-{#if hydrated}
+{#if dialogState.hydrated}
   <dialog
     {...rest}
     bind:this={dialogElement}
     class={classNames('cinder-sheet', className)}
     aria-modal="true"
     aria-labelledby={ariaLabelledBy ?? titleId}
-    data-cinder-closing={isClosing ? '' : undefined}
-    onclose={handleClose}
-    oncancel={handleNativeCancel}
-    onclick={handleBackdropClick}
+    data-cinder-closing={dialogState.isClosing ? '' : undefined}
+    onclose={() => dialogState.handleClose()}
+    oncancel={(event) => dialogState.handleNativeCancel(event)}
+    onclick={(event) => dialogState.handleBackdropClick(event)}
   >
     {#snippet closeButton()}
       <button
         type="button"
         class="cinder-sheet__close"
         aria-label="Close sheet"
-        onclick={requestClose}
+        onclick={() => dialogState.requestClose()}
       >
         <svg
           class="cinder-sheet__close-icon"
@@ -241,14 +126,14 @@
       </button>
     {/snippet}
 
-    {#if renderPanel}
+    {#if dialogState.renderPanel}
       <div
         bind:this={panelElement}
         class="cinder-sheet__panel"
-        data-cinder-closing={isClosing ? '' : undefined}
-        inert={isClosing}
+        data-cinder-closing={dialogState.isClosing ? '' : undefined}
+        inert={dialogState.isClosing}
         {@attach createFocusTrap({
-          active: () => open && !isClosing,
+          active: () => open && !dialogState.isClosing,
           restoreFocus: false,
           manageInitialFocus: false,
         })}

@@ -21,11 +21,13 @@
 
   import { handleRovingKeydown, isRovingKey } from '../../utilities/roving-tabindex.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { commitValue } from '../../utilities/value-change.ts';
 
   const baseId = $props.id();
 
   let {
     value = $bindable(''),
+    onValueChange,
     orientation = 'horizontal',
     activateOnFocus,
     class: className,
@@ -124,7 +126,9 @@
       const focusedValue = order[focused];
       if (focusedValue === undefined) return;
       event.preventDefault();
-      value = focusedValue;
+      commitValue(focusedValue, onValueChange, (next) => {
+        value = next;
+      });
       return;
     }
 
@@ -154,7 +158,9 @@
     if (nextValue === undefined) return;
     focusValue(nextValue);
     if (effectiveActivateOnFocus) {
-      value = nextValue;
+      commitValue(nextValue, onValueChange, (next) => {
+        value = next;
+      });
     }
   }
 
@@ -172,7 +178,9 @@
       return baseId;
     },
     select(next) {
-      value = next;
+      commitValue(next, onValueChange, (nextValue) => {
+        value = nextValue;
+      });
     },
     isActive(candidate) {
       return value === candidate;

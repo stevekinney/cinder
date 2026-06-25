@@ -7,7 +7,7 @@ const schema = {
     connectionState: {
       enum: ['connected', 'connecting', 'disconnected', 'error'],
       description:
-        'Current connection state. When provided, renders a ConnectionIndicator in\nthe toolbar. Omit when the stream has no live transport.',
+        'Current connection state. When provided, renders a StatusDot connection preset in\nthe toolbar. Omit when the stream has no live transport.',
     },
     followLatest: {
       type: 'boolean',

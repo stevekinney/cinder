@@ -3,14 +3,25 @@ import type { ComponentProps, Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 import Badge from './badge.svelte';
-import type { BadgeProps, BadgeSize, BadgeVariant } from './badge.types.ts';
+import type { BadgeProps, BadgeSize, BadgeSubscriptionState, BadgeVariant } from './badge.types.ts';
 
-type SnapshotBadgeProps = HTMLAttributes<HTMLSpanElement> & {
+type SnapshotBadgeBaseProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
   size?: BadgeSize;
   class?: string;
-  children: Snippet;
 };
+
+type SnapshotBadgeProps = SnapshotBadgeBaseProps &
+  (
+    | {
+        subscriptionState: BadgeSubscriptionState;
+        children?: Snippet;
+      }
+    | {
+        subscriptionState?: undefined;
+        children: Snippet;
+      }
+  );
 
 type Assignable<A, B> = A extends B ? true : false;
 

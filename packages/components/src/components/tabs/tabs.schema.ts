@@ -31,6 +31,12 @@ const schema = {
         required: true,
         description: 'Tab and TabPanel children.',
       },
+      {
+        name: 'onValueChange',
+        reason: 'function-or-snippet',
+        description:
+          'Intercept a proposed tab value before the bindable value is written. Return a replacement value to transform it.',
+      },
     ],
   },
 } satisfies ComponentSchema;

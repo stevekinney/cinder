@@ -22,10 +22,12 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import { commitValue } from '../../utilities/value-change.ts';
 
   let {
     id,
     value = $bindable(''),
+    onValueChange,
     label,
     description,
     error,
@@ -39,6 +41,7 @@
     trailingInteractive = false,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
+    oninput: consumerOninput,
     ...rest
   }: InputProps = $props();
 
@@ -78,6 +81,39 @@
   const hasTrailing = $derived(!!trailing || isNativeDateInput);
   const hasGroupWrapper = $derived(!!leading || hasTrailing);
   const isInvalid = $derived(resolvedAriaInvalid === 'true');
+  let inputNode: HTMLInputElement | undefined = $state();
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function syncValueAfterFormReset(): void {
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      if (inputNode) value = inputNode.value;
+    }, 0);
+  }
+
+  $effect(() => {
+    const form = inputNode?.form;
+    if (!form) return;
+
+    form.addEventListener('reset', syncValueAfterFormReset);
+    return () => {
+      form.removeEventListener('reset', syncValueAfterFormReset);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
+  });
+
+  function handleInput(event: Event): void {
+    const target = event.currentTarget as HTMLInputElement;
+    const committed = commitValue(target.value, onValueChange, (next) => {
+      value = next;
+    });
+    target.value = committed;
+    consumerOninput?.(event as Parameters<NonNullable<InputProps['oninput']>>[0]);
+  }
 </script>
 
 {#snippet calendarIcon()}
@@ -102,16 +138,18 @@
 
 {#snippet inputElement()}
   <input
+    bind:this={inputNode}
     {id}
     {type}
+    {...rest}
     disabled={resolvedDisabled}
     required={resolvedRequired}
-    bind:value
+    {value}
+    oninput={handleInput}
     class={classNames('cinder-input', className)}
     data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
-    {...rest}
   />
 {/snippet}
 
