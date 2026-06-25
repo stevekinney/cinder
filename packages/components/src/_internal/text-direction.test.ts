@@ -137,6 +137,9 @@ describe('resolveTextDirection', () => {
   test('uses class-applied computed direction before provider fallback', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const styleElement = document.createElement('style');
+    styleElement.textContent = '.ltr-reset { direction: ltr; }';
+    document.head.appendChild(styleElement);
     const getComputedStyleOverride = ((target: Element) => {
       const style = originalWindowGetComputedStyle(target);
       Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
@@ -153,6 +156,32 @@ describe('resolveTextDirection', () => {
       document.body.appendChild(wrapper);
 
       expect(resolveTextDirection(element, 'rtl')).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+      styleElement.remove();
+    }
+  });
+
+  test('uses provider fallback before unrelated app classes with default computed direction', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const wrapper = document.createElement('section');
+      wrapper.className = 'app-shell';
+      const element = document.createElement('div');
+      wrapper.appendChild(element);
+      document.body.appendChild(wrapper);
+
+      expect(resolveTextDirection(element, 'rtl')).toBe('rtl');
     } finally {
       window.getComputedStyle = originalWindowGetComputedStyle;
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;

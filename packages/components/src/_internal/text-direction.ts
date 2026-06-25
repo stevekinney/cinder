@@ -67,15 +67,29 @@ function hasDirectionStylingHint(element: HTMLElement | null | undefined): boole
   let currentElement = element?.parentElement;
   while (currentElement && currentElement !== currentElement.ownerDocument.documentElement) {
     if (currentElement.style.direction) return true;
-    if (
-      typeof currentElement.className === 'string' &&
-      currentElement.className.split(/\s+/).some((className) => {
-        return className && !className.startsWith('cinder-');
-      })
-    ) {
-      return true;
-    }
+    if (matchesDirectionStyleRule(currentElement)) return true;
     currentElement = currentElement.parentElement;
+  }
+  return false;
+}
+
+function matchesDirectionStyleRule(element: HTMLElement): boolean {
+  for (const sheet of Array.from(element.ownerDocument.styleSheets)) {
+    let rules: CSSRuleList;
+    try {
+      rules = sheet.cssRules;
+    } catch {
+      continue;
+    }
+    for (const rule of Array.from(rules)) {
+      if (!(rule instanceof CSSStyleRule)) continue;
+      if (!rule.style.direction) continue;
+      try {
+        if (element.matches(rule.selectorText)) return true;
+      } catch {
+        continue;
+      }
+    }
   }
   return false;
 }
