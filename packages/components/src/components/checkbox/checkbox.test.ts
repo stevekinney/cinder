@@ -5,8 +5,10 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Checkbox } = await import('./checkbox.svelte');
+const { default: CheckboxFormResetFixture } =
+  await import('../../test/fixtures/checkbox-form-reset-fixture.svelte');
 const { default: FormFieldCheckboxFixture } =
   await import('../../test/fixtures/form-field-checkbox-fixture.svelte');
 
@@ -120,6 +122,19 @@ describe('Checkbox', () => {
 
     expect(input.checked).toBe(true);
     expect(calls).toBe(1);
+  });
+
+  test('native form reset syncs the bindable checked state', async () => {
+    const { container, getByTestId } = render(CheckboxFormResetFixture);
+    const input = container.querySelector('#accepted') as HTMLInputElement;
+
+    await fireEvent.click(input);
+    expect(getByTestId('checked').textContent).toBe('true');
+
+    (getByTestId('form') as HTMLFormElement).reset();
+
+    await waitFor(() => expect(getByTestId('checked').textContent).toBe('false'));
+    expect(input.checked).toBe(false);
   });
 
   test('indeterminate prop applies as a DOM property', () => {

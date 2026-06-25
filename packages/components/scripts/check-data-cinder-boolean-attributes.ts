@@ -1,8 +1,9 @@
 import { Glob } from 'bun';
 import { readFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const rootDirectory = new URL('..', import.meta.url).pathname;
+const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sourceDirectory = join(rootDirectory, 'src');
 const glob = new Glob('components/**/*.svelte');
 const booleanAttributePattern =
@@ -20,7 +21,7 @@ for await (const path of glob.scan({ cwd: sourceDirectory, absolute: true })) {
 
 if (violations.length > 0) {
   console.error(
-    "check-data-cinder-boolean-attributes — boolean data-cinder-* attributes must use presence semantics (`value ? '' : undefined`).\n" +
+    "check-data-cinder-boolean-attributes — boolean data-cinder-open/selected attributes must not serialize boolean strings such as 'true' or 'false'; use presence semantics (`value ? '' : undefined`).\n" +
       violations.join('\n'),
   );
   process.exit(1);

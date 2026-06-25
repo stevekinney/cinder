@@ -26,7 +26,7 @@ export type BadgeProps =
       class?: string;
       /** Render a standardized subscription lifecycle badge without hand-wiring tone, icon, and label. */
       subscriptionState: BadgeSubscriptionState;
-      /** Optional content override for the subscription preset label. */
+      /** Required badge content unless subscriptionState is provided; optional content override for the subscription preset label. */
       children?: Snippet;
     })
   | (HTMLAttributes<HTMLSpanElement> & {

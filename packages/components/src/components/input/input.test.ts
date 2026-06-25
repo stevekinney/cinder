@@ -9,8 +9,10 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Input } = await import('./input.svelte');
+const { default: InputFormResetFixture } =
+  await import('../../test/fixtures/input-form-reset-fixture.svelte');
 const { default: FormFieldInputFixture } =
   await import('../../test/fixtures/form-field-input-fixture.svelte');
 const { default: FormFieldIdMismatchFixture } =
@@ -155,6 +157,19 @@ describe('Input rendering', () => {
 
     expect(input.value).toBe('Alice');
     expect(calls).toBe(1);
+  });
+
+  test('native form reset syncs the bindable value', async () => {
+    const { container, getByTestId } = render(InputFormResetFixture);
+    const input = container.querySelector('#name') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'Bob' } });
+    expect(getByTestId('value').textContent).toBe('Bob');
+
+    (getByTestId('form') as HTMLFormElement).reset();
+
+    await waitFor(() => expect(getByTestId('value').textContent).toBe(''));
+    expect(input.value).toBe('');
   });
 
   test('applies class prop alongside cinder-input', () => {

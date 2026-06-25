@@ -81,6 +81,30 @@
   const hasTrailing = $derived(!!trailing || isNativeDateInput);
   const hasGroupWrapper = $derived(!!leading || hasTrailing);
   const isInvalid = $derived(resolvedAriaInvalid === 'true');
+  let inputNode: HTMLInputElement | undefined = $state();
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function syncValueAfterFormReset(): void {
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      if (inputNode) value = inputNode.value;
+    }, 0);
+  }
+
+  $effect(() => {
+    const form = inputNode?.form;
+    if (!form) return;
+
+    form.addEventListener('reset', syncValueAfterFormReset);
+    return () => {
+      form.removeEventListener('reset', syncValueAfterFormReset);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
+  });
 
   function handleInput(event: Event): void {
     const target = event.currentTarget as HTMLInputElement;
@@ -114,6 +138,7 @@
 
 {#snippet inputElement()}
   <input
+    bind:this={inputNode}
     {id}
     {type}
     {...rest}

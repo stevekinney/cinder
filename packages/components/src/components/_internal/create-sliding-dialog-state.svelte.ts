@@ -63,7 +63,6 @@ export class SlidingDialogState {
       this.beginClosing();
     } else {
       this.renderPanel = false;
-      this.#options.onClosed?.();
     }
   }
 

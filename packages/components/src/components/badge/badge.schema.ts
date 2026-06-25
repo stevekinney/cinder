@@ -36,7 +36,8 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
-        description: 'Optional content override for the subscription preset label.',
+        description:
+          'Required badge content unless subscriptionState is provided; optional content override for the subscription preset label.',
       },
     ],
   },

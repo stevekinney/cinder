@@ -85,6 +85,31 @@
       inputElement.indeterminate = indeterminate && !checked;
     }
   });
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function syncCheckedAfterFormReset(): void {
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      if (!inputElement) return;
+      checked = inputElement.checked;
+      indeterminate = inputElement.indeterminate;
+    }, 0);
+  }
+
+  $effect(() => {
+    const form = inputElement?.form;
+    if (!form) return;
+
+    form.addEventListener('reset', syncCheckedAfterFormReset);
+    return () => {
+      form.removeEventListener('reset', syncCheckedAfterFormReset);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
+  });
 
   function handleChange(event: Event): void {
     const target = event.currentTarget as HTMLInputElement;
