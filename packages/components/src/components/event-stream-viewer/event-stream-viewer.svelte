@@ -181,7 +181,12 @@
   }
 
   function isReconnectedBoundary(entry: EventStreamEntry): entry is StreamReconnectedBoundary {
-    return 'kind' in entry && entry.kind === 'reconnected';
+    return (
+      'kind' in entry &&
+      entry.kind === 'reconnected' &&
+      'replayedCount' in entry &&
+      typeof entry.replayedCount === 'number'
+    );
   }
 
   function formatReconnectedBoundaryLabel(boundary: StreamReconnectedBoundary): string {

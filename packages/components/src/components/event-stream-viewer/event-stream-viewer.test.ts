@@ -2,7 +2,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import { reconnectedBoundaryKey, streamEventKey } from './event-stream-viewer-keys.ts';
+import {
+  detailsIdForKey,
+  reconnectedBoundaryKey,
+  streamEventKey,
+} from './event-stream-viewer-keys.ts';
 import type { EventStreamEntry, StreamEvent } from './event-stream-viewer.types.ts';
 
 setupHappyDom();
@@ -316,6 +320,24 @@ describe('EventStreamViewer', () => {
       );
       expect(marker?.getAttribute('aria-label')).toBe('Sequence gap — expected 8, received 10');
     });
+
+    test('events with reconnected kind data still render as events without replay metadata', () => {
+      const backendEvent = {
+        ...baseEvent,
+        id: 'backend-event',
+        kind: 'reconnected',
+        summary: 'Backend event with kind field',
+      } as unknown as EventStreamEntry;
+
+      const { container } = render(EventStreamViewer, {
+        props: { events: [backendEvent] },
+      });
+
+      expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).toBeNull();
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__event-summary')?.textContent,
+      ).toContain('Backend event with kind field');
+    });
   });
 
   describe('details expansion', () => {
@@ -426,6 +448,23 @@ describe('EventStreamViewer', () => {
       expect(firstControls).not.toBe(secondControls);
     });
 
+    test('hash-colliding row keys still produce distinct details panel ids', async () => {
+      const first = { ...errorEvent, id: 'Aa', summary: 'First colliding event' };
+      const second = { ...errorEvent, id: 'BB', summary: 'Second colliding event' };
+      const { container } = render(EventStreamViewer, { props: { events: [first, second] } });
+      const toggles = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(
+          '.cinder-event-stream-viewer__details-toggle',
+        ),
+      );
+      const controls = toggles.map((toggle) => toggle.getAttribute('aria-controls'));
+
+      expect(toggles).toHaveLength(2);
+      expect(controls[0]).toBeTruthy();
+      expect(controls[1]).toBeTruthy();
+      expect(controls[0]).not.toBe(controls[1]);
+    });
+
     test('duplicate event ids expand only the selected row details', async () => {
       const replayedEvents: StreamEvent[] = [
         {
@@ -497,19 +536,16 @@ describe('EventStreamViewer', () => {
       }
 
       expect(firstRetainedKey).toBe(retainedKey);
-      expect(retainedKey).toBe('event|id=event-2|sequence=2');
       expect(streamEventKey({ ...retainedEvent, timestamp: '3m ago', summary: 'Updated' })).toBe(
         retainedKey,
       );
 
-      expect(
-        reconnectedBoundaryKey({
-          id: 'reconnect-1',
-          kind: 'reconnected',
-          timestamp: '14:31:10',
-          replayedCount: 2,
-        }),
-      ).toBe('reconnected|id=reconnect-1');
+      const boundaryKey = reconnectedBoundaryKey({
+        id: 'reconnect-1',
+        kind: 'reconnected',
+        timestamp: '14:31:10',
+        replayedCount: 2,
+      });
       expect(
         reconnectedBoundaryKey({
           id: 'reconnect-1',
@@ -517,7 +553,30 @@ describe('EventStreamViewer', () => {
           timestamp: '3m ago',
           replayedCount: 3,
         }),
-      ).toBe('reconnected|id=reconnect-1');
+      ).toBe(boundaryKey);
+    });
+
+    test('event keys encode delimiter-bearing ids without sequence collisions', () => {
+      const idOnlyKey = streamEventKey({
+        ...baseEvent,
+        id: 'build|sequence=7',
+      });
+      const sequencedKey = streamEventKey({
+        ...baseEvent,
+        id: 'build',
+        sequence: 7,
+      });
+
+      expect(idOnlyKey).not.toBe(sequencedKey);
+    });
+
+    test('details panel ids include escaped row identity beyond the hash', () => {
+      const firstKey = 'event|id=Aa';
+      const secondKey = 'event|id=BB';
+
+      expect(detailsIdForKey('stream-viewer', firstKey)).not.toBe(
+        detailsIdForKey('stream-viewer', secondKey),
+      );
     });
   });
 
