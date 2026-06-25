@@ -344,7 +344,7 @@ let sharedProject: Project | undefined;
 let projectCreationCount = 0;
 /** Monotonic counter guaranteeing a unique synthetic source-file path per call. */
 let syntheticFileCounter = 0;
-/** Cached full-manifest analysis keyed by the component source directory. */
+/** Per-generation analyzeAll cache, cleared by resetProject() on watcher invalidation. */
 const analyzeAllCache = new Map<string, Promise<ComponentManifest[]>>();
 
 /**
@@ -647,17 +647,19 @@ export async function analyzeAll(componentsDir: string): Promise<ComponentManife
   const cached = analyzeAllCache.get(componentsDir);
   if (cached) return cached;
 
-  const promise = analyzeAllUncached(componentsDir);
+  const promise = computeAnalyzeAll(componentsDir);
   analyzeAllCache.set(componentsDir, promise);
   try {
     return await promise;
   } catch (error) {
-    analyzeAllCache.delete(componentsDir);
+    if (analyzeAllCache.get(componentsDir) === promise) {
+      analyzeAllCache.delete(componentsDir);
+    }
     throw error;
   }
 }
 
-async function analyzeAllUncached(componentsDir: string): Promise<ComponentManifest[]> {
+async function computeAnalyzeAll(componentsDir: string): Promise<ComponentManifest[]> {
   const filePaths = await discoverComponentFilePaths(componentsDir);
 
   const manifests = await Promise.all(filePaths.map((filePath) => analyzeComponent(filePath)));

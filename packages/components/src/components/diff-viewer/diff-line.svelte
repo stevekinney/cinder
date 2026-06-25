@@ -51,6 +51,23 @@
    * Same lines are not selectable.
    */
   const isInteractive = $derived(diff.type !== 'same' && onselect !== undefined);
+  const accessibleLineLabel = $derived.by(() => {
+    const text =
+      diff.type === 'modified'
+        ? viewMode === 'original'
+          ? diff.oldText
+          : viewMode === 'final'
+            ? diff.newText
+            : `${diff.oldText} changed to ${diff.newText}`
+        : diff.text;
+    const typeLabel =
+      diff.type === 'added'
+        ? 'Added line'
+        : diff.type === 'removed'
+          ? 'Removed line'
+          : 'Modified line';
+    return `${typeLabel}: ${text || 'blank line'}`;
+  });
 </script>
 
 {#if isVisible}
@@ -66,6 +83,7 @@
       <button
         class={classNames('diff-line diff-line-added', className)}
         data-selected={selected}
+        aria-label={accessibleLineLabel}
         onclick={onselect}
         type="button"
       >
@@ -89,6 +107,7 @@
           className,
         )}
         data-selected={selected}
+        aria-label={accessibleLineLabel}
         onclick={onselect}
         type="button"
       >
@@ -135,6 +154,7 @@
       <button
         class={classNames('diff-line', lineClass, className)}
         data-selected={selected}
+        aria-label={accessibleLineLabel}
         onclick={onselect}
         type="button"
       >
@@ -303,21 +323,25 @@
   }
 
   .word-removed {
-    background: var(--cinder-color-danger-border);
+    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-color-danger-fg);
     text-decoration: line-through;
     border-radius: 2px;
-    padding: 0 1px;
+    padding: 0 2px;
+    box-shadow: inset 0 0 0 1px var(--cinder-color-danger-border);
   }
 
   /* DEP-47: underline provides non-color indicator for a11y */
   .word-added {
-    background: var(--cinder-color-success-border);
+    background: var(--cinder-color-success-bg);
+    color: var(--cinder-color-success-fg);
     text-decoration: underline;
     text-decoration-color: var(--cinder-success);
     text-decoration-thickness: 2px;
     text-underline-offset: 2px;
     border-radius: 2px;
-    padding: 0 1px;
+    padding: 0 2px;
+    box-shadow: inset 0 0 0 1px var(--cinder-color-success-border);
   }
 
   /* Modified in final view (highlight subtly) */

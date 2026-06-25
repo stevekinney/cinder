@@ -105,6 +105,8 @@
   const isExpanded = $derived(context.expandedIds.includes(id));
   const isSelected = $derived(context.selectedIds.includes(id));
   const isFocused = $derived(context.focusedId === id);
+  const positionInSet = $derived(context.positionInSet(id));
+  const setSize = $derived(context.setSize(id));
   const isFiltering = $derived(context.filtering);
   const isVisible = $derived(
     !isFiltering ||
@@ -113,6 +115,7 @@
   );
   const hasVisibleDescendant = $derived(context.hasVisibleDescendant(id));
   const renderedExpanded = $derived(isExpanded || (isFiltering && hasVisibleDescendant));
+  const filterForcedOpen = $derived(isBranch && isFiltering && hasVisibleDescendant && !isExpanded);
   const shouldProbeFilterChildren = $derived(
     isBranch && isFiltering && !isExpanded && probedFilterValue !== context.filterValue,
   );
@@ -671,12 +674,22 @@
 
     if (event.detail > 1) return;
 
-    if (!disabled && !checkboxSelectionActive) context.toggleSelected(id, event);
+    if (disabled) {
+      if (isBranch) context.setExpanded(id, !isExpanded);
+      return;
+    }
+
+    if (!checkboxSelectionActive) context.toggleSelected(id, event);
 
     if (isBranch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-      // Plain click on a branch row toggles expand, including disabled branches.
       context.setExpanded(id, !isExpanded);
     }
+  }
+
+  function handleDisclosureClick(event: MouseEvent): void {
+    event.stopPropagation();
+    outerElement?.focus();
+    context.setExpanded(id, !isExpanded);
   }
 
   function handleLabelDoubleClick(event: MouseEvent): void {
@@ -754,6 +767,8 @@
   aria-labelledby={editing ? undefined : `${treeItemElementId}-label`}
   aria-level={level}
   aria-expanded={isBranch ? renderedExpanded : undefined}
+  aria-posinset={positionInSet}
+  aria-setsize={setSize}
   aria-selected={context.selectionMode === 'none' || checkboxSelectionActive
     ? undefined
     : isSelected}
@@ -778,6 +793,21 @@
 >
   <span id={`${treeItemElementId}-label`} class="cinder-sr-only">{label}</span>
   <div class="cinder-tree-item__row">
+    {#if isBranch && !filterForcedOpen}
+      <button
+        type="button"
+        class="cinder-tree-item__disclosure"
+        aria-label={`${renderedExpanded ? 'Collapse' : 'Expand'} ${label}`}
+        aria-expanded={renderedExpanded}
+        tabindex="-1"
+        onclick={handleDisclosureClick}
+      >
+        <span aria-hidden="true"></span>
+      </button>
+    {:else}
+      <span class="cinder-tree-item__disclosure-spacer" aria-hidden="true"></span>
+    {/if}
+
     {#if canDrag}
       <button
         bind:this={dragHandleElement}

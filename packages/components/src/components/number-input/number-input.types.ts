@@ -11,7 +11,6 @@ export type NumberInputProps = Omit<
   | 'oninput'
   | 'onchange'
   | 'onfocus'
-  | 'onblur'
   | 'onkeydown'
 > & {
   /** HTML `id` for the underlying input, used to associate the `<label>` and ARIA attributes. Required. */
@@ -21,9 +20,9 @@ export type NumberInputProps = Omit<
   /** Initial value used when the component is uncontrolled or when the form is reset. */
   defaultValue?: number | null;
   /** Minimum permitted value; the stepper decrement button disables when this bound is reached. */
-  min?: number;
+  min?: number | undefined;
   /** Maximum permitted value; the stepper increment button disables when this bound is reached. */
-  max?: number;
+  max?: number | undefined;
   /** Amount added or subtracted per stepper click or arrow-key press. Default `1`. */
   step?: number | undefined;
   /**

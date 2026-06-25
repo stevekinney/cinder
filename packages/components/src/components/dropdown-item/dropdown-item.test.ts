@@ -10,6 +10,8 @@ const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/s
 const { default: Fixture } = await import('../../test/fixtures/dropdown-compound-fixture.svelte');
 const { default: PolyFixture } =
   await import('../../test/fixtures/dropdown-item-polymorphic-fixture.svelte');
+const { default: RadioFixture } =
+  await import('../../test/fixtures/dropdown-item-radio-fixture.svelte');
 const { default: DropdownItem } = await import('./dropdown-item.svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
@@ -54,6 +56,18 @@ describe('DropdownItem', () => {
     const { container } = await openMenu();
     const item = container.querySelector('[role="menuitem"]') as HTMLElement;
     expect(item.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('menuitemradio rows expose aria-checked state', async () => {
+    const result = render(RadioFixture);
+    await fireEvent.click(result.container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
+    const container = document.body;
+    const radioItems = Array.from(container.querySelectorAll('[role="menuitemradio"]'));
+
+    expect(radioItems).toHaveLength(2);
+    expect(radioItems[0]?.getAttribute('aria-checked')).toBe('true');
+    expect(radioItems[1]?.getAttribute('aria-checked')).toBe('false');
   });
 
   test('keydown Enter/Space does not synthesize a click (no double-fire)', async () => {

@@ -159,7 +159,11 @@ describe('InvocationRuleBuilder', () => {
 
     test('displays rule label in the header', () => {
       const { container } = renderBuilder([makeRule()]);
-      expect(container.textContent).toContain('PR Review Rule');
+      expect(
+        container.querySelector<HTMLInputElement>(
+          'input[aria-label="Rule name for PR Review Rule"]',
+        )?.value,
+      ).toBe('PR Review Rule');
     });
 
     test('renders condition rows for each condition', () => {
@@ -241,6 +245,61 @@ describe('InvocationRuleBuilder', () => {
       expect(nextRules.length).toBe(0);
       expect(change.type).toBe('remove-rule');
       expect(change.ruleId).toBe('r1');
+    });
+
+    test('editing a rule name keeps the draft value until blur commits it', async () => {
+      const { container, onchange } = renderBuilder([makeRule()]);
+      const ruleNameInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Rule name for PR Review Rule"]',
+      )!;
+
+      await fireEvent.input(ruleNameInput, { target: { value: 'Security Rule' } });
+
+      expect(ruleNameInput.value).toBe('Security Rule');
+      expect(onchange).not.toHaveBeenCalled();
+
+      await fireEvent.blur(ruleNameInput);
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(nextRules[0].label).toBe('Security Rule');
+      expect(change.type).toBe('rename-rule');
+      expect(change.ruleId).toBe('r1');
+    });
+
+    test('blurring an unchanged rule name does not emit a rename change', async () => {
+      const { container, onchange } = renderBuilder([makeRule()]);
+      const ruleNameInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Rule name for PR Review Rule"]',
+      )!;
+
+      await fireEvent.blur(ruleNameInput);
+
+      expect(onchange).not.toHaveBeenCalled();
+    });
+
+    test('external rule label updates clear stale in-progress drafts', async () => {
+      const rule = makeRule();
+      const { container, rerender } = renderBuilder([rule]);
+      const ruleNameInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Rule name for PR Review Rule"]',
+      )!;
+
+      await fireEvent.input(ruleNameInput, { target: { value: 'Draft label' } });
+      expect(ruleNameInput.value).toBe('Draft label');
+
+      await rerender({
+        rules: [{ ...rule, label: 'Server label' }],
+        fieldOptions,
+        operatorOptions,
+        actionOptions,
+        onchange: () => {},
+      });
+
+      const updatedInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Rule name for Server label"]',
+      )!;
+      expect(updatedInput.value).toBe('Server label');
     });
 
     test('add-condition button calls onchange with add-condition change', async () => {
@@ -462,6 +521,15 @@ describe('InvocationRuleBuilder', () => {
         '[aria-label="Value for condition 1 of PR Review Rule"]',
       );
       expect(valueInput).not.toBeNull();
+    });
+
+    test('empty condition value is not marked invalid by the builder', () => {
+      const rule = makeRule({ conditions: [makeCondition({ value: '' })] });
+      const { container } = renderBuilder([rule]);
+      const valueInput = container.querySelector(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      );
+      expect(valueInput?.hasAttribute('aria-invalid')).toBe(false);
     });
 
     test('condition remove button has descriptive aria-label', () => {

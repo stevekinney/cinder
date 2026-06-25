@@ -43,6 +43,7 @@
     error,
     class: className,
     onchange,
+    onblur: consumerBlur,
     'aria-describedby': consumerDescribedBy,
     ...rest
   }: NumberInputProps = $props();
@@ -299,6 +300,36 @@
     return formatNumber(v, resolvedLocale, editFormat);
   }
 
+  function ariaValueNowFromText(text: string): number | undefined {
+    const result = parseLocaleNumber(text, resolvedLocale, format);
+    if (result.status !== 'valid') return undefined;
+    return Number.isFinite(result.value) ? result.value : undefined;
+  }
+
+  const resolvedAriaValueNow = $derived(
+    isFocused
+      ? ariaValueNowFromText(editorBuffer)
+      : value === null || value === undefined
+        ? undefined
+        : format?.style === 'percent'
+          ? roundToPrecision(value * 100, 12)
+          : value,
+  );
+  const resolvedAriaValueMin = $derived(
+    Number.isFinite(resolvedMin)
+      ? format?.style === 'percent'
+        ? roundToPrecision(resolvedMin * 100, 12)
+        : resolvedMin
+      : undefined,
+  );
+  const resolvedAriaValueMax = $derived(
+    Number.isFinite(resolvedMax)
+      ? format?.style === 'percent'
+        ? roundToPrecision(resolvedMax * 100, 12)
+        : resolvedMax
+      : undefined,
+  );
+
   function onFocus() {
     // Preserve the editor buffer when re-focusing after a malformed blur so
     // the user can correct their own text instead of having it disappear.
@@ -308,10 +339,11 @@
     isFocused = true;
   }
 
-  function onBlur() {
+  function onBlur(event: FocusEvent & { currentTarget: EventTarget & HTMLInputElement }) {
     const buffered = editorBuffer;
     isFocused = false;
     commitFromText('typed', buffered);
+    consumerBlur?.(event);
   }
 
   function onInput(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
@@ -519,6 +551,7 @@
       bind:this={inputElement}
       {id}
       type="text"
+      role="spinbutton"
       inputmode="decimal"
       value={displayValue}
       disabled={resolvedDisabled}
@@ -527,6 +560,9 @@
       {...rest}
       aria-invalid={resolvedAriaInvalid}
       aria-describedby={describedBy}
+      aria-valuenow={resolvedAriaValueNow}
+      aria-valuemin={resolvedAriaValueMin}
+      aria-valuemax={resolvedAriaValueMax}
       oninput={onInput}
       onfocus={onFocus}
       onblur={onBlur}
@@ -537,6 +573,7 @@
       class="cinder-number-input__stepper cinder-number-input__stepper--increment"
       aria-label={`Increment${stepperLabelSuffix}`}
       disabled={incrementDisabled}
+      tabindex="-1"
       onclick={() => stepBy('increment')}
     >
       <span aria-hidden="true">+</span>
@@ -546,6 +583,7 @@
       class="cinder-number-input__stepper cinder-number-input__stepper--decrement"
       aria-label={`Decrement${stepperLabelSuffix}`}
       disabled={decrementDisabled}
+      tabindex="-1"
       onclick={() => stepBy('decrement')}
     >
       <span aria-hidden="true">&#x2212;</span>

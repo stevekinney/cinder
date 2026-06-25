@@ -159,6 +159,51 @@
     user-select: none;
   }
 
+  .cinder-tree-item__disclosure,
+  .cinder-tree-item__disclosure-spacer {
+    flex: 0 0 auto;
+    inline-size: 1rem;
+    block-size: 1rem;
+  }
+
+  .cinder-tree-item__disclosure {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--cinder-radius-sm);
+    background: transparent;
+    color: currentcolor;
+    cursor: pointer;
+  }
+
+  .cinder-tree-item__disclosure > span {
+    inline-size: 0.45rem;
+    block-size: 0.45rem;
+    border-inline-end: 1.5px solid currentcolor;
+    border-block-end: 1.5px solid currentcolor;
+    transform: rotate(-45deg);
+    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-tree-item__disclosure[aria-expanded='true'] > span {
+    transform: rotate(45deg);
+  }
+
+  .cinder-tree-item__disclosure:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-tree-item__disclosure:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+  }
+
   .cinder-tree-item__checkbox {
     flex: 0 0 auto;
     width: 1rem;

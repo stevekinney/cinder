@@ -48,6 +48,66 @@
 
   const unserializable = $derived(!serialized.ok);
   const tooLarge = $derived(serialized.ok && serialized.size > maxBytes);
+
+  function handleTreeKeydown(event: KeyboardEvent): void {
+    const tree = event.currentTarget as HTMLElement;
+    const items = Array.from(tree.querySelectorAll<HTMLElement>('[role="treeitem"]'));
+    const eventTarget = event.target instanceof HTMLElement ? event.target : null;
+    const current = eventTarget?.closest<HTMLElement>('[role="treeitem"]') ?? null;
+    const targetIsToggle = eventTarget?.closest('.cinder-json-viewer__toggle') !== null;
+    const currentIndex = current ? items.indexOf(current) : -1;
+
+    function focusItem(index: number): void {
+      const item = items[index];
+      item?.focus();
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusItem(Math.min(currentIndex + 1, items.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusItem(Math.max(currentIndex - 1, 0));
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      focusItem(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      focusItem(items.length - 1);
+    } else if (event.key === 'ArrowRight' && current && !targetIsToggle) {
+      if (current.getAttribute('aria-expanded') === 'false') {
+        event.preventDefault();
+        current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')?.click();
+      } else if (current.getAttribute('aria-expanded') === 'true') {
+        const firstChild = current.querySelector<HTMLElement>(
+          '.cinder-json-viewer__children [role="treeitem"]',
+        );
+        if (firstChild) {
+          event.preventDefault();
+          firstChild.focus();
+        }
+      }
+    } else if (event.key === 'ArrowLeft' && current && !targetIsToggle) {
+      if (current.getAttribute('aria-expanded') === 'true') {
+        event.preventDefault();
+        current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle')?.click();
+      } else {
+        const parent = current.parentElement?.closest<HTMLElement>('[role="treeitem"]');
+        if (parent) {
+          event.preventDefault();
+          parent.focus();
+        }
+      }
+    } else if (
+      (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') &&
+      current &&
+      !targetIsToggle
+    ) {
+      event.preventDefault();
+      const toggle = current.querySelector<HTMLButtonElement>('.cinder-json-viewer__toggle');
+      toggle?.click();
+    }
+  }
 </script>
 
 <div class={classNames('cinder-json-viewer', className)}>
@@ -67,6 +127,8 @@
       <p>Use the consumer's download or copy action to inspect the raw JSON.</p>
     </div>
   {:else}
-    <JsonViewerNode {value} depth={0} {initialDepth} {maxDepth} />
+    <div role="tree" aria-label="JSON tree" tabindex="-1" onkeydown={handleTreeKeydown}>
+      <JsonViewerNode {value} depth={0} {initialDepth} {maxDepth} position={1} setSize={1} root />
+    </div>
   {/if}
 </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 const markdownEditorPath = new URL('./markdown-editor.svelte', import.meta.url);
 const editorToolbarPath = new URL('./editor-toolbar/editor-toolbar.svelte', import.meta.url);
+const toolbarDropdownPath = new URL('./editor-toolbar/toolbar-dropdown.svelte', import.meta.url);
 
 function stripCssComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -59,5 +60,13 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
       'padding',
       'var(--cinder-space-1) var(--cinder-space-2)',
     );
+  });
+
+  it('wires block-type radio menu state through DropdownItem checked', async () => {
+    const source = await Bun.file(toolbarDropdownPath).text();
+
+    expect(source).toContain('itemRole="menuitemradio"');
+    expect(source).toContain('checked={isActive}');
+    expect(source).not.toContain('aria-checked={isActive}');
   });
 });

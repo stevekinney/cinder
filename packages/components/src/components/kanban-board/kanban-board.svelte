@@ -554,6 +554,9 @@
     Press Space to lift a column, Left and Right arrows to move it, Space to drop, and Escape to
     cancel.
   </p>
+  <p class="cinder-kanban-board__keyboard-hint">
+    Space lifts. Arrow keys move. Space drops. Escape cancels.
+  </p>
 
   <div bind:this={columnsElement} class="cinder-kanban-board__columns" role="list">
     {#each visualColumns as column, columnIndex (invalidKeys ? `${column.id}-${columnIndex}` : column.id)}
@@ -587,6 +590,10 @@
             {:else}
               {column.title}
             {/if}
+            <span class="cinder-kanban-board__card-count">
+              {column.cards.length}{' '}
+              {column.cards.length === 1 ? 'card' : 'cards'}
+            </span>
           </div>
           {#if columnActions}
             <div class="cinder-kanban-board__column-actions">
@@ -597,7 +604,7 @@
             <button
               type="button"
               class="cinder-kanban-board__collapse"
-              aria-label={`${column.collapsed ? 'Expand' : 'Collapse'} ${column.title}`}
+              aria-label={`${column.collapsed ? 'Expand' : 'Collapse'} ${column.title} (${column.cards.length} ${column.cards.length === 1 ? 'card' : 'cards'})`}
               aria-expanded={!column.collapsed}
               onclick={() => toggleColumn(column)}
             >

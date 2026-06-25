@@ -3,6 +3,7 @@
 
   export type JsonSchemaToolbarProps = {
     state: EditorState;
+    localValidationErrorCount?: number;
     onUndo?: () => void;
     onRedo?: () => void;
     onRevert?: () => void;
@@ -20,6 +21,7 @@
 
   let {
     state: editorState,
+    localValidationErrorCount = 0,
     onUndo,
     onRedo,
     onRevert,
@@ -27,6 +29,7 @@
   }: JsonSchemaToolbarProps = $props();
 
   const validationBadgeVariant = $derived.by(() => {
+    if (localValidationErrorCount > 0) return 'danger' as const;
     switch (editorState.validationStatus) {
       case 'valid':
         return 'success' as const;
@@ -38,6 +41,9 @@
   });
 
   const validationBadgeText = $derived.by(() => {
+    if (localValidationErrorCount > 0) {
+      return `Invalid — ${localValidationErrorCount} field ${localValidationErrorCount === 1 ? 'error' : 'errors'}`;
+    }
     switch (editorState.validationStatus) {
       case 'valid':
         return `Valid (${editorState.activeDraft})`;

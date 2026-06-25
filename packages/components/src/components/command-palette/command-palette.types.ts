@@ -12,8 +12,7 @@ export type CommandPaletteProps = {
   /**
    * Bindable search query. Mutated by the input's oninput handler.
    * Exposed to the items snippet so consumers can filter.
-   * Note: query is NOT reset on close — consumers who want a fresh query on
-   * each open should reset it in their `onclose` callback.
+   * Reset to an empty string each time the palette opens.
    */
   query?: string;
   /** Fired after any close path routed through the palette close lifecycle. */

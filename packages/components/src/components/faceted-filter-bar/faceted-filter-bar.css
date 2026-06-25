@@ -29,7 +29,16 @@
     position: relative;
     display: inline-flex;
     align-items: center;
+    gap: var(--cinder-space-1);
     flex-shrink: 0;
+  }
+
+  .cinder-faceted-filter-bar__facet-label {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: var(--cinder-leading-tight);
+    white-space: nowrap;
   }
 
   /* Native select styled to match cinder input frame */

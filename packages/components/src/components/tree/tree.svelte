@@ -386,6 +386,17 @@
     );
   }
 
+  function virtualizedFilterForcedOpen(item: FlattenedTreeDataItem): boolean {
+    return (
+      item.branch &&
+      filtering &&
+      !expandedIds.includes(item.id) &&
+      visibleDataItems.some(
+        (visibleItem) => visibleItem.id !== item.id && visibleItem.ancestorIds.includes(item.id),
+      )
+    );
+  }
+
   function firstVisibleVirtualizedChildIndex(parentId: string): number {
     return visibleDataItems.findIndex((item) => item.parentId === parentId);
   }
@@ -805,6 +816,15 @@
     isFocused(id) {
       return effectiveFocusedId === id;
     },
+    positionInSet(id) {
+      const siblings = registry.siblingsOf(id).filter((siblingId) => visibleIdSet.has(siblingId));
+      const index = siblings.indexOf(id);
+      return index === -1 ? undefined : index + 1;
+    },
+    setSize(id) {
+      const siblings = registry.siblingsOf(id).filter((siblingId) => visibleIdSet.has(siblingId));
+      return siblings.length || undefined;
+    },
     isVisible(id) {
       return visibleIdSet.has(id);
     },
@@ -1165,10 +1185,19 @@
     focusedId = item.id;
     treeElement?.focus();
     if (event.detail > 1) return;
+
     if (!item.disabled) toggleSelectedInternal(item.id, event);
+
     if (item.branch && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
       setExpandedInternal(item.id, !expandedIds.includes(item.id));
     }
+  }
+
+  function handleVirtualizedDisclosureClick(item: FlattenedTreeDataItem, event: MouseEvent): void {
+    event.stopPropagation();
+    focusedId = item.id;
+    treeElement?.focus();
+    setExpandedInternal(item.id, !expandedIds.includes(item.id));
   }
 
   function syncVirtualizedCheckboxElement(element: HTMLInputElement, id: string): void {
@@ -1248,6 +1277,20 @@
         onkeydown={(event) => handleVirtualizedItemKeydown(item, event)}
       >
         <div class="cinder-tree-item__row" style={`padding-inline-start: ${item.level * 1.25}rem;`}>
+          {#if item.branch && !virtualizedFilterForcedOpen(item)}
+            <button
+              type="button"
+              class="cinder-tree-item__disclosure"
+              aria-label={`${virtualizedItemExpanded(item) ? 'Collapse' : 'Expand'} ${item.label}`}
+              aria-expanded={virtualizedItemExpanded(item)}
+              tabindex="-1"
+              onclick={(event) => handleVirtualizedDisclosureClick(item, event)}
+            >
+              <span aria-hidden="true"></span>
+            </button>
+          {:else}
+            <span class="cinder-tree-item__disclosure-spacer" aria-hidden="true"></span>
+          {/if}
           {#if checkboxSelectionActive()}
             <input
               type="checkbox"

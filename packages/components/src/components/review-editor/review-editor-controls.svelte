@@ -175,7 +175,7 @@
         title="Revert all changes"
       >
         <RotateCcw class="icon-sm" />
-        <span class="sr-only">Revert All</span>
+        <span class="cinder-sr-only">Revert All</span>
       </Button>
     {/if}
 
@@ -201,7 +201,12 @@
 </div>
 
 <!-- Polite live announcer for comment count changes. Empty on initial render. -->
-<div role="status" aria-live="polite" aria-atomic="true" class="comments-count-announcer sr-only">
+<div
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+  class="comments-count-announcer cinder-sr-only"
+>
   {liveAnnouncementText}
 </div>
 

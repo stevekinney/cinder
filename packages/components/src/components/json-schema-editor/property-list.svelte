@@ -8,16 +8,19 @@
     path: string;
     depth?: number;
     readonly?: boolean;
+    onvalidationerrorcount?: ((count: number) => void) | undefined;
     onchange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
   };
 </script>
 
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
   import Chip from '../chip/chip.svelte';
   import Input from '../input/input.svelte';
   import PropertyEditor from './property-editor.svelte';
+  import { calculatePropertyValidationErrorCount } from './property-list-validation.ts';
 
   let {
     idPrefix,
@@ -26,6 +29,7 @@
     path,
     depth = 0,
     readonly = false,
+    onvalidationerrorcount,
     onchange,
   }: PropertyListProps = $props();
 
@@ -36,6 +40,23 @@
   let draftNames = $state<Record<string, string>>({});
   let renameError = $state<string | null>(null);
   let expanded = $state<Record<string, boolean>>({});
+  let childValidationCounts = $state<Record<string, number>>({});
+
+  const validationErrorCount = $derived(
+    calculatePropertyValidationErrorCount(
+      propertyNames,
+      childValidationCounts,
+      renameError !== null,
+    ),
+  );
+
+  $effect(() => {
+    onvalidationerrorcount?.(validationErrorCount);
+  });
+
+  onDestroy(() => {
+    onvalidationerrorcount?.(0);
+  });
 
   function getDraftName(key: string): string {
     return draftNames[key] ?? key;
@@ -79,6 +100,11 @@
       expanded[draft] = true;
       delete expanded[oldKey];
     }
+    const childCount = childValidationCounts[oldKey];
+    if (childCount !== undefined) {
+      const { [oldKey]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
+      childValidationCounts = { ...remainingChildCounts, [draft]: childCount };
+    }
     onchange(next, nextRequired);
   }
 
@@ -89,7 +115,24 @@
     const nextRequired = required.filter((name) => name !== key);
     delete draftNames[key];
     delete expanded[key];
+    const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
+    childValidationCounts = remainingChildCounts;
     onchange(next, nextRequired);
+  }
+
+  function setChildValidationErrorCount(key: string, count: number): void {
+    if ((childValidationCounts[key] ?? 0) === count) return;
+    if (count === 0) {
+      const { [key]: _removedChildCount, ...remainingChildCounts } = childValidationCounts;
+      childValidationCounts = remainingChildCounts;
+      return;
+    }
+    childValidationCounts = { ...childValidationCounts, [key]: count };
+  }
+
+  function toggleExpanded(key: string, isOpen: boolean): void {
+    expanded[key] = !isOpen;
+    if (isOpen) setChildValidationErrorCount(key, 0);
   }
 
   function moveProperty(key: string, direction: -1 | 1) {
@@ -180,13 +223,14 @@
       interactive" violation.
     -->
     <div class="cinder-jse-property-row" data-cinder-required={isRequired ? '' : undefined}>
-      <div class="cinder-jse-property-row__summary">
+      <div class="cinder-jse-property-row__summary" style={`--cinder-jse-property-depth: ${depth}`}>
         <button
           type="button"
           class="cinder-jse-property-row__trigger"
+          aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${key} property`}
           aria-expanded={isOpen}
           aria-controls={panelId}
-          onclick={() => (expanded[key] = !isOpen)}
+          onclick={() => toggleExpanded(key, isOpen)}
         >
           <span class="cinder-jse-property-row__chevron" aria-hidden="true">▸</span>
           <span class="cinder-jse-property-row__name">{key}</span>
@@ -248,6 +292,7 @@
             depth={depth + 1}
             {readonly}
             value={properties[key] ?? {}}
+            onvalidationerrorcount={(count) => setChildValidationErrorCount(key, count)}
             onchange={(next) => setPropertySchema(key, next)}
           />
         </div>

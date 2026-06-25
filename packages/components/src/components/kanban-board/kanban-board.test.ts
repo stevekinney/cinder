@@ -436,7 +436,9 @@ describe('KanbanBoard', () => {
 
   test('collapse toggle emits collapse metadata and hides cards', async () => {
     const { container, onchange } = renderBoard({ collapsible: true });
-    const button = container.querySelector('[aria-label="Collapse To do"]') as HTMLElement;
+    const button = container.querySelector(
+      '[aria-label="Collapse To do (2 cards)"]',
+    ) as HTMLElement;
 
     await fireEvent.click(button);
 

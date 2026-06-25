@@ -109,13 +109,15 @@
     return options;
   });
 
-  const state = createEditorState(stateOptions);
+  let localValidationErrorCount = $state(0);
+  const editorState = createEditorState(stateOptions);
+  const toolbarValidationErrorCount = $derived(view === 'form' ? localValidationErrorCount : 0);
 
   // Sync `readonly` into the state container whenever the prop changes.
   // `setReadonly` only assigns the flag, so re-applying the construction-seeded
   // value on the initial effect run is a harmless no-op — no sentinel needed.
   $effect(() => {
-    state.setReadonly(readonly);
+    editorState.setReadonly(readonly);
   });
 
   // Sync `draftOverride` into the state container when the *prop* changes.
@@ -129,14 +131,14 @@
   $effect(() => {
     if (draftOverride !== lastDraftOverride) {
       lastDraftOverride = draftOverride;
-      state.setDraftOverride(draftOverride);
+      editorState.setDraftOverride(draftOverride);
     }
   });
 
   // Tear down debounce timers on unmount so stale callbacks don't fire after
   // the parent unmounts the editor.
   $effect(() => {
-    return () => state.destroy();
+    return () => editorState.destroy();
   });
 
   // schemaKey-triggered reset. Track the previous key explicitly so we don't
@@ -151,38 +153,38 @@
     if (schemaKey !== lastSchemaKey) {
       lastSchemaKey = schemaKey;
       untrack(() => {
-        state.reload(schema, original);
+        editorState.reload(schema, original);
       });
       announcer.announce('Schema reloaded');
     }
   });
 
-  // Sync the bindable `view` prop into `state.view`. The flow is intentionally
+  // Sync the bindable `view` prop into `editorState.view`. The flow is intentionally
   // one-directional: `view` is the single source of truth. The parent's
   // `bind:view` and the `Tabs` `bind:value={view}` both write the prop directly,
   // and `state` never changes its view autonomously (`reload()` does not touch
   // `view`), so there is no state→prop direction to mirror. A write-back effect
-  // that mirrored `state.view` onto the prop would force an extra render of the
+  // that mirrored `editorState.view` onto the prop would force an extra render of the
   // tab tree on every unrelated state change; if a future code path ever mutates
-  // `state.view` independently, that path must also update the `view` prop (or
+  // `editorState.view` independently, that path must also update the `view` prop (or
   // expose an onViewChange callback) rather than rely on a mirror effect here.
   $effect(() => {
-    if (state.view !== view) state.setView(view);
+    if (editorState.view !== view) editorState.setView(view);
   });
 
   // Action handlers used by the toolbar.
   function handleUndo() {
-    const label = state.undo();
+    const label = editorState.undo();
     announcer.announce(label ? `Undid: ${label}` : 'Undid last edit');
   }
 
   function handleRedo() {
-    const label = state.redo();
+    const label = editorState.redo();
     announcer.announce(label ? `Redid: ${label}` : 'Redid edit');
   }
 
   function handleRevert() {
-    state.revert();
+    editorState.revert();
     announcer.announce('Reverted to original schema');
   }
 
@@ -227,16 +229,22 @@
   role="region"
   aria-label="JSON Schema editor"
 >
-  <JsonSchemaToolbar {state} onUndo={handleUndo} onRedo={handleRedo} onRevert={handleRevert} />
+  <JsonSchemaToolbar
+    state={editorState}
+    localValidationErrorCount={toolbarValidationErrorCount}
+    onUndo={handleUndo}
+    onRedo={handleRedo}
+    onRevert={handleRevert}
+  />
 
   <Tabs bind:value={view}>
     <TabList label="Editor view">
       <Tab value="form">Form</Tab>
       <Tab value="json">JSON</Tab>
       <Tab value="diff">
-        Diff{#if state.hasChanges}<span class="cinder-sr-only">, has changes</span>{/if}
+        Diff{#if editorState.hasChanges}<span class="cinder-sr-only">, has changes</span>{/if}
         {#snippet trailing()}
-          {#if state.hasChanges}
+          {#if editorState.hasChanges}
             <Badge variant="neutral" aria-hidden="true">●</Badge>
           {/if}
         {/snippet}
@@ -244,13 +252,17 @@
     </TabList>
 
     <TabPanel value="form">
-      <FormView {state} idPrefix={`${id}-form`} />
+      <FormView
+        state={editorState}
+        idPrefix={`${id}-form`}
+        onvalidationerrorcount={(count) => (localValidationErrorCount = count)}
+      />
     </TabPanel>
     <TabPanel value="json">
-      <JsonView {state} idPrefix={`${id}-json`} />
+      <JsonView state={editorState} idPrefix={`${id}-json`} />
     </TabPanel>
     <TabPanel value="diff">
-      <DiffView {state} />
+      <DiffView state={editorState} />
     </TabPanel>
   </Tabs>
 </div>

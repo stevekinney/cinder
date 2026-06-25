@@ -23,6 +23,8 @@
     disabled?: boolean;
     /** Callback to open link popover, receives the triggering button element */
     onLinkClick?: (triggerElement: HTMLElement) => void;
+    /** Whether the link dialog is currently open */
+    linkPopoverOpen?: boolean;
     /** Callback for undo button click */
     onUndo?: () => void;
     /** Callback for redo button click */
@@ -78,6 +80,7 @@
     canUndo = false,
     canRedo = false,
     disabled = false,
+    linkPopoverOpen = false,
     onLinkClick,
     onUndo,
     onRedo,
@@ -285,8 +288,8 @@
       icon={Link}
       label="Insert Link"
       shortcut={getShortcutDisplay('Mod-k')}
-      toggle
-      pressed={activeMarks.link}
+      aria-haspopup="dialog"
+      aria-expanded={linkPopoverOpen}
       {disabled}
       onclick={handleLink}
       data-testid="toolbar-link"

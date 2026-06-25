@@ -10,6 +10,8 @@
     <CommandItem
       value="text"
       description="Add freeform text with formatting options."
+      accessibleLabel="   "
+      keyboardShortcut="   "
       onselect={() => {}}
     >
       Text

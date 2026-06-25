@@ -44,6 +44,8 @@ export type TreeContext = {
   isExpanded(id: string): boolean;
   isSelected(id: string): boolean;
   isFocused(id: string): boolean;
+  positionInSet(id: string): number | undefined;
+  setSize(id: string): number | undefined;
   isVisible(id: string): boolean;
   hasVisibleDescendant(id: string): boolean;
   matchesFilter(label: string, id: string): boolean;

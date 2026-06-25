@@ -15,6 +15,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
 
   import { classNames } from '../../utilities/class-names.ts';
@@ -37,6 +38,9 @@
   let rightSelectedIds = $state<string[]>([]);
   let leftActiveId = $state<string | null>(null);
   let rightActiveId = $state<string | null>(null);
+  let focusedSide = $state<'left' | 'right' | null>(null);
+  let leftListElement: HTMLUListElement | undefined = $state();
+  let rightListElement: HTMLUListElement | undefined = $state();
 
   const announcer = useAnnouncer({ clearDelay: 5000 });
 
@@ -154,25 +158,35 @@
     return count === 1 ? 'item' : 'items';
   }
 
-  function moveSelectedRight(): void {
+  function focusList(side: 'left' | 'right'): void {
+    const listElement = side === 'left' ? leftListElement : rightListElement;
+    listElement?.focus();
+    focusedSide = side;
+  }
+
+  async function moveSelectedRight(): Promise<void> {
     if (movableLeftSelectedIds.length === 0) return;
     commitValue(
       [...knownValue, ...movableLeftSelectedIds],
       `${movableLeftSelectedIds.length} ${pluralize(movableLeftSelectedIds.length)} moved to ${rightLabel}.`,
     );
     leftSelectedIds = [];
+    await tick();
+    focusList(leftItems.some((item) => canMoveItem('left', item)) ? 'left' : 'right');
   }
 
-  function moveAllRight(): void {
+  async function moveAllRight(): Promise<void> {
     if (movableLeftItemIds.length === 0) return;
     commitValue(
       [...knownValue, ...movableLeftItemIds],
       `${movableLeftItemIds.length} ${pluralize(movableLeftItemIds.length)} moved to ${rightLabel}.`,
     );
     leftSelectedIds = [];
+    await tick();
+    focusList('right');
   }
 
-  function moveSelectedLeft(): void {
+  async function moveSelectedLeft(): Promise<void> {
     if (movableRightSelectedIds.length === 0) return;
     const removing = new Set(movableRightSelectedIds);
     commitValue(
@@ -180,9 +194,11 @@
       `${movableRightSelectedIds.length} ${pluralize(movableRightSelectedIds.length)} moved to ${leftLabel}.`,
     );
     rightSelectedIds = [];
+    await tick();
+    focusList(rightItems.length > 0 ? 'right' : 'left');
   }
 
-  function moveAllLeft(): void {
+  async function moveAllLeft(): Promise<void> {
     if (movableRightItemIds.length === 0) return;
     const removing = new Set(movableRightItemIds);
     commitValue(
@@ -190,6 +206,8 @@
       `${movableRightItemIds.length} ${pluralize(movableRightItemIds.length)} moved to ${leftLabel}.`,
     );
     rightSelectedIds = [];
+    await tick();
+    focusList('left');
   }
 
   function toggleId(side: 'left' | 'right', id: string): void {
@@ -238,11 +256,19 @@
   }
 
   function handleListFocus(side: 'left' | 'right'): void {
+    focusedSide = side;
     if (side === 'left') {
       leftActiveId = resolvedLeftActiveId;
     } else {
       rightActiveId = resolvedRightActiveId;
     }
+  }
+
+  function handleListBlur(event: FocusEvent, side: 'left' | 'right'): void {
+    const nextTarget = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+    const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    if (currentTarget && nextTarget && currentTarget.contains(nextTarget)) return;
+    if (focusedSide === side) focusedSide = null;
   }
 
   function handleListKeydown(event: KeyboardEvent, side: 'left' | 'right'): void {
@@ -292,13 +318,15 @@
     <section class="cinder-transfer-list__panel" aria-labelledby={`${baseId}-left-label`}>
       <h3 id={`${baseId}-left-label`} class="cinder-transfer-list__label">{leftLabel}</h3>
       <ul
+        bind:this={leftListElement}
         class="cinder-transfer-list__list"
         role="listbox"
         aria-multiselectable="true"
         aria-labelledby={`${baseId}-left-label`}
-        aria-activedescendant={leftActiveOptionId}
+        aria-activedescendant={focusedSide === 'left' ? leftActiveOptionId : undefined}
         tabindex="0"
         onfocus={() => handleListFocus('left')}
+        onblur={(event) => handleListBlur(event, 'left')}
         onclick={(event) => handleListClick(event, 'left')}
         onkeydown={(event) => handleListKeydown(event, 'left')}
       >
@@ -309,7 +337,9 @@
             role="option"
             aria-selected={leftSelectedSet.has(item.id) ? 'true' : 'false'}
             aria-disabled={item.disabled ? 'true' : undefined}
-            data-cinder-active={resolvedLeftActiveId === item.id ? 'true' : undefined}
+            data-cinder-active={focusedSide === 'left' && resolvedLeftActiveId === item.id
+              ? 'true'
+              : undefined}
             data-cinder-transfer-list-item-id={item.id}
           >
             {item.label}
@@ -362,13 +392,15 @@
     <section class="cinder-transfer-list__panel" aria-labelledby={`${baseId}-right-label`}>
       <h3 id={`${baseId}-right-label`} class="cinder-transfer-list__label">{rightLabel}</h3>
       <ul
+        bind:this={rightListElement}
         class="cinder-transfer-list__list"
         role="listbox"
         aria-multiselectable="true"
         aria-labelledby={`${baseId}-right-label`}
-        aria-activedescendant={rightActiveOptionId}
+        aria-activedescendant={focusedSide === 'right' ? rightActiveOptionId : undefined}
         tabindex="0"
         onfocus={() => handleListFocus('right')}
+        onblur={(event) => handleListBlur(event, 'right')}
         onclick={(event) => handleListClick(event, 'right')}
         onkeydown={(event) => handleListKeydown(event, 'right')}
       >
@@ -378,7 +410,9 @@
             class="cinder-transfer-list__option"
             role="option"
             aria-selected={rightSelectedSet.has(item.id) ? 'true' : 'false'}
-            data-cinder-active={resolvedRightActiveId === item.id ? 'true' : undefined}
+            data-cinder-active={focusedSide === 'right' && resolvedRightActiveId === item.id
+              ? 'true'
+              : undefined}
             data-cinder-transfer-list-item-id={item.id}
           >
             {item.label}

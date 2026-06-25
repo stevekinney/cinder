@@ -46,7 +46,11 @@
       command.label.toLowerCase().includes(query.toLowerCase()),
     )}
     {#each filteredCommands as command (command.value)}
-      <CommandItem value={command.value} onselect={() => select(command.label)}>
+      <CommandItem
+        value={command.value}
+        accessibleLabel={command.label}
+        onselect={() => select(command.label)}
+      >
         {command.label}
       </CommandItem>
     {/each}

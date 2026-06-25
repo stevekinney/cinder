@@ -22,6 +22,7 @@
 </script>
 
 <script lang="ts">
+  import { SvelteSet } from 'svelte/reactivity';
   import type { EventStreamViewerProps, StreamEvent } from './event-stream-viewer.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import ConnectionIndicator from '../connection-indicator/connection-indicator.svelte';
@@ -49,7 +50,7 @@
   }: EventStreamViewerProps = $props();
 
   // IDs for expanded details panels — keyed by event id
-  let expandedIds = $state(new Set<string>());
+  const expandedIds = new SvelteSet<string>();
 
   // Track the scroll container element for auto-scroll
   let scrollContainerEl = $state<HTMLElement | null>(null);
@@ -69,13 +70,11 @@
   const latestEvent = $derived(events.at(-1));
 
   function toggleDetails(id: string) {
-    const next = new Set(expandedIds);
-    if (next.has(id)) {
-      next.delete(id);
+    if (expandedIds.has(id)) {
+      expandedIds.delete(id);
     } else {
-      next.add(id);
+      expandedIds.add(id);
     }
-    expandedIds = next;
   }
 
   function formatEventAsText(event: StreamEvent): string {
@@ -260,16 +259,21 @@
                     type="button"
                     class="cinder-event-stream-viewer__details-toggle"
                     aria-expanded={isExpanded}
-                    aria-controls={isExpanded ? detailsId : undefined}
+                    aria-controls={detailsId}
+                    aria-label={`${isExpanded ? 'Hide' : 'Show'} details for ${event.severity ? `${event.severity}: ` : ''}${event.summary}`}
                     onclick={() => toggleDetails(event.id)}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
-                  {#if isExpanded}
-                    <div id={detailsId} class="cinder-event-stream-viewer__event-details">
+                  <div
+                    id={detailsId}
+                    class="cinder-event-stream-viewer__event-details"
+                    hidden={!isExpanded}
+                  >
+                    {#if isExpanded}
                       <JsonViewer value={event.details} />
-                    </div>
-                  {/if}
+                    {/if}
+                  </div>
                 </div>
               {/if}
             </div>

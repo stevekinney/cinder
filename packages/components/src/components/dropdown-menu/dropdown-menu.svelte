@@ -71,7 +71,9 @@
     if (!menuElement) return [];
 
     return Array.from(
-      menuElement.querySelectorAll<HTMLElement>('[role="menuitem"]:not([data-disabled])'),
+      menuElement.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]:not([data-disabled]), [role="menuitemradio"]:not([data-disabled])',
+      ),
     ).filter((item) => item.closest('[role="menu"]') === menuElement);
   }
 
