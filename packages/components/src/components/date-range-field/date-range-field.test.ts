@@ -176,6 +176,62 @@ describe('DateRangeField', () => {
       }
     });
 
+    test('built-in hour presets do not spill into the next calendar day', async () => {
+      setSystemTime(new Date(2026, 5, 24, 23, 45, 30));
+
+      try {
+        const changes: DateRangeValue[] = [];
+        const { container } = render(DateRangeField, {
+          id: 'drf',
+          granularity: 'hour',
+          onchange: (next: DateRangeValue) => changes.push(next),
+        });
+        const today = getPresetButtons(container).find(
+          (button) => button.textContent?.trim() === 'Today',
+        );
+        if (!today) throw new Error('Today preset not found');
+
+        await fireEvent.click(today);
+
+        expect(changes[0]).toEqual({
+          start: '2026-06-24T00:00',
+          end: '2026-06-24T23:00',
+        });
+      } finally {
+        setSystemTime();
+      }
+    });
+
+    test('custom presets normalize values to the current granularity', async () => {
+      const changes: DateRangeValue[] = [];
+      const presets: DateRangeDatePreset[] = [
+        {
+          id: 'custom',
+          label: 'Custom',
+          resolve: () => ({
+            start: '2026-06-24',
+            end: '2026-06-24T09:45:30',
+          }),
+        },
+      ];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        presets,
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+      const custom = getPresetButtons(container)[0];
+      if (!custom) throw new Error('Custom preset not found');
+
+      await fireEvent.click(custom);
+
+      expect(changes[0]).toEqual({
+        start: '2026-06-24T00:00',
+        end: '2026-06-24T09:45',
+      });
+      expect(custom.getAttribute('aria-pressed')).toBe('true');
+    });
+
     test('moving datetime presets keep their pressed state after selection', async () => {
       let callCount = 0;
       const presets: DateRangeDatePreset[] = [

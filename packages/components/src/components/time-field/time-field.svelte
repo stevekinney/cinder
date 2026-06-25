@@ -88,6 +88,7 @@
   );
   const inputId = $derived(field.id);
   const labelId = $derived(label ? `${inputId}-label` : formField?.labelId);
+  const timezoneLabelId = $derived(`${inputId}-timezone-label`);
   const descriptionId = $derived(field.ownDescriptionId);
   const errorId = $derived(field.ownErrorId);
   const describedBy = $derived(field.describedBy);
@@ -182,18 +183,34 @@
     />
 
     {#if timezones && timezones.length > 0}
-      <select
-        class="cinder-time-field__timezone"
-        aria-label="Timezone"
-        aria-describedby={describedBy}
-        value={timezone}
-        disabled={resolvedDisabled || readonly}
-        onchange={handleTimezoneChange}
-      >
-        {#each timezones as option (option)}
-          <option value={option}>{option}</option>
-        {/each}
-      </select>
+      {#if labelId}
+        <span id={timezoneLabelId} class="cinder-sr-only">timezone</span>
+        <select
+          class="cinder-time-field__timezone"
+          aria-labelledby={`${labelId} ${timezoneLabelId}`}
+          aria-describedby={describedBy}
+          value={timezone}
+          disabled={resolvedDisabled || readonly}
+          onchange={handleTimezoneChange}
+        >
+          {#each timezones as option (option)}
+            <option value={option}>{option}</option>
+          {/each}
+        </select>
+      {:else}
+        <select
+          class="cinder-time-field__timezone"
+          aria-label="Timezone"
+          aria-describedby={describedBy}
+          value={timezone}
+          disabled={resolvedDisabled || readonly}
+          onchange={handleTimezoneChange}
+        >
+          {#each timezones as option (option)}
+            <option value={option}>{option}</option>
+          {/each}
+        </select>
+      {/if}
     {/if}
 
     {#if resolvedTimezoneName}

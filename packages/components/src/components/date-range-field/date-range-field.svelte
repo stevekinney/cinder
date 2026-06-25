@@ -127,7 +127,7 @@
     }
 
     const match = resolvedPresets.find((preset) => {
-      const resolved = preset.resolve();
+      const resolved = normalizeDateRangeValue(preset.resolve(), granularity);
       return dateRangeValuesMatch(resolved, value);
     });
     return match?.id;
@@ -167,7 +167,7 @@
   function endOfActiveHour(date: Date): Date {
     const next = new Date(date);
     if (next.getMinutes() > 0 || next.getSeconds() > 0 || next.getMilliseconds() > 0) {
-      next.setHours(next.getHours() + 1, 0, 0, 0);
+      next.setHours(Math.min(next.getHours() + 1, 23), 0, 0, 0);
     }
     return next;
   }
@@ -203,9 +203,25 @@
   ): string | undefined {
     if (!nextValue) return undefined;
     if (nextGranularity === 'day') return nextValue.slice(0, 10);
-    if (nextGranularity === 'hour') return `${nextValue.slice(0, 13)}:00`;
-    if (nextGranularity === 'minute') return nextValue.slice(0, 16);
-    return nextValue.length === 16 ? `${nextValue}:00` : nextValue.slice(0, 19);
+    const datePart = nextValue.slice(0, 10);
+    const timePart = nextValue.includes('T') ? nextValue.slice(11) : '';
+    const [rawHour = '00', rawMinute = '00', rawSecond = '00'] = timePart.split(':');
+    const hour = rawHour.padStart(2, '0').slice(0, 2);
+    const minute = rawMinute.padStart(2, '0').slice(0, 2);
+    const second = rawSecond.padStart(2, '0').slice(0, 2);
+    if (nextGranularity === 'hour') return `${datePart}T${hour}:00`;
+    if (nextGranularity === 'minute') return `${datePart}T${hour}:${minute}`;
+    return `${datePart}T${hour}:${minute}:${second}`;
+  }
+
+  function normalizeDateRangeValue(
+    nextValue: DateRangeValue,
+    nextGranularity: DateRangeGranularity,
+  ): DateRangeValue {
+    return {
+      start: nextValue.start ? normalizeInputValue(nextValue.start, nextGranularity) : undefined,
+      end: nextValue.end ? normalizeInputValue(nextValue.end, nextGranularity) : undefined,
+    };
   }
 
   const inputType = $derived(inputTypeFor(granularity));
@@ -220,7 +236,7 @@
   // ──────────────────────────────────────────────────────────────────────────
   function handlePresetClick(preset: DateRangeDatePreset) {
     if (disabled) return;
-    const next = preset.resolve();
+    const next = normalizeDateRangeValue(preset.resolve(), granularity);
     selectedPresetSnapshot = { id: preset.id, value: next };
     value = next;
     onchange?.(next);

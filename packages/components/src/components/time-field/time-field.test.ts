@@ -21,6 +21,14 @@ function getInput(container: Element): HTMLInputElement {
   return container.querySelector<HTMLInputElement>('input[type="time"]')!;
 }
 
+function textForLabelledBy(container: Element, labelledBy: string): string {
+  return labelledBy
+    .split(/\s+/)
+    .map((id) => container.ownerDocument.getElementById(id)?.textContent?.trim() ?? '')
+    .filter(Boolean)
+    .join(' ');
+}
+
 describe('TimeField', () => {
   test('renders a labelled native time input', () => {
     const { container } = render(TimeField, {
@@ -144,6 +152,37 @@ describe('TimeField', () => {
     expect(container.querySelector('select')?.getAttribute('aria-describedby')).toBe(
       'reminder-description external-hint',
     );
+  });
+
+  test('qualifies timezone select accessible name with the field label', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        timezones: ['UTC', 'Europe/Berlin'],
+      },
+    });
+
+    const timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    const labelledBy = timezone.getAttribute('aria-labelledby');
+    expect(labelledBy).not.toBeNull();
+    expect(timezone.getAttribute('aria-label')).toBeNull();
+    expect(textForLabelledBy(container, labelledBy!)).toBe('Reminder time timezone');
+  });
+
+  test('keeps a generic timezone select label when no field label is available', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        value: '09:30',
+        timezones: ['UTC', 'Europe/Berlin'],
+      },
+    });
+
+    const timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    expect(timezone.getAttribute('aria-label')).toBe('Timezone');
+    expect(timezone.getAttribute('aria-labelledby')).toBeNull();
   });
 
   test('omits empty accessible-name attributes on the time input', () => {

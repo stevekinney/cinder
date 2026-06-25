@@ -6,6 +6,7 @@ export function resolveTextDirection(
 ): TextDirection | undefined {
   let currentElement: HTMLElement | null = element ?? null;
   let documentDirection: TextDirection | undefined;
+  let styledDirectionElement: HTMLElement | null = null;
   while (currentElement) {
     const direction = currentElement.getAttribute('dir')?.toLowerCase();
     if (direction === 'rtl' || direction === 'ltr') {
@@ -19,16 +20,20 @@ export function resolveTextDirection(
       const computedDirection = getComputedStyle(currentElement).direction;
       if (computedDirection === 'rtl' || computedDirection === 'ltr') return computedDirection;
     }
+    const styledDirection = currentElement.style.direction;
+    if (!styledDirectionElement && (styledDirection === 'rtl' || styledDirection === 'ltr')) {
+      styledDirectionElement = currentElement;
+    }
     currentElement = currentElement.parentElement;
+  }
+
+  if (typeof getComputedStyle === 'function' && styledDirectionElement) {
+    const direction = getComputedStyle(styledDirectionElement).direction;
+    if (direction === 'rtl' || direction === 'ltr') return direction;
   }
 
   if (fallback) return fallback;
   if (documentDirection) return documentDirection;
-
-  if (typeof getComputedStyle === 'function' && element) {
-    const direction = getComputedStyle(element).direction;
-    if (direction === 'rtl' || direction === 'ltr') return direction;
-  }
 
   return undefined;
 }

@@ -92,4 +92,14 @@ describe('resolveTextDirection', () => {
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;
     }
   });
+
+  test('uses computed direction before provider fallback', () => {
+    const wrapper = document.createElement('section');
+    wrapper.style.direction = 'ltr';
+    const element = document.createElement('div');
+    wrapper.appendChild(element);
+    document.body.appendChild(wrapper);
+
+    expect(resolveTextDirection(element, 'rtl')).toBe('ltr');
+  });
 });
