@@ -506,7 +506,7 @@
         <section class="cinder-approval-card__section" aria-label="Environment names">
           <h4 class="cinder-approval-card__section-title">Environment</h4>
           <div class="cinder-approval-card__environment-list">
-            {#each environmentNames as environmentName (environmentName)}
+            {#each environmentNames as environmentName, environmentIndex (`${environmentIndex}:${environmentName}`)}
               <SecretValueField value={environmentName} label={environmentName} />
             {/each}
           </div>

@@ -549,5 +549,16 @@ describe('PayloadInspector', () => {
       const css = readFileSync(new URL('./payload-inspector.css', import.meta.url), 'utf8');
       expect(css).toContain(':focus-visible');
     });
+
+    test('CSS sidecar imports composed primitive styles', () => {
+      const css = readFileSync(new URL('./payload-inspector.css', import.meta.url), 'utf8');
+
+      expect(css).toContain("@import '../badge/badge.css';");
+      expect(css).toContain("@import '../code-block/code-block.css';");
+      expect(css).toContain("@import '../copy-button/copy-button.css';");
+      expect(css).toContain("@import '../description-list/description-list.css';");
+      expect(css).toContain("@import '../json-viewer/json-viewer.css';");
+      expect(css).toContain("@import '../tabs/tabs.css';");
+    });
   });
 });

@@ -870,4 +870,18 @@ describe('CSS snapshot', () => {
     expect(css).not.toMatch(/:\s*#[0-9a-fA-F]{3,6}/);
     expect(css).not.toMatch(/:\s*rgb\(/);
   });
+
+  test('CSS sidecar imports composed primitive styles', () => {
+    const { readFileSync } = require('node:fs');
+    const css = readFileSync(
+      new URL('./run-step-timeline.css', import.meta.url).pathname,
+      'utf8',
+    ) as string;
+
+    expect(css).toContain("@import '../badge/badge.css';");
+    expect(css).toContain("@import '../collapsible/collapsible.css';");
+    expect(css).toContain("@import '../link/link.css';");
+    expect(css).toContain("@import '../progress/progress.css';");
+    expect(css).toContain("@import '../status-dot/status-dot.css';");
+  });
 });
