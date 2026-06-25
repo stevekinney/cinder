@@ -4,10 +4,14 @@
    * @category data-display
    * @status stable
    * @purpose Compact non-interactive label that annotates an adjacent element with a short status, count, or category.
+   * @tag billing
    * @tag label
    * @tag indicator
+   * @tag subscription
    * @useWhen Annotating a value with a short status word like "new" or "beta".
    * @useWhen Displaying a numeric count next to an icon or title.
+   * @useWhen Displaying the billing state of a subscription in a dashboard, invoice list, or account settings page.
+   * @useWhen Annotating a plan name, customer row, or invoice line with its current payment lifecycle state.
    * @avoidWhen The label must be interactive or removable — use chip instead.
    * @avoidWhen Showing only a colored dot for presence — use status-dot instead.
    * @related chip, status-dot

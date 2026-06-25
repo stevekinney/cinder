@@ -424,10 +424,12 @@
       "category": "data-display",
       "status": "stable",
       "purpose": "Compact non-interactive label that annotates an adjacent element with a short status, count, or category.",
-      "tags": ["label", "indicator"],
+      "tags": ["billing", "label", "indicator", "subscription"],
       "useWhen": [
         "Annotating a value with a short status word like \"new\" or \"beta\".",
-        "Displaying a numeric count next to an icon or title."
+        "Displaying a numeric count next to an icon or title.",
+        "Displaying the billing state of a subscription in a dashboard, invoice list, or account settings page.",
+        "Annotating a plan name, customer row, or invoice line with its current payment lifecycle state."
       ],
       "avoidWhen": [
         {
@@ -4194,11 +4196,13 @@
       "exportName": "StatusDot",
       "category": "feedback",
       "status": "stable",
-      "purpose": "Static role=\"img\" badge that communicates an entity's state through a colored dot with an accessible text label.",
-      "tags": ["feedback", "status"],
+      "purpose": "Colored dot indicator that communicates static entity state or live realtime connection state with an accessible text label.",
+      "tags": ["connection", "feedback", "realtime", "status"],
       "useWhen": [
         "Indicating the current state of a list row, user, deployment, or other entity alongside its name.",
-        "Communicating status compactly when many indicators appear together without triggering live-region announcements."
+        "Communicating status compactly when many indicators appear together without triggering live-region announcements.",
+        "Surfacing whether a realtime channel is connected, connecting, disconnected, or errored on a dashboard or app chrome.",
+        "Giving operators an at-a-glance health signal for a long-lived transport."
       ],
       "avoidWhen": [
         {

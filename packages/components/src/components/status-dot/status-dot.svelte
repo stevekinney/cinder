@@ -3,11 +3,15 @@
    * @cinder
    * @category feedback
    * @status stable
-   * @purpose Static role="img" badge that communicates an entity's state through a colored dot with an accessible text label.
+   * @purpose Colored dot indicator that communicates static entity state or live realtime connection state with an accessible text label.
+   * @tag connection
    * @tag feedback
+   * @tag realtime
    * @tag status
    * @useWhen Indicating the current state of a list row, user, deployment, or other entity alongside its name.
    * @useWhen Communicating status compactly when many indicators appear together without triggering live-region announcements.
+   * @useWhen Surfacing whether a realtime channel is connected, connecting, disconnected, or errored on a dashboard or app chrome.
+   * @useWhen Giving operators an at-a-glance health signal for a long-lived transport.
    * @avoidWhen Counting items or showing a numeric value — use badge instead.
    * @avoidWhen Announcing a transient status change — use toast-region or alert so assistive tech reads it.
    * @related badge
