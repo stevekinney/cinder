@@ -1,10 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test';
 
-import {
-  existingVersionMessage,
-  resolvePublishAction,
-  runPublishRelease,
-} from './publish-release.ts';
+import { resolvePublishAction, runPublishRelease } from './publish-release.ts';
 
 describe('publish-release existing-version handling', () => {
   test('skips publish when the package version already exists', () => {
@@ -13,13 +9,8 @@ describe('publish-release existing-version handling', () => {
     );
   });
 
-  test('skips dry-run publish when the package version already exists', () => {
-    expect(resolvePublishAction({ dryRun: true, versionExists: true })).toBe(
-      'skip-existing-version',
-    );
-    expect(
-      existingVersionMessage({ name: '@lostgradient/cinder', version: '0.3.0' }, true),
-    ).toContain('skipping dry-run publish');
+  test('runs dry-run publish when the package version already exists', () => {
+    expect(resolvePublishAction({ dryRun: true, versionExists: true })).toBe('publish');
   });
 
   test('publishes when the package version is not present on npm', () => {
@@ -38,7 +29,7 @@ describe('publish-release existing-version handling', () => {
       packageRootPath: '/tmp/cinder-package',
       dependencies: {
         readManifest: async () => ({ name: '@lostgradient/cinder', version: '9.9.9' }),
-        versionExists: async () => false,
+        versionExists: async () => true,
         artifactExists: () => true,
         validateConsumerArtifact,
         spawnPublish,

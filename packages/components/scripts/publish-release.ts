@@ -30,7 +30,7 @@ export function resolvePublishAction(input: {
   dryRun: boolean;
   versionExists: boolean;
 }): PublishAction {
-  return input.versionExists ? 'skip-existing-version' : 'publish';
+  return !input.dryRun && input.versionExists ? 'skip-existing-version' : 'publish';
 }
 
 export function existingVersionMessage(identity: PackageManifest, dryRun: boolean): string {

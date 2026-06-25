@@ -487,6 +487,32 @@ describe('ApprovalCard', () => {
     expect(queryByRole('button', { name: 'Approve' })).toBeNull();
   });
 
+  test('syncs the visible expired state when an overdue action is attempted before the timer fires', async () => {
+    const now = new Date('2026-06-24T12:00:00.000Z').getTime();
+    const dateNow = jest.spyOn(Date, 'now').mockReturnValue(now);
+    const onapprove = mock();
+
+    const { getByRole, getByText, queryByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        expiresAt: new Date(now + 60_000).toISOString(),
+        onapprove,
+      }),
+    });
+
+    await tick();
+    const approveButton = getByRole('button', { name: 'Approve' });
+
+    dateNow.mockReturnValue(now + 60_001);
+    await fireEvent.click(approveButton);
+    await tick();
+
+    expect(onapprove).not.toHaveBeenCalled();
+    expect(
+      getByText('No approval actions are available because this request is expired.'),
+    ).toBeTruthy();
+    expect(queryByRole('button', { name: 'Approve' })).toBeNull();
+  });
+
   test('renders past expiration as expired after mount without action buttons', async () => {
     const now = new Date('2026-06-24T12:00:00.000Z');
     jest.useFakeTimers({ now });

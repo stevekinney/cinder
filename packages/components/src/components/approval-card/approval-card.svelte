@@ -313,7 +313,11 @@
 
   function currentApprovalIsActionable(): boolean {
     const comparisonTime = expirationTimestamp === undefined ? currentTime : Date.now();
-    return isApprovalActionable(approvalState, expirationTimestamp, comparisonTime);
+    const actionable = isApprovalActionable(approvalState, expirationTimestamp, comparisonTime);
+    if (!actionable && approvalState === 'pending' && expirationTimestamp !== undefined) {
+      currentTime = comparisonTime;
+    }
+    return actionable;
   }
 
   function beginEditingArguments(): void {
