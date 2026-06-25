@@ -42,6 +42,11 @@
   import StatusDot from '../status-dot/status-dot.svelte';
   import type { BadgeVariant } from '../badge/badge.types.ts';
   import type { StatusDotStatus } from '../status-dot/status-dot.types.ts';
+  import {
+    isApprovalActionable,
+    isApprovalExpirationCheckPending,
+    resolveEffectiveApprovalState,
+  } from './approval-card-state.ts';
   import type {
     ApprovalCardProps,
     ApprovalOperationKind,
@@ -88,21 +93,23 @@
 
   const expirationTimestamp = $derived(parseExpirationTimestamp(expiresAt));
   const effectiveState = $derived<ApprovalState>(
-    approvalState === 'pending' &&
-      expirationTimestamp !== undefined &&
-      currentTime !== undefined &&
-      currentTime >= expirationTimestamp
-      ? 'expired'
-      : approvalState,
+    resolveEffectiveApprovalState(approvalState, expirationTimestamp, currentTime),
   );
-  const isActionable = $derived(effectiveState === 'pending');
+  const expirationCheckPending = $derived(
+    isApprovalExpirationCheckPending(approvalState, expirationTimestamp, currentTime),
+  );
+  const isActionable = $derived(
+    isApprovalActionable(approvalState, expirationTimestamp, currentTime),
+  );
   const operationKindLabel = $derived(formatOperationKind(operation.kind));
   const riskLabel = $derived(formatRisk(tool.risk));
   const stateText = $derived(formatState(effectiveState));
   const stateDescription = $derived(
     isActionable
       ? `${operationKindLabel} approval is waiting for a decision.`
-      : `No approval actions are available because this request is ${stateText.toLowerCase()}.`,
+      : expirationCheckPending
+        ? 'Approval expiration is being checked before actions are available.'
+        : `No approval actions are available because this request is ${stateText.toLowerCase()}.`,
   );
   const expirationText = $derived.by(() => {
     if (effectiveState === 'expired') return 'Expired';

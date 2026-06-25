@@ -3,6 +3,11 @@ import { afterEach, describe, expect, jest, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import {
+  isApprovalActionable,
+  isApprovalExpirationCheckPending,
+  resolveEffectiveApprovalState,
+} from './approval-card-state.ts';
 import type { ApprovalCardProps } from './approval-card.types.ts';
 
 setupHappyDom();
@@ -44,6 +49,23 @@ function approvalCardProps(overrides: Partial<ApprovalCardProps> = {}): Approval
 }
 
 describe('ApprovalCard', () => {
+  test('keeps expiring approvals non-actionable until the clock is initialized', () => {
+    const expirationTimestamp = Date.parse('2026-06-24T12:00:00.000Z');
+
+    expect(resolveEffectiveApprovalState('pending', expirationTimestamp, undefined)).toBe(
+      'pending',
+    );
+    expect(isApprovalExpirationCheckPending('pending', expirationTimestamp, undefined)).toBe(true);
+    expect(isApprovalActionable('pending', expirationTimestamp, undefined)).toBe(false);
+    expect(isApprovalActionable('pending', expirationTimestamp, expirationTimestamp - 1)).toBe(
+      true,
+    );
+    expect(resolveEffectiveApprovalState('pending', expirationTimestamp, expirationTimestamp)).toBe(
+      'expired',
+    );
+    expect(isApprovalActionable('pending', expirationTimestamp, expirationTimestamp)).toBe(false);
+  });
+
   test('renders pending approval details and invokes action callbacks', async () => {
     const onApprove = mock();
     const onDeny = mock();
@@ -210,6 +232,24 @@ describe('ApprovalCard', () => {
     });
 
     await tick();
+
+    expect(
+      getByText('No approval actions are available because this request is expired.'),
+    ).toBeTruthy();
+    expect(getByRole('img', { name: 'Expired' })).toBeTruthy();
+    expect(queryByRole('button', { name: 'Approve' })).toBeNull();
+  });
+
+  test('renders already-expired approvals read-only on the initial render', () => {
+    const now = new Date('2026-06-24T12:00:00.000Z');
+    jest.useFakeTimers({ now });
+
+    const { getByRole, getByText, queryByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        expiresAt: new Date(now.getTime() - 1_000).toISOString(),
+        onApprove: mock(),
+      }),
+    });
 
     expect(
       getByText('No approval actions are available because this request is expired.'),
