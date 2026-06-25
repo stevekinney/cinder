@@ -102,6 +102,38 @@ describe('schema-form validation', () => {
     expect(result.issues[0]).toMatchObject({ path: ['nested', 'name'] });
   });
 
+  test('rejects legacy Standard Schema-shaped objects at runtime', async () => {
+    const result = await validateSchemaValue(
+      {
+        '~standard': {
+          version: 1,
+          vendor: 'example',
+          validate: () => ({ value: { name: 'Ada' } }),
+        },
+      },
+      {},
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual([
+      { path: [], message: 'SchemaForm only accepts JSON Schema objects.' },
+    ]);
+  });
+
+  test('reports invalid JSON Schema compilation errors as root issues', async () => {
+    const result = await validateSchemaValue(
+      {
+        type: 'object',
+        required: [1],
+      },
+      {},
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.issues[0]?.path).toEqual([]);
+    expect(result.issues[0]?.message).toMatch(/Invalid JSON Schema/i);
+  });
+
   test('groups issues by path without overwriting the first field message', () => {
     expect(
       issuesByPath([

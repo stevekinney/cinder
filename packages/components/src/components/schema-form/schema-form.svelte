@@ -29,8 +29,8 @@
   import SchemaFormBody from './schema-form-body.svelte';
 
   /**
-   * Schema-driven form that renders accessible controls from JSON Schema or
-   * JSON Schema and submits one validated value object.
+   * Schema-driven form that renders accessible controls from JSON Schema and
+   * submits one validated value object.
    *
    * **Schema changes reset form state.** When the `schema` prop changes, the
    * internal form body is remounted and all mutable state (formValue, errors,

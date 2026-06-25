@@ -17,6 +17,10 @@ export async function validateSchemaValue(
   schema: JsonSchemaObject,
   value: unknown,
 ): Promise<SchemaFormValidationResult> {
+  if (isLegacyStandardSchema(schema)) {
+    return validationFailure(value, 'SchemaForm only accepts JSON Schema objects.');
+  }
+
   return validateJsonSchemaValue(schema, value);
 }
 
@@ -24,14 +28,49 @@ async function validateJsonSchemaValue(
   schema: JsonSchemaObject,
   value: unknown,
 ): Promise<SchemaFormValidationResult> {
-  const validate = await validatorForSchema(schema);
-  const valid = validate(value);
+  let validate: ValidateFunction;
+  try {
+    validate = await validatorForSchema(schema);
+  } catch (error) {
+    return validationFailure(value, readableSchemaError(error));
+  }
+
+  let valid: unknown;
+  try {
+    const result = validate(value) as unknown;
+    valid = isPromiseLike(result) ? await result : result;
+  } catch (error) {
+    return validationFailure(value, readableSchemaError(error));
+  }
+
   if (valid) return { valid: true, value, issues: [] };
   return {
     valid: false,
     value,
     issues: ajvIssues(validate.errors ?? []),
   };
+}
+
+function validationFailure(value: unknown, message: string): SchemaFormValidationResult {
+  return {
+    valid: false,
+    value,
+    issues: [{ path: [], message }],
+  };
+}
+
+function isLegacyStandardSchema(schema: JsonSchemaObject): boolean {
+  const standard = schema['~standard'];
+  return isRecord(standard) && standard['version'] === 1;
+}
+
+function readableSchemaError(error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Invalid JSON Schema.';
+  return `Invalid JSON Schema: ${message}`;
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return isRecord(value) && typeof value['then'] === 'function';
 }
 
 function validatorForSchema(schema: JsonSchemaObject): Promise<ValidateFunction> {
