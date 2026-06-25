@@ -36,10 +36,23 @@ export function resolveTextDirection(
     if (direction === 'rtl' || direction === 'ltr') return direction;
   }
 
+  const computedDirection = readComputedTextDirection(element);
+  const rootComputedDirection = readComputedTextDirection(element?.ownerDocument.documentElement);
+  if (computedDirection && computedDirection !== rootComputedDirection) return computedDirection;
+  if (!fallback && computedDirection === 'rtl') return computedDirection;
+
   if (fallback) return fallback;
   if (documentDirection) return documentDirection;
 
   return undefined;
+}
+
+function readComputedTextDirection(
+  element: HTMLElement | null | undefined,
+): TextDirection | undefined {
+  if (!element || typeof getComputedStyle !== 'function') return undefined;
+  const direction = getComputedStyle(element).direction;
+  return direction === 'rtl' || direction === 'ltr' ? direction : undefined;
 }
 
 export function isRightToLeftElement(element: HTMLElement | null | undefined): boolean {

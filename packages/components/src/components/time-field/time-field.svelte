@@ -83,6 +83,14 @@
     resetTimezoneBaseline = timezone;
   });
 
+  $effect(() => {
+    if (value === undefined) return;
+    const nextValue = canonicalTimeValue(value);
+    if (value === nextValue) return;
+    inputMirrorValue = undefined;
+    value = nextValue;
+  });
+
   const generatedId = $props.id();
   const field = $derived(
     resolveFieldControl({

@@ -135,6 +135,7 @@ describe('TimeField', () => {
       'input[type="hidden"][name="reminder_time"]',
     );
     expect(submittedTime?.value).toBe('09:30');
+    expect(getInput(container).value).toBe('09:30');
   });
 
   test('mirrors typed input values to native form submission before change commits', async () => {

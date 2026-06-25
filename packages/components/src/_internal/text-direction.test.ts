@@ -103,6 +103,37 @@ describe('resolveTextDirection', () => {
     expect(resolveTextDirection(element, 'rtl')).toBe('ltr');
   });
 
+  test('uses inherited CSS direction before provider fallback', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      const direction =
+        target === document.documentElement
+          ? 'ltr'
+          : target instanceof HTMLElement && target.closest('.css-direction')
+            ? 'rtl'
+            : style.direction;
+      Object.defineProperty(style, 'direction', { value: direction, configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const wrapper = document.createElement('section');
+      wrapper.className = 'css-direction';
+      const element = document.createElement('div');
+      wrapper.appendChild(element);
+      document.body.appendChild(wrapper);
+
+      expect(resolveTextDirection(element, 'ltr')).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('prefers nearer inline style direction over farther dir ancestor', () => {
     const outer = document.createElement('div');
     outer.dir = 'rtl';
