@@ -1,6 +1,5 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
-import { z } from 'zod';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -30,37 +29,6 @@ function formFrom(container: HTMLElement): HTMLFormElement {
 
 describe('SchemaForm', () => {
   afterEach(() => cleanup());
-
-  test('renders Zod Standard Schema fields and submits the Standard Schema validated output once', async () => {
-    const schema = z.object({
-      name: z.string().min(1),
-      count: z.number().int().positive(),
-    });
-    const submitted: unknown[] = [];
-
-    const { container } = render(SchemaForm, {
-      props: {
-        schema,
-        onsubmit: (value: unknown) => {
-          submitted.push(value);
-        },
-      },
-    });
-    await flush();
-
-    await fireEvent.input(screen.getByLabelText(/Name/), { target: { value: 'Ada' } });
-    // NumberInput commits its parsed value on blur (it buffers while editing).
-    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
-    await fireEvent.input(countInput, { target: { value: '3' } });
-    await fireEvent.blur(countInput);
-
-    const form = formFrom(container);
-    await submit(form);
-
-    const expected = await schema['~standard'].validate({ name: 'Ada', count: 3 });
-    expect(submitted).toHaveLength(1);
-    expect(submitted[0]).toEqual('value' in expected ? expected.value : undefined);
-  });
 
   test('submits JSON Schema values and exposes the same object through FormData', async () => {
     const schema = {
@@ -148,80 +116,6 @@ describe('SchemaForm', () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(requestSubmitCalls).toEqual([undefined]);
-  });
-
-  test('blocks submit when validated Standard Schema output cannot be serialized', async () => {
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'test',
-        validate: () => ({ value: { count: Number.NaN } }),
-      },
-    } as const;
-    const submitted: unknown[] = [];
-
-    const { container } = render(SchemaForm, {
-      props: {
-        schema,
-        value: { count: 1 },
-        onsubmit: (value: unknown) => {
-          submitted.push(value);
-        },
-      },
-    });
-    await flush();
-
-    const form = formFrom(container);
-    const event = await submit(form);
-    const rawInput = form.querySelector('textarea');
-    const error = screen.getByText(/non-finite number/i);
-    const hiddenInput = form.querySelector('input[type="hidden"][name="value"]');
-
-    expect(event.defaultPrevented).toBe(true);
-    expect(submitted).toHaveLength(0);
-    expect(rawInput).toBeInstanceOf(HTMLTextAreaElement);
-    const rawTextarea = rawInput as HTMLTextAreaElement;
-    expect(rawTextarea.getAttribute('aria-invalid')).toBe('true');
-    expect(rawTextarea.getAttribute('aria-describedby')).toContain(error.id);
-    expect(hiddenInput).toBeInstanceOf(HTMLInputElement);
-    expect((hiddenInput as HTMLInputElement).value).toBe('');
-  });
-
-  test('renders form-level serialization errors for object schemas', async () => {
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { count: { type: 'number', title: 'Count' } },
-          }),
-        },
-        validate: () => ({ value: { count: Number.NaN } }),
-      },
-    } as const;
-    const submitted: unknown[] = [];
-
-    const { container } = render(SchemaForm, {
-      props: {
-        schema,
-        value: { count: 1 },
-        onsubmit: (value: unknown) => {
-          submitted.push(value);
-        },
-      },
-    });
-    await flush();
-
-    const event = await submit(formFrom(container));
-    const error = screen.getByText(/non-finite number/i);
-
-    expect(event.defaultPrevented).toBe(true);
-    expect(submitted).toHaveLength(0);
-    expect(error.id).toMatch(/-value-error$/);
-    expect(error.getAttribute('tabindex')).toBe('-1');
-    expect(document.activeElement).toBe(error);
   });
 
   test('submits edited raw JSON drafts for every array row', async () => {
@@ -468,53 +362,6 @@ describe('SchemaForm', () => {
     expect(screen.getByText(/JSON|Expected|position/i)).toBeTruthy();
   });
 
-  test('ignores stale async blur validation after raw JSON drafts change', async () => {
-    const validations: Array<{
-      value: unknown;
-      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
-    }> = [];
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'raw-json-stale-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { raw: { title: 'Raw payload' } },
-            required: ['raw'],
-          }),
-          output: () => ({}),
-        },
-        async validate(value: unknown) {
-          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
-            (resolve) => {
-              validations.push({ value, resolve });
-            },
-          );
-        },
-      },
-    } as const;
-
-    render(SchemaForm, { props: { schema, value: { raw: { ok: true } } } });
-    await flush();
-
-    const rawTextarea = screen.getByLabelText(/Raw payload/);
-    await fireEvent.input(rawTextarea, { target: { value: '{"ok":false}' } });
-    await fireEvent.blur(rawTextarea);
-    await flush();
-    expect(validations).toHaveLength(1);
-
-    await fireEvent.input(rawTextarea, { target: { value: '{"ok":true}' } });
-    validations[0]!.resolve({
-      issues: [{ path: ['raw'], message: 'Raw payload is unavailable.' }],
-    });
-    await flush();
-    await flush();
-
-    expect(rawTextarea.getAttribute('aria-invalid')).not.toBe('true');
-    expect(screen.queryByText('Raw payload is unavailable.')).toBeNull();
-  });
-
   test('humanizes dashed AJV field names without throwing', async () => {
     const { container } = render(SchemaForm, {
       props: {
@@ -533,173 +380,11 @@ describe('SchemaForm', () => {
     expect(screen.getByText(/User name is too short/i)).toBeTruthy();
   });
 
-  test('awaits async Standard Schema validation before calling onsubmit', async () => {
-    let releaseValidation!: () => void;
-    const validationGate = new Promise<void>((resolve) => {
-      releaseValidation = resolve;
-    });
-    const submitted: unknown[] = [];
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'async-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { name: { type: 'string', title: 'Name' } },
-            required: ['name'],
-          }),
-          output: () => ({}),
-        },
-        async validate(value: unknown) {
-          await validationGate;
-          return { value };
-        },
-      },
-    } as const;
-
-    const { container } = render(SchemaForm, {
-      props: {
-        schema,
-        value: { name: 'Ada' },
-        onsubmit: (value: unknown) => {
-          submitted.push(value);
-        },
-      },
-    });
-    await flush();
-
-    const submitPromise = submit(formFrom(container));
-    await flush();
-    expect(submitted).toHaveLength(0);
-
-    releaseValidation();
-    await submitPromise;
-
-    expect(submitted).toEqual([{ name: 'Ada' }]);
-  });
-
-  test('blocks submit when async Standard Schema validation returns issues', async () => {
-    let releaseValidation!: () => void;
-    const validationGate = new Promise<void>((resolve) => {
-      releaseValidation = resolve;
-    });
-    const submitted: unknown[] = [];
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'async-invalid-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { name: { type: 'string', title: 'Name' } },
-            required: ['name'],
-          }),
-          output: () => ({}),
-        },
-        async validate() {
-          await validationGate;
-          return {
-            issues: [{ path: ['name'], message: 'Name is unavailable.' }],
-          };
-        },
-      },
-    } as const;
-
-    const { container } = render(SchemaForm, {
-      props: {
-        schema,
-        value: { name: 'Ada' },
-        onsubmit: (value: unknown) => {
-          submitted.push(value);
-        },
-      },
-    });
-    await flush();
-
-    const submitPromise = submit(formFrom(container));
-    await flush();
-    expect(screen.getByLabelText(/Name/)).toHaveProperty('disabled', true);
-
-    releaseValidation();
-    await submitPromise;
-    await flush();
-
-    expect(submitted).toEqual([]);
-    expect(screen.getByLabelText(/Name/).getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByText('Name is unavailable.')).toBeTruthy();
-  });
-
-  test('ignores stale async blur validation after the field value changes', async () => {
-    const validations: Array<{
-      value: unknown;
-      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
-    }> = [];
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'async-blur-stale-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { name: { type: 'string', title: 'Name' } },
-            required: ['name'],
-          }),
-          output: () => ({}),
-        },
-        async validate(value: unknown) {
-          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
-            (resolve) => {
-              validations.push({ value, resolve });
-            },
-          );
-        },
-      },
-    } as const;
-
-    render(SchemaForm, {
-      props: {
-        schema,
-        value: { name: 'Ada' },
-      },
-    });
-    await flush();
-
-    const nameInput = screen.getByLabelText(/Name/);
-    await fireEvent.input(nameInput, { target: { value: '' } });
-    await fireEvent.blur(nameInput);
-    await flush();
-    expect(validations).toHaveLength(1);
-
-    await fireEvent.input(nameInput, { target: { value: 'Ada' } });
-    validations[0]!.resolve({ issues: [{ path: ['name'], message: 'Name is unavailable.' }] });
-    await flush();
-    await flush();
-
-    expect(nameInput.getAttribute('aria-invalid')).not.toBe('true');
-    expect(screen.queryByText('Name is unavailable.')).toBeNull();
-  });
-
   test('validates number fields on blur', async () => {
     const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'number-blur-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { count: { type: 'number', title: 'Count' } },
-            required: ['count'],
-          }),
-          output: () => ({}),
-        },
-        validate(value: unknown) {
-          const count = (value as { count?: number }).count;
-          return count === undefined || count >= 10
-            ? { value }
-            : { issues: [{ path: ['count'], message: 'Count must be at least 10.' }] };
-        },
-      },
+      type: 'object',
+      properties: { count: { type: 'number', title: 'Count', minimum: 10 } },
+      required: ['count'],
     } as const;
 
     render(SchemaForm, {
@@ -718,80 +403,13 @@ describe('SchemaForm', () => {
     expect(screen.getByText('Count must be at least 10.')).toBeTruthy();
   });
 
-  test('ignores stale async blur validation after a focused number edit', async () => {
-    const validations: Array<{
-      value: unknown;
-      resolve: (result: { issues?: Array<{ path: string[]; message: string }> }) => void;
-    }> = [];
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'number-blur-stale-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { count: { type: 'number', title: 'Count' } },
-            required: ['count'],
-          }),
-          output: () => ({}),
-        },
-        async validate(value: unknown) {
-          return await new Promise<{ issues?: Array<{ path: string[]; message: string }> }>(
-            (resolve) => {
-              validations.push({ value, resolve });
-            },
-          );
-        },
-      },
-    } as const;
-
-    render(SchemaForm, {
-      props: {
-        schema,
-        value: { count: 5 },
-      },
-    });
-    await flush();
-
-    const countInput = screen.getByRole('spinbutton', { name: /Count/ });
-    await fireEvent.input(countInput, { target: { value: '5' } });
-    await fireEvent.blur(countInput);
-    await flush();
-    expect(validations).toHaveLength(1);
-
-    await fireEvent.focus(countInput);
-    await fireEvent.input(countInput, { target: { value: '12' } });
-    validations[0]!.resolve({ issues: [{ path: ['count'], message: 'Count is unavailable.' }] });
-    await flush();
-    await flush();
-
-    expect((countInput as HTMLInputElement).value).toBe('12');
-    expect(countInput.getAttribute('aria-invalid')).not.toBe('true');
-    expect(screen.queryByText('Count is unavailable.')).toBeNull();
-  });
-
   test('reports schema number bounds instead of clamping typed values', async () => {
     const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'number-bounds-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: {
-              count: { type: 'number', title: 'Count', maximum: 10 },
-            },
-            required: ['count'],
-          }),
-          output: () => ({}),
-        },
-        validate(value: unknown) {
-          const count = (value as { count?: number }).count;
-          return count === undefined || count <= 10
-            ? { value }
-            : { issues: [{ path: ['count'], message: 'Count must be at most 10.' }] };
-        },
+      type: 'object',
+      properties: {
+        count: { type: 'number', title: 'Count', maximum: 10 },
       },
+      required: ['count'],
     } as const;
     const submitted: unknown[] = [];
 
@@ -820,148 +438,6 @@ describe('SchemaForm', () => {
     expect(screen.getByText('Count must be at most 10.')).toBeTruthy();
   });
 
-  test('keeps controls frozen when a new submit starts during invalid-submit focus', async () => {
-    let releaseFirstValidation!: () => void;
-    let releaseSecondValidation!: () => void;
-    const firstValidationGate = new Promise<void>((resolve) => {
-      releaseFirstValidation = resolve;
-    });
-    const secondValidationGate = new Promise<void>((resolve) => {
-      releaseSecondValidation = resolve;
-    });
-    const submitted: unknown[] = [];
-    let validationCalls = 0;
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'async-overlap-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { name: { type: 'string', title: 'Name' } },
-            required: ['name'],
-          }),
-          output: () => ({}),
-        },
-        async validate(value: unknown) {
-          validationCalls += 1;
-          if (validationCalls === 1) {
-            await firstValidationGate;
-            return {
-              issues: [{ path: ['name'], message: 'First invalid.' }],
-            };
-          }
-
-          await secondValidationGate;
-          return { value };
-        },
-      },
-    } as const;
-
-    const { container } = render(SchemaForm, {
-      props: {
-        schema,
-        value: { name: 'Ada' },
-        onsubmit: (value: unknown) => {
-          submitted.push(value);
-        },
-      },
-    });
-    await flush();
-
-    const form = formFrom(container);
-    const input = screen.getByLabelText(/Name/);
-    const originalFocus = HTMLInputElement.prototype.focus;
-    let secondSubmitDispatched = false;
-    HTMLInputElement.prototype.focus = function dispatchSecondSubmitDuringFocus(
-      this: HTMLInputElement,
-      options?: FocusOptions,
-    ) {
-      if (!secondSubmitDispatched) {
-        secondSubmitDispatched = true;
-        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-      }
-      return originalFocus.call(this, options);
-    };
-
-    try {
-      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-      await flush();
-      expect(input).toHaveProperty('disabled', true);
-
-      releaseFirstValidation();
-      await flush();
-      await flush();
-
-      expect(secondSubmitDispatched).toBe(true);
-      expect(validationCalls).toBe(2);
-      expect(input).toHaveProperty('disabled', true);
-      expect(screen.getByRole('button', { name: /Validating/ })).toHaveProperty('disabled', true);
-
-      releaseSecondValidation();
-      await flush();
-      await flush();
-
-      expect(submitted).toEqual([{ name: 'Ada' }]);
-      expect(input).toHaveProperty('disabled', false);
-    } finally {
-      HTMLInputElement.prototype.focus = originalFocus;
-    }
-  });
-
-  test('freezes controls during async validation so late edits cannot change the submitted payload', async () => {
-    let releaseValidation!: () => void;
-    const validationGate = new Promise<void>((resolve) => {
-      releaseValidation = resolve;
-    });
-    const submitted: unknown[] = [];
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'async-freeze-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: { name: { type: 'string', title: 'Name' } },
-            required: ['name'],
-          }),
-          output: () => ({}),
-        },
-        async validate(value: unknown) {
-          await validationGate;
-          return { value };
-        },
-      },
-    } as const;
-
-    const { container } = render(SchemaForm, {
-      props: {
-        schema,
-        value: { name: 'Ada' },
-        onsubmit: (value: unknown) => {
-          submitted.push(value);
-        },
-      },
-    });
-    await flush();
-
-    const submitPromise = submit(formFrom(container));
-    await flush();
-
-    const input = screen.getByLabelText(/Name/);
-    expect(input).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: /Validating/ })).toHaveProperty('disabled', true);
-
-    await fireEvent.input(input, { target: { value: 'Grace' } });
-    releaseValidation();
-    await submitPromise;
-    await flush();
-
-    expect(submitted).toEqual([{ name: 'Ada' }]);
-    expect(input).toHaveProperty('value', 'Ada');
-    expect(input).toHaveProperty('disabled', false);
-  });
-
   test('removes array items without leaking removed values into the submitted payload', async () => {
     let submitted: unknown;
     const { container } = render(SchemaForm, {
@@ -985,68 +461,6 @@ describe('SchemaForm', () => {
     await submit(formFrom(container));
 
     expect(submitted).toEqual({ tags: ['two'] });
-  });
-
-  test('removing an array item invalidates pending touched validation for shifted rows', async () => {
-    let releaseValidation!: () => void;
-    const validationGate = new Promise<void>((resolve) => {
-      releaseValidation = resolve;
-    });
-    let validationCalls = 0;
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'async-array-remove-test',
-        jsonSchema: {
-          input: () => ({
-            type: 'object',
-            properties: {
-              items: {
-                type: 'array',
-                title: 'Items',
-                items: {
-                  type: 'object',
-                  properties: { name: { type: 'string', title: 'Name' } },
-                  required: ['name'],
-                },
-              },
-            },
-          }),
-          output: () => ({}),
-        },
-        async validate(value: unknown) {
-          validationCalls += 1;
-          await validationGate;
-          const firstName = (value as { items?: Array<{ name?: string }> }).items?.[0]?.name;
-          if (firstName === '') {
-            return {
-              issues: [{ message: 'Name is required.', path: ['items', 0, 'name'] }],
-            };
-          }
-          return { value };
-        },
-      },
-    } as const;
-
-    const { container } = render(SchemaForm, {
-      props: {
-        schema,
-        value: { items: [{ name: '' }, { name: 'kept' }] },
-      },
-    });
-    await flush();
-
-    const nameInputs = within(container).getAllByLabelText(/Name/);
-    await fireEvent.blur(nameInputs[0]!);
-    await flush();
-    await fireEvent.click(within(container).getByRole('button', { name: 'Remove Items item 1' }));
-    releaseValidation();
-    await flush();
-    await flush();
-
-    expect(validationCalls).toBe(1);
-    expect(within(container).getByLabelText(/Name/)).toHaveProperty('value', 'kept');
-    expect(container.textContent).not.toContain('Name is required.');
   });
 });
 

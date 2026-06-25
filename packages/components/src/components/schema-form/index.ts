@@ -8,7 +8,6 @@ export type {
   SchemaFormOutput,
   SchemaFormProps,
   SchemaFormSchema,
-  SchemaFormStandardSchema,
   SchemaFormSubmitHandler,
 } from './schema-form.types.ts';
 export { SchemaForm };
