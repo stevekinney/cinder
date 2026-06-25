@@ -602,6 +602,29 @@ describe('behavior', () => {
     expect(label?.textContent?.trim()).toBe('Open logs');
   });
 
+  test('renders backslash scheme-relative step links as non-interactive text', () => {
+    const unsafeHrefs = ['\\\\evil.example/path', '/\\evil.example/path'];
+
+    for (const href of unsafeHrefs) {
+      cleanup();
+      const { container } = render(RunStepTimeline, {
+        steps: [
+          {
+            ...succeededStep,
+            link: {
+              href,
+              label: 'Open logs',
+            },
+          },
+        ],
+      });
+
+      expect(container.querySelector('a.cinder-run-step-timeline__link')).toBeNull();
+      const label = container.querySelector('.cinder-run-step-timeline__link--unsafe');
+      expect(label?.textContent?.trim()).toBe('Open logs');
+    }
+  });
+
   test('keeps app-relative step links interactive', () => {
     const { container } = render(RunStepTimeline, {
       steps: [
@@ -739,6 +762,51 @@ describe('accessibility', () => {
     expect(currentItems).toHaveLength(1);
     expect(currentItems[0]?.getAttribute('data-cinder-path')).toBe('workflow/approval');
     expect(items[0]?.hasAttribute('aria-current')).toBe(false);
+  });
+
+  test('sets aria-current on the depth cap row when it hides the active descendant', () => {
+    const deeplyNested: RunStep = {
+      id: 'root',
+      label: 'Root',
+      status: 'succeeded',
+      children: [
+        {
+          id: 'child',
+          label: 'Child',
+          status: 'succeeded',
+          children: [
+            {
+              id: 'grandchild',
+              label: 'Grandchild',
+              status: 'succeeded',
+              children: [
+                {
+                  id: 'great-grandchild',
+                  label: 'Great grandchild',
+                  status: 'succeeded',
+                  children: [
+                    {
+                      id: 'capped-active-child',
+                      label: 'Capped active child',
+                      status: 'waiting_approval',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = render(RunStepTimeline, { steps: [deeplyNested] });
+    const currentItems = Array.from(
+      container.querySelectorAll<HTMLElement>('[aria-current="step"]'),
+    );
+
+    expect(currentItems).toHaveLength(1);
+    expect(currentItems[0]?.hasAttribute('data-cinder-depth-limit')).toBe(true);
+    expect(currentItems[0]?.getAttribute('data-cinder-status')).toBe('depth-limit');
   });
 
   test('does not set aria-current on succeeded, failed, pending, or skipped steps', () => {

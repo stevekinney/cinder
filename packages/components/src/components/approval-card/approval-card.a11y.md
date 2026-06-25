@@ -37,6 +37,6 @@ callback; the host remains the source of truth for persisted state.
 
 `env` accepts environment variable names only. If a caller accidentally passes a
 `NAME=value` string, the component displays only the name before `=` and never
-renders the value. The masked rows use `SecretValueField` with an empty,
-non-secret value, so no secret material is present in visible text, attributes,
-or copyable content.
+renders the value. The masked rows use `SecretValueField` with the environment
+name as the non-secret value, so the copy action copies the name and no secret
+material is present in visible text, attributes, or copyable content.

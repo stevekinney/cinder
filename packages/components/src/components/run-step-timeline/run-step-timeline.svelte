@@ -47,6 +47,7 @@
   type RenderedDepthLimitRow = RenderedRunStepBase & {
     kind: 'depth-limit';
     hiddenStepCount: number;
+    hiddenCurrent: boolean;
   };
 
   type PendingRenderedRunStep = RenderedStepRow | RenderedDepthLimitRow;
@@ -192,7 +193,8 @@
     const trimmedHref = href.trim();
     if (trimmedHref === '') return undefined;
     if (/[\u0000-\u001F\u007F]/.test(trimmedHref)) return undefined;
-    if (trimmedHref.startsWith('//')) return undefined;
+    const leadingSeparators = trimmedHref.match(/^[\\/]+/)?.[0] ?? '';
+    if (leadingSeparators.length > 1) return undefined;
 
     if (/^[A-Za-z][A-Za-z\d+.-]*:/.test(trimmedHref)) {
       try {
@@ -240,6 +242,7 @@
             depth,
             pathKey: `${pathKey}/__cinder-depth-limit`,
             hiddenStepCount: countNestedRunSteps(step.children),
+            hiddenCurrent: hasCurrentRunStep(step.children),
           });
         }
       }
@@ -260,16 +263,28 @@
     return count;
   }
 
+  function hasCurrentRunStep(steps: RunStep[]): boolean {
+    return steps.some(
+      (step) =>
+        isCurrent(step.status) || (step.children ? hasCurrentRunStep(step.children) : false),
+    );
+  }
+
   function deepestCurrentStepIndex(rows: PendingRenderedRunStep[]): number {
     let currentIndex = -1;
     let currentDepth = -1;
 
     rows.forEach((row, index) => {
-      if (row.kind !== 'step') return;
-      if (!isCurrent(row.step.status)) return;
-      if (row.depth > currentDepth) {
+      const rowCurrentDepth =
+        row.kind === 'depth-limit' && row.hiddenCurrent
+          ? row.depth + 1
+          : row.kind === 'step' && isCurrent(row.step.status)
+            ? row.depth
+            : -1;
+
+      if (rowCurrentDepth > currentDepth) {
         currentIndex = index;
-        currentDepth = row.depth;
+        currentDepth = rowCurrentDepth;
       }
     });
 
@@ -292,6 +307,7 @@
         data-cinder-path={row.pathKey}
         data-cinder-connector-after={row.connectorAfter}
         data-cinder-depth-limit
+        aria-current={row.ariaCurrent ? 'step' : undefined}
         style:--_cinder-rst-depth={row.depth}
       >
         <div class="cinder-run-step-timeline__event">
