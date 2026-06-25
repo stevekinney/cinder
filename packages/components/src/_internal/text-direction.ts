@@ -39,6 +39,14 @@ export function resolveTextDirection(
   const computedDirection = readComputedTextDirection(element);
   const rootComputedDirection = readComputedTextDirection(element?.ownerDocument.documentElement);
   if (computedDirection && computedDirection !== rootComputedDirection) return computedDirection;
+  if (
+    computedDirection &&
+    fallback &&
+    computedDirection !== fallback &&
+    hasDirectionStylingHint(element)
+  ) {
+    return computedDirection;
+  }
   if (!fallback && computedDirection === 'rtl') return computedDirection;
 
   if (fallback) return fallback;
@@ -53,6 +61,23 @@ function readComputedTextDirection(
   if (!element || typeof getComputedStyle !== 'function') return undefined;
   const direction = getComputedStyle(element).direction;
   return direction === 'rtl' || direction === 'ltr' ? direction : undefined;
+}
+
+function hasDirectionStylingHint(element: HTMLElement | null | undefined): boolean {
+  let currentElement = element?.parentElement;
+  while (currentElement && currentElement !== currentElement.ownerDocument.documentElement) {
+    if (currentElement.style.direction) return true;
+    if (
+      typeof currentElement.className === 'string' &&
+      currentElement.className.split(/\s+/).some((className) => {
+        return className && !className.startsWith('cinder-');
+      })
+    ) {
+      return true;
+    }
+    currentElement = currentElement.parentElement;
+  }
+  return false;
 }
 
 export function isRightToLeftElement(element: HTMLElement | null | undefined): boolean {

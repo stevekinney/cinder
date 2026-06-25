@@ -39,6 +39,9 @@
   let directionRevision = $state(0);
   const resolvedDirection = $derived.by(() => {
     directionRevision;
+    if (direction === 'auto') {
+      return resolveTextDirection(context.anchorElement, localeContext?.direction) ?? direction;
+    }
     return direction ?? resolveTextDirection(context.anchorElement, localeContext?.direction);
   });
   const fallbackAnchorElement = $derived(
@@ -78,7 +81,7 @@
   });
 
   $effect(() => {
-    if (direction) return;
+    if (direction && direction !== 'auto') return;
     return observeTextDirection(context.anchorElement, () => {
       directionRevision += 1;
     });

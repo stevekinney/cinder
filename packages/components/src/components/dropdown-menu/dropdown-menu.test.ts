@@ -75,4 +75,16 @@ describe('DropdownMenu', () => {
 
     expect(container.querySelector('[role="menu"]')?.getAttribute('dir')).toBe('ltr');
   });
+
+  test('resolves auto menu direction from the locale provider', async () => {
+    render(DropdownDirectionFixture, {
+      props: { providerDirection: 'rtl', menuDirection: 'auto' },
+    });
+    const container = document.body;
+
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+    expect(container.querySelector('[role="menu"]')?.getAttribute('dir')).toBe('rtl');
+  });
 });

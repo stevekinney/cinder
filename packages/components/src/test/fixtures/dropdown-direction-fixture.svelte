@@ -9,9 +9,11 @@
   let {
     providerDirection = 'rtl',
     localDirection,
+    menuDirection,
   }: {
     providerDirection?: TextDirection;
     localDirection?: TextDirection | undefined;
+    menuDirection?: TextDirection | 'auto' | undefined;
   } = $props();
 </script>
 
@@ -20,7 +22,7 @@
     <div dir={localDirection}>
       <Dropdown id="provider-direction-menu">
         <DropdownTrigger class="trigger">Actions</DropdownTrigger>
-        <DropdownMenu>
+        <DropdownMenu dir={menuDirection}>
           <DropdownItem>Copy link</DropdownItem>
         </DropdownMenu>
       </Dropdown>
@@ -28,7 +30,7 @@
   {:else}
     <Dropdown id="provider-direction-menu">
       <DropdownTrigger class="trigger">Actions</DropdownTrigger>
-      <DropdownMenu>
+      <DropdownMenu dir={menuDirection}>
         <DropdownItem>Copy link</DropdownItem>
       </DropdownMenu>
     </Dropdown>
