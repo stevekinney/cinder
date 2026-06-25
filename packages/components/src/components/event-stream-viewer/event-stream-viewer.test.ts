@@ -275,6 +275,25 @@ describe('EventStreamViewer', () => {
         container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
       ).toBeNull();
     });
+
+    test('filter-capable streams still detect sequence gaps when filtering is inactive', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 7 },
+        { ...warningEvent, id: 'evt-2', sequence: 10 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: {
+          events: entries,
+          onfilter: () => {},
+          filterQuery: '',
+        },
+      });
+
+      const marker = container.querySelector(
+        '.cinder-event-stream-viewer__sequence-gap-marker [role="note"]',
+      );
+      expect(marker?.getAttribute('aria-label')).toBe('Sequence gap — expected 8, received 10');
+    });
   });
 
   describe('details expansion', () => {

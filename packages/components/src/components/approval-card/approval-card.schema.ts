@@ -40,6 +40,122 @@ const schema = {
       required: ['name', 'provider', 'workingDir'],
       description: 'Optional sandbox context in which the operation will run.',
     },
+    operation: {
+      type: 'object',
+      properties: {
+        kind: {
+          enum: ['command', 'file-write', 'patch', 'other'],
+          description: 'Operation family being approved.',
+        },
+        command: {
+          type: 'string',
+          description: 'Shell command for command approvals.',
+        },
+        filesTouched: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+          description: 'File paths that the operation may read or write.',
+        },
+        argsPreview: {
+          anyOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'number',
+            },
+            {
+              const: false,
+            },
+            {
+              const: true,
+            },
+            {
+              type: 'array',
+              items: {
+                anyOf: [
+                  {
+                    type: 'string',
+                  },
+                  {
+                    type: 'number',
+                  },
+                  {
+                    const: false,
+                  },
+                  {
+                    const: true,
+                  },
+                  {
+                    type: 'null',
+                  },
+                ],
+              },
+            },
+            {
+              type: 'object',
+              additionalProperties: {
+                anyOf: [
+                  {
+                    type: 'string',
+                  },
+                  {
+                    type: 'number',
+                  },
+                  {
+                    const: false,
+                  },
+                  {
+                    const: true,
+                  },
+                  {
+                    type: 'null',
+                  },
+                ],
+              },
+            },
+            {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: {
+                  anyOf: [
+                    {
+                      type: 'string',
+                    },
+                    {
+                      type: 'number',
+                    },
+                    {
+                      const: false,
+                    },
+                    {
+                      const: true,
+                    },
+                    {
+                      type: 'null',
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              type: 'null',
+            },
+          ],
+          description: 'JSON-like argument preview shown to the approver.',
+        },
+        diff: {
+          type: 'string',
+          description: 'Patch diff for patch approvals.',
+        },
+      },
+      additionalProperties: false,
+      required: ['kind'],
+      description: 'Operation details shown to the approver.',
+    },
     env: {
       type: 'array',
       items: {
@@ -78,7 +194,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['idempotencyKey', 'policyVersion', 'state', 'tool'],
+  required: ['idempotencyKey', 'operation', 'policyVersion', 'state', 'tool'],
   metadata: {
     unsupportedProps: [
       {
@@ -106,12 +222,6 @@ const schema = {
         name: 'onRemember',
         reason: 'function-or-snippet',
         description: 'Called when the approver asks the host application to remember the decision.',
-      },
-      {
-        name: 'operation',
-        reason: 'unknown-shape',
-        required: true,
-        description: 'Operation details shown to the approver.',
       },
     ],
   },

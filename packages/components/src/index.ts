@@ -310,9 +310,11 @@ export type { EmptyStateProps } from './components/empty-state/index.ts';
 export { default as EventStreamViewer } from './components/event-stream-viewer/index.ts';
 export type {
   EventSeverity,
+  EventStreamEntry,
   EventStreamState,
   EventStreamViewerProps,
   StreamEvent,
+  StreamReconnectedBoundary,
 } from './components/event-stream-viewer/index.ts';
 
 export { default as FacetedFilterBar } from './components/faceted-filter-bar/index.ts';
@@ -561,6 +563,7 @@ export { default as RunStepTimeline } from './components/run-step-timeline/index
 export type {
   RunStep,
   RunStepDetail,
+  RunStepLink,
   RunStepStatus,
   RunStepTimelineProps,
 } from './components/run-step-timeline/index.ts';

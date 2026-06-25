@@ -15,7 +15,7 @@
   sandbox={{
     provider: 'codex',
     name: 'workspace-write',
-    workingDir: '/Users/stevekinney/Developer/cinder',
+    workingDir: '/workspace/project',
   }}
   operation={{
     kind: 'command',

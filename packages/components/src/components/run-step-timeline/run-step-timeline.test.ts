@@ -11,6 +11,7 @@ setupHappyDom();
 
 const { render, cleanup } = await import('@testing-library/svelte');
 const { default: RunStepTimeline } = await import('./run-step-timeline.svelte');
+const { default: runStepTimelineSchema } = await import('./run-step-timeline.schema.ts');
 
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
@@ -94,6 +95,27 @@ const waitingApprovalStep: RunStep = {
 // ---------------------------------------------------------------------------
 
 describe('structure', () => {
+  test('schema allows nested child details and links', () => {
+    const stepsSchema = runStepTimelineSchema.properties['steps'] as
+      | {
+          items: {
+            properties: {
+              children: {
+                items: {
+                  properties: Record<string, unknown>;
+                };
+              };
+            };
+          };
+        }
+      | undefined;
+    expect(stepsSchema).toBeDefined();
+    const childProperties = stepsSchema?.items.properties.children.items.properties ?? {};
+
+    expect(childProperties).toHaveProperty('details');
+    expect(childProperties).toHaveProperty('link');
+  });
+
   test('renders an ordered list with one item per step', () => {
     const { container } = render(RunStepTimeline, {
       steps: [succeededStep, runningStep, pendingStep],

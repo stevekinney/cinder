@@ -171,7 +171,7 @@ export type RunStepTimelineSchemaStep = {
 
 /**
  * Schema generator surface for one nested child step.
- * Object and array members are intentionally omitted at this depth so schema generation stays finite.
+ * Recursive child lanes are intentionally omitted at this depth so schema generation stays finite.
  * @schemaObject
  */
 export type RunStepTimelineSchemaChildStep = {
@@ -215,6 +215,14 @@ export type RunStepTimelineSchemaChildStep = {
    * Maximum value for the progress bar. Defaults to 100.
    */
   progressMax?: number | undefined;
+  /**
+   * Expandable detail panels (logs, payloads, errors) shown inline.
+   */
+  details?: RunStepDetail[] | undefined;
+  /**
+   * Optional link to logs, traces, or a step detail route.
+   */
+  link?: RunStepLink | undefined;
 };
 
 /**

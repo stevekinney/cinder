@@ -22,6 +22,8 @@ import {
 } from 'ts-morph';
 
 const SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema' as const;
+const MAX_SCHEMA_TYPE_DEPTH = 6;
+const MAX_SCHEMA_STRUCTURAL_OBJECT_DEPTH = 5;
 // JSON Schema's conditional `then` keyword, used as a computed object key in
 // the generated `if`/`then` blocks below. `as const` keeps it typed as the
 // literal without an assertion.
@@ -303,7 +305,7 @@ interface ConvertUnsupported {
 type ConvertResult = ConvertSuccess | ConvertUnsupported;
 
 function convertType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
-  if (depth > 4) return { kind: 'unsupported', reason: 'unknown-shape' };
+  if (depth > MAX_SCHEMA_TYPE_DEPTH) return { kind: 'unsupported', reason: 'unknown-shape' };
 
   // Strip `undefined` — optional props are handled by `symbol.isOptional()`,
   // so the schema only needs to describe the present-value type.
@@ -395,7 +397,7 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     }
 
     if (
-      depth > 3 ||
+      depth > MAX_SCHEMA_STRUCTURAL_OBJECT_DEPTH ||
       !expandObjectShapes ||
       !(
         isDeclaredInActiveTypesFile(type) ||

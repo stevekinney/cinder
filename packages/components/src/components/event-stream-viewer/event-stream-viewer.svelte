@@ -115,7 +115,7 @@
     const keyOccurrences = new Map<string, number>();
     let previousSequence: number | undefined;
     let previousEventId: string | undefined;
-    const detectSequenceGaps = onfilter === undefined;
+    const detectSequenceGaps = filterQuery.trim() === '';
 
     for (const entry of events) {
       if (isReconnectedBoundary(entry)) {

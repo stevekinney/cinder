@@ -22,6 +22,13 @@ export type ApprovalSandbox = {
 
 export type ApprovalOperationKind = 'command' | 'file-write' | 'patch' | 'other';
 
+export type ApprovalSchemaArgumentPrimitive = string | number | boolean | null;
+export type ApprovalSchemaArgumentValue =
+  | ApprovalSchemaArgumentPrimitive
+  | ApprovalSchemaArgumentPrimitive[]
+  | Record<string, ApprovalSchemaArgumentPrimitive>
+  | Record<string, ApprovalSchemaArgumentPrimitive>[];
+
 /** @schemaObject */
 export type ApprovalOperation = {
   /** Operation family being approved. */
@@ -32,6 +39,20 @@ export type ApprovalOperation = {
   filesTouched?: string[];
   /** JSON-like argument preview shown to the approver. */
   argsPreview?: unknown;
+  /** Patch diff for patch approvals. */
+  diff?: string;
+};
+
+/** @schemaObject */
+export type ApprovalOperationSchema = {
+  /** Operation family being approved. */
+  kind: ApprovalOperationKind;
+  /** Shell command for command approvals. */
+  command?: string;
+  /** File paths that the operation may read or write. */
+  filesTouched?: string[];
+  /** JSON-like argument preview shown to the approver. */
+  argsPreview?: ApprovalSchemaArgumentValue;
   /** Patch diff for patch approvals. */
   diff?: string;
 };
@@ -87,9 +108,8 @@ export type ApprovalCardProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'chi
 /**
  * Cinder-specific schema surface for ApprovalCard.
  *
- * Callback props and nested operation objects are documented but may be marked
- * unsupported by the schema generator when they cannot be represented as JSON
- * Schema controls.
+ * Callback props are documented but marked unsupported because functions cannot
+ * be represented as JSON Schema controls.
  */
 export type ApprovalCardSchemaProps = {
   /** Tool requesting approval. */
@@ -97,7 +117,7 @@ export type ApprovalCardSchemaProps = {
   /** Optional sandbox context in which the operation will run. */
   sandbox?: ApprovalSandbox;
   /** Operation details shown to the approver. */
-  operation: ApprovalOperation;
+  operation: ApprovalOperationSchema;
   /** Environment variable names only. Values are ignored if accidentally supplied as `NAME=value`. */
   env?: string[];
   /** Snapshot identifier for the pending approval context. */

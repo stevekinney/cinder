@@ -89,7 +89,7 @@
   let currentTime = $state<number | undefined>();
   let editingArgumentsSeedKey = $state<string | null>(null);
   let editedArgumentsDrafts = $state<Record<string, string>>({});
-  let expirationTimer: ReturnType<typeof setInterval> | undefined;
+  let expirationTimer: ReturnType<typeof setTimeout> | undefined;
 
   const expirationTimestamp = $derived(parseExpirationTimestamp(expiresAt));
   const effectiveState = $derived<ApprovalState>(
@@ -154,14 +154,14 @@
         currentTime = nextCurrentTime;
         if (nextCurrentTime >= expirationTimestamp) {
           clearExpirationTimer();
+          return;
         }
+
+        const nextDelay = Math.min(1_000, expirationTimestamp - nextCurrentTime);
+        expirationTimer = setTimeout(updateCurrentTime, nextDelay);
       };
 
       updateCurrentTime();
-
-      if (currentTime !== undefined && currentTime < expirationTimestamp) {
-        expirationTimer = setInterval(updateCurrentTime, 1_000);
-      }
     }
 
     return clearExpirationTimer;
@@ -171,7 +171,7 @@
 
   function clearExpirationTimer(): void {
     if (expirationTimer !== undefined) {
-      clearInterval(expirationTimer);
+      clearTimeout(expirationTimer);
       expirationTimer = undefined;
     }
   }
@@ -265,7 +265,7 @@
     try {
       const serialized = JSON.stringify(value);
       if (typeof serialized !== 'string' || serialized.length <= ARGUMENTS_PREVIEW_MAX_CHARACTERS) {
-        return { value, truncated: false };
+        return { value: typeof value === 'string' ? serialized : value, truncated: false };
       }
       return {
         value: {
@@ -304,7 +304,13 @@
     return firstPart?.trim() ?? '';
   }
 
+  function currentApprovalIsActionable(): boolean {
+    const comparisonTime = expirationTimestamp === undefined ? currentTime : Date.now();
+    return isApprovalActionable(approvalState, expirationTimestamp, comparisonTime);
+  }
+
   function beginEditingArguments(): void {
+    if (!currentApprovalIsActionable()) return;
     if (!(currentEditedArgumentsSeedKey in editedArgumentsDrafts)) {
       editedArgumentsDrafts = {
         ...editedArgumentsDrafts,
@@ -321,9 +327,30 @@
     };
   }
 
+  function handleApprove(): void {
+    if (!currentApprovalIsActionable()) return;
+    onApprove?.();
+  }
+
   function handleApproveWithEdits(): void {
+    if (!currentApprovalIsActionable()) return;
     if (!editParseResult.ok) return;
     onApproveWithEdits?.(editParseResult.value);
+  }
+
+  function handleDeny(): void {
+    if (!currentApprovalIsActionable()) return;
+    onDeny?.();
+  }
+
+  function handleRemember(): void {
+    if (!currentApprovalIsActionable()) return;
+    onRemember?.();
+  }
+
+  function handleCancel(): void {
+    if (!currentApprovalIsActionable()) return;
+    onCancel?.();
   }
 </script>
 
@@ -462,12 +489,7 @@
       {#if isActionable}
         <section class="cinder-approval-card__section cinder-approval-card__actions-section">
           <ButtonGroup label="Approval actions">
-            <Button
-              type="button"
-              variant="primary"
-              onclick={() => onApprove?.()}
-              disabled={!onApprove}
-            >
+            <Button type="button" variant="primary" onclick={handleApprove} disabled={!onApprove}>
               Approve
             </Button>
             {#if editableArgs}
@@ -480,23 +502,13 @@
                 Approve with edits
               </Button>
             {/if}
-            <Button
-              type="button"
-              variant="soft-danger"
-              onclick={() => onDeny?.()}
-              disabled={!onDeny}
-            >
+            <Button type="button" variant="soft-danger" onclick={handleDeny} disabled={!onDeny}>
               Deny
             </Button>
-            <Button
-              type="button"
-              variant="soft"
-              onclick={() => onRemember?.()}
-              disabled={!onRemember}
-            >
+            <Button type="button" variant="soft" onclick={handleRemember} disabled={!onRemember}>
               Remember
             </Button>
-            <Button type="button" variant="ghost" onclick={() => onCancel?.()} disabled={!onCancel}>
+            <Button type="button" variant="ghost" onclick={handleCancel} disabled={!onCancel}>
               Cancel
             </Button>
           </ButtonGroup>

@@ -1,4 +1,5 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../link/link.css';
 
 @layer cinder.components {
   /* ========================================

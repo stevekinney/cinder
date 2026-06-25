@@ -163,6 +163,45 @@ const schema = {
                   type: 'number',
                   description: 'Maximum value for the progress bar. Defaults to 100.',
                 },
+                details: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: {
+                        type: 'string',
+                        description: 'Stable identity for this detail panel.',
+                      },
+                      label: {
+                        type: 'string',
+                        description: 'Trigger label rendered on the Collapsible header.',
+                      },
+                      content: {
+                        type: 'string',
+                        description: 'Pre-formatted content shown inside the panel.',
+                      },
+                    },
+                    additionalProperties: false,
+                    required: ['content', 'id', 'label'],
+                  },
+                  description: 'Expandable detail panels (logs, payloads, errors) shown inline.',
+                },
+                link: {
+                  type: 'object',
+                  properties: {
+                    href: {
+                      type: 'string',
+                      description: 'Destination URL for the step link.',
+                    },
+                    label: {
+                      type: 'string',
+                      description: 'Visible text for the step link.',
+                    },
+                  },
+                  additionalProperties: false,
+                  required: ['href', 'label'],
+                  description: 'Optional link to logs, traces, or a step detail route.',
+                },
               },
               additionalProperties: false,
               required: ['id', 'label', 'status'],

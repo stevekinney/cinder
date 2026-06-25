@@ -15,6 +15,7 @@ setupHappyDom();
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 const { default: ApprovalCard } = await import('./approval-card.svelte');
+const { default: approvalCardSchema } = await import('./approval-card.schema.ts');
 
 afterEach(() => {
   cleanup();
@@ -31,7 +32,7 @@ function approvalCardProps(overrides: Partial<ApprovalCardProps> = {}): Approval
     sandbox: {
       provider: 'codex',
       name: 'workspace-write',
-      workingDir: '/Users/stevekinney/Developer/cinder',
+      workingDir: '/workspace/project',
     },
     operation: {
       kind: 'command',
@@ -49,6 +50,14 @@ function approvalCardProps(overrides: Partial<ApprovalCardProps> = {}): Approval
 }
 
 describe('ApprovalCard', () => {
+  test('schema represents the required operation prop', () => {
+    expect(approvalCardSchema.required).toContain('operation');
+    expect(approvalCardSchema.properties).toHaveProperty('operation');
+    expect(approvalCardSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).not.toContain(
+      'operation',
+    );
+  });
+
   test('keeps expiring approvals non-actionable until the clock is initialized', () => {
     const expirationTimestamp = Date.parse('2026-06-24T12:00:00.000Z');
 
@@ -143,6 +152,21 @@ describe('ApprovalCard', () => {
     expect(container.textContent).not.toContain('No command or patch body was provided.');
   });
 
+  test('renders string argument previews as string values instead of parse errors', () => {
+    const { container } = render(ApprovalCard, {
+      ...approvalCardProps({
+        operation: {
+          kind: 'other',
+          argsPreview: 'plain string argument',
+        },
+      }),
+    });
+
+    expect(container.textContent).toContain('plain string argument');
+    expect(container.textContent).toContain('string');
+    expect(container.textContent).not.toContain('Parse error');
+  });
+
   test('renders environment names through masked fields without leaking supplied values', () => {
     const { container } = render(ApprovalCard, {
       ...approvalCardProps({
@@ -218,6 +242,30 @@ describe('ApprovalCard', () => {
     expect(getByRole('img', { name: 'Expired' })).toBeTruthy();
     expect(queryByRole('button', { name: 'Approve' })).toBeNull();
     expect(onApprove).not.toHaveBeenCalled();
+  });
+
+  test('blocks action callbacks at the exact expiration deadline', async () => {
+    const now = new Date('2026-06-24T12:00:00.000Z');
+    jest.useFakeTimers({ now });
+    const onApprove = mock();
+
+    const { getByRole, queryByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        expiresAt: new Date(now.getTime() + 250).toISOString(),
+        onApprove,
+      }),
+    });
+
+    await tick();
+    const approveButton = getByRole('button', { name: 'Approve' });
+
+    jest.advanceTimersByTime(250);
+    await fireEvent.click(approveButton);
+
+    expect(onApprove).not.toHaveBeenCalled();
+
+    await tick();
+    expect(queryByRole('button', { name: 'Approve' })).toBeNull();
   });
 
   test('renders past expiration as expired after mount without action buttons', async () => {
