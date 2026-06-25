@@ -71,8 +71,9 @@ describe('ApprovalCard', () => {
           kind: 'other',
           argsPreview: {
             filters: {
-              branch: 'main',
-              includeDrafts: false,
+              include: {
+                branch: 'main',
+              },
             },
           },
         },

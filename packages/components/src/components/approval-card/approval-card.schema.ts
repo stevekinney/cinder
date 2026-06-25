@@ -89,48 +89,7 @@ const schema = {
                     const: true,
                   },
                   {
-                    type: 'array',
-                    items: {
-                      anyOf: [
-                        {
-                          type: 'string',
-                        },
-                        {
-                          type: 'number',
-                        },
-                        {
-                          const: false,
-                        },
-                        {
-                          const: true,
-                        },
-                        {
-                          type: 'null',
-                        },
-                      ],
-                    },
-                  },
-                  {
                     type: 'object',
-                    additionalProperties: {
-                      anyOf: [
-                        {
-                          type: 'string',
-                        },
-                        {
-                          type: 'number',
-                        },
-                        {
-                          const: false,
-                        },
-                        {
-                          const: true,
-                        },
-                        {
-                          type: 'null',
-                        },
-                      ],
-                    },
                   },
                   {
                     type: 'null',
@@ -140,69 +99,6 @@ const schema = {
             },
             {
               type: 'object',
-              additionalProperties: {
-                anyOf: [
-                  {
-                    type: 'string',
-                  },
-                  {
-                    type: 'number',
-                  },
-                  {
-                    const: false,
-                  },
-                  {
-                    const: true,
-                  },
-                  {
-                    type: 'array',
-                    items: {
-                      anyOf: [
-                        {
-                          type: 'string',
-                        },
-                        {
-                          type: 'number',
-                        },
-                        {
-                          const: false,
-                        },
-                        {
-                          const: true,
-                        },
-                        {
-                          type: 'null',
-                        },
-                      ],
-                    },
-                  },
-                  {
-                    type: 'object',
-                    additionalProperties: {
-                      anyOf: [
-                        {
-                          type: 'string',
-                        },
-                        {
-                          type: 'number',
-                        },
-                        {
-                          const: false,
-                        },
-                        {
-                          const: true,
-                        },
-                        {
-                          type: 'null',
-                        },
-                      ],
-                    },
-                  },
-                  {
-                    type: 'null',
-                  },
-                ],
-              },
             },
             {
               type: 'null',

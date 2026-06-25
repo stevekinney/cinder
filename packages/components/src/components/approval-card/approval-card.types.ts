@@ -23,14 +23,26 @@ export type ApprovalSandbox = {
 export type ApprovalOperationKind = 'command' | 'file-write' | 'patch' | 'other';
 
 export type ApprovalSchemaArgumentPrimitive = string | number | boolean | null;
-export type ApprovalSchemaNestedArgumentValue =
+
+/**
+ * Open object boundary for JSON argument previews.
+ *
+ * The runtime prop accepts `unknown`; the schema surface keeps objects
+ * permissive so schema-driven consumers accept deep JSON that PayloadInspector
+ * can already render and edit.
+ *
+ * @schemaObject
+ */
+export type ApprovalSchemaArgumentObject = {};
+
+export type ApprovalSchemaArrayArgumentValue =
   | ApprovalSchemaArgumentPrimitive
-  | ApprovalSchemaArgumentPrimitive[]
-  | Record<string, ApprovalSchemaArgumentPrimitive>;
+  | ApprovalSchemaArgumentObject;
+
 export type ApprovalSchemaArgumentValue =
   | ApprovalSchemaArgumentPrimitive
-  | ApprovalSchemaNestedArgumentValue[]
-  | Record<string, ApprovalSchemaNestedArgumentValue>;
+  | ApprovalSchemaArrayArgumentValue[]
+  | ApprovalSchemaArgumentObject;
 
 /** @schemaObject */
 export type ApprovalOperation = {
