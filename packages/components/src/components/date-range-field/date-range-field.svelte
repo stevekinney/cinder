@@ -205,16 +205,46 @@
     return undefined;
   }
 
+  function isLeapYear(year: number): boolean {
+    return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  }
+
+  function daysInMonth(year: number, month: number): number {
+    if (month === 2) return isLeapYear(year) ? 29 : 28;
+    if ([4, 6, 9, 11].includes(month)) return 30;
+    return 31;
+  }
+
+  function isValidDatePart(datePart: string): boolean {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+    if (!match) return false;
+    const [, rawYear, rawMonth, rawDay] = match;
+    const year = Number(rawYear);
+    const month = Number(rawMonth);
+    const day = Number(rawDay);
+    return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month);
+  }
+
+  function isValidTimePart(timePart: string): boolean {
+    const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(timePart);
+    if (!match) return false;
+    const [, rawHour, rawMinute, rawSecond = '00'] = match;
+    const hour = Number(rawHour);
+    const minute = Number(rawMinute);
+    const second = Number(rawSecond);
+    return hour <= 23 && minute <= 59 && second <= 59;
+  }
+
   function normalizeInputValue(
     nextValue: string,
     nextGranularity: DateRangeGranularity,
   ): string | undefined {
     if (!nextValue) return undefined;
     const datePart = nextValue.slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return undefined;
+    if (!isValidDatePart(datePart)) return undefined;
     if (nextGranularity === 'day') return datePart;
     const timePart = nextValue.includes('T') ? nextValue.slice(11) : '00:00';
-    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(timePart)) return undefined;
+    if (!isValidTimePart(timePart)) return undefined;
     const [rawHour = '00', rawMinute = '00', rawSecond = '00'] = timePart.split(':');
     const hour = rawHour.padStart(2, '0').slice(0, 2);
     const minute = rawMinute.padStart(2, '0').slice(0, 2);

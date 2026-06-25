@@ -112,6 +112,28 @@ describe('DateRangeField', () => {
       expect(getEndInput(container).value).toBe('');
     });
 
+    test('clears impossible controlled datetime values before emitting preserved endpoints', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-02-30T09:30', end: '2026-06-01T99:99' },
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+
+      expect(getStartInput(container).value).toBe('');
+      expect(getEndInput(container).value).toBe('');
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-01T09:30' },
+      });
+
+      expect(changes[0]).toEqual({
+        start: '2026-06-01T09:30',
+        end: undefined,
+      });
+    });
+
     test('normalizes controlled datetime values to day inputs before rendering', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
@@ -283,6 +305,36 @@ describe('DateRangeField', () => {
       expect(changes[0]).toEqual({
         start: '2026-06-24T00:00',
         end: '2026-06-24T09:45',
+      });
+      expect(custom.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('custom presets clear impossible datetime values before emitting', async () => {
+      const changes: DateRangeValue[] = [];
+      const presets: DateRangeDatePreset[] = [
+        {
+          id: 'custom',
+          label: 'Custom',
+          resolve: () => ({
+            start: '2026-06-24T09:45',
+            end: '2026-06-31T99:99',
+          }),
+        },
+      ];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        presets,
+        onchange: (next: DateRangeValue) => changes.push(next),
+      });
+      const custom = getPresetButtons(container)[0];
+      if (!custom) throw new Error('Custom preset not found');
+
+      await fireEvent.click(custom);
+
+      expect(changes[0]).toEqual({
+        start: '2026-06-24T09:45',
+        end: undefined,
       });
       expect(custom.getAttribute('aria-pressed')).toBe('true');
     });
