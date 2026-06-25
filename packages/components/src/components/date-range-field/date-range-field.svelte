@@ -122,13 +122,17 @@
   // Active preset tracking: which preset (if any) matches the current controlled value.
   // ──────────────────────────────────────────────────────────────────────────
   const activePresetId = $derived.by(() => {
-    if (selectedPresetSnapshot && dateRangeValuesMatch(selectedPresetSnapshot.value, value)) {
+    const normalizedValue = normalizeDateRangeValue(value, granularity);
+    if (
+      selectedPresetSnapshot &&
+      dateRangeValuesMatch(selectedPresetSnapshot.value, normalizedValue)
+    ) {
       return selectedPresetSnapshot.id;
     }
 
     const match = resolvedPresets.find((preset) => {
       const resolved = normalizeDateRangeValue(preset.resolve(), granularity);
-      return dateRangeValuesMatch(resolved, value);
+      return dateRangeValuesMatch(resolved, normalizedValue);
     });
     return match?.id;
   });

@@ -486,6 +486,24 @@ describe('DateRangeField', () => {
       expect(btn.getAttribute('aria-pressed')).toBe('true');
     });
 
+    test('matches controlled preset values after granularity normalization', () => {
+      const preset = {
+        id: 'custom',
+        label: 'Custom',
+        resolve: () => ({ start: '2026-06-01T09:30', end: '2026-06-07T17:45' }),
+      };
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        presets: [preset],
+        value: { start: '2026-06-01T09:30:15', end: '2026-06-07T17:45:30' },
+      });
+
+      const btn = getPresetButtons(container)[0];
+      if (!btn) throw new Error('No preset button found');
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+    });
+
     test('clears preset pressed state when the controlled value no longer matches it', async () => {
       const preset = {
         id: 'last-7d',
