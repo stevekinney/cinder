@@ -14,20 +14,12 @@
         no-repeat local,
       linear-gradient(270deg, var(--cinder-surface) 30%, transparent) right center / 2rem 100%
         no-repeat local,
-      linear-gradient(
-          90deg,
-          /* cinder-allow-raw-color: structural-pattern — neutral scroll-edge shadow, not a themeable surface */
-            oklch(0% 0 0 / 12%),
-          transparent
-        )
-        left center / 1rem 100% no-repeat scroll,
-      linear-gradient(
-          270deg,
-          /* cinder-allow-raw-color: structural-pattern — neutral scroll-edge shadow, not a themeable surface */
-            oklch(0% 0 0 / 12%),
-          transparent
-        )
-        right center / 1rem 100% no-repeat scroll;
+      /* cinder-allow-raw-color: structural-pattern — neutral scroll-edge shadow, not a themeable surface */
+        linear-gradient(90deg, oklch(0% 0 0 / 12%), transparent) left center / 1rem 100% no-repeat
+        scroll,
+      /* cinder-allow-raw-color: structural-pattern — neutral scroll-edge shadow, not a themeable surface */
+        linear-gradient(270deg, oklch(0% 0 0 / 12%), transparent) right center / 1rem 100% no-repeat
+        scroll;
   }
 
   .cinder-kanban-board__keyboard-hint {
