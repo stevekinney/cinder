@@ -9,6 +9,12 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
+const { default: DiffViewerTestDouble } = await import('../../test/diff-viewer-test-double.svelte');
+
+mock.module('../diff-viewer/diff-viewer.svelte', () => ({
+  default: DiffViewerTestDouble,
+}));
+
 const { default: ApprovalCard } = await import('./approval-card.svelte');
 
 afterEach(() => {
@@ -147,15 +153,28 @@ describe('ApprovalCard', () => {
     );
   });
 
-  test('routes patch operations through DiffViewer', async () => {
-    // The full DiffViewer shell has a documented happy-dom mount limitation in
-    // diff-viewer.test.ts. Guard the ApprovalCard integration at the source level
-    // so the patch branch cannot regress to a plain text fallback.
-    const source = await Bun.file(new URL('./approval-card.svelte', import.meta.url)).text();
+  test('renders patch operations through DiffViewer', () => {
+    const { container } = render(ApprovalCard, {
+      ...approvalCardProps({
+        operation: {
+          kind: 'patch',
+          filesTouched: ['src/approval.ts'],
+          diff: 'diff --git a/src/approval.ts b/src/approval.ts\n+export const approved = true;',
+          argsPreview: { mode: 'patch' },
+        },
+      }),
+    });
 
-    expect(source).toContain("operation.kind === 'patch'");
-    expect(source).toContain('<DiffViewer');
-    expect(source).toContain('current={operation.diff}');
+    const diffViewer = container.querySelector<HTMLElement>('.cinder-diff-viewer-test-double');
+    expect(diffViewer).not.toBeNull();
+    expect(diffViewer?.getAttribute('data-original')).toBe('');
+    expect(diffViewer?.getAttribute('data-current')).toBe(
+      'diff --git a/src/approval.ts b/src/approval.ts\n+export const approved = true;',
+    );
+    expect(diffViewer?.getAttribute('data-normalize-inputs')).toBe('false');
+    expect(diffViewer?.getAttribute('data-readonly')).toBe('true');
+    expect(container.textContent).toContain('diff --git a/src/approval.ts b/src/approval.ts');
+    expect(container.textContent).toContain('export const approved = true;');
   });
 
   test('transitions pending approvals to an expired read-only state without firing callbacks', async () => {
@@ -234,6 +253,47 @@ describe('ApprovalCard', () => {
     await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
 
     expect(onApproveWithEdits).toHaveBeenCalledWith({ force: true });
+  });
+
+  test('reseeds editable arguments when the approval request changes', async () => {
+    const onApproveWithEdits = mock();
+    const view = render(ApprovalCard, {
+      ...approvalCardProps({
+        editableArgs: true,
+        onApproveWithEdits,
+        idempotencyKey: 'approval-one',
+        operation: {
+          kind: 'other',
+          argsPreview: { force: false },
+        },
+      }),
+    });
+
+    await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
+    const staleTextarea = view.getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    await fireEvent.input(staleTextarea, { target: { value: '{ "force": true }' } });
+
+    await view.rerender({
+      ...approvalCardProps({
+        editableArgs: true,
+        onApproveWithEdits,
+        idempotencyKey: 'approval-two',
+        operation: {
+          kind: 'other',
+          argsPreview: { force: false, region: 'iad' },
+        },
+      }),
+    });
+
+    expect(view.queryByLabelText('Edited arguments JSON')).toBeNull();
+
+    await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
+    const nextTextarea = view.getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    expect(nextTextarea.value).toContain('"region": "iad"');
+    expect(nextTextarea.value).not.toContain('"force": true');
+
+    await fireEvent.click(view.getByRole('button', { name: 'Confirm edited approval' }));
+    expect(onApproveWithEdits).toHaveBeenCalledWith({ force: false, region: 'iad' });
   });
 
   test('renders read-only summaries without action buttons for terminal states', () => {

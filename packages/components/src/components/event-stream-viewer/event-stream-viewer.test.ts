@@ -344,6 +344,44 @@ describe('EventStreamViewer', () => {
       expect(secondControls).toBeTruthy();
       expect(firstControls).not.toBe(secondControls);
     });
+
+    test('duplicate event ids expand only the selected row details', async () => {
+      const replayedEvents: StreamEvent[] = [
+        {
+          ...errorEvent,
+          id: 'replayed-id',
+          summary: 'Original event',
+          details: { replay: false },
+        },
+        {
+          ...errorEvent,
+          id: 'replayed-id',
+          summary: 'Replayed event',
+          details: { replay: true },
+        },
+      ];
+      const { container } = render(EventStreamViewer, { props: { events: replayedEvents } });
+      const toggles = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(
+          '.cinder-event-stream-viewer__details-toggle',
+        ),
+      );
+
+      expect(toggles).toHaveLength(2);
+      await fireEvent.click(toggles[0]!);
+
+      expect(toggles[0]?.getAttribute('aria-expanded')).toBe('true');
+      expect(toggles[1]?.getAttribute('aria-expanded')).toBe('false');
+
+      const firstPanel = container.querySelector(
+        `[id="${toggles[0]?.getAttribute('aria-controls')}"]`,
+      );
+      const secondPanel = container.querySelector(
+        `[id="${toggles[1]?.getAttribute('aria-controls')}"]`,
+      );
+      expect(firstPanel?.hasAttribute('hidden')).toBe(false);
+      expect(secondPanel?.hasAttribute('hidden')).toBe(true);
+    });
   });
 
   describe('states', () => {

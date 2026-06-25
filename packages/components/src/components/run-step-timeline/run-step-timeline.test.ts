@@ -459,6 +459,60 @@ describe('behavior', () => {
     expect(link?.textContent?.trim()).toBe('Open logs');
   });
 
+  test('renders unsafe step link URLs as non-interactive text', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          ...succeededStep,
+          link: {
+            href: 'javascript:alert(1)',
+            label: 'Open logs',
+          },
+        },
+      ],
+    });
+
+    expect(container.querySelector('a.cinder-run-step-timeline__link')).toBeNull();
+    const label = container.querySelector('.cinder-run-step-timeline__link--unsafe');
+    expect(label?.textContent?.trim()).toBe('Open logs');
+  });
+
+  test('renders step link URLs with embedded control characters as non-interactive text', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          ...succeededStep,
+          link: {
+            href: 'java\nscript:alert(1)',
+            label: 'Open logs',
+          },
+        },
+      ],
+    });
+
+    expect(container.querySelector('a.cinder-run-step-timeline__link')).toBeNull();
+    const label = container.querySelector('.cinder-run-step-timeline__link--unsafe');
+    expect(label?.textContent?.trim()).toBe('Open logs');
+  });
+
+  test('keeps app-relative step links interactive', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          ...succeededStep,
+          link: {
+            href: './runs/123#history',
+            label: 'Open run',
+          },
+        },
+      ],
+    });
+
+    const link = container.querySelector<HTMLAnchorElement>('a.cinder-run-step-timeline__link');
+    expect(link?.getAttribute('href')).toBe('./runs/123#history');
+    expect(link?.textContent?.trim()).toBe('Open run');
+  });
+
   test('renders actions count only when greater than zero', () => {
     const { container } = render(RunStepTimeline, {
       steps: [

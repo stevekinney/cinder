@@ -165,6 +165,26 @@
     return actionsCount === 1 ? '1 action' : `${actionsCount} actions`;
   }
 
+  function safeStepLinkHref(href: string): string | undefined {
+    const trimmedHref = href.trim();
+    if (trimmedHref === '') return undefined;
+    if (/[\u0000-\u001F\u007F]/.test(trimmedHref)) return undefined;
+    if (trimmedHref.startsWith('//')) return undefined;
+
+    if (/^[A-Za-z][A-Za-z\d+.-]*:/.test(trimmedHref)) {
+      try {
+        const parsedUrl = new URL(trimmedHref);
+        return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+          ? trimmedHref
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+
+    return trimmedHref;
+  }
+
   function flattenRunSteps(steps: RunStep[]): RenderedRunStep[] {
     const rows: Omit<RenderedRunStep, 'connectorAfter'>[] = [];
     appendRunStepRows(rows, steps, 0, '');
@@ -228,9 +248,16 @@
           <div class="cinder-run-step-timeline__header">
             <span class="cinder-run-step-timeline__label">{step.label}</span>
             {#if step.link}
-              <Link href={step.link.href} class="cinder-run-step-timeline__link">
-                {step.link.label}
-              </Link>
+              {@const safeLinkHref = safeStepLinkHref(step.link.href)}
+              {#if safeLinkHref}
+                <Link href={safeLinkHref} class="cinder-run-step-timeline__link">
+                  {step.link.label}
+                </Link>
+              {:else}
+                <span class="cinder-run-step-timeline__link cinder-run-step-timeline__link--unsafe">
+                  {step.link.label}
+                </span>
+              {/if}
             {/if}
             <Badge
               class="cinder-run-step-timeline__status"

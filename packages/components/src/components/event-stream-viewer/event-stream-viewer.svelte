@@ -80,7 +80,9 @@
     ...rest
   }: EventStreamViewerProps = $props();
 
-  // IDs for expanded details panels — keyed by event id
+  // IDs for expanded details panels — keyed by rendered row identity.
+  // Event ids can repeat in replayed streams, so row identity also includes the
+  // source index used by the keyed each block and details panel id.
   const expandedIds = new SvelteSet<string>();
 
   // Track the scroll container element for auto-scroll
@@ -149,11 +151,11 @@
     return entries;
   });
 
-  function toggleDetails(id: string) {
-    if (expandedIds.has(id)) {
-      expandedIds.delete(id);
+  function toggleDetails(rowKey: string) {
+    if (expandedIds.has(rowKey)) {
+      expandedIds.delete(rowKey);
     } else {
-      expandedIds.add(id);
+      expandedIds.add(rowKey);
     }
   }
 
@@ -367,7 +369,7 @@
             </li>
           {:else}
             {@const event = entry.event}
-            {@const isExpanded = expandedIds.has(event.id)}
+            {@const isExpanded = expandedIds.has(entry.key)}
             {@const detailsId = `${instanceId}-details-${entry.sourceIndex}`}
             <li
               class="cinder-event-stream-viewer__event"
@@ -406,7 +408,7 @@
                       aria-expanded={isExpanded}
                       aria-controls={detailsId}
                       aria-label={`${isExpanded ? 'Hide' : 'Show'} details for ${event.severity ? `${event.severity}: ` : ''}${event.summary}`}
-                      onclick={() => toggleDetails(event.id)}
+                      onclick={() => toggleDetails(entry.key)}
                     >
                       {isExpanded ? 'Hide details' : 'Show details'}
                     </button>

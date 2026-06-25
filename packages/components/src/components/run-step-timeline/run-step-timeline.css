@@ -118,6 +118,10 @@
     font-size: var(--cinder-text-xs);
   }
 
+  .cinder-run-step-timeline__link--unsafe {
+    color: var(--cinder-text-muted);
+  }
+
   /* Pending step: label muted */
   .cinder-run-step-timeline__item[data-cinder-status='pending'] .cinder-run-step-timeline__label,
   .cinder-run-step-timeline__item[data-cinder-status='skipped'] .cinder-run-step-timeline__label,

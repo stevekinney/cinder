@@ -29,7 +29,7 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import Badge from '../badge/badge.svelte';
@@ -83,9 +83,8 @@
   const editErrorId = $derived(`${rootId}-edit-error`);
 
   let currentTime = $state(Date.now());
-  let editingArguments = $state(false);
-  const editedArgumentsSeed = formatEditableArguments(untrack(() => operation.argsPreview ?? {}));
-  let editedArgumentsText = $state(editedArgumentsSeed);
+  let editingArgumentsSeedKey = $state<string | null>(null);
+  let editedArgumentsDrafts = $state<Record<string, string>>({});
   let expirationTimer: ReturnType<typeof setInterval> | undefined;
 
   const expirationTimestamp = $derived(parseExpirationTimestamp(expiresAt));
@@ -117,6 +116,14 @@
     Math.max(0, filesTouched.length - visibleFilesTouched.length),
   );
   const environmentNames = $derived(env.map(sanitizeEnvironmentName).filter(Boolean));
+  const currentEditedArgumentsText = $derived(formatEditableArguments(operation.argsPreview ?? {}));
+  const currentEditedArgumentsSeedKey = $derived(
+    `${idempotencyKey}\u0000${currentEditedArgumentsText}`,
+  );
+  const editingArguments = $derived(editingArgumentsSeedKey === currentEditedArgumentsSeedKey);
+  const editedArgumentsText = $derived(
+    editedArgumentsDrafts[currentEditedArgumentsSeedKey] ?? currentEditedArgumentsText,
+  );
   const editParseResult = $derived(parseJsonText(editedArgumentsText));
   const canConfirmEditedApproval = $derived(
     editParseResult.ok && typeof onApproveWithEdits === 'function',
@@ -279,6 +286,23 @@
     return firstPart?.trim() ?? '';
   }
 
+  function beginEditingArguments(): void {
+    if (!(currentEditedArgumentsSeedKey in editedArgumentsDrafts)) {
+      editedArgumentsDrafts = {
+        ...editedArgumentsDrafts,
+        [currentEditedArgumentsSeedKey]: currentEditedArgumentsText,
+      };
+    }
+    editingArgumentsSeedKey = currentEditedArgumentsSeedKey;
+  }
+
+  function handleEditedArgumentsInput(event: Event): void {
+    editedArgumentsDrafts = {
+      ...editedArgumentsDrafts,
+      [currentEditedArgumentsSeedKey]: (event.currentTarget as HTMLTextAreaElement).value,
+    };
+  }
+
   function handleApproveWithEdits(): void {
     if (!editParseResult.ok) return;
     onApproveWithEdits?.(editParseResult.value);
@@ -428,9 +452,7 @@
               <Button
                 type="button"
                 variant="secondary"
-                onclick={() => {
-                  editingArguments = true;
-                }}
+                onclick={beginEditingArguments}
                 disabled={!onApproveWithEdits}
               >
                 Approve with edits
@@ -468,7 +490,8 @@
               <textarea
                 id={`${rootId}-edited-arguments`}
                 class="cinder-approval-card__textarea"
-                bind:value={editedArgumentsText}
+                value={editedArgumentsText}
+                oninput={handleEditedArgumentsInput}
                 rows="8"
                 spellcheck="false"
                 aria-describedby={editParseResult.ok
