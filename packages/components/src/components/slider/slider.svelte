@@ -51,13 +51,28 @@
   const localeContext = getLocaleContext();
   const disabled = $derived(disabledProp || (formField?.disabled ?? false));
   let rootElement = $state<HTMLDivElement | null>(null);
-  const resolvedDirection = $derived(
-    rootElement
+  let directionRevision = $state(0);
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    return rootElement
       ? resolveTextDirection(rootElement.parentElement, localeContext?.direction)
-      : localeContext?.direction,
-  );
+      : localeContext?.direction;
+  });
   const rootDirection = $derived(rootElement ? resolvedDirection : undefined);
   const isRightToLeft = $derived(resolvedDirection === 'rtl');
+
+  $effect(() => {
+    if (!rootElement || typeof MutationObserver === 'undefined') return;
+    const observer = new MutationObserver(() => {
+      directionRevision += 1;
+    });
+    let currentElement = rootElement.parentElement;
+    while (currentElement) {
+      observer.observe(currentElement, { attributes: true, attributeFilter: ['dir'] });
+      currentElement = currentElement.parentElement;
+    }
+    return () => observer.disconnect();
+  });
 
   // Guarantee a usable step. `0`, `NaN`, and negative values would let the
   // tick generator loop forever, so fall back to `1`. Keep the derived pure — the

@@ -435,6 +435,24 @@ describe('TimeField', () => {
     expect(timezoneInput?.value).toBe('UTC');
   });
 
+  test('submits fixed timezone with native forms when timezoneName is provided', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        timezone: 'UTC',
+        timezoneName: 'reminder_timezone',
+      },
+    });
+
+    expect(container.querySelector('.cinder-time-field__timezone')).toBeNull();
+    const timezoneInput = container.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="reminder_timezone"]',
+    );
+    expect(timezoneInput?.value).toBe('UTC');
+  });
+
   test('does not render a second period control around the native time input', () => {
     const { container } = render(TimeField, {
       props: { id: 'reminder', label: 'Reminder time', value: '09:30' },

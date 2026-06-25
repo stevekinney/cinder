@@ -101,9 +101,7 @@
     label ? undefined : (normalizeAriaText(ariaLabelledBy) ?? formField?.labelId),
   );
   const resolvedTimezoneName = $derived(
-    timezones && timezones.length > 0 && timezone !== undefined
-      ? (timezoneName ?? (name ? `${name}-timezone` : undefined))
-      : undefined,
+    timezone !== undefined ? (timezoneName ?? (name ? `${name}-timezone` : undefined)) : undefined,
   );
 
   function emit(nextValue: string, nextTimezone = timezone): void {
@@ -196,14 +194,15 @@
           <option value={option}>{option}</option>
         {/each}
       </select>
-      {#if resolvedTimezoneName}
-        <input
-          type="hidden"
-          name={resolvedTimezoneName}
-          value={timezone ?? ''}
-          disabled={resolvedDisabled}
-        />
-      {/if}
+    {/if}
+
+    {#if resolvedTimezoneName}
+      <input
+        type="hidden"
+        name={resolvedTimezoneName}
+        value={timezone}
+        disabled={resolvedDisabled}
+      />
     {/if}
   </div>
 

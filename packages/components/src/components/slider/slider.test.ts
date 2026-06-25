@@ -5,8 +5,9 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { fireEvent, render, cleanup } = await import('@testing-library/svelte');
+const { fireEvent, render, cleanup, waitFor } = await import('@testing-library/svelte');
 const { renderToServerHtml } = await import('../../test/server-render.ts');
+const { tick } = await import('svelte');
 const { default: Slider } = await import('./slider.svelte');
 const { default: SliderDirectionFixture } =
   await import('../../test/fixtures/slider-direction-fixture.svelte');
@@ -85,6 +86,26 @@ describe('Slider (single)', () => {
     expect(root?.getAttribute('dir')).toBe('ltr');
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
     expect(thumb.getAttribute('aria-valuenow')).toBe('25');
+  });
+
+  test('reacts to ancestor direction changes after mount', async () => {
+    const target = Object.assign(document.createElement('div'), { dir: 'ltr' });
+    document.body.appendChild(target);
+    const { container } = render(Slider, {
+      target,
+      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+    });
+    const root = container.querySelector('.cinder-slider');
+    const thumb = getThumbs(container)[0]!;
+
+    expect(root?.getAttribute('dir')).toBe('ltr');
+
+    await tick();
+    target.setAttribute('dir', 'rtl');
+    await waitFor(() => expect(root?.getAttribute('dir')).toBe('rtl'));
+
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('15');
   });
 
   test('server rendering omits provider direction until local DOM can be checked', async () => {
