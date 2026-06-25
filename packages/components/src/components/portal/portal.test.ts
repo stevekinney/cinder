@@ -149,6 +149,24 @@ describe('Portal', () => {
     expect(element.hasAttribute('data-cinder-theme')).toBe(false);
   });
 
+  test('preserves a protected computed direction over inherited auto direction', () => {
+    const element = document.createElement('div');
+    element.setAttribute('dir', 'rtl');
+    element.dataset['cinderExplicitDirection'] = 'true';
+
+    const autoDirectionSource = document.createElement('section');
+    autoDirectionSource.setAttribute('dir', 'auto');
+    const child = document.createElement('span');
+    autoDirectionSource.appendChild(child);
+
+    copyInheritedPortalAttributes(element, child, true, {
+      dir: 'rtl',
+      theme: null,
+    });
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
   test('detaches from the target and reappears inline when disabled flips false to true', async () => {
     // Regression for Codex round 2 finding: previously the $effect cleanup detached the wrapper
     // when `disabled` flipped true but nothing reattached it inline, so the child silently vanished

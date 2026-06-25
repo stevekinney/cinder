@@ -177,7 +177,7 @@
     {@attach fallbackPortalAttachment}
     {...rest}
     dir={resolvedDirection}
-    data-cinder-explicit-direction={direction ? 'true' : undefined}
+    data-cinder-explicit-direction={resolvedDirection ? 'true' : undefined}
   >
     {#if children}
       {@render children()}

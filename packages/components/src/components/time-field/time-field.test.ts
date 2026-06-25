@@ -493,6 +493,39 @@ describe('TimeField', () => {
     );
   });
 
+  test('native form reset restores the latest timezone prop', async () => {
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const { container, rerender } = render(TimeField, {
+      target: form,
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        defaultValue: '09:30',
+        timezones: ['America/Denver', 'UTC'],
+        timezone: 'UTC',
+      },
+    });
+
+    await rerender({
+      id: 'reminder',
+      label: 'Reminder time',
+      defaultValue: '08:00',
+      timezones: ['America/Denver', 'UTC'],
+      timezone: 'America/Denver',
+    });
+    const timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    timezone.value = 'UTC';
+    await fireEvent.change(timezone);
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    expect(container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')?.value).toBe(
+      'America/Denver',
+    );
+  });
+
   test('native form reset uses updated default value and timezone options', async () => {
     const form = document.createElement('form');
     document.body.appendChild(form);

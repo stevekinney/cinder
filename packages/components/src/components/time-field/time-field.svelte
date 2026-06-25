@@ -57,12 +57,14 @@
   const inputStep = $derived(includeSeconds ? 1 : 60);
   let inputMirrorValue = $state<string | undefined>(undefined);
   const submittedValue = $derived(canonicalTimeValue(inputMirrorValue ?? value));
+  let resetTimezoneBaseline = $state<string | undefined>(undefined);
+  let skipTimezoneBaselineUpdate = false;
 
   untrack(() => {
     if (value === undefined) value = canonicalTimeValue(defaultValue);
     if (timezone === undefined && timezones && timezones.length > 0) timezone = timezones[0];
+    resetTimezoneBaseline = timezone;
   });
-  const initialTimezone = untrack(() => timezone);
 
   $effect(() => {
     if (!timezones || timezones.length === 0) {
@@ -71,6 +73,14 @@
     if (timezone === undefined || !timezones.includes(timezone)) {
       timezone = timezones[0];
     }
+  });
+
+  $effect(() => {
+    if (skipTimezoneBaselineUpdate) {
+      skipTimezoneBaselineUpdate = false;
+      return;
+    }
+    resetTimezoneBaseline = timezone;
   });
 
   const generatedId = $props.id();
@@ -126,8 +136,10 @@
   }
 
   function resetTimezoneFor(options: readonly string[] | undefined): string | undefined {
-    if (!options || options.length === 0) return initialTimezone;
-    return initialTimezone && options.includes(initialTimezone) ? initialTimezone : options[0];
+    if (!options || options.length === 0) return resetTimezoneBaseline;
+    return resetTimezoneBaseline && options.includes(resetTimezoneBaseline)
+      ? resetTimezoneBaseline
+      : options[0];
   }
 
   function canonicalTimeValue(nextValue: string | undefined): string {
@@ -153,6 +165,7 @@
   function handleTimezoneChange(event: Event): void {
     if (resolvedDisabled || readonly) return;
     const target = event.currentTarget as HTMLSelectElement;
+    skipTimezoneBaselineUpdate = true;
     timezone = target.value;
     const nextValue = canonicalTimeValue(value);
     inputMirrorValue = undefined;
