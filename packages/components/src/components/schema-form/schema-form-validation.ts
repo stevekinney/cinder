@@ -93,7 +93,10 @@ function validatorForSchema(schema: JsonSchemaObject): Promise<ValidateFunction>
   const cached = validatorCache.get(schema);
   if (cached) return cached;
 
-  const promise = createValidator(schema);
+  const promise = createValidator(schema).catch((error: unknown) => {
+    validatorCache.delete(schema);
+    throw error;
+  });
   validatorCache.set(schema, promise);
   return promise;
 }

@@ -143,6 +143,25 @@ describe('schema-form validation', () => {
     expect(result.issues[0]?.message).toMatch(/Invalid JSON Schema/i);
   });
 
+  test('does not cache failed JSON Schema compilation attempts', async () => {
+    const schema = {
+      type: 'object',
+      required: [1],
+    } as Record<string, unknown>;
+
+    const invalid = await validateSchemaValue(schema, {});
+    expect(invalid.valid).toBe(false);
+
+    schema['properties'] = { name: { type: 'string' } };
+    schema['required'] = ['name'];
+
+    await expect(validateSchemaValue(schema, { name: 'Ada' })).resolves.toEqual({
+      valid: true,
+      value: { name: 'Ada' },
+      issues: [],
+    });
+  });
+
   test('treats fulfilled async JSON Schema validation as valid for falsy root values', async () => {
     const result = await validateSchemaValue(
       {
