@@ -13,6 +13,19 @@ export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 export { default as AlertDialog } from './components/alert-dialog/index.ts';
 export type { AlertDialogProps } from './components/alert-dialog/index.ts';
 
+export { default as ApprovalCard } from './components/approval-card/index.ts';
+export type {
+  ApprovalCardCallbacks,
+  ApprovalCardProps,
+  ApprovalCardSchemaProps,
+  ApprovalOperation,
+  ApprovalOperationKind,
+  ApprovalSandbox,
+  ApprovalState,
+  ApprovalTool,
+  ApprovalToolRisk,
+} from './components/approval-card/index.ts';
+
 export { default as AreaChart } from './components/area-chart/index.ts';
 export type { AreaChartProps, AreaChartSchemaProps } from './components/area-chart/index.ts';
 

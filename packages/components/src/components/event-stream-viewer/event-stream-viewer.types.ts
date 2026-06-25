@@ -16,6 +16,8 @@ export type EventStreamState = 'connected' | 'connecting' | 'disconnected' | 'er
 export type StreamEvent = {
   /** Stable unique identifier used as the keyed list identity. */
   id: string;
+  /** Optional monotonically increasing stream sequence used to detect missed events. */
+  sequence?: number;
   /** Machine-readable ISO 8601 datetime string rendered into `<time datetime>`. */
   datetime: string;
   /** Human-readable timestamp label (e.g. "12:04:32", "2m ago"). Falls back to `datetime`. */
@@ -31,11 +33,31 @@ export type StreamEvent = {
 };
 
 /**
+ * Boundary entry that marks a successful reconnect and how many retained events
+ * were replayed into the stream.
+ */
+export type StreamReconnectedBoundary = {
+  /** Stable unique identifier used as the keyed list identity. */
+  id: string;
+  /** Discriminator for reconnect boundary entries. */
+  kind: 'reconnected';
+  /** Optional machine-readable ISO 8601 datetime string for the reconnect moment. */
+  datetime?: string;
+  /** Optional human-readable timestamp label. Falls back to `datetime` when rendered. */
+  timestamp?: string;
+  /** Number of events replayed after the connection resumed. */
+  replayedCount: number;
+};
+
+/** A renderable stream item: either a normal event or a stream boundary marker. */
+export type EventStreamEntry = StreamEvent | StreamReconnectedBoundary;
+
+/**
  * Props for the EventStreamViewer component.
  */
 export type EventStreamViewerProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
-  /** Events to render in chronological order, oldest first. */
-  events: StreamEvent[];
+  /** Events and additive boundary entries to render in chronological order, oldest first. */
+  events: EventStreamEntry[];
   /**
    * Current connection state. When provided, renders a ConnectionIndicator in
    * the toolbar. Omit when the stream has no live transport.

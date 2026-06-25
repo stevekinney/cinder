@@ -15,6 +15,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * - `cancelled` — was stopped before it could complete.
  * - `skipped`   — bypassed intentionally (e.g. conditional branch).
  * - `retrying`  — a prior attempt failed; a new attempt is in progress.
+ * - `waiting_approval` — paused on required approval; can continue afterward.
  */
 export type RunStepStatus =
   | 'pending'
@@ -23,7 +24,8 @@ export type RunStepStatus =
   | 'failed'
   | 'cancelled'
   | 'skipped'
-  | 'retrying';
+  | 'retrying'
+  | 'waiting_approval';
 
 /**
  * A single expandable detail section attached to a step.
@@ -36,6 +38,17 @@ export type RunStepDetail = {
   label: string;
   /** Pre-formatted content shown inside the panel. */
   content: string;
+};
+
+/**
+ * Navigable reference attached to a step.
+ * Rendered with cinder's Link component.
+ */
+export type RunStepLink = {
+  /** Destination URL for the step link. */
+  href: string;
+  /** Visible text for the step link. */
+  label: string;
 };
 
 /**
@@ -69,6 +82,11 @@ export type RunStep = {
    */
   attemptCount?: number | undefined;
   /**
+   * Number of actions associated with this step.
+   * Displayed when greater than 0.
+   */
+  actionsCount?: number | undefined;
+  /**
    * Optional determinate progress value between 0 and `progressMax`.
    * When supplied, a Progress bar is rendered for the step.
    */
@@ -81,6 +99,122 @@ export type RunStep = {
    * Expandable detail panels (logs, payloads, errors) shown inline.
    */
   details?: RunStepDetail[] | undefined;
+  /**
+   * Optional link to logs, traces, or a step detail route.
+   */
+  link?: RunStepLink | undefined;
+  /**
+   * Nested child-workflow steps rendered as indented lanes.
+   */
+  children?: RunStep[] | undefined;
+};
+
+/**
+ * Schema generator surface for one top-level step.
+ * Public `RunStep` stays recursive; this finite shape keeps JSON Schema generation bounded.
+ * @schemaObject
+ */
+export type RunStepTimelineSchemaStep = {
+  /** Stable identity; used as the keyed list identity. */
+  id: string;
+  /** Display label for this step. */
+  label: string;
+  /** Generic execution state. */
+  status: RunStepStatus;
+  /**
+   * ISO datetime string for when this step started.
+   * Absent for pending steps.
+   */
+  startTime?: string | undefined;
+  /**
+   * ISO datetime string for when this step ended.
+   * Absent for pending and running steps.
+   */
+  endTime?: string | undefined;
+  /**
+   * Human-readable duration string, e.g. "1m 23s".
+   * Absent for pending steps.
+   */
+  duration?: string | undefined;
+  /**
+   * Number of attempts made so far, including any retries.
+   * Displayed when greater than 1.
+   */
+  attemptCount?: number | undefined;
+  /**
+   * Number of actions associated with this step.
+   * Displayed when greater than 0.
+   */
+  actionsCount?: number | undefined;
+  /**
+   * Optional determinate progress value between 0 and `progressMax`.
+   * When supplied, a Progress bar is rendered for the step.
+   */
+  progress?: number | undefined;
+  /**
+   * Maximum value for the progress bar. Defaults to 100.
+   */
+  progressMax?: number | undefined;
+  /**
+   * Expandable detail panels (logs, payloads, errors) shown inline.
+   */
+  details?: RunStepDetail[] | undefined;
+  /**
+   * Optional link to logs, traces, or a step detail route.
+   */
+  link?: RunStepLink | undefined;
+  /**
+   * Schema-bounded nested child-workflow steps.
+   */
+  children?: RunStepTimelineSchemaChildStep[] | undefined;
+};
+
+/**
+ * Schema generator surface for one nested child step.
+ * Object and array members are intentionally omitted at this depth so schema generation stays finite.
+ * @schemaObject
+ */
+export type RunStepTimelineSchemaChildStep = {
+  /** Stable identity; used as the keyed list identity. */
+  id: string;
+  /** Display label for this step. */
+  label: string;
+  /** Generic execution state. */
+  status: RunStepStatus;
+  /**
+   * ISO datetime string for when this step started.
+   * Absent for pending steps.
+   */
+  startTime?: string | undefined;
+  /**
+   * ISO datetime string for when this step ended.
+   * Absent for pending and running steps.
+   */
+  endTime?: string | undefined;
+  /**
+   * Human-readable duration string, e.g. "1m 23s".
+   * Absent for pending steps.
+   */
+  duration?: string | undefined;
+  /**
+   * Number of attempts made so far, including any retries.
+   * Displayed when greater than 1.
+   */
+  attemptCount?: number | undefined;
+  /**
+   * Number of actions associated with this step.
+   * Displayed when greater than 0.
+   */
+  actionsCount?: number | undefined;
+  /**
+   * Optional determinate progress value between 0 and `progressMax`.
+   * When supplied, a Progress bar is rendered for the step.
+   */
+  progress?: number | undefined;
+  /**
+   * Maximum value for the progress bar. Defaults to 100.
+   */
+  progressMax?: number | undefined;
 };
 
 /**
@@ -115,7 +249,7 @@ export interface RunStepTimelineSchemaProps {
    * Ordered list of steps to render.
    * @schemaObject
    */
-  steps: RunStep[];
+  steps: RunStepTimelineSchemaStep[];
   /** Accessible label for the timeline list. */
   label?: string | undefined;
   /** Additional CSS classes applied to the root element. */

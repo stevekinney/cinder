@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { StreamEvent } from './event-stream-viewer.types.ts';
+import type { EventStreamEntry, StreamEvent } from './event-stream-viewer.types.ts';
 
 setupHappyDom();
 
@@ -90,6 +90,20 @@ describe('EventStreamViewer', () => {
   });
 
   describe('event rendering', () => {
+    test('accepts existing usage with an array typed as StreamEvent[]', () => {
+      const legacyEvents: StreamEvent[] = [baseEvent, warningEvent];
+      const { container } = render(EventStreamViewer, {
+        props: { events: legacyEvents },
+      });
+      const items = container.querySelectorAll('.cinder-event-stream-viewer__event');
+      expect(items.length).toBe(2);
+      expect(container.textContent).toContain('Activity completed successfully');
+      expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).toBeNull();
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
+    });
+
     test('renders event list items', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: [baseEvent, warningEvent] },
@@ -182,6 +196,44 @@ describe('EventStreamViewer', () => {
       const { container } = render(EventStreamViewer, { props: { events: [baseEvent] } });
       const copyBtn = container.querySelector('.cinder-event-stream-viewer__copy-event-button');
       expect(copyBtn?.getAttribute('aria-label')).toContain('Activity completed successfully');
+    });
+
+    test('reconnect boundary renders labeled divider with replayed count', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 1 },
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '14:30:10',
+          replayedCount: 2,
+        },
+        { ...warningEvent, id: 'evt-2', sequence: 2 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+      const marker = container.querySelector(
+        '.cinder-event-stream-viewer__boundary-marker [role="separator"]',
+      );
+      expect(marker).not.toBeNull();
+      expect(marker?.getAttribute('aria-label')).toBe('Reconnected — 2 events replayed');
+      expect(marker?.textContent).toContain('Reconnected — 2 events replayed');
+    });
+
+    test('non-contiguous sequence renders distinct accessible gap marker', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 7 },
+        { ...warningEvent, id: 'evt-2', sequence: 10 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+      const marker = container.querySelector(
+        '.cinder-event-stream-viewer__sequence-gap-marker [role="note"]',
+      );
+      expect(marker).not.toBeNull();
+      expect(marker?.getAttribute('aria-label')).toBe('Sequence gap — expected 8, received 10');
+      expect(marker?.textContent).toContain('Sequence gap — expected 8, received 10');
     });
   });
 
@@ -457,6 +509,35 @@ describe('EventStreamViewer', () => {
       const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
       expect(liveRegion?.textContent).toBe('1 event sent to copy handler');
       expect(liveRegion?.textContent).not.toContain('clipboard');
+    });
+
+    test('copy-visible text includes reconnect and sequence gap markers', async () => {
+      let received = '';
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 1 },
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '14:30:05',
+          replayedCount: 1,
+        },
+        { ...warningEvent, id: 'evt-2', sequence: 4 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: {
+          events: entries,
+          oncopyvisible: (text: string) => {
+            received = text;
+          },
+        },
+      });
+      const btn = container.querySelector<HTMLButtonElement>(
+        '.cinder-event-stream-viewer__copy-all-button',
+      );
+      await fireEvent.click(btn!);
+      expect(received).toContain('Reconnected — 1 event replayed');
+      expect(received).toContain('Sequence gap — expected 2, received 4');
+      expect(received).toContain('Retry attempt 2 of 3');
     });
   });
 

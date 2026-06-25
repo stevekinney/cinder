@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category form
-   * @status alpha
+   * @status beta
    * @purpose Render and edit conditional automation rules composed of conditions and actions.
    * @tag automation
    * @tag rules

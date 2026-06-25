@@ -82,6 +82,13 @@ const retryingStep: RunStep = {
   progress: 15,
 };
 
+const waitingApprovalStep: RunStep = {
+  id: 'step-waiting-approval',
+  label: 'Approve deployment',
+  status: 'waiting_approval',
+  startTime: '2026-06-01T11:45:00Z',
+};
+
 // ---------------------------------------------------------------------------
 // Structure
 // ---------------------------------------------------------------------------
@@ -102,6 +109,7 @@ describe('structure', () => {
       succeededStep,
       failedStep,
       runningStep,
+      waitingApprovalStep,
       cancelledStep,
       skippedStep,
       retryingStep,
@@ -116,6 +124,7 @@ describe('structure', () => {
       'succeeded',
       'failed',
       'running',
+      'waiting_approval',
       'cancelled',
       'skipped',
       'retrying',
@@ -175,7 +184,7 @@ describe('structure', () => {
   test('status badges render with the status label text', () => {
     // Use steps without attemptCount > 1 so each item has exactly one badge
     const { container } = render(RunStepTimeline, {
-      steps: [succeededStep, runningStep, pendingStep, skippedStep],
+      steps: [succeededStep, runningStep, waitingApprovalStep, pendingStep, skippedStep],
     });
     const items = Array.from(
       container.querySelectorAll<HTMLElement>('li.cinder-run-step-timeline__item'),
@@ -186,8 +195,59 @@ describe('structure', () => {
     );
     expect(firstBadgesPerItem[0]).toBe('Succeeded');
     expect(firstBadgesPerItem[1]).toBe('Running');
-    expect(firstBadgesPerItem[2]).toBe('Pending');
-    expect(firstBadgesPerItem[3]).toBe('Skipped');
+    expect(firstBadgesPerItem[2]).toBe('Waiting approval');
+    expect(firstBadgesPerItem[3]).toBe('Pending');
+    expect(firstBadgesPerItem[4]).toBe('Skipped');
+  });
+
+  test('waiting approval uses its own badge and status dot tone', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [waitingApprovalStep],
+    });
+    const item = container.querySelector<HTMLElement>('.cinder-run-step-timeline__item');
+    const statusBadge = item?.querySelector<HTMLElement>('.cinder-run-step-timeline__status');
+    const statusDot = item?.querySelector<HTMLElement>('.cinder-status-dot');
+
+    expect(item?.getAttribute('data-cinder-status')).toBe('waiting_approval');
+    expect(statusBadge?.textContent?.trim()).toBe('Waiting approval');
+    expect(statusBadge?.getAttribute('data-cinder-variant')).toBe('accent');
+    expect(statusBadge?.getAttribute('aria-label')).toBe('Status: Waiting approval');
+    expect(statusDot?.getAttribute('data-cinder-status')).toBe('accent');
+  });
+
+  test('renders legacy step fixtures without requiring new props', () => {
+    const legacySteps: RunStep[] = [
+      {
+        id: 'validate',
+        label: 'Validate configuration',
+        status: 'succeeded',
+        startTime: '2026-06-01T11:00:00Z',
+        endTime: '2026-06-01T11:01:30Z',
+        duration: '1m 30s',
+      },
+      {
+        id: 'build',
+        label: 'Build Docker image',
+        status: 'running',
+        startTime: '2026-06-01T11:02:00Z',
+        progress: 40,
+      },
+      {
+        id: 'deploy',
+        label: 'Deploy to staging',
+        status: 'pending',
+      },
+    ];
+
+    const { container } = render(RunStepTimeline, {
+      steps: legacySteps,
+      label: 'Deployment run',
+    });
+
+    expect(container.querySelectorAll('.cinder-run-step-timeline__item').length).toBe(3);
+    expect(container.querySelector('.cinder-run-step-timeline')?.getAttribute('aria-label')).toBe(
+      'Deployment run',
+    );
   });
 });
 
@@ -272,6 +332,148 @@ describe('behavior', () => {
     expect(progressbar).not.toBeNull();
   });
 
+  test('waiting approval is current and non-terminal without implicit progress', () => {
+    const { container } = render(RunStepTimeline, { steps: [waitingApprovalStep] });
+    const item = container.querySelector<HTMLElement>('.cinder-run-step-timeline__item');
+    expect(item?.getAttribute('aria-current')).toBe('step');
+    expect(item?.hasAttribute('data-cinder-terminal')).toBe(false);
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
+  test('waiting approval renders progress when progress is explicitly present', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [{ ...waitingApprovalStep, progress: 25 }],
+    });
+    const progressbar = container.querySelector('[role="progressbar"]');
+    expect(progressbar).not.toBeNull();
+    expect(progressbar?.getAttribute('aria-valuenow')).toBe('25');
+  });
+
+  test('renders nested child workflow lanes with depth and connector continuity', () => {
+    const parentWithChildren: RunStep = {
+      id: 'workflow',
+      label: 'Workflow',
+      status: 'running',
+      children: [
+        {
+          id: 'activity',
+          label: 'Activity',
+          status: 'succeeded',
+        },
+        {
+          id: 'subagent',
+          label: 'Subagent lane',
+          status: 'retrying',
+          children: [
+            {
+              id: 'tool-call',
+              label: 'Tool call',
+              status: 'waiting_approval',
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = render(RunStepTimeline, { steps: [parentWithChildren] });
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-run-step-timeline__item'),
+    );
+
+    expect(items.map((item) => item.getAttribute('data-cinder-depth'))).toEqual([
+      '0',
+      '1',
+      '1',
+      '2',
+    ]);
+    expect(items.map((item) => item.getAttribute('data-cinder-path'))).toEqual([
+      'workflow',
+      'workflow/activity',
+      'workflow/subagent',
+      'workflow/subagent/tool-call',
+    ]);
+    expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[2]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[3]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
+  test('caps rendered child workflow depth', () => {
+    const deeplyNested: RunStep = {
+      id: 'root',
+      label: 'Root',
+      status: 'running',
+      children: [
+        {
+          id: 'child',
+          label: 'Child',
+          status: 'running',
+          children: [
+            {
+              id: 'grandchild',
+              label: 'Grandchild',
+              status: 'running',
+              children: [
+                {
+                  id: 'great-grandchild',
+                  label: 'Great grandchild',
+                  status: 'running',
+                  children: [
+                    {
+                      id: 'capped',
+                      label: 'Capped child',
+                      status: 'pending',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = render(RunStepTimeline, { steps: [deeplyNested] });
+    const labels = Array.from(container.querySelectorAll('.cinder-run-step-timeline__label')).map(
+      (element) => element.textContent?.trim(),
+    );
+
+    expect(labels).toEqual(['Root', 'Child', 'Grandchild', 'Great grandchild']);
+  });
+
+  test('renders step links with the Link component', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          ...succeededStep,
+          link: {
+            href: '/runs/run-123/steps/validate',
+            label: 'Open logs',
+          },
+        },
+      ],
+    });
+
+    const link = container.querySelector<HTMLAnchorElement>('.cinder-link');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('/runs/run-123/steps/validate');
+    expect(link?.textContent?.trim()).toBe('Open logs');
+  });
+
+  test('renders actions count only when greater than zero', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        { ...succeededStep, id: 'zero-actions', actionsCount: 0 },
+        { ...retryingStep, id: 'two-actions', actionsCount: 2 },
+      ],
+    });
+    const badges = Array.from(container.querySelectorAll('.cinder-badge')).map((badge) =>
+      badge.textContent?.trim(),
+    );
+
+    expect(badges).toContain('2 actions');
+    expect(badges).not.toContain('0 actions');
+  });
+
   test('terminal state data attribute is set for ended steps', () => {
     const { container } = render(RunStepTimeline, {
       steps: [succeededStep, failedStep, cancelledStep, skippedStep],
@@ -286,7 +488,7 @@ describe('behavior', () => {
 
   test('terminal state data attribute is absent for non-terminal steps', () => {
     const { container } = render(RunStepTimeline, {
-      steps: [runningStep, pendingStep, retryingStep],
+      steps: [runningStep, waitingApprovalStep, pendingStep, retryingStep],
     });
     const items = Array.from(
       container.querySelectorAll<HTMLElement>('li.cinder-run-step-timeline__item'),
@@ -339,6 +541,16 @@ describe('accessibility', () => {
     const currentItems = items.filter((li) => li.getAttribute('aria-current') === 'step');
     expect(currentItems.length).toBe(1);
     expect(currentItems[0]?.getAttribute('data-cinder-status')).toBe('retrying');
+  });
+
+  test('sets aria-current="step" on waiting approval step', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [waitingApprovalStep, pendingStep],
+    });
+    const items = Array.from(container.querySelectorAll<HTMLElement>('li'));
+    const currentItems = items.filter((li) => li.getAttribute('aria-current') === 'step');
+    expect(currentItems.length).toBe(1);
+    expect(currentItems[0]?.getAttribute('data-cinder-status')).toBe('waiting_approval');
   });
 
   test('does not set aria-current on succeeded, failed, pending, or skipped steps', () => {

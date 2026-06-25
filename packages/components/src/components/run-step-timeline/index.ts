@@ -5,6 +5,7 @@ export default RunStepTimeline;
 export type {
   RunStep,
   RunStepDetail,
+  RunStepLink,
   RunStepStatus,
   RunStepTimelineProps,
 } from './run-step-timeline.types.ts';

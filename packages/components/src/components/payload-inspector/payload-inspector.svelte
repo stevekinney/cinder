@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Composed inspector for structured payloads with summary, tree, and raw views, copy actions, and size/truncation status.
    * @tag json
    * @tag inspector

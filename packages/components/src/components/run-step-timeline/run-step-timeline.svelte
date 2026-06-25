@@ -16,6 +16,7 @@
   export type {
     RunStep,
     RunStepDetail,
+    RunStepLink,
     RunStepStatus,
     RunStepTimelineProps,
   } from './run-step-timeline.types.ts';
@@ -25,10 +26,20 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Badge from '../badge/badge.svelte';
   import Collapsible from '../collapsible/collapsible.svelte';
+  import Link from '../link/link.svelte';
   import Progress from '../progress/progress.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
   import type { StatusDotStatus } from '../status-dot/status-dot.types.ts';
   import type { RunStep, RunStepStatus, RunStepTimelineProps } from './run-step-timeline.types.ts';
+
+  const MAX_NESTED_STEP_DEPTH = 3;
+
+  type RenderedRunStep = {
+    step: RunStep;
+    depth: number;
+    pathKey: string;
+    connectorAfter: 'hidden' | 'visible';
+  };
 
   let {
     steps,
@@ -44,6 +55,8 @@
     ariaLabelledby === undefined && ariaLabel === undefined ? label : ariaLabel,
   );
 
+  const renderedSteps = $derived(flattenRunSteps(steps));
+
   // Map generic RunStepStatus onto StatusDot status tokens.
   function statusDotStatus(status: RunStepStatus): StatusDotStatus {
     switch (status) {
@@ -55,6 +68,8 @@
         return 'online';
       case 'retrying':
         return 'warning';
+      case 'waiting_approval':
+        return 'accent';
       case 'cancelled':
         return 'offline';
       case 'skipped':
@@ -81,6 +96,8 @@
         return 'Skipped';
       case 'retrying':
         return 'Retrying';
+      case 'waiting_approval':
+        return 'Waiting approval';
     }
   }
 
@@ -96,6 +113,8 @@
         return 'info';
       case 'retrying':
         return 'warning';
+      case 'waiting_approval':
+        return 'accent';
       case 'cancelled':
         return 'neutral';
       case 'skipped':
@@ -115,9 +134,13 @@
     );
   }
 
+  function isCurrent(status: RunStepStatus): boolean {
+    return status === 'running' || status === 'retrying' || status === 'waiting_approval';
+  }
+
   // Whether this step has a progress bar to show.
   function hasProgress(step: RunStep): boolean {
-    return step.progress !== undefined && (step.status === 'running' || step.status === 'retrying');
+    return step.progress !== undefined && isCurrent(step.status);
   }
 
   // Metadata items for a step, as term/definition pairs.
@@ -137,6 +160,34 @@
     }
     return items;
   }
+
+  function actionsCountLabel(actionsCount: number): string {
+    return actionsCount === 1 ? '1 action' : `${actionsCount} actions`;
+  }
+
+  function flattenRunSteps(steps: RunStep[]): RenderedRunStep[] {
+    const rows: Omit<RenderedRunStep, 'connectorAfter'>[] = [];
+    appendRunStepRows(rows, steps, 0, '');
+    return rows.map((row, index) => ({
+      ...row,
+      connectorAfter: index === rows.length - 1 ? 'hidden' : 'visible',
+    }));
+  }
+
+  function appendRunStepRows(
+    rows: Omit<RenderedRunStep, 'connectorAfter'>[],
+    steps: RunStep[],
+    depth: number,
+    pathPrefix: string,
+  ): void {
+    for (const step of steps) {
+      const pathKey = pathPrefix === '' ? step.id : `${pathPrefix}/${step.id}`;
+      rows.push({ step, depth, pathKey });
+      if (depth < MAX_NESTED_STEP_DEPTH && step.children && step.children.length > 0) {
+        appendRunStepRows(rows, step.children, depth + 1, pathKey);
+      }
+    }
+  }
 </script>
 
 <ol
@@ -145,17 +196,20 @@
   aria-label={resolvedAriaLabel}
   aria-labelledby={ariaLabelledby}
 >
-  {#each steps as step, index (step.id)}
-    {@const isLast = index === steps.length - 1}
-    {@const isCurrent = step.status === 'running' || step.status === 'retrying'}
+  {#each renderedSteps as row (row.pathKey)}
+    {@const step = row.step}
+    {@const current = isCurrent(step.status)}
     {@const terminal = isTerminal(step.status)}
     {@const metadata = metadataItems(step)}
     <li
       class="cinder-run-step-timeline__item"
       data-cinder-status={step.status}
+      data-cinder-depth={row.depth}
+      data-cinder-path={row.pathKey}
       data-cinder-terminal={terminal ? '' : undefined}
-      data-cinder-connector-after={isLast ? 'hidden' : 'visible'}
-      aria-current={isCurrent ? 'step' : undefined}
+      data-cinder-connector-after={row.connectorAfter}
+      aria-current={current ? 'step' : undefined}
+      style:--_cinder-rst-depth={row.depth}
     >
       <div class="cinder-run-step-timeline__event">
         <!-- Marker: StatusDot on the rail -->
@@ -173,15 +227,28 @@
           <!-- Header row: label + status badge -->
           <div class="cinder-run-step-timeline__header">
             <span class="cinder-run-step-timeline__label">{step.label}</span>
-            <Badge variant={badgeVariant(step.status)} size="xs">
+            {#if step.link}
+              <Link href={step.link.href} class="cinder-run-step-timeline__link">
+                {step.link.label}
+              </Link>
+            {/if}
+            <Badge
+              class="cinder-run-step-timeline__status"
+              variant={badgeVariant(step.status)}
+              size="xs"
+              aria-label={`Status: ${statusLabel(step.status)}`}
+            >
               {statusLabel(step.status)}
             </Badge>
             {#if step.attemptCount !== undefined && step.attemptCount > 1}
               <Badge variant="neutral" size="xs" mono>attempt {step.attemptCount}</Badge>
             {/if}
+            {#if step.actionsCount !== undefined && step.actionsCount > 0}
+              <Badge variant="neutral" size="xs" mono>{actionsCountLabel(step.actionsCount)}</Badge>
+            {/if}
           </div>
 
-          <!-- Progress bar (only shown while running or retrying) -->
+          <!-- Progress bar (only shown for current statuses with explicit progress) -->
           {#if hasProgress(step)}
             <div class="cinder-run-step-timeline__progress">
               <Progress

@@ -45,7 +45,8 @@ const schema = {
         name: 'events',
         reason: 'unknown-shape',
         required: true,
-        description: 'Events to render in chronological order, oldest first.',
+        description:
+          'Events and additive boundary entries to render in chronological order, oldest first.',
       },
       {
         name: 'oncopyvisible',

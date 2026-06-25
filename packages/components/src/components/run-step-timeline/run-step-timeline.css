@@ -11,6 +11,8 @@
     --_cinder-rst-rail-size: 1.5rem;
     --_cinder-rst-marker-size: 0.875rem;
     --_cinder-rst-rail-center: 0.6875rem;
+    --_cinder-rst-depth: 0;
+    --_cinder-rst-nested-indent: 1.75rem;
 
     list-style: none;
     margin: 0;
@@ -23,6 +25,8 @@
    * ---------------------------------------- */
 
   .cinder-run-step-timeline__item {
+    --_cinder-rst-depth-offset: calc(var(--_cinder-rst-depth) * var(--_cinder-rst-nested-indent));
+
     position: relative;
     padding-bottom: var(--cinder-space-4);
   }
@@ -35,7 +39,7 @@
   .cinder-run-step-timeline__item::before {
     content: '';
     position: absolute;
-    inset-inline-start: var(--_cinder-rst-rail-center);
+    inset-inline-start: calc(var(--_cinder-rst-depth-offset) + var(--_cinder-rst-rail-center));
     inset-block-start: 1rem;
     inset-block-end: 0;
     inline-size: 1px;
@@ -55,6 +59,7 @@
     grid-template-columns: var(--_cinder-rst-rail-size) 1fr;
     gap: var(--cinder-space-3);
     align-items: start;
+    padding-inline-start: var(--_cinder-rst-depth-offset);
   }
 
   /* ----------------------------------------
@@ -102,9 +107,15 @@
 
   /* Running step: label highlighted */
   .cinder-run-step-timeline__item[data-cinder-status='running'] .cinder-run-step-timeline__label,
-  .cinder-run-step-timeline__item[data-cinder-status='retrying'] .cinder-run-step-timeline__label {
+  .cinder-run-step-timeline__item[data-cinder-status='retrying'] .cinder-run-step-timeline__label,
+  .cinder-run-step-timeline__item[data-cinder-status='waiting_approval']
+    .cinder-run-step-timeline__label {
     color: var(--cinder-text);
     font-weight: var(--cinder-font-semibold);
+  }
+
+  .cinder-run-step-timeline__link {
+    font-size: var(--cinder-text-xs);
   }
 
   /* Pending step: label muted */

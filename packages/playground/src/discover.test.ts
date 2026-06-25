@@ -204,7 +204,7 @@ describe('discoverSidebarComponents', () => {
     }
   });
 
-  it('keeps the sidebar at or below the 129-entry product gate', async () => {
+  it('keeps the sidebar at or below the 139-entry product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
     // new parent families (feed, grid-list, stat-group, side-navigation)
@@ -270,8 +270,10 @@ describe('discoverSidebarComponents', () => {
     // `exampleCount > 0` filter and surfaces in the sidebar, bringing the measured
     // ceiling to 138. (segment and command-item were moved to COMPOSE_ONLY in the
     // same change, so they do NOT add entries.)
+    // Stardust agent-ops adds approval-card as a standalone approval family with
+    // examples, bringing the measured sidebar ceiling to 139.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(138);
+    expect(sidebar.length).toBeLessThanOrEqual(139);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -298,6 +300,7 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('image');
     expect(sidebar).toContain('number-input');
     expect(sidebar).toContain('sortable-list');
+    expect(sidebar).toContain('approval-card');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

@@ -265,10 +265,10 @@
 
     @media (hover: hover) {
       &:not(:disabled):hover {
-        /* cinder-allow-raw-color: structural-pattern — neutral hover overlay tint, not a themeable surface */
-        --_cinder-chat-tool-approval-hover-overlay: light-dark(
-          oklch(0% 0 0 / 0.08),
-          oklch(100% 0 0 / 0.1)
+        --_cinder-chat-tool-approval-hover-overlay: color-mix(
+          in oklch,
+          var(--cinder-text) 8%,
+          transparent
         );
 
         background-image: linear-gradient(

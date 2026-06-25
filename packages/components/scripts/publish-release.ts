@@ -13,6 +13,23 @@ type PackageManifest = {
   version: string;
 };
 
+type PublishAction = 'publish' | 'skip-existing-version';
+
+export function resolvePublishAction(input: {
+  dryRun: boolean;
+  versionExists: boolean;
+}): PublishAction {
+  return input.versionExists ? 'skip-existing-version' : 'publish';
+}
+
+export function existingVersionMessage(identity: PackageManifest, dryRun: boolean): string {
+  if (dryRun) {
+    return `publish-release — ${identity.name}@${identity.version} already exists on npm; skipping dry-run publish.\n`;
+  }
+
+  return `publish-release — ${identity.name}@${identity.version} already exists on npm; nothing to publish.\n`;
+}
+
 async function packageVersionExists(name: string, version: string): Promise<boolean> {
   const result = await $`npm view ${`${name}@${version}`} version --json`.nothrow();
   return result.exitCode === 0 && result.stdout.toString().trim().length > 0;
@@ -46,10 +63,13 @@ async function main(): Promise<void> {
   const manifest = await readJsonFile<PackageManifest>(join(packageRoot, 'package.json'));
   const tarballPath = join(packageRoot, getPackFileName(manifest));
 
-  if (!dryRun && (await packageVersionExists(manifest.name, manifest.version))) {
-    process.stdout.write(
-      `publish-release — ${manifest.name}@${manifest.version} already exists on npm; nothing to publish.\n`,
-    );
+  const publishAction = resolvePublishAction({
+    dryRun,
+    versionExists: await packageVersionExists(manifest.name, manifest.version),
+  });
+
+  if (publishAction === 'skip-existing-version') {
+    process.stdout.write(existingVersionMessage(manifest, dryRun));
     return;
   }
 

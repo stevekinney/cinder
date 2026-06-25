@@ -18,7 +18,16 @@ const schema = {
             description: 'Display label for this step.',
           },
           status: {
-            enum: ['pending', 'running', 'succeeded', 'failed', 'cancelled', 'skipped', 'retrying'],
+            enum: [
+              'pending',
+              'running',
+              'succeeded',
+              'failed',
+              'cancelled',
+              'skipped',
+              'retrying',
+              'waiting_approval',
+            ],
             description: 'Generic execution state.',
           },
           startTime: {
@@ -40,6 +49,11 @@ const schema = {
             type: 'number',
             description:
               'Number of attempts made so far, including any retries.\nDisplayed when greater than 1.',
+          },
+          actionsCount: {
+            type: 'number',
+            description:
+              'Number of actions associated with this step.\nDisplayed when greater than 0.',
           },
           progress: {
             type: 'number',
@@ -72,6 +86,88 @@ const schema = {
               required: ['content', 'id', 'label'],
             },
             description: 'Expandable detail panels (logs, payloads, errors) shown inline.',
+          },
+          link: {
+            type: 'object',
+            properties: {
+              href: {
+                type: 'string',
+                description: 'Destination URL for the step link.',
+              },
+              label: {
+                type: 'string',
+                description: 'Visible text for the step link.',
+              },
+            },
+            additionalProperties: false,
+            required: ['href', 'label'],
+            description: 'Optional link to logs, traces, or a step detail route.',
+          },
+          children: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: {
+                  type: 'string',
+                  description: 'Stable identity; used as the keyed list identity.',
+                },
+                label: {
+                  type: 'string',
+                  description: 'Display label for this step.',
+                },
+                status: {
+                  enum: [
+                    'pending',
+                    'running',
+                    'succeeded',
+                    'failed',
+                    'cancelled',
+                    'skipped',
+                    'retrying',
+                    'waiting_approval',
+                  ],
+                  description: 'Generic execution state.',
+                },
+                startTime: {
+                  type: 'string',
+                  description:
+                    'ISO datetime string for when this step started.\nAbsent for pending steps.',
+                },
+                endTime: {
+                  type: 'string',
+                  description:
+                    'ISO datetime string for when this step ended.\nAbsent for pending and running steps.',
+                },
+                duration: {
+                  type: 'string',
+                  description:
+                    'Human-readable duration string, e.g. "1m 23s".\nAbsent for pending steps.',
+                },
+                attemptCount: {
+                  type: 'number',
+                  description:
+                    'Number of attempts made so far, including any retries.\nDisplayed when greater than 1.',
+                },
+                actionsCount: {
+                  type: 'number',
+                  description:
+                    'Number of actions associated with this step.\nDisplayed when greater than 0.',
+                },
+                progress: {
+                  type: 'number',
+                  description:
+                    'Optional determinate progress value between 0 and `progressMax`.\nWhen supplied, a Progress bar is rendered for the step.',
+                },
+                progressMax: {
+                  type: 'number',
+                  description: 'Maximum value for the progress bar. Defaults to 100.',
+                },
+              },
+              additionalProperties: false,
+              required: ['id', 'label', 'status'],
+            },
+            description: 'Schema-bounded nested child-workflow steps.',
           },
         },
         additionalProperties: false,
