@@ -184,10 +184,6 @@
     return 'kind' in entry && entry.kind === 'reconnected';
   }
 
-  function isStreamEvent(entry: EventStreamEntry): entry is StreamEvent {
-    return !isReconnectedBoundary(entry);
-  }
-
   function formatReconnectedBoundaryLabel(boundary: StreamReconnectedBoundary): string {
     const eventWord = boundary.replayedCount === 1 ? 'event' : 'events';
     return `Reconnected — ${boundary.replayedCount} ${eventWord} replayed`;
@@ -229,16 +225,15 @@
     return entry.label;
   }
 
-  function countStreamEvents(entries: EventStreamEntry[]): number {
-    return entries.filter(isStreamEvent).length;
+  function formatCopyVisibleAnnouncement(entryCount: number): string {
+    return `${entryCount} stream ${entryCount === 1 ? 'entry' : 'entries'} sent to copy handler`;
   }
 
   function handleCopyVisible() {
     const text = renderedEntries.map(formatRenderedEntryAsText).join('\n');
     if (!oncopyvisible) return;
     oncopyvisible(text);
-    const streamEventCount = countStreamEvents(events);
-    liveMessage = `${streamEventCount} event${streamEventCount !== 1 ? 's' : ''} sent to copy handler`;
+    liveMessage = formatCopyVisibleAnnouncement(renderedEntries.length);
     setTimeout(() => {
       liveMessage = '';
     }, 2000);

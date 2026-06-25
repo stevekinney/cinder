@@ -682,7 +682,7 @@ describe('EventStreamViewer', () => {
       );
       await fireEvent.click(btn!);
       const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
-      expect(liveRegion?.textContent).toBe('1 event sent to copy handler');
+      expect(liveRegion?.textContent).toBe('1 stream entry sent to copy handler');
       expect(liveRegion?.textContent).not.toContain('clipboard');
     });
 
@@ -713,6 +713,8 @@ describe('EventStreamViewer', () => {
       expect(received).toContain('Reconnected — 1 event replayed');
       expect(received).toContain('Sequence gap — expected 2, received 4');
       expect(received).toContain('Retry attempt 2 of 3');
+      const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
+      expect(liveRegion?.textContent).toBe('4 stream entries sent to copy handler');
     });
   });
 
