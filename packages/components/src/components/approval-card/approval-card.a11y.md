@@ -30,7 +30,7 @@ status dot is accompanied by its label, and the risk badge renders `Low risk`,
 `Medium risk`, or `High risk`.
 
 When `expiresAt` passes, the effective state becomes `expired` and the action
-buttons are removed. Expiration does not call `onDeny`, `onCancel`, or any other
+buttons are removed. Expiration does not call `ondeny`, `oncancel`, or any other
 callback; the host remains the source of truth for persisted state.
 
 ## Security boundary

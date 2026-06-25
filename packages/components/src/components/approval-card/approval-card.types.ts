@@ -35,13 +35,25 @@ export type ApprovalSchemaArgumentPrimitive = string | number | boolean | null;
  */
 export type ApprovalSchemaArgumentObject = {};
 
-export type ApprovalSchemaArrayArgumentValue =
-  | ApprovalSchemaArgumentPrimitive
-  | ApprovalSchemaArgumentObject;
+export type ApprovalSchemaArgumentArrayLevel4 = Array<
+  ApprovalSchemaArgumentPrimitive | ApprovalSchemaArgumentObject
+>;
+
+export type ApprovalSchemaArgumentArrayLevel3 = Array<
+  ApprovalSchemaArgumentPrimitive | ApprovalSchemaArgumentObject | ApprovalSchemaArgumentArrayLevel4
+>;
+
+export type ApprovalSchemaArgumentArrayLevel2 = Array<
+  ApprovalSchemaArgumentPrimitive | ApprovalSchemaArgumentObject | ApprovalSchemaArgumentArrayLevel3
+>;
+
+export type ApprovalSchemaArgumentArrayLevel1 = Array<
+  ApprovalSchemaArgumentPrimitive | ApprovalSchemaArgumentObject | ApprovalSchemaArgumentArrayLevel2
+>;
 
 export type ApprovalSchemaArgumentValue =
   | ApprovalSchemaArgumentPrimitive
-  | ApprovalSchemaArrayArgumentValue[]
+  | ApprovalSchemaArgumentArrayLevel1
   | ApprovalSchemaArgumentObject;
 
 /** @schemaObject */
@@ -82,15 +94,15 @@ export type ApprovalState =
 
 export type ApprovalCardCallbacks = {
   /** Called when the approver accepts the operation as presented. */
-  onApprove?: () => void;
+  onapprove?: () => void;
   /** Called with parsed JSON arguments when the approver accepts edited arguments. */
-  onApproveWithEdits?: (editedArgs: unknown) => void;
+  onapprovewithedits?: (editedArgs: unknown) => void;
   /** Called when the approver denies the operation. */
-  onDeny?: () => void;
+  ondeny?: () => void;
   /** Called when the approver asks the host application to remember the decision. */
-  onRemember?: () => void;
+  onremember?: () => void;
   /** Called when the approver cancels the approval prompt. */
-  onCancel?: () => void;
+  oncancel?: () => void;
 };
 
 /** Props for the ApprovalCard component. */
@@ -148,15 +160,15 @@ export type ApprovalCardSchemaProps = {
   /** Whether approving with edited JSON arguments is available. Default `false`. */
   editableArgs?: boolean;
   /** Called when the approver accepts the operation as presented. */
-  onApprove?: () => void;
+  onapprove?: () => void;
   /** Called with parsed JSON arguments when the approver accepts edited arguments. */
-  onApproveWithEdits?: (editedArgs: unknown) => void;
+  onapprovewithedits?: (editedArgs: unknown) => void;
   /** Called when the approver denies the operation. */
-  onDeny?: () => void;
+  ondeny?: () => void;
   /** Called when the approver asks the host application to remember the decision. */
-  onRemember?: () => void;
+  onremember?: () => void;
   /** Called when the approver cancels the approval prompt. */
-  onCancel?: () => void;
+  oncancel?: () => void;
   /** Additional CSS classes applied to the root element. */
   class?: string;
 };

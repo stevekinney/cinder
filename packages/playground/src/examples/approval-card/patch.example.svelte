@@ -38,8 +38,8 @@
   policyVersion="policy-2026-06"
   idempotencyKey="approval-patch-01"
   state="pending"
-  onApprove={() => undefined}
-  onDeny={() => undefined}
-  onRemember={() => undefined}
-  onCancel={() => undefined}
+  onapprove={() => undefined}
+  ondeny={() => undefined}
+  onremember={() => undefined}
+  oncancel={() => undefined}
 />

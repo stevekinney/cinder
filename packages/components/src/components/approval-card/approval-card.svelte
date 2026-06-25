@@ -70,11 +70,11 @@
     expiresAt,
     state: approvalState,
     editableArgs = false,
-    onApprove,
-    onApproveWithEdits,
-    onDeny,
-    onRemember,
-    onCancel,
+    onapprove,
+    onapprovewithedits,
+    ondeny,
+    onremember,
+    oncancel,
     id,
     class: customClassName,
     ...rest
@@ -136,13 +136,15 @@
   const currentEditedArgumentsSeedKey = $derived(
     `${idempotencyKey}\u0000${currentEditedArgumentsText}`,
   );
-  const editingArguments = $derived(editingArgumentsSeedKey === currentEditedArgumentsSeedKey);
+  const editingArguments = $derived(
+    editableArgs && editingArgumentsSeedKey === currentEditedArgumentsSeedKey,
+  );
   const editedArgumentsText = $derived(
     editedArgumentsDrafts[currentEditedArgumentsSeedKey] ?? currentEditedArgumentsText,
   );
   const editParseResult = $derived(parseJsonText(editedArgumentsText));
   const canConfirmEditedApproval = $derived(
-    editParseResult.ok && typeof onApproveWithEdits === 'function',
+    editableArgs && editParseResult.ok && typeof onapprovewithedits === 'function',
   );
 
   $effect(() => {
@@ -311,6 +313,7 @@
 
   function beginEditingArguments(): void {
     if (!currentApprovalIsActionable()) return;
+    if (!editableArgs) return;
     if (!(currentEditedArgumentsSeedKey in editedArgumentsDrafts)) {
       editedArgumentsDrafts = {
         ...editedArgumentsDrafts,
@@ -329,28 +332,29 @@
 
   function handleApprove(): void {
     if (!currentApprovalIsActionable()) return;
-    onApprove?.();
+    onapprove?.();
   }
 
   function handleApproveWithEdits(): void {
     if (!currentApprovalIsActionable()) return;
+    if (!editableArgs) return;
     if (!editParseResult.ok) return;
-    onApproveWithEdits?.(editParseResult.value);
+    onapprovewithedits?.(editParseResult.value);
   }
 
   function handleDeny(): void {
     if (!currentApprovalIsActionable()) return;
-    onDeny?.();
+    ondeny?.();
   }
 
   function handleRemember(): void {
     if (!currentApprovalIsActionable()) return;
-    onRemember?.();
+    onremember?.();
   }
 
   function handleCancel(): void {
     if (!currentApprovalIsActionable()) return;
-    onCancel?.();
+    oncancel?.();
   }
 </script>
 
@@ -489,7 +493,7 @@
       {#if isActionable}
         <section class="cinder-approval-card__section cinder-approval-card__actions-section">
           <ButtonGroup label="Approval actions">
-            <Button type="button" variant="primary" onclick={handleApprove} disabled={!onApprove}>
+            <Button type="button" variant="primary" onclick={handleApprove} disabled={!onapprove}>
               Approve
             </Button>
             {#if editableArgs}
@@ -497,18 +501,18 @@
                 type="button"
                 variant="secondary"
                 onclick={beginEditingArguments}
-                disabled={!onApproveWithEdits}
+                disabled={!onapprovewithedits}
               >
                 Approve with edits
               </Button>
             {/if}
-            <Button type="button" variant="soft-danger" onclick={handleDeny} disabled={!onDeny}>
+            <Button type="button" variant="soft-danger" onclick={handleDeny} disabled={!ondeny}>
               Deny
             </Button>
-            <Button type="button" variant="soft" onclick={handleRemember} disabled={!onRemember}>
+            <Button type="button" variant="soft" onclick={handleRemember} disabled={!onremember}>
               Remember
             </Button>
-            <Button type="button" variant="ghost" onclick={handleCancel} disabled={!onCancel}>
+            <Button type="button" variant="ghost" onclick={handleCancel} disabled={!oncancel}>
               Cancel
             </Button>
           </ButtonGroup>

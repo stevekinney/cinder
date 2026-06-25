@@ -92,6 +92,81 @@ const schema = {
                     type: 'object',
                   },
                   {
+                    type: 'array',
+                    items: {
+                      anyOf: [
+                        {
+                          type: 'string',
+                        },
+                        {
+                          type: 'number',
+                        },
+                        {
+                          const: false,
+                        },
+                        {
+                          const: true,
+                        },
+                        {
+                          type: 'object',
+                        },
+                        {
+                          type: 'array',
+                          items: {
+                            anyOf: [
+                              {
+                                type: 'string',
+                              },
+                              {
+                                type: 'number',
+                              },
+                              {
+                                const: false,
+                              },
+                              {
+                                const: true,
+                              },
+                              {
+                                type: 'object',
+                              },
+                              {
+                                type: 'array',
+                                items: {
+                                  anyOf: [
+                                    {
+                                      type: 'string',
+                                    },
+                                    {
+                                      type: 'number',
+                                    },
+                                    {
+                                      const: false,
+                                    },
+                                    {
+                                      const: true,
+                                    },
+                                    {
+                                      type: 'object',
+                                    },
+                                    {
+                                      type: 'null',
+                                    },
+                                  ],
+                                },
+                              },
+                              {
+                                type: 'null',
+                              },
+                            ],
+                          },
+                        },
+                        {
+                          type: 'null',
+                        },
+                      ],
+                    },
+                  },
+                  {
                     type: 'null',
                   },
                 ],
@@ -157,28 +232,28 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onApprove',
+        name: 'onapprove',
         reason: 'function-or-snippet',
         description: 'Called when the approver accepts the operation as presented.',
       },
       {
-        name: 'onApproveWithEdits',
+        name: 'onapprovewithedits',
         reason: 'function-or-snippet',
         description:
           'Called with parsed JSON arguments when the approver accepts edited arguments.',
       },
       {
-        name: 'onCancel',
+        name: 'oncancel',
         reason: 'function-or-snippet',
         description: 'Called when the approver cancels the approval prompt.',
       },
       {
-        name: 'onDeny',
+        name: 'ondeny',
         reason: 'function-or-snippet',
         description: 'Called when the approver denies the operation.',
       },
       {
-        name: 'onRemember',
+        name: 'onremember',
         reason: 'function-or-snippet',
         description: 'Called when the approver asks the host application to remember the decision.',
       },
