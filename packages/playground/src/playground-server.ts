@@ -1909,6 +1909,14 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix}\n`,
   );
 
+  // Pre-warm the component manifest (ts-morph analysis) before binding the
+  // port. Without this, the first /api/documentation/:name request pays the
+  // cold-analysis cost and can exceed the validate-playground fetch timeout
+  // as the component count grows.
+  await getManifests().catch((error: unknown) => {
+    console.error('[playground] manifest pre-warm failed:', error);
+  });
+
   // Start the HTTP server first — if binding fails for reasons other than an
   // occupied port, no watchers are leaked.
   const playgroundHttpServer = createHttpServerOnAvailablePort(port, handleRequest);
