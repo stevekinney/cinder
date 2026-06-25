@@ -8,7 +8,7 @@ test('root barrel exposes Stardust agent-ops public helper types', () => {
     kind: 'reconnected',
     replayedCount: 2,
   };
-  const entry: EventStreamEntry = reconnectBoundary;
+  const entry = reconnectBoundary satisfies EventStreamEntry;
   const link: RunStepLink = {
     href: '/runs/run-123',
     label: 'Open run',
