@@ -85,6 +85,7 @@
     truncated = false,
     loading = false,
     label = 'Event stream',
+    detectSequenceGaps = false,
     oncopyvisible,
     onfilter,
     filterQuery = '',
@@ -119,7 +120,7 @@
     const keyOccurrences = new Map<string, number>();
     let previousSequence: number | undefined;
     let previousEventId: string | undefined;
-    const detectSequenceGaps = filterQuery.trim() === '';
+    const shouldDetectSequenceGaps = detectSequenceGaps && filterQuery.trim() === '';
 
     for (const entry of events) {
       if (isReconnectedBoundary(entry)) {
@@ -138,7 +139,7 @@
 
       const currentSequence = entry.sequence;
       if (
-        detectSequenceGaps &&
+        shouldDetectSequenceGaps &&
         typeof previousSequence === 'number' &&
         typeof currentSequence === 'number'
       ) {

@@ -111,6 +111,11 @@ const schema = {
       description:
         'Accessible label for the event list region. Required for accessibility.\nDefaults to "Event stream".',
     },
+    detectSequenceGaps: {
+      type: 'boolean',
+      description:
+        'Enables sequence-gap markers when `events` is the complete, unfiltered\nstream. Leave false for retained windows, severity-filtered subsets, search\nresults, or any other caller-trimmed event array.',
+    },
     filterQuery: {
       type: 'string',
       description: 'Current filter query value, for controlled usage. Pairs with `onfilter`.',

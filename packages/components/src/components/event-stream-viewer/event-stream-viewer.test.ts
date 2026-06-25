@@ -310,7 +310,7 @@ describe('EventStreamViewer', () => {
       ];
 
       const { container } = render(EventStreamViewer, {
-        props: { events: entries },
+        props: { events: entries, detectSequenceGaps: true },
       });
 
       expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).not.toBe(
@@ -370,7 +370,7 @@ describe('EventStreamViewer', () => {
         { ...warningEvent, id: 'evt-2', sequence: 10 },
       ];
       const { container } = render(EventStreamViewer, {
-        props: { events: entries },
+        props: { events: entries, detectSequenceGaps: true },
       });
       const marker = container.querySelector(
         '.cinder-event-stream-viewer__sequence-gap-marker [role="note"]',
@@ -387,10 +387,25 @@ describe('EventStreamViewer', () => {
       ];
       const { container } = render(EventStreamViewer, {
         props: {
+          detectSequenceGaps: true,
           events: entries,
           onfilter: () => {},
           filterQuery: 'retry',
         },
+      });
+
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
+    });
+
+    test('blank-query subsets do not synthesize sequence gaps by default', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 7 },
+        { ...warningEvent, id: 'evt-2', sequence: 10 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
       });
 
       expect(
@@ -405,6 +420,7 @@ describe('EventStreamViewer', () => {
       ];
       const { container } = render(EventStreamViewer, {
         props: {
+          detectSequenceGaps: true,
           events: entries,
           onfilter: () => {},
           filterQuery: '',
@@ -856,6 +872,7 @@ describe('EventStreamViewer', () => {
       ];
       const { container } = render(EventStreamViewer, {
         props: {
+          detectSequenceGaps: true,
           events: entries,
           oncopyvisible: (text: string) => {
             received = text;

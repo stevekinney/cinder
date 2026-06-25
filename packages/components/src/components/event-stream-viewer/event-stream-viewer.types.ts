@@ -123,6 +123,12 @@ export type EventStreamViewerProps = Omit<HTMLAttributes<HTMLDivElement>, 'class
    */
   label?: string;
   /**
+   * Enables sequence-gap markers when `events` is the complete, unfiltered
+   * stream. Leave false for retained windows, severity-filtered subsets, search
+   * results, or any other caller-trimmed event array.
+   */
+  detectSequenceGaps?: boolean;
+  /**
    * Callback fired when the user clicks the "Copy visible" toolbar action.
    * Receives the text of all currently visible events. When omitted the copy
    * action is hidden.
@@ -179,6 +185,12 @@ export type EventStreamViewerSchemaProps = {
    * Defaults to "Event stream".
    */
   label?: string;
+  /**
+   * Enables sequence-gap markers when `events` is the complete, unfiltered
+   * stream. Leave false for retained windows, severity-filtered subsets, search
+   * results, or any other caller-trimmed event array.
+   */
+  detectSequenceGaps?: boolean;
   /**
    * Callback fired when the user clicks the "Copy visible" toolbar action.
    * Receives the text of all currently visible events. When omitted the copy
