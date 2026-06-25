@@ -14,6 +14,7 @@
     InvocationRule,
     InvocationRuleAction,
     InvocationRuleBuilderProps,
+    InvocationRuleBuilderSchemaProps,
     InvocationRuleChange,
     InvocationRuleCondition,
     InvocationRuleOption,

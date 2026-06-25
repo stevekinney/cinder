@@ -6,6 +6,7 @@ export type {
   InvocationRule,
   InvocationRuleAction,
   InvocationRuleBuilderProps,
+  InvocationRuleBuilderSchemaProps,
   InvocationRuleChange,
   InvocationRuleCondition,
   InvocationRuleOption,

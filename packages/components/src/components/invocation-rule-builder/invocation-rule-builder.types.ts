@@ -3,6 +3,8 @@ import type { HTMLAttributes } from 'svelte/elements';
 /**
  * A single condition within a rule. The field, operator, and value
  * are all consumer-defined strings — cinder does not interpret them.
+ *
+ * @schemaObject
  */
 export type InvocationRuleCondition = {
   /** Identifies the condition row; must be unique within its rule. */
@@ -18,6 +20,8 @@ export type InvocationRuleCondition = {
 /**
  * A single action within a rule. The target is a consumer-defined
  * identifier naming the agent, service, or step to invoke.
+ *
+ * @schemaObject
  */
 export type InvocationRuleAction = {
   /** Identifies the action row; must be unique within its rule. */
@@ -30,6 +34,8 @@ export type InvocationRuleAction = {
  * A single automation rule. A rule fires when ALL of its conditions are
  * met and then triggers all of its actions. Cinder does not execute,
  * persist, or validate rules — consumers own that logic entirely.
+ *
+ * @schemaObject
  */
 export type InvocationRule = {
   /** Unique identifier for the rule. */
@@ -44,6 +50,8 @@ export type InvocationRule = {
 
 /**
  * An option in a field, operator, or action-target select list.
+ *
+ * @schemaObject
  */
 export type InvocationRuleOption = {
   /** The value stored on the condition or action. */
@@ -97,6 +105,65 @@ export type InvocationRuleBuilderProps = Omit<
    * persistence, validation, and execution.
    */
   onchange: (nextRules: InvocationRule[], change: InvocationRuleChange) => void;
+
+  /**
+   * Options for the condition field selector. Consumer-provided list of
+   * fields that a condition can test, e.g. "path", "label", "author".
+   */
+  fieldOptions: InvocationRuleOption[];
+
+  /**
+   * Options for the condition operator selector. Consumer-provided list
+   * of operators, e.g. "matches", "is", "is-not", "contains".
+   */
+  operatorOptions: InvocationRuleOption[];
+
+  /**
+   * Options for the action target selector. Consumer-provided list of
+   * targets, e.g. review-agent slugs or step identifiers.
+   */
+  actionOptions: InvocationRuleOption[];
+
+  /**
+   * When true, renders a readonly summary of each rule instead of editable
+   * controls. Default is false (editable mode).
+   */
+  readonly?: boolean;
+
+  /**
+   * Label for the "Add rule" button. Defaults to "Add rule".
+   */
+  addRuleLabel?: string;
+
+  /**
+   * Label for the "Add condition" button. Defaults to "Add condition".
+   */
+  addConditionLabel?: string;
+
+  /**
+   * Label for the "Add action" button. Defaults to "Add action".
+   */
+  addActionLabel?: string;
+
+  /** Accessible label for the entire rule builder region. */
+  label?: string;
+
+  /** Additional CSS classes applied to the root element. */
+  class?: string;
+};
+
+/**
+ * Cinder-specific schema surface for InvocationRuleBuilder.
+ *
+ * The `onchange` callback is documented but marked unsupported because
+ * functions cannot be represented as JSON Schema controls.
+ */
+export type InvocationRuleBuilderSchemaProps = {
+  /**
+   * The current list of automation rules. Controlled — pass the updated
+   * list returned from `onchange` back into this prop to commit a change.
+   */
+  rules: InvocationRule[];
 
   /**
    * Options for the condition field selector. Consumer-provided list of

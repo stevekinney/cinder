@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import Ajv2020 from 'ajv/dist/2020';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
@@ -11,6 +12,7 @@ setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: PayloadInspector } = await import('./payload-inspector.svelte');
+const { default: payloadInspectorSchema } = await import('./payload-inspector.schema.ts');
 
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
@@ -28,6 +30,39 @@ function renderInspector(props: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 describe('PayloadInspector', () => {
+  describe('schema', () => {
+    test('models JSON payload values and metadata as supported input', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(payloadInspectorSchema);
+
+      expect(payloadInspectorSchema.properties).toHaveProperty('value');
+      expect(payloadInspectorSchema.properties).toHaveProperty('meta');
+      expect(payloadInspectorSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).toEqual([
+        'format',
+        'parse',
+      ]);
+
+      expect(
+        validate({
+          value: {
+            filters: {
+              include: {
+                branch: 'main',
+              },
+            },
+            matrix: [['bun', 'test']],
+          },
+          meta: {
+            contentType: 'application/json',
+            source: 'workflow',
+            timestamp: '2026-06-24T12:00:00.000Z',
+          },
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+  });
+
   describe('structure', () => {
     test('renders root element with cinder-payload-inspector class', () => {
       const { container } = renderInspector({ value: { key: 'value' } });

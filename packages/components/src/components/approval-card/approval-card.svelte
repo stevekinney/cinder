@@ -130,7 +130,7 @@
   const remainingFileCount = $derived(
     Math.max(0, filesTouched.length - visibleFilesTouched.length),
   );
-  const environmentNames = $derived(env.map(sanitizeEnvironmentName).filter(Boolean));
+  const environmentNames = $derived(sanitizeEnvironmentNames(env));
   const currentEditedArgumentsText = $derived(formatEditableArguments(editableArgumentsValue));
   const currentEditedArgumentsSeedKey = $derived(
     `${idempotencyKey}\u0000${currentEditedArgumentsText}`,
@@ -308,6 +308,20 @@
   function sanitizeEnvironmentName(name: string): string {
     const [firstPart] = name.split('=');
     return firstPart?.trim() ?? '';
+  }
+
+  function sanitizeEnvironmentNames(names: string[]): string[] {
+    const seen: string[] = [];
+    const sanitizedNames: string[] = [];
+
+    for (const name of names) {
+      const sanitizedName = sanitizeEnvironmentName(name);
+      if (!sanitizedName || seen.includes(sanitizedName)) continue;
+      seen.push(sanitizedName);
+      sanitizedNames.push(sanitizedName);
+    }
+
+    return sanitizedNames;
   }
 
   function currentApprovalIsActionable(): boolean {

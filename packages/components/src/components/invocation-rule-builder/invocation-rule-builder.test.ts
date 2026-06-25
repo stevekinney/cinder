@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
+import Ajv2020 from 'ajv/dist/2020';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type {
   InvocationRule,
@@ -13,6 +14,8 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: InvocationRuleBuilder } = await import('./invocation-rule-builder.svelte');
+const { default: invocationRuleBuilderSchema } =
+  await import('./invocation-rule-builder.schema.ts');
 
 const fieldOptions: InvocationRuleOption[] = [
   { value: 'path', label: 'Path' },
@@ -76,6 +79,37 @@ beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
 describe('InvocationRuleBuilder', () => {
+  describe('schema', () => {
+    test('models required rules and selector options as supported input', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(invocationRuleBuilderSchema);
+
+      expect(invocationRuleBuilderSchema.required).toEqual([
+        'actionOptions',
+        'fieldOptions',
+        'operatorOptions',
+        'rules',
+      ]);
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('rules');
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('fieldOptions');
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('operatorOptions');
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('actionOptions');
+      expect(
+        invocationRuleBuilderSchema.metadata?.unsupportedProps?.map((prop) => prop.name),
+      ).toEqual(['onchange']);
+
+      expect(
+        validate({
+          rules: [makeRule()],
+          fieldOptions,
+          operatorOptions,
+          actionOptions,
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+  });
+
   describe('structure', () => {
     test('renders root element with cinder-invocation-rule-builder class', () => {
       const { container } = renderBuilder();

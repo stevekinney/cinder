@@ -16,6 +16,8 @@
   export type {
     PayloadInspectorMeta,
     PayloadInspectorProps,
+    PayloadInspectorSchemaProps,
+    PayloadInspectorSchemaValue,
     PayloadInspectorView,
   } from './payload-inspector.types.ts';
 </script>

@@ -2,6 +2,129 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "value": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "const": false
+        },
+        {
+          "const": true
+        },
+        {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "const": false
+              },
+              {
+                "const": true
+              },
+              {
+                "type": "object"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "const": false
+                    },
+                    {
+                      "const": true
+                    },
+                    {
+                      "type": "object"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "const": false
+                          },
+                          {
+                            "const": true
+                          },
+                          {
+                            "type": "object"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "const": false
+                                },
+                                {
+                                  "const": true
+                                },
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The payload value to inspect. Pass any JSON-serializable value — object,\narray, string, number, boolean, or null. Pass a string for already-\nserialized JSON; the component will attempt to parse it. Pass `undefined`\nwhen no payload is available yet."
+    },
     "truncated": {
       "type": "boolean",
       "description": "When true, the payload has been truncated by the producer (e.g. because it\nexceeded a wire size limit). The inspector renders a truncation badge in the\nsummary and a notice above the raw view."
@@ -9,6 +132,25 @@
     "maxBytes": {
       "type": "number",
       "description": "Maximum byte size before the tree view is replaced with an oversize\nplaceholder. Defaults to 1,048,576 (1 MB). Does not affect the raw view."
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "contentType": {
+          "type": "string",
+          "description": "Content type or serializer label, e.g. \"application/json\" or \"Protobuf\"."
+        },
+        "source": {
+          "type": "string",
+          "description": "Optional source label, e.g. a workflow name, activity name, or endpoint path."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Optional ISO 8601 timestamp string rendered in the summary."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Structured metadata shown in the summary panel. Pass contentType, source,\nand/or timestamp to populate the description list rows."
     },
     "activeView": {
       "enum": ["summary", "tree", "raw"],
@@ -32,19 +174,9 @@
         "description": "Custom serializer for the Raw view display text. Receives the parsed value\nand must return a string. Defaults to JSON.stringify with 2-space\nindentation. Use this to customize key ordering, indentation, or\nalternative serialization formats. Does not affect the Summary or Tree\nviews, or the copy buttons. For redaction, transform the value upstream and\npass the already-redacted value as `value`."
       },
       {
-        "name": "meta",
-        "reason": "unknown-shape",
-        "description": "Structured metadata shown in the summary panel. Pass contentType, source,\nand/or timestamp to populate the description list rows."
-      },
-      {
         "name": "parse",
         "reason": "function-or-snippet",
         "description": "Custom parser applied when `value` is a string. Receives the raw string\nand must return a parsed value or throw. Defaults to JSON.parse. Use this\nto support alternative serialization formats."
-      },
-      {
-        "name": "value",
-        "reason": "unknown-shape",
-        "description": "The payload value to inspect. Pass any JSON-serializable value — object,\narray, string, number, boolean, or null. Pass a string for already-\nserialized JSON; the component will attempt to parse it. Pass `undefined`\nwhen no payload is available yet."
       }
     ]
   }

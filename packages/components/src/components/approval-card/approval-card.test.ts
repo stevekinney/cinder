@@ -307,6 +307,23 @@ describe('ApprovalCard', () => {
     }
   });
 
+  test('deduplicates sanitized environment names before rendering masked fields', () => {
+    const { container } = render(ApprovalCard, {
+      ...approvalCardProps({
+        env: [
+          'DATABASE_URL=postgres://fake-secret-value',
+          'DATABASE_URL',
+          'DATABASE_URL=postgres://other-fake-secret-value',
+        ],
+      }),
+    });
+
+    expect(container.querySelectorAll('.cinder-secret-value-field')).toHaveLength(1);
+    expect(container.textContent).toContain('DATABASE_URL');
+    expect(container.innerHTML).not.toContain('postgres://fake-secret-value');
+    expect(container.innerHTML).not.toContain('postgres://other-fake-secret-value');
+  });
+
   test('renders commands with CodeBlock', () => {
     const { container } = render(ApprovalCard, {
       ...approvalCardProps({
