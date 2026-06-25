@@ -198,7 +198,7 @@
   }
 
   function boundaryDateTime(boundary: StreamReconnectedBoundary): string | undefined {
-    return boundary.datetime ?? boundary.timestamp;
+    return boundary.datetime;
   }
 
   function formatEventAsText(event: StreamEvent): string {

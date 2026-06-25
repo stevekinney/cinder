@@ -221,12 +221,12 @@ describe('EventStreamViewer', () => {
       expect(marker?.textContent).toContain('Reconnected — 2 events replayed');
     });
 
-    test('reconnect boundary timestamp is exposed as machine-readable time when datetime is omitted', () => {
+    test('reconnect boundary timestamp stays visible-only when datetime is omitted', () => {
       const entries: EventStreamEntry[] = [
         {
           id: 'reconnect-1',
           kind: 'reconnected',
-          timestamp: '14:30:10',
+          timestamp: '2m ago',
           replayedCount: 2,
         },
       ];
@@ -237,9 +237,31 @@ describe('EventStreamViewer', () => {
         '.cinder-event-stream-viewer__marker-time',
       );
 
-      expect(time?.textContent?.trim()).toBe('14:30:10');
-      expect(time?.getAttribute('datetime')).toBe('14:30:10');
-      expect(time?.getAttribute('title')).toBe('14:30:10');
+      expect(time?.textContent?.trim()).toBe('2m ago');
+      expect(time?.hasAttribute('datetime')).toBe(false);
+      expect(time?.hasAttribute('title')).toBe(false);
+    });
+
+    test('reconnect boundary datetime is used for machine-readable metadata', () => {
+      const entries: EventStreamEntry[] = [
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          datetime: '2026-05-12T14:30:10Z',
+          timestamp: '2m ago',
+          replayedCount: 2,
+        },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+      const time = container.querySelector<HTMLTimeElement>(
+        '.cinder-event-stream-viewer__marker-time',
+      );
+
+      expect(time?.textContent?.trim()).toBe('2m ago');
+      expect(time?.getAttribute('datetime')).toBe('2026-05-12T14:30:10Z');
+      expect(time?.getAttribute('title')).toBe('2026-05-12T14:30:10Z');
     });
 
     test('non-contiguous sequence renders distinct accessible gap marker', () => {
@@ -442,7 +464,7 @@ describe('EventStreamViewer', () => {
       expect(secondPanel?.hasAttribute('hidden')).toBe(true);
     });
 
-    test('event and reconnect boundary keys do not depend on source index', () => {
+    test('event and reconnect boundary keys do not depend on source index or display fields', () => {
       const firstEvent: StreamEvent = {
         ...baseEvent,
         id: 'event-1',
@@ -467,10 +489,17 @@ describe('EventStreamViewer', () => {
 
       const firstWindowKeys = [firstEvent, retainedEvent].map(streamEventKey);
       const retainedWindowKeys = [retainedEvent, nextEvent].map(streamEventKey);
+      const firstRetainedKey = firstWindowKeys[1];
+      const retainedKey = retainedWindowKeys[0];
 
-      expect(firstWindowKeys[1]).toBe(retainedWindowKeys[0]);
-      expect(retainedWindowKeys[0]).toBe(
-        'event|id=event-2|sequence=2|datetime=2026-05-12T14:31:00Z|timestamp=14:31:00|summary=Retained event',
+      if (firstRetainedKey === undefined || retainedKey === undefined) {
+        throw new Error('Expected overlapping stream event keys to be generated.');
+      }
+
+      expect(firstRetainedKey).toBe(retainedKey);
+      expect(retainedKey).toBe('event|id=event-2|sequence=2');
+      expect(streamEventKey({ ...retainedEvent, timestamp: '3m ago', summary: 'Updated' })).toBe(
+        retainedKey,
       );
 
       expect(
@@ -480,7 +509,15 @@ describe('EventStreamViewer', () => {
           timestamp: '14:31:10',
           replayedCount: 2,
         }),
-      ).toBe('reconnected|id=reconnect-1|datetime=|timestamp=14:31:10|replayed=2');
+      ).toBe('reconnected|id=reconnect-1');
+      expect(
+        reconnectedBoundaryKey({
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '3m ago',
+          replayedCount: 3,
+        }),
+      ).toBe('reconnected|id=reconnect-1');
     });
   });
 

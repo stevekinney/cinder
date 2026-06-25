@@ -528,6 +528,7 @@ describe('ApprovalCard', () => {
     expect(description).toBeInstanceOf(HTMLElement);
     expect(region.getAttribute('aria-describedby')).toBe((description as HTMLElement).id);
 
+    expect(getByRole('group', { name: 'Approval status' })).toBeTruthy();
     const actionGroup = getByRole('group', { name: 'Approval actions' });
     expect(actionGroup).toBeTruthy();
     expect(getByRole('button', { name: 'Deny' }).getAttribute('type')).toBe('button');

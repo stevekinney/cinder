@@ -3,20 +3,11 @@ import type { StreamEvent, StreamReconnectedBoundary } from './event-stream-view
 export function streamEventKey(event: StreamEvent): string {
   const parts = ['event', `id=${event.id}`];
   if (typeof event.sequence === 'number') parts.push(`sequence=${event.sequence}`);
-  parts.push(`datetime=${event.datetime}`);
-  parts.push(`timestamp=${event.timestamp ?? ''}`);
-  parts.push(`summary=${event.summary}`);
   return parts.join('|');
 }
 
 export function reconnectedBoundaryKey(boundary: StreamReconnectedBoundary): string {
-  return [
-    'reconnected',
-    `id=${boundary.id}`,
-    `datetime=${boundary.datetime ?? ''}`,
-    `timestamp=${boundary.timestamp ?? ''}`,
-    `replayed=${boundary.replayedCount}`,
-  ].join('|');
+  return ['reconnected', `id=${boundary.id}`].join('|');
 }
 
 export function sequenceGapKey(

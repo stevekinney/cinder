@@ -191,62 +191,9 @@
                 "children": {
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "description": "Stable identity; used as the keyed list identity."
-                      },
-                      "label": {
-                        "type": "string",
-                        "description": "Display label for this step."
-                      },
-                      "status": {
-                        "enum": [
-                          "pending",
-                          "running",
-                          "succeeded",
-                          "failed",
-                          "cancelled",
-                          "skipped",
-                          "retrying",
-                          "waiting_approval"
-                        ],
-                        "description": "Generic execution state."
-                      },
-                      "startTime": {
-                        "type": "string",
-                        "description": "ISO datetime string for when this step started."
-                      },
-                      "endTime": {
-                        "type": "string",
-                        "description": "ISO datetime string for when this step ended."
-                      },
-                      "duration": {
-                        "type": "string",
-                        "description": "Human-readable duration string, e.g. \"1m 23s\"."
-                      },
-                      "attemptCount": {
-                        "type": "number",
-                        "description": "Number of attempts made so far, including any retries."
-                      },
-                      "actionsCount": {
-                        "type": "number",
-                        "description": "Number of actions associated with this step."
-                      },
-                      "progress": {
-                        "type": "number",
-                        "description": "Optional determinate progress value between 0 and `progressMax`."
-                      },
-                      "progressMax": {
-                        "type": "number",
-                        "description": "Maximum value for the progress bar. Defaults to 100."
-                      }
-                    },
-                    "additionalProperties": false,
-                    "required": ["id", "label", "status"]
+                    "type": "object"
                   },
-                  "description": "Schema-bounded nested child-workflow steps."
+                  "description": "Deeper child-workflow steps. Left open in JSON Schema so the generated\nschema accepts valid rendered descendants through the runtime depth cap\nwithout exceeding the global schema-generator depth ceiling."
                 }
               },
               "additionalProperties": false,

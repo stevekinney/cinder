@@ -95,26 +95,38 @@ const waitingApprovalStep: RunStep = {
 // ---------------------------------------------------------------------------
 
 describe('structure', () => {
-  test('schema allows nested child details and links', () => {
+  test('schema allows nested child details and leaves deeper lanes open', () => {
     const stepsSchema = runStepTimelineSchema.properties['steps'] as
       | {
           items: {
-            properties: {
-              children: {
-                items: {
-                  properties: Record<string, unknown>;
-                };
-              };
-            };
+            properties: Record<string, unknown>;
           };
         }
       | undefined;
     expect(stepsSchema).toBeDefined();
-    const childProperties = stepsSchema?.items.properties.children.items.properties ?? {};
 
-    expect(childProperties).toHaveProperty('details');
-    expect(childProperties).toHaveProperty('link');
-    expect(childProperties).toHaveProperty('children');
+    const childSchemaAt = (properties: Record<string, unknown>) => {
+      const children = properties['children'] as
+        | {
+            items: {
+              additionalProperties?: boolean;
+              type?: string;
+              properties: Record<string, unknown>;
+            };
+          }
+        | undefined;
+      return children?.items;
+    };
+
+    const depthOneSchema = childSchemaAt(stepsSchema?.items.properties ?? {});
+    const depthOneProperties = depthOneSchema?.properties ?? {};
+    const deeperSchema = childSchemaAt(depthOneProperties);
+
+    expect(depthOneProperties).toHaveProperty('details');
+    expect(depthOneProperties).toHaveProperty('link');
+    expect(depthOneProperties).toHaveProperty('children');
+    expect(deeperSchema?.type).toBe('object');
+    expect(deeperSchema?.additionalProperties).not.toBe(false);
   });
 
   test('renders an ordered list with one item per step', () => {
@@ -418,6 +430,39 @@ describe('behavior', () => {
     expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
     expect(items[2]?.getAttribute('data-cinder-connector-after')).toBe('visible');
     expect(items[3]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
+  test('escapes step ids before composing nested path keys', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: 'workflow/activity',
+          label: 'Top-level workflow activity',
+          status: 'succeeded',
+        },
+        {
+          id: 'workflow',
+          label: 'Workflow',
+          status: 'running',
+          children: [
+            {
+              id: 'activity',
+              label: 'Nested activity',
+              status: 'running',
+            },
+          ],
+        },
+      ],
+    });
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-run-step-timeline__item'),
+    );
+
+    expect(items.map((item) => item.getAttribute('data-cinder-path'))).toEqual([
+      'workflow%2Factivity',
+      'workflow',
+      'workflow/activity',
+    ]);
   });
 
   test('hides a nested lane connector before returning to a shallower row', () => {

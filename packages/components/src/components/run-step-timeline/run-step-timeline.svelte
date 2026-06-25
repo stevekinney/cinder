@@ -229,7 +229,7 @@
     pathPrefix: string,
   ): void {
     for (const step of steps) {
-      const pathKey = pathPrefix === '' ? step.id : `${pathPrefix}/${step.id}`;
+      const pathKey = nestedStepPathKey(pathPrefix, step.id);
       rows.push({ kind: 'step', step, depth, pathKey });
       if (step.children && step.children.length > 0) {
         if (depth < MAX_NESTED_STEP_DEPTH) {
@@ -244,6 +244,11 @@
         }
       }
     }
+  }
+
+  function nestedStepPathKey(pathPrefix: string, stepId: string): string {
+    const encodedStepId = encodeURIComponent(stepId);
+    return pathPrefix === '' ? encodedStepId : `${pathPrefix}/${encodedStepId}`;
   }
 
   function countNestedRunSteps(steps: RunStep[]): number {

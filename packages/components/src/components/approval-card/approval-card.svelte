@@ -375,7 +375,7 @@
             {stateDescription}
           </p>
         </div>
-        <div class="cinder-approval-card__badges" aria-label="Approval status">
+        <div class="cinder-approval-card__badges" role="group" aria-label="Approval status">
           <StatusDot status={stateDotStatus(effectiveState)} label={stateText} />
           <Badge variant={riskBadgeVariant(tool.risk)} size="sm">{riskLabel}</Badge>
           {#if expirationText}
