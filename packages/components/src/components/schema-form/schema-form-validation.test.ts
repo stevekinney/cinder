@@ -134,6 +134,18 @@ describe('schema-form validation', () => {
     expect(result.issues[0]?.message).toMatch(/Invalid JSON Schema/i);
   });
 
+  test('treats fulfilled async JSON Schema validation as valid for falsy root values', async () => {
+    const result = await validateSchemaValue(
+      {
+        $async: true,
+        type: 'boolean',
+      },
+      false,
+    );
+
+    expect(result).toEqual({ valid: true, value: false, issues: [] });
+  });
+
   test('groups issues by path without overwriting the first field message', () => {
     expect(
       issuesByPath([

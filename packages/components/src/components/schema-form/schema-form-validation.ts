@@ -38,7 +38,7 @@ async function validateJsonSchemaValue(
   let valid: unknown;
   try {
     const result = validate(value) as unknown;
-    valid = isPromiseLike(result) ? await result : result;
+    valid = isPromiseLike(result) ? (await result, true) : result;
   } catch (error) {
     return validationFailure(value, readableSchemaError(error));
   }
