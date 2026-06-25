@@ -131,6 +131,10 @@ export class SlidingDialogState {
     this.#cancelPendingClose?.();
     this.#cancelPendingClose = null;
     this.isClosing = false;
+    if (this.#options.getOpen()) {
+      this.renderPanel = true;
+      return;
+    }
     this.renderPanel = false;
     this.#options.onClosed?.();
     const dialogElement = this.#options.getDialogElement();

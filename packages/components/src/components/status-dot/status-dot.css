@@ -32,6 +32,22 @@
     background: var(--cinder-surface-inset);
   }
 
+  .cinder-status-dot[data-cinder-state='connected'] {
+    color: var(--cinder-success);
+  }
+
+  .cinder-status-dot[data-cinder-state='connecting'] {
+    color: var(--cinder-warning);
+  }
+
+  .cinder-status-dot[data-cinder-state='disconnected'] {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-status-dot[data-cinder-state='error'] {
+    color: var(--cinder-danger);
+  }
+
   .cinder-status-dot__indicator {
     display: inline-block;
     flex-shrink: 0;
