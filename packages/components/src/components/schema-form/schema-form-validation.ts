@@ -17,6 +17,10 @@ export async function validateSchemaValue(
   schema: JsonSchemaObject,
   value: unknown,
 ): Promise<SchemaFormValidationResult> {
+  if (!isRecord(schema)) {
+    return validationFailure(value, 'SchemaForm only accepts JSON Schema objects.');
+  }
+
   if (isLegacyStandardSchema(schema)) {
     return validationFailure(value, 'SchemaForm only accepts JSON Schema objects.');
   }
@@ -40,6 +44,14 @@ async function validateJsonSchemaValue(
     const result = validate(value) as unknown;
     valid = isPromiseLike(result) ? (await result, true) : result;
   } catch (error) {
+    if (isAjvValidationError(error)) {
+      return {
+        valid: false,
+        value,
+        issues: ajvIssues(error.errors),
+      };
+    }
+
     return validationFailure(value, readableSchemaError(error));
   }
 
@@ -71,6 +83,10 @@ function readableSchemaError(error: unknown): string {
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   return isRecord(value) && typeof value['then'] === 'function';
+}
+
+function isAjvValidationError(error: unknown): error is { errors: ErrorObject[] } {
+  return isRecord(error) && Array.isArray(error['errors']);
 }
 
 function validatorForSchema(schema: JsonSchemaObject): Promise<ValidateFunction> {

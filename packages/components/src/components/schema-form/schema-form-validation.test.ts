@@ -120,6 +120,15 @@ describe('schema-form validation', () => {
     ]);
   });
 
+  test('rejects non-object schemas at runtime', async () => {
+    const result = await validateSchemaValue(null as never, {});
+
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual([
+      { path: [], message: 'SchemaForm only accepts JSON Schema objects.' },
+    ]);
+  });
+
   test('reports invalid JSON Schema compilation errors as root issues', async () => {
     const result = await validateSchemaValue(
       {
@@ -144,6 +153,22 @@ describe('schema-form validation', () => {
     );
 
     expect(result).toEqual({ valid: true, value: false, issues: [] });
+  });
+
+  test('reports async JSON Schema validation rejections as validation issues', async () => {
+    const result = await validateSchemaValue(
+      {
+        $async: true,
+        type: 'object',
+        properties: { accepted: { type: 'boolean', const: true } },
+        required: ['accepted'],
+      },
+      { accepted: false },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.issues[0]?.path).toEqual(['accepted']);
+    expect(result.issues[0]?.message).toMatch(/constant/i);
   });
 
   test('groups issues by path without overwriting the first field message', () => {
