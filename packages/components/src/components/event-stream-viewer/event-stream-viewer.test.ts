@@ -88,6 +88,33 @@ describe('EventStreamViewer', () => {
       ).toBe(true);
       expect(validate.errors).toBeNull();
     });
+
+    test('requires event and reconnect boundary fields', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(eventStreamViewerSchema);
+
+      expect(validate({ events: [{ id: 'event-1' }] })).toBe(false);
+      expect(validate({ events: [{ id: 'reconnect-1', kind: 'reconnected' }] })).toBe(false);
+    });
+
+    test('accepts nested array event details without a depth boundary', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(eventStreamViewerSchema);
+
+      expect(
+        validate({
+          events: [
+            {
+              id: 'event-1',
+              datetime: '2026-06-24T12:00:00.000Z',
+              summary: 'Started',
+              details: [['cmd', ['arg', ['nested', ['leaf']]]]],
+            },
+          ],
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
   });
 
   describe('structure', () => {

@@ -6,27 +6,8 @@ export type EventSeverity = 'debug' | 'info' | 'success' | 'warning' | 'error';
 /** Connection state for the event stream source. */
 export type EventStreamState = 'connected' | 'connecting' | 'disconnected' | 'error';
 
-export type EventStreamSchemaDetailPrimitive = string | number | boolean | null;
-
-/**
- * Open object boundary for structured event details.
- *
- * The runtime prop accepts `unknown`; the schema surface keeps objects
- * permissive so schema-driven consumers accept deep JSON that JsonViewer can
- * already render.
- *
- * @schemaObject
- */
-export type EventStreamSchemaDetailObject = {};
-
-export type EventStreamSchemaDetailArrayLevel1 = Array<
-  EventStreamSchemaDetailPrimitive | EventStreamSchemaDetailObject
->;
-
-export type EventStreamSchemaDetailValue =
-  | EventStreamSchemaDetailPrimitive
-  | EventStreamSchemaDetailArrayLevel1
-  | EventStreamSchemaDetailObject;
+/** Schema-facing event detail value. Kept permissive to match the runtime `unknown` prop. */
+export type EventStreamSchemaDetailValue = unknown;
 
 /**
  * A single event entry in the stream.
@@ -72,7 +53,11 @@ export type EventStreamSchemaEvent = {
   source?: string;
   /** One-line summary of the event. */
   summary: string;
-  /** Optional structured JSON payload. Rendered in a collapsible JsonViewer. */
+  /**
+   * Optional structured JSON payload. Rendered in a collapsible JsonViewer.
+   *
+   * @schemaPermissive
+   */
   details?: EventStreamSchemaDetailValue;
 };
 
@@ -100,36 +85,8 @@ export type EventStreamEntry = StreamEvent | StreamReconnectedBoundary;
 
 /**
  * Schema-facing stream item shape for JSON Schema consumers.
- *
- * The runtime API keeps a stricter event-or-boundary union. The generated JSON
- * Schema stays permissive because schema-driven consumers mostly need a stable
- * event row contract and cannot express TypeScript's discriminated union as
- * ergonomically as the component can consume it.
- *
- * @schemaObject
  */
-export type EventStreamSchemaEntry = {
-  /** Stable unique identifier used as the keyed list identity. */
-  id: string;
-  /** Discriminator for reconnect boundary entries. */
-  kind?: 'reconnected';
-  /** Optional monotonically increasing stream sequence used to detect missed events. */
-  sequence?: number;
-  /** Machine-readable ISO 8601 datetime string rendered into `<time datetime>`. */
-  datetime?: string;
-  /** Human-readable timestamp label (e.g. "12:04:32", "2m ago"). Falls back to `datetime`. */
-  timestamp?: string;
-  /** Severity tone that drives visual styling and the accessible label prefix. */
-  severity?: EventSeverity;
-  /** Origin label identifying which service, worker, or activity produced the event. */
-  source?: string;
-  /** One-line summary of the event. */
-  summary?: string;
-  /** Optional structured JSON payload. Rendered in a collapsible JsonViewer. */
-  details?: EventStreamSchemaDetailValue;
-  /** Number of events replayed after the connection resumed. */
-  replayedCount?: number;
-};
+export type EventStreamSchemaEntry = EventStreamSchemaEvent | StreamReconnectedBoundary;
 
 /**
  * Props for the EventStreamViewer component.

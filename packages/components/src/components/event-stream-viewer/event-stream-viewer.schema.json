@@ -5,95 +5,73 @@
     "events": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Stable unique identifier used as the keyed list identity."
-          },
-          "kind": {
-            "const": "reconnected",
-            "description": "Discriminator for reconnect boundary entries."
-          },
-          "sequence": {
-            "type": "number",
-            "description": "Optional monotonically increasing stream sequence used to detect missed events."
-          },
-          "datetime": {
-            "type": "string",
-            "description": "Machine-readable ISO 8601 datetime string rendered into `<time datetime>`."
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "Human-readable timestamp label (e.g. \"12:04:32\", \"2m ago\"). Falls back to `datetime`."
-          },
-          "severity": {
-            "enum": ["debug", "info", "success", "warning", "error"],
-            "description": "Severity tone that drives visual styling and the accessible label prefix."
-          },
-          "source": {
-            "type": "string",
-            "description": "Origin label identifying which service, worker, or activity produced the event."
-          },
-          "summary": {
-            "type": "string",
-            "description": "One-line summary of the event."
-          },
-          "details": {
-            "anyOf": [
-              {
-                "type": "string"
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Stable unique identifier used as the keyed list identity."
               },
-              {
-                "type": "number"
+              "sequence": {
+                "type": "number",
+                "description": "Optional monotonically increasing stream sequence used to detect missed events."
               },
-              {
-                "const": false
+              "datetime": {
+                "type": "string",
+                "description": "Machine-readable ISO 8601 datetime string rendered into `<time datetime>`."
               },
-              {
-                "const": true
+              "timestamp": {
+                "type": "string",
+                "description": "Human-readable timestamp label (e.g. \"12:04:32\", \"2m ago\"). Falls back to `datetime`."
               },
-              {
-                "type": "array",
-                "items": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "const": false
-                    },
-                    {
-                      "const": true
-                    },
-                    {
-                      "type": "object"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
+              "severity": {
+                "enum": ["debug", "info", "success", "warning", "error"],
+                "description": "Severity tone that drives visual styling and the accessible label prefix."
               },
-              {
-                "type": "object"
+              "source": {
+                "type": "string",
+                "description": "Origin label identifying which service, worker, or activity produced the event."
               },
-              {
-                "type": "null"
+              "summary": {
+                "type": "string",
+                "description": "One-line summary of the event."
+              },
+              "details": {
+                "description": "Optional structured JSON payload. Rendered in a collapsible JsonViewer."
               }
-            ],
-            "description": "Optional structured JSON payload. Rendered in a collapsible JsonViewer."
+            },
+            "additionalProperties": false,
+            "required": ["datetime", "id", "summary"]
           },
-          "replayedCount": {
-            "type": "number",
-            "description": "Number of events replayed after the connection resumed."
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Stable unique identifier used as the keyed list identity."
+              },
+              "kind": {
+                "const": "reconnected",
+                "description": "Discriminator for reconnect boundary entries."
+              },
+              "datetime": {
+                "type": "string",
+                "description": "Optional machine-readable ISO 8601 datetime string for the reconnect moment."
+              },
+              "timestamp": {
+                "type": "string",
+                "description": "Optional human-readable timestamp label. Falls back to `datetime` when rendered."
+              },
+              "replayedCount": {
+                "type": "number",
+                "description": "Number of events replayed after the connection resumed."
+              }
+            },
+            "additionalProperties": false,
+            "required": ["id", "kind", "replayedCount"]
           }
-        },
-        "additionalProperties": false,
-        "required": ["id"]
+        ]
       },
       "description": "Events and additive boundary entries to render in chronological order, oldest first."
     },

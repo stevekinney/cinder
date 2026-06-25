@@ -61,6 +61,18 @@ describe('PayloadInspector', () => {
       ).toBe(true);
       expect(validate.errors).toBeNull();
     });
+
+    test('accepts deeply nested payload arrays without a depth boundary', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(payloadInspectorSchema);
+
+      expect(
+        validate({
+          value: [[[[[['leaf']]]]]],
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
   });
 
   describe('structure', () => {

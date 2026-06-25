@@ -17,45 +17,8 @@ export type PayloadInspectorMeta = {
   timestamp?: string;
 };
 
-export type PayloadInspectorSchemaValuePrimitive = string | number | boolean | null;
-
-/**
- * Open object boundary for JSON payload values.
- *
- * The runtime prop accepts `unknown`; the schema surface keeps objects
- * permissive so schema-driven consumers accept deep JSON that JsonViewer can
- * already render.
- *
- * @schemaObject
- */
-export type PayloadInspectorSchemaValueObject = {};
-
-export type PayloadInspectorSchemaValueArrayLevel4 = Array<
-  PayloadInspectorSchemaValuePrimitive | PayloadInspectorSchemaValueObject
->;
-
-export type PayloadInspectorSchemaValueArrayLevel3 = Array<
-  | PayloadInspectorSchemaValuePrimitive
-  | PayloadInspectorSchemaValueObject
-  | PayloadInspectorSchemaValueArrayLevel4
->;
-
-export type PayloadInspectorSchemaValueArrayLevel2 = Array<
-  | PayloadInspectorSchemaValuePrimitive
-  | PayloadInspectorSchemaValueObject
-  | PayloadInspectorSchemaValueArrayLevel3
->;
-
-export type PayloadInspectorSchemaValueArrayLevel1 = Array<
-  | PayloadInspectorSchemaValuePrimitive
-  | PayloadInspectorSchemaValueObject
-  | PayloadInspectorSchemaValueArrayLevel2
->;
-
-export type PayloadInspectorSchemaValue =
-  | PayloadInspectorSchemaValuePrimitive
-  | PayloadInspectorSchemaValueArrayLevel1
-  | PayloadInspectorSchemaValueObject;
+/** Schema-facing payload value. Kept permissive to match the runtime `unknown` prop. */
+export type PayloadInspectorSchemaValue = unknown;
 
 /**
  * Props for the PayloadInspector component.
@@ -125,6 +88,8 @@ export type PayloadInspectorSchemaProps = {
    * array, string, number, boolean, or null. Pass a string for already-
    * serialized JSON; the component will attempt to parse it. Pass `undefined`
    * when no payload is available yet.
+   *
+   * @schemaPermissive
    */
   value?: PayloadInspectorSchemaValue;
   /**
