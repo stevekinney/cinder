@@ -6,25 +6,39 @@ import { fileURLToPath } from 'node:url';
 const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sourceDirectory = join(rootDirectory, 'src');
 const glob = new Glob('components/**/*.svelte');
-const booleanAttributePattern =
-  /data-cinder-(open|selected)=\{[^}\n?]+(?:\?[^}\n]*(['"])true\2\s*:\s*(['"])false\3|\?\s*(['"])true\4\s*:\s*undefined|:\s*(['"])false\5)[^}\n]*\}/g;
 
-const violations: string[] = [];
+const booleanLiteralToken = String.raw`(?:"(?:true|false)"|'(?:true|false)'|\b(?:true|false)\b)`;
+export const booleanAttributePattern = new RegExp(
+  String.raw`data-cinder-(open|selected)=\{[^}\n?]+\?(?:[^:}\n]*${booleanLiteralToken}[^:}\n]*:[^}\n]*|[^:}\n]*:[^}\n]*${booleanLiteralToken}[^}\n]*)\}`,
+  'g',
+);
 
-for await (const path of glob.scan({ cwd: sourceDirectory, absolute: true })) {
-  const source = await readFile(path, 'utf8');
-  for (const match of source.matchAll(booleanAttributePattern)) {
+export function findBooleanAttributeViolations(source: string, filePath: string): string[] {
+  return Array.from(source.matchAll(booleanAttributePattern), (match) => {
     const line = source.slice(0, match.index).split('\n').length;
-    violations.push(`${relative(rootDirectory, path)}:${line}: ${match[0]}`);
+    return `${filePath}:${line}: ${match[0]}`;
+  });
+}
+
+async function main() {
+  const violations: string[] = [];
+
+  for await (const path of glob.scan({ cwd: sourceDirectory, absolute: true })) {
+    const source = await readFile(path, 'utf8');
+    violations.push(...findBooleanAttributeViolations(source, relative(rootDirectory, path)));
   }
+
+  if (violations.length > 0) {
+    console.error(
+      "check-data-cinder-boolean-attributes — boolean data-cinder-open/selected attributes must not serialize boolean values or strings such as true, false, 'true', or 'false'; use presence semantics (`value ? '' : undefined`).\n" +
+        violations.join('\n'),
+    );
+    process.exit(1);
+  }
+
+  console.log('check-data-cinder-boolean-attributes — OK.');
 }
 
-if (violations.length > 0) {
-  console.error(
-    "check-data-cinder-boolean-attributes — boolean data-cinder-open/selected attributes must not serialize boolean strings such as 'true' or 'false'; use presence semantics (`value ? '' : undefined`).\n" +
-      violations.join('\n'),
-  );
-  process.exit(1);
+if (import.meta.main) {
+  await main();
 }
-
-console.log('check-data-cinder-boolean-attributes — OK.');
