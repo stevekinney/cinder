@@ -17,7 +17,8 @@
       /* cinder-allow-raw-color: structural-pattern — neutral scroll-edge shadow, not a themeable surface */
         linear-gradient(90deg, oklch(0% 0 0 / 12%), transparent) left center / 1rem 100% no-repeat
         scroll,
-      linear-gradient(270deg, oklch(0% 0 0 / 12%), transparent) right center / 1rem 100% no-repeat
+      /* cinder-allow-raw-color: structural-pattern — neutral scroll-edge shadow, not a themeable surface */
+        linear-gradient(270deg, oklch(0% 0 0 / 12%), transparent) right center / 1rem 100% no-repeat
         scroll;
   }
 
