@@ -1,5 +1,5 @@
 ---
-'@lostgradient/cinder': major
+'@lostgradient/cinder': minor
 ---
 
 **Breaking: unify public API vocabulary across components.** Several public APIs

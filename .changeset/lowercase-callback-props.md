@@ -1,5 +1,5 @@
 ---
-'@lostgradient/cinder': major
+'@lostgradient/cinder': minor
 ---
 
 **Breaking: PascalCase event-callback props renamed to lowercase.** Svelte 5 event
