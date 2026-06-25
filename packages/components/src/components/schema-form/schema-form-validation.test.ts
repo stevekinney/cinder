@@ -1,6 +1,4 @@
-import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { describe, expect, test } from 'bun:test';
-import { z } from 'zod';
 
 import {
   issuesByPath,
@@ -102,91 +100,6 @@ describe('schema-form validation', () => {
 
     expect(result.valid).toBe(false);
     expect(result.issues[0]).toMatchObject({ path: ['nested', 'name'] });
-  });
-
-  test('validates sync Standard Schema values and returns the typed output', async () => {
-    const schema = z.object({ count: z.coerce.number().int().positive() });
-    const result = await validateSchemaValue(schema, { count: '3' });
-    expect(result).toEqual({ valid: true, value: { count: 3 }, issues: [] });
-  });
-
-  test('awaits async Standard Schema validation before returning', async () => {
-    let awaited = false;
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'async-test',
-        async validate(value: unknown) {
-          await Promise.resolve();
-          awaited = true;
-          return { value };
-        },
-      },
-    } as const;
-
-    const result = await validateSchemaValue(schema, { ok: true });
-    expect(awaited).toBe(true);
-    expect(result).toEqual({ valid: true, value: { ok: true }, issues: [] });
-  });
-
-  test('maps Standard Schema issue paths to field paths', async () => {
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'test',
-        validate: () => ({
-          issues: [
-            { path: [{ key: 'name' }], message: 'Name is required.' },
-            { path: ['nested', { key: 'count' }], message: 'Count is required.' },
-          ],
-        }),
-      },
-    } as const;
-
-    const result = await validateSchemaValue(schema, {});
-    expect(result.valid).toBe(false);
-    expect(result.issues).toEqual([
-      { path: ['name'], message: 'Name is required.' },
-      { path: ['nested', 'count'], message: 'Count is required.' },
-    ]);
-  });
-
-  test('normalizes non-string Standard Schema issue path segments defensively', async () => {
-    const circularSegment: Record<string, unknown> = {};
-    circularSegment['self'] = circularSegment;
-    const schema = {
-      '~standard': {
-        version: 1,
-        vendor: 'test',
-        validate: () => ({
-          issues: [
-            {
-              path: [
-                0,
-                true,
-                1n,
-                Symbol('symbol-key'),
-                null,
-                undefined,
-                { key: 'wrapped' },
-                { kind: 'plain-object' },
-                circularSegment,
-              ],
-              message: 'Mixed path segment.',
-            },
-          ],
-        }),
-      },
-    } as unknown as StandardSchemaV1;
-
-    const result = await validateSchemaValue(schema, {});
-    expect(result.valid).toBe(false);
-    expect(result.issues).toEqual([
-      {
-        path: ['0', 'true', '1', 'symbol-key', '', '', 'wrapped', '{"kind":"plain-object"}', ''],
-        message: 'Mixed path segment.',
-      },
-    ]);
   });
 
   test('groups issues by path without overwriting the first field message', () => {

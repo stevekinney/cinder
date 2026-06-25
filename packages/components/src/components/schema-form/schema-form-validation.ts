@@ -1,7 +1,6 @@
-import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { ErrorObject, ValidateFunction } from 'ajv';
 
-import { isRecord, isStandardSchema, pathKey, type JsonSchemaObject } from './schema-form-model.ts';
+import { isRecord, pathKey, type JsonSchemaObject } from './schema-form-model.ts';
 
 export type SchemaFormValidationIssue = {
   path: string[];
@@ -15,27 +14,10 @@ export type SchemaFormValidationResult =
 const validatorCache = new WeakMap<JsonSchemaObject, Promise<ValidateFunction>>();
 
 export async function validateSchemaValue(
-  schema: JsonSchemaObject | StandardSchemaV1,
+  schema: JsonSchemaObject,
   value: unknown,
 ): Promise<SchemaFormValidationResult> {
-  if (isStandardSchema(schema)) return validateStandardSchemaValue(schema, value);
   return validateJsonSchemaValue(schema, value);
-}
-
-async function validateStandardSchemaValue(
-  schema: StandardSchemaV1,
-  value: unknown,
-): Promise<SchemaFormValidationResult> {
-  const result = await schema['~standard'].validate(value);
-  if (!result.issues) return { valid: true, value: result.value, issues: [] };
-  return {
-    valid: false,
-    value,
-    issues: result.issues.map((issue) => ({
-      path: standardIssuePath(issue.path),
-      message: issue.message,
-    })),
-  };
 }
 
 async function validateJsonSchemaValue(
@@ -81,31 +63,6 @@ function jsonSchemaDraft(schema: JsonSchemaObject): '2020-12' | '2019-09' | 'dra
   if (id.includes('draft-07')) return 'draft-07';
   if (id.includes('2019-09')) return '2019-09';
   return '2020-12';
-}
-
-function standardIssuePath(
-  path: ReadonlyArray<PropertyKey | StandardSchemaV1.PathSegment> | undefined,
-): string[] {
-  if (!path) return [];
-  return path.map((segment) => {
-    if (isRecord(segment) && 'key' in segment) return propertyKeyPathSegment(segment.key);
-    return propertyKeyPathSegment(segment);
-  });
-}
-
-function propertyKeyPathSegment(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-    return String(value);
-  }
-  if (typeof value === 'symbol') return value.description ?? value.toString();
-  if (value === null || value === undefined) return '';
-
-  try {
-    return JSON.stringify(value) ?? '';
-  } catch {
-    return '';
-  }
 }
 
 function ajvIssues(errors: readonly ErrorObject[]): SchemaFormValidationIssue[] {

@@ -453,7 +453,7 @@
       formValue = result.value;
       errors = {};
       setSerializedValue(serialized.value);
-      await onsubmit?.(result.value as SchemaFormOutput<Schema>, event);
+      await onsubmit?.(result.value as SchemaFormOutput, event);
 
       if (shouldResumeNativeSubmit()) {
         allowNativeSubmit = true;

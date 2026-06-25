@@ -1,5 +1,3 @@
-import type { StandardJSONSchemaV1, StandardSchemaV1 } from '@standard-schema/spec';
-
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 export type JsonSchemaObject = Record<string, unknown>;
@@ -43,51 +41,13 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function isJsonSchemaObject(value: unknown): value is JsonSchemaObject {
-  return isRecord(value) && !isStandardSchema(value);
+  return isRecord(value);
 }
 
-export function isStandardSchema(value: unknown): value is StandardSchemaV1 {
-  if (!isRecord(value)) return false;
-  const standard = value['~standard'];
-  return isRecord(standard) && standard['version'] === 1;
-}
-
-function hasJsonSchemaConverter(
-  value: StandardSchemaV1,
-): value is StandardSchemaV1 & StandardJSONSchemaV1 {
-  const standard = value['~standard'] as StandardSchemaV1['~standard'] &
-    Partial<StandardJSONSchemaV1['~standard']>;
-  return isRecord(standard.jsonSchema) && typeof standard.jsonSchema.input === 'function';
-}
-
-export function jsonSchemaFromStandardSchema(schema: StandardSchemaV1): JsonSchemaObject | null {
-  if (!hasJsonSchemaConverter(schema)) return null;
-
-  try {
-    const generated = schema['~standard'].jsonSchema.input({ target: 'draft-2020-12' });
-    return isRecord(generated) ? generated : null;
-  } catch {
-    return null;
-  }
-}
-
-export function createSchemaFormModel(
-  schema: JsonSchemaObject | StandardSchemaV1,
-): SchemaFormModel {
-  const sourceSchema = isStandardSchema(schema)
-    ? (jsonSchemaFromStandardSchema(schema) ?? fallbackRawJsonSchema())
-    : schema;
-
+export function createSchemaFormModel(schema: JsonSchemaObject): SchemaFormModel {
   return {
-    field: fieldFromJsonSchema(sourceSchema, [], 'value', true),
-    sourceSchema,
-  };
-}
-
-function fallbackRawJsonSchema(): JsonSchemaObject {
-  return {
-    title: 'Value',
-    description: 'This schema cannot be inspected, so the value is edited as JSON.',
+    field: fieldFromJsonSchema(schema, [], 'value', true),
+    sourceSchema: schema,
   };
 }
 

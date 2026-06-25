@@ -3,11 +3,11 @@
    * @cinder
    * @category form
    * @status beta
-   * @purpose Schema-driven form that renders accessible controls from JSON Schema or Standard Schema and submits one validated value object.
+   * @purpose Schema-driven form that renders accessible controls from JSON Schema and submits one validated value object.
    * @tag form
    * @tag schema
    * @tag validation
-   * @useWhen Capturing a payload whose shape is already described by a workflow, API, or Standard Schema validator.
+   * @useWhen Capturing a payload whose shape is already described by a workflow, API, or JSON Schema document.
    * @useWhen You need callback submission and native FormData submission to expose the same validated object.
    * @avoidWhen Authoring or editing a JSON Schema document — use json-schema-editor instead.
    * @avoidWhen You need bespoke multi-step flows or custom cross-field user interface beyond schema validation.
@@ -20,7 +20,6 @@
     SchemaFormOutput,
     SchemaFormProps,
     SchemaFormSchema,
-    SchemaFormStandardSchema,
     SchemaFormSubmitHandler,
   } from './schema-form.types.ts';
 </script>
@@ -31,7 +30,7 @@
 
   /**
    * Schema-driven form that renders accessible controls from JSON Schema or
-   * Standard Schema and submits one validated value object.
+   * JSON Schema and submits one validated value object.
    *
    * **Schema changes reset form state.** When the `schema` prop changes, the
    * internal form body is remounted and all mutable state (formValue, errors,

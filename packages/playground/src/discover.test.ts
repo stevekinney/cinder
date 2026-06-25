@@ -259,8 +259,8 @@ describe('discoverSidebarComponents', () => {
     // its first playground example, bringing the measured ceiling to 126.
     // AccessGate adds one standalone authorization-state primitive with examples,
     // bringing the measured ceiling to 127.
-    // SchemaForm adds one public form family with JSON Schema and Standard Schema
-    // examples, bringing the measured ceiling to 128.
+    // SchemaForm adds one public form family with a JSON Schema example, bringing
+    // the measured ceiling to 128.
     // VirtualList adds one standalone windowing primitive with examples,
     // bringing the measured ceiling to 129.
     // The stable-component example backfill (#463) adds first examples for nine
