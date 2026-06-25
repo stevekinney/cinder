@@ -2,8 +2,103 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable unique identifier used as the keyed list identity."
+          },
+          "kind": {
+            "const": "reconnected",
+            "description": "Discriminator for reconnect boundary entries."
+          },
+          "sequence": {
+            "type": "number",
+            "description": "Optional monotonically increasing stream sequence used to detect missed events."
+          },
+          "datetime": {
+            "type": "string",
+            "description": "Machine-readable ISO 8601 datetime string rendered into `<time datetime>`."
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Human-readable timestamp label (e.g. \"12:04:32\", \"2m ago\"). Falls back to `datetime`."
+          },
+          "severity": {
+            "enum": ["debug", "info", "success", "warning", "error"],
+            "description": "Severity tone that drives visual styling and the accessible label prefix."
+          },
+          "source": {
+            "type": "string",
+            "description": "Origin label identifying which service, worker, or activity produced the event."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One-line summary of the event."
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "const": false
+              },
+              {
+                "const": true
+              },
+              {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "const": false
+                    },
+                    {
+                      "const": true
+                    },
+                    {
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional structured JSON payload. Rendered in a collapsible JsonViewer."
+          },
+          "replayedCount": {
+            "type": "number",
+            "description": "Number of events replayed after the connection resumed."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["id"]
+      },
+      "description": "Events and additive boundary entries to render in chronological order, oldest first."
+    },
     "connectionState": {
-      "enum": ["connected", "connecting", "disconnected", "error"],
+      "enum": ["error", "connected", "connecting", "disconnected"],
       "description": "Current connection state. When provided, renders a ConnectionIndicator in\nthe toolbar. Omit when the stream has no live transport."
     },
     "followLatest": {
@@ -32,14 +127,9 @@
     }
   },
   "additionalProperties": false,
+  "required": ["events"],
   "metadata": {
     "unsupportedProps": [
-      {
-        "name": "events",
-        "reason": "unknown-shape",
-        "required": true,
-        "description": "Events and additive boundary entries to render in chronological order, oldest first."
-      },
       {
         "name": "oncopyvisible",
         "reason": "function-or-snippet",

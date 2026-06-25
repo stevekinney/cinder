@@ -221,6 +221,23 @@ describe('ApprovalCard', () => {
     expect(container.textContent).not.toContain('No command or patch body was provided.');
   });
 
+  test('renders repeated touched files without duplicate keyed rows', () => {
+    const { container } = render(ApprovalCard, {
+      ...approvalCardProps({
+        operation: {
+          kind: 'file-write',
+          filesTouched: ['src/repeated.ts', 'src/repeated.ts'],
+        },
+      }),
+    });
+
+    expect(
+      Array.from(container.querySelectorAll('.cinder-approval-card__file-list li')).map((item) =>
+        item.textContent?.trim(),
+      ),
+    ).toEqual(['src/repeated.ts', 'src/repeated.ts']);
+  });
+
   test('renders string argument previews as string values instead of parse errors', () => {
     const { container } = render(ApprovalCard, {
       ...approvalCardProps({

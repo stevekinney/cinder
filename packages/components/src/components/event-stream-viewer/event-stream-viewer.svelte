@@ -16,7 +16,11 @@
   export type {
     EventSeverity,
     EventStreamEntry,
+    EventStreamSchemaDetailValue,
+    EventStreamSchemaEntry,
+    EventStreamSchemaEvent,
     EventStreamState,
+    EventStreamViewerSchemaProps,
     EventStreamViewerProps,
     StreamEvent,
     StreamReconnectedBoundary,

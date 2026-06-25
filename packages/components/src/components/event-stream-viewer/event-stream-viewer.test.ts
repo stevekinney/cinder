@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import Ajv2020 from 'ajv/dist/2020';
+
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import {
   detailsIdForKey,
@@ -13,6 +15,7 @@ setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: EventStreamViewer } = await import('./event-stream-viewer.svelte');
+const { default: eventStreamViewerSchema } = await import('./event-stream-viewer.schema.ts');
 
 const baseEvent: StreamEvent = {
   id: 'evt-1',
@@ -45,6 +48,48 @@ beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
 describe('EventStreamViewer', () => {
+  describe('schema', () => {
+    test('models stream events and reconnect boundaries as supported input', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(eventStreamViewerSchema);
+
+      expect(eventStreamViewerSchema.required).toContain('events');
+      expect(eventStreamViewerSchema.properties).toHaveProperty('events');
+      expect(
+        eventStreamViewerSchema.metadata?.unsupportedProps?.map((prop) => prop.name),
+      ).not.toContain('events');
+
+      expect(
+        validate({
+          events: [
+            {
+              id: 'event-1',
+              sequence: 1,
+              datetime: '2026-06-24T12:00:00.000Z',
+              timestamp: '12:00:00',
+              severity: 'info',
+              source: 'worker',
+              summary: 'Started',
+              details: {
+                filters: {
+                  include: {
+                    branch: 'main',
+                  },
+                },
+              },
+            },
+            {
+              id: 'reconnect-1',
+              kind: 'reconnected',
+              replayedCount: 2,
+            },
+          ],
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+  });
+
   describe('structure', () => {
     test('renders root element with cinder-event-stream-viewer class', () => {
       const { container } = render(EventStreamViewer, { props: { events: [baseEvent] } });
@@ -944,6 +989,18 @@ describe('EventStreamViewer', () => {
       expect(css).toContain(
         '@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities',
       );
+    });
+
+    test('CSS sidecar imports composed primitive styles', () => {
+      const { readFileSync } = require('node:fs');
+      const css = readFileSync(
+        new URL('./event-stream-viewer.css', import.meta.url).pathname,
+        'utf8',
+      );
+
+      expect(css).toContain("@import '../connection-indicator/connection-indicator.css';");
+      expect(css).toContain("@import '../copy-button/copy-button.css';");
+      expect(css).toContain("@import '../json-viewer/json-viewer.css';");
     });
   });
 });

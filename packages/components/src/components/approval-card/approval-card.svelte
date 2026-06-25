@@ -464,7 +464,7 @@
               {/if}
             </div>
             <ul class="cinder-approval-card__file-list">
-              {#each visibleFilesTouched as file (file)}
+              {#each visibleFilesTouched as file, fileIndex (`${fileIndex}:${file}`)}
                 <li>{file}</li>
               {/each}
             </ul>
