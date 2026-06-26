@@ -231,6 +231,7 @@ export class TreeRegistry {
         return {
           value: id,
           label: node?.label() ?? '',
+          disabled: node?.disabled,
         };
       }),
       prefix,

@@ -1039,7 +1039,11 @@
     event.preventDefault();
     const startIndex = currentVirtualIndex();
     const match = findTypeaheadMatch(
-      visibleDataItems.map((item, index) => ({ value: index, label: item.label })),
+      visibleDataItems.map((item, index) => ({
+        value: index,
+        label: item.label,
+        disabled: item.disabled,
+      })),
       typeaheadBuffer.push(event.key),
       startIndex,
     );
