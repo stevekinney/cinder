@@ -1,5 +1,151 @@
 # @lostgradient/cinder
 
+## 0.4.0
+
+### Minor Changes
+
+- [#524](https://github.com/stevekinney/cinder/pull/524) [`680c499`](https://github.com/stevekinney/cinder/commit/680c499a8822882693f387f93f0eab9c086a12b8) Thanks [@stevekinney](https://github.com/stevekinney)! - Add the alpha ApprovalCard component for durable human-in-the-loop tool approvals.
+
+- [#475](https://github.com/stevekinney/cinder/pull/475) [`9349f11`](https://github.com/stevekinney/cinder/commit/9349f11e71874b3056f59a68609eb705ed185aca) Thanks [@stevekinney](https://github.com/stevekinney)! - Remove write-back $effects from rating, pin-input, chat, and image-lightbox; fix schema-form schema-change reset.
+
+  **No-write-back contract for rating and pin-input.** The `value` bindable in `Rating` and `PinInput` is no longer mutated back to the normalized/filtered value. The displayed and submitted value is derived internally via `$derived`, but the bound prop reflects exactly what the consumer set. Consumers relying on the binding being silently normalized should read from `onchange` instead.
+
+  **Chat scroll/unread bindables now update via explicit callbacks.** The `isAtBottom`, `unreadCount`, and `hasNewMessageIndicator` bindables are maintained through the existing `onscrollstatechange`, `onunreadindicatorchange`, and `onReachBottom` callback paths — no $effect write-back. The `handleSubmit` path now also writes `isAtBottom = true` after `scrollState.setIsAtBottom(true)` so the binding stays current after the user sends a message.
+
+  **SchemaForm schema-change now genuinely resets form state.** The internal form body has been extracted into a child component (`schema-form-body.svelte`). The outer component renders `{#key schema}<SchemaFormBody />` so that changing `schema` destroys and recreates the child — causing genuine `$state` recreation (formValue, errors, rawDrafts, arrayKeys, serializedValue) rather than only DOM reconciliation. Changing `value` with the same schema does NOT reset the form (seed-only contract, documented on the prop).
+
+  **image-lightbox index reset.** The `previousOpen $state + $effect` write-back is replaced by a `navigationIndex` (null = no navigation yet) with `effectiveIndex = $derived(navigationIndex ?? clampedInitialIndex)`. Calling `close()` resets `navigationIndex` to null so the next open starts at `initialIndex` without any $effect.
+
+- [#473](https://github.com/stevekinney/cinder/pull/473) [`51355f8`](https://github.com/stevekinney/cinder/commit/51355f83cf0d56f7ccaf3bec27a9c2c34d26006a) Thanks [@stevekinney](https://github.com/stevekinney)! - **Breaking: `DataList` now requires a `key` extractor.** `DataListProps.key` was
+  optional and silently fell back to an unkeyed `{#each}` block when omitted, which
+  made a stable data-display primitive use index-based reconciliation for mutable
+  lists (O(n) row churn and incorrect row instance reuse on insert/remove/filter/
+  reorder). `key` is now required and the unkeyed fallback is removed. Consumers
+  that omitted `key` must pass a stable extractor, e.g. `key={(item) => item.id}`.
+
+  **Breaking: `Masonry.as` is narrowed to a layout-safe element union.** `as` was
+  typed as any `string`, allowing void elements (`img`, `input`, `br`, `hr`) that
+  cannot validly contain masonry children. It now accepts a `MasonryElement` union
+  (`article | aside | div | footer | header | main | nav | section | ul | ol`).
+
+- [#520](https://github.com/stevekinney/cinder/pull/520) [`7b0baa4`](https://github.com/stevekinney/cinder/commit/7b0baa4667907744d56973d49411edc6370e346d) Thanks [@stevekinney](https://github.com/stevekinney)! - Backfill missing component accessibility documentation, gate `.a11y.md` presence in `components:check`, and tighten DataGrid/DataTable audit fixes.
+
+  DataGrid columns can now opt into `role="rowheader"` with `rowHeader: true`, virtualized-column overflow keeps a stable gutter and edge cue, and DataTable sortable headers describe the next sort action while focused rows receive the same hover affordance. The package also normalizes optional Svelte component function parameters so packed source remains valid for downstream SvelteKit consumers.
+
+- [#524](https://github.com/stevekinney/cinder/pull/524) [`680c499`](https://github.com/stevekinney/cinder/commit/680c499a8822882693f387f93f0eab9c086a12b8) Thanks [@stevekinney](https://github.com/stevekinney)! - Add EventStreamViewer reconnect replay markers and advisory sequence-gap markers.
+
+- [#458](https://github.com/stevekinney/cinder/pull/458) [`731784d`](https://github.com/stevekinney/cinder/commit/731784d59ea655a469f596e7de4574e336c35c9b) Thanks [@stevekinney](https://github.com/stevekinney)! - Unify form-control consistency and accessibility, and rebuild `SchemaForm` on the
+  real cinder components.
+
+  **Required indicator.** Every form control now renders a visible required marker
+  on its own `label`/`legend` — previously the asterisk only appeared when a control
+  was wrapped in `FormField`, so `<Textarea required label="…">` silently showed no
+  indicator. The marker is a shared, centered red asterisk (`*`, not a color-only
+  dot) so the meaning is conveyed by glyph shape (WCAG 1.4.1). Screen readers rely
+  on the native `required`/`aria-required` attribute, so there is no double
+  announcement. Affects Input, Textarea, Select, NumberInput, Combobox, Autocomplete,
+  Checkbox, PinInput, PhoneInput, CheckboxGroup, RadioGroup, FormField, and Label.
+
+  **`SchemaForm` now composes cinder components** (Input, NumberInput, Select,
+  Checkbox, Textarea) via Svelte 5 function-bindings instead of rendering raw HTML
+  controls. Boolean fields render as a `Checkbox` (a deferred form boolean) rather
+  than a bespoke switch. This removes all behavior/style drift between SchemaForm and
+  the standalone controls.
+
+  **Consistency fixes.** Combobox now inherits id/`aria-describedby`/`disabled` from a
+  wrapping `FormField` and gained a `required` prop. Toggle inherits `disabled` from
+  `FormField` context. Input and NumberInput now share the same ARIA resolver as the
+  other controls (Input no longer drops a wrapping FormField's describedby id).
+  CheckboxGroup sets `aria-required` to match RadioGroup. Select and Textarea labels
+  gained their missing class/disabled styling.
+
+  **Breaking changes:**
+  - `ColorField`: `ariaLabel` → `aria-label`, `ariaLabelledby` → `aria-labelledby`.
+  - `CheckboxGroup` and `RadioGroup`: the `legend` prop is renamed to `label` for
+    consistency with every other form control (still rendered as a `<legend>`).
+
+- [#476](https://github.com/stevekinney/cinder/pull/476) [`58072f7`](https://github.com/stevekinney/cinder/commit/58072f7b694a54a1704a7f78b0a0bce86aeff401) Thanks [@stevekinney](https://github.com/stevekinney)! - Idiom & developer-experience cleanups (audit [#468](https://github.com/stevekinney/cinder/issues/468)).
+
+  **Breaking type rename.** `diff-viewer`'s exported `ViewMode` type is renamed to
+  `DiffViewerMode` for a self-describing, collision-free public name. There is no
+  compatibility alias (per the audit's no-shim requirement) — consumers importing
+  `ViewMode` from `@lostgradient/cinder` or `@lostgradient/cinder/diff-viewer` must
+  import `DiffViewerMode` instead.
+
+  **Accessibility.** `CheckboxGroup` and `RadioGroup` now emit a development-only
+  warning when they render a `<fieldset>` without an accessible group name
+  (`<legend>`/label), matching the rest of the form-control suite.
+
+  **Correctness.** The `run-step-timeline` rail uses logical positioning
+  (`inset-inline-start`/`inset-block-start`/`inline-size`) so it lays out correctly
+  in right-to-left contexts. Several icon-button hit areas were enlarged for touch.
+
+  **Maintenance (no behavior change).** Svelte 4 lifecycle helpers migrated to
+  `$effect`, hand-rolled `ResizeObserver` setups moved to the shared
+  `useResizeObserver` utility, and `use:`-actions converted to `{@attach}`
+  attachments. Form-control `error` props consistently include `undefined`.
+  Review-editor types are consolidated into one authoritative module.
+
+- [#477](https://github.com/stevekinney/cinder/pull/477) [`15a46b3`](https://github.com/stevekinney/cinder/commit/15a46b35247473b87beebbb2088795fc3352c9be) Thanks [@stevekinney](https://github.com/stevekinney)! - **Breaking: PascalCase event-callback props renamed to lowercase.** Svelte 5 event
+  props use the same lowercase syntax as DOM handler props (`onclick`, `ondismiss`),
+  and cinder's convention is all-lowercase. The following public callback props are
+  renamed to their lowercase forms across the affected components (alert, banner,
+  capability-gate, collapsible, click-away-listener, data-grid, load-more,
+  markdown-editor, media-controls, table, table-header, table-row, transfer-list,
+  tree, tree-item):
+
+  `onDismiss`→`ondismiss`, `onToggle`→`ontoggle`, `onReorder`→`onreorder`,
+  `onPlay`→`onplay`, `onLoadMore`→`onloadmore`, `onSelectedChange`→`onselectedchange`,
+  `onSelectionChange`→`onselectionchange`, `onFilterChange`→`onfilterchange`,
+  `onPause`→`onpause`, `onReplay`→`onreplay`, `onLoadError`→`onloaderror`,
+  `onRename`→`onrename`, `onChange`→`onchange`, `onClickAway`→`onclickaway`,
+  `onSortChange`→`onsortchange`, `onSortModelChange`→`onsortmodelchange`,
+  `onSelectionModelChange`→`onselectionmodelchange`, `onReady`→`onready`.
+
+  Each renamed callback keeps the same payload arguments and invocation timing. No
+  compatibility aliases are provided — update call sites to the lowercase names.
+
+  The stable-promotion `PROP_NAME_DENYLIST` is now compared case-insensitively for
+  `on*` props, so a PascalCase event-callback prop can no longer slip past the gate.
+
+- [#524](https://github.com/stevekinney/cinder/pull/524) [`680c499`](https://github.com/stevekinney/cinder/commit/680c499a8822882693f387f93f0eab9c086a12b8) Thanks [@stevekinney](https://github.com/stevekinney)! - Enhance RunStepTimeline with waiting-approval state, nested child lanes, step links, and action counts.
+
+- [#524](https://github.com/stevekinney/cinder/pull/524) [`680c499`](https://github.com/stevekinney/cinder/commit/680c499a8822882693f387f93f0eab9c086a12b8) Thanks [@stevekinney](https://github.com/stevekinney)! - Promote the Stardust agent-operations components based on promotion-gate evidence.
+
+  `EventStreamViewer`, `PayloadInspector`, and `SecretValueField` are now marked stable. `InvocationRuleBuilder` is now marked beta after passing the same readiness gate with tests, accessibility coverage, and prop-name checks passing.
+
+  `SecretValueField` also now uses Svelte's explicit untracked initial-state capture for `initiallyRevealed`, preserving its initial-only behavior while avoiding a local-state warning.
+
+- [#478](https://github.com/stevekinney/cinder/pull/478) [`0302908`](https://github.com/stevekinney/cinder/commit/03029085e54dcc3344d568821e553340f70d17fc) Thanks [@stevekinney](https://github.com/stevekinney)! - **Breaking: unify public API vocabulary across components.** Several public APIs
+  used different words for the same concept; this standardizes them. No compatibility
+  aliases are provided (per the audit's no-shim requirement) — update call sites.
+  - **Severity spelling.** `alert` and `status-dot` drop the `error` value in favor of
+    `danger`, the canonical failure-severity spelling already used by `banner` and
+    `callout`. Use `variant="danger"` (Alert) / `status="danger"` (StatusDot) instead
+    of `"error"`.
+  - **Accessible-name props.** `ariaLabel` / `navAriaLabel` are renamed to `label` on
+    `sidebar`, `scroll-area`, `navigation-bar`, and `dropdown-group`; `StatChange.ariaLabel`
+    becomes `StatChange.label`.
+  - **Chat boolean props.** `isAtBottom` → `atBottom`, `hasNewMessageIndicator` →
+    `newMessageIndicatorVisible`, `isStreaming` → `streaming`, `hasMoreHistory` →
+    `moreHistoryAvailable`. The per-feature `allow*` flags (`allowAttachments`,
+    `allowSearch`, `allowCopy`, `allowEditing`, `allowRetry`) are grouped into a single
+    `capabilities` object prop.
+  - **FloatingActionButton visual API.** `color` → `variant` (the palette) and
+    `variant` → `shape` (filled/extended). The exported types rename accordingly:
+    `FloatingActionButtonColor` → `FloatingActionButtonVariant` and the old
+    `FloatingActionButtonVariant` → `FloatingActionButtonShape`.
+
+  Generated schemas, README tables, examples, and package exports are updated to match.
+
+### Patch Changes
+
+- [#470](https://github.com/stevekinney/cinder/pull/470) [`644a646`](https://github.com/stevekinney/cinder/commit/644a646edccd03cc6f4394c1ed532643101083b0) Thanks [@stevekinney](https://github.com/stevekinney)! - Add `@media (forced-colors: active)` focus-ring fallbacks to nine components whose `:focus-visible` ring relied exclusively on `box-shadow` — which Windows High Contrast Mode (forced-colors) removes. Keyboard focus was invisible in HCM for users of CapabilityGate, KanbanBoard, MediaControls, PermissionMatrix, ShareCard, TransferList, Table, MenuBar, and ChatConversationList.
+
+  Each fallback repaints the outline with `ButtonText` at the correct offset for the control type: `3px` for bordered controls (separates the ring from `ButtonBorder`, which shares the `ButtonText` color family in HCM), `2px` for borderless controls, and an inset `calc(-1 * var(--cinder-ring-width))` for the TransferList scrollable panel (which has `overflow: auto` — a positive offset would be clipped). Each fallback also sets `box-shadow: none` explicitly so forced-colors suppression is unambiguous across engines.
+
+  A new Stylelint rule (`cinder/require-forced-colors-focus-fallback`) is wired into root `.stylelintrc.json` and into the test suite, so any future `:focus-visible` rule that relies on `box-shadow` without a matching forced-colors fallback will fail linting.
+
 ## 0.3.0
 
 ### Minor Changes
