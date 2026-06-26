@@ -241,7 +241,7 @@
 
   $effect(() => {
     inputElement?.setCustomValidity(
-      (resolvedRequired && !value) || (value && inputValue !== committedLabel)
+      (resolvedRequired && !value) || inputValue !== committedLabel
         ? 'Please select an option.'
         : '',
     );

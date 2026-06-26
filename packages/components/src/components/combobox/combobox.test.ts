@@ -302,6 +302,22 @@ describe('Combobox structure', () => {
     expect(hidden?.value).toBe('banana');
   });
 
+  test('optional named combobox validity fails for uncommitted visible text', async () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      options: fruits,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    expect(input?.checkValidity()).toBe(true);
+
+    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    expect(input?.checkValidity()).toBe(false);
+
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden?.value).toBe('');
+  });
+
   test('disabled hidden input is omitted from native FormData', () => {
     const { container } = render(Combobox, {
       id: 'fruit',
