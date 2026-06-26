@@ -16,6 +16,7 @@ import {
   playgroundUrlForPath,
   playgroundWarmReadinessEndpointPath,
   playgroundWarmReadinessMissingEndpointMessage,
+  shouldStartManagedChildProcess,
   shutdownExitCodeAfterRequest,
 } from './start-server.ts';
 
@@ -123,6 +124,11 @@ describe('playground server process', () => {
 });
 
 describe('child process cleanup', () => {
+  test('stops starting new managed children after shutdown begins', () => {
+    expect(shouldStartManagedChildProcess(null)).toBe(true);
+    expect(shouldStartManagedChildProcess(130)).toBe(false);
+  });
+
   test('does not treat a sent kill signal as process exit', () => {
     const stillExiting = { pid: 123, killed: true, exitCode: null, signalCode: null };
 

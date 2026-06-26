@@ -155,6 +155,10 @@ export function shutdownExitCodeAfterRequest(
   return requestedExitCode >= 128 ? requestedExitCode : currentExitCode;
 }
 
+export function shouldStartManagedChildProcess(shutdownExitCode: number | null): boolean {
+  return shutdownExitCode === null;
+}
+
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
@@ -224,7 +228,9 @@ async function terminateChildProcess(managedChildProcess: ManagedChildProcess): 
 
   console.error(`${name} did not exit after SIGTERM; sending SIGKILL.`);
   signalChildProcess(managedChildProcess, 'SIGKILL');
-  await waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS);
+  if (!(await waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS))) {
+    console.error(`${name} did not exit after SIGKILL; continuing cleanup.`);
+  }
 }
 
 async function cleanup(
@@ -311,9 +317,12 @@ async function waitForWarmPlayground(): Promise<void> {
 
 async function buildPlaygroundBundleDependencies(
   registerChildProcess: (managedChildProcess: ManagedChildProcess) => void,
+  shouldContinueStartingChildProcesses: () => boolean,
 ): Promise<void> {
   console.log('Building playground bundle dependencies...');
   for (const packageName of playgroundBundleDependencyPackages) {
+    if (!shouldContinueStartingChildProcesses()) return;
+
     const buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
       cwd: repoRoot,
       detached: process.platform !== 'win32',
@@ -322,6 +331,7 @@ async function buildPlaygroundBundleDependencies(
     });
     registerChildProcess(playgroundBundleDependencyBuildProcess(buildProcess, packageName));
     const buildCode = await waitForExit(buildProcess);
+    if (!shouldContinueStartingChildProcesses()) return;
     if (buildCode !== 0) {
       throw new Error(`${packageName} build exited with code ${buildCode}`);
     }
@@ -347,7 +357,11 @@ async function main(): Promise<void> {
   const exitAfterCleanup = async (code: number): Promise<never> => {
     const exitCode = shutdownExitCodeAfterRequest(shutdownExitCode, code);
     shutdownExitCode = exitCode;
-    await cleanupOnce();
+    try {
+      await cleanupOnce();
+    } catch (error) {
+      console.error('Cleanup failed during shutdown:', error);
+    }
     process.exit(shutdownExitCode ?? exitCode);
   };
 
@@ -385,7 +399,11 @@ async function main(): Promise<void> {
     process.exit(1);
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
-    await buildPlaygroundBundleDependencies((childProcess) => children.push(childProcess));
+    await buildPlaygroundBundleDependencies(
+      (childProcess) => children.push(childProcess),
+      () => shouldStartManagedChildProcess(shutdownExitCode),
+    );
+    await exitIfShuttingDown();
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
     let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });

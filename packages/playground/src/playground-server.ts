@@ -1967,8 +1967,12 @@ if (import.meta.main) {
   let shutdownPromise: Promise<void> | null = null;
 
   async function shutdown(code: number): Promise<never> {
-    shutdownPromise ??= server.dispose();
-    await shutdownPromise;
+    try {
+      shutdownPromise ??= server.dispose();
+      await shutdownPromise;
+    } catch (error) {
+      console.error('[playground] shutdown cleanup failed:', error);
+    }
     process.exit(code);
   }
 
