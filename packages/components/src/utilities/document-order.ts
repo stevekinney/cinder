@@ -18,11 +18,13 @@ const DOCUMENT_POSITION_PRECEDING = 0x02;
 const DOCUMENT_POSITION_FOLLOWING = 0x04;
 
 export function inDocumentOrder<T extends { node: Node }>(items: readonly T[]): T[] {
-  return [...items].toSorted((a, b) => {
+  const sortedItems = [...items];
+  sortedItems.sort((a, b) => {
     if (a.node === b.node) return 0;
     const position = a.node.compareDocumentPosition(b.node);
     if (position & DOCUMENT_POSITION_FOLLOWING) return -1;
     if (position & DOCUMENT_POSITION_PRECEDING) return 1;
     return 0;
   });
+  return sortedItems;
 }
