@@ -765,6 +765,13 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
 function isIgnorableFile(repoRelativePath: string): boolean {
   const path = normalizeRepoPath(repoRelativePath);
   if (/\.(md|mdx|markdown)$/i.test(path)) return true;
+  if (
+    path.startsWith('.github/workflows/') &&
+    path !== '.github/workflows/browser-tests.yaml' &&
+    path !== '.github/workflows/unit-tests.yaml'
+  ) {
+    return true;
+  }
   if (path.startsWith('packages/components/src/')) return false;
   const base = path.slice(path.lastIndexOf('/') + 1);
   const IGNORABLE_BASENAMES = new Set([

@@ -245,6 +245,7 @@ async function deriveComponentTestScope(
 ): Promise<ComponentTestScope> {
   const cleaned = changedFiles.map((file) => file.trim()).filter((file) => file.length > 0);
   const [sourceFiles, knownSlugs] = await Promise.all([loadSourceFiles(), loadKnownSlugs()]);
+  const deletedFiles = cleaned.filter((file) => !existsSync(join(REPO_ROOT, file)));
   const exampleSlugs = new Set<string>();
   const nonExampleChanges: string[] = [];
 
@@ -260,7 +261,6 @@ async function deriveComponentTestScope(
     exampleSlugs.add(match[1]);
   }
 
-  const deletedFiles = nonExampleChanges.filter((file) => !existsSync(join(REPO_ROOT, file)));
   const graphDecision: ScopeDecision = computeScope({
     changedFiles: nonExampleChanges,
     deletedFiles,

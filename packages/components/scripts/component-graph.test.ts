@@ -493,6 +493,15 @@ describe('computeScope', () => {
     expect(decision).toEqual({ mode: 'filtered', slugs: ['badge'] });
   });
 
+  it('ignores non-test workflow co-changes (does not force full)', () => {
+    const decision = computeScope(
+      base({
+        changedFiles: [`${C}/button/button.svelte`, '.github/workflows/main-green.yaml'],
+      }),
+    );
+    expect(decision).toEqual({ mode: 'filtered', slugs: ['button', 'dialog'] });
+  });
+
   it('maps a non-graph component sidecar (CSS) to its slug', () => {
     const decision = computeScope(base({ changedFiles: [`${C}/badge/badge.css`] }));
     expect(decision).toEqual({ mode: 'filtered', slugs: ['badge'] });
