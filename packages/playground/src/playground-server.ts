@@ -1931,10 +1931,21 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     throw error;
   }
 
+  let disposed = false;
   async function dispose(): Promise<void> {
+    if (disposed) return;
+    disposed = true;
     for (const watcher of watchers) {
       watcher.close();
     }
+    for (const controller of sseClients) {
+      try {
+        controller.close();
+      } catch {
+        // Ignore already-closed streams.
+      }
+    }
+    sseClients.clear();
     await server.stop(true);
   }
 
@@ -1947,5 +1958,21 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
 }
 
 if (import.meta.main) {
-  await startServer();
+  const server = await startServer();
+  let shutdownStarted = false;
+
+  async function shutdown(code: number): Promise<never> {
+    if (!shutdownStarted) {
+      shutdownStarted = true;
+      await server.dispose();
+    }
+    process.exit(code);
+  }
+
+  process.on('SIGINT', () => {
+    void shutdown(130);
+  });
+  process.on('SIGTERM', () => {
+    void shutdown(143);
+  });
 }

@@ -2,10 +2,13 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   appendServerOutputBuffer,
+  childProcessHasExited,
   localPlaygroundUrlForReportedPort,
   parsePlaygroundListeningPort,
   playgroundBundleDependencyBuildArguments,
   playgroundBundleDependencyBuildPackages,
+  playgroundServerArguments,
+  playgroundServerWorkingDirectory,
   playgroundUrlForPath,
   playgroundWarmReadinessEndpointPath,
   playgroundWarmReadinessMissingEndpointMessage,
@@ -88,6 +91,30 @@ describe('playground bundle dependency build preflight', () => {
       '--filter=@cinder/markdown',
       'build',
     ]);
+  });
+});
+
+describe('playground server process', () => {
+  test('starts the plain server entrypoint instead of the watch-mode dev script', () => {
+    const argumentsList = playgroundServerArguments();
+
+    expect(argumentsList).toEqual(['run', 'src/playground-server.ts']);
+    expect(argumentsList).not.toContain('dev');
+    expect(argumentsList).not.toContain('--watch');
+    expect(playgroundServerWorkingDirectory().endsWith('/packages/playground')).toBe(true);
+  });
+});
+
+describe('child process cleanup', () => {
+  test('does not treat a sent kill signal as process exit', () => {
+    const stillExiting = { killed: true, exitCode: null, signalCode: null };
+
+    expect(childProcessHasExited(stillExiting)).toBe(false);
+  });
+
+  test('treats exit codes and terminal signals as process exit', () => {
+    expect(childProcessHasExited({ exitCode: 0, signalCode: null })).toBe(true);
+    expect(childProcessHasExited({ exitCode: null, signalCode: 'SIGTERM' })).toBe(true);
   });
 });
 
