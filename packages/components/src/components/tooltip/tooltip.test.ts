@@ -51,6 +51,7 @@ mock.module('@floating-ui/dom', () => ({
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: Tooltip } = await import('./tooltip.svelte');
+const { _resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -142,6 +143,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  _resetEscapeStack();
   const leaked = timers.active();
   timers.release();
   computePositionSpy.mockClear();
@@ -249,6 +251,44 @@ describe('Tooltip', () => {
 
     const options = computePositionSpy.mock.calls[0]?.at(2) as { strategy?: string } | undefined;
     expect(options?.strategy).toBe('fixed');
+  });
+
+  test('Escape uses the shared LIFO stack before an enclosing overlay handler', async () => {
+    const parentEscape = mock(() => {});
+    const releaseParentEscape = pushEscapeHandler(parentEscape);
+    try {
+      const { container } = render(Tooltip, {
+        props: {
+          text: 'Tooltip content',
+          children: triggerSnippet,
+        },
+      });
+      const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+      await triggerDelayedTooltipShow(wrapper);
+      await waitFor(() => expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false'));
+
+      const firstEscape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(firstEscape);
+      await tick();
+
+      expect(firstEscape.defaultPrevented).toBe(true);
+      expect(parentEscape).not.toHaveBeenCalled();
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
+
+      const secondEscape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(secondEscape);
+      expect(parentEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseParentEscape();
+    }
   });
 
   test('autoUpdate receives the resolved anchor and tooltip element', async () => {

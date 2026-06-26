@@ -52,6 +52,19 @@ describe('DropdownMenu', () => {
     expect(document.activeElement?.textContent).toContain('Invite people');
   });
 
+  test('printable keys move focus to the next matching menu item', async () => {
+    const { container } = renderFixture();
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'i' });
+    expect(document.activeElement?.textContent).toContain('Invite people');
+
+    await Bun.sleep(550);
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'a' });
+    expect(document.activeElement?.textContent).toContain('Archive');
+  });
+
   test('uses locale provider direction when no explicit direction is supplied', async () => {
     render(DropdownDirectionFixture, {
       props: { providerDirection: 'rtl' },

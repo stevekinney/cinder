@@ -42,6 +42,11 @@
   import type { VirtualItem } from '../../_internal/virtual-item.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import {
+    findTypeaheadMatch,
+    isTypeaheadKey,
+    TypeaheadBuffer,
+  } from '../../utilities/typeahead.ts';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
   import {
     deselectIds,
@@ -122,9 +127,7 @@
   // Anchor for shift-select range
   let selectionAnchorId = $state<string | null>(null);
 
-  // Typeahead buffer
-  let typeaheadBuffer = $state('');
-  let typeaheadTimer: ReturnType<typeof setTimeout> | null = null;
+  const typeaheadBuffer = new TypeaheadBuffer();
 
   // Warn once when no accessible label is provided
   let hasWarnedNoLabel = false;
@@ -161,10 +164,7 @@
   // Clear typeahead timer on unmount
   $effect(() => {
     return () => {
-      if (typeaheadTimer !== null) {
-        clearTimeout(typeaheadTimer);
-        typeaheadTimer = null;
-      }
+      typeaheadBuffer.reset();
       if (filterStatusTimer !== null) {
         clearTimeout(filterStatusTimer);
         filterStatusTimer = null;
@@ -900,21 +900,13 @@
     handleTypeahead(char, currentId) {
       if (disableTypeahead) return;
 
-      if (typeaheadTimer !== null) clearTimeout(typeaheadTimer);
-      typeaheadBuffer += char;
-
       const match = registry.typeaheadMatch(
-        typeaheadBuffer,
+        typeaheadBuffer.push(char),
         currentId,
         expandedIds,
         activeVisibilityPredicate,
       );
       if (match) focusNode(match);
-
-      typeaheadTimer = setTimeout(() => {
-        typeaheadBuffer = '';
-        typeaheadTimer = null;
-      }, 500);
     },
     expandSiblings(currentId) {
       const siblings = registry.siblingsOf(currentId);
@@ -1040,34 +1032,18 @@
   }
 
   function handleVirtualizedTypeahead(event: KeyboardEvent): boolean {
-    if (
-      disableTypeahead ||
-      event.key.length !== 1 ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey
-    ) {
+    if (disableTypeahead || !isTypeaheadKey(event)) {
       return false;
     }
 
     event.preventDefault();
-    if (typeaheadTimer !== null) clearTimeout(typeaheadTimer);
-    typeaheadBuffer += event.key.toLowerCase();
-
     const startIndex = currentVirtualIndex();
-    for (let offset = 1; offset <= visibleDataItems.length; offset++) {
-      const index = (startIndex + offset) % visibleDataItems.length;
-      const item = visibleDataItems[index];
-      if (item?.label.toLowerCase().startsWith(typeaheadBuffer)) {
-        void focusVirtualIndex(index);
-        break;
-      }
-    }
-
-    typeaheadTimer = setTimeout(() => {
-      typeaheadBuffer = '';
-      typeaheadTimer = null;
-    }, 500);
+    const match = findTypeaheadMatch(
+      visibleDataItems.map((item, index) => ({ value: index, label: item.label })),
+      typeaheadBuffer.push(event.key),
+      startIndex,
+    );
+    if (match !== undefined) void focusVirtualIndex(match);
     return true;
   }
 

@@ -32,6 +32,7 @@
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { isTypeaheadKey, TypeaheadBuffer } from '../../utilities/typeahead.ts';
   import type { DropdownContext } from '../dropdown/dropdown.types.ts';
   import DropdownItem from '../dropdown-item/dropdown-item.svelte';
   import DropdownLabel from '../dropdown-label/dropdown-label.svelte';
@@ -80,8 +81,14 @@
   let initialFocus = $state<'first' | 'last' | 'none' | undefined>(undefined);
   let directionRevision = $state(0);
   let suppressSubmenuFocusOpen = false;
+  let submenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingSubmenuCloseKey: string | null = null;
+  let pendingSubmenuTriggerId: string | null = null;
+  let submenuLeavePoint: { x: number; y: number } | null = null;
+  let latestPointerPoint: { x: number; y: number } | null = null;
   const localeContext = getLocaleContext();
   const menuElements = new Map<string, HTMLElement>();
+  const typeaheadBuffer = new TypeaheadBuffer();
   const directionElement = $derived(
     providedDirection === 'auto' ? rootElement : (rootElement?.parentElement ?? rootElement),
   );
@@ -108,6 +115,13 @@
     return observeTextDirection(directionElement, () => {
       directionRevision += 1;
     });
+  });
+
+  $effect(() => {
+    return () => {
+      clearSubmenuCloseTimer();
+      typeaheadBuffer.reset();
+    };
   });
 
   const enabledIndexes = $derived(
@@ -214,6 +228,7 @@
   }
 
   function closeAll(): void {
+    clearSubmenuCloseTimer();
     openMenuIndex = null;
     openSubmenuKey = null;
     initialFocus = undefined;
@@ -311,6 +326,130 @@
     return Array.from(menuElements.values()).some((element) => element.contains(target));
   }
 
+  function clearSubmenuCloseTimer(): void {
+    if (submenuCloseTimer !== null) {
+      clearTimeout(submenuCloseTimer);
+      submenuCloseTimer = null;
+    }
+    pendingSubmenuCloseKey = null;
+    pendingSubmenuTriggerId = null;
+    submenuLeavePoint = null;
+    latestPointerPoint = null;
+  }
+
+  function pointInTriangle(
+    point: { x: number; y: number },
+    first: { x: number; y: number },
+    second: { x: number; y: number },
+    third: { x: number; y: number },
+  ): boolean {
+    const area =
+      0.5 *
+      (-second.y * third.x +
+        first.y * (-second.x + third.x) +
+        first.x * (second.y - third.y) +
+        second.x * third.y);
+    if (area === 0) return false;
+    const sign = area < 0 ? -1 : 1;
+    const firstWeight =
+      (sign *
+        (second.y * third.x -
+          second.x * third.y +
+          (third.y - second.y) * point.x +
+          (second.x - third.x) * point.y)) /
+      (2 * Math.abs(area));
+    const secondWeight =
+      (sign *
+        (first.x * third.y -
+          first.y * third.x +
+          (first.y - third.y) * point.x +
+          (third.x - first.x) * point.y)) /
+      (2 * Math.abs(area));
+    const thirdWeight = 1 - firstWeight - secondWeight;
+    return firstWeight >= 0 && secondWeight >= 0 && thirdWeight >= 0;
+  }
+
+  function pointInRect(point: { x: number; y: number }, rect: DOMRect): boolean {
+    return (
+      point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom
+    );
+  }
+
+  function isPointerMovingTowardSubmenu(triggerId: string): boolean {
+    if (!submenuLeavePoint || !latestPointerPoint) return false;
+    const submenu = openSubmenuKey ? menuElements.get(openSubmenuKey) : undefined;
+    const trigger = findElementById(triggerId);
+    if (!submenu || !trigger) return false;
+
+    const submenuRect = submenu.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
+    if (submenuRect.width === 0 && submenuRect.height === 0) return false;
+
+    if (pointInRect(latestPointerPoint, submenuRect)) return true;
+
+    const submenuIsInlineStart = submenuRect.right <= triggerRect.left;
+    const nearX = submenuIsInlineStart ? submenuRect.right : submenuRect.left;
+    return pointInTriangle(
+      latestPointerPoint,
+      submenuLeavePoint,
+      { x: nearX, y: submenuRect.top },
+      { x: nearX, y: submenuRect.bottom },
+    );
+  }
+
+  function scheduleSubmenuClose(submenuKey: string, triggerId: string, event?: PointerEvent): void {
+    clearSubmenuCloseTimer();
+    pendingSubmenuCloseKey = submenuKey;
+    pendingSubmenuTriggerId = triggerId;
+    if (event) {
+      submenuLeavePoint = { x: event.clientX, y: event.clientY };
+      latestPointerPoint = submenuLeavePoint;
+    }
+    submenuCloseTimer = setTimeout(() => {
+      submenuCloseTimer = null;
+      if (
+        openSubmenuKey === pendingSubmenuCloseKey &&
+        pendingSubmenuTriggerId &&
+        !isPointerMovingTowardSubmenu(pendingSubmenuTriggerId)
+      ) {
+        openSubmenuKey = null;
+      }
+      pendingSubmenuCloseKey = null;
+      pendingSubmenuTriggerId = null;
+      submenuLeavePoint = null;
+      latestPointerPoint = null;
+    }, 150);
+  }
+
+  function handleDocumentPointermove(event: PointerEvent): void {
+    if (submenuCloseTimer === null) return;
+    latestPointerPoint = { x: event.clientX, y: event.clientY };
+  }
+
+  function handleMenuTypeahead(event: KeyboardEvent, menu: HTMLElement): boolean {
+    if (!isTypeaheadKey(event)) return false;
+    const items = Array.from(
+      menu.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]:not([data-disabled]), [role="menuitemradio"]:not([data-disabled])',
+      ),
+    ).filter((item) => item.closest('[role="menu"]') === menu);
+    if (!items.length) return false;
+
+    const currentIndex = items.findIndex((item) => item === document.activeElement);
+    const prefix = typeaheadBuffer.push(event.key);
+    const startIndex = currentIndex < 0 ? 0 : currentIndex;
+    for (let offset = 1; offset <= items.length; offset += 1) {
+      const index = (startIndex + offset) % items.length;
+      const item = items[index];
+      if (item?.textContent?.trim().toLocaleLowerCase().startsWith(prefix)) {
+        event.preventDefault();
+        item.focus();
+        return true;
+      }
+    }
+    return false;
+  }
+
   function handleTriggerKeydown(event: KeyboardEvent, index: number): void {
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
       event.preventDefault();
@@ -404,10 +543,17 @@
       }
 
       if (target?.closest('[role="menu"]')) {
+        const menu = target.closest<HTMLElement>('[role="menu"]');
+        if (menu && handleMenuTypeahead(event, menu)) return;
+
         event.preventDefault();
         const nextIndex = nextEnabledMenuIndex(openMenuIndex, horizontalArrowDirection(event.key));
         if (nextIndex !== -1) openMenu(nextIndex, 'first');
       }
+    } else {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const menu = target?.closest<HTMLElement>('[role="menu"]');
+      if (menu) handleMenuTypeahead(event, menu);
     }
   }
 
@@ -436,6 +582,7 @@
 
 <svelte:document
   onpointerdown={handleDocumentPointerdown}
+  onpointermove={handleDocumentPointermove}
   onfocusin={handleDocumentFocusin}
   onkeydown={handleDocumentKeydown}
 />
@@ -515,6 +662,7 @@
                     openSubmenuKey = null;
                   }}
                   onpointerenter={() => {
+                    clearSubmenuCloseTimer();
                     openSubmenuKey = null;
                   }}
                 >
@@ -528,7 +676,18 @@
               {:else if isSubmenu(entry)}
                 {@const submenuKey = submenuMenuId(menuIndex, menu, entryIndex, entry)}
                 {@const submenuTrigger = submenuTriggerId(menuIndex, menu, entryIndex, entry)}
-                <div class="cinder-menu-bar__submenu">
+                <div
+                  class="cinder-menu-bar__submenu"
+                  role="presentation"
+                  onpointerenter={() => {
+                    if (openSubmenuKey === submenuKey) clearSubmenuCloseTimer();
+                  }}
+                  onpointerleave={(event) => {
+                    if (openSubmenuKey === submenuKey) {
+                      scheduleSubmenuClose(submenuKey, submenuTrigger, event);
+                    }
+                  }}
+                >
                   <DropdownItem
                     id={submenuTrigger}
                     class="cinder-menu-bar__submenu-trigger"
@@ -546,8 +705,14 @@
                         openSubmenu(submenuKey, 'none');
                     }}
                     onpointerenter={() => {
+                      clearSubmenuCloseTimer();
                       if (openMenuIndex === menuIndex && !entry.disabled)
                         openSubmenu(submenuKey, 'none');
+                    }}
+                    onpointerleave={(event) => {
+                      if (openSubmenuKey === submenuKey) {
+                        scheduleSubmenuClose(submenuKey, submenuTrigger, event);
+                      }
                     }}
                     onkeydown={(event) => {
                       if (entry.disabled) return;
@@ -587,6 +752,14 @@
                       dir={submenuDirection(submenuTrigger)}
                       data-cinder-menu-bar-submenu-trigger-id={submenuTrigger}
                       aria-labelledby={submenuTrigger}
+                      onpointerenter={() => {
+                        clearSubmenuCloseTimer();
+                      }}
+                      onpointerleave={(event) => {
+                        if (openSubmenuKey === submenuKey) {
+                          scheduleSubmenuClose(submenuKey, submenuTrigger, event);
+                        }
+                      }}
                     >
                       {#each entry.items as submenuEntry, submenuEntryIndex (ancestryKey('submenu', submenuKey, submenuEntryIndex, submenuEntry.id))}
                         {#if isItem(submenuEntry)}

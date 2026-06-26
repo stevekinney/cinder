@@ -21,6 +21,7 @@
   import { devWarn } from '../../utilities/dev-warn.ts';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
@@ -180,11 +181,10 @@
     if (!focusInsideCard) scheduleClose();
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && open) {
-      event.preventDefault();
-      setOpen(false);
-    }
+  function handleEscape(event: KeyboardEvent | undefined = undefined) {
+    if (!open) return;
+    event?.preventDefault();
+    setOpen(false);
   }
 
   onDestroy(clearTimers);
@@ -195,8 +195,7 @@
 
   $effect(() => {
     if (!open) return;
-    document.addEventListener('keydown', handleKeydown);
-    return () => document.removeEventListener('keydown', handleKeydown);
+    return pushEscapeHandler(handleEscape);
   });
 
   $effect(() => {

@@ -444,6 +444,53 @@ describe('MenuBar', () => {
     expect(document.activeElement?.textContent).not.toContain('Cinder workspace');
   });
 
+  test('printable keys move focus within the open menu', async () => {
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    expect(document.activeElement).toBe(getByRole('menuitem', { name: 'New' }));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'd' });
+    expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Delete Project' }));
+  });
+
+  test('submenu pointer leave keeps the submenu open while the pointer moves toward the panel', async () => {
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
+    submenuTrigger.dispatchEvent(new PointerEvent('pointerenter'));
+    await tick();
+    const submenu = getByRole('menu', { name: 'Open Recent' });
+
+    submenuTrigger.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, right: 100, bottom: 40, width: 100, height: 40 }) as DOMRect;
+    submenu.getBoundingClientRect = () =>
+      ({ left: 100, top: 0, right: 260, bottom: 120, width: 160, height: 120 }) as DOMRect;
+
+    submenuTrigger.dispatchEvent(
+      new PointerEvent('pointerleave', { clientX: 90, clientY: 20, bubbles: false }),
+    );
+    document.dispatchEvent(new PointerEvent('pointermove', { clientX: 130, clientY: 28 }));
+    await Bun.sleep(170);
+    await tick();
+
+    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
+
+    submenu.dispatchEvent(
+      new PointerEvent('pointerleave', { clientX: 180, clientY: 100, bubbles: false }),
+    );
+    document.dispatchEvent(new PointerEvent('pointermove', { clientX: 20, clientY: 200 }));
+    await Bun.sleep(170);
+    await tick();
+
+    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
   test('Alt access key opens the first enabled matching menu', async () => {
     const { getByRole } = render(MenuBar, {
       props: {

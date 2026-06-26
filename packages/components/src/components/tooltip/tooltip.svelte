@@ -20,6 +20,7 @@
   import type { Attachment } from 'svelte/attachments';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
@@ -92,10 +93,9 @@
   // WAI-ARIA APG: tooltips must be dismissible via Escape without losing
   // pointer or focus on the trigger. Hide the tooltip but don't blur — the
   // user keeps interacting with the trigger.
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      hide();
-    }
+  function handleEscape(event: KeyboardEvent | undefined = undefined) {
+    hide();
+    event?.preventDefault();
   }
 
   function isFocusableCandidate(element: HTMLElement): boolean {
@@ -164,10 +164,7 @@
 
   $effect(() => {
     if (!visible && !hasPendingShow) return;
-    document.addEventListener('keydown', handleKeydown);
-    return () => {
-      document.removeEventListener('keydown', handleKeydown);
-    };
+    return pushEscapeHandler(handleEscape);
   });
 </script>
 

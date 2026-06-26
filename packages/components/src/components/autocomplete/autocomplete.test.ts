@@ -10,6 +10,7 @@ const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/s
 const { default: Autocomplete } = await import('./autocomplete.svelte');
 const { default: FormFieldAutocompleteFixture } =
   await import('../../test/fixtures/form-field-autocomplete-fixture.svelte');
+const { _resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
 
 type Suggestion = {
   value: string;
@@ -52,6 +53,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  _resetEscapeStack();
 });
 
 describe('Autocomplete — rendering and ARIA', () => {
@@ -253,6 +255,44 @@ describe('Autocomplete — keyboard completion', () => {
 
     expect(input.value).toBe('ap');
     expect(getListbox()).toBeNull();
+  });
+
+  test('Escape uses the shared LIFO stack before an enclosing overlay handler', async () => {
+    const parentEscape = mock(() => {});
+    const releaseParentEscape = pushEscapeHandler(parentEscape);
+    try {
+      const { container } = render(Autocomplete, {
+        props: {
+          id: 'fruit-search',
+          suggestionSource: () => fruits,
+        },
+      });
+
+      const input = getInput(container);
+      await fireEvent.input(input, { target: { value: 'ap' } });
+      await waitFor(() => expect(getListbox()).not.toBeNull());
+
+      const firstEscape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(firstEscape);
+      await waitFor(() => expect(getListbox()).toBeNull());
+
+      expect(firstEscape.defaultPrevented).toBe(true);
+      expect(parentEscape).not.toHaveBeenCalled();
+
+      const secondEscape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(secondEscape);
+      expect(parentEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseParentEscape();
+    }
   });
 
   test('completing a suggestion clears stale suggestions before the next ArrowDown', async () => {

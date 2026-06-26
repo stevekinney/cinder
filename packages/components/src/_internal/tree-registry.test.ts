@@ -326,12 +326,13 @@ describe('TreeRegistry', () => {
       expect(registry.typeaheadMatch('z', 'parent', [])).toBe('other');
     });
 
-    test('disabled items are not skipped by typeahead', () => {
+    test('disabled items are skipped by typeahead', () => {
       const registry = new TreeRegistry();
       registry.register(makeNode('a', null, 1, { label: 'Apple', disabled: true }));
       registry.register(makeNode('b', null, 1, { label: 'Banana' }));
-      // 'a' is disabled but must still match
-      expect(registry.typeaheadMatch('a', 'b', [])).toBe('a');
+      registry.register(makeNode('c', null, 1, { label: 'Apricot' }));
+
+      expect(registry.typeaheadMatch('a', 'b', [])).toBe('c');
     });
   });
 });
