@@ -43,16 +43,31 @@ export type ChangesetBumpViolation = {
  * `null` if the changeset does not mention the package.
  */
 export function bumpLevelForPackage(source: string, packageName: string): string | null {
-  // Match `'<pkg>': <level>` or `"<pkg>": <level>`, with quotes optional around
-  // BOTH the package name and the bump level — Changesets' YAML parser accepts a
-  // quoted scalar (`'@lostgradient/cinder': "major"`), so the guard must too.
-  // Tolerant of surrounding whitespace. Only the frontmatter uses this shape, so
-  // scanning the whole file is safe and survives Prettier reformatting of the body.
-  const pattern = new RegExp(
-    `["']?${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\s*:\\s*["']?(major|minor|patch)["']?`,
-  );
-  const match = source.match(pattern);
-  return match?.[1] ?? null;
+  // Scan only the YAML frontmatter (between the first two `---` fences), line by
+  // line, skipping comment lines — Changesets ignores a commented `# 'pkg': minor`
+  // entry, so the guard must too, or a commented bump before the real one could be
+  // mistaken for the active level. Quotes are optional around BOTH the package name
+  // and the bump level, because Changesets' YAML parser accepts a quoted scalar
+  // (`'@lostgradient/cinder': "major"`).
+  const escapedName = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const linePattern = new RegExp(`^["']?${escapedName}["']?\\s*:\\s*["']?(major|minor|patch)["']?`);
+  for (const rawLine of frontmatterOf(source).split('\n')) {
+    const line = rawLine.trim();
+    if (line.length === 0 || line.startsWith('#')) continue;
+    const match = line.match(linePattern);
+    if (match) return match[1] ?? null;
+  }
+  return null;
+}
+
+/**
+ * Return the YAML frontmatter block of a changeset (the text between the opening
+ * `---` fence and its closing `---`). Falls back to the whole source if no fence
+ * is present, so a malformed changeset still gets scanned rather than skipped.
+ */
+function frontmatterOf(source: string): string {
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  return match?.[1] ?? source;
 }
 
 /** True when a semver version string is `< 1.0.0` (i.e. still in the `0.y.z` line). */

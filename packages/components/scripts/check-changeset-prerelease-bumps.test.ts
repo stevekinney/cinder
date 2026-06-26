@@ -45,6 +45,22 @@ describe('bumpLevelForPackage', () => {
     expect(bumpLevelForPackage(`---\n"${PACKAGE}": 'minor'\n---\n`, PACKAGE)).toBe('minor');
   });
 
+  it('ignores commented-out bump lines and reads the real one', () => {
+    // A commented previous value before the active entry must not win — Changesets
+    // ignores the comment and applies the real `major`.
+    const source = `---\n# '${PACKAGE}': minor\n'${PACKAGE}': major\n---\n\nChange.\n`;
+    expect(bumpLevelForPackage(source, PACKAGE)).toBe('major');
+  });
+
+  it('does not read a bump from a comment-only entry', () => {
+    expect(bumpLevelForPackage(`---\n# '${PACKAGE}': major\n---\n`, PACKAGE)).toBeNull();
+  });
+
+  it('only scans the frontmatter, not the prose body', () => {
+    const source = `---\n'${PACKAGE}': minor\n---\n\nMentions '${PACKAGE}': major in prose.\n`;
+    expect(bumpLevelForPackage(source, PACKAGE)).toBe('minor');
+  });
+
   it('returns null when the package is not mentioned', () => {
     expect(bumpLevelForPackage(`---\n'@other/pkg': major\n---\n`, PACKAGE)).toBeNull();
   });
