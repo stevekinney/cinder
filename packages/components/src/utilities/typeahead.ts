@@ -22,7 +22,7 @@ export function findTypeaheadMatch<T>(
   if (candidates.length === 0) return undefined;
 
   const normalizedPrefix = prefix.toLocaleLowerCase();
-  const startIndex = currentIndex < 0 ? 0 : currentIndex;
+  const startIndex = currentIndex < 0 ? -1 : currentIndex;
 
   for (let offset = 1; offset <= candidates.length; offset += 1) {
     const index = (startIndex + offset) % candidates.length;

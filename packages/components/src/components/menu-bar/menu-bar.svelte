@@ -32,7 +32,11 @@
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { isTypeaheadKey, TypeaheadBuffer } from '../../utilities/typeahead.ts';
+  import {
+    findTypeaheadMatch,
+    isTypeaheadKey,
+    TypeaheadBuffer,
+  } from '../../utilities/typeahead.ts';
   import type { DropdownContext } from '../dropdown/dropdown.types.ts';
   import DropdownItem from '../dropdown-item/dropdown-item.svelte';
   import DropdownLabel from '../dropdown-label/dropdown-label.svelte';
@@ -437,15 +441,19 @@
 
     const currentIndex = items.findIndex((item) => item === document.activeElement);
     const prefix = typeaheadBuffer.push(event.key);
-    const startIndex = currentIndex < 0 ? 0 : currentIndex;
-    for (let offset = 1; offset <= items.length; offset += 1) {
-      const index = (startIndex + offset) % items.length;
-      const item = items[index];
-      if (item?.textContent?.trim().toLocaleLowerCase().startsWith(prefix)) {
-        event.preventDefault();
-        item.focus();
-        return true;
-      }
+    const match = findTypeaheadMatch(
+      items.map((item, index) => ({
+        value: index,
+        label: item.textContent?.trim() ?? '',
+        disabled: item.hasAttribute('data-disabled'),
+      })),
+      prefix,
+      currentIndex,
+    );
+    if (match !== undefined) {
+      event.preventDefault();
+      items[match]?.focus();
+      return true;
     }
     return false;
   }
