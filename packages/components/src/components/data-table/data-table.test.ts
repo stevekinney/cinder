@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { DataTableRow } from './data-table.types.ts';
+import type { DataTableSelectionMode } from './index.ts';
 
 setupHappyDom();
 
@@ -278,6 +279,11 @@ describe('DataTable — data values', () => {
 });
 
 describe('DataTable — row selection', () => {
+  test('exports the row selection mode type from the public subpath barrel', () => {
+    const mode: DataTableSelectionMode = 'multiple';
+    expect(mode).toBe('multiple');
+  });
+
   test('multiple mode renders row checkboxes and updates a bound selectedRowIds array', async () => {
     let selectedRowIds: string[] = [];
     const { container } = render(DataTable, {
@@ -362,6 +368,19 @@ describe('DataTable — row selection', () => {
     expect(container.querySelector('thead input[type="checkbox"]')).toBeNull();
   });
 
+  test('single mode labels the empty selection header cell', () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'single',
+    });
+
+    const selectionHeader = container.querySelector<HTMLTableCellElement>(
+      'thead th.cinder-table__header-cell--selection',
+    );
+    expect(selectionHeader?.getAttribute('aria-label')).toBe('Row selection');
+  });
+
   test('disabled rows render disabled checkboxes and are excluded from select-all', async () => {
     let selectedRowIds: string[] = [];
     const { container } = render(DataTable, {
@@ -420,6 +439,42 @@ describe('DataTable — row selection', () => {
 
     const firstCheckbox = container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]');
     expect(firstCheckbox?.getAttribute('aria-label')).toBe('Select Ada Lovelace');
+  });
+
+  test('form reset keeps row checkbox state aligned with selectedRowIds', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    let selectedRowIds: string[] = [];
+    const { container } = render(DataTable, {
+      target: form,
+      props: {
+        columns,
+        rows: rowsWithIds,
+        selectable: 'multiple',
+        get selectedRowIds() {
+          return selectedRowIds;
+        },
+        set selectedRowIds(next: string[] | Set<string>) {
+          selectedRowIds = Array.from(next);
+        },
+      },
+    });
+    const firstCheckbox = container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]');
+
+    await fireEvent.click(firstCheckbox!);
+    await tick();
+    expect(selectedRowIds).toEqual(['ada']);
+    expect(firstCheckbox?.checked).toBe(true);
+
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    expect(selectedRowIds).toEqual([]);
+    expect(firstCheckbox?.checked).toBe(false);
+
+    await fireEvent.click(firstCheckbox!);
+    expect(selectedRowIds).toEqual(['ada']);
   });
 
   test('virtualized focused rows toggle selection with Space', async () => {

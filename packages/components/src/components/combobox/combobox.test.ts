@@ -230,12 +230,31 @@ describe('Combobox structure', () => {
     expect(input?.value).toBe('Apple');
     expect(hidden?.value).toBe('apple');
 
-    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
-    await tick();
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(input?.value).toBe('Banana');
     expect(hidden?.value).toBe('banana');
     expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('required named combobox validity follows the selected value, not typed text', async () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      options: fruits,
+      required: true,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    expect(input?.checkValidity()).toBe(false);
+
+    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    expect(input?.checkValidity()).toBe(false);
+
+    await fireEvent.input(input!, { target: { value: 'app' } });
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    expect(input?.checkValidity()).toBe(true);
   });
 
   test('disabled hidden input is omitted from native FormData', () => {

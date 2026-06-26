@@ -21,7 +21,7 @@
 </script>
 
 <script lang="ts" generics="Row extends DataTableRow">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
 
   import Checkbox from '../checkbox/checkbox.svelte';
   import TableBody from '../table-body/table-body.svelte';
@@ -74,6 +74,8 @@
   let previousRowCount = 0;
   let hasObservedRowCount = false;
   let shouldStickAfterAppend = false;
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+  const initialSelectedRowIds = untrack(() => new Set(selectedRowIds));
 
   /**
    * The key of the row-header column. Explicitly set via `column.rowHeader === true`,
@@ -190,6 +192,28 @@
     }
     commitSelectedRowIds(nextSelectedRowIds);
   }
+
+  function syncSelectionAfterFormReset(): void {
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      commitSelectedRowIds(initialSelectedRowIds);
+    }, 0);
+  }
+
+  $effect(() => {
+    const form = wrapperElement?.closest('form');
+    if (!form || !selectionEnabled) return;
+
+    form.addEventListener('reset', syncSelectionAfterFormReset);
+    return () => {
+      form.removeEventListener('reset', syncSelectionAfterFormReset);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
+  });
 
   $effect(() => {
     const element = wrapperElement;
@@ -413,7 +437,11 @@
     <TableHeader>
       <TableRow>
         {#if selectionEnabled}
-          <th scope="col" class="cinder-table__header-cell cinder-table__header-cell--selection">
+          <th
+            scope="col"
+            class="cinder-table__header-cell cinder-table__header-cell--selection"
+            aria-label={selectable === 'single' ? 'Row selection' : undefined}
+          >
             {#if selectable === 'multiple'}
               <Checkbox
                 checked={allRowsSelected}

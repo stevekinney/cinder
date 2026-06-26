@@ -96,8 +96,10 @@
   // this resolved size; raw requested `size` is not surfaced through the DOM.
   const effectiveSize = $derived(density === 'toolbar' ? 'sm' : size);
   const selectedValues = $derived(
-    selectionMode === 'multiple' && value
-      ? Array.from(value as SvelteSet<T>)
+    selectionMode === 'multiple'
+      ? value instanceof SvelteSet
+        ? Array.from(value as SvelteSet<T>)
+        : []
       : typeof value === 'string'
         ? [value]
         : [],

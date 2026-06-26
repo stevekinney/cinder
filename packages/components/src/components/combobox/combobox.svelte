@@ -96,6 +96,7 @@
   let hiddenInputElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
   let committedLabel = $state('');
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   const initialValue = untrack(() => value);
   const initialInputValue = untrack(() => inputValue);
 
@@ -208,15 +209,19 @@
   }
 
   function resetToInitialValue(): void {
-    value = initialValue;
-    const matched = options.find((option) => option.value === initialValue);
-    const nextInputValue = matched?.label ?? initialInputValue;
-    inputValue = nextInputValue;
-    committedLabel = matched?.label ?? '';
-    open = false;
-    activeIndex = -1;
-    if (inputElement) inputElement.value = nextInputValue;
-    if (hiddenInputElement) hiddenInputElement.value = initialValue;
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      value = initialValue;
+      const matched = options.find((option) => option.value === initialValue);
+      const nextInputValue = matched?.label ?? initialInputValue;
+      inputValue = nextInputValue;
+      committedLabel = matched?.label ?? '';
+      open = false;
+      activeIndex = -1;
+      if (inputElement) inputElement.value = nextInputValue;
+      if (hiddenInputElement) hiddenInputElement.value = initialValue;
+    }, 0);
   }
 
   $effect(() => {
@@ -224,7 +229,17 @@
     if (input === null) return;
     const form = input.form;
     form?.addEventListener('reset', resetToInitialValue);
-    return () => form?.removeEventListener('reset', resetToInitialValue);
+    return () => {
+      form?.removeEventListener('reset', resetToInitialValue);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
+  });
+
+  $effect(() => {
+    inputElement?.setCustomValidity(resolvedRequired && !value ? 'Please select an option.' : '');
   });
 
   function handleKeydown(event: KeyboardEvent) {

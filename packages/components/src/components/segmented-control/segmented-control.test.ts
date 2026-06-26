@@ -376,6 +376,23 @@ describe('SegmentedControl — multiple mode', () => {
     ]);
   });
 
+  test('multiple mode ignores stale string values when rendering hidden inputs', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'text-format',
+        name: 'format',
+        label: 'Text formatting',
+        options: multiOptions,
+        selectionMode: 'multiple',
+        value: 'bold' as never,
+      },
+    });
+
+    expect(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="format"]'),
+    ).toHaveLength(0);
+  });
+
   test('disabled hidden inputs are disabled for native FormData omission', () => {
     const selected = new SvelteSet(['bold']);
     const { container } = render(Fixture, {
