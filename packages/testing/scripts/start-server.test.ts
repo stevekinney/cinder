@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import type { ChildProcess } from 'node:child_process';
 import { join } from 'node:path';
 
 import {
@@ -9,6 +10,7 @@ import {
   parsePlaygroundListeningPort,
   playgroundBundleDependencyBuildArguments,
   playgroundBundleDependencyBuildPackages,
+  playgroundBundleDependencyBuildProcess,
   playgroundServerArguments,
   playgroundServerWorkingDirectory,
   playgroundUrlForPath,
@@ -94,6 +96,18 @@ describe('playground bundle dependency build preflight', () => {
       '--filter=@cinder/markdown',
       'build',
     ]);
+  });
+
+  test('registers dependency builds as managed child processes', () => {
+    const childProcess = {} as ChildProcess;
+    const managedChildProcess = playgroundBundleDependencyBuildProcess(
+      childProcess,
+      '@cinder/markdown',
+    );
+
+    expect(managedChildProcess.childProcess).toBe(childProcess);
+    expect(managedChildProcess.name).toBe('@cinder/markdown build');
+    expect(managedChildProcess.killProcessGroup).toBe(process.platform !== 'win32');
   });
 });
 

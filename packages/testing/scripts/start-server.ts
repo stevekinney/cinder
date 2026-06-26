@@ -35,7 +35,7 @@ type PlaygroundPathProbeResult = {
   status: number | null;
 };
 
-type ManagedChildProcess = {
+export type ManagedChildProcess = {
   childProcess: ChildProcess;
   name: string;
   killProcessGroup: boolean;
@@ -239,6 +239,17 @@ export function playgroundBundleDependencyBuildArguments(packageName: string): s
   return ['run', `--filter=${packageName}`, 'build'];
 }
 
+export function playgroundBundleDependencyBuildProcess(
+  childProcess: ChildProcess,
+  packageName: string,
+): ManagedChildProcess {
+  return {
+    childProcess,
+    name: `${packageName} build`,
+    killProcessGroup: process.platform !== 'win32',
+  };
+}
+
 export function playgroundServerArguments(): string[] {
   return ['run', 'src/playground-server.ts'];
 }
@@ -298,14 +309,18 @@ async function waitForWarmPlayground(): Promise<void> {
   );
 }
 
-async function buildPlaygroundBundleDependencies(): Promise<void> {
+async function buildPlaygroundBundleDependencies(
+  registerChildProcess: (managedChildProcess: ManagedChildProcess) => void,
+): Promise<void> {
   console.log('Building playground bundle dependencies...');
   for (const packageName of playgroundBundleDependencyPackages) {
     const buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
       cwd: repoRoot,
+      detached: process.platform !== 'win32',
       stdio: 'inherit',
       env: process.env,
     });
+    registerChildProcess(playgroundBundleDependencyBuildProcess(buildProcess, packageName));
     const buildCode = await waitForExit(buildProcess);
     if (buildCode !== 0) {
       throw new Error(`${packageName} build exited with code ${buildCode}`);
@@ -370,7 +385,7 @@ async function main(): Promise<void> {
     process.exit(1);
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
-    await buildPlaygroundBundleDependencies();
+    await buildPlaygroundBundleDependencies((childProcess) => children.push(childProcess));
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
     let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
