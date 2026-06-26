@@ -39,7 +39,7 @@ export type ComboboxProps<T extends string = string> = {
   /** Currently selected value. Bindable. `''` when nothing is selected. */
   value?: NoInfer<T> | '';
   /** Native form field name. Renders a hidden input carrying the selected value. */
-  name?: string;
+  name?: string | undefined;
   /** Free-text input value (the text the user has typed). Bindable. */
   inputValue?: string;
   /** Full set of options to filter. The sole inference source for T. */
