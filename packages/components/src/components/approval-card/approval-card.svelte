@@ -116,6 +116,9 @@
   const editableArgumentsValue = $derived(normalizeArgumentsPreviewValue(operation.argsPreview));
   const argumentsPreview = $derived(prepareArgumentsPreview(editableArgumentsValue));
   const filesTouched = $derived(operation.filesTouched ?? []);
+  const filesTouchedLabel = $derived(
+    `${filesTouched.length} file${filesTouched.length === 1 ? '' : 's'}`,
+  );
   const environmentNames = $derived(sanitizeEnvironmentNames(env));
   const currentEditedArgumentsText = $derived(formatEditableArguments(editableArgumentsValue));
   const currentEditedArgumentsSeedKey = $derived(
@@ -471,7 +474,7 @@
           <div class="cinder-approval-card__files">
             <div class="cinder-approval-card__section-heading">
               <h5 class="cinder-approval-card__subsection-title">Files touched</h5>
-              <Badge size="sm">{filesTouched.length} files</Badge>
+              <Badge size="sm">{filesTouchedLabel}</Badge>
             </div>
             <ul class="cinder-approval-card__file-list">
               {#each filesTouched as file, fileIndex (`${fileIndex}:${file}`)}

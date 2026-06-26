@@ -311,8 +311,12 @@ export { default as EventStreamViewer } from './components/event-stream-viewer/i
 export type {
   EventSeverity,
   EventStreamEntry,
+  EventStreamSchemaDetailValue,
+  EventStreamSchemaEntry,
+  EventStreamSchemaEvent,
   EventStreamState,
   EventStreamViewerProps,
+  EventStreamViewerSchemaProps,
   StreamEvent,
   StreamReconnectedBoundary,
 } from './components/event-stream-viewer/index.ts';

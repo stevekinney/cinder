@@ -179,6 +179,18 @@ describe('InvocationRuleBuilder', () => {
       expect(container.querySelector('[data-irb-add-rule]')).toBeNull();
     });
 
+    test('renders readonly summary when onchange is missing', () => {
+      const { container } = renderBuilder([makeRule()], { onchange: undefined });
+
+      expect(container.querySelector('[data-irb-add-rule]')).toBeNull();
+      expect(
+        container.querySelector('.cinder-invocation-rule-builder__rule-label-input'),
+      ).toBeNull();
+      expect(container.textContent).toContain('PR Review Rule');
+      expect(container.textContent).toContain('Path matches "src/**"');
+      expect(container.textContent).toContain('Security Review');
+    });
+
     test('shows empty message when rules list is empty and readonly', () => {
       const { container } = renderBuilder([], { readonly: true });
       expect(container.textContent).toContain('No rules configured.');

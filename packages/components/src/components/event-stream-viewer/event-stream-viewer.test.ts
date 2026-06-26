@@ -736,13 +736,15 @@ describe('EventStreamViewer', () => {
       expect(idOnlyKey).not.toBe(sequencedKey);
     });
 
-    test('details panel ids include escaped row identity beyond the hash', () => {
+    test('details panel ids stay bounded while resisting simple hash collisions', () => {
       const firstKey = 'event|id=Aa';
       const secondKey = 'event|id=BB';
+      const longKey = `event|id=${'x'.repeat(1000)}`;
 
       expect(detailsIdForKey('stream-viewer', firstKey)).not.toBe(
         detailsIdForKey('stream-viewer', secondKey),
       );
+      expect(detailsIdForKey('stream-viewer', longKey).length).toBeLessThan(80);
     });
   });
 

@@ -53,6 +53,7 @@
   const sectionAriaLabel = $derived(
     ariaLabelledby ? undefined : (ariaLabel ?? label ?? 'Invocation rules'),
   );
+  const effectiveReadonly = $derived(readonly || onchange === undefined);
 
   /** Announcement text for the live region. */
   let announcement = $state('');
@@ -298,7 +299,7 @@
   {#each rules as rule, ruleIndex (rule.id)}
     <div class="cinder-invocation-rule-builder__rule" data-irb-rule={ruleIndex}>
       <div class="cinder-invocation-rule-builder__rule-header">
-        {#if readonly}
+        {#if effectiveReadonly}
           <h3 class="cinder-invocation-rule-builder__rule-label">{rule.label}</h3>
         {:else}
           <label class="cinder-invocation-rule-builder__rule-label-field">
@@ -327,7 +328,7 @@
           </label>
         {/if}
 
-        {#if !readonly}
+        {#if !effectiveReadonly}
           <div class="cinder-invocation-rule-builder__rule-controls">
             <button
               type="button"
@@ -374,13 +375,13 @@
         >
           Conditions
         </span>
-        {#if !readonly && rule.conditions.length === 0}
+        {#if !effectiveReadonly && rule.conditions.length === 0}
           <p class="cinder-invocation-rule-builder__validation" role="status">
             Add at least one condition or this rule will always fire.
           </p>
         {/if}
 
-        {#if readonly}
+        {#if effectiveReadonly}
           <div
             class="cinder-invocation-rule-builder__summary"
             aria-label={`Conditions for ${rule.label}`}
@@ -495,13 +496,13 @@
         >
           Actions
         </span>
-        {#if !readonly && rule.actions.length === 0}
+        {#if !effectiveReadonly && rule.actions.length === 0}
           <p class="cinder-invocation-rule-builder__validation" role="status">
             Add at least one action for this rule.
           </p>
         {/if}
 
-        {#if readonly}
+        {#if effectiveReadonly}
           <div
             class="cinder-invocation-rule-builder__summary"
             aria-label={`Actions for ${rule.label}`}
@@ -574,7 +575,7 @@
     </div>
   {/each}
 
-  {#if !readonly}
+  {#if !effectiveReadonly}
     <button
       type="button"
       class="cinder-invocation-rule-builder__add-btn cinder-invocation-rule-builder__add-rule-btn"
@@ -585,7 +586,7 @@
     </button>
   {/if}
 
-  {#if rules.length === 0 && readonly}
+  {#if rules.length === 0 && effectiveReadonly}
     <p class="cinder-invocation-rule-builder__empty">No rules configured.</p>
   {/if}
 </section>

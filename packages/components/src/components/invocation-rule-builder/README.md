@@ -79,7 +79,7 @@ A rule fires when ALL of its conditions match (implicit AND). Boolean grouping, 
 
 ## Modes
 
-Pass `readonly={true}` to render a read-only summary instead of editable controls. This is useful for review screens where the rule is being confirmed before saving.
+Pass `readonly={true}` to render a read-only summary instead of editable controls. Schema-driven usage is read-only because callbacks are not representable in JSON Schema. Runtime consumers can render editable controls by passing `onchange` and leaving `readonly` false.
 
 ## Props
 

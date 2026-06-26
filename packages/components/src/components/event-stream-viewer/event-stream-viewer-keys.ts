@@ -34,7 +34,7 @@ export function uniqueRenderedKey(baseKey: string, occurrences: Map<string, numb
 }
 
 export function detailsIdForKey(instanceId: string, key: string): string {
-  return `${escapeDomIdPart(instanceId)}-details-${hashString(key)}-${escapeDomIdPart(key)}`;
+  return `${escapeDomIdPart(instanceId)}-details-${hashString(key)}-${hashString(reverseString(key))}-${key.length}`;
 }
 
 function keyType(type: string): string {
@@ -54,6 +54,14 @@ function escapeDomIdPart(value: string): string {
       : `_${character.codePointAt(0)?.toString(16) ?? '0'}_`;
   }
   return result === '' ? 'empty' : result;
+}
+
+function reverseString(value: string): string {
+  let result = '';
+  for (const character of value) {
+    result = character + result;
+  }
+  return result;
 }
 
 function hashString(value: string): string {

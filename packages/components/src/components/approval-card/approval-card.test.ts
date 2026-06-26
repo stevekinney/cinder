@@ -331,6 +331,20 @@ describe('ApprovalCard', () => {
     ).toEqual(['src/repeated.ts', 'src/repeated.ts']);
   });
 
+  test('renders a singular touched-file badge for one file', () => {
+    const { container } = render(ApprovalCard, {
+      ...approvalCardProps({
+        operation: {
+          kind: 'file-write',
+          filesTouched: ['src/one-file.ts'],
+        },
+      }),
+    });
+
+    expect(container.textContent).toContain('1 file');
+    expect(container.textContent).not.toContain('1 files');
+  });
+
   test('renders string argument previews as primitive values', async () => {
     const { container, getByRole } = render(ApprovalCard, {
       ...approvalCardProps({
