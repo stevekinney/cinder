@@ -62,6 +62,7 @@ const ALWAYS_RUN_PATHS = [
   'src/_internal',
   'src/highlighters',
   'src/schemas',
+  'src/styles',
 ] as const;
 
 /**

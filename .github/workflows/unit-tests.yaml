@@ -16,15 +16,24 @@ name: unit-tests
 # silently skip a test.
 
 on:
-  # NOTE: this paths list must include EVERY root path that
-  # pathForceFullReason() treats as a force-full trigger. If a force-full path
-  # is omitted here, a PR changing only that file would not trigger the
-  # workflow at all — the scoper would never run and a change that should
-  # force-full the suite would silently run nothing. Keep the two in sync.
+  # Unit tests own component source, package test/build scripts, and this
+  # workflow's scoping behavior. Other workflows have their own targeted gates
+  # and should not start the unit suite by themselves.
   pull_request:
     paths:
-      - 'packages/**'
-      - '.github/workflows/**'
+      - 'packages/components/**'
+      - 'packages/*/package.json'
+      - 'packages/*/scripts/**'
+      - 'packages/*/tsconfig*.json'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/editor/src/**'
+      - 'packages/markdown/src/**'
+      - 'packages/playground/src/discover.ts'
+      - 'packages/playground/src/examples/**'
+      - 'packages/testing/scripts/changed-components.ts'
+      - 'packages/testing/src/helpers/component-filter.ts'
+      - '.github/workflows/unit-tests.yaml'
       - 'package.json'
       - 'bun.lock'
       - 'bun.lockb'
@@ -38,8 +47,19 @@ on:
     branches:
       - main
     paths:
-      - 'packages/**'
-      - '.github/workflows/**'
+      - 'packages/components/**'
+      - 'packages/*/package.json'
+      - 'packages/*/scripts/**'
+      - 'packages/*/tsconfig*.json'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/editor/src/**'
+      - 'packages/markdown/src/**'
+      - 'packages/playground/src/discover.ts'
+      - 'packages/playground/src/examples/**'
+      - 'packages/testing/scripts/changed-components.ts'
+      - 'packages/testing/src/helpers/component-filter.ts'
+      - '.github/workflows/unit-tests.yaml'
       - 'package.json'
       - 'bun.lock'
       - 'bun.lockb'

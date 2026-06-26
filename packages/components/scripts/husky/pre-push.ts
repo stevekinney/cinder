@@ -4,6 +4,12 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
+  computeScope,
+  loadKnownSlugs,
+  loadSourceFiles,
+  type ScopeDecision,
+} from '../component-graph.ts';
+import {
   changedCssLikeFiles,
   changedFilesForRange,
   error,
@@ -22,6 +28,7 @@ import {
   loadWorkspacePackages,
   parsePushRefs,
   phaseMaxConcurrency,
+  prePushPackageScript,
   REPO_ROOT,
   runHookCommand,
   runWithConcurrencyPool,
@@ -45,11 +52,16 @@ if (isContinuousIntegration()) {
 installHookProcessCleanup();
 
 const SCRIPTS = ['lint', 'typecheck', 'test'] as const;
+const PLAYGROUND_EXAMPLE_PATTERN = /^packages\/playground\/src\/examples\/([a-z0-9][a-z0-9-]*)\//;
 type Script = (typeof SCRIPTS)[number];
+type ComponentTestScope =
+  | { readonly mode: 'full'; readonly reason: string }
+  | { readonly mode: 'filtered'; readonly components: readonly string[] };
 
 type Job = {
   readonly packageName: string;
   readonly script: Script;
+  readonly componentTestScope?: ComponentTestScope;
 };
 
 type JobResult = {
@@ -97,11 +109,28 @@ const git: GitRunner = {
  * descendant processes instead of orphaning them.
  */
 async function runJob(job: Job): Promise<JobResult> {
-  const result = await runHookCommand('bun', ['run', `--filter=${job.packageName}`, job.script], {
+  const packageScript = prePushPackageScript(job.packageName, job.script);
+  const componentTestEnvironment =
+    packageScript === 'test:changed' && job.componentTestScope !== undefined
+      ? {
+          CINDER_TEST_MODE: job.componentTestScope.mode,
+          CINDER_TEST_COMPONENTS:
+            job.componentTestScope.mode === 'filtered'
+              ? job.componentTestScope.components.join(',')
+              : '',
+        }
+      : undefined;
+  const options = {
     cwd: REPO_ROOT,
-    stderr: 'pipe',
-    stdout: 'pipe',
-  });
+    stderr: 'pipe' as const,
+    stdout: 'pipe' as const,
+    ...(componentTestEnvironment === undefined ? {} : { environment: componentTestEnvironment }),
+  };
+  const result = await runHookCommand(
+    'bun',
+    ['run', `--filter=${job.packageName}`, packageScript],
+    options,
+  );
   return {
     job,
     exitCode: result.exitCode,
@@ -200,8 +229,54 @@ function printJobPlan(jobs: readonly Job[]): void {
       (a, b) =>
         phaseRank(a.script) - phaseRank(b.script) || a.packageName.localeCompare(b.packageName),
     )
-    .map((job) => `  ${job.packageName} ${job.script}`);
+    .map((job) => {
+      const packageScript = prePushPackageScript(job.packageName, job.script);
+      const scope =
+        packageScript === 'test:changed' && job.componentTestScope?.mode === 'filtered'
+          ? ` (${job.componentTestScope.components.join(', ')})`
+          : '';
+      return `  ${job.packageName} ${packageScript}${scope}`;
+    });
   for (const line of lines) console.log(line);
+}
+
+async function deriveComponentTestScope(
+  changedFiles: readonly string[],
+): Promise<ComponentTestScope> {
+  const cleaned = changedFiles.map((file) => file.trim()).filter((file) => file.length > 0);
+  const [sourceFiles, knownSlugs] = await Promise.all([loadSourceFiles(), loadKnownSlugs()]);
+  const deletedFiles = cleaned.filter((file) => !existsSync(join(REPO_ROOT, file)));
+  const exampleSlugs = new Set<string>();
+  const nonExampleChanges: string[] = [];
+
+  for (const file of cleaned) {
+    const match = PLAYGROUND_EXAMPLE_PATTERN.exec(file);
+    if (match?.[1] === undefined) {
+      nonExampleChanges.push(file);
+      continue;
+    }
+    if (!knownSlugs.has(match[1])) {
+      return { mode: 'full', reason: `example for unknown slug: ${file}` };
+    }
+    exampleSlugs.add(match[1]);
+  }
+
+  const graphDecision: ScopeDecision = computeScope({
+    changedFiles: nonExampleChanges,
+    deletedFiles,
+    sourceFiles,
+    knownSlugs,
+  });
+
+  if (graphDecision.mode === 'full') {
+    if (exampleSlugs.size > 0 && graphDecision.reason === 'no component-mapped changes detected') {
+      return { mode: 'filtered', components: [...exampleSlugs].toSorted() };
+    }
+    return { mode: 'full', reason: graphDecision.reason };
+  }
+
+  const components = new Set<string>([...graphDecision.slugs, ...exampleSlugs]);
+  return { mode: 'filtered', components: [...components].toSorted() };
 }
 
 /**
@@ -377,11 +452,28 @@ async function derivePlan(
   // Typecheck/test expand to the reverse-dependency closure: a change can break
   // a dependent without failing its own gates.
   const closure = expandToDependents(workspace, touchedNames);
+  let componentTestScope: ComponentTestScope | undefined;
+  if (closure.has('@lostgradient/cinder')) {
+    try {
+      componentTestScope = await deriveComponentTestScope([...changed]);
+    } catch (cause) {
+      const reason = cause instanceof Error ? cause.message : String(cause);
+      return failSafe(`Could not derive cinder component test scope (${reason})`);
+    }
+  }
   for (const name of closure) {
     const pkg = byName.get(name);
     if (pkg === undefined) continue;
     if (pkg.hasTypecheck) jobs.push({ packageName: name, script: 'typecheck' });
-    if (pkg.hasTest) jobs.push({ packageName: name, script: 'test' });
+    if (pkg.hasTest) {
+      jobs.push({
+        packageName: name,
+        script: 'test',
+        ...(name === '@lostgradient/cinder' && componentTestScope !== undefined
+          ? { componentTestScope }
+          : {}),
+      });
+    }
   }
 
   // Stylelint runs over *every* changed existing CSS/Svelte file in the range,

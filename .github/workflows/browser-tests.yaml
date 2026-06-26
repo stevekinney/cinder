@@ -1,13 +1,27 @@
 name: browser-tests
 
 on:
-  # This paths list must include every root path that the scoper's
-  # pathForceFullReason() force-fulls; otherwise a PR changing only such a file
-  # would not trigger this workflow and the change would skip the suite entirely.
+  # Browser tests are expensive; start them only for changes that can affect
+  # rendered component behavior, the playground examples they exercise, or this
+  # workflow itself. Component-scoping still decides full versus filtered once the
+  # workflow starts.
   pull_request:
     paths:
-      - 'packages/**'
-      - '.github/workflows/**'
+      - 'packages/components/src/**'
+      - 'packages/components/components.json'
+      - 'packages/components/package.json'
+      - 'packages/components/scripts/**'
+      - 'packages/*/package.json'
+      - 'packages/*/scripts/**'
+      - 'packages/*/tsconfig*.json'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/editor/src/**'
+      - 'packages/markdown/src/**'
+      - 'packages/playground/src/**'
+      - 'packages/playground/scripts/**'
+      - 'packages/testing/**'
+      - '.github/workflows/browser-tests.yaml'
       - 'package.json'
       - 'bun.lock'
       - 'bun.lockb'
@@ -21,8 +35,21 @@ on:
     branches:
       - main
     paths:
-      - 'packages/**'
-      - '.github/workflows/**'
+      - 'packages/components/src/**'
+      - 'packages/components/components.json'
+      - 'packages/components/package.json'
+      - 'packages/components/scripts/**'
+      - 'packages/*/package.json'
+      - 'packages/*/scripts/**'
+      - 'packages/*/tsconfig*.json'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/editor/src/**'
+      - 'packages/markdown/src/**'
+      - 'packages/playground/src/**'
+      - 'packages/playground/scripts/**'
+      - 'packages/testing/**'
+      - '.github/workflows/browser-tests.yaml'
       - 'package.json'
       - 'bun.lock'
       - 'bun.lockb'

@@ -342,10 +342,10 @@ describe('pathForceFullReason', () => {
     expect(pathForceFullReason('packages/components/src/styles/tokens.css')).not.toBeNull();
   });
 
-  it('forces full for any workflow change, including browser-tests itself', () => {
-    expect(pathForceFullReason('.github/workflows/main-green.yaml')).not.toBeNull();
-    // A browser-tests.yaml edit can change which tests run / how the scoper is
-    // invoked, so it force-fulls too — no self-edit exception.
+  it('forces full for test workflow changes only', () => {
+    expect(pathForceFullReason('.github/workflows/main-green.yaml')).toBeNull();
+    expect(pathForceFullReason('.github/workflows/changeset-guard.yaml')).toBeNull();
+    expect(pathForceFullReason('.github/workflows/unit-tests.yaml')).not.toBeNull();
     expect(pathForceFullReason('.github/workflows/browser-tests.yaml')).not.toBeNull();
   });
 
@@ -491,6 +491,15 @@ describe('computeScope', () => {
       }),
     );
     expect(decision).toEqual({ mode: 'filtered', slugs: ['badge'] });
+  });
+
+  it('ignores non-test workflow co-changes (does not force full)', () => {
+    const decision = computeScope(
+      base({
+        changedFiles: [`${C}/button/button.svelte`, '.github/workflows/main-green.yaml'],
+      }),
+    );
+    expect(decision).toEqual({ mode: 'filtered', slugs: ['button', 'dialog'] });
   });
 
   it('maps a non-graph component sidecar (CSS) to its slug', () => {

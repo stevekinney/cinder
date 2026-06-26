@@ -496,12 +496,15 @@ export function pathForceFullReason(repoRelativePath: string): string | null {
     return `global styles change: ${path}`;
   }
 
-  // CI workflow changes force full: a workflow edit can alter which tests run,
-  // the environment, or how the scoper is invoked. No exceptions — including the
-  // browser-tests workflow itself, whose `scope` job drives the very selection
-  // this scoper feeds.
-  if (path.startsWith('.github/workflows/')) {
-    return `workflow change: ${path}`;
+  // Test-workflow changes force full when the corresponding workflow runs: those
+  // files can alter which tests run, the environment, or how the scoper is
+  // invoked. Other workflows own their own smaller gates and should not turn a
+  // component scope into a full unit/browser matrix.
+  if (
+    path === '.github/workflows/browser-tests.yaml' ||
+    path === '.github/workflows/unit-tests.yaml'
+  ) {
+    return `test workflow change: ${path}`;
   }
 
   return null;
@@ -762,6 +765,13 @@ export function computeScope(options: ComputeScopeOptions): ScopeDecision {
 function isIgnorableFile(repoRelativePath: string): boolean {
   const path = normalizeRepoPath(repoRelativePath);
   if (/\.(md|mdx|markdown)$/i.test(path)) return true;
+  if (
+    path.startsWith('.github/workflows/') &&
+    path !== '.github/workflows/browser-tests.yaml' &&
+    path !== '.github/workflows/unit-tests.yaml'
+  ) {
+    return true;
+  }
   if (path.startsWith('packages/components/src/')) return false;
   const base = path.slice(path.lastIndexOf('/') + 1);
   const IGNORABLE_BASENAMES = new Set([
