@@ -4,6 +4,12 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
+  computeScope,
+  loadKnownSlugs,
+  loadSourceFiles,
+  type ScopeDecision,
+} from '../component-graph.ts';
+import {
   changedCssLikeFiles,
   changedFilesForRange,
   error,
@@ -46,6 +52,7 @@ if (isContinuousIntegration()) {
 installHookProcessCleanup();
 
 const SCRIPTS = ['lint', 'typecheck', 'test'] as const;
+const PLAYGROUND_EXAMPLE_PATTERN = /^packages\/playground\/src\/examples\/([a-z0-9][a-z0-9-]*)\//;
 type Script = (typeof SCRIPTS)[number];
 type ComponentTestScope =
   | { readonly mode: 'full'; readonly reason: string }
@@ -236,52 +243,40 @@ function printJobPlan(jobs: readonly Job[]): void {
 async function deriveComponentTestScope(
   changedFiles: readonly string[],
 ): Promise<ComponentTestScope> {
-  const scoperEnvironment = { ...Bun.env };
-  delete scoperEnvironment['CINDER_TEST_COMPONENTS'];
-  delete scoperEnvironment['CINDER_TEST_MODE'];
-  delete scoperEnvironment['GITHUB_OUTPUT'];
+  const cleaned = changedFiles.map((file) => file.trim()).filter((file) => file.length > 0);
+  const [sourceFiles, knownSlugs] = await Promise.all([loadSourceFiles(), loadKnownSlugs()]);
+  const exampleSlugs = new Set<string>();
+  const nonExampleChanges: string[] = [];
 
-  const subprocess = Bun.spawn(['bun', 'run', 'packages/testing/scripts/changed-components.ts'], {
-    cwd: REPO_ROOT,
-    env: scoperEnvironment,
-    stdin: 'pipe',
-    stderr: 'pipe',
-    stdout: 'pipe',
+  for (const file of cleaned) {
+    const match = PLAYGROUND_EXAMPLE_PATTERN.exec(file);
+    if (match?.[1] === undefined) {
+      nonExampleChanges.push(file);
+      continue;
+    }
+    if (!knownSlugs.has(match[1])) {
+      return { mode: 'full', reason: `example for unknown slug: ${file}` };
+    }
+    exampleSlugs.add(match[1]);
+  }
+
+  const deletedFiles = nonExampleChanges.filter((file) => !existsSync(join(REPO_ROOT, file)));
+  const graphDecision: ScopeDecision = computeScope({
+    changedFiles: nonExampleChanges,
+    deletedFiles,
+    sourceFiles,
+    knownSlugs,
   });
-  subprocess.stdin.write(changedFiles.join('\n'));
-  subprocess.stdin.end();
 
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(subprocess.stdout).text(),
-    new Response(subprocess.stderr).text(),
-    subprocess.exited,
-  ]);
-  if (exitCode !== 0) {
-    throw new Error(stderr.trim() || `changed-components exited with code ${exitCode}`);
+  if (graphDecision.mode === 'full') {
+    if (exampleSlugs.size > 0 && graphDecision.reason === 'no component-mapped changes detected') {
+      return { mode: 'filtered', components: [...exampleSlugs].toSorted() };
+    }
+    return { mode: 'full', reason: graphDecision.reason };
   }
 
-  const values = new Map(
-    stdout
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const index = line.indexOf('=');
-        return index === -1 ? [line, ''] : [line.slice(0, index), line.slice(index + 1)];
-      }),
-  );
-  const mode = values.get('mode');
-  if (mode === 'full') {
-    return { mode: 'full', reason: stderr.trim() || 'changed-components selected full' };
-  }
-  if (mode === 'filtered') {
-    const components = (values.get('components') ?? '')
-      .split(',')
-      .map((component) => component.trim())
-      .filter((component) => component.length > 0);
-    return { mode: 'filtered', components };
-  }
-  throw new Error(`changed-components emitted unknown mode: ${JSON.stringify(mode)}`);
+  const components = new Set<string>([...graphDecision.slugs, ...exampleSlugs]);
+  return { mode: 'filtered', components: [...components].toSorted() };
 }
 
 /**
