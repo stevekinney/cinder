@@ -330,6 +330,21 @@
     return Array.from(menuElements.values()).some((element) => element.contains(target));
   }
 
+  function isPointerStillInsideCurrentTarget(event: MouseEvent | PointerEvent): boolean {
+    return event.relatedTarget instanceof Node && event.currentTarget instanceof HTMLElement
+      ? event.currentTarget.contains(event.relatedTarget)
+      : false;
+  }
+
+  function handleSubmenuPointerOut(
+    event: MouseEvent | PointerEvent,
+    submenuKey: string,
+    triggerId: string,
+  ): void {
+    if (isPointerStillInsideCurrentTarget(event)) return;
+    if (openSubmenuKey === submenuKey) scheduleSubmenuClose(submenuKey, triggerId, event);
+  }
+
   function clearSubmenuCloseTimer(): void {
     if (submenuCloseTimer !== null) {
       clearTimeout(submenuCloseTimer);
@@ -379,8 +394,24 @@
     );
   }
 
+  function isPointerInsideSubmenu(submenuKey: string): boolean {
+    if (!latestPointerPoint) return false;
+    const submenu = menuElements.get(submenuKey);
+    if (!submenu) return false;
+
+    const submenuRect = submenu.getBoundingClientRect();
+    if (submenuRect.width === 0 && submenuRect.height === 0) return false;
+    return pointInRect(latestPointerPoint, submenuRect);
+  }
+
   function isPointerMovingTowardSubmenu(triggerId: string): boolean {
     if (!submenuLeavePoint || !latestPointerPoint) return false;
+    if (
+      submenuLeavePoint.x === latestPointerPoint.x &&
+      submenuLeavePoint.y === latestPointerPoint.y
+    ) {
+      return false;
+    }
     const submenu = openSubmenuKey ? menuElements.get(openSubmenuKey) : undefined;
     const trigger = findElementById(triggerId);
     if (!submenu || !trigger) return false;
@@ -388,8 +419,6 @@
     const submenuRect = submenu.getBoundingClientRect();
     const triggerRect = trigger.getBoundingClientRect();
     if (submenuRect.width === 0 && submenuRect.height === 0) return false;
-
-    if (pointInRect(latestPointerPoint, submenuRect)) return true;
 
     const submenuIsInlineStart = submenuRect.right <= triggerRect.left;
     const nearX = submenuIsInlineStart ? submenuRect.right : submenuRect.left;
@@ -401,7 +430,41 @@
     );
   }
 
-  function scheduleSubmenuClose(submenuKey: string, triggerId: string, event?: PointerEvent): void {
+  function clearSubmenuCloseState(): void {
+    pendingSubmenuCloseKey = null;
+    pendingSubmenuTriggerId = null;
+    submenuLeavePoint = null;
+    latestPointerPoint = null;
+  }
+
+  function armSubmenuCloseTimer(): void {
+    submenuCloseTimer = setTimeout(() => {
+      submenuCloseTimer = null;
+      const submenuKey = pendingSubmenuCloseKey;
+      const triggerId = pendingSubmenuTriggerId;
+      if (!submenuKey || !triggerId || openSubmenuKey !== submenuKey) {
+        clearSubmenuCloseState();
+        return;
+      }
+      if (isPointerInsideSubmenu(submenuKey)) {
+        clearSubmenuCloseState();
+        return;
+      }
+      if (isPointerMovingTowardSubmenu(triggerId)) {
+        submenuLeavePoint = latestPointerPoint;
+        armSubmenuCloseTimer();
+        return;
+      }
+      openSubmenuKey = null;
+      clearSubmenuCloseState();
+    }, 150);
+  }
+
+  function scheduleSubmenuClose(
+    submenuKey: string,
+    triggerId: string,
+    event?: MouseEvent | PointerEvent,
+  ): void {
     clearSubmenuCloseTimer();
     pendingSubmenuCloseKey = submenuKey;
     pendingSubmenuTriggerId = triggerId;
@@ -409,32 +472,30 @@
       submenuLeavePoint = { x: event.clientX, y: event.clientY };
       latestPointerPoint = submenuLeavePoint;
     }
-    submenuCloseTimer = setTimeout(() => {
-      submenuCloseTimer = null;
-      if (
-        openSubmenuKey === pendingSubmenuCloseKey &&
-        pendingSubmenuTriggerId &&
-        !isPointerMovingTowardSubmenu(pendingSubmenuTriggerId)
-      ) {
-        openSubmenuKey = null;
-      }
-      pendingSubmenuCloseKey = null;
-      pendingSubmenuTriggerId = null;
-      submenuLeavePoint = null;
-      latestPointerPoint = null;
-    }, 150);
+    armSubmenuCloseTimer();
   }
 
   function handleDocumentPointermove(event: PointerEvent): void {
     if (submenuCloseTimer === null) return;
     latestPointerPoint = { x: event.clientX, y: event.clientY };
+    const submenuKey = pendingSubmenuCloseKey;
+    const triggerId = pendingSubmenuTriggerId;
+    if (!submenuKey || !triggerId || openSubmenuKey !== submenuKey) return;
+    if (isPointerInsideSubmenu(submenuKey) || isPointerMovingTowardSubmenu(triggerId)) return;
+
+    clearSubmenuCloseTimer();
+    openSubmenuKey = null;
   }
 
   function handleMenuTypeahead(event: KeyboardEvent, menu: HTMLElement): boolean {
     if (!isTypeaheadKey(event)) return false;
     const items = Array.from(
       menu.querySelectorAll<HTMLElement>(
-        '[role="menuitem"]:not([data-disabled]), [role="menuitemradio"]:not([data-disabled])',
+        [
+          '[role="menuitem"]:not([data-disabled])',
+          '[role="menuitemcheckbox"]:not([data-disabled])',
+          '[role="menuitemradio"]:not([data-disabled])',
+        ].join(', '),
       ),
     ).filter((item) => item.closest('[role="menu"]') === menu);
     if (!items.length) return false;
@@ -690,11 +751,13 @@
                   onpointerenter={() => {
                     if (openSubmenuKey === submenuKey) clearSubmenuCloseTimer();
                   }}
-                  onpointerleave={(event) => {
-                    if (openSubmenuKey === submenuKey) {
-                      scheduleSubmenuClose(submenuKey, submenuTrigger, event);
-                    }
+                  onfocusin={() => {
+                    if (openSubmenuKey === submenuKey) clearSubmenuCloseTimer();
                   }}
+                  onpointerout={(event) =>
+                    handleSubmenuPointerOut(event, submenuKey, submenuTrigger)}
+                  onmouseleave={(event) =>
+                    handleSubmenuPointerOut(event, submenuKey, submenuTrigger)}
                 >
                   <DropdownItem
                     id={submenuTrigger}
@@ -717,11 +780,10 @@
                       if (openMenuIndex === menuIndex && !entry.disabled)
                         openSubmenu(submenuKey, 'none');
                     }}
-                    onpointerleave={(event) => {
-                      if (openSubmenuKey === submenuKey) {
-                        scheduleSubmenuClose(submenuKey, submenuTrigger, event);
-                      }
-                    }}
+                    onpointerout={(event) =>
+                      handleSubmenuPointerOut(event, submenuKey, submenuTrigger)}
+                    onmouseleave={(event) =>
+                      handleSubmenuPointerOut(event, submenuKey, submenuTrigger)}
                     onkeydown={(event) => {
                       if (entry.disabled) return;
                       if (
@@ -760,14 +822,16 @@
                       dir={submenuDirection(submenuTrigger)}
                       data-cinder-menu-bar-submenu-trigger-id={submenuTrigger}
                       aria-labelledby={submenuTrigger}
+                      onfocusin={() => {
+                        clearSubmenuCloseTimer();
+                      }}
                       onpointerenter={() => {
                         clearSubmenuCloseTimer();
                       }}
-                      onpointerleave={(event) => {
-                        if (openSubmenuKey === submenuKey) {
-                          scheduleSubmenuClose(submenuKey, submenuTrigger, event);
-                        }
-                      }}
+                      onpointerout={(event) =>
+                        handleSubmenuPointerOut(event, submenuKey, submenuTrigger)}
+                      onmouseleave={(event) =>
+                        handleSubmenuPointerOut(event, submenuKey, submenuTrigger)}
                     >
                       {#each entry.items as submenuEntry, submenuEntryIndex (ancestryKey('submenu', submenuKey, submenuEntryIndex, submenuEntry.id))}
                         {#if isItem(submenuEntry)}

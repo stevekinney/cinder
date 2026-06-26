@@ -7,6 +7,7 @@ export type TypeaheadCandidate<T> = {
 export function isTypeaheadKey(event: KeyboardEvent): boolean {
   return (
     event.key.length === 1 &&
+    event.key !== ' ' &&
     !event.ctrlKey &&
     !event.metaKey &&
     !event.altKey &&

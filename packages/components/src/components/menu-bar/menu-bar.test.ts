@@ -436,7 +436,7 @@ describe('MenuBar', () => {
     await fireEvent.click(file);
     await tick();
     const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
-    submenuTrigger.dispatchEvent(new PointerEvent('pointerenter'));
+    await fireEvent.pointerEnter(submenuTrigger);
     await tick();
 
     expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
@@ -463,32 +463,44 @@ describe('MenuBar', () => {
     await fireEvent.click(file);
     await tick();
     const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
-    submenuTrigger.dispatchEvent(new PointerEvent('pointerenter'));
+    await fireEvent.pointerEnter(submenuTrigger);
     await tick();
     const submenu = getByRole('menu', { name: 'Open Recent' });
+    const submenuWrapper = submenuTrigger.closest('.cinder-menu-bar__submenu') as HTMLElement;
 
     submenuTrigger.getBoundingClientRect = () =>
       ({ left: 0, top: 0, right: 100, bottom: 40, width: 100, height: 40 }) as DOMRect;
     submenu.getBoundingClientRect = () =>
       ({ left: 100, top: 0, right: 260, bottom: 120, width: 160, height: 120 }) as DOMRect;
 
-    submenuTrigger.dispatchEvent(
-      new PointerEvent('pointerleave', { clientX: 90, clientY: 20, bubbles: false }),
+    await fireEvent.mouseLeave(submenuWrapper, { clientX: 90, clientY: 20 });
+    await fireEvent(
+      document,
+      new PointerEvent('pointermove', { clientX: 130, clientY: 28, bubbles: true }),
     );
-    document.dispatchEvent(new PointerEvent('pointermove', { clientX: 130, clientY: 28 }));
     await Bun.sleep(170);
     await tick();
 
     expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
+  });
 
-    submenu.dispatchEvent(
-      new PointerEvent('pointerleave', { clientX: 180, clientY: 100, bubbles: false }),
-    );
-    document.dispatchEvent(new PointerEvent('pointermove', { clientX: 20, clientY: 200 }));
+  test('submenu pointer leave stays open when focus enters the submenu', async () => {
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
+    await fireEvent.pointerEnter(submenuTrigger);
+    await tick();
+    const submenuWrapper = submenuTrigger.closest('.cinder-menu-bar__submenu') as HTMLElement;
+
+    await fireEvent.mouseLeave(submenuWrapper, { clientX: 90, clientY: 20 });
+    await fireEvent.focusIn(getByRole('menuitem', { name: 'Cinder workspace' }));
     await Bun.sleep(170);
     await tick();
 
-    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('false');
+    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
   });
 
   test('Alt access key opens the first enabled matching menu', async () => {
@@ -577,6 +589,9 @@ describe('MenuBar', () => {
     expect(source).toContain(
       "DropdownSeparator from '../dropdown-separator/dropdown-separator.svelte'",
     );
+    expect(source).toContain('[role="menuitemcheckbox"]:not([data-disabled])');
+    expect(source).toContain('submenuLeavePoint = latestPointerPoint;');
+    expect(source).toContain('openSubmenuKey = null;');
     expect(source).not.toContain('class="cinder-dropdown-menu');
     expect(source).not.toContain('class="cinder-dropdown-item');
   });

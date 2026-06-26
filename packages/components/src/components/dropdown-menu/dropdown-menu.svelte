@@ -113,7 +113,11 @@
 
     return Array.from(
       menuElement.querySelectorAll<HTMLElement>(
-        '[role="menuitem"]:not([data-disabled]), [role="menuitemradio"]:not([data-disabled])',
+        [
+          '[role="menuitem"]:not([data-disabled])',
+          '[role="menuitemcheckbox"]:not([data-disabled])',
+          '[role="menuitemradio"]:not([data-disabled])',
+        ].join(', '),
       ),
     ).filter((item) => item.closest('[role="menu"]') === menuElement);
   }

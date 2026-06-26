@@ -10,13 +10,14 @@ const schema = {
         'Visual style of the item. Use `danger` to signal a destructive action. Default `default`.',
     },
     itemRole: {
-      enum: ['menuitem', 'menuitemradio'],
+      enum: ['menuitem', 'menuitemcheckbox', 'menuitemradio'],
       description:
-        'ARIA role for the row. Use `menuitemradio` for mutually exclusive menu selections.',
+        'ARIA role for the row. Use `menuitemcheckbox` or `menuitemradio` for selectable menu items.',
     },
     checked: {
       type: 'boolean',
-      description: 'Checked state for `itemRole="menuitemradio"`. Omitted for normal menu items.',
+      description:
+        'Checked state for checkbox and radio menu items. Omitted for normal menu items.',
     },
     inset: {
       type: 'boolean',

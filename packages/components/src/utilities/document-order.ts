@@ -18,7 +18,7 @@ const DOCUMENT_POSITION_PRECEDING = 0x02;
 const DOCUMENT_POSITION_FOLLOWING = 0x04;
 
 export function inDocumentOrder<T extends { node: Node }>(items: readonly T[]): T[] {
-  return items.toSorted((a, b) => {
+  return [...items].toSorted((a, b) => {
     if (a.node === b.node) return 0;
     const position = a.node.compareDocumentPosition(b.node);
     if (position & DOCUMENT_POSITION_FOLLOWING) return -1;

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { findTypeaheadMatch, TypeaheadBuffer } from './typeahead.ts';
+import { findTypeaheadMatch, isTypeaheadKey, TypeaheadBuffer } from './typeahead.ts';
 
 const candidates = [
   { value: 'alpha', label: 'Alpha' },
@@ -37,5 +37,15 @@ describe('TypeaheadBuffer', () => {
     buffer.reset();
     expect(buffer.push('B')).toBe('b');
     buffer.reset();
+  });
+});
+
+describe('isTypeaheadKey', () => {
+  test('accepts printable non-space characters', () => {
+    expect(isTypeaheadKey({ key: 'a' } as KeyboardEvent)).toBe(true);
+  });
+
+  test('ignores Space so native menu item activation still works', () => {
+    expect(isTypeaheadKey({ key: ' ' } as KeyboardEvent)).toBe(false);
   });
 });

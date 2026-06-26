@@ -52,17 +52,14 @@
 
   let visible = $state(false);
   let showTimer: ReturnType<typeof setTimeout> | undefined;
-  let hasPendingShow = $state(false);
   let wrapperElement: HTMLSpanElement | undefined = $state();
   let tooltipElement: HTMLSpanElement | undefined = $state();
   let anchorElement = $state<HTMLElement | null>(null);
 
   function show() {
     clearTimeout(showTimer);
-    hasPendingShow = true;
     showTimer = setTimeout(() => {
       showTimer = undefined;
-      hasPendingShow = false;
       visible = true;
     }, 100);
   }
@@ -70,7 +67,6 @@
   function hide() {
     clearTimeout(showTimer);
     showTimer = undefined;
-    hasPendingShow = false;
     visible = false;
   }
 
@@ -163,7 +159,13 @@
   const isTooltipExposed = $derived(visible && anchoredOverlay.positionReady);
 
   $effect(() => {
-    if (!visible && !hasPendingShow) return;
+    return () => {
+      clearTimeout(showTimer);
+    };
+  });
+
+  $effect(() => {
+    if (!visible) return;
     return pushEscapeHandler(handleEscape);
   });
 </script>

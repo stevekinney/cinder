@@ -117,7 +117,9 @@
     rest as Omit<HTMLButtonAttributes, 'class' | 'type' | 'disabled' | 'onclick'>,
   );
   const buttonType = $derived((rest as { type?: HTMLButtonAttributes['type'] }).type ?? 'button');
-  const ariaChecked = $derived(itemRole === 'menuitemradio' ? checked : undefined);
+  const ariaChecked = $derived(
+    itemRole === 'menuitemcheckbox' || itemRole === 'menuitemradio' ? checked : undefined,
+  );
 </script>
 
 <!--

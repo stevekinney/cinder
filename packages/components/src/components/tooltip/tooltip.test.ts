@@ -443,42 +443,27 @@ describe('Tooltip', () => {
     });
   });
 
-  test('Escape cancels a pending tooltip before the show delay completes', async () => {
-    const originalSetTimeout = globalThis.setTimeout;
-    const originalClearTimeout = globalThis.clearTimeout;
-    const pendingTimers = new Map<number, () => void>();
-    let nextTimerId = 0;
-
-    globalThis.setTimeout = ((handler: TimerHandler) => {
-      nextTimerId += 1;
-      pendingTimers.set(nextTimerId, () => {
-        if (typeof handler === 'function') handler();
-      });
-      return nextTimerId;
-    }) as typeof setTimeout;
-    globalThis.clearTimeout = ((id: number | undefined) => {
-      if (typeof id === 'number') pendingTimers.delete(id);
-    }) as typeof clearTimeout;
+  test('pending tooltip does not take over the shared Escape stack', async () => {
+    const parentEscape = mock((event: KeyboardEvent) => {
+      event.preventDefault();
+    });
+    const releaseParentEscape = pushEscapeHandler(parentEscape);
+    const { container, unmount } = render(Tooltip, {
+      props: {
+        text: 'Pending tooltip',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
     try {
-      const { container } = render(Tooltip, {
-        props: {
-          text: 'Pending tooltip',
-          children: triggerSnippet,
-        },
-      });
-      const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
-
       await fireEvent.mouseEnter(wrapper);
       await fireEvent.keyDown(document, { key: 'Escape' });
-      for (const runTimer of pendingTimers.values()) {
-        runTimer();
-      }
 
-      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
+      expect(parentEscape).toHaveBeenCalledTimes(1);
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
-      globalThis.clearTimeout = originalClearTimeout;
+      unmount();
+      releaseParentEscape();
     }
   });
 
