@@ -21,7 +21,7 @@ export type EventStreamSchemaDetailValue = unknown;
 export type StreamEvent = {
   /** Stable unique identifier used as the keyed list identity. */
   id: string;
-  /** Optional monotonically increasing stream sequence used to detect missed events. */
+  /** Optional monotonically increasing integer stream sequence used to detect missed events. */
   sequence?: number;
   /** Machine-readable ISO 8601 datetime string rendered into `<time datetime>`. */
   datetime: string;
@@ -41,7 +41,7 @@ export type StreamEvent = {
 export type EventStreamSchemaEvent = {
   /** Stable unique identifier used as the keyed list identity. */
   id: string;
-  /** Optional monotonically increasing stream sequence used to detect missed events. */
+  /** Optional monotonically increasing integer stream sequence used to detect missed events. */
   sequence?: number;
   /** Machine-readable ISO 8601 datetime string rendered into `<time datetime>`. */
   datetime: string;

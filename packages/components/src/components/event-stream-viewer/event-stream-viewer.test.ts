@@ -101,6 +101,18 @@ describe('EventStreamViewer', () => {
       expect(
         validate({ events: [{ id: 'reconnect-1', kind: 'reconnected', replayedCount: 1.5 }] }),
       ).toBe(false);
+      expect(
+        validate({
+          events: [
+            {
+              id: 'event-1',
+              sequence: 1.5,
+              datetime: '2026-06-24T12:00:00.000Z',
+              summary: 'Started',
+            },
+          ],
+        }),
+      ).toBe(false);
     });
 
     test('accepts nested array event details without a depth boundary', () => {
@@ -384,6 +396,24 @@ describe('EventStreamViewer', () => {
       expect(marker).not.toBeNull();
       expect(marker?.getAttribute('aria-label')).toBe('Sequence gap — expected 8, received 10');
       expect(marker?.textContent).toContain('Sequence gap — expected 8, received 10');
+    });
+
+    test('invalid sequence values do not synthesize sequence gaps', () => {
+      const entries = [
+        { ...baseEvent, id: 'evt-1', sequence: 1.5 },
+        { ...warningEvent, id: 'evt-2', sequence: 3 },
+        { ...errorEvent, id: 'evt-3', sequence: Number.NaN },
+        { ...baseEvent, id: 'evt-4', sequence: Number.POSITIVE_INFINITY },
+        { ...warningEvent, id: 'evt-5', sequence: 7 },
+      ] as unknown as EventStreamEntry[];
+
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries, detectSequenceGaps: true },
+      });
+
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
     });
 
     test('filtered subsets do not synthesize sequence gaps from omitted events', () => {

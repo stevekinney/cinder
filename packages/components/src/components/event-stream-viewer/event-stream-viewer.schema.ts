@@ -16,9 +16,9 @@ const schema = {
                 description: 'Stable unique identifier used as the keyed list identity.',
               },
               sequence: {
-                type: 'number',
+                type: 'integer',
                 description:
-                  'Optional monotonically increasing stream sequence used to detect missed events.',
+                  'Optional monotonically increasing integer stream sequence used to detect missed events.',
               },
               datetime: {
                 type: 'string',

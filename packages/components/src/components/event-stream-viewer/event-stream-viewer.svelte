@@ -72,6 +72,10 @@
 
   type RenderedEntry = RenderedEventEntry | RenderedReconnectedBoundary | RenderedSequenceGap;
 
+  function isValidSequence(value: unknown): value is number {
+    return Number.isInteger(value);
+  }
+
   // Stable per-instance id namespace for generated DOM ids (details panels).
   // Event ids are consumer-supplied and may contain spaces, punctuation, or
   // duplicates across composed viewers, so we never use them directly in an
@@ -140,8 +144,8 @@
       const currentSequence = entry.sequence;
       if (
         shouldDetectSequenceGaps &&
-        typeof previousSequence === 'number' &&
-        typeof currentSequence === 'number'
+        isValidSequence(previousSequence) &&
+        isValidSequence(currentSequence)
       ) {
         const expectedSequence = previousSequence + 1;
         if (currentSequence !== expectedSequence) {
@@ -159,7 +163,7 @@
         }
       }
 
-      if (typeof currentSequence === 'number') {
+      if (isValidSequence(currentSequence)) {
         previousSequence = currentSequence;
         previousEventId = entry.id;
       } else {
