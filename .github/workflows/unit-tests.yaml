@@ -22,6 +22,8 @@ on:
   pull_request:
     paths:
       - 'packages/components/**'
+      - 'packages/*/package.json'
+      - 'packages/*/tsconfig*.json'
       - 'packages/commentary/src/**'
       - 'packages/diff/src/**'
       - 'packages/editor/src/**'
@@ -44,6 +46,8 @@ on:
       - main
     paths:
       - 'packages/components/**'
+      - 'packages/*/package.json'
+      - 'packages/*/tsconfig*.json'
       - 'packages/commentary/src/**'
       - 'packages/diff/src/**'
       - 'packages/editor/src/**'

@@ -236,8 +236,14 @@ function printJobPlan(jobs: readonly Job[]): void {
 async function deriveComponentTestScope(
   changedFiles: readonly string[],
 ): Promise<ComponentTestScope> {
+  const scoperEnvironment = { ...Bun.env };
+  delete scoperEnvironment['CINDER_TEST_COMPONENTS'];
+  delete scoperEnvironment['CINDER_TEST_MODE'];
+  delete scoperEnvironment['GITHUB_OUTPUT'];
+
   const subprocess = Bun.spawn(['bun', 'run', 'packages/testing/scripts/changed-components.ts'], {
     cwd: REPO_ROOT,
+    env: scoperEnvironment,
     stdin: 'pipe',
     stderr: 'pipe',
     stdout: 'pipe',
