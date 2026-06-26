@@ -1894,6 +1894,14 @@ async function eagerPrebuildAll(): Promise<{
   return { shellSucceeded: shellCode !== null, succeeded, failed };
 }
 
+export function createSharedDisposer(disposeWork: () => Promise<void>): () => Promise<void> {
+  let disposePromise: Promise<void> | null = null;
+  return () => {
+    disposePromise ??= disposeWork();
+    return disposePromise;
+  };
+}
+
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
   // Eager pre-build BEFORE binding the port. Sidebar clicks should serve
@@ -1931,12 +1939,20 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     throw error;
   }
 
-  async function dispose(): Promise<void> {
+  const dispose = createSharedDisposer(async () => {
     for (const watcher of watchers) {
       watcher.close();
     }
+    for (const controller of sseClients) {
+      try {
+        controller.close();
+      } catch {
+        // Ignore already-closed streams.
+      }
+    }
+    sseClients.clear();
     await server.stop(true);
-  }
+  });
 
   const portFile = Bun.env['PLAYGROUND_PORT_FILE'];
   if (portFile !== undefined) {
@@ -1947,5 +1963,23 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
 }
 
 if (import.meta.main) {
-  await startServer();
+  const server = await startServer();
+  let shutdownPromise: Promise<void> | null = null;
+
+  async function shutdown(code: number): Promise<never> {
+    try {
+      shutdownPromise ??= server.dispose();
+      await shutdownPromise;
+    } catch (error) {
+      console.error('[playground] shutdown cleanup failed:', error);
+    }
+    process.exit(code);
+  }
+
+  process.on('SIGINT', () => {
+    void shutdown(130);
+  });
+  process.on('SIGTERM', () => {
+    void shutdown(143);
+  });
 }

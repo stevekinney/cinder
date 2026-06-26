@@ -1,6 +1,8 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
 import { mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playground-server-url';
@@ -8,6 +10,7 @@ import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playgroun
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
 const repoRoot = resolvePath(here, '../../..');
+const playgroundRoot = resolvePath(repoRoot, 'packages/playground');
 const playgroundBundleDependencyPackages = [
   '@cinder/diff',
   '@cinder/markdown',
@@ -25,10 +28,17 @@ const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
 const PLAYGROUND_READY_TIMEOUT_MS = 240_000;
 const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;
 const PLAYGROUND_WARM_READINESS_DELAY_MS = 500;
+const CHILD_PROCESS_TERMINATION_GRACE_MS = 5_000;
 
 type PlaygroundPathProbeResult = {
   ok: boolean;
   status: number | null;
+};
+
+export type ManagedChildProcess = {
+  childProcess: ChildProcess;
+  name: string;
+  killProcessGroup: boolean;
 };
 
 export function playgroundUrlForPath(
@@ -106,7 +116,7 @@ export function appendServerOutputBuffer(
   return nextBuffer.length > 4096 ? nextBuffer.slice(-4096) : nextBuffer;
 }
 
-function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
+function waitForExit(childProcess: ChildProcess): Promise<number> {
   return new Promise((resolve) => {
     // Listen for both `exit` and `error`. If `spawn()` fails (ENOENT,
     // EACCES, etc.) the child emits `error` and may never emit `exit`,
@@ -119,8 +129,139 @@ function waitForExit(childProcess: ReturnType<typeof spawn>): Promise<number> {
   });
 }
 
+export function childProcessHasFinished(
+  childProcess: Pick<ChildProcess, 'pid' | 'exitCode' | 'signalCode'>,
+): boolean {
+  return (
+    childProcess.pid === undefined ||
+    childProcess.exitCode !== null ||
+    childProcess.signalCode !== null
+  );
+}
+
+export function finalPlaywrightExitCode(
+  playwrightExitCode: number,
+  shutdownExitCode: number | null,
+): number {
+  return shutdownExitCode ?? playwrightExitCode;
+}
+
+export function shutdownExitCodeAfterRequest(
+  currentExitCode: number | null,
+  requestedExitCode: number,
+): number {
+  if (currentExitCode === null) return requestedExitCode;
+  if (currentExitCode >= 128) return currentExitCode;
+  return requestedExitCode >= 128 ? requestedExitCode : currentExitCode;
+}
+
+export function shouldStartManagedChildProcess(shutdownExitCode: number | null): boolean {
+  return shutdownExitCode === null;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+async function waitForExitOrTimeout(
+  childProcess: ChildProcess,
+  timeoutMs: number,
+): Promise<boolean> {
+  if (childProcessHasFinished(childProcess)) return true;
+
+  const abortController = new AbortController();
+  const exitPromise = once(childProcess, 'exit', { signal: abortController.signal }).then(
+    () => 'exited' as const,
+    (error: unknown) => (isAbortError(error) ? 'aborted' : 'exited'),
+  );
+  const errorPromise = once(childProcess, 'error', { signal: abortController.signal }).then(
+    ([error]) => {
+      console.error('Child process error:', error);
+      return 'exited' as const;
+    },
+    (error: unknown) => (isAbortError(error) ? 'aborted' : 'exited'),
+  );
+  const timeoutPromise = delay(timeoutMs, 'timeout' as const, {
+    signal: abortController.signal,
+  }).catch((error: unknown) => {
+    if (isAbortError(error)) return 'aborted' as const;
+    throw error;
+  });
+
+  const result = await Promise.race([exitPromise, errorPromise, timeoutPromise]);
+  abortController.abort();
+
+  return result === 'exited' || childProcessHasFinished(childProcess);
+}
+
+function signalChildProcess(
+  managedChildProcess: ManagedChildProcess,
+  signal: NodeJS.Signals,
+): void {
+  const { childProcess, killProcessGroup, name } = managedChildProcess;
+  const processId = childProcess.pid;
+  if (processId === undefined || childProcessHasFinished(childProcess)) return;
+
+  try {
+    if (killProcessGroup && process.platform !== 'win32') {
+      process.kill(-processId, signal);
+    } else {
+      childProcess.kill(signal);
+    }
+  } catch (error) {
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error
+        ? (error as { code?: unknown }).code
+        : undefined;
+    if (code !== 'ESRCH') {
+      console.error(`Failed to send ${signal} to ${name}:`, error);
+    }
+  }
+}
+
+async function terminateChildProcess(managedChildProcess: ManagedChildProcess): Promise<void> {
+  const { childProcess, name } = managedChildProcess;
+  if (childProcessHasFinished(childProcess)) return;
+
+  signalChildProcess(managedChildProcess, 'SIGTERM');
+  if (await waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS)) return;
+
+  console.error(`${name} did not exit after SIGTERM; sending SIGKILL.`);
+  signalChildProcess(managedChildProcess, 'SIGKILL');
+  if (!(await waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS))) {
+    console.error(`${name} did not exit after SIGKILL; continuing cleanup.`);
+  }
+}
+
+async function cleanup(
+  children: ManagedChildProcess[],
+  playgroundPortFile: string | null,
+): Promise<void> {
+  await Promise.all(children.map((child) => terminateChildProcess(child)));
+  if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
+}
+
 export function playgroundBundleDependencyBuildArguments(packageName: string): string[] {
   return ['run', `--filter=${packageName}`, 'build'];
+}
+
+export function playgroundBundleDependencyBuildProcess(
+  childProcess: ChildProcess,
+  packageName: string,
+): ManagedChildProcess {
+  return {
+    childProcess,
+    name: `${packageName} build`,
+    killProcessGroup: process.platform !== 'win32',
+  };
+}
+
+export function playgroundServerArguments(): string[] {
+  return ['run', 'src/playground-server.ts'];
+}
+
+export function playgroundServerWorkingDirectory(): string {
+  return playgroundRoot;
 }
 
 export function playgroundBundleDependencyBuildPackages(): readonly string[] {
@@ -174,15 +315,23 @@ async function waitForWarmPlayground(): Promise<void> {
   );
 }
 
-async function buildPlaygroundBundleDependencies(): Promise<void> {
+async function buildPlaygroundBundleDependencies(
+  registerChildProcess: (managedChildProcess: ManagedChildProcess) => void,
+  shouldContinueStartingChildProcesses: () => boolean,
+): Promise<void> {
   console.log('Building playground bundle dependencies...');
   for (const packageName of playgroundBundleDependencyPackages) {
+    if (!shouldContinueStartingChildProcesses()) return;
+
     const buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
       cwd: repoRoot,
+      detached: process.platform !== 'win32',
       stdio: 'inherit',
       env: process.env,
     });
+    registerChildProcess(playgroundBundleDependencyBuildProcess(buildProcess, packageName));
     const buildCode = await waitForExit(buildProcess);
+    if (!shouldContinueStartingChildProcesses()) return;
     if (buildCode !== 0) {
       throw new Error(`${packageName} build exited with code ${buildCode}`);
     }
@@ -196,6 +345,39 @@ async function main(): Promise<void> {
 
   let serverProcess: ReturnType<typeof spawn> | null = null;
   let playgroundPortFile: string | null = null;
+  const children: ManagedChildProcess[] = [];
+  let cleanupPromise: Promise<void> | null = null;
+  let shutdownExitCode: number | null = null;
+
+  const cleanupOnce = async (): Promise<void> => {
+    cleanupPromise ??= cleanup(children, playgroundPortFile);
+    await cleanupPromise;
+  };
+
+  const exitAfterCleanup = async (code: number): Promise<never> => {
+    const exitCode = shutdownExitCodeAfterRequest(shutdownExitCode, code);
+    shutdownExitCode = exitCode;
+    try {
+      await cleanupOnce();
+    } catch (error) {
+      console.error('Cleanup failed during shutdown:', error);
+    }
+    process.exit(shutdownExitCode ?? exitCode);
+  };
+
+  const exitIfShuttingDown = async (): Promise<void> => {
+    if (shutdownExitCode !== null) {
+      await exitAfterCleanup(shutdownExitCode);
+    }
+  };
+
+  process.on('SIGINT', () => {
+    void exitAfterCleanup(130);
+  });
+  process.on('SIGTERM', () => {
+    void exitAfterCleanup(143);
+  });
+
   const alreadyUp = await ping();
 
   if (alreadyUp && reuseOptOut) {
@@ -208,25 +390,34 @@ async function main(): Promise<void> {
   if (alreadyUp) {
     console.log(`Reusing playground server at ${targetPlaygroundUrl}.`);
   } else if (!isLocalDefault) {
-    // The local `bun run --filter=@cinder/playground dev` server starts from
-    // the local default port and scans upward. Starting it cannot satisfy
-    // readiness for a custom `PLAYGROUND_URL`. Fail fast with an actionable
-    // message rather than spinning for 120s.
+    // The local playground server starts from the local default port and scans
+    // upward. Starting it cannot satisfy readiness for a custom `PLAYGROUND_URL`.
+    // Fail fast with an actionable message rather than spinning for 120s.
     console.error(
       `Playground server not responding at ${targetPlaygroundUrl}, and it differs from the local default (${DEFAULT_PLAYGROUND_URL}). Start the target server manually before running the suite, or unset PLAYGROUND_URL.`,
     );
     process.exit(1);
   } else {
     console.log(`Starting playground server (target: ${targetPlaygroundUrl})...`);
-    await buildPlaygroundBundleDependencies();
+    await buildPlaygroundBundleDependencies(
+      (childProcess) => children.push(childProcess),
+      () => shouldStartManagedChildProcess(shutdownExitCode),
+    );
+    await exitIfShuttingDown();
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
     let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
     rmSync(playgroundPortFile, { force: true });
-    serverProcess = spawn('bun', ['run', '--filter=@cinder/playground', 'dev'], {
-      cwd: repoRoot,
+    serverProcess = spawn('bun', playgroundServerArguments(), {
+      cwd: playgroundServerWorkingDirectory(),
+      detached: process.platform !== 'win32',
       stdio: ['ignore', 'pipe', 'inherit'],
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
+    });
+    children.push({
+      childProcess: serverProcess,
+      name: 'playground server',
+      killProcessGroup: process.platform !== 'win32',
     });
 
     let serverOutputBuffer = '';
@@ -254,9 +445,8 @@ async function main(): Promise<void> {
         targetPlaygroundUrl = selectedPlaygroundUrl;
         if (await ping(selectedPlaygroundUrl)) break;
       } else if (await ping(targetPlaygroundUrl)) {
-        // `bun --watch` should preserve PLAYGROUND_PORT_FILE, but local
-        // runs can start successfully on the default port without writing the
-        // file or logging the selected port. Accept direct readiness at the
+        // Local runs can start successfully on the default port without writing
+        // the file or logging the selected port. Accept direct readiness at the
         // target URL so the wrapper does not hang despite a healthy server.
         break;
       }
@@ -271,82 +461,52 @@ async function main(): Promise<void> {
     }
 
     if (!(await ping())) {
-      try {
-        serverProcess.kill('SIGTERM');
-      } catch (error) {
-        console.error('Failed to kill unready server process:', error);
-      }
       console.error(
         `Playground server did not become ready within ${Math.round(
           PLAYGROUND_READY_TIMEOUT_MS / 1000,
         )}s at ${targetPlaygroundUrl}.`,
       );
-      if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
-      process.exit(1);
+      await exitAfterCleanup(1);
     }
   }
 
-  const children: Array<ReturnType<typeof spawn>> = [];
-  if (serverProcess !== null) children.push(serverProcess);
-
-  const cleanup = (): void => {
-    for (const child of children) {
-      // Skip already-exited processes (exitCode/signalCode set) and wrap
-      // kill() in try/catch — ChildProcess.kill() can throw ESRCH if the
-      // PID has been reaped between the check and the call, and an
-      // uncaught throw would block cleanup of the remaining children.
-      if (child.killed || child.exitCode !== null || child.signalCode !== null) continue;
-      try {
-        child.kill('SIGTERM');
-      } catch (error) {
-        console.error('Failed to kill child process:', error);
-      }
-    }
-    if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
-  };
-
-  process.on('SIGINT', () => {
-    cleanup();
-    process.exit(130);
-  });
-  process.on('SIGTERM', () => {
-    cleanup();
-    process.exit(143);
-  });
-
+  await exitIfShuttingDown();
   const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
     env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
   });
-  children.push(prep);
+  children.push({ childProcess: prep, name: 'manifest preparation', killProcessGroup: false });
   const prepCode = await waitForExit(prep);
+  await exitIfShuttingDown();
   if (prepCode !== 0) {
-    cleanup();
-    process.exit(prepCode);
+    await exitAfterCleanup(prepCode);
   }
 
   try {
     await waitForWarmPlayground();
   } catch (error) {
-    cleanup();
+    await exitIfShuttingDown();
+    await cleanupOnce();
     throw error;
   }
+  await exitIfShuttingDown();
 
   const playwright = spawn('bunx', ['playwright', 'test', ...args], {
     cwd: packageRoot,
     stdio: 'inherit',
     env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
   });
-  children.push(playwright);
+  children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
   const playwrightCode = await waitForExit(playwright);
+  await exitIfShuttingDown();
 
   const summary = spawn('bun', ['run', 'scripts/summarize-axe.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
     env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
   });
-  children.push(summary);
+  children.push({ childProcess: summary, name: 'axe summary', killProcessGroup: false });
   const summaryCode = await waitForExit(summary);
   if (summaryCode !== 0) {
     console.error(
@@ -354,11 +514,13 @@ async function main(): Promise<void> {
     );
   }
 
-  cleanup();
+  await exitIfShuttingDown();
+  await cleanupOnce();
+  await exitIfShuttingDown();
   // Summary generation is advisory — only Playwright's result drives the
   // suite exit code so a green run never goes red because of summary
-  // failures.
-  process.exit(playwrightCode);
+  // failures unless the wrapper received an interrupt signal.
+  process.exit(finalPlaywrightExitCode(playwrightCode, shutdownExitCode));
 }
 
 if (import.meta.main) {

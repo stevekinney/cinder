@@ -1,14 +1,23 @@
 import { describe, expect, test } from 'bun:test';
+import type { ChildProcess } from 'node:child_process';
+import { join } from 'node:path';
 
 import {
   appendServerOutputBuffer,
+  childProcessHasFinished,
+  finalPlaywrightExitCode,
   localPlaygroundUrlForReportedPort,
   parsePlaygroundListeningPort,
   playgroundBundleDependencyBuildArguments,
   playgroundBundleDependencyBuildPackages,
+  playgroundBundleDependencyBuildProcess,
+  playgroundServerArguments,
+  playgroundServerWorkingDirectory,
   playgroundUrlForPath,
   playgroundWarmReadinessEndpointPath,
   playgroundWarmReadinessMissingEndpointMessage,
+  shouldStartManagedChildProcess,
+  shutdownExitCodeAfterRequest,
 } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
@@ -88,6 +97,74 @@ describe('playground bundle dependency build preflight', () => {
       '--filter=@cinder/markdown',
       'build',
     ]);
+  });
+
+  test('registers dependency builds as managed child processes', () => {
+    const childProcess = {} as ChildProcess;
+    const managedChildProcess = playgroundBundleDependencyBuildProcess(
+      childProcess,
+      '@cinder/markdown',
+    );
+
+    expect(managedChildProcess.childProcess).toBe(childProcess);
+    expect(managedChildProcess.name).toBe('@cinder/markdown build');
+    expect(managedChildProcess.killProcessGroup).toBe(process.platform !== 'win32');
+  });
+});
+
+describe('playground server process', () => {
+  test('starts the plain server entrypoint instead of the watch-mode dev script', () => {
+    const argumentsList = playgroundServerArguments();
+
+    expect(argumentsList).toEqual(['run', 'src/playground-server.ts']);
+    expect(argumentsList).not.toContain('dev');
+    expect(argumentsList).not.toContain('--watch');
+    expect(playgroundServerWorkingDirectory().endsWith(join('packages', 'playground'))).toBe(true);
+  });
+});
+
+describe('child process cleanup', () => {
+  test('stops starting new managed children after shutdown begins', () => {
+    expect(shouldStartManagedChildProcess(null)).toBe(true);
+    expect(shouldStartManagedChildProcess(130)).toBe(false);
+  });
+
+  test('does not treat a sent kill signal as process exit', () => {
+    const stillExiting = { pid: 123, killed: true, exitCode: null, signalCode: null };
+
+    expect(childProcessHasFinished(stillExiting)).toBe(false);
+  });
+
+  test('treats exit codes and terminal signals as process exit', () => {
+    expect(childProcessHasFinished({ pid: 123, exitCode: 0, signalCode: null })).toBe(true);
+    expect(childProcessHasFinished({ pid: 123, exitCode: null, signalCode: 'SIGTERM' })).toBe(true);
+  });
+
+  test('treats failed spawns without a process id as finished', () => {
+    expect(childProcessHasFinished({ pid: undefined, exitCode: null, signalCode: null })).toBe(
+      true,
+    );
+  });
+});
+
+describe('playwright wrapper exit code', () => {
+  test('uses Playwright exit code when no shutdown signal was received', () => {
+    expect(finalPlaywrightExitCode(0, null)).toBe(0);
+    expect(finalPlaywrightExitCode(1, null)).toBe(1);
+  });
+
+  test('prefers shutdown signal exit code over Playwright exit code', () => {
+    expect(finalPlaywrightExitCode(0, 130)).toBe(130);
+    expect(finalPlaywrightExitCode(1, 143)).toBe(143);
+  });
+
+  test('keeps an interrupt exit code when a later failure also requests shutdown', () => {
+    expect(shutdownExitCodeAfterRequest(130, 1)).toBe(130);
+    expect(shutdownExitCodeAfterRequest(143, 1)).toBe(143);
+  });
+
+  test('lets a later interrupt exit code replace an earlier failure exit code', () => {
+    expect(shutdownExitCodeAfterRequest(1, 130)).toBe(130);
   });
 });
 
