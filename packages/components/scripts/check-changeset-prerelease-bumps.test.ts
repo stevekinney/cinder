@@ -35,9 +35,11 @@ function changeset(level: 'major' | 'minor' | 'patch'): string {
 
 describe('bumpLevelForPackage', () => {
   it('reads the level from frontmatter regardless of quote style', () => {
+    // The package name must be quoted in YAML — a leading `@` is a reserved
+    // indicator, so real changesets always single- or double-quote it.
     expect(bumpLevelForPackage(`---\n'${PACKAGE}': major\n---\n`, PACKAGE)).toBe('major');
     expect(bumpLevelForPackage(`---\n"${PACKAGE}": minor\n---\n`, PACKAGE)).toBe('minor');
-    expect(bumpLevelForPackage(`---\n${PACKAGE}: patch\n---\n`, PACKAGE)).toBe('patch');
+    expect(bumpLevelForPackage(`---\n'${PACKAGE}': patch\n---\n`, PACKAGE)).toBe('patch');
   });
 
   it('reads a quoted bump value (Changesets accepts a quoted scalar)', () => {
@@ -61,26 +63,24 @@ describe('bumpLevelForPackage', () => {
     expect(bumpLevelForPackage(source, PACKAGE)).toBe('minor');
   });
 
-  it('uses the last duplicate entry (YAML last-key-wins, matching Changesets)', () => {
-    // Changesets applies the last entry for a key, so minor-then-major is a major.
-    expect(
-      bumpLevelForPackage(`---\n'${PACKAGE}': minor\n'${PACKAGE}': major\n---\n`, PACKAGE),
-    ).toBe('major');
-    expect(
-      bumpLevelForPackage(`---\n'${PACKAGE}': major\n'${PACKAGE}': minor\n---\n`, PACKAGE),
-    ).toBe('minor');
-  });
-
-  it('does not prefix-match a malformed bump value', () => {
-    // `patches` must not be read as `patch`, nor `majorly` as `major`.
-    expect(bumpLevelForPackage(`---\n'${PACKAGE}': patches\n---\n`, PACKAGE)).toBeNull();
-    expect(bumpLevelForPackage(`---\n'${PACKAGE}': majorly\n---\n`, PACKAGE)).toBeNull();
+  it('reads a multiline (block) scalar bump value', () => {
+    // `'pkg':\n  major` is valid YAML that Changesets parses as a major bump.
+    expect(bumpLevelForPackage(`---\n'${PACKAGE}':\n  major\n---\n`, PACKAGE)).toBe('major');
   });
 
   it('allows a trailing inline comment after the bump value', () => {
     expect(bumpLevelForPackage(`---\n'${PACKAGE}': major # was minor\n---\n`, PACKAGE)).toBe(
       'major',
     );
+  });
+
+  it('throws on malformed frontmatter, matching Changesets (no silent misread)', () => {
+    // Duplicate keys and an invalid version type both make `changeset version`
+    // itself fail; the guard surfaces the same error rather than guessing.
+    expect(() =>
+      bumpLevelForPackage(`---\n'${PACKAGE}': minor\n'${PACKAGE}': major\n---\n`, PACKAGE),
+    ).toThrow();
+    expect(() => bumpLevelForPackage(`---\n'${PACKAGE}': patches\n---\n`, PACKAGE)).toThrow();
   });
 
   it('returns null when the package is not mentioned', () => {

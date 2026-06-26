@@ -19,6 +19,7 @@
  * this guard becomes a no-op automatically (the version gate stops applying).
  */
 
+import parseChangeset from '@changesets/parse';
 import { Glob } from 'bun';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,47 +38,20 @@ export type ChangesetBumpViolation = {
 };
 
 /**
- * Parse the bump level a changeset requests for a given package. Changesets are
- * Markdown files whose YAML-ish frontmatter maps quoted package names to bump
- * levels, e.g. `'@lostgradient/cinder': major`. Returns the level string, or
- * `null` if the changeset does not mention the package.
+ * The bump level a changeset requests for `packageName`, or `null` if the
+ * changeset does not mention it.
+ *
+ * Parsing is delegated to `@changesets/parse` — the exact parser Changesets uses
+ * — so the guard can never disagree with how Changesets actually interprets the
+ * frontmatter. That covers quoted scalars, comments, and multiline/block YAML
+ * forms uniformly, and (like Changesets) throws on genuinely malformed frontmatter
+ * such as duplicate keys or an invalid version type, surfacing the bad changeset
+ * rather than silently misreading it.
  */
 export function bumpLevelForPackage(source: string, packageName: string): string | null {
-  // Scan only the YAML frontmatter (between the first two `---` fences), line by
-  // line, skipping comment lines — Changesets ignores a commented `# 'pkg': minor`
-  // entry, so the guard must too, or a commented bump before the real one could be
-  // mistaken for the active level. Quotes are optional around BOTH the package name
-  // and the bump level, because Changesets' YAML parser accepts a quoted scalar
-  // (`'@lostgradient/cinder': "major"`).
-  const escapedName = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Anchor the end of the bump token — a closing quote, optional whitespace, and an
-  // optional inline `# comment`, then end of (trimmed) line. Without the `$` anchor
-  // a malformed value like `patches` would prefix-match `patch`; we leave such
-  // values unmatched (returns null) rather than silently misreading them.
-  const linePattern = new RegExp(
-    `^["']?${escapedName}["']?\\s*:\\s*["']?(major|minor|patch)["']?\\s*(?:#.*)?$`,
-  );
-  // Keep the LAST matching entry, not the first — YAML (which Changesets parses
-  // with) is last-key-wins, so a duplicate `pkg: minor` then `pkg: major` applies
-  // the major. Returning the first match would let that pass the guard.
-  let level: string | null = null;
-  for (const rawLine of frontmatterOf(source).split('\n')) {
-    const line = rawLine.trim();
-    if (line.length === 0 || line.startsWith('#')) continue;
-    const match = line.match(linePattern);
-    if (match) level = match[1] ?? level;
-  }
-  return level;
-}
-
-/**
- * Return the YAML frontmatter block of a changeset (the text between the opening
- * `---` fence and its closing `---`). Falls back to the whole source if no fence
- * is present, so a malformed changeset still gets scanned rather than skipped.
- */
-function frontmatterOf(source: string): string {
-  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  return match?.[1] ?? source;
+  const { releases } = parseChangeset(source);
+  const release = releases.find((entry) => entry.name === packageName);
+  return release ? release.type : null;
 }
 
 /** True when a semver version string is `< 1.0.0` (i.e. still in the `0.y.z` line). */
