@@ -61,6 +61,16 @@ describe('bumpLevelForPackage', () => {
     expect(bumpLevelForPackage(source, PACKAGE)).toBe('minor');
   });
 
+  it('uses the last duplicate entry (YAML last-key-wins, matching Changesets)', () => {
+    // Changesets applies the last entry for a key, so minor-then-major is a major.
+    expect(
+      bumpLevelForPackage(`---\n'${PACKAGE}': minor\n'${PACKAGE}': major\n---\n`, PACKAGE),
+    ).toBe('major');
+    expect(
+      bumpLevelForPackage(`---\n'${PACKAGE}': major\n'${PACKAGE}': minor\n---\n`, PACKAGE),
+    ).toBe('minor');
+  });
+
   it('returns null when the package is not mentioned', () => {
     expect(bumpLevelForPackage(`---\n'@other/pkg': major\n---\n`, PACKAGE)).toBeNull();
   });

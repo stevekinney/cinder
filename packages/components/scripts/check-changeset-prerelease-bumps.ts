@@ -51,13 +51,17 @@ export function bumpLevelForPackage(source: string, packageName: string): string
   // (`'@lostgradient/cinder': "major"`).
   const escapedName = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const linePattern = new RegExp(`^["']?${escapedName}["']?\\s*:\\s*["']?(major|minor|patch)["']?`);
+  // Keep the LAST matching entry, not the first — YAML (which Changesets parses
+  // with) is last-key-wins, so a duplicate `pkg: minor` then `pkg: major` applies
+  // the major. Returning the first match would let that pass the guard.
+  let level: string | null = null;
   for (const rawLine of frontmatterOf(source).split('\n')) {
     const line = rawLine.trim();
     if (line.length === 0 || line.startsWith('#')) continue;
     const match = line.match(linePattern);
-    if (match) return match[1] ?? null;
+    if (match) level = match[1] ?? level;
   }
-  return null;
+  return level;
 }
 
 /**
