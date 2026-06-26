@@ -26,9 +26,9 @@ export type PayloadInspectorSchemaValue = unknown;
 export type PayloadInspectorProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'children'> & {
   /**
    * The payload value to inspect. Pass any JSON-serializable value — object,
-   * array, string, number, boolean, or null. Pass a string for already-
-   * serialized JSON; the component will attempt to parse it. Pass `undefined`
-   * when no payload is available yet.
+   * array, string, number, boolean, or null. Plain strings are rendered as
+   * string values; strings that look like serialized JSON are parsed. Pass
+   * `undefined` when no payload is available yet.
    */
   value?: unknown;
   /**
@@ -85,9 +85,9 @@ export type PayloadInspectorProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 
 export type PayloadInspectorSchemaProps = {
   /**
    * The payload value to inspect. Pass any JSON-serializable value — object,
-   * array, string, number, boolean, or null. Pass a string for already-
-   * serialized JSON; the component will attempt to parse it. Pass `undefined`
-   * when no payload is available yet.
+   * array, string, number, boolean, or null. Plain strings are rendered as
+   * string values; strings that look like serialized JSON are parsed. Pass
+   * `undefined` when no payload is available yet.
    *
    * @schemaPermissive
    */

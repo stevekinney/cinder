@@ -257,8 +257,12 @@
   }
 
   function nestedStepPathKey(pathPrefix: string, stepId: string): string {
-    const encodedStepId = encodeURIComponent(stepId);
+    const encodedStepId = escapeStepPathSegment(stepId);
     return pathPrefix === '' ? encodedStepId : `${pathPrefix}/${encodedStepId}`;
+  }
+
+  function escapeStepPathSegment(stepId: string): string {
+    return stepId.replaceAll('%', '%25').replaceAll('/', '%2F');
   }
 
   function summarizeNestedRunSteps(steps: RunStep[]): NestedRunStepSummary {

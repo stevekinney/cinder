@@ -602,6 +602,22 @@ describe('behavior', () => {
     ]);
   });
 
+  test('does not throw when step ids contain lone surrogates', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: '\uD800',
+          label: 'Malformed identifier',
+          status: 'running',
+        },
+      ],
+    });
+
+    const item = container.querySelector<HTMLElement>('.cinder-run-step-timeline__item');
+    expect(item?.getAttribute('data-cinder-path')).toBe('\uD800');
+    expect(item?.textContent).toContain('Malformed identifier');
+  });
+
   test('hides a nested lane connector before returning to a shallower row', () => {
     const { container } = render(RunStepTimeline, {
       steps: [

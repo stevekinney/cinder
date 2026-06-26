@@ -176,11 +176,7 @@ describe('PayloadInspector', () => {
     });
 
     test('shows "string" kind badge for a JS string primitive value', () => {
-      // To pass a raw string primitive (not JSON-encoded), use a non-string JS value
-      // type. When value is a JS string, the component attempts JSON.parse on it.
-      // A plain non-JSON string yields "invalid" since it fails parsing.
-      // A JSON-encoded string like '"hello"' (with quotes) parses to a string primitive.
-      const { container } = renderInspector({ value: '"hello"' });
+      const { container } = renderInspector({ value: 'hello' });
       const badge = container.querySelector('.cinder-badge');
       expect(badge?.textContent?.trim()).toBe('string');
     });
@@ -213,6 +209,25 @@ describe('PayloadInspector', () => {
       const { container } = renderInspector({ value: '[1,2,3]' });
       const badge = container.querySelector('.cinder-badge');
       expect(badge?.textContent?.trim()).toBe('array');
+    });
+
+    test('preserves a plain string as an inspectable value', async () => {
+      const { container } = renderInspector({ value: '--force' });
+      const badge = container.querySelector('.cinder-badge');
+      const primitive = container.querySelector('.cinder-payload-inspector__primitive');
+
+      expect(badge?.textContent?.trim()).toBe('string');
+      expect(primitive?.textContent?.trim()).toBe('--force');
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+
+      const rawTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (tab) => tab.textContent?.trim() === 'Raw',
+      );
+      await fireEvent.click(rawTab!);
+      const code = container.querySelector(
+        '.cinder-payload-inspector__raw .cinder-code-block__code',
+      );
+      expect(code?.textContent).toContain('"--force"');
     });
 
     test('treats empty string as null', () => {

@@ -382,14 +382,18 @@
                 role="separator"
                 aria-label={entry.label}
               >
-                {#if entry.boundary.timestamp || entry.boundary.datetime}
+                {#if entry.boundary.datetime}
                   <time
                     class="cinder-event-stream-viewer__marker-time"
-                    datetime={entry.datetime}
-                    title={entry.datetime}
+                    datetime={entry.boundary.datetime}
+                    title={entry.boundary.datetime}
                   >
                     {entry.boundary.timestamp ?? entry.boundary.datetime}
                   </time>
+                {:else if entry.boundary.timestamp}
+                  <span class="cinder-event-stream-viewer__marker-time">
+                    {entry.boundary.timestamp}
+                  </span>
                 {/if}
                 <span>{entry.label}</span>
               </div>

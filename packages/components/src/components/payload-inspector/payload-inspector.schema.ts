@@ -6,7 +6,7 @@ const schema = {
   properties: {
     value: {
       description:
-        'The payload value to inspect. Pass any JSON-serializable value — object,\narray, string, number, boolean, or null. Pass a string for already-\nserialized JSON; the component will attempt to parse it. Pass `undefined`\nwhen no payload is available yet.',
+        'The payload value to inspect. Pass any JSON-serializable value — object,\narray, string, number, boolean, or null. Plain strings are rendered as\nstring values; strings that look like serialized JSON are parsed. Pass\n`undefined` when no payload is available yet.',
     },
     truncated: {
       type: 'boolean',

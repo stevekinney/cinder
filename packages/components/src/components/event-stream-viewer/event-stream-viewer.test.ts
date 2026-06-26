@@ -351,10 +351,9 @@ describe('EventStreamViewer', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: entries },
       });
-      const time = container.querySelector<HTMLTimeElement>(
-        '.cinder-event-stream-viewer__marker-time',
-      );
+      const time = container.querySelector<HTMLElement>('.cinder-event-stream-viewer__marker-time');
 
+      expect(time?.tagName).toBe('SPAN');
       expect(time?.textContent?.trim()).toBe('2m ago');
       expect(time?.hasAttribute('datetime')).toBe(false);
       expect(time?.hasAttribute('title')).toBe(false);
@@ -373,10 +372,9 @@ describe('EventStreamViewer', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: entries },
       });
-      const time = container.querySelector<HTMLTimeElement>(
-        '.cinder-event-stream-viewer__marker-time',
-      );
+      const time = container.querySelector<HTMLElement>('.cinder-event-stream-viewer__marker-time');
 
+      expect(time?.tagName).toBe('TIME');
       expect(time?.textContent?.trim()).toBe('2m ago');
       expect(time?.getAttribute('datetime')).toBe('2026-05-12T14:30:10Z');
       expect(time?.getAttribute('title')).toBe('2026-05-12T14:30:10Z');
