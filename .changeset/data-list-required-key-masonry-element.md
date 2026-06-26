@@ -1,5 +1,5 @@
 ---
-'@lostgradient/cinder': major
+'@lostgradient/cinder': minor
 ---
 
 **Breaking: `DataList` now requires a `key` extractor.** `DataListProps.key` was
