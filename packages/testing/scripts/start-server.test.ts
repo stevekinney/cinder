@@ -14,6 +14,7 @@ import {
   playgroundUrlForPath,
   playgroundWarmReadinessEndpointPath,
   playgroundWarmReadinessMissingEndpointMessage,
+  shutdownExitCodeAfterRequest,
 } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
@@ -135,6 +136,15 @@ describe('playwright wrapper exit code', () => {
   test('prefers shutdown signal exit code over Playwright exit code', () => {
     expect(finalPlaywrightExitCode(0, 130)).toBe(130);
     expect(finalPlaywrightExitCode(1, 143)).toBe(143);
+  });
+
+  test('keeps an interrupt exit code when a later failure also requests shutdown', () => {
+    expect(shutdownExitCodeAfterRequest(130, 1)).toBe(130);
+    expect(shutdownExitCodeAfterRequest(143, 1)).toBe(143);
+  });
+
+  test('lets a later interrupt exit code replace an earlier failure exit code', () => {
+    expect(shutdownExitCodeAfterRequest(1, 130)).toBe(130);
   });
 });
 

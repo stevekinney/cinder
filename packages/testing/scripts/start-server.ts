@@ -146,6 +146,15 @@ export function finalPlaywrightExitCode(
   return shutdownExitCode ?? playwrightExitCode;
 }
 
+export function shutdownExitCodeAfterRequest(
+  currentExitCode: number | null,
+  requestedExitCode: number,
+): number {
+  if (currentExitCode === null) return requestedExitCode;
+  if (currentExitCode >= 128) return currentExitCode;
+  return requestedExitCode >= 128 ? requestedExitCode : currentExitCode;
+}
+
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
@@ -168,8 +177,14 @@ async function waitForExitOrTimeout(
     },
     (error: unknown) => (isAbortError(error) ? 'aborted' : 'exited'),
   );
+  const timeoutPromise = delay(timeoutMs, 'timeout' as const, {
+    signal: abortController.signal,
+  }).catch((error: unknown) => {
+    if (isAbortError(error)) return 'aborted' as const;
+    throw error;
+  });
 
-  const result = await Promise.race([exitPromise, errorPromise, delay(timeoutMs, 'timeout')]);
+  const result = await Promise.race([exitPromise, errorPromise, timeoutPromise]);
   abortController.abort();
 
   return result === 'exited' || childProcessHasFinished(childProcess);
@@ -315,9 +330,10 @@ async function main(): Promise<void> {
   };
 
   const exitAfterCleanup = async (code: number): Promise<never> => {
-    shutdownExitCode = code;
+    const exitCode = shutdownExitCodeAfterRequest(shutdownExitCode, code);
+    shutdownExitCode = exitCode;
     await cleanupOnce();
-    process.exit(code);
+    process.exit(shutdownExitCode ?? exitCode);
   };
 
   const exitIfShuttingDown = async (): Promise<void> => {

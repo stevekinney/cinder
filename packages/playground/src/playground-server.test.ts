@@ -33,6 +33,7 @@ import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
   PORT,
   createHttpServerOnAvailablePort,
+  createSharedDisposer,
   handleRequest,
   rewriteRepositoryRelativeReadmeLinks,
   triggerReload,
@@ -181,6 +182,32 @@ describe('port selection', () => {
     expect(serverPort).toBeGreaterThan(reservedPort);
     const response = await fetch(`http://127.0.0.1:${serverPort}`);
     expect(await response.text()).toBe('fallback');
+  });
+});
+
+describe('shared disposer', () => {
+  it('returns the same shutdown promise to concurrent callers', async () => {
+    let disposeCalls = 0;
+    let finishDispose = (): void => {
+      throw new Error('Dispose promise was not created');
+    };
+    const dispose = createSharedDisposer(() => {
+      disposeCalls += 1;
+      return new Promise<void>((resolve) => {
+        finishDispose = resolve;
+      });
+    });
+
+    const firstDispose = dispose();
+    const secondDispose = dispose();
+
+    expect(secondDispose).toBe(firstDispose);
+    expect(disposeCalls).toBe(1);
+    finishDispose();
+    await Promise.all([firstDispose, secondDispose]);
+
+    expect(dispose()).toBe(firstDispose);
+    expect(disposeCalls).toBe(1);
   });
 });
 

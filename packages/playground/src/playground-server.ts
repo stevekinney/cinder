@@ -1894,6 +1894,14 @@ async function eagerPrebuildAll(): Promise<{
   return { shellSucceeded: shellCode !== null, succeeded, failed };
 }
 
+export function createSharedDisposer(disposeWork: () => Promise<void>): () => Promise<void> {
+  let disposePromise: Promise<void> | null = null;
+  return () => {
+    disposePromise ??= disposeWork();
+    return disposePromise;
+  };
+}
+
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
   // Eager pre-build BEFORE binding the port. Sidebar clicks should serve
@@ -1931,10 +1939,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     throw error;
   }
 
-  let disposed = false;
-  async function dispose(): Promise<void> {
-    if (disposed) return;
-    disposed = true;
+  const dispose = createSharedDisposer(async () => {
     for (const watcher of watchers) {
       watcher.close();
     }
@@ -1947,7 +1952,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     }
     sseClients.clear();
     await server.stop(true);
-  }
+  });
 
   const portFile = Bun.env['PLAYGROUND_PORT_FILE'];
   if (portFile !== undefined) {
