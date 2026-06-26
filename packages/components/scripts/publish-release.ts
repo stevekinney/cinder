@@ -33,11 +33,7 @@ export function resolvePublishAction(input: {
   return input.versionExists ? 'skip-existing-version' : 'publish';
 }
 
-export function existingVersionMessage(identity: PackageManifest, dryRun: boolean): string {
-  if (dryRun) {
-    return `publish-release — ${identity.name}@${identity.version} already exists on npm; skipping dry-run publish.\n`;
-  }
-
+export function existingVersionMessage(identity: PackageManifest): string {
   return `publish-release — ${identity.name}@${identity.version} already exists on npm; nothing to publish.\n`;
 }
 
@@ -88,7 +84,7 @@ export async function runPublishRelease(input: {
   });
 
   if (publishAction === 'skip-existing-version') {
-    dependencies.writeOutput(existingVersionMessage(manifest, dryRun));
+    dependencies.writeOutput(existingVersionMessage(manifest));
     return;
   }
 

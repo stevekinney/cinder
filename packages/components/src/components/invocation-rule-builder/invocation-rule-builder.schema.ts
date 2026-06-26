@@ -164,7 +164,7 @@ const schema = {
         name: 'onchange',
         reason: 'function-or-snippet',
         description:
-          'Called whenever the user makes any edit. Required for editable runtime\nusage; readonly schema-driven usage may omit it because no edit controls\nare rendered. Receives the next rule array (pure, not mutated) and a\nchange descriptor. Consumer owns persistence, validation, and execution.',
+          'Called whenever the user makes any edit. Required for editable runtime\nusage because editable controls must commit controlled state changes.\nReceives the next rule array (pure, not mutated) and a change descriptor.\nConsumer owns persistence, validation, and execution.',
       },
     ],
   },

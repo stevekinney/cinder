@@ -44,7 +44,7 @@ describe('publish-release existing-version handling', () => {
     expect(validateConsumerArtifact).not.toHaveBeenCalled();
     expect(spawnPublish).not.toHaveBeenCalled();
     expect(output.join('')).toContain(
-      '@lostgradient/cinder@9.9.9 already exists on npm; skipping dry-run publish',
+      '@lostgradient/cinder@9.9.9 already exists on npm; nothing to publish',
     );
   });
 

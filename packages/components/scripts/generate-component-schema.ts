@@ -276,6 +276,11 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'event-stream-viewer') {
+    applyEventStreamViewerSchemaRules(schema);
+    return;
+  }
+
   if (componentName === 'run-step-timeline') {
     applyRunStepTimelineSchemaRules(schema);
     return;
@@ -297,6 +302,23 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       },
     },
   ];
+}
+
+function applyEventStreamViewerSchemaRules(schema: ComponentSchemaOutput): void {
+  const entries = schema.properties['events'];
+  const variants = entries?.items?.anyOf;
+  const reconnectBoundary = variants?.find(
+    (variant) => variant.properties?.['kind']?.const === 'reconnected',
+  );
+  const replayedCount = reconnectBoundary?.properties?.['replayedCount'];
+
+  if (reconnectBoundary?.properties && replayedCount?.type === 'number') {
+    reconnectBoundary.properties['replayedCount'] = {
+      ...replayedCount,
+      type: 'integer',
+      minimum: 0,
+    };
+  }
 }
 
 function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
@@ -322,7 +344,7 @@ function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
     items: topLevelStepSchema,
     description: 'Ordered list of steps to render.',
   };
-  schema.required = [...new Set([...(schema.required ?? []), 'steps'])].toSorted();
+  schema.required = sortedUniqueStrings([...(schema.required ?? []), 'steps']);
 
   const unsupportedProps = schema.metadata?.unsupportedProps?.filter(
     (property) => property.name !== 'steps',
@@ -332,6 +354,21 @@ function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
   } else {
     delete schema.metadata;
   }
+}
+
+function sortedUniqueStrings(values: string[]): string[] {
+  const sorted: string[] = [];
+
+  for (const value of new Set(values)) {
+    const insertionIndex = sorted.findIndex((existingValue) => existingValue > value);
+    if (insertionIndex === -1) {
+      sorted.push(value);
+    } else {
+      sorted.splice(insertionIndex, 0, value);
+    }
+  }
+
+  return sorted;
 }
 
 function makeRunStepTimelineStepSchema(childrenSchema?: PropertySchema): PropertySchema {

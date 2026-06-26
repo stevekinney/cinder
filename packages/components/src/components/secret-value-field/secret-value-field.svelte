@@ -39,8 +39,8 @@
 
   const fieldId = $props.id();
 
-  // initiallyRevealed is an initial seed only; later prop changes do not reveal or hide the secret.
   let revealed = $state(untrack(() => initiallyRevealed));
+  let previousValue = $state(untrack(() => value));
 
   let copied = $state(false);
   let resetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -64,6 +64,12 @@
     if (!allowReveal) return;
     revealed = !revealed;
   }
+
+  $effect(() => {
+    if (value === previousValue) return;
+    previousValue = value;
+    revealed = initiallyRevealed;
+  });
 
   onDestroy(() => {
     if (resetTimer) clearTimeout(resetTimer);

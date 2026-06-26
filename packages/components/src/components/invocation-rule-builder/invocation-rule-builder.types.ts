@@ -89,7 +89,7 @@ export type InvocationRuleChange =
  * prop. Every user action calls `onchange` with the next rule array and
  * a change descriptor; the consumer decides what to persist.
  */
-export type InvocationRuleBuilderProps = Omit<
+type InvocationRuleBuilderBaseProps = Omit<
   HTMLAttributes<HTMLElement>,
   'class' | 'children' | 'onchange'
 > & {
@@ -98,14 +98,6 @@ export type InvocationRuleBuilderProps = Omit<
    * list returned from `onchange` back into this prop to commit a change.
    */
   rules: InvocationRule[];
-
-  /**
-   * Called whenever the user makes any edit. Required for editable runtime
-   * usage; readonly schema-driven usage may omit it because no edit controls
-   * are rendered. Receives the next rule array (pure, not mutated) and a
-   * change descriptor. Consumer owns persistence, validation, and execution.
-   */
-  onchange?: (nextRules: InvocationRule[], change: InvocationRuleChange) => void;
 
   /**
    * Options for the condition field selector. Consumer-provided list of
@@ -124,12 +116,6 @@ export type InvocationRuleBuilderProps = Omit<
    * targets, e.g. review-agent slugs or step identifiers.
    */
   actionOptions: InvocationRuleOption[];
-
-  /**
-   * When true, renders a readonly summary of each rule instead of editable
-   * controls. Default is false (editable mode).
-   */
-  readonly?: boolean;
 
   /**
    * Label for the "Add rule" button. Defaults to "Add rule".
@@ -152,6 +138,41 @@ export type InvocationRuleBuilderProps = Omit<
   /** Additional CSS classes applied to the root element. */
   class?: string;
 };
+
+type InvocationRuleBuilderChangeHandler = (
+  nextRules: InvocationRule[],
+  change: InvocationRuleChange,
+) => void;
+
+export type InvocationRuleBuilderProps =
+  | (InvocationRuleBuilderBaseProps & {
+      /**
+       * Called whenever the user makes any edit. Required for editable runtime
+       * usage because editable controls must commit controlled state changes.
+       * Receives the next rule array (pure, not mutated) and a change descriptor.
+       * Consumer owns persistence, validation, and execution.
+       */
+      onchange: InvocationRuleBuilderChangeHandler;
+
+      /**
+       * When false or omitted, renders editable controls. Editable mode requires
+       * `onchange` so controls cannot become interactive-but-no-op.
+       */
+      readonly?: false;
+    })
+  | (InvocationRuleBuilderBaseProps & {
+      /**
+       * Optional in readonly usage because no edit controls are rendered.
+       * Runtime consumers may still pass it when sharing props between modes.
+       */
+      onchange?: InvocationRuleBuilderChangeHandler;
+
+      /**
+       * When true, renders a readonly summary of each rule instead of editable
+       * controls.
+       */
+      readonly: true;
+    });
 
 /**
  * Cinder-specific schema surface for InvocationRuleBuilder.

@@ -192,7 +192,8 @@
       'kind' in entry &&
       entry.kind === 'reconnected' &&
       'replayedCount' in entry &&
-      typeof entry.replayedCount === 'number'
+      Number.isInteger(entry.replayedCount) &&
+      entry.replayedCount >= 0
     );
   }
 

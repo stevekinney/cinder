@@ -64,8 +64,9 @@
                 "description": "Optional human-readable timestamp label. Falls back to `datetime` when rendered."
               },
               "replayedCount": {
-                "type": "number",
-                "description": "Number of events replayed after the connection resumed."
+                "type": "integer",
+                "description": "Non-negative integer count of events replayed after the connection resumed.",
+                "minimum": 0
               }
             },
             "additionalProperties": false,

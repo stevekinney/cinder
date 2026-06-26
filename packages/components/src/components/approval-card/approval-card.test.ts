@@ -247,19 +247,21 @@ describe('ApprovalCard', () => {
     expect(buttons).toEqual(['Approve', 'Approve with edits', 'Deny', 'Remember', 'Cancel']);
   });
 
-  test('truncates large argument previews and renders every touched file', () => {
+  test('truncates large argument previews with an excerpt and renders every touched file', async () => {
     const filesTouched = Array.from({ length: 8 }, (_, index) => `src/file-${index + 1}.ts`);
-    const { container } = render(ApprovalCard, {
+    const { container, getByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         operation: {
           kind: 'file-write',
           filesTouched,
-          argsPreview: { payload: 'x'.repeat(10_000) },
+          argsPreview: { payload: `start-${'x'.repeat(10_000)}` },
         },
       }),
     });
 
     expect(container.textContent).toContain('Truncated');
+    await fireEvent.click(getByRole('tab', { name: 'Tree' }));
+    expect(container.textContent).toContain('start-');
     expect(container.textContent).toContain(
       'Review the touched files and arguments before approving this file write.',
     );
@@ -288,7 +290,26 @@ describe('ApprovalCard', () => {
     ).toEqual(['src/repeated.ts', 'src/repeated.ts']);
   });
 
-  test('parses serialized JSON string argument previews through PayloadInspector', async () => {
+  test('renders string argument previews as primitive values', async () => {
+    const { container, getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        operation: {
+          kind: 'other',
+          argsPreview: '--force',
+        },
+      }),
+    });
+
+    const badge = container.querySelector('.cinder-payload-inspector__summary .cinder-badge');
+    expect(badge?.textContent?.trim()).toBe('string');
+
+    await fireEvent.click(getByRole('tab', { name: 'Raw' }));
+
+    expect(container.textContent).toContain('--force');
+    expect(container.textContent).not.toContain('Parse error');
+  });
+
+  test('renders serialized JSON strings as string argument values', async () => {
     const { container, getByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         operation: {
@@ -299,35 +320,12 @@ describe('ApprovalCard', () => {
     });
 
     const badge = container.querySelector('.cinder-payload-inspector__summary .cinder-badge');
-    expect(badge?.textContent?.trim()).toBe('object');
-
-    await fireEvent.click(getByRole('tab', { name: 'Tree' }));
-
-    expect(container.textContent).toContain('filters');
-    expect(container.textContent).not.toContain('Parse error');
-  });
-
-  test('renders malformed string argument previews with PayloadInspector parse errors', async () => {
-    const { container, getByRole } = render(ApprovalCard, {
-      ...approvalCardProps({
-        operation: {
-          kind: 'other',
-          argsPreview: 'plain string argument',
-        },
-      }),
-    });
-
-    const badge = container.querySelector('.cinder-payload-inspector__summary .cinder-badge');
-    const notice = container.querySelector(
-      '.cinder-payload-inspector__notice--warning[role="alert"]',
-    );
-    expect(badge?.textContent?.trim()).toBe('invalid');
-    expect(notice?.textContent).toContain('Parse error');
+    expect(badge?.textContent?.trim()).toBe('string');
 
     await fireEvent.click(getByRole('tab', { name: 'Raw' }));
 
-    expect(container.textContent).toContain('plain string argument');
-    expect(container.textContent).not.toContain('"plain string argument"');
+    expect(container.textContent).toContain('filters');
+    expect(container.textContent).not.toContain('Parse error');
   });
 
   test('does not fabricate editable arguments when no preview is provided', () => {

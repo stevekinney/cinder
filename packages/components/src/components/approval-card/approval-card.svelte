@@ -253,13 +253,17 @@
     try {
       const serialized = JSON.stringify(value);
       if (typeof serialized !== 'string' || serialized.length <= ARGUMENTS_PREVIEW_MAX_CHARACTERS) {
-        return { value, truncated: false };
+        return {
+          value: typeof value === 'string' ? serialized : value,
+          truncated: false,
+        };
       }
       return {
         value: {
           notice: 'Arguments preview truncated',
           originalCharacters: serialized.length,
           displayedCharacters: ARGUMENTS_PREVIEW_MAX_CHARACTERS,
+          excerpt: serialized.slice(0, ARGUMENTS_PREVIEW_MAX_CHARACTERS),
         },
         truncated: true,
       };

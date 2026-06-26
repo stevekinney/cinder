@@ -95,6 +95,12 @@ describe('EventStreamViewer', () => {
 
       expect(validate({ events: [{ id: 'event-1' }] })).toBe(false);
       expect(validate({ events: [{ id: 'reconnect-1', kind: 'reconnected' }] })).toBe(false);
+      expect(
+        validate({ events: [{ id: 'reconnect-1', kind: 'reconnected', replayedCount: -1 }] }),
+      ).toBe(false);
+      expect(
+        validate({ events: [{ id: 'reconnect-1', kind: 'reconnected', replayedCount: 1.5 }] }),
+      ).toBe(false);
     });
 
     test('accepts nested array event details without a depth boundary', () => {
@@ -449,6 +455,24 @@ describe('EventStreamViewer', () => {
       expect(
         container.querySelector('.cinder-event-stream-viewer__event-summary')?.textContent,
       ).toContain('Backend event with kind field');
+    });
+
+    test('invalid replay counts render as events instead of reconnect boundaries', () => {
+      const invalidBoundary = {
+        ...baseEvent,
+        id: 'invalid-reconnect',
+        kind: 'reconnected',
+        replayedCount: -1,
+        summary: 'Backend event with invalid replay count',
+      } as unknown as EventStreamEntry;
+
+      const { container } = render(EventStreamViewer, {
+        props: { events: [invalidBoundary] },
+      });
+
+      expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).toBeNull();
+      expect(container.textContent).toContain('Backend event with invalid replay count');
+      expect(container.textContent).not.toContain('-1 events replayed');
     });
   });
 

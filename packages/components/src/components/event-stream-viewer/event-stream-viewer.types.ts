@@ -76,7 +76,7 @@ export type StreamReconnectedBoundary = {
   datetime?: string;
   /** Optional human-readable timestamp label. Falls back to `datetime` when rendered. */
   timestamp?: string;
-  /** Number of events replayed after the connection resumed. */
+  /** Non-negative integer count of events replayed after the connection resumed. */
   replayedCount: number;
 };
 
