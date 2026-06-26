@@ -51,6 +51,7 @@ mock.module('@floating-ui/dom', () => ({
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: Tooltip } = await import('./tooltip.svelte');
+const { _resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -142,6 +143,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  _resetEscapeStack();
   const leaked = timers.active();
   timers.release();
   computePositionSpy.mockClear();
@@ -249,6 +251,44 @@ describe('Tooltip', () => {
 
     const options = computePositionSpy.mock.calls[0]?.at(2) as { strategy?: string } | undefined;
     expect(options?.strategy).toBe('fixed');
+  });
+
+  test('Escape uses the shared LIFO stack before an enclosing overlay handler', async () => {
+    const parentEscape = mock(() => {});
+    const releaseParentEscape = pushEscapeHandler(parentEscape);
+    try {
+      const { container } = render(Tooltip, {
+        props: {
+          text: 'Tooltip content',
+          children: triggerSnippet,
+        },
+      });
+      const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+      await triggerDelayedTooltipShow(wrapper);
+      await waitFor(() => expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false'));
+
+      const firstEscape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(firstEscape);
+      await tick();
+
+      expect(firstEscape.defaultPrevented).toBe(true);
+      expect(parentEscape).not.toHaveBeenCalled();
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
+
+      const secondEscape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(secondEscape);
+      expect(parentEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseParentEscape();
+    }
   });
 
   test('autoUpdate receives the resolved anchor and tooltip element', async () => {
@@ -403,42 +443,40 @@ describe('Tooltip', () => {
     });
   });
 
-  test('Escape cancels a pending tooltip before the show delay completes', async () => {
-    const originalSetTimeout = globalThis.setTimeout;
-    const originalClearTimeout = globalThis.clearTimeout;
-    const pendingTimers = new Map<number, () => void>();
-    let nextTimerId = 0;
-
-    globalThis.setTimeout = ((handler: TimerHandler) => {
-      nextTimerId += 1;
-      pendingTimers.set(nextTimerId, () => {
-        if (typeof handler === 'function') handler();
-      });
-      return nextTimerId;
-    }) as typeof setTimeout;
-    globalThis.clearTimeout = ((id: number | undefined) => {
-      if (typeof id === 'number') pendingTimers.delete(id);
-    }) as typeof clearTimeout;
+  test('pending tooltip does not take over the shared Escape stack or open after Escape', async () => {
+    const trackedSetTimeout = globalThis.setTimeout;
+    const trackedClearTimeout = globalThis.clearTimeout;
+    const trackedSetInterval = globalThis.setInterval;
+    const trackedClearInterval = globalThis.clearInterval;
+    const parentEscape = mock((event: KeyboardEvent) => {
+      event.preventDefault();
+    });
+    const releaseParentEscape = pushEscapeHandler(parentEscape);
+    const { container, unmount } = render(Tooltip, {
+      props: {
+        text: 'Pending tooltip',
+        children: triggerSnippet,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
     try {
-      const { container } = render(Tooltip, {
-        props: {
-          text: 'Pending tooltip',
-          children: triggerSnippet,
-        },
-      });
-      const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
-
+      jest.useFakeTimers();
       await fireEvent.mouseEnter(wrapper);
       await fireEvent.keyDown(document, { key: 'Escape' });
-      for (const runTimer of pendingTimers.values()) {
-        runTimer();
-      }
+      jest.advanceTimersByTime(100);
+      await tick();
 
+      expect(parentEscape).toHaveBeenCalledTimes(1);
       expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     } finally {
-      globalThis.setTimeout = originalSetTimeout;
-      globalThis.clearTimeout = originalClearTimeout;
+      jest.useRealTimers();
+      globalThis.setTimeout = trackedSetTimeout;
+      globalThis.clearTimeout = trackedClearTimeout;
+      globalThis.setInterval = trackedSetInterval;
+      globalThis.clearInterval = trackedClearInterval;
+      unmount();
+      releaseParentEscape();
     }
   });
 

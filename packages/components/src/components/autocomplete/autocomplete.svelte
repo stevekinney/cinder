@@ -24,6 +24,7 @@
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Popover from '../popover/popover.svelte';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
@@ -169,6 +170,17 @@
     rawActiveIndex = null;
     suggestions = [];
   }
+
+  function handleEscape(event: KeyboardEvent | undefined = undefined): void {
+    const wasOpen = open;
+    closePopup();
+    if (wasOpen) event?.preventDefault();
+  }
+
+  $effect(() => {
+    if (!open) return;
+    return pushEscapeHandler(handleEscape);
+  });
 
   $effect(() => {
     const query = value;
@@ -381,8 +393,8 @@
     }
 
     if (event.key === 'Escape' && open) {
-      event.preventDefault();
-      closePopup();
+      if (event.defaultPrevented) return;
+      handleEscape(event);
       return;
     }
 
@@ -484,6 +496,7 @@
   role="listbox"
   focusManagement="preserve"
   wireTriggerAria={false}
+  closeOnEscape={false}
   widthMode="match-anchor"
   class="cinder-autocomplete__panel"
 >
