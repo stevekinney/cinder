@@ -230,6 +230,26 @@ describe('PayloadInspector', () => {
       expect(code?.textContent).toContain('"--force"');
     });
 
+    test('preserves date-like plain strings as inspectable values', () => {
+      const { container } = renderInspector({ value: '2026-06-26T12:00:00Z' });
+      const badge = container.querySelector('.cinder-badge');
+      const primitive = container.querySelector('.cinder-payload-inspector__primitive');
+
+      expect(badge?.textContent?.trim()).toBe('string');
+      expect(primitive?.textContent?.trim()).toBe('2026-06-26T12:00:00Z');
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+    });
+
+    test('preserves keyword-prefixed plain strings as inspectable values', () => {
+      const { container } = renderInspector({ value: 'true-ish' });
+      const badge = container.querySelector('.cinder-badge');
+      const primitive = container.querySelector('.cinder-payload-inspector__primitive');
+
+      expect(badge?.textContent?.trim()).toBe('string');
+      expect(primitive?.textContent?.trim()).toBe('true-ish');
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+    });
+
     test('treats empty string as null', () => {
       const { container } = renderInspector({ value: '' });
       const badge = container.querySelector('.cinder-badge');

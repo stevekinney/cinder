@@ -59,7 +59,8 @@
 
   function shouldParseString(raw: string): boolean {
     const trimmed = raw.trim();
-    return /^(?:[{\["]|\btrue\b|\bfalse\b|\bnull\b|-?\d)/.test(trimmed);
+    if (/^[{\["]/.test(trimmed)) return true;
+    return /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(trimmed);
   }
 
   const parseResult = $derived.by((): ParseResult => {
