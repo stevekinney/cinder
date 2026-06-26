@@ -33,6 +33,7 @@ describe('testPathsForScope', () => {
     expect(paths).toContain('src/utilities');
     expect(paths).toContain('src/_internal');
     expect(paths).toContain('src/highlighters');
+    expect(paths).toContain('src/styles');
     // Package-level invariant tests (export drift, manifest, conventions).
     expect(paths).toContain('src/exports-drift.test.ts');
     expect(paths).toContain('src/api-contract.test.ts');
@@ -46,6 +47,7 @@ describe('testPathsForScope', () => {
     const paths = testPathsForScope({ mode: 'filtered', slugs: ['accordion'] });
     expect(paths).toContain('src/test');
     expect(paths).toContain('src/utilities');
+    expect(paths).toContain('src/styles');
     expect(paths).toContain('src/exports-drift.test.ts');
     // scripts/ tooling tests run only when scripts/ changes (which force-fulls).
     expect(paths).not.toContain('scripts');
