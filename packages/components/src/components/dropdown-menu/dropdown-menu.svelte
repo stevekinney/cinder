@@ -24,6 +24,11 @@
   import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
+    findTypeaheadMatch,
+    isTypeaheadKey,
+    TypeaheadBuffer,
+  } from '../../utilities/typeahead.ts';
+  import {
     getDropdownContext,
     getDropdownRegister,
     getDropdownSetOpen,
@@ -52,6 +57,7 @@
 
   let menuElement = $state<HTMLDivElement | null>(null);
   let focusedFallbackOpen = false;
+  const typeaheadBuffer = new TypeaheadBuffer();
   const anchoredFallback = createAnchoredOverlay({
     open: () => context.isOpen && !context.supportsPopover && Boolean(fallbackAnchorElement),
     anchor: () => fallbackAnchorElement,
@@ -81,6 +87,14 @@
   });
 
   $effect(() => {
+    return () => typeaheadBuffer.reset();
+  });
+
+  $effect(() => {
+    if (!context.isOpen) typeaheadBuffer.reset();
+  });
+
+  $effect(() => {
     if (direction && direction !== 'auto') return;
     return observeTextDirection(context.anchorElement, () => {
       directionRevision += 1;
@@ -103,7 +117,11 @@
 
     return Array.from(
       menuElement.querySelectorAll<HTMLElement>(
-        '[role="menuitem"]:not([data-disabled]), [role="menuitemradio"]:not([data-disabled])',
+        [
+          '[role="menuitem"]:not([data-disabled])',
+          '[role="menuitemcheckbox"]:not([data-disabled])',
+          '[role="menuitemradio"]:not([data-disabled])',
+        ].join(', '),
       ),
     ).filter((item) => item.closest('[role="menu"]') === menuElement);
   }
@@ -152,6 +170,19 @@
       event.preventDefault();
       event.stopPropagation();
       focusMenuItem(itemsArray.length - 1);
+    } else if (isTypeaheadKey(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const match = findTypeaheadMatch(
+        itemsArray.map((item, index) => ({
+          value: index,
+          label: item.textContent?.trim() ?? '',
+          disabled: item.hasAttribute('data-disabled'),
+        })),
+        typeaheadBuffer.push(event.key),
+        currentIndex,
+      );
+      if (match !== undefined) focusMenuItem(match);
     }
   }
 

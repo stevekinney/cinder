@@ -20,6 +20,7 @@
   import type { Attachment } from 'svelte/attachments';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
@@ -51,25 +52,47 @@
 
   let visible = $state(false);
   let showTimer: ReturnType<typeof setTimeout> | undefined;
-  let hasPendingShow = $state(false);
+  let releasePendingEscapeListener: (() => void) | undefined;
   let wrapperElement: HTMLSpanElement | undefined = $state();
   let tooltipElement: HTMLSpanElement | undefined = $state();
   let anchorElement = $state<HTMLElement | null>(null);
 
-  function show() {
+  function releasePendingEscape() {
+    releasePendingEscapeListener?.();
+    releasePendingEscapeListener = undefined;
+  }
+
+  function clearPendingShow() {
     clearTimeout(showTimer);
-    hasPendingShow = true;
+    showTimer = undefined;
+    releasePendingEscape();
+  }
+
+  function handlePendingEscapeKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Escape') return;
+    clearPendingShow();
+  }
+
+  function registerPendingEscape() {
+    releasePendingEscape();
+    document.addEventListener('keydown', handlePendingEscapeKeydown, { capture: true });
+    releasePendingEscapeListener = () => {
+      document.removeEventListener('keydown', handlePendingEscapeKeydown, { capture: true });
+    };
+  }
+
+  function show() {
+    clearPendingShow();
+    registerPendingEscape();
     showTimer = setTimeout(() => {
       showTimer = undefined;
-      hasPendingShow = false;
+      releasePendingEscape();
       visible = true;
     }, 100);
   }
 
   function hide() {
-    clearTimeout(showTimer);
-    showTimer = undefined;
-    hasPendingShow = false;
+    clearPendingShow();
     visible = false;
   }
 
@@ -92,10 +115,9 @@
   // WAI-ARIA APG: tooltips must be dismissible via Escape without losing
   // pointer or focus on the trigger. Hide the tooltip but don't blur — the
   // user keeps interacting with the trigger.
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      hide();
-    }
+  function handleEscape(event: KeyboardEvent | undefined = undefined) {
+    hide();
+    event?.preventDefault();
   }
 
   function isFocusableCandidate(element: HTMLElement): boolean {
@@ -163,11 +185,14 @@
   const isTooltipExposed = $derived(visible && anchoredOverlay.positionReady);
 
   $effect(() => {
-    if (!visible && !hasPendingShow) return;
-    document.addEventListener('keydown', handleKeydown);
     return () => {
-      document.removeEventListener('keydown', handleKeydown);
+      clearPendingShow();
     };
+  });
+
+  $effect(() => {
+    if (!visible) return;
+    return pushEscapeHandler(handleEscape);
   });
 </script>
 

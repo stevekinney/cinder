@@ -1,6 +1,7 @@
 import { SvelteMap } from 'svelte/reactivity';
 
 import { inDocumentOrder } from '../utilities/document-order.ts';
+import { findTypeaheadMatch } from '../utilities/typeahead.ts';
 
 /** A single registered tree node. */
 export type TreeNodeRegistration = {
@@ -224,20 +225,17 @@ export class TreeRegistry {
     visibilityPredicate?: TreeVisibilityPredicate,
   ): string | undefined {
     const visible = this.getVisible(expandedIds, visibilityPredicate);
-    const lower = prefix.toLowerCase();
-    const startIndex = visible.indexOf(currentId);
-
-    // Search from item after current, then wrap around to the start.
-    // visible[index] is always defined: index = (startIndex + offset) % visible.length
-    // and we only enter this loop when visible.length > 0 (offset <= visible.length guard).
-    for (let offset = 1; offset <= visible.length; offset++) {
-      const index = (startIndex + offset) % visible.length;
-      const id = visible[index]!;
-      const node = this.#nodes.get(id);
-      if (node && node.label().toLowerCase().startsWith(lower)) {
-        return id;
-      }
-    }
-    return undefined;
+    return findTypeaheadMatch(
+      visible.map((id) => {
+        const node = this.#nodes.get(id);
+        return {
+          value: id,
+          label: node?.label() ?? '',
+          disabled: node?.disabled,
+        };
+      }),
+      prefix,
+      visible.indexOf(currentId),
+    );
   }
 }

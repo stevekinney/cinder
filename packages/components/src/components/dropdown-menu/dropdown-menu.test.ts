@@ -52,6 +52,62 @@ describe('DropdownMenu', () => {
     expect(document.activeElement?.textContent).toContain('Invite people');
   });
 
+  test('printable keys move focus to the next matching menu item', async () => {
+    const { container } = renderFixture();
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'i' });
+    expect(document.activeElement?.textContent).toContain('Invite people');
+
+    await Bun.sleep(550);
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'a' });
+    expect(document.activeElement?.textContent).toContain('Archive');
+  });
+
+  test('typeahead includes checkbox menu items', async () => {
+    const { container } = renderFixture();
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'k' });
+    expect(document.activeElement?.textContent).toContain('Keep offline');
+  });
+
+  test('typeahead buffer resets when the menu closes', async () => {
+    const { container } = renderFixture();
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+    await fireEvent.click(trigger);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'i' });
+    expect(document.activeElement?.textContent).toContain('Invite people');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+
+    await fireEvent.click(trigger);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'a' });
+    expect(document.activeElement?.textContent).toContain('Archive');
+  });
+
+  test('Space keeps native menu item activation available', async () => {
+    const { container } = renderFixture();
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    const event = new KeyboardEvent('keydown', {
+      key: ' ',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.activeElement?.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   test('uses locale provider direction when no explicit direction is supplied', async () => {
     render(DropdownDirectionFixture, {
       props: { providerDirection: 'rtl' },

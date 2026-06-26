@@ -2,7 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAnchorAttributes, HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
 export type DropdownItemVariant = 'default' | 'danger';
-export type DropdownItemRole = 'menuitem' | 'menuitemradio';
+export type DropdownItemRole = 'menuitem' | 'menuitemcheckbox' | 'menuitemradio';
 
 // The shared base carries the common HTML attribute surface — crucially the
 // event handlers (onclick/onkeydown/onfocus/…) — typed against the generic
@@ -13,9 +13,9 @@ export type DropdownItemRole = 'menuitem' | 'menuitemradio';
 type DropdownItemBase = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Visual style of the item. Use `danger` to signal a destructive action. Default `default`. */
   variant?: DropdownItemVariant;
-  /** ARIA role for the row. Use `menuitemradio` for mutually exclusive menu selections. */
+  /** ARIA role for the row. Use `menuitemcheckbox` or `menuitemradio` for selectable menu items. */
   itemRole?: DropdownItemRole;
-  /** Checked state for `itemRole="menuitemradio"`. Omitted for normal menu items. */
+  /** Checked state for checkbox and radio menu items. Omitted for normal menu items. */
   checked?: boolean;
   /** When true, adds leading padding to align the item with items that have a leading icon or indicator. Default `false`. */
   inset?: boolean;

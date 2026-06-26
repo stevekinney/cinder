@@ -40,6 +40,7 @@ mock.module('@floating-ui/dom', () => ({
 
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: HoverCard } = await import('./hover-card.svelte');
+const { _resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
 
 const triggerSnippet = createRawSnippet(() => ({
   render: () => `<button type="button">Inspect</button>`,
@@ -75,6 +76,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  _resetEscapeStack();
 });
 
 describe('HoverCard', () => {
@@ -189,6 +191,42 @@ describe('HoverCard', () => {
     await fireEvent.keyDown(document, { key: 'Escape' });
 
     await waitFor(() => expect(queryHoverCard()).toBeNull());
+  });
+
+  test('Escape uses the shared LIFO stack before an enclosing overlay handler', async () => {
+    const parentEscape = mock(() => {});
+    const releaseParentEscape = pushEscapeHandler(parentEscape);
+    try {
+      render(HoverCard, {
+        props: {
+          open: true,
+          trigger: triggerSnippet,
+          children: textSnippet('Preview'),
+        },
+      });
+
+      await screen.findByRole('tooltip');
+      const firstEscape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(firstEscape);
+      await waitFor(() => expect(queryHoverCard()).toBeNull());
+
+      expect(firstEscape.defaultPrevented).toBe(true);
+      expect(parentEscape).not.toHaveBeenCalled();
+
+      const secondEscape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(secondEscape);
+      expect(parentEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseParentEscape();
+    }
   });
 
   test('hover open waits for the configured delay', async () => {

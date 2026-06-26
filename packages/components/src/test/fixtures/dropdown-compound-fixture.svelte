@@ -22,6 +22,9 @@
       <DropdownGroup labelledBy="actions-menu-sharing-label">
         <DropdownLabel id="actions-menu-sharing-label">Sharing</DropdownLabel>
         <DropdownItem onclick={() => (selected = 'share')}>Invite people</DropdownItem>
+        <DropdownItem itemRole="menuitemcheckbox" checked onclick={() => (selected = 'keep')}>
+          Keep offline
+        </DropdownItem>
         <DropdownItem variant="danger" onclick={() => (selected = 'archive')}>Archive</DropdownItem>
       </DropdownGroup>
     </DropdownMenu>
