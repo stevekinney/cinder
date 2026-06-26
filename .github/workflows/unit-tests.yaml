@@ -23,6 +23,7 @@ on:
     paths:
       - 'packages/components/**'
       - 'packages/*/package.json'
+      - 'packages/*/scripts/**'
       - 'packages/*/tsconfig*.json'
       - 'packages/commentary/src/**'
       - 'packages/diff/src/**'
@@ -48,6 +49,7 @@ on:
     paths:
       - 'packages/components/**'
       - 'packages/*/package.json'
+      - 'packages/*/scripts/**'
       - 'packages/*/tsconfig*.json'
       - 'packages/commentary/src/**'
       - 'packages/diff/src/**'
