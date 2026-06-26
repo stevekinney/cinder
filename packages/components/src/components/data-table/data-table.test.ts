@@ -301,7 +301,7 @@ describe('DataTable — row selection', () => {
     expect(selectedRowIds).toEqual(['grace']);
   });
 
-  test('selected rows expose aria-selected from controlled selectedRowIds', () => {
+  test('selected native rows do not emit invalid aria-selected attributes', () => {
     const { container } = render(DataTable, {
       columns,
       rows: rowsWithIds,
@@ -309,8 +309,8 @@ describe('DataTable — row selection', () => {
       selectedRowIds: ['grace'],
     });
 
-    expect(bodyDataRows(container)[0]?.getAttribute('aria-selected')).toBe('false');
-    expect(bodyDataRows(container)[1]?.getAttribute('aria-selected')).toBe('true');
+    expect(bodyDataRows(container)[0]?.hasAttribute('aria-selected')).toBe(false);
+    expect(bodyDataRows(container)[1]?.hasAttribute('aria-selected')).toBe(false);
   });
 
   test('select-all toggles every enabled row and reflects an indeterminate state', async () => {
@@ -385,6 +385,41 @@ describe('DataTable — row selection', () => {
     const selectAll = container.querySelector<HTMLInputElement>('thead input[type="checkbox"]');
     await fireEvent.click(selectAll!);
     expect(selectedRowIds).toEqual(['ada', 'alan']);
+  });
+
+  test('select-all preserves disabled rows that were already selected', async () => {
+    let selectedRowIds: string[] = ['grace'];
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      isRowSelectionDisabled: (row: DataTableRow) => row['id'] === 'grace',
+      get selectedRowIds() {
+        return selectedRowIds;
+      },
+      set selectedRowIds(next: string[] | Set<string>) {
+        selectedRowIds = Array.from(next);
+      },
+    });
+
+    const selectAll = container.querySelector<HTMLInputElement>('thead input[type="checkbox"]');
+    await fireEvent.click(selectAll!);
+    expect(selectedRowIds).toEqual(['grace', 'ada', 'alan']);
+
+    await fireEvent.click(selectAll!);
+    expect(selectedRowIds).toEqual(['grace']);
+  });
+
+  test('row selection labels tolerate undefined custom labels', () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      rowSelectionLabel: (() => undefined) as never,
+    });
+
+    const firstCheckbox = container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]');
+    expect(firstCheckbox?.getAttribute('aria-label')).toBe('Select Ada Lovelace');
   });
 
   test('virtualized focused rows toggle selection with Space', async () => {

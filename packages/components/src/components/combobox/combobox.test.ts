@@ -202,7 +202,40 @@ describe('Combobox structure', () => {
     expect(hidden).not.toBeNull();
     expect(hidden?.name).toBe('fruit');
     expect(hidden?.value).toBe('banana');
-    expect(hidden?.required).toBe(true);
+    expect(hidden?.required).toBe(false);
+    expect(container.querySelector<HTMLInputElement>('#fruit')?.required).toBe(true);
+  });
+
+  test('form reset restores the initial submitted value and visible label', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container } = render(Combobox, {
+      target: form,
+      props: {
+        id: 'fruit',
+        name: 'fruit',
+        value: 'banana',
+        options: fruits,
+      },
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(input?.value).toBe('Banana');
+    expect(hidden?.value).toBe('banana');
+
+    await fireEvent.focus(input!);
+    await fireEvent.input(input!, { target: { value: 'ap' } });
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    expect(input?.value).toBe('Apple');
+    expect(hidden?.value).toBe('apple');
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    expect(input?.value).toBe('Banana');
+    expect(hidden?.value).toBe('banana');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
 
   test('disabled hidden input is omitted from native FormData', () => {

@@ -152,7 +152,7 @@
   }
 
   function readableRowLabel(row: Row, index: number): string {
-    const customLabel = rowSelectionLabel?.(row, index).trim();
+    const customLabel = rowSelectionLabel?.(row, index)?.trim();
     if (customLabel) return customLabel;
     const rowHeaderValue = rowHeaderKey ? row[rowHeaderKey] : undefined;
     if (typeof rowHeaderValue === 'string' || typeof rowHeaderValue === 'number') {
@@ -183,7 +183,12 @@
 
   function setAllRowsSelected(nextSelected: boolean): void {
     if (selectable !== 'multiple') return;
-    commitSelectedRowIds(nextSelected ? new Set(selectableRowIds) : new Set());
+    const nextSelectedRowIds = new Set(selectedRowIdSet);
+    for (const rowId of selectableRowIds) {
+      if (nextSelected) nextSelectedRowIds.add(rowId);
+      else nextSelectedRowIds.delete(rowId);
+    }
+    commitSelectedRowIds(nextSelectedRowIds);
   }
 
   $effect(() => {
@@ -461,9 +466,6 @@
                 onkeydown: (event: KeyboardEvent) => handleRowKeydown(event, virtualRow.index),
               }
             : {}}
-          aria-selected={selectionEnabled
-            ? selectedRowIdSet.has(resolveRowId(virtualRow.row, virtualRow.index))
-            : undefined}
         >
           {#if selectionEnabled}
             {@const rowSelectionDisabled =

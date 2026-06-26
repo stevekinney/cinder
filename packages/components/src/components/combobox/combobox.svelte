@@ -93,8 +93,11 @@
   let open = $state(false);
   let activeIndex = $state(-1);
   let inputElement = $state<HTMLInputElement | null>(null);
+  let hiddenInputElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
   let committedLabel = $state('');
+  const initialValue = untrack(() => value);
+  const initialInputValue = untrack(() => inputValue);
 
   // Reset active index whenever the filtered set changes so we don't point
   // at a stale option.
@@ -204,6 +207,26 @@
     open = false;
   }
 
+  function resetToInitialValue(): void {
+    value = initialValue;
+    const matched = options.find((option) => option.value === initialValue);
+    const nextInputValue = matched?.label ?? initialInputValue;
+    inputValue = nextInputValue;
+    committedLabel = matched?.label ?? '';
+    open = false;
+    activeIndex = -1;
+    if (inputElement) inputElement.value = nextInputValue;
+    if (hiddenInputElement) hiddenInputElement.value = initialValue;
+  }
+
+  $effect(() => {
+    const input = hiddenInputElement;
+    if (input === null) return;
+    const form = input.form;
+    form?.addEventListener('reset', resetToInitialValue);
+    return () => form?.removeEventListener('reset', resetToInitialValue);
+  });
+
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -263,6 +286,7 @@
       autocorrect="off"
       spellcheck="false"
       disabled={resolvedDisabled}
+      required={resolvedRequired}
       {placeholder}
       value={inputValue}
       aria-autocomplete="list"
@@ -280,7 +304,13 @@
   </div>
 
   {#if name}
-    <input type="hidden" {name} {value} required={resolvedRequired} disabled={resolvedDisabled} />
+    <input
+      bind:this={hiddenInputElement}
+      type="hidden"
+      {name}
+      {value}
+      disabled={resolvedDisabled}
+    />
   {/if}
 
   {#if open && filteredOptions.length > 0}
