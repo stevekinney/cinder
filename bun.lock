@@ -43,7 +43,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "dependencies": {
         "@floating-ui/dom": "1.7.6",
         "@lasercat/homogenaize": "^1.2.41",
@@ -78,6 +78,7 @@
         "unist-util-visit": "^5.0.0",
       },
       "devDependencies": {
+        "@changesets/parse": "0.4.3",
         "@cinder/commentary": "workspace:*",
         "@cinder/diff": "workspace:*",
         "@cinder/editor": "workspace:*",

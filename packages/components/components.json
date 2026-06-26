@@ -1473,7 +1473,7 @@
           "reason": "You need custom cell rendering, interactive cells, nested components, or column spanning — use the compositional Table family directly."
         },
         {
-          "reason": "You need row selection — DataTable does not expose a selection prop; use Table with selectable instead."
+          "reason": "You need fully custom cell or row composition — use Table directly."
         }
       ],
       "related": [

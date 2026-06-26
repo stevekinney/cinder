@@ -11,6 +11,7 @@
   export type FixtureProps = {
     id: string;
     label: string;
+    name?: string;
     options: readonly FixtureOption[];
     selectionMode?: 'single' | 'multiple';
     value?: string | SvelteSet<string> | undefined;
@@ -39,6 +40,7 @@
   let {
     id,
     label,
+    name,
     options,
     selectionMode = 'single',
     value = $bindable(),
@@ -86,6 +88,7 @@
   <SegmentedControl
     {id}
     {label}
+    {name}
     selectionMode="multiple"
     bind:value={value as SvelteSet<string> | undefined}
     variant={variant === 'tablist' ? undefined : variant}
@@ -106,6 +109,7 @@
   <SegmentedControl
     {id}
     {label}
+    {name}
     selectionMode="single"
     bind:value={value as string | undefined}
     {variant}

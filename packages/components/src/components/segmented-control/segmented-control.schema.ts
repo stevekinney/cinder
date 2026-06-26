@@ -12,6 +12,11 @@ const schema = {
       type: 'string',
       description: 'Accessible label for the group.',
     },
+    name: {
+      type: 'string',
+      description:
+        'Native form field name. Renders hidden input(s) carrying the selected value(s).',
+    },
     hideLabel: {
       type: 'boolean',
       description: 'Visually hide the label while keeping it available to assistive technology.',

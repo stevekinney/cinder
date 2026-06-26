@@ -9,15 +9,21 @@
    * @useWhen Rendering a structured dataset where columns and rows are known at runtime (e.g. API responses, config-driven dashboards).
    * @useWhen You want correct scope=col / scope=row semantics and aria-sort wiring without writing Table.Header / Table.Body manually.
    * @avoidWhen You need custom cell rendering, interactive cells, nested components, or column spanning — use the compositional Table family directly.
-   * @avoidWhen You need row selection — DataTable does not expose a selection prop; use Table with selectable instead.
+   * @avoidWhen You need fully custom cell or row composition — use Table directly.
    * @related table, table-header, table-body, table-row, table-cell, table-header-cell
    */
-  export type { DataTableColumn, DataTableProps, DataTableRow } from './data-table.types.ts';
+  export type {
+    DataTableColumn,
+    DataTableProps,
+    DataTableRow,
+    DataTableSelectionMode,
+  } from './data-table.types.ts';
 </script>
 
 <script lang="ts" generics="Row extends DataTableRow">
   import { tick } from 'svelte';
 
+  import Checkbox from '../checkbox/checkbox.svelte';
   import TableBody from '../table-body/table-body.svelte';
   import TableCell from '../table-cell/table-cell.svelte';
   import TableHeaderCell from '../table-header-cell/table-header-cell.svelte';
@@ -40,6 +46,12 @@
     rows,
     caption,
     sort = $bindable(),
+    selectable = 'none',
+    selectedRowIds = $bindable<string[] | Set<string>>([]),
+    getRowId,
+    isRowSelectionDisabled,
+    selectAllLabel = 'Select all rows',
+    rowSelectionLabel,
     stickyHeader = false,
     density = 'comfortable',
     scrollable = false,
@@ -70,6 +82,25 @@
    */
   const rowHeaderKey = $derived(
     (columns.find((column) => column.rowHeader === true) ?? columns[0])?.key,
+  );
+  const selectionEnabled = $derived(selectable !== 'none');
+  const selectedRowIdSet = $derived(new Set(selectedRowIds));
+  const selectableRowIds = $derived(
+    rows
+      .map((row, index) => ({
+        id: resolveRowId(row, index),
+        disabled: isRowSelectionDisabled?.(row, index) ?? false,
+      }))
+      .filter((row) => !row.disabled)
+      .map((row) => row.id),
+  );
+  const allRowsSelected = $derived(
+    selectable === 'multiple' &&
+      selectableRowIds.length > 0 &&
+      selectableRowIds.every((id) => selectedRowIdSet.has(id)),
+  );
+  const someRowsSelected = $derived(
+    selectable === 'multiple' && selectableRowIds.some((id) => selectedRowIdSet.has(id)),
   );
   const shouldVirtualizeRows = $derived(virtualized);
   const resolvedRowHeight = $derived(resolveVirtualItemHeight(rowHeight, 44));
@@ -111,6 +142,48 @@
     if (align === 'end') return 'right';
     if (align === 'center') return 'center';
     return undefined;
+  }
+
+  function resolveRowId(row: Row, index: number): string {
+    if (getRowId) return getRowId(row, index);
+    const candidate = row['id'];
+    if (typeof candidate === 'string' || typeof candidate === 'number') return String(candidate);
+    return String(index);
+  }
+
+  function readableRowLabel(row: Row, index: number): string {
+    const customLabel = rowSelectionLabel?.(row, index).trim();
+    if (customLabel) return customLabel;
+    const rowHeaderValue = rowHeaderKey ? row[rowHeaderKey] : undefined;
+    if (typeof rowHeaderValue === 'string' || typeof rowHeaderValue === 'number') {
+      return `Select ${rowHeaderValue}`;
+    }
+    return `Select row ${index + 1}`;
+  }
+
+  function commitSelectedRowIds(nextSelectedRowIds: Set<string>): void {
+    selectedRowIds =
+      selectedRowIds instanceof Set ? new Set(nextSelectedRowIds) : Array.from(nextSelectedRowIds);
+  }
+
+  function setRowSelected(row: Row, index: number, nextSelected: boolean): void {
+    if (!selectionEnabled || isRowSelectionDisabled?.(row, index)) return;
+    const rowId = resolveRowId(row, index);
+    const nextSelectedRowIds = new Set(selectedRowIdSet);
+
+    if (selectable === 'single') {
+      commitSelectedRowIds(nextSelected ? new Set([rowId]) : new Set());
+      return;
+    }
+
+    if (nextSelected) nextSelectedRowIds.add(rowId);
+    else nextSelectedRowIds.delete(rowId);
+    commitSelectedRowIds(nextSelectedRowIds);
+  }
+
+  function setAllRowsSelected(nextSelected: boolean): void {
+    if (selectable !== 'multiple') return;
+    commitSelectedRowIds(nextSelected ? new Set(selectableRowIds) : new Set());
   }
 
   $effect(() => {
@@ -294,6 +367,14 @@
   function handleRowKeydown(event: KeyboardEvent, index: number): void {
     if (!shouldVirtualizeRows) return;
 
+    if (event.key === ' ' && selectionEnabled) {
+      const row = rows[index];
+      if (!row || isRowSelectionDisabled?.(row, index)) return;
+      event.preventDefault();
+      setRowSelected(row, index, !selectedRowIdSet.has(resolveRowId(row, index)));
+      return;
+    }
+
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       focusRow(index + 1);
@@ -326,6 +407,22 @@
   >
     <TableHeader>
       <TableRow>
+        {#if selectionEnabled}
+          <th scope="col" class="cinder-table__header-cell cinder-table__header-cell--selection">
+            {#if selectable === 'multiple'}
+              <Checkbox
+                checked={allRowsSelected}
+                indeterminate={someRowsSelected && !allRowsSelected}
+                aria-label={selectAllLabel}
+                class="cinder-table__selection-checkbox"
+                onchange={(event) => {
+                  const input = event.currentTarget as HTMLInputElement;
+                  setAllRowsSelected(input.checked);
+                }}
+              />
+            {/if}
+          </th>
+        {/if}
         {#each columns as column (column.key)}
           <TableHeaderCell
             {...column.sortable ? { column: column.key } : {}}
@@ -347,7 +444,7 @@
         <tr class="cinder-data-table__virtual-spacer" aria-hidden="true">
           <td
             class="cinder-data-table__virtual-spacer-cell"
-            colspan={columns.length}
+            colspan={columns.length + (selectionEnabled ? 1 : 0)}
             style:height={`${virtualWindow.leadingSize}px`}
           ></td>
         </tr>
@@ -364,7 +461,30 @@
                 onkeydown: (event: KeyboardEvent) => handleRowKeydown(event, virtualRow.index),
               }
             : {}}
+          aria-selected={selectionEnabled
+            ? selectedRowIdSet.has(resolveRowId(virtualRow.row, virtualRow.index))
+            : undefined}
         >
+          {#if selectionEnabled}
+            {@const rowSelectionDisabled =
+              isRowSelectionDisabled?.(virtualRow.row, virtualRow.index) ?? false}
+            {@const rowId = resolveRowId(virtualRow.row, virtualRow.index)}
+            <td
+              class="cinder-table__cell cinder-table__cell--selection"
+              data-cinder-selection-disabled={rowSelectionDisabled || undefined}
+            >
+              <Checkbox
+                checked={selectedRowIdSet.has(rowId)}
+                disabled={rowSelectionDisabled}
+                aria-label={readableRowLabel(virtualRow.row, virtualRow.index)}
+                class="cinder-table__selection-checkbox"
+                onchange={(event) => {
+                  const input = event.currentTarget as HTMLInputElement;
+                  setRowSelected(virtualRow.row, virtualRow.index, input.checked);
+                }}
+              />
+            </td>
+          {/if}
           {#each columns as column (column.key)}
             <TableCell
               as={column.key === rowHeaderKey ? 'th' : 'td'}
@@ -379,7 +499,7 @@
         <tr class="cinder-data-table__virtual-spacer" aria-hidden="true">
           <td
             class="cinder-data-table__virtual-spacer-cell"
-            colspan={columns.length}
+            colspan={columns.length + (selectionEnabled ? 1 : 0)}
             style:height={`${virtualWindow.trailingSize}px`}
           ></td>
         </tr>
@@ -398,6 +518,7 @@
     className,
   )}
   data-cinder-virtualized={shouldVirtualizeRows ? 'true' : undefined}
+  data-cinder-selectable={selectionEnabled || undefined}
   style:--cinder-data-table-height={shouldVirtualizeRows ? height : undefined}
   style:--_cinder-data-table-row-height={shouldVirtualizeRows
     ? `${resolvedRowHeight}px`

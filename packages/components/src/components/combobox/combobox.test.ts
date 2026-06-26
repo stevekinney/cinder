@@ -189,6 +189,36 @@ describe('Combobox structure', () => {
     expect(container.querySelector(`#fruit`)?.getAttribute('aria-expanded')).toBe('false');
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
+
+  test('renders a hidden input for native form submission when name is provided', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      value: 'banana',
+      options: fruits,
+      required: true,
+    });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden).not.toBeNull();
+    expect(hidden?.name).toBe('fruit');
+    expect(hidden?.value).toBe('banana');
+    expect(hidden?.required).toBe(true);
+  });
+
+  test('disabled hidden input is omitted from native FormData', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      value: 'banana',
+      options: fruits,
+      disabled: true,
+    });
+    const form = document.createElement('form');
+    const root = container.querySelector('.cinder-combobox');
+    if (!root) throw new Error('combobox root not found');
+    form.append(root);
+    expect(new FormData(form).has('fruit')).toBe(false);
+  });
 });
 
 describe('Combobox filtering', () => {

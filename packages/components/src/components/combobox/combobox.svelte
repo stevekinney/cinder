@@ -28,6 +28,7 @@
   let {
     id,
     value = $bindable(''),
+    name,
     inputValue = $bindable(''),
     options,
     label,
@@ -277,6 +278,10 @@
       onkeydown={handleKeydown}
     />
   </div>
+
+  {#if name}
+    <input type="hidden" {name} {value} required={resolvedRequired} disabled={resolvedDisabled} />
+  {/if}
 
   {#if open && filteredOptions.length > 0}
     <Popover

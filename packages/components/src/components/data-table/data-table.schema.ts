@@ -8,6 +8,15 @@ const schema = {
       type: 'string',
       description: 'Visual caption rendered as a `<caption>` element above the table.',
     },
+    selectable: {
+      enum: ['none', 'single', 'multiple'],
+      description:
+        'Enables row selection. `"none"` renders no selection controls, `"single"`\nallows one selected row id, and `"multiple"` allows any number.\nDefaults to `"none"`.',
+    },
+    selectAllLabel: {
+      type: 'string',
+      description: 'Accessible label for the multiple-selection header checkbox.',
+    },
     stickyHeader: {
       type: 'boolean',
       description: 'When true, the header sticks to the top of the scrolling container.',
@@ -63,10 +72,32 @@ const schema = {
         description: 'Column descriptors defining the headers and cell rendering for each column.',
       },
       {
+        name: 'getRowId',
+        reason: 'function-or-snippet',
+        description:
+          "Resolves the stable row id used for selection. Defaults to `row.id` when it\nis a string or number, otherwise the row's current positional index.",
+      },
+      {
+        name: 'isRowSelectionDisabled',
+        reason: 'function-or-snippet',
+        description: 'Returns true when a row should render a disabled selection checkbox.',
+      },
+      {
         name: 'rows',
         reason: 'generic-type-parameter',
         required: true,
         description: 'Row data. Each entry is read via `column.key` for each column.',
+      },
+      {
+        name: 'rowSelectionLabel',
+        reason: 'function-or-snippet',
+        description: 'Accessible label for an individual row selection checkbox.',
+      },
+      {
+        name: 'selectedRowIds',
+        reason: 'unknown-shape',
+        description:
+          'Bound selected row ids. Arrays stay arrays on update; Sets stay Sets.\nWhen omitted, DataTable starts with an empty array.',
       },
       {
         name: 'sort',

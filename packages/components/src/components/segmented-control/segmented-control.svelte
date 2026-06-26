@@ -31,6 +31,7 @@
     id,
     value = $bindable<T | SvelteSet<T> | undefined>(),
     label,
+    name,
     hideLabel = false,
     disabled = false,
     size = 'md',
@@ -88,6 +89,13 @@
   // toolbars line up with sibling toolbar controls. `data-cinder-size` reflects
   // this resolved size; raw requested `size` is not surfaced through the DOM.
   const effectiveSize = $derived(density === 'toolbar' ? 'sm' : size);
+  const selectedValues = $derived(
+    selectionMode === 'multiple' && value
+      ? Array.from(value as SvelteSet<T>)
+      : typeof value === 'string'
+        ? [value]
+        : [],
+  );
 </script>
 
 <div class="cinder-segmented-control-container">
@@ -116,4 +124,9 @@
   >
     {@render children()}
   </div>
+  {#if name}
+    {#each selectedValues as selectedValue (selectedValue)}
+      <input type="hidden" {name} value={selectedValue} {disabled} />
+    {/each}
+  {/if}
 </div>

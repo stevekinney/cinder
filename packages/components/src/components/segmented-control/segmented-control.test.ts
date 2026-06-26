@@ -199,6 +199,22 @@ describe('SegmentedControl — single mode', () => {
     }
   });
 
+  test('renders a single hidden input for native form submission when name is provided', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'document-view',
+        name: 'view',
+        value: 'source',
+        label: 'Document view',
+        options,
+      },
+    });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden).not.toBeNull();
+    expect(hidden?.name).toBe('view');
+    expect(hidden?.value).toBe('source');
+  });
+
   test('all options disabled: no tabindex="0"', () => {
     render(Fixture, {
       props: { id: 'document-view', label: 'Document view', options: allDisabledOptions },
@@ -305,6 +321,45 @@ describe('SegmentedControl — multiple mode', () => {
     const italic = buttons.find((button) => button.textContent?.trim() === 'Italic');
     expect(bold?.getAttribute('aria-pressed')).toBe('true');
     expect(italic?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('renders one hidden input per selected value for native form submission', () => {
+    const selected = new SvelteSet(['bold', 'italic']);
+    const { container } = render(Fixture, {
+      props: {
+        id: 'text-format',
+        name: 'format',
+        label: 'Text formatting',
+        options: multiOptions,
+        selectionMode: 'multiple',
+        value: selected,
+      },
+    });
+    const hiddenInputs = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"]'),
+    );
+    expect(hiddenInputs.map((input) => [input.name, input.value, input.disabled])).toEqual([
+      ['format', 'bold', false],
+      ['format', 'italic', false],
+    ]);
+  });
+
+  test('disabled hidden inputs are disabled for native FormData omission', () => {
+    const selected = new SvelteSet(['bold']);
+    const { container } = render(Fixture, {
+      props: {
+        id: 'text-format',
+        name: 'format',
+        label: 'Text formatting',
+        options: multiOptions,
+        selectionMode: 'multiple',
+        value: selected,
+        disabled: true,
+      },
+    });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden?.name).toBe('format');
+    expect(hidden?.disabled).toBe(true);
   });
 
   test('clicking an unpressed option adds it to the SvelteSet (reactivity check)', async () => {
