@@ -91,6 +91,10 @@
   });
 
   $effect(() => {
+    if (!context.isOpen) typeaheadBuffer.reset();
+  });
+
+  $effect(() => {
     if (direction && direction !== 'auto') return;
     return observeTextDirection(context.anchorElement, () => {
       directionRevision += 1;

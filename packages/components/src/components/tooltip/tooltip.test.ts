@@ -443,7 +443,11 @@ describe('Tooltip', () => {
     });
   });
 
-  test('pending tooltip does not take over the shared Escape stack', async () => {
+  test('pending tooltip does not take over the shared Escape stack or open after Escape', async () => {
+    const trackedSetTimeout = globalThis.setTimeout;
+    const trackedClearTimeout = globalThis.clearTimeout;
+    const trackedSetInterval = globalThis.setInterval;
+    const trackedClearInterval = globalThis.clearInterval;
     const parentEscape = mock((event: KeyboardEvent) => {
       event.preventDefault();
     });
@@ -457,11 +461,20 @@ describe('Tooltip', () => {
     const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
 
     try {
+      jest.useFakeTimers();
       await fireEvent.mouseEnter(wrapper);
       await fireEvent.keyDown(document, { key: 'Escape' });
+      jest.advanceTimersByTime(100);
+      await tick();
 
       expect(parentEscape).toHaveBeenCalledTimes(1);
+      expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     } finally {
+      jest.useRealTimers();
+      globalThis.setTimeout = trackedSetTimeout;
+      globalThis.clearTimeout = trackedClearTimeout;
+      globalThis.setInterval = trackedSetInterval;
+      globalThis.clearInterval = trackedClearInterval;
       unmount();
       releaseParentEscape();
     }

@@ -52,21 +52,47 @@
 
   let visible = $state(false);
   let showTimer: ReturnType<typeof setTimeout> | undefined;
+  let releasePendingEscapeListener: (() => void) | undefined;
   let wrapperElement: HTMLSpanElement | undefined = $state();
   let tooltipElement: HTMLSpanElement | undefined = $state();
   let anchorElement = $state<HTMLElement | null>(null);
 
-  function show() {
+  function releasePendingEscape() {
+    releasePendingEscapeListener?.();
+    releasePendingEscapeListener = undefined;
+  }
+
+  function clearPendingShow() {
     clearTimeout(showTimer);
+    showTimer = undefined;
+    releasePendingEscape();
+  }
+
+  function handlePendingEscapeKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Escape') return;
+    clearPendingShow();
+  }
+
+  function registerPendingEscape() {
+    releasePendingEscape();
+    document.addEventListener('keydown', handlePendingEscapeKeydown, { capture: true });
+    releasePendingEscapeListener = () => {
+      document.removeEventListener('keydown', handlePendingEscapeKeydown, { capture: true });
+    };
+  }
+
+  function show() {
+    clearPendingShow();
+    registerPendingEscape();
     showTimer = setTimeout(() => {
       showTimer = undefined;
+      releasePendingEscape();
       visible = true;
     }, 100);
   }
 
   function hide() {
-    clearTimeout(showTimer);
-    showTimer = undefined;
+    clearPendingShow();
     visible = false;
   }
 
@@ -160,7 +186,7 @@
 
   $effect(() => {
     return () => {
-      clearTimeout(showTimer);
+      clearPendingShow();
     };
   });
 

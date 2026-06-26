@@ -74,6 +74,25 @@ describe('DropdownMenu', () => {
     expect(document.activeElement?.textContent).toContain('Keep offline');
   });
 
+  test('typeahead buffer resets when the menu closes', async () => {
+    const { container } = renderFixture();
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+    await fireEvent.click(trigger);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'i' });
+    expect(document.activeElement?.textContent).toContain('Invite people');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+
+    await fireEvent.click(trigger);
+    await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'a' });
+    expect(document.activeElement?.textContent).toContain('Archive');
+  });
+
   test('Space keeps native menu item activation available', async () => {
     const { container } = renderFixture();
     await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
