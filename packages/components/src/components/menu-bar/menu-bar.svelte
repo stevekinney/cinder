@@ -220,6 +220,7 @@
   function openMenu(index: number, focus: 'first' | 'last' = 'first'): void {
     const menu = menus[index];
     if (!menu || menu.disabled) return;
+    typeaheadBuffer.reset();
     activeMenuIndex = index;
     openMenuIndex = index;
     openSubmenuKey = null;
@@ -233,6 +234,7 @@
 
   function closeAll(): void {
     clearSubmenuCloseTimer();
+    typeaheadBuffer.reset();
     openMenuIndex = null;
     openSubmenuKey = null;
     initialFocus = undefined;

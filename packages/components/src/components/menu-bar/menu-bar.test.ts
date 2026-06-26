@@ -456,6 +456,25 @@ describe('MenuBar', () => {
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Delete Project' }));
   });
 
+  test('typeahead buffer resets after closing and reopening a menu', async () => {
+    const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    await fireEvent.keyDown(getByRole('menuitem', { name: 'New' }), { key: 'd' });
+    expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Delete Project' }));
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    expect(file.getAttribute('aria-expanded')).toBe('false');
+
+    await fireEvent.click(file);
+    await tick();
+    await fireEvent.keyDown(getByRole('menuitem', { name: 'New' }), { key: 'o' });
+
+    expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Open Recent' }));
+  });
+
   test('submenu pointer leave keeps the submenu open while the pointer moves toward the panel', async () => {
     const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
     const file = getByRole('menuitem', { name: 'File' });
