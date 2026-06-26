@@ -134,7 +134,7 @@ The component marks the currently active step with `aria-current="step"`. `runni
 `RunStepStatus` is intentionally domain-agnostic. Map your domain state onto one of these:
 
 - `pending` — not yet started
-- `running` — currently executing (only one step should be running)
+- `running` — currently executing within its lane
 - `waiting_approval` — paused on required approval and expected to continue
 - `succeeded` — completed successfully
 - `failed` — completed with a terminal error

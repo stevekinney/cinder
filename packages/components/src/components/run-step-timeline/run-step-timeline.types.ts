@@ -9,7 +9,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * component does not encode product-specific status vocabulary.
  *
  * - `pending`   — not yet started; waiting in the queue.
- * - `running`   — currently executing; only one step should be running.
+ * - `running`   — currently executing within its lane.
  * - `succeeded` — completed successfully.
  * - `failed`    — completed with a terminal error.
  * - `cancelled` — was stopped before it could complete.
