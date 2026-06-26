@@ -13,6 +13,30 @@ type PackageManifest = {
   version: string;
 };
 
+type PublishAction = 'publish' | 'skip-existing-version';
+type PublishResult = {
+  exitCode: number | null;
+};
+type PublishReleaseDependencies = {
+  readManifest: () => Promise<PackageManifest>;
+  versionExists: (name: string, version: string) => Promise<boolean>;
+  artifactExists: (path: string) => boolean;
+  validateConsumerArtifact: () => Promise<void>;
+  spawnPublish: (publishArguments: string[]) => PublishResult;
+  writeOutput: (message: string) => void;
+};
+
+export function resolvePublishAction(input: {
+  dryRun: boolean;
+  versionExists: boolean;
+}): PublishAction {
+  return input.versionExists ? 'skip-existing-version' : 'publish';
+}
+
+export function existingVersionMessage(identity: PackageManifest): string {
+  return `publish-release — ${identity.name}@${identity.version} already exists on npm; nothing to publish.\n`;
+}
+
 async function packageVersionExists(name: string, version: string): Promise<boolean> {
   const result = await $`npm view ${`${name}@${version}`} version --json`.nothrow();
   return result.exitCode === 0 && result.stdout.toString().trim().length > 0;
@@ -21,6 +45,10 @@ async function packageVersionExists(name: string, version: string): Promise<bool
 function getPackFileName(identity: PackageManifest): string {
   const packageFileNamePrefix = identity.name.replace(/^@/, '').replaceAll('/', '-');
   return `${packageFileNamePrefix}-${identity.version}.tgz`;
+}
+
+function getPublishArguments(tarballPath: string, dryRun: boolean): string[] {
+  return dryRun ? ['publish', tarballPath, '--dry-run'] : ['publish', tarballPath];
 }
 
 async function validateConsumerArtifact(): Promise<void> {
@@ -40,52 +68,82 @@ async function validateConsumerArtifact(): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
-  const dryRun = process.argv.includes('--dry-run');
-  const skipValidation = process.argv.includes('--skip-validation');
-  const manifest = await readJsonFile<PackageManifest>(join(packageRoot, 'package.json'));
-  const tarballPath = join(packageRoot, getPackFileName(manifest));
+export async function runPublishRelease(input: {
+  dryRun: boolean;
+  skipValidation: boolean;
+  packageRootPath: string;
+  dependencies: PublishReleaseDependencies;
+}): Promise<void> {
+  const { dependencies, dryRun, packageRootPath, skipValidation } = input;
+  const manifest = await dependencies.readManifest();
+  const tarballPath = join(packageRootPath, getPackFileName(manifest));
 
-  if (!dryRun && (await packageVersionExists(manifest.name, manifest.version))) {
-    process.stdout.write(
-      `publish-release — ${manifest.name}@${manifest.version} already exists on npm; nothing to publish.\n`,
-    );
+  const publishAction = resolvePublishAction({
+    dryRun,
+    versionExists: await dependencies.versionExists(manifest.name, manifest.version),
+  });
+
+  if (publishAction === 'skip-existing-version') {
+    dependencies.writeOutput(existingVersionMessage(manifest));
     return;
   }
 
   if (skipValidation) {
-    process.stdout.write(
+    dependencies.writeOutput(
       'publish-release — using prior validate:consumer artifact from this job.\n',
     );
-    if (!existsSync(tarballPath)) {
-      process.stdout.write(
+    if (!dependencies.artifactExists(tarballPath)) {
+      dependencies.writeOutput(
         `publish-release — no validated artifact found at ${tarballPath}; running validate:consumer…\n`,
       );
-      await validateConsumerArtifact();
+      await dependencies.validateConsumerArtifact();
     }
   } else {
-    process.stdout.write('publish-release — validating consumer artifact before publish…\n');
-    await validateConsumerArtifact();
+    dependencies.writeOutput('publish-release — validating consumer artifact before publish…\n');
+    await dependencies.validateConsumerArtifact();
   }
 
-  if (!existsSync(tarballPath)) {
+  if (!dependencies.artifactExists(tarballPath)) {
     throw new Error(`validated package artifact not found at ${tarballPath}`);
   }
 
-  const publishArguments = dryRun
-    ? ['publish', tarballPath, '--dry-run']
-    : ['publish', tarballPath];
-  process.stdout.write(
+  const publishArguments = getPublishArguments(tarballPath, dryRun);
+  dependencies.writeOutput(
     `publish-release — npm ${publishArguments.join(' ')} (${manifest.name}@${manifest.version})\n`,
   );
-  const publishResult = Bun.spawnSync(['npm', ...publishArguments], {
-    cwd: packageRoot,
-    stdio: ['inherit', 'inherit', 'inherit'],
-    env: { ...Bun.env, NPM_CONFIG_PROVENANCE: Bun.env['NPM_CONFIG_PROVENANCE'] ?? 'true' },
-  });
+  const publishResult = dependencies.spawnPublish(publishArguments);
   if (publishResult.exitCode !== 0) {
     throw new Error(`npm publish exited ${publishResult.exitCode}`);
   }
+}
+
+async function main(): Promise<void> {
+  const dryRun = process.argv.includes('--dry-run');
+  const skipValidation = process.argv.includes('--skip-validation');
+
+  await runPublishRelease({
+    dryRun,
+    skipValidation,
+    packageRootPath: packageRoot,
+    dependencies: {
+      readManifest: () => readJsonFile<PackageManifest>(join(packageRoot, 'package.json')),
+      versionExists: packageVersionExists,
+      artifactExists: existsSync,
+      validateConsumerArtifact,
+      spawnPublish: (publishArguments) =>
+        Bun.spawnSync(['npm', ...publishArguments], {
+          cwd: packageRoot,
+          stdio: ['inherit', 'inherit', 'inherit'],
+          env: {
+            ...Bun.env,
+            NPM_CONFIG_PROVENANCE: Bun.env['NPM_CONFIG_PROVENANCE'] ?? 'true',
+          },
+        }),
+      writeOutput: (message) => {
+        process.stdout.write(message);
+      },
+    },
+  });
 }
 
 if (import.meta.main) {

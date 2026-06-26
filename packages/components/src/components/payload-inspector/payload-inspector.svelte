@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Composed inspector for structured payloads with summary, tree, and raw views, copy actions, and size/truncation status.
    * @tag json
    * @tag inspector
@@ -16,6 +16,8 @@
   export type {
     PayloadInspectorMeta,
     PayloadInspectorProps,
+    PayloadInspectorSchemaProps,
+    PayloadInspectorSchemaValue,
     PayloadInspectorView,
   } from './payload-inspector.types.ts';
 </script>
@@ -49,11 +51,17 @@
   }: PayloadInspectorProps = $props();
 
   // --------------------------------------------------------------------------
-  // Parsing: when value is a string, attempt to parse it as JSON (or with the
-  // custom parser). On failure, mark as invalid so we can show an error state.
+  // Parsing: preserve plain string values, while still accepting serialized JSON
+  // strings for object, array, and JSON primitive payloads.
   // --------------------------------------------------------------------------
 
   type ParseResult = { ok: true; parsed: unknown } | { ok: false; error: string };
+
+  function shouldParseString(raw: string): boolean {
+    const trimmed = raw.trim();
+    if (/^[{\["]/.test(trimmed)) return true;
+    return /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(trimmed);
+  }
 
   const parseResult = $derived.by((): ParseResult => {
     if (typeof value !== 'string') {
@@ -62,6 +70,9 @@
     // Empty string is treated as null/absent rather than an error.
     if (value.trim() === '') {
       return { ok: true, parsed: null };
+    }
+    if (parse === undefined && !shouldParseString(value)) {
+      return { ok: true, parsed: value };
     }
     try {
       const parser = parse ?? JSON.parse;

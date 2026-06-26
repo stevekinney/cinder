@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable tool name requesting approval."
+        },
+        "risk": {
+          "enum": ["low", "medium", "high"],
+          "description": "Risk level assigned by the policy evaluator."
+        }
+      },
+      "additionalProperties": false,
+      "required": ["name", "risk"],
+      "description": "Tool requesting approval."
+    },
+    "sandbox": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Sandbox provider, such as Codex or a remote execution backend."
+        },
+        "name": {
+          "type": "string",
+          "description": "Sandbox profile or policy name."
+        },
+        "workingDir": {
+          "type": "string",
+          "description": "Working directory for the pending operation."
+        }
+      },
+      "additionalProperties": false,
+      "required": ["name", "provider", "workingDir"],
+      "description": "Optional sandbox context in which the operation will run."
+    },
+    "operation": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "command",
+              "description": "Operation family being approved."
+            },
+            "command": {
+              "type": "string",
+              "description": "Shell command for command approvals."
+            },
+            "filesTouched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "File paths that the operation may read or write."
+            },
+            "argsPreview": {
+              "description": "JSON-like argument preview shown to the approver."
+            }
+          },
+          "additionalProperties": false,
+          "required": ["command", "kind"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "file-write",
+              "description": "Operation family being approved."
+            },
+            "filesTouched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "File paths that the operation may read or write. File-write approvals require at least one path.",
+              "minItems": 1
+            },
+            "argsPreview": {
+              "description": "JSON-like argument preview shown to the approver."
+            }
+          },
+          "additionalProperties": false,
+          "required": ["filesTouched", "kind"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "patch",
+              "description": "Operation family being approved."
+            },
+            "filesTouched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "File paths that the operation may read or write."
+            },
+            "argsPreview": {
+              "description": "JSON-like argument preview shown to the approver."
+            },
+            "diff": {
+              "type": "string",
+              "description": "Patch diff for patch approvals."
+            }
+          },
+          "additionalProperties": false,
+          "required": ["diff", "kind"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "other",
+              "description": "Operation family being approved."
+            },
+            "filesTouched": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "File paths that the operation may read or write."
+            },
+            "argsPreview": {
+              "description": "JSON-like argument preview shown to the approver."
+            }
+          },
+          "additionalProperties": false,
+          "required": ["kind"]
+        }
+      ],
+      "description": "Operation details shown to the approver."
+    },
+    "env": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Environment variable names only. Values are ignored if accidentally supplied as `NAME=value`."
+    },
+    "snapshotId": {
+      "type": "string",
+      "description": "Snapshot identifier for the pending approval context."
+    },
+    "policyVersion": {
+      "type": "string",
+      "description": "Policy version that produced the approval request."
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "description": "Idempotency key that makes repeated decisions durable."
+    },
+    "expiresAt": {
+      "type": "string",
+      "description": "Optional ISO timestamp after which a pending approval is treated as expired."
+    },
+    "state": {
+      "enum": ["pending", "approved", "approved_with_edits", "denied", "expired", "cancelled"],
+      "description": "Persisted approval state."
+    },
+    "editableArgs": {
+      "type": "boolean",
+      "description": "Whether approving with edited JSON arguments is available. Default `false`."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional CSS classes applied to the root element."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["idempotencyKey", "operation", "policyVersion", "state", "tool"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "onapprove",
+        "reason": "function-or-snippet",
+        "description": "Called when the approver accepts the operation as presented."
+      },
+      {
+        "name": "onapprovewithedits",
+        "reason": "function-or-snippet",
+        "description": "Called with parsed JSON arguments when the approver accepts edited arguments."
+      },
+      {
+        "name": "oncancel",
+        "reason": "function-or-snippet",
+        "description": "Called when the approver cancels the approval prompt."
+      },
+      {
+        "name": "ondeny",
+        "reason": "function-or-snippet",
+        "description": "Called when the approver denies the operation."
+      },
+      {
+        "name": "onremember",
+        "reason": "function-or-snippet",
+        "description": "Called when the approver asks the host application to remember the decision."
+      }
+    ]
+  }
+}

@@ -163,6 +163,23 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     expect(entries?.items?.properties?.['tone']?.default).toBe('info');
   });
 
+  test('deep nested object arrays include child object property schemas', () => {
+    const { properties, metadata } = generateSchema(
+      'deep-nested-object-array',
+      'deep-nested-object-array',
+    );
+    const entries = properties['entries'];
+    const children = entries?.items?.properties?.['children'];
+    const details = children?.items?.properties?.['details'];
+
+    expect(metadata?.unsupportedProps).toBeUndefined();
+    expect(details?.type).toBe('array');
+    expect(details?.items?.type).toBe('object');
+    expect(details?.items?.properties?.['id']?.description).toBe('Detail identifier.');
+    expect(details?.items?.properties?.['content']?.type).toBe('string');
+    expect(details?.items?.required).toEqual(['content', 'id']);
+  });
+
   test('schema object props preserve object property contracts', () => {
     const { properties, metadata } = generateSchema('schema-object-prop', 'schema-object-prop');
     const anchorPoint = properties['anchorPoint'];

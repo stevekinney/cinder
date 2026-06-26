@@ -1,7 +1,7 @@
 <script lang="ts" module>
-  export const title = 'Workflow run with retry and signal wait';
+  export const title = 'Temporal child workflow with approval wait';
   export const description =
-    'A workflow run with scheduled start, activity dispatch, retry, signal wait, and terminal completion — showing all major step states.';
+    'A Temporal-style workflow lane that moves from model planning to tool execution, waits on approval, then shows a retrying subagent lane.';
 </script>
 
 <script lang="ts">
@@ -10,43 +10,64 @@
 
   const steps: RunStep[] = [
     {
-      id: 'scheduled',
-      label: 'Schedule workflow',
+      id: 'model',
+      label: 'Model plans workflow',
       status: 'succeeded',
       startTime: '2026-06-01T09:00:00Z',
-      endTime: '2026-06-01T09:00:01Z',
-      duration: '1s',
+      endTime: '2026-06-01T09:00:08Z',
+      duration: '8s',
+      actionsCount: 3,
     },
     {
-      id: 'dispatch',
-      label: 'Dispatch activity',
+      id: 'tool',
+      label: 'Run repository tool',
       status: 'succeeded',
-      startTime: '2026-06-01T09:00:01Z',
-      endTime: '2026-06-01T09:01:15Z',
-      duration: '1m 14s',
+      startTime: '2026-06-01T09:00:09Z',
+      endTime: '2026-06-01T09:00:27Z',
+      duration: '18s',
+      link: {
+        href: '/runs/wf-83a1c/tools/rg',
+        label: 'Open tool trace',
+      },
     },
     {
-      id: 'retry-activity',
-      label: 'Retry failed activity',
-      status: 'succeeded',
-      startTime: '2026-06-01T09:01:30Z',
-      endTime: '2026-06-01T09:03:22Z',
-      duration: '1m 52s',
-      attemptCount: 3,
-      details: [
+      id: 'approval',
+      label: 'Await deployment approval',
+      status: 'waiting_approval',
+      startTime: '2026-06-01T09:00:28Z',
+      actionsCount: 1,
+    },
+    {
+      id: 'subagent',
+      label: 'Subagent lane',
+      status: 'running',
+      startTime: '2026-06-01T09:00:31Z',
+      children: [
         {
-          id: 'retry-error-log',
-          label: 'Error from attempt 2',
-          content:
-            'ActivityError: upstream dependency timed out after 30s\n  at activity/fetch.ts:42',
+          id: 'checkout',
+          label: 'Inspect generated diff',
+          status: 'succeeded',
+          startTime: '2026-06-01T09:00:31Z',
+          endTime: '2026-06-01T09:00:43Z',
+          duration: '12s',
+        },
+        {
+          id: 'retry',
+          label: 'Retry flaky verification',
+          status: 'retrying',
+          startTime: '2026-06-01T09:00:44Z',
+          attemptCount: 2,
+          progress: 60,
+          details: [
+            {
+              id: 'retry-log',
+              label: 'Retry output',
+              content:
+                'Attempt 1 failed while the browser harness was still starting.\nAttempt 2 is running with the same verification command.',
+            },
+          ],
         },
       ],
-    },
-    {
-      id: 'signal-wait',
-      label: 'Wait for approval signal',
-      status: 'running',
-      startTime: '2026-06-01T09:03:30Z',
     },
     {
       id: 'finalize',

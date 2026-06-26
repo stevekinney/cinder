@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
+import Ajv2020 from 'ajv/dist/2020';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type {
   InvocationRule,
@@ -13,6 +14,8 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: InvocationRuleBuilder } = await import('./invocation-rule-builder.svelte');
+const { default: invocationRuleBuilderSchema } =
+  await import('./invocation-rule-builder.schema.ts');
 
 const fieldOptions: InvocationRuleOption[] = [
   { value: 'path', label: 'Path' },
@@ -76,6 +79,64 @@ beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
 describe('InvocationRuleBuilder', () => {
+  describe('schema', () => {
+    test('models readonly rules and selector options as supported input', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(invocationRuleBuilderSchema);
+
+      expect(invocationRuleBuilderSchema.required).toEqual([
+        'actionOptions',
+        'fieldOptions',
+        'operatorOptions',
+        'readonly',
+        'rules',
+      ]);
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('rules');
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('fieldOptions');
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('operatorOptions');
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('actionOptions');
+      expect(
+        invocationRuleBuilderSchema.metadata?.unsupportedProps?.map((prop) => prop.name),
+      ).toEqual(['onchange']);
+      expect(invocationRuleBuilderSchema.metadata?.unsupportedProps?.[0]?.required).not.toBe(true);
+
+      expect(
+        validate({
+          rules: [makeRule()],
+          fieldOptions,
+          operatorOptions,
+          actionOptions,
+          readonly: true,
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+
+    test('rejects editable schema-driven configurations without onchange', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(invocationRuleBuilderSchema);
+
+      expect(
+        validate({
+          rules: [makeRule()],
+          fieldOptions,
+          operatorOptions,
+          actionOptions,
+        }),
+      ).toBe(false);
+
+      expect(
+        validate({
+          rules: [makeRule()],
+          fieldOptions,
+          operatorOptions,
+          actionOptions,
+          readonly: false,
+        }),
+      ).toBe(false);
+    });
+  });
+
   describe('structure', () => {
     test('renders root element with cinder-invocation-rule-builder class', () => {
       const { container } = renderBuilder();
@@ -116,6 +177,18 @@ describe('InvocationRuleBuilder', () => {
     test('does not render add-rule button in readonly mode', () => {
       const { container } = renderBuilder([makeRule()], { readonly: true });
       expect(container.querySelector('[data-irb-add-rule]')).toBeNull();
+    });
+
+    test('renders readonly summary when onchange is missing', () => {
+      const { container } = renderBuilder([makeRule()], { onchange: undefined });
+
+      expect(container.querySelector('[data-irb-add-rule]')).toBeNull();
+      expect(
+        container.querySelector('.cinder-invocation-rule-builder__rule-label-input'),
+      ).toBeNull();
+      expect(container.textContent).toContain('PR Review Rule');
+      expect(container.textContent).toContain('Path matches "src/**"');
+      expect(container.textContent).toContain('Security Review');
     });
 
     test('shows empty message when rules list is empty and readonly', () => {

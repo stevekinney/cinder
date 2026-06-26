@@ -304,6 +304,45 @@ describe('SecretValueField', () => {
       expect(valueEl?.hasAttribute('data-cinder-masked')).toBe(false);
     });
 
+    test('changing the secret value resets a user reveal', async () => {
+      const { container, rerender } = render(SecretValueField, {
+        value: 'first-secret',
+        allowReveal: true,
+      });
+      const toggle = container.querySelector(
+        '.cinder-secret-value-field__toggle',
+      ) as HTMLButtonElement;
+
+      await fireEvent.click(toggle);
+      expect(container.textContent).toContain('first-secret');
+
+      await rerender({ value: 'second-secret', allowReveal: true });
+      await waitFor(() => {
+        const valueEl = container.querySelector('.cinder-secret-value-field__value');
+        expect(valueEl?.hasAttribute('data-cinder-masked')).toBe(true);
+        expect(container.textContent).not.toContain('second-secret');
+      });
+    });
+
+    test('changing the secret value honors an explicit initiallyRevealed value', async () => {
+      const { container, rerender } = render(SecretValueField, {
+        value: 'first-secret',
+        allowReveal: true,
+        initiallyRevealed: true,
+      });
+
+      await rerender({
+        value: 'second-secret',
+        allowReveal: true,
+        initiallyRevealed: true,
+      });
+      await waitFor(() => {
+        const valueEl = container.querySelector('.cinder-secret-value-field__value');
+        expect(valueEl?.hasAttribute('data-cinder-masked')).toBe(false);
+        expect(container.textContent).toContain('second-secret');
+      });
+    });
+
     test('reveal toggle does not render when allowReveal is false', () => {
       const { container } = render(SecretValueField, { value: 'abc123' });
       const toggle = container.querySelector('.cinder-secret-value-field__toggle');

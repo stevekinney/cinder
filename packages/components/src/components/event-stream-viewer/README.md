@@ -4,7 +4,7 @@ Dense append-only viewer for timestamped operational events. Use it for workflow
 
 ## Overview
 
-EventStreamViewer renders a scrollable list of timestamped events, each with a severity tone, optional source label, a one-line summary, and optional expandable JSON details. It handles follow-latest scrolling (auto-scroll to bottom as events arrive), a paused state when the user scrolls away, filtering hooks, and copy actions. Empty, loading, disconnected, and truncated states are built in.
+EventStreamViewer renders a scrollable list of timestamped events, each with a severity tone, optional source label, a one-line summary, and optional expandable JSON details. It handles follow-latest scrolling (auto-scroll to bottom as events arrive), a paused state when the user scrolls away, filtering hooks, copy actions, reconnect boundaries, and sequence-gap markers. Empty, loading, disconnected, and truncated states are built in.
 
 ## Usage
 
@@ -84,11 +84,12 @@ The `followLatest` prop is bindable. Bind it to read whether the viewer is pause
 
 ## Event structure
 
-Each event in the `events` array follows the `StreamEvent` type:
+Each event in the `events` array can be a normal `StreamEvent` or an additive reconnect boundary:
 
 ```ts
 type StreamEvent = {
   id: string; // Stable unique identifier (required)
+  sequence?: number; // Optional integer sequence for gap detection
   datetime: string; // ISO 8601 datetime (required, used for machine-readable time)
   timestamp?: string; // Human-readable label e.g. "14:32:01" (falls back to datetime)
   severity?: 'debug' | 'info' | 'success' | 'warning' | 'error';
@@ -96,24 +97,43 @@ type StreamEvent = {
   summary: string; // One-line event description (required)
   details?: unknown; // Optional JSON payload rendered in a collapsible JsonViewer
 };
+
+type StreamReconnectedBoundary = {
+  id: string; // Stable unique identifier (required)
+  kind: 'reconnected';
+  datetime?: string; // Optional ISO 8601 reconnect time
+  timestamp?: string; // Optional human-readable reconnect label
+  replayedCount: number; // Number of events replayed after reconnecting
+};
+
+type EventStreamEntry = StreamEvent | StreamReconnectedBoundary;
 ```
+
+### Reconnect and gap markers
+
+Pass `EventStreamEntry[]` when a retained stream can resume after a network reconnect. A `{ kind: 'reconnected' }` entry renders a visible divider labeled `Reconnected — N events replayed`.
+
+Set `detectSequenceGaps` only when `events` is the complete, unfiltered stream. When consecutive rendered `StreamEvent` entries both provide integer `sequence` values and the later value is not the previous value plus one, the viewer inserts a sequence-gap marker before the later event. The marker shows the expected and received sequence numbers, for example `Sequence gap — expected 8, received 10`.
+
+The `oncopyvisible` callback includes reconnect and sequence-gap markers in the copied text, so the copied stream preserves the same replay and continuity context users saw on screen.
 
 ## Props
 
 <!-- generated:props:start -->
 
-| Prop              | Type                                                             | Required | Default | Description                                                                                                                                                                                                                                                              |
-| ----------------- | ---------------------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `class`           | `string`                                                         | no       | —       | Additional CSS classes applied to the root element.                                                                                                                                                                                                                      |
-| `connectionState` | `"connected"` \| `"connecting"` \| `"disconnected"` \| `"error"` | no       | —       | Current connection state. When provided, renders a StatusDot connection preset in the toolbar. Omit when the stream has no live transport.                                                                                                                               |
-| `filterQuery`     | `string`                                                         | no       | —       | Current filter query value, for controlled usage. Pairs with `onfilter`.                                                                                                                                                                                                 |
-| `followLatest`    | `boolean`                                                        | no       | —       | When true, new events automatically scroll the list to the bottom. Set to false to pause follow-latest (e.g. while the user reads earlier events). Bindable so the parent can read the paused state the component sets internally.                                       |
-| `label`           | `string`                                                         | no       | —       | Accessible label for the event list region. Required for accessibility. Defaults to "Event stream".                                                                                                                                                                      |
-| `loading`         | `boolean`                                                        | no       | —       | Show a loading skeleton instead of the event list. Use while the first batch of events is in flight.                                                                                                                                                                     |
-| `truncated`       | `boolean`                                                        | no       | —       | Whether to show the "events were truncated" notice. This is a boolean flag, not a count: the viewer never slices `events` itself. Set it to `true` when you have already trimmed the array (e.g. capped retention) and want users to know earlier events are not shown.  |
-| `events`          | `(opaque)`                                                       | yes      | —       | Events to render in chronological order, oldest first. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                        |
-| `oncopyvisible`   | `(opaque)`                                                       | no       | —       | Callback fired when the user clicks the "Copy visible" toolbar action. Receives the text of all currently visible events. When omitted the copy action is hidden. Not expressible in JSON Schema; see the component types for the signature.                             |
-| `onfilter`        | `(opaque)`                                                       | no       | —       | Callback fired when the user updates the filter query in the toolbar's search field. The consumer is responsible for filtering `events` in response. When omitted the filter input is hidden. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop                 | Type                                                                                                                                                                                                                                                                                                                                         | Required | Default | Description                                                                                                                                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `class`              | `string`                                                                                                                                                                                                                                                                                                                                     | no       | —       | Additional CSS classes applied to the root element.                                                                                                                                                                                                                      |
+| `connectionState`    | `"error"` \| `"connected"` \| `"connecting"` \| `"disconnected"`                                                                                                                                                                                                                                                                             | no       | —       | Current connection state. When provided, renders a StatusDot in the toolbar. Omit when the stream has no live transport.                                                                                                                                                 |
+| `detectSequenceGaps` | `boolean`                                                                                                                                                                                                                                                                                                                                    | no       | —       | Enables sequence-gap markers when `events` is the complete, unfiltered stream. Leave false for retained windows, severity-filtered subsets, search results, or any other caller-trimmed event array.                                                                     |
+| `events`             | ({ datetime: `string`; details?: `unknown`; id: `string`; sequence?: `integer`; severity?: `"debug"` \| `"info"` \| `"success"` \| `"warning"` \| `"error"`; source?: `string`; summary: `string`; timestamp?: `string` } \| { datetime?: `string`; id: `string`; kind: `"reconnected"`; replayedCount: `integer`; timestamp?: `string` })[] | yes      | —       | Events and additive boundary entries to render in chronological order, oldest first.                                                                                                                                                                                     |
+| `filterQuery`        | `string`                                                                                                                                                                                                                                                                                                                                     | no       | —       | Current filter query value, for controlled usage. Pairs with `onfilter`.                                                                                                                                                                                                 |
+| `followLatest`       | `boolean`                                                                                                                                                                                                                                                                                                                                    | no       | —       | When true, new events automatically scroll the list to the bottom. Set to false to pause follow-latest (e.g. while the user reads earlier events). Bindable so the parent can read the paused state the component sets internally.                                       |
+| `label`              | `string`                                                                                                                                                                                                                                                                                                                                     | no       | —       | Accessible label for the event list region. Required for accessibility. Defaults to "Event stream".                                                                                                                                                                      |
+| `loading`            | `boolean`                                                                                                                                                                                                                                                                                                                                    | no       | —       | Show a loading skeleton instead of the event list. Use while the first batch of events is in flight.                                                                                                                                                                     |
+| `truncated`          | `boolean`                                                                                                                                                                                                                                                                                                                                    | no       | —       | Whether to show the "events were truncated" notice. This is a boolean flag, not a count: the viewer never slices `events` itself. Set it to `true` when you have already trimmed the array (e.g. capped retention) and want users to know earlier events are not shown.  |
+| `oncopyvisible`      | `(opaque)`                                                                                                                                                                                                                                                                                                                                   | no       | —       | Callback fired when the user clicks the "Copy visible" toolbar action. Receives the text of all currently visible events. When omitted the copy action is hidden. Not expressible in JSON Schema; see the component types for the signature.                             |
+| `onfilter`           | `(opaque)`                                                                                                                                                                                                                                                                                                                                   | no       | —       | Callback fired when the user updates the filter query in the toolbar's search field. The consumer is responsible for filtering `events` in response. When omitted the filter input is hidden. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 
@@ -126,13 +146,15 @@ type StreamEvent = {
 
 ## Accessibility
 
-The viewer exposes a `role="log"` region with `aria-live="polite"` and `aria-atomic="false"` so screen readers announce newly appended events. The region is keyboard focusable (`tabindex="0"`) to support arrow-key scrolling.
+The viewer exposes a `role="log"` region, which carries implicit polite live-region semantics so screen readers announce newly appended events. The region is keyboard focusable (`tabindex="0"`) to support arrow-key scrolling.
 
 Each event's timestamp is wrapped in a `<time datetime="...">` element with the machine-readable ISO value, so assistive technology can parse the precise moment. The visible label is separate from the machine-readable `datetime` attribute.
 
 Severity tones are conveyed both visually (color bar, badge text) and through an `aria-label` on the badge element. Source labels and summary text are part of the document flow and are read naturally.
 
 The JSON details panel is toggled by a button with `aria-expanded` and `aria-controls`. Copy actions have descriptive `aria-label` attributes.
+
+Reconnect boundaries render as visible dividers with `role="separator"` and a matching accessible label. Sequence gaps render as visible notes with `role="note"` and an accessible label that includes the expected and received sequence numbers.
 
 A visually-hidden live region (always in the DOM, never removed with `{#if}`) announces copy confirmation to screen readers without double-announcing on the interactive buttons.
 

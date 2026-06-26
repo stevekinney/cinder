@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import Ajv2020 from 'ajv/dist/2020';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { RunStep } from './run-step-timeline.types.ts';
 
@@ -11,6 +12,7 @@ setupHappyDom();
 
 const { render, cleanup } = await import('@testing-library/svelte');
 const { default: RunStepTimeline } = await import('./run-step-timeline.svelte');
+const { default: runStepTimelineSchema } = await import('./run-step-timeline.schema.ts');
 
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
@@ -82,11 +84,188 @@ const retryingStep: RunStep = {
   progress: 15,
 };
 
+const waitingApprovalStep: RunStep = {
+  id: 'step-waiting-approval',
+  label: 'Approve deployment',
+  status: 'waiting_approval',
+  startTime: '2026-06-01T11:45:00Z',
+};
+
+function makeDeepHiddenChildren(count: number, leafStatus: RunStep['status']): RunStep[] {
+  let currentStep: RunStep = {
+    id: `hidden-${count}`,
+    label: `Hidden ${count}`,
+    status: leafStatus,
+  };
+
+  for (let index = count - 1; index >= 1; index -= 1) {
+    currentStep = {
+      id: `hidden-${index}`,
+      label: `Hidden ${index}`,
+      status: 'succeeded',
+      children: [currentStep],
+    };
+  }
+
+  return [currentStep];
+}
+
 // ---------------------------------------------------------------------------
 // Structure
 // ---------------------------------------------------------------------------
 
 describe('structure', () => {
+  test('schema requires step fields through the rendered depth cap', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+
+    expect(
+      validate({
+        steps: [
+          {
+            id: 'workflow',
+            label: 'Workflow',
+            status: 'running',
+            children: [
+              {
+                id: 'activity',
+                label: 'Activity',
+                status: 'succeeded',
+                children: [
+                  {
+                    children: [
+                      {
+                        id: 'hidden-child',
+                        label: 'Hidden child',
+                        status: 'pending',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(false);
+
+    expect(
+      validate({
+        steps: [
+          {
+            id: 'workflow',
+            label: 'Workflow',
+            status: 'running',
+            children: [
+              {
+                id: 'activity',
+                label: 'Activity',
+                status: 'succeeded',
+                children: [
+                  {
+                    id: 'tool-call',
+                    label: 'Tool call',
+                    status: 'waiting_approval',
+                    children: [
+                      {
+                        id: 'nested-subagent',
+                        label: 'Nested subagent',
+                        status: 'running',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+
+    expect(
+      validate({
+        steps: [
+          {
+            id: 'workflow',
+            label: 'Workflow',
+            status: 'running',
+            children: [
+              {
+                id: 'activity',
+                label: 'Activity',
+                status: 'succeeded',
+                children: [
+                  {
+                    id: 'tool-call',
+                    label: 'Tool call',
+                    status: 'waiting_approval',
+                    children: [
+                      {
+                        id: 'nested-subagent',
+                        label: 'Nested subagent',
+                        status: 'running',
+                        children: [
+                          {
+                            reason: 'summarized past the rendered depth cap',
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  test('schema allows nested child details and stops at the rendered depth cap', () => {
+    const stepsSchema = runStepTimelineSchema.properties['steps'] as
+      | {
+          items: {
+            properties: Record<string, unknown>;
+          };
+        }
+      | undefined;
+    expect(stepsSchema).toBeDefined();
+
+    const childSchemaAt = (properties: Record<string, unknown>) => {
+      const children = properties['children'] as
+        | {
+            items: {
+              additionalProperties?: boolean;
+              required?: string[];
+              type?: string;
+              properties: Record<string, unknown>;
+            };
+          }
+        | undefined;
+      return children?.items;
+    };
+
+    const depthOneSchema = childSchemaAt(stepsSchema?.items.properties ?? {});
+    const depthOneProperties = depthOneSchema?.properties ?? {};
+    const depthTwoSchema = childSchemaAt(depthOneProperties);
+    const depthTwoProperties = depthTwoSchema?.properties ?? {};
+    const depthThreeSchema = childSchemaAt(depthTwoProperties);
+    const depthThreeProperties = depthThreeSchema?.properties ?? {};
+
+    expect(depthOneProperties).toHaveProperty('details');
+    expect(depthOneProperties).toHaveProperty('link');
+    expect(depthOneProperties).toHaveProperty('children');
+    expect(depthTwoSchema?.required).toEqual(['id', 'label', 'status']);
+    expect(depthThreeSchema?.required).toEqual(['id', 'label', 'status']);
+    expect(depthThreeProperties).toHaveProperty('details');
+    expect(depthThreeProperties).toHaveProperty('link');
+    expect(depthThreeProperties).toHaveProperty('children');
+    const cappedChildren = depthThreeProperties['children'] as
+      | { items?: { additionalProperties?: boolean } }
+      | undefined;
+    expect(cappedChildren?.items?.additionalProperties).toBe(true);
+  });
+
   test('renders an ordered list with one item per step', () => {
     const { container } = render(RunStepTimeline, {
       steps: [succeededStep, runningStep, pendingStep],
@@ -102,6 +281,7 @@ describe('structure', () => {
       succeededStep,
       failedStep,
       runningStep,
+      waitingApprovalStep,
       cancelledStep,
       skippedStep,
       retryingStep,
@@ -116,6 +296,7 @@ describe('structure', () => {
       'succeeded',
       'failed',
       'running',
+      'waiting_approval',
       'cancelled',
       'skipped',
       'retrying',
@@ -175,7 +356,7 @@ describe('structure', () => {
   test('status badges render with the status label text', () => {
     // Use steps without attemptCount > 1 so each item has exactly one badge
     const { container } = render(RunStepTimeline, {
-      steps: [succeededStep, runningStep, pendingStep, skippedStep],
+      steps: [succeededStep, runningStep, waitingApprovalStep, pendingStep, skippedStep],
     });
     const items = Array.from(
       container.querySelectorAll<HTMLElement>('li.cinder-run-step-timeline__item'),
@@ -186,8 +367,59 @@ describe('structure', () => {
     );
     expect(firstBadgesPerItem[0]).toBe('Succeeded');
     expect(firstBadgesPerItem[1]).toBe('Running');
-    expect(firstBadgesPerItem[2]).toBe('Pending');
-    expect(firstBadgesPerItem[3]).toBe('Skipped');
+    expect(firstBadgesPerItem[2]).toBe('Waiting approval');
+    expect(firstBadgesPerItem[3]).toBe('Pending');
+    expect(firstBadgesPerItem[4]).toBe('Skipped');
+  });
+
+  test('waiting approval uses its own badge and status dot tone', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [waitingApprovalStep],
+    });
+    const item = container.querySelector<HTMLElement>('.cinder-run-step-timeline__item');
+    const statusBadge = item?.querySelector<HTMLElement>('.cinder-run-step-timeline__status');
+    const statusDot = item?.querySelector<HTMLElement>('.cinder-status-dot');
+
+    expect(item?.getAttribute('data-cinder-status')).toBe('waiting_approval');
+    expect(statusBadge?.textContent?.trim()).toBe('Waiting approval');
+    expect(statusBadge?.getAttribute('data-cinder-variant')).toBe('accent');
+    expect(statusBadge?.getAttribute('aria-label')).toBe('Status: Waiting approval');
+    expect(statusDot?.getAttribute('data-cinder-status')).toBe('accent');
+  });
+
+  test('renders legacy step fixtures without requiring new props', () => {
+    const legacySteps: RunStep[] = [
+      {
+        id: 'validate',
+        label: 'Validate configuration',
+        status: 'succeeded',
+        startTime: '2026-06-01T11:00:00Z',
+        endTime: '2026-06-01T11:01:30Z',
+        duration: '1m 30s',
+      },
+      {
+        id: 'build',
+        label: 'Build Docker image',
+        status: 'running',
+        startTime: '2026-06-01T11:02:00Z',
+        progress: 40,
+      },
+      {
+        id: 'deploy',
+        label: 'Deploy to staging',
+        status: 'pending',
+      },
+    ];
+
+    const { container } = render(RunStepTimeline, {
+      steps: legacySteps,
+      label: 'Deployment run',
+    });
+
+    expect(container.querySelectorAll('.cinder-run-step-timeline__item').length).toBe(3);
+    expect(container.querySelector('.cinder-run-step-timeline')?.getAttribute('aria-label')).toBe(
+      'Deployment run',
+    );
   });
 });
 
@@ -272,6 +504,351 @@ describe('behavior', () => {
     expect(progressbar).not.toBeNull();
   });
 
+  test('waiting approval is current and non-terminal without implicit progress', () => {
+    const { container } = render(RunStepTimeline, { steps: [waitingApprovalStep] });
+    const item = container.querySelector<HTMLElement>('.cinder-run-step-timeline__item');
+    expect(item?.getAttribute('aria-current')).toBe('step');
+    expect(item?.hasAttribute('data-cinder-terminal')).toBe(false);
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
+  test('waiting approval renders progress when progress is explicitly present', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [{ ...waitingApprovalStep, progress: 25 }],
+    });
+    const progressbar = container.querySelector('[role="progressbar"]');
+    expect(progressbar).not.toBeNull();
+    expect(progressbar?.getAttribute('aria-valuenow')).toBe('25');
+  });
+
+  test('renders nested child workflow lanes with depth and connector continuity', () => {
+    const parentWithChildren: RunStep = {
+      id: 'workflow',
+      label: 'Workflow',
+      status: 'running',
+      children: [
+        {
+          id: 'activity',
+          label: 'Activity',
+          status: 'succeeded',
+        },
+        {
+          id: 'subagent',
+          label: 'Subagent lane',
+          status: 'retrying',
+          children: [
+            {
+              id: 'tool-call',
+              label: 'Tool call',
+              status: 'waiting_approval',
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = render(RunStepTimeline, { steps: [parentWithChildren] });
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-run-step-timeline__item'),
+    );
+
+    expect(items.map((item) => item.getAttribute('data-cinder-depth'))).toEqual([
+      '0',
+      '1',
+      '1',
+      '2',
+    ]);
+    expect(items.map((item) => item.getAttribute('data-cinder-path'))).toEqual([
+      'workflow',
+      'workflow/activity',
+      'workflow/subagent',
+      'workflow/subagent/tool-call',
+    ]);
+    expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[2]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[3]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
+  test('escapes step ids before composing nested path keys', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: 'workflow/activity',
+          label: 'Top-level workflow activity',
+          status: 'succeeded',
+        },
+        {
+          id: 'workflow',
+          label: 'Workflow',
+          status: 'running',
+          children: [
+            {
+              id: 'activity',
+              label: 'Nested activity',
+              status: 'running',
+            },
+          ],
+        },
+      ],
+    });
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-run-step-timeline__item'),
+    );
+
+    expect(items.map((item) => item.getAttribute('data-cinder-path'))).toEqual([
+      'workflow%2Factivity',
+      'workflow',
+      'workflow/activity',
+    ]);
+  });
+
+  test('does not throw when step ids contain lone surrogates', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: '\uD800',
+          label: 'Malformed identifier',
+          status: 'running',
+        },
+      ],
+    });
+
+    const item = container.querySelector<HTMLElement>('.cinder-run-step-timeline__item');
+    expect(item?.getAttribute('data-cinder-path')).toBe('\uD800');
+    expect(item?.textContent).toContain('Malformed identifier');
+  });
+
+  test('hides a nested lane connector before returning to a shallower row', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: 'workflow',
+          label: 'Workflow',
+          status: 'succeeded',
+          children: [
+            {
+              id: 'activity',
+              label: 'Activity',
+              status: 'succeeded',
+            },
+          ],
+        },
+        {
+          id: 'next-workflow',
+          label: 'Next workflow',
+          status: 'pending',
+        },
+      ],
+    });
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-run-step-timeline__item'),
+    );
+
+    expect(items.map((item) => item.getAttribute('data-cinder-depth'))).toEqual(['0', '1', '0']);
+    expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[1]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+    expect(items[2]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
+  test('caps rendered child workflow depth', () => {
+    const deeplyNested: RunStep = {
+      id: 'root',
+      label: 'Root',
+      status: 'running',
+      children: [
+        {
+          id: 'child',
+          label: 'Child',
+          status: 'running',
+          children: [
+            {
+              id: 'grandchild',
+              label: 'Grandchild',
+              status: 'running',
+              children: [
+                {
+                  id: 'great-grandchild',
+                  label: 'Great grandchild',
+                  status: 'running',
+                  children: [
+                    {
+                      id: 'capped',
+                      label: 'Capped child',
+                      status: 'pending',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = render(RunStepTimeline, { steps: [deeplyNested] });
+    const labels = Array.from(container.querySelectorAll('.cinder-run-step-timeline__label')).map(
+      (element) => element.textContent?.trim(),
+    );
+
+    expect(labels).toEqual([
+      'Root',
+      'Child',
+      'Grandchild',
+      'Great grandchild',
+      '1 nested step hidden',
+    ]);
+    expect(container.querySelector('[data-cinder-depth-limit]')).not.toBeNull();
+  });
+
+  test('summarizes deeply nested hidden lanes without recursive traversal overflow', () => {
+    const hiddenChildren = makeDeepHiddenChildren(20_000, 'waiting_approval');
+    const deeplyNested: RunStep = {
+      id: 'root',
+      label: 'Root',
+      status: 'succeeded',
+      children: [
+        {
+          id: 'child',
+          label: 'Child',
+          status: 'succeeded',
+          children: [
+            {
+              id: 'grandchild',
+              label: 'Grandchild',
+              status: 'succeeded',
+              children: [
+                {
+                  id: 'great-grandchild',
+                  label: 'Great grandchild',
+                  status: 'succeeded',
+                  children: hiddenChildren,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = render(RunStepTimeline, { steps: [deeplyNested] });
+    const depthLimitRow = container.querySelector<HTMLElement>('[data-cinder-depth-limit]');
+
+    expect(depthLimitRow).not.toBeNull();
+    expect(depthLimitRow?.textContent).toContain('20000 nested steps hidden');
+    expect(depthLimitRow?.getAttribute('aria-current')).toBe('step');
+  });
+
+  test('renders step links with the Link component', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          ...succeededStep,
+          link: {
+            href: '/runs/run-123/steps/validate',
+            label: 'Open logs',
+          },
+        },
+      ],
+    });
+
+    const link = container.querySelector<HTMLAnchorElement>('.cinder-link');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('/runs/run-123/steps/validate');
+    expect(link?.textContent?.trim()).toBe('Open logs');
+  });
+
+  test('renders unsafe step link URLs as non-interactive text', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          ...succeededStep,
+          link: {
+            href: 'javascript:alert(1)',
+            label: 'Open logs',
+          },
+        },
+      ],
+    });
+
+    expect(container.querySelector('a.cinder-run-step-timeline__link')).toBeNull();
+    const label = container.querySelector('.cinder-run-step-timeline__link--unsafe');
+    expect(label?.textContent?.trim()).toBe('Open logs');
+  });
+
+  test('renders step link URLs with embedded control characters as non-interactive text', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          ...succeededStep,
+          link: {
+            href: 'java\nscript:alert(1)',
+            label: 'Open logs',
+          },
+        },
+      ],
+    });
+
+    expect(container.querySelector('a.cinder-run-step-timeline__link')).toBeNull();
+    const label = container.querySelector('.cinder-run-step-timeline__link--unsafe');
+    expect(label?.textContent?.trim()).toBe('Open logs');
+  });
+
+  test('renders backslash step links as non-interactive text', () => {
+    const unsafeHrefs = ['\\evil.example/path', '\\\\evil.example/path', '/\\evil.example/path'];
+
+    for (const href of unsafeHrefs) {
+      cleanup();
+      const { container } = render(RunStepTimeline, {
+        steps: [
+          {
+            ...succeededStep,
+            link: {
+              href,
+              label: 'Open logs',
+            },
+          },
+        ],
+      });
+
+      expect(container.querySelector('a.cinder-run-step-timeline__link')).toBeNull();
+      const label = container.querySelector('.cinder-run-step-timeline__link--unsafe');
+      expect(label?.textContent?.trim()).toBe('Open logs');
+    }
+  });
+
+  test('keeps app-relative step links interactive', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          ...succeededStep,
+          link: {
+            href: './runs/123#history',
+            label: 'Open run',
+          },
+        },
+      ],
+    });
+
+    const link = container.querySelector<HTMLAnchorElement>('a.cinder-run-step-timeline__link');
+    expect(link?.getAttribute('href')).toBe('./runs/123#history');
+    expect(link?.textContent?.trim()).toBe('Open run');
+  });
+
+  test('renders actions count only when greater than zero', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        { ...succeededStep, id: 'zero-actions', actionsCount: 0 },
+        { ...retryingStep, id: 'two-actions', actionsCount: 2 },
+      ],
+    });
+    const badges = Array.from(container.querySelectorAll('.cinder-badge')).map((badge) =>
+      badge.textContent?.trim(),
+    );
+
+    expect(badges).toContain('2 actions');
+    expect(badges).not.toContain('0 actions');
+  });
+
   test('terminal state data attribute is set for ended steps', () => {
     const { container } = render(RunStepTimeline, {
       steps: [succeededStep, failedStep, cancelledStep, skippedStep],
@@ -286,7 +863,7 @@ describe('behavior', () => {
 
   test('terminal state data attribute is absent for non-terminal steps', () => {
     const { container } = render(RunStepTimeline, {
-      steps: [runningStep, pendingStep, retryingStep],
+      steps: [runningStep, waitingApprovalStep, pendingStep, retryingStep],
     });
     const items = Array.from(
       container.querySelectorAll<HTMLElement>('li.cinder-run-step-timeline__item'),
@@ -339,6 +916,88 @@ describe('accessibility', () => {
     const currentItems = items.filter((li) => li.getAttribute('aria-current') === 'step');
     expect(currentItems.length).toBe(1);
     expect(currentItems[0]?.getAttribute('data-cinder-status')).toBe('retrying');
+  });
+
+  test('sets aria-current="step" on waiting approval step', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [waitingApprovalStep, pendingStep],
+    });
+    const items = Array.from(container.querySelectorAll<HTMLElement>('li'));
+    const currentItems = items.filter((li) => li.getAttribute('aria-current') === 'step');
+    expect(currentItems.length).toBe(1);
+    expect(currentItems[0]?.getAttribute('data-cinder-status')).toBe('waiting_approval');
+  });
+
+  test('sets aria-current on only one active row in nested workflows', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: 'workflow',
+          label: 'Workflow',
+          status: 'running',
+          children: [
+            {
+              id: 'approval',
+              label: 'Approve tool call',
+              status: 'waiting_approval',
+            },
+          ],
+        },
+      ],
+    });
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('.cinder-run-step-timeline__item'),
+    );
+    const currentItems = items.filter((li) => li.getAttribute('aria-current') === 'step');
+
+    expect(currentItems).toHaveLength(1);
+    expect(currentItems[0]?.getAttribute('data-cinder-path')).toBe('workflow/approval');
+    expect(items[0]?.hasAttribute('aria-current')).toBe(false);
+  });
+
+  test('sets aria-current on the depth cap row when it hides the active descendant', () => {
+    const deeplyNested: RunStep = {
+      id: 'root',
+      label: 'Root',
+      status: 'succeeded',
+      children: [
+        {
+          id: 'child',
+          label: 'Child',
+          status: 'succeeded',
+          children: [
+            {
+              id: 'grandchild',
+              label: 'Grandchild',
+              status: 'succeeded',
+              children: [
+                {
+                  id: 'great-grandchild',
+                  label: 'Great grandchild',
+                  status: 'succeeded',
+                  children: [
+                    {
+                      id: 'capped-active-child',
+                      label: 'Capped active child',
+                      status: 'waiting_approval',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = render(RunStepTimeline, { steps: [deeplyNested] });
+    const currentItems = Array.from(
+      container.querySelectorAll<HTMLElement>('[aria-current="step"]'),
+    );
+
+    expect(currentItems).toHaveLength(1);
+    expect(currentItems[0]?.hasAttribute('data-cinder-depth-limit')).toBe(true);
+    expect(currentItems[0]?.getAttribute('data-cinder-status')).toBe('depth-limit');
   });
 
   test('does not set aria-current on succeeded, failed, pending, or skipped steps', () => {
@@ -401,5 +1060,19 @@ describe('CSS snapshot', () => {
     // Should not contain color: #..., color: rgb(...), background: #... etc.
     expect(css).not.toMatch(/:\s*#[0-9a-fA-F]{3,6}/);
     expect(css).not.toMatch(/:\s*rgb\(/);
+  });
+
+  test('CSS sidecar imports composed primitive styles', () => {
+    const { readFileSync } = require('node:fs');
+    const css = readFileSync(
+      new URL('./run-step-timeline.css', import.meta.url).pathname,
+      'utf8',
+    ) as string;
+
+    expect(css).toContain("@import '../badge/badge.css';");
+    expect(css).toContain("@import '../collapsible/collapsible.css';");
+    expect(css).toContain("@import '../link/link.css';");
+    expect(css).toContain("@import '../progress/progress.css';");
+    expect(css).toContain("@import '../status-dot/status-dot.css';");
   });
 });

@@ -13,6 +13,19 @@ export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 export { default as AlertDialog } from './components/alert-dialog/index.ts';
 export type { AlertDialogProps } from './components/alert-dialog/index.ts';
 
+export { default as ApprovalCard } from './components/approval-card/index.ts';
+export type {
+  ApprovalCardCallbacks,
+  ApprovalCardProps,
+  ApprovalCardSchemaProps,
+  ApprovalOperation,
+  ApprovalOperationKind,
+  ApprovalSandbox,
+  ApprovalState,
+  ApprovalTool,
+  ApprovalToolRisk,
+} from './components/approval-card/index.ts';
+
 export { default as AreaChart } from './components/area-chart/index.ts';
 export type { AreaChartProps, AreaChartSchemaProps } from './components/area-chart/index.ts';
 
@@ -297,9 +310,15 @@ export type { EmptyStateProps } from './components/empty-state/index.ts';
 export { default as EventStreamViewer } from './components/event-stream-viewer/index.ts';
 export type {
   EventSeverity,
+  EventStreamEntry,
+  EventStreamSchemaDetailValue,
+  EventStreamSchemaEntry,
+  EventStreamSchemaEvent,
   EventStreamState,
   EventStreamViewerProps,
+  EventStreamViewerSchemaProps,
   StreamEvent,
+  StreamReconnectedBoundary,
 } from './components/event-stream-viewer/index.ts';
 
 export { default as FacetedFilterBar } from './components/faceted-filter-bar/index.ts';
@@ -551,6 +570,7 @@ export { default as RunStepTimeline } from './components/run-step-timeline/index
 export type {
   RunStep,
   RunStepDetail,
+  RunStepLink,
   RunStepStatus,
   RunStepTimelineProps,
 } from './components/run-step-timeline/index.ts';

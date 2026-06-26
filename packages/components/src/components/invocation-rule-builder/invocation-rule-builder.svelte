@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category form
-   * @status alpha
+   * @status beta
    * @purpose Render and edit conditional automation rules composed of conditions and actions.
    * @tag automation
    * @tag rules
@@ -14,6 +14,7 @@
     InvocationRule,
     InvocationRuleAction,
     InvocationRuleBuilderProps,
+    InvocationRuleBuilderSchemaProps,
     InvocationRuleChange,
     InvocationRuleCondition,
     InvocationRuleOption,
@@ -52,6 +53,7 @@
   const sectionAriaLabel = $derived(
     ariaLabelledby ? undefined : (ariaLabel ?? label ?? 'Invocation rules'),
   );
+  const effectiveReadonly = $derived(readonly || onchange === undefined);
 
   /** Announcement text for the live region. */
   let announcement = $state('');
@@ -92,14 +94,14 @@
       { id: ruleId, label: `Rule ${rules.length + 1}`, conditions: [], actions: [] },
     ];
     const change: InvocationRuleChange = { type: 'add-rule', ruleId };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
     announce('Rule added.');
   }
 
   function handleRemoveRule(ruleId: string, ruleLabel: string, ruleIndex: number): void {
     const nextRules = rules.filter((rule) => rule.id !== ruleId);
     const change: InvocationRuleChange = { type: 'remove-rule', ruleId };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
     announce(`${ruleLabel} removed.`);
 
     // Move focus to the previous rule's remove button, or the add-rule button.
@@ -122,7 +124,7 @@
     const [moved] = nextRules.splice(fromIndex, 1);
     nextRules.splice(toIndex, 0, moved!);
     const change: InvocationRuleChange = { type: 'move-rule', ruleId, fromIndex, toIndex };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
     announce(`${moved!.label} moved to position ${toIndex + 1} of ${nextRules.length}.`);
   }
 
@@ -134,7 +136,7 @@
     if (currentLabel === nextLabel) return;
     const nextRules = updateRules(ruleId, (rule) => ({ ...rule, label: nextLabel }));
     const change: InvocationRuleChange = { type: 'rename-rule', ruleId };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
   }
 
   function ruleLabelDraft(rule: InvocationRule): string {
@@ -158,7 +160,7 @@
       ],
     }));
     const change: InvocationRuleChange = { type: 'add-condition', ruleId, conditionId };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
     announce('Condition added.');
   }
 
@@ -173,7 +175,7 @@
       conditions: rule.conditions.filter((condition) => condition.id !== conditionId),
     }));
     const change: InvocationRuleChange = { type: 'remove-condition', ruleId, conditionId };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
     announce('Condition removed.');
 
     tick().then(() => {
@@ -206,7 +208,7 @@
       conditionId,
       field,
     };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
   }
 
   // ---------------------------------------------------------------------------
@@ -221,7 +223,7 @@
       actions: [...rule.actions, { id: actionId, target: firstTarget }],
     }));
     const change: InvocationRuleChange = { type: 'add-action', ruleId, actionId };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
     announce('Action added.');
   }
 
@@ -236,7 +238,7 @@
       actions: rule.actions.filter((action) => action.id !== actionId),
     }));
     const change: InvocationRuleChange = { type: 'remove-action', ruleId, actionId };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
     announce('Action removed.');
 
     tick().then(() => {
@@ -259,7 +261,7 @@
       ),
     }));
     const change: InvocationRuleChange = { type: 'update-action', ruleId, actionId };
-    onchange(nextRules, change);
+    onchange?.(nextRules, change);
   }
 
   // ---------------------------------------------------------------------------
@@ -297,7 +299,7 @@
   {#each rules as rule, ruleIndex (rule.id)}
     <div class="cinder-invocation-rule-builder__rule" data-irb-rule={ruleIndex}>
       <div class="cinder-invocation-rule-builder__rule-header">
-        {#if readonly}
+        {#if effectiveReadonly}
           <h3 class="cinder-invocation-rule-builder__rule-label">{rule.label}</h3>
         {:else}
           <label class="cinder-invocation-rule-builder__rule-label-field">
@@ -326,7 +328,7 @@
           </label>
         {/if}
 
-        {#if !readonly}
+        {#if !effectiveReadonly}
           <div class="cinder-invocation-rule-builder__rule-controls">
             <button
               type="button"
@@ -373,13 +375,13 @@
         >
           Conditions
         </span>
-        {#if !readonly && rule.conditions.length === 0}
+        {#if !effectiveReadonly && rule.conditions.length === 0}
           <p class="cinder-invocation-rule-builder__validation" role="status">
             Add at least one condition or this rule will always fire.
           </p>
         {/if}
 
-        {#if readonly}
+        {#if effectiveReadonly}
           <div
             class="cinder-invocation-rule-builder__summary"
             aria-label={`Conditions for ${rule.label}`}
@@ -494,13 +496,13 @@
         >
           Actions
         </span>
-        {#if !readonly && rule.actions.length === 0}
+        {#if !effectiveReadonly && rule.actions.length === 0}
           <p class="cinder-invocation-rule-builder__validation" role="status">
             Add at least one action for this rule.
           </p>
         {/if}
 
-        {#if readonly}
+        {#if effectiveReadonly}
           <div
             class="cinder-invocation-rule-builder__summary"
             aria-label={`Actions for ${rule.label}`}
@@ -573,7 +575,7 @@
     </div>
   {/each}
 
-  {#if !readonly}
+  {#if !effectiveReadonly}
     <button
       type="button"
       class="cinder-invocation-rule-builder__add-btn cinder-invocation-rule-builder__add-rule-btn"
@@ -584,7 +586,7 @@
     </button>
   {/if}
 
-  {#if rules.length === 0 && readonly}
+  {#if rules.length === 0 && effectiveReadonly}
     <p class="cinder-invocation-rule-builder__empty">No rules configured.</p>
   {/if}
 </section>

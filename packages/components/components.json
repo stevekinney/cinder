@@ -240,6 +240,49 @@
       }
     },
     {
+      "name": "ApprovalCard",
+      "id": "approval-card",
+      "import": "@lostgradient/cinder/approval-card",
+      "exportName": "ApprovalCard",
+      "category": "domain",
+      "status": "alpha",
+      "purpose": "Durable human-in-the-loop approval surface for reviewing risky tool operations before they execute.",
+      "tags": ["approval", "human-in-the-loop", "tool"],
+      "useWhen": [
+        "A tool call, command, file write, or patch needs explicit human approval before execution.",
+        "Showing policy, sandbox, idempotency, environment-name, and argument context for an approval request."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "The action has already completed and only needs historical display — use event-stream-viewer or run-step-timeline instead."
+        },
+        {
+          "reason": "Collecting arbitrary form input for a workflow — compose form controls directly instead."
+        }
+      ],
+      "related": [
+        "card",
+        "badge",
+        "status-dot",
+        "payload-inspector",
+        "secret-value-field",
+        "code-block"
+      ],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/approval-card/schema",
+        "variables": "@lostgradient/cinder/approval-card/variables",
+        "examples": "@lostgradient/cinder/approval-card/examples"
+      },
+      "a11y": {
+        "notes": [
+          "Uses a named region and native button controls so approval actions are discoverable by assistive technology.",
+          "Expiration changes update the visible state but do not fire approval callbacks automatically."
+        ]
+      }
+    },
+    {
       "name": "AreaChart",
       "id": "area-chart",
       "import": "@lostgradient/cinder/area-chart",
@@ -1881,7 +1924,7 @@
       "import": "@lostgradient/cinder/event-stream-viewer",
       "exportName": "EventStreamViewer",
       "category": "data-display",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Dense append-only log of timestamped events with follow-latest scrolling, severity tones, expandable JSON details, and copy actions.",
       "tags": ["log", "stream", "events"],
       "useWhen": [
@@ -2332,7 +2375,7 @@
       "import": "@lostgradient/cinder/invocation-rule-builder",
       "exportName": "InvocationRuleBuilder",
       "category": "form",
-      "status": "alpha",
+      "status": "beta",
       "purpose": "Render and edit conditional automation rules composed of conditions and actions.",
       "tags": ["automation", "rules"],
       "useWhen": [
@@ -2968,7 +3011,7 @@
       "import": "@lostgradient/cinder/payload-inspector",
       "exportName": "PayloadInspector",
       "category": "data-display",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Composed inspector for structured payloads with summary, tree, and raw views, copy actions, and size/truncation status.",
       "tags": ["json", "inspector", "payload"],
       "useWhen": [
@@ -3451,7 +3494,7 @@
       "import": "@lostgradient/cinder/secret-value-field",
       "exportName": "SecretValueField",
       "category": "data-display",
-      "status": "beta",
+      "status": "stable",
       "purpose": "Displays a masked secret (API key, token, webhook secret) with copy action and optional reveal toggle.",
       "tags": ["clipboard", "security"],
       "useWhen": [

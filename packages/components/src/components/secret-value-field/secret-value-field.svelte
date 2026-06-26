@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Displays a masked secret (API key, token, webhook secret) with copy action and optional reveal toggle.
    * @tag clipboard
    * @tag security
@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
 
   import type { SecretValueFieldProps } from './secret-value-field.types.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
@@ -39,10 +39,8 @@
 
   const fieldId = $props.id();
 
-  // initiallyRevealed overrides the hidden default so newly-created secrets are readable on first render.
-  // The seed const makes the initial-only capture explicit and silences state_referenced_locally.
-  const initiallyRevealedSeed = initiallyRevealed;
-  let revealed = $state(initiallyRevealedSeed);
+  let revealed = $state(untrack(() => initiallyRevealed));
+  let previousValue = $state(untrack(() => value));
 
   let copied = $state(false);
   let resetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -66,6 +64,12 @@
     if (!allowReveal) return;
     revealed = !revealed;
   }
+
+  $effect(() => {
+    if (value === previousValue) return;
+    previousValue = value;
+    revealed = initiallyRevealed;
+  });
 
   onDestroy(() => {
     if (resetTimer) clearTimeout(resetTimer);

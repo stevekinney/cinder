@@ -1,4 +1,10 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../badge/badge.css';
+@import '../code-block/code-block.css';
+@import '../copy-button/copy-button.css';
+@import '../description-list/description-list.css';
+@import '../json-viewer/json-viewer.css';
+@import '../tabs/tabs.css';
 
 @layer cinder.components {
   .cinder-payload-inspector {

@@ -2,7 +2,7 @@
   /**
    * @cinder
    * @category data-display
-   * @status beta
+   * @status stable
    * @purpose Dense append-only log of timestamped events with follow-latest scrolling, severity tones, expandable JSON details, and copy actions.
    * @tag log
    * @tag stream
@@ -15,24 +15,71 @@
    */
   export type {
     EventSeverity,
+    EventStreamEntry,
+    EventStreamSchemaDetailValue,
+    EventStreamSchemaEntry,
+    EventStreamSchemaEvent,
     EventStreamState,
+    EventStreamViewerSchemaProps,
     EventStreamViewerProps,
     StreamEvent,
+    StreamReconnectedBoundary,
   } from './event-stream-viewer.types.ts';
 </script>
 
 <script lang="ts">
   import { SvelteSet } from 'svelte/reactivity';
-  import type { EventStreamViewerProps, StreamEvent } from './event-stream-viewer.types.ts';
+  import type {
+    EventStreamEntry,
+    EventStreamViewerProps,
+    StreamEvent,
+    StreamReconnectedBoundary,
+  } from './event-stream-viewer.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
+  import {
+    detailsIdForKey,
+    reconnectedBoundaryKey,
+    sequenceGapKey,
+    streamEventKey,
+    uniqueRenderedKey,
+  } from './event-stream-viewer-keys.ts';
+
+  type RenderedEventEntry = {
+    type: 'event';
+    key: string;
+    detailsId: string;
+    event: StreamEvent;
+  };
+
+  type RenderedReconnectedBoundary = {
+    type: 'reconnected';
+    key: string;
+    boundary: StreamReconnectedBoundary;
+    label: string;
+    datetime: string | undefined;
+  };
+
+  type RenderedSequenceGap = {
+    type: 'sequence-gap';
+    key: string;
+    expectedSequence: number;
+    actualSequence: number;
+    label: string;
+  };
+
+  type RenderedEntry = RenderedEventEntry | RenderedReconnectedBoundary | RenderedSequenceGap;
+
+  function isValidSequence(value: unknown): value is number {
+    return Number.isInteger(value);
+  }
 
   // Stable per-instance id namespace for generated DOM ids (details panels).
   // Event ids are consumer-supplied and may contain spaces, punctuation, or
   // duplicates across composed viewers, so we never use them directly in an
-  // `id`/`aria-controls` — we scope by this instance id plus the row index.
+  // `id`/`aria-controls` — we scope by this instance id plus the stable row key.
   const instanceId = $props.id();
 
   let {
@@ -42,6 +89,7 @@
     truncated = false,
     loading = false,
     label = 'Event stream',
+    detectSequenceGaps = false,
     oncopyvisible,
     onfilter,
     filterQuery = '',
@@ -49,7 +97,9 @@
     ...rest
   }: EventStreamViewerProps = $props();
 
-  // IDs for expanded details panels — keyed by event id
+  // IDs for expanded details panels — keyed by rendered row identity. The row
+  // identity is derived from stable event fields so retained streams can drop
+  // older entries without collapsing details for unchanged visible events.
   const expandedIds = new SvelteSet<string>();
 
   // Track the scroll container element for auto-scroll
@@ -69,12 +119,99 @@
   const eventCount = $derived(events.length);
   const latestEvent = $derived(events.at(-1));
 
-  function toggleDetails(id: string) {
-    if (expandedIds.has(id)) {
-      expandedIds.delete(id);
-    } else {
-      expandedIds.add(id);
+  const renderedEntries = $derived.by<RenderedEntry[]>(() => {
+    const entries: RenderedEntry[] = [];
+    const keyOccurrences = new Map<string, number>();
+    let previousSequence: number | undefined;
+    let previousEventId: string | undefined;
+    const shouldDetectSequenceGaps = detectSequenceGaps && filterQuery.trim() === '';
+
+    for (const entry of events) {
+      if (isReconnectedBoundary(entry)) {
+        const key = uniqueRenderedKey(reconnectedBoundaryKey(entry), keyOccurrences);
+        entries.push({
+          type: 'reconnected',
+          key,
+          boundary: entry,
+          label: formatReconnectedBoundaryLabel(entry),
+          datetime: boundaryDateTime(entry),
+        });
+        previousSequence = undefined;
+        previousEventId = undefined;
+        continue;
+      }
+
+      const currentSequence = entry.sequence;
+      if (
+        shouldDetectSequenceGaps &&
+        isValidSequence(previousSequence) &&
+        isValidSequence(currentSequence)
+      ) {
+        const expectedSequence = previousSequence + 1;
+        if (currentSequence !== expectedSequence) {
+          const key = uniqueRenderedKey(
+            sequenceGapKey(previousEventId, entry, expectedSequence, currentSequence),
+            keyOccurrences,
+          );
+          entries.push({
+            type: 'sequence-gap',
+            key,
+            expectedSequence,
+            actualSequence: currentSequence,
+            label: formatSequenceGapLabel(expectedSequence, currentSequence),
+          });
+        }
+      }
+
+      if (isValidSequence(currentSequence)) {
+        previousSequence = currentSequence;
+        previousEventId = entry.id;
+      } else {
+        previousSequence = undefined;
+        previousEventId = undefined;
+      }
+
+      const key = uniqueRenderedKey(streamEventKey(entry), keyOccurrences);
+      entries.push({
+        type: 'event',
+        key,
+        detailsId: detailsIdForKey(instanceId, key),
+        event: entry,
+      });
     }
+
+    return entries;
+  });
+
+  function toggleDetails(rowKey: string) {
+    if (expandedIds.has(rowKey)) {
+      expandedIds.delete(rowKey);
+    } else {
+      expandedIds.add(rowKey);
+    }
+  }
+
+  function isReconnectedBoundary(entry: EventStreamEntry): entry is StreamReconnectedBoundary {
+    return (
+      'kind' in entry &&
+      entry.kind === 'reconnected' &&
+      'replayedCount' in entry &&
+      Number.isInteger(entry.replayedCount) &&
+      entry.replayedCount >= 0
+    );
+  }
+
+  function formatReconnectedBoundaryLabel(boundary: StreamReconnectedBoundary): string {
+    const eventWord = boundary.replayedCount === 1 ? 'event' : 'events';
+    return `Reconnected — ${boundary.replayedCount} ${eventWord} replayed`;
+  }
+
+  function formatSequenceGapLabel(expectedSequence: number, actualSequence: number): string {
+    return `Sequence gap — expected ${expectedSequence}, received ${actualSequence}`;
+  }
+
+  function boundaryDateTime(boundary: StreamReconnectedBoundary): string | undefined {
+    return boundary.datetime;
   }
 
   function formatEventAsText(event: StreamEvent): string {
@@ -93,11 +230,27 @@
     return parts.join(' ');
   }
 
+  function formatReconnectedBoundaryAsText(boundary: StreamReconnectedBoundary): string {
+    const timeLabel = boundary.timestamp ?? boundary.datetime;
+    const markerText = formatReconnectedBoundaryLabel(boundary);
+    return timeLabel ? `[${timeLabel}] ${markerText}` : markerText;
+  }
+
+  function formatRenderedEntryAsText(entry: RenderedEntry): string {
+    if (entry.type === 'event') return formatEventAsText(entry.event);
+    if (entry.type === 'reconnected') return formatReconnectedBoundaryAsText(entry.boundary);
+    return entry.label;
+  }
+
+  function formatCopyVisibleAnnouncement(entryCount: number): string {
+    return `${entryCount} stream ${entryCount === 1 ? 'entry' : 'entries'} sent to copy handler`;
+  }
+
   function handleCopyVisible() {
-    const text = events.map(formatEventAsText).join('\n');
+    const text = renderedEntries.map(formatRenderedEntryAsText).join('\n');
     if (!oncopyvisible) return;
     oncopyvisible(text);
-    liveMessage = `${events.length} event${events.length !== 1 ? 's' : ''} sent to copy handler`;
+    liveMessage = formatCopyVisibleAnnouncement(renderedEntries.length);
     setTimeout(() => {
       liveMessage = '';
     }, 2000);
@@ -221,71 +374,107 @@
       </div>
     {:else}
       <ol class="cinder-event-stream-viewer__list">
-        {#each events as event, eventIndex (event.id)}
-          {@const isExpanded = expandedIds.has(event.id)}
-          {@const detailsId = `${instanceId}-details-${eventIndex}`}
-          <li
-            class="cinder-event-stream-viewer__event"
-            data-cinder-severity={event.severity ?? 'info'}
-          >
-            <div class="cinder-event-stream-viewer__event-bar" aria-hidden="true"></div>
-            <div class="cinder-event-stream-viewer__event-body">
-              <div class="cinder-event-stream-viewer__event-meta">
-                <time
-                  class="cinder-event-stream-viewer__event-time"
-                  datetime={event.datetime}
-                  title={event.datetime}
-                >
-                  {event.timestamp ?? event.datetime}
-                </time>
-                {#if event.severity}
-                  <span
-                    class="cinder-event-stream-viewer__event-severity"
-                    aria-label={`Severity: ${event.severity}`}
+        {#each renderedEntries as entry (entry.key)}
+          {#if entry.type === 'reconnected'}
+            <li class="cinder-event-stream-viewer__boundary-marker">
+              <div
+                class="cinder-event-stream-viewer__marker-content"
+                role="separator"
+                aria-label={entry.label}
+              >
+                {#if entry.boundary.datetime}
+                  <time
+                    class="cinder-event-stream-viewer__marker-time"
+                    datetime={entry.boundary.datetime}
+                    title={entry.boundary.datetime}
                   >
-                    {event.severity}
+                    {entry.boundary.timestamp ?? entry.boundary.datetime}
+                  </time>
+                {:else if entry.boundary.timestamp}
+                  <span class="cinder-event-stream-viewer__marker-time">
+                    {entry.boundary.timestamp}
                   </span>
                 {/if}
-                {#if event.source}
-                  <span class="cinder-event-stream-viewer__event-source">
-                    {event.source}
-                  </span>
+                <span>{entry.label}</span>
+              </div>
+            </li>
+          {:else if entry.type === 'sequence-gap'}
+            <li class="cinder-event-stream-viewer__sequence-gap-marker">
+              <div
+                class="cinder-event-stream-viewer__marker-content"
+                role="note"
+                aria-label={entry.label}
+              >
+                <span>{entry.label}</span>
+              </div>
+            </li>
+          {:else}
+            {@const event = entry.event}
+            {@const isExpanded = expandedIds.has(entry.key)}
+            {@const detailsId = entry.detailsId}
+            <li
+              class="cinder-event-stream-viewer__event"
+              data-cinder-severity={event.severity ?? 'info'}
+            >
+              <div class="cinder-event-stream-viewer__event-bar" aria-hidden="true"></div>
+              <div class="cinder-event-stream-viewer__event-body">
+                <div class="cinder-event-stream-viewer__event-meta">
+                  <time
+                    class="cinder-event-stream-viewer__event-time"
+                    datetime={event.datetime}
+                    title={event.datetime}
+                  >
+                    {event.timestamp ?? event.datetime}
+                  </time>
+                  {#if event.severity}
+                    <span
+                      class="cinder-event-stream-viewer__event-severity"
+                      aria-label={`Severity: ${event.severity}`}
+                    >
+                      {event.severity}
+                    </span>
+                  {/if}
+                  {#if event.source}
+                    <span class="cinder-event-stream-viewer__event-source">
+                      {event.source}
+                    </span>
+                  {/if}
+                </div>
+                <p class="cinder-event-stream-viewer__event-summary">{event.summary}</p>
+                {#if event.details !== undefined}
+                  <div class="cinder-event-stream-viewer__event-details-section">
+                    <button
+                      type="button"
+                      class="cinder-event-stream-viewer__details-toggle"
+                      aria-expanded={isExpanded}
+                      aria-controls={detailsId}
+                      aria-label={`${isExpanded ? 'Hide' : 'Show'} details for ${event.severity ? `${event.severity}: ` : ''}${event.summary}`}
+                      onclick={() => toggleDetails(entry.key)}
+                    >
+                      {isExpanded ? 'Hide details' : 'Show details'}
+                    </button>
+                    <div
+                      id={detailsId}
+                      class="cinder-event-stream-viewer__event-details"
+                      hidden={!isExpanded}
+                    >
+                      {#if isExpanded}
+                        <JsonViewer value={event.details} />
+                      {/if}
+                    </div>
+                  </div>
                 {/if}
               </div>
-              <p class="cinder-event-stream-viewer__event-summary">{event.summary}</p>
-              {#if event.details !== undefined}
-                <div class="cinder-event-stream-viewer__event-details-section">
-                  <button
-                    type="button"
-                    class="cinder-event-stream-viewer__details-toggle"
-                    aria-expanded={isExpanded}
-                    aria-controls={detailsId}
-                    aria-label={`${isExpanded ? 'Hide' : 'Show'} details for ${event.severity ? `${event.severity}: ` : ''}${event.summary}`}
-                    onclick={() => toggleDetails(event.id)}
-                  >
-                    {isExpanded ? 'Hide details' : 'Show details'}
-                  </button>
-                  <div
-                    id={detailsId}
-                    class="cinder-event-stream-viewer__event-details"
-                    hidden={!isExpanded}
-                  >
-                    {#if isExpanded}
-                      <JsonViewer value={event.details} />
-                    {/if}
-                  </div>
-                </div>
-              {/if}
-            </div>
-            <div class="cinder-event-stream-viewer__event-actions">
-              <CopyButton
-                value={formatEventAsText(event)}
-                label={`Copy event: ${event.summary}`}
-                copiedLabel="Event copied"
-                class="cinder-event-stream-viewer__copy-event-button"
-              />
-            </div>
-          </li>
+              <div class="cinder-event-stream-viewer__event-actions">
+                <CopyButton
+                  value={formatEventAsText(event)}
+                  label={`Copy event: ${event.summary}`}
+                  copiedLabel="Event copied"
+                  class="cinder-event-stream-viewer__copy-event-button"
+                />
+              </div>
+            </li>
+          {/if}
         {/each}
       </ol>
     {/if}

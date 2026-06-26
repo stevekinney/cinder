@@ -22,6 +22,8 @@ import {
 } from 'ts-morph';
 
 const SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema' as const;
+const MAX_SCHEMA_TYPE_DEPTH = 6;
+const MAX_SCHEMA_STRUCTURAL_OBJECT_DEPTH = 5;
 // JSON Schema's conditional `then` keyword, used as a computed object key in
 // the generated `if`/`then` blocks below. `as const` keeps it typed as the
 // literal without an assertion.
@@ -61,6 +63,7 @@ export interface PropertySchema {
   additionalProperties?: boolean | PropertySchema;
   anyOf?: PropertySchema[];
   minimum?: number;
+  minItems?: number;
   description?: string;
   default?: unknown;
 }
@@ -163,11 +166,13 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
       continue;
     }
 
-    const converted = convertType(
-      propType,
-      0,
-      hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
-    );
+    const converted = hasJsDocTag(symbol, 'schemaPermissive')
+      ? { kind: 'ok' as const, schema: {} }
+      : convertType(
+          propType,
+          0,
+          hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
+        );
     if (converted.kind === 'unsupported') {
       unsupportedProps.push(makeUnsupportedProp(symbol, propName, converted.reason));
       continue;
@@ -272,6 +277,21 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'event-stream-viewer') {
+    applyEventStreamViewerSchemaRules(schema);
+    return;
+  }
+
+  if (componentName === 'approval-card') {
+    applyApprovalCardSchemaRules(schema);
+    return;
+  }
+
+  if (componentName === 'run-step-timeline') {
+    applyRunStepTimelineSchemaRules(schema);
+    return;
+  }
+
   if (componentName !== 'modal') return;
 
   schema.allOf = [
@@ -290,6 +310,217 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
   ];
 }
 
+function applyEventStreamViewerSchemaRules(schema: ComponentSchemaOutput): void {
+  const entries = schema.properties['events'];
+  const variants = entries?.items?.anyOf;
+  const reconnectBoundary = variants?.find(
+    (variant) => variant.properties?.['kind']?.const === 'reconnected',
+  );
+  const streamEvent = variants?.find(
+    (variant) => variant.required?.includes('summary') && variant.properties?.['sequence'],
+  );
+  const sequence = streamEvent?.properties?.['sequence'];
+  const replayedCount = reconnectBoundary?.properties?.['replayedCount'];
+
+  if (streamEvent?.properties && sequence?.type === 'number') {
+    streamEvent.properties['sequence'] = {
+      ...sequence,
+      type: 'integer',
+    };
+  }
+
+  if (reconnectBoundary?.properties && replayedCount?.type === 'number') {
+    reconnectBoundary.properties['replayedCount'] = {
+      ...replayedCount,
+      type: 'integer',
+      minimum: 0,
+    };
+  }
+}
+
+function applyApprovalCardSchemaRules(schema: ComponentSchemaOutput): void {
+  const operation = schema.properties['operation'];
+  const variants = operation?.anyOf;
+  const fileWriteOperation = variants?.find(
+    (variant) => variant.properties?.['kind']?.const === 'file-write',
+  );
+  const filesTouched = fileWriteOperation?.properties?.['filesTouched'];
+
+  if (fileWriteOperation && filesTouched?.type === 'array') {
+    fileWriteOperation.properties ??= {};
+    fileWriteOperation.properties['filesTouched'] = {
+      ...filesTouched,
+      minItems: 1,
+    };
+    fileWriteOperation.required = sortedUniqueStrings([
+      ...(fileWriteOperation.required ?? []),
+      'filesTouched',
+    ]);
+  }
+}
+
+function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
+  const cappedChildrenSchema: PropertySchema = {
+    type: 'array',
+    items: {
+      type: 'object',
+      additionalProperties: true,
+    },
+    description: 'Descendants beyond the rendered depth cap; summarized as a depth-limit row.',
+  };
+  const depthThreeStepSchema = makeRunStepTimelineStepSchema(cappedChildrenSchema);
+  const depthTwoStepSchema = makeRunStepTimelineStepSchema({
+    type: 'array',
+    items: depthThreeStepSchema,
+    description: 'Nested child-workflow steps rendered at depth 3.',
+  });
+  const depthOneStepSchema = makeRunStepTimelineStepSchema({
+    type: 'array',
+    items: depthTwoStepSchema,
+    description: 'Nested child-workflow steps rendered at depth 2.',
+  });
+  const topLevelStepSchema = makeRunStepTimelineStepSchema({
+    type: 'array',
+    items: depthOneStepSchema,
+    description: 'Schema-bounded nested child-workflow steps.',
+  });
+
+  schema.properties['steps'] = {
+    type: 'array',
+    items: topLevelStepSchema,
+    description: 'Ordered list of steps to render.',
+  };
+  schema.required = sortedUniqueStrings([...(schema.required ?? []), 'steps']);
+
+  const unsupportedProps = schema.metadata?.unsupportedProps?.filter(
+    (property) => property.name !== 'steps',
+  );
+  if (unsupportedProps && unsupportedProps.length > 0) {
+    schema.metadata = { unsupportedProps };
+  } else {
+    delete schema.metadata;
+  }
+}
+
+function sortedUniqueStrings(values: string[]): string[] {
+  const sorted: string[] = [];
+
+  for (const value of new Set(values)) {
+    const insertionIndex = sorted.findIndex((existingValue) => existingValue > value);
+    if (insertionIndex === -1) {
+      sorted.push(value);
+    } else {
+      sorted.splice(insertionIndex, 0, value);
+    }
+  }
+
+  return sorted;
+}
+
+function makeRunStepTimelineStepSchema(childrenSchema?: PropertySchema): PropertySchema {
+  const properties: Record<string, PropertySchema> = {
+    id: {
+      type: 'string',
+      description: 'Stable identity; used as the keyed list identity.',
+    },
+    label: {
+      type: 'string',
+      description: 'Display label for this step.',
+    },
+    status: {
+      enum: [
+        'pending',
+        'running',
+        'succeeded',
+        'failed',
+        'cancelled',
+        'skipped',
+        'retrying',
+        'waiting_approval',
+      ],
+      description: 'Generic execution state.',
+    },
+    startTime: {
+      type: 'string',
+      description: 'ISO datetime string for when this step started.',
+    },
+    endTime: {
+      type: 'string',
+      description: 'ISO datetime string for when this step ended.',
+    },
+    duration: {
+      type: 'string',
+      description: 'Human-readable duration string, e.g. "1m 23s".',
+    },
+    attemptCount: {
+      type: 'number',
+      description: 'Number of attempts made so far, including any retries.',
+    },
+    actionsCount: {
+      type: 'number',
+      description: 'Number of actions associated with this step.',
+    },
+    progress: {
+      type: 'number',
+      description: 'Optional determinate progress value between 0 and `progressMax`.',
+    },
+    progressMax: {
+      type: 'number',
+      description: 'Maximum value for the progress bar. Defaults to 100.',
+    },
+    details: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable identity for this detail panel.',
+          },
+          label: {
+            type: 'string',
+            description: 'Trigger label rendered on the Collapsible header.',
+          },
+          content: {
+            type: 'string',
+            description: 'Pre-formatted content shown inside the panel.',
+          },
+        },
+        additionalProperties: false,
+        required: ['content', 'id', 'label'],
+      },
+      description: 'Expandable detail panels (logs, payloads, errors) shown inline.',
+    },
+    link: {
+      type: 'object',
+      properties: {
+        href: {
+          type: 'string',
+          description: 'Destination URL for the step link.',
+        },
+        label: {
+          type: 'string',
+          description: 'Visible text for the step link.',
+        },
+      },
+      additionalProperties: false,
+      required: ['href', 'label'],
+      description: 'Optional link to logs, traces, or a step detail route.',
+    },
+  };
+
+  if (childrenSchema) {
+    properties['children'] = childrenSchema;
+  }
+
+  return {
+    type: 'object',
+    properties,
+    additionalProperties: false,
+    required: ['id', 'label', 'status'],
+  };
+}
+
 interface ConvertSuccess {
   kind: 'ok';
   schema: PropertySchema;
@@ -303,7 +534,7 @@ interface ConvertUnsupported {
 type ConvertResult = ConvertSuccess | ConvertUnsupported;
 
 function convertType(type: Type, depth = 0, expandObjectShapes = false): ConvertResult {
-  if (depth > 4) return { kind: 'unsupported', reason: 'unknown-shape' };
+  if (depth > MAX_SCHEMA_TYPE_DEPTH) return { kind: 'unsupported', reason: 'unknown-shape' };
 
   // Strip `undefined` — optional props are handled by `symbol.isOptional()`,
   // so the schema only needs to describe the present-value type.
@@ -395,7 +626,7 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     }
 
     if (
-      depth > 3 ||
+      depth > MAX_SCHEMA_STRUCTURAL_OBJECT_DEPTH ||
       !expandObjectShapes ||
       !(
         isDeclaredInActiveTypesFile(type) ||
@@ -413,13 +644,15 @@ function convertSingleType(type: Type, depth = 0, expandObjectShapes = false): C
     for (const property of type.getProperties()) {
       const propertyType = getPropType(property);
       if (!propertyType) return { kind: 'unsupported', reason: 'unknown-shape' };
-      const converted = convertType(
-        propertyType,
-        depth + 1,
-        expandObjectShapes ||
-          hasJsDocTag(property, 'schemaObject') ||
-          hasSchemaObjectTagDeep(propertyType),
-      );
+      const converted = hasJsDocTag(property, 'schemaPermissive')
+        ? { kind: 'ok' as const, schema: {} }
+        : convertType(
+            propertyType,
+            depth + 1,
+            expandObjectShapes ||
+              hasJsDocTag(property, 'schemaObject') ||
+              hasSchemaObjectTagDeep(propertyType),
+          );
       if (converted.kind === 'unsupported') return converted;
 
       const schemaEntry: PropertySchema = { ...converted.schema };

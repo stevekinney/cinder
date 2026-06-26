@@ -190,6 +190,31 @@
       "import": "./src/components/alert-dialog/alert-dialog.examples.json",
       "default": "./src/components/alert-dialog/alert-dialog.examples.json"
     },
+    "./approval-card": {
+      "types": "./dist/components/approval-card/index.d.ts",
+      "svelte": "./src/components/approval-card/index.ts",
+      "node": "./dist/server/components/approval-card/index.js",
+      "default": "./dist/components/approval-card/index.js"
+    },
+    "./approval-card/schema": {
+      "types": "./dist/components/approval-card/approval-card.schema.d.ts",
+      "svelte": "./src/components/approval-card/approval-card.schema.ts",
+      "node": "./dist/server/components/approval-card/approval-card.schema.js",
+      "default": "./dist/components/approval-card/approval-card.schema.js"
+    },
+    "./approval-card/variables": {
+      "types": "./dist/components/approval-card/approval-card.variables.d.ts",
+      "svelte": "./src/components/approval-card/approval-card.variables.ts",
+      "node": "./dist/server/components/approval-card/approval-card.variables.js",
+      "default": "./dist/components/approval-card/approval-card.variables.js"
+    },
+    "./approval-card/styles": {
+      "default": "./dist/components/approval-card/approval-card.css"
+    },
+    "./approval-card/examples": {
+      "import": "./src/components/approval-card/approval-card.examples.json",
+      "default": "./src/components/approval-card/approval-card.examples.json"
+    },
     "./area-chart": {
       "types": "./dist/components/area-chart/index.d.ts",
       "svelte": "./src/components/area-chart/index.ts",

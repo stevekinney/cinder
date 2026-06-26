@@ -4,10 +4,94 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
-    connectionState: {
-      enum: ['connected', 'connecting', 'disconnected', 'error'],
+    events: {
+      type: 'array',
+      items: {
+        anyOf: [
+          {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                description: 'Stable unique identifier used as the keyed list identity.',
+              },
+              sequence: {
+                type: 'integer',
+                description:
+                  'Optional monotonically increasing integer stream sequence used to detect missed events.',
+              },
+              datetime: {
+                type: 'string',
+                description:
+                  'Machine-readable ISO 8601 datetime string rendered into `<time datetime>`.',
+              },
+              timestamp: {
+                type: 'string',
+                description:
+                  'Human-readable timestamp label (e.g. "12:04:32", "2m ago"). Falls back to `datetime`.',
+              },
+              severity: {
+                enum: ['debug', 'info', 'success', 'warning', 'error'],
+                description:
+                  'Severity tone that drives visual styling and the accessible label prefix.',
+              },
+              source: {
+                type: 'string',
+                description:
+                  'Origin label identifying which service, worker, or activity produced the event.',
+              },
+              summary: {
+                type: 'string',
+                description: 'One-line summary of the event.',
+              },
+              details: {
+                description:
+                  'Optional structured JSON payload. Rendered in a collapsible JsonViewer.',
+              },
+            },
+            additionalProperties: false,
+            required: ['datetime', 'id', 'summary'],
+          },
+          {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                description: 'Stable unique identifier used as the keyed list identity.',
+              },
+              kind: {
+                const: 'reconnected',
+                description: 'Discriminator for reconnect boundary entries.',
+              },
+              datetime: {
+                type: 'string',
+                description:
+                  'Optional machine-readable ISO 8601 datetime string for the reconnect moment.',
+              },
+              timestamp: {
+                type: 'string',
+                description:
+                  'Optional human-readable timestamp label. Falls back to `datetime` when rendered.',
+              },
+              replayedCount: {
+                type: 'integer',
+                description:
+                  'Non-negative integer count of events replayed after the connection resumed.',
+                minimum: 0,
+              },
+            },
+            additionalProperties: false,
+            required: ['id', 'kind', 'replayedCount'],
+          },
+        ],
+      },
       description:
-        'Current connection state. When provided, renders a StatusDot connection preset in\nthe toolbar. Omit when the stream has no live transport.',
+        'Events and additive boundary entries to render in chronological order, oldest first.',
+    },
+    connectionState: {
+      enum: ['error', 'connected', 'connecting', 'disconnected'],
+      description:
+        'Current connection state. When provided, renders a StatusDot in the toolbar.\nOmit when the stream has no live transport.',
     },
     followLatest: {
       type: 'boolean',
@@ -29,6 +113,11 @@ const schema = {
       description:
         'Accessible label for the event list region. Required for accessibility.\nDefaults to "Event stream".',
     },
+    detectSequenceGaps: {
+      type: 'boolean',
+      description:
+        'Enables sequence-gap markers when `events` is the complete, unfiltered\nstream. Leave false for retained windows, severity-filtered subsets, search\nresults, or any other caller-trimmed event array.',
+    },
     filterQuery: {
       type: 'string',
       description: 'Current filter query value, for controlled usage. Pairs with `onfilter`.',
@@ -39,14 +128,9 @@ const schema = {
     },
   },
   additionalProperties: false,
+  required: ['events'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'events',
-        reason: 'unknown-shape',
-        required: true,
-        description: 'Events to render in chronological order, oldest first.',
-      },
       {
         name: 'oncopyvisible',
         reason: 'function-or-snippet',

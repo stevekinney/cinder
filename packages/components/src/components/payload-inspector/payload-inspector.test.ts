@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import Ajv2020 from 'ajv/dist/2020';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
@@ -11,6 +12,7 @@ setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: PayloadInspector } = await import('./payload-inspector.svelte');
+const { default: payloadInspectorSchema } = await import('./payload-inspector.schema.ts');
 
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
@@ -28,6 +30,51 @@ function renderInspector(props: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 describe('PayloadInspector', () => {
+  describe('schema', () => {
+    test('models JSON payload values and metadata as supported input', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(payloadInspectorSchema);
+
+      expect(payloadInspectorSchema.properties).toHaveProperty('value');
+      expect(payloadInspectorSchema.properties).toHaveProperty('meta');
+      expect(payloadInspectorSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).toEqual([
+        'format',
+        'parse',
+      ]);
+
+      expect(
+        validate({
+          value: {
+            filters: {
+              include: {
+                branch: 'main',
+              },
+            },
+            matrix: [['bun', 'test']],
+          },
+          meta: {
+            contentType: 'application/json',
+            source: 'workflow',
+            timestamp: '2026-06-24T12:00:00.000Z',
+          },
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+
+    test('accepts deeply nested payload arrays without a depth boundary', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(payloadInspectorSchema);
+
+      expect(
+        validate({
+          value: [[[[[['leaf']]]]]],
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+  });
+
   describe('structure', () => {
     test('renders root element with cinder-payload-inspector class', () => {
       const { container } = renderInspector({ value: { key: 'value' } });
@@ -129,11 +176,7 @@ describe('PayloadInspector', () => {
     });
 
     test('shows "string" kind badge for a JS string primitive value', () => {
-      // To pass a raw string primitive (not JSON-encoded), use a non-string JS value
-      // type. When value is a JS string, the component attempts JSON.parse on it.
-      // A plain non-JSON string yields "invalid" since it fails parsing.
-      // A JSON-encoded string like '"hello"' (with quotes) parses to a string primitive.
-      const { container } = renderInspector({ value: '"hello"' });
+      const { container } = renderInspector({ value: 'hello' });
       const badge = container.querySelector('.cinder-badge');
       expect(badge?.textContent?.trim()).toBe('string');
     });
@@ -166,6 +209,45 @@ describe('PayloadInspector', () => {
       const { container } = renderInspector({ value: '[1,2,3]' });
       const badge = container.querySelector('.cinder-badge');
       expect(badge?.textContent?.trim()).toBe('array');
+    });
+
+    test('preserves a plain string as an inspectable value', async () => {
+      const { container } = renderInspector({ value: '--force' });
+      const badge = container.querySelector('.cinder-badge');
+      const primitive = container.querySelector('.cinder-payload-inspector__primitive');
+
+      expect(badge?.textContent?.trim()).toBe('string');
+      expect(primitive?.textContent?.trim()).toBe('--force');
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+
+      const rawTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (tab) => tab.textContent?.trim() === 'Raw',
+      );
+      await fireEvent.click(rawTab!);
+      const code = container.querySelector(
+        '.cinder-payload-inspector__raw .cinder-code-block__code',
+      );
+      expect(code?.textContent).toContain('"--force"');
+    });
+
+    test('preserves date-like plain strings as inspectable values', () => {
+      const { container } = renderInspector({ value: '2026-06-26T12:00:00Z' });
+      const badge = container.querySelector('.cinder-badge');
+      const primitive = container.querySelector('.cinder-payload-inspector__primitive');
+
+      expect(badge?.textContent?.trim()).toBe('string');
+      expect(primitive?.textContent?.trim()).toBe('2026-06-26T12:00:00Z');
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+    });
+
+    test('preserves keyword-prefixed plain strings as inspectable values', () => {
+      const { container } = renderInspector({ value: 'true-ish' });
+      const badge = container.querySelector('.cinder-badge');
+      const primitive = container.querySelector('.cinder-payload-inspector__primitive');
+
+      expect(badge?.textContent?.trim()).toBe('string');
+      expect(primitive?.textContent?.trim()).toBe('true-ish');
+      expect(container.querySelector('[role="alert"]')).toBeNull();
     });
 
     test('treats empty string as null', () => {
@@ -513,6 +595,17 @@ describe('PayloadInspector', () => {
     test('CSS file includes focus-visible rule', () => {
       const css = readFileSync(new URL('./payload-inspector.css', import.meta.url), 'utf8');
       expect(css).toContain(':focus-visible');
+    });
+
+    test('CSS sidecar imports composed primitive styles', () => {
+      const css = readFileSync(new URL('./payload-inspector.css', import.meta.url), 'utf8');
+
+      expect(css).toContain("@import '../badge/badge.css';");
+      expect(css).toContain("@import '../code-block/code-block.css';");
+      expect(css).toContain("@import '../copy-button/copy-button.css';");
+      expect(css).toContain("@import '../description-list/description-list.css';");
+      expect(css).toContain("@import '../json-viewer/json-viewer.css';");
+      expect(css).toContain("@import '../tabs/tabs.css';");
     });
   });
 });

@@ -1,13 +1,21 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import Ajv2020 from 'ajv/dist/2020';
+
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { StreamEvent } from './event-stream-viewer.types.ts';
+import {
+  detailsIdForKey,
+  reconnectedBoundaryKey,
+  streamEventKey,
+} from './event-stream-viewer-keys.ts';
+import type { EventStreamEntry, StreamEvent } from './event-stream-viewer.types.ts';
 
 setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: EventStreamViewer } = await import('./event-stream-viewer.svelte');
+const { default: eventStreamViewerSchema } = await import('./event-stream-viewer.schema.ts');
 
 const baseEvent: StreamEvent = {
   id: 'evt-1',
@@ -40,6 +48,93 @@ beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
 describe('EventStreamViewer', () => {
+  describe('schema', () => {
+    test('models stream events and reconnect boundaries as supported input', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(eventStreamViewerSchema);
+
+      expect(eventStreamViewerSchema.required).toContain('events');
+      expect(eventStreamViewerSchema.properties).toHaveProperty('events');
+      expect(
+        eventStreamViewerSchema.metadata?.unsupportedProps?.map((prop) => prop.name),
+      ).not.toContain('events');
+
+      expect(
+        validate({
+          events: [
+            {
+              id: 'event-1',
+              sequence: 1,
+              datetime: '2026-06-24T12:00:00.000Z',
+              timestamp: '12:00:00',
+              severity: 'info',
+              source: 'worker',
+              summary: 'Started',
+              details: {
+                filters: {
+                  include: {
+                    branch: 'main',
+                  },
+                },
+              },
+            },
+            {
+              id: 'reconnect-1',
+              kind: 'reconnected',
+              replayedCount: 2,
+            },
+          ],
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+
+    test('requires event and reconnect boundary fields', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(eventStreamViewerSchema);
+
+      expect(validate({ events: [{ id: 'event-1' }] })).toBe(false);
+      expect(validate({ events: [{ id: 'reconnect-1', kind: 'reconnected' }] })).toBe(false);
+      expect(
+        validate({ events: [{ id: 'reconnect-1', kind: 'reconnected', replayedCount: -1 }] }),
+      ).toBe(false);
+      expect(
+        validate({ events: [{ id: 'reconnect-1', kind: 'reconnected', replayedCount: 1.5 }] }),
+      ).toBe(false);
+      expect(
+        validate({
+          events: [
+            {
+              id: 'event-1',
+              sequence: 1.5,
+              datetime: '2026-06-24T12:00:00.000Z',
+              summary: 'Started',
+            },
+          ],
+        }),
+      ).toBe(false);
+    });
+
+    test('accepts nested array event details without a depth boundary', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(eventStreamViewerSchema);
+
+      expect(
+        validate({
+          events: [
+            {
+              id: 'event-1',
+              datetime: '2026-06-24T12:00:00.000Z',
+              summary: 'Started',
+              details: [['cmd', ['arg', ['nested', ['leaf']]]]],
+            },
+          ],
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+  });
+
   describe('structure', () => {
     test('renders root element with cinder-event-stream-viewer class', () => {
       const { container } = render(EventStreamViewer, { props: { events: [baseEvent] } });
@@ -90,6 +185,20 @@ describe('EventStreamViewer', () => {
   });
 
   describe('event rendering', () => {
+    test('accepts existing usage with an array typed as StreamEvent[]', () => {
+      const legacyEvents: StreamEvent[] = [baseEvent, warningEvent];
+      const { container } = render(EventStreamViewer, {
+        props: { events: legacyEvents },
+      });
+      const items = container.querySelectorAll('.cinder-event-stream-viewer__event');
+      expect(items.length).toBe(2);
+      expect(container.textContent).toContain('Activity completed successfully');
+      expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).toBeNull();
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
+    });
+
     test('renders event list items', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: [baseEvent, warningEvent] },
@@ -182,6 +291,216 @@ describe('EventStreamViewer', () => {
       const { container } = render(EventStreamViewer, { props: { events: [baseEvent] } });
       const copyBtn = container.querySelector('.cinder-event-stream-viewer__copy-event-button');
       expect(copyBtn?.getAttribute('aria-label')).toContain('Activity completed successfully');
+    });
+
+    test('reconnect boundary renders labeled divider with replayed count', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 1 },
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '14:30:10',
+          replayedCount: 2,
+        },
+        { ...warningEvent, id: 'evt-2', sequence: 2 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+      const marker = container.querySelector(
+        '.cinder-event-stream-viewer__boundary-marker [role="separator"]',
+      );
+      expect(marker).not.toBeNull();
+      expect(marker?.getAttribute('aria-label')).toBe('Reconnected — 2 events replayed');
+      expect(marker?.textContent).toContain('Reconnected — 2 events replayed');
+    });
+
+    test('reconnect boundary resets sequence gap detection for replayed events', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 10 },
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '14:30:10',
+          replayedCount: 2,
+        },
+        { ...warningEvent, id: 'evt-2', sequence: 13 },
+      ];
+
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries, detectSequenceGaps: true },
+      });
+
+      expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).not.toBe(
+        null,
+      );
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
+    });
+
+    test('reconnect boundary timestamp stays visible-only when datetime is omitted', () => {
+      const entries: EventStreamEntry[] = [
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '2m ago',
+          replayedCount: 2,
+        },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+      const time = container.querySelector<HTMLElement>('.cinder-event-stream-viewer__marker-time');
+
+      expect(time?.tagName).toBe('SPAN');
+      expect(time?.textContent?.trim()).toBe('2m ago');
+      expect(time?.hasAttribute('datetime')).toBe(false);
+      expect(time?.hasAttribute('title')).toBe(false);
+    });
+
+    test('reconnect boundary datetime is used for machine-readable metadata', () => {
+      const entries: EventStreamEntry[] = [
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          datetime: '2026-05-12T14:30:10Z',
+          timestamp: '2m ago',
+          replayedCount: 2,
+        },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+      const time = container.querySelector<HTMLElement>('.cinder-event-stream-viewer__marker-time');
+
+      expect(time?.tagName).toBe('TIME');
+      expect(time?.textContent?.trim()).toBe('2m ago');
+      expect(time?.getAttribute('datetime')).toBe('2026-05-12T14:30:10Z');
+      expect(time?.getAttribute('title')).toBe('2026-05-12T14:30:10Z');
+    });
+
+    test('non-contiguous sequence renders distinct accessible gap marker', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 7 },
+        { ...warningEvent, id: 'evt-2', sequence: 10 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries, detectSequenceGaps: true },
+      });
+      const marker = container.querySelector(
+        '.cinder-event-stream-viewer__sequence-gap-marker [role="note"]',
+      );
+      expect(marker).not.toBeNull();
+      expect(marker?.getAttribute('aria-label')).toBe('Sequence gap — expected 8, received 10');
+      expect(marker?.textContent).toContain('Sequence gap — expected 8, received 10');
+    });
+
+    test('invalid sequence values do not synthesize sequence gaps', () => {
+      const entries = [
+        { ...baseEvent, id: 'evt-1', sequence: 1.5 },
+        { ...warningEvent, id: 'evt-2', sequence: 3 },
+        { ...errorEvent, id: 'evt-3', sequence: Number.NaN },
+        { ...baseEvent, id: 'evt-4', sequence: Number.POSITIVE_INFINITY },
+        { ...warningEvent, id: 'evt-5', sequence: 7 },
+      ] as unknown as EventStreamEntry[];
+
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries, detectSequenceGaps: true },
+      });
+
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
+    });
+
+    test('filtered subsets do not synthesize sequence gaps from omitted events', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 7 },
+        { ...warningEvent, id: 'evt-2', sequence: 10 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: {
+          detectSequenceGaps: true,
+          events: entries,
+          onfilter: () => {},
+          filterQuery: 'retry',
+        },
+      });
+
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
+    });
+
+    test('blank-query subsets do not synthesize sequence gaps by default', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 7 },
+        { ...warningEvent, id: 'evt-2', sequence: 10 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: { events: entries },
+      });
+
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__sequence-gap-marker'),
+      ).toBeNull();
+    });
+
+    test('filter-capable streams still detect sequence gaps when filtering is inactive', () => {
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 7 },
+        { ...warningEvent, id: 'evt-2', sequence: 10 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: {
+          detectSequenceGaps: true,
+          events: entries,
+          onfilter: () => {},
+          filterQuery: '',
+        },
+      });
+
+      const marker = container.querySelector(
+        '.cinder-event-stream-viewer__sequence-gap-marker [role="note"]',
+      );
+      expect(marker?.getAttribute('aria-label')).toBe('Sequence gap — expected 8, received 10');
+    });
+
+    test('events with reconnected kind data still render as events without replay metadata', () => {
+      const backendEvent = {
+        ...baseEvent,
+        id: 'backend-event',
+        kind: 'reconnected',
+        summary: 'Backend event with kind field',
+      } as unknown as EventStreamEntry;
+
+      const { container } = render(EventStreamViewer, {
+        props: { events: [backendEvent] },
+      });
+
+      expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).toBeNull();
+      expect(
+        container.querySelector('.cinder-event-stream-viewer__event-summary')?.textContent,
+      ).toContain('Backend event with kind field');
+    });
+
+    test('invalid replay counts render as events instead of reconnect boundaries', () => {
+      const invalidBoundary = {
+        ...baseEvent,
+        id: 'invalid-reconnect',
+        kind: 'reconnected',
+        replayedCount: -1,
+        summary: 'Backend event with invalid replay count',
+      } as unknown as EventStreamEntry;
+
+      const { container } = render(EventStreamViewer, {
+        props: { events: [invalidBoundary] },
+      });
+
+      expect(container.querySelector('.cinder-event-stream-viewer__boundary-marker')).toBeNull();
+      expect(container.textContent).toContain('Backend event with invalid replay count');
+      expect(container.textContent).not.toContain('-1 events replayed');
     });
   });
 
@@ -291,6 +610,139 @@ describe('EventStreamViewer', () => {
       expect(firstControls).toBeTruthy();
       expect(secondControls).toBeTruthy();
       expect(firstControls).not.toBe(secondControls);
+    });
+
+    test('hash-colliding row keys still produce distinct details panel ids', async () => {
+      const first = { ...errorEvent, id: 'Aa', summary: 'First colliding event' };
+      const second = { ...errorEvent, id: 'BB', summary: 'Second colliding event' };
+      const { container } = render(EventStreamViewer, { props: { events: [first, second] } });
+      const toggles = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(
+          '.cinder-event-stream-viewer__details-toggle',
+        ),
+      );
+      const controls = toggles.map((toggle) => toggle.getAttribute('aria-controls'));
+
+      expect(toggles).toHaveLength(2);
+      expect(controls[0]).toBeTruthy();
+      expect(controls[1]).toBeTruthy();
+      expect(controls[0]).not.toBe(controls[1]);
+    });
+
+    test('duplicate event ids expand only the selected row details', async () => {
+      const replayedEvents: StreamEvent[] = [
+        {
+          ...errorEvent,
+          id: 'replayed-id',
+          summary: 'Original event',
+          details: { replay: false },
+        },
+        {
+          ...errorEvent,
+          id: 'replayed-id',
+          summary: 'Replayed event',
+          details: { replay: true },
+        },
+      ];
+      const { container } = render(EventStreamViewer, { props: { events: replayedEvents } });
+      const toggles = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(
+          '.cinder-event-stream-viewer__details-toggle',
+        ),
+      );
+
+      expect(toggles).toHaveLength(2);
+      await fireEvent.click(toggles[0]!);
+
+      expect(toggles[0]?.getAttribute('aria-expanded')).toBe('true');
+      expect(toggles[1]?.getAttribute('aria-expanded')).toBe('false');
+
+      const firstPanel = container.querySelector(
+        `[id="${toggles[0]?.getAttribute('aria-controls')}"]`,
+      );
+      const secondPanel = container.querySelector(
+        `[id="${toggles[1]?.getAttribute('aria-controls')}"]`,
+      );
+      expect(firstPanel?.hasAttribute('hidden')).toBe(false);
+      expect(secondPanel?.hasAttribute('hidden')).toBe(true);
+    });
+
+    test('event and reconnect boundary keys do not depend on source index or display fields', () => {
+      const firstEvent: StreamEvent = {
+        ...baseEvent,
+        id: 'event-1',
+        sequence: 1,
+        summary: 'First event',
+        details: { index: 1 },
+      };
+      const retainedEvent: StreamEvent = {
+        ...errorEvent,
+        id: 'event-2',
+        sequence: 2,
+        summary: 'Retained event',
+        details: { index: 2 },
+      };
+      const nextEvent: StreamEvent = {
+        ...warningEvent,
+        id: 'event-3',
+        sequence: 3,
+        summary: 'Next event',
+        details: { index: 3 },
+      };
+
+      const firstWindowKeys = [firstEvent, retainedEvent].map(streamEventKey);
+      const retainedWindowKeys = [retainedEvent, nextEvent].map(streamEventKey);
+      const firstRetainedKey = firstWindowKeys[1];
+      const retainedKey = retainedWindowKeys[0];
+
+      if (firstRetainedKey === undefined || retainedKey === undefined) {
+        throw new Error('Expected overlapping stream event keys to be generated.');
+      }
+
+      expect(firstRetainedKey).toBe(retainedKey);
+      expect(streamEventKey({ ...retainedEvent, timestamp: '3m ago', summary: 'Updated' })).toBe(
+        retainedKey,
+      );
+
+      const boundaryKey = reconnectedBoundaryKey({
+        id: 'reconnect-1',
+        kind: 'reconnected',
+        timestamp: '14:31:10',
+        replayedCount: 2,
+      });
+      expect(
+        reconnectedBoundaryKey({
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '3m ago',
+          replayedCount: 3,
+        }),
+      ).toBe(boundaryKey);
+    });
+
+    test('event keys encode delimiter-bearing ids without sequence collisions', () => {
+      const idOnlyKey = streamEventKey({
+        ...baseEvent,
+        id: 'build|sequence=7',
+      });
+      const sequencedKey = streamEventKey({
+        ...baseEvent,
+        id: 'build',
+        sequence: 7,
+      });
+
+      expect(idOnlyKey).not.toBe(sequencedKey);
+    });
+
+    test('details panel ids stay bounded while resisting simple hash collisions', () => {
+      const firstKey = 'event|id=Aa';
+      const secondKey = 'event|id=BB';
+      const longKey = `event|id=${'x'.repeat(1000)}`;
+
+      expect(detailsIdForKey('stream-viewer', firstKey)).not.toBe(
+        detailsIdForKey('stream-viewer', secondKey),
+      );
+      expect(detailsIdForKey('stream-viewer', longKey).length).toBeLessThan(80);
     });
   });
 
@@ -458,8 +910,41 @@ describe('EventStreamViewer', () => {
       );
       await fireEvent.click(btn!);
       const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
-      expect(liveRegion?.textContent).toBe('1 event sent to copy handler');
+      expect(liveRegion?.textContent).toBe('1 stream entry sent to copy handler');
       expect(liveRegion?.textContent).not.toContain('clipboard');
+    });
+
+    test('copy-visible text includes reconnect and sequence gap markers', async () => {
+      let received = '';
+      const entries: EventStreamEntry[] = [
+        { ...baseEvent, id: 'evt-1', sequence: 1 },
+        {
+          id: 'reconnect-1',
+          kind: 'reconnected',
+          timestamp: '14:30:05',
+          replayedCount: 1,
+        },
+        { ...warningEvent, id: 'evt-2', sequence: 4 },
+        { ...errorEvent, id: 'evt-3', sequence: 6 },
+      ];
+      const { container } = render(EventStreamViewer, {
+        props: {
+          detectSequenceGaps: true,
+          events: entries,
+          oncopyvisible: (text: string) => {
+            received = text;
+          },
+        },
+      });
+      const btn = container.querySelector<HTMLButtonElement>(
+        '.cinder-event-stream-viewer__copy-all-button',
+      );
+      await fireEvent.click(btn!);
+      expect(received).toContain('Reconnected — 1 event replayed');
+      expect(received).toContain('Sequence gap — expected 5, received 6');
+      expect(received).toContain('Retry attempt 2 of 3');
+      const liveRegion = container.querySelector('.cinder-event-stream-viewer__live-region');
+      expect(liveRegion?.textContent).toBe('5 stream entries sent to copy handler');
     });
   });
 
@@ -630,6 +1115,18 @@ describe('EventStreamViewer', () => {
       expect(css).toContain(
         '@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities',
       );
+    });
+
+    test('CSS sidecar imports composed primitive styles', () => {
+      const { readFileSync } = require('node:fs');
+      const css = readFileSync(
+        new URL('./event-stream-viewer.css', import.meta.url).pathname,
+        'utf8',
+      );
+
+      expect(css).toContain("@import '../copy-button/copy-button.css';");
+      expect(css).toContain("@import '../json-viewer/json-viewer.css';");
+      expect(css).toContain("@import '../status-dot/status-dot.css';");
     });
   });
 });
