@@ -981,7 +981,7 @@
         aria-rowindex={rowIndex + 2}
         aria-label={getResolvedRowAriaLabel(row, rowIndex)}
         aria-selected={selectedRowIds.has(rowId) ? 'true' : undefined}
-        data-cinder-selected={selectedRowIds.has(rowId) ? 'true' : undefined}
+        data-cinder-selected={selectedRowIds.has(rowId) ? '' : undefined}
         data-cinder-virtual-index={rowIndex}
         style={getRowStyle(renderedRow)}
       >
@@ -1000,7 +1000,7 @@
             tabindex="-1"
             data-cinder-pin={column.pin}
             data-cinder-active={activeCellId === cellId ? 'true' : undefined}
-            data-cinder-selected={isSelectedCell ? 'true' : undefined}
+            data-cinder-selected={isSelectedCell ? '' : undefined}
             data-cinder-anchor={isAnchorCell ? 'true' : undefined}
             data-cinder-row-id={rowId}
             data-cinder-row-dom-id={rowDomId}

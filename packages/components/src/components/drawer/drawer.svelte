@@ -19,13 +19,11 @@
   import type { DrawerProps } from './drawer.types.ts';
   import { onDestroy } from 'svelte';
 
-  import { captureFocus, lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
-  import { waitForTransitionCompletion } from '../../_internal/transition-completion.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
-  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
+  import { createSlidingDialogState } from '../_internal/create-sliding-dialog-state.svelte.ts';
 
   let {
     open = $bindable(false),
@@ -45,10 +43,6 @@
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
-  let hydrated = $state(false);
-  let renderPanel = $state(open);
-  let isClosing = $state(false);
-  let closeGeneration = $state(0);
   /**
    * The side that was active when the current open/close cycle began.
    * Snapshotted at open time so that a side-prop change while the drawer
@@ -57,65 +51,39 @@
    */
   let activeSide = $state(side);
 
-  let capturedFocus: HTMLElement | null = null;
-  let releaseScrollLock: (() => void) | null = null;
-  let releaseEscape: (() => void) | null = null;
-  let cancelPendingClose: (() => void) | null = null;
-
   const reducedMotion = useReducedMotion();
   const bodyOverflowFade = overflowFade();
-
-  function acquireScrollLock(): void {
-    if (releaseScrollLock) return;
-    releaseScrollLock = lockBodyScroll();
-  }
-
-  function acquireEscapeMarker(): void {
-    if (releaseEscape) return;
-    // No-op handler: presence marker so stacked non-dialog overlays
-    // route ESC to themselves. Native <dialog> owns the actual ESC close.
-    releaseEscape = pushEscapeHandler(() => {});
-  }
-
-  $effect(() => {
-    hydrated = true;
+  const dialogState = createSlidingDialogState({
+    getOpen: () => open,
+    setOpen: (nextOpen) => {
+      open = nextOpen;
+    },
+    getDialogElement: () => dialogElement,
+    getPanelElement: () => panelElement,
+    getReducedMotion: () => reducedMotion.current,
+    getTriggerRef: () => triggerRef,
   });
 
   $effect(() => {
-    if (!dialogElement) return;
+    dialogState.markHydrated();
+  });
+
+  $effect(() => {
     if (open) {
-      if (isClosing) {
+      if (dialogState.isClosing) {
         // Quick-reopen while a close transition is still running.
         // Snapshot the current side so the reversal / re-entry animation
         // uses the side the user expects for this new open intent.
         activeSide = side;
-        closeGeneration += 1;
-        cancelPendingClose?.();
-        cancelPendingClose = null;
-        isClosing = false;
       }
 
-      if (!renderPanel) {
+      if (!dialogState.renderPanel) {
         // Fresh mount — snapshot the side for this open cycle so any later
         // side-prop change while open or closing does not flip the direction.
         activeSide = side;
-        renderPanel = true;
       }
-
-      if (!dialogElement.open) {
-        capturedFocus = captureFocus();
-        dialogElement.showModal();
-        acquireScrollLock();
-        acquireEscapeMarker();
-      }
-      return;
     }
-
-    if (dialogElement.open) {
-      beginClosing();
-    } else {
-      renderPanel = false;
-    }
+    dialogState.syncOpenState();
   });
 
   /**
@@ -143,116 +111,29 @@
     return explicitlyAutofocused;
   }
 
-  function beginClosing(): void {
-    if (!dialogElement?.open || isClosing) return;
-    if (!panelElement) {
-      finishClosing(closeGeneration);
-      return;
-    }
-
-    isClosing = true;
-    const generation = ++closeGeneration;
-    cancelPendingClose?.();
-    cancelPendingClose = waitForTransitionCompletion({
-      element: panelElement,
-      reducedMotion: reducedMotion.current,
-      onComplete: () => finishClosing(generation),
-    });
-  }
-
-  function finishClosing(generation: number): void {
-    if (generation !== closeGeneration) return;
-    cancelPendingClose?.();
-    cancelPendingClose = null;
-    isClosing = false;
-    renderPanel = false;
-    if (dialogElement?.open) {
-      dialogElement.close();
-    }
-  }
-
-  function handleClose() {
-    if (releaseScrollLock) {
-      releaseScrollLock();
-      releaseScrollLock = null;
-    }
-    if (releaseEscape) {
-      releaseEscape();
-      releaseEscape = null;
-    }
-    open = false;
-    returnFocus();
-  }
-
-  function requestClose(): void {
-    if (!open && (isClosing || !dialogElement?.open)) return;
-    open = false;
-    beginClosing();
-  }
-
-  // Iterate candidates so a disconnected `triggerRef` falls through to the
-  // captured pre-open focus. Matches modal/sheet/popover/command-palette.
-  function returnFocus(): void {
-    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
-    for (const candidate of candidates) {
-      if (restoreFocusTo(candidate)) break;
-    }
-    capturedFocus = null;
-  }
-
-  function handleNativeCancel(event: Event) {
-    // The browser's native ESC handler on <dialog> fires `cancel` then closes
-    // the dialog. preventDefault keeps the close out of the native path so it
-    // goes through `dialogElement.close()` here — which fires the `close`
-    // event and lets handleClose() run as the single canonical close path.
-    // This matches modal.svelte's pattern; without it, ESC would close the
-    // dialog out from under Svelte's `open` state for one tick.
-    event.preventDefault();
-    requestClose();
-  }
-
-  function handleBackdropClick(event: MouseEvent) {
-    if (event.target === dialogElement) {
-      requestClose();
-    }
-  }
-
   onDestroy(() => {
-    cancelPendingClose?.();
-    cancelPendingClose = null;
-    const wasOpen = releaseScrollLock !== null || releaseEscape !== null;
-    if (releaseScrollLock) {
-      releaseScrollLock();
-      releaseScrollLock = null;
-    }
-    if (releaseEscape) {
-      releaseEscape();
-      releaseEscape = null;
-    }
-    if (wasOpen) {
-      returnFocus();
-    }
+    dialogState.destroy();
   });
 </script>
 
-{#if hydrated}
+{#if dialogState.hydrated}
   <dialog
     {...rest}
     bind:this={dialogElement}
     class={classNames('cinder-drawer', className)}
     aria-modal="true"
     aria-labelledby={ariaLabelledBy ?? titleId}
-    data-cinder-closing={isClosing ? '' : undefined}
-    onclose={handleClose}
-    oncancel={handleNativeCancel}
-    onclick={handleBackdropClick}
+    data-cinder-closing={dialogState.isClosing ? '' : undefined}
+    onclose={() => dialogState.handleClose()}
+    oncancel={(event) => dialogState.handleNativeCancel(event)}
+    onclick={(event) => dialogState.handleBackdropClick(event)}
   >
     {#snippet closeButton()}
       <button
         type="button"
         class="cinder-drawer__close"
         aria-label="Close drawer"
-        onclick={requestClose}
+        onclick={() => dialogState.requestClose()}
       >
         <svg
           class="cinder-drawer__close-icon"
@@ -268,7 +149,7 @@
       </button>
     {/snippet}
 
-    {#if renderPanel}
+    {#if dialogState.renderPanel}
       <!--
         The native <dialog> (showModal) traps focus in supporting browsers; the
         shared focus-trap is the defence-in-depth fallback and owns initial focus.
@@ -281,10 +162,10 @@
         class="cinder-drawer__panel"
         data-cinder-side={activeSide}
         data-cinder-size={size}
-        data-cinder-closing={isClosing ? '' : undefined}
-        inert={isClosing}
+        data-cinder-closing={dialogState.isClosing ? '' : undefined}
+        inert={dialogState.isClosing}
         {@attach createFocusTrap({
-          active: () => open && !isClosing,
+          active: () => open && !dialogState.isClosing,
           restoreFocus: false,
           initialFocus: resolveInitialFocus,
         })}

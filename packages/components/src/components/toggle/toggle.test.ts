@@ -149,6 +149,19 @@ describe('Toggle — disabled state', () => {
   });
 });
 
+describe('Toggle — value interception', () => {
+  test('onValueChange can veto the proposed checked value', async () => {
+    render(Toggle, {
+      props: { id: 'veto-toggle', checked: false, label: 'Veto', onValueChange: () => false },
+    });
+    const toggle = screen.getByRole('switch', { name: 'Veto' });
+
+    await fireEvent.click(toggle);
+
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+  });
+});
+
 describe('Toggle — interactive behaviour', () => {
   test('click toggles aria-checked from false to true', async () => {
     const { container } = render(Toggle, { props: { id: 't12', checked: false, label: 'Toggle' } });

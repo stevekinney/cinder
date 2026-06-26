@@ -69,23 +69,35 @@ function findPropsTypeAlias(moduleBody: ASTNode[], propsName: string): ASTNode {
   return undefined;
 }
 
+function unwrapTypeAnnotation(annotation: ASTNode): ASTNode {
+  let current = annotation;
+  while (current?.type === 'TSParenthesizedType') {
+    current = current.typeAnnotation;
+  }
+  return current;
+}
+
 function resolvePropTypeLiteral(annotation: ASTNode): ASTNode {
   if (!annotation) return null;
+  annotation = unwrapTypeAnnotation(annotation);
   if (annotation.type === 'TSTypeLiteral') {
     return { kind: 'literal', typeLiteral: annotation };
   }
   if (annotation.type === 'TSIntersectionType') {
-    const literal = annotation.types?.find((t: ASTNode) => t.type === 'TSTypeLiteral');
+    const literal = annotation.types
+      ?.map((t: ASTNode) => unwrapTypeAnnotation(t))
+      .find((t: ASTNode) => t.type === 'TSTypeLiteral');
     return { kind: 'intersection', typeLiteral: literal ?? null };
   }
   if (annotation.type === 'TSUnionType') {
     const arms = (annotation.types ?? [])
       .map((arm: ASTNode) => {
-        const r = resolvePropTypeLiteral(arm);
+        const unwrappedArm = unwrapTypeAnnotation(arm);
+        const r = resolvePropTypeLiteral(unwrappedArm);
         if (r?.kind !== 'union' && r !== null) return r;
         // TSTypeReference arm (named type alias) — can't resolve without ts-morph.
         // Return a placeholder so arity check still works.
-        if (arm.type === 'TSTypeReference')
+        if (unwrappedArm.type === 'TSTypeReference')
           return { kind: 'literal', typeLiteral: null, unresolvable: true };
         return null;
       })

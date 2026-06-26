@@ -3,9 +3,9 @@
  * internally, so `cinder/event-stream-viewer/styles` must include their styling
  * when consumers import the component-specific style sidecar. Sibling paths
  * mirror between `src/` and generated `dist/`. */
-@import '../connection-indicator/connection-indicator.css';
 @import '../copy-button/copy-button.css';
 @import '../json-viewer/json-viewer.css';
+@import '../status-dot/status-dot.css';
 
 @layer cinder.components {
   /* ========================================

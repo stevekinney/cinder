@@ -323,9 +323,30 @@ test('role only', () => {
 // ---------------------------------------------------------------------------
 
 describe('hasBrowserGuard', () => {
-  test('returns true for drawer (has {#if hydrated} guard)', () => {
-    const sveltePath = join(componentDirectory('drawer'), 'drawer.svelte');
-    expect(hasBrowserGuard(sveltePath)).toBe(true);
+  test('returns true for a component with a hydrated template guard', () => {
+    const tempPath = join(tmpdir(), `browser-guard-hydrated-${Date.now()}.svelte`);
+    writeFileSync(
+      tempPath,
+      `<script lang="ts">\n  let hydrated = $state(false);\n</script>\n{#if hydrated}<div />{/if}\n`,
+    );
+    try {
+      expect(hasBrowserGuard(tempPath)).toBe(true);
+    } finally {
+      rmSync(tempPath, { force: true });
+    }
+  });
+
+  test('returns true for a component with a member-expression hydrated template guard', () => {
+    const tempPath = join(tmpdir(), `browser-guard-member-hydrated-${Date.now()}.svelte`);
+    writeFileSync(
+      tempPath,
+      `<script lang="ts">\n  const dialogState = { hydrated: true };\n</script>\n{#if dialogState.hydrated}<div />{/if}\n`,
+    );
+    try {
+      expect(hasBrowserGuard(tempPath)).toBe(true);
+    } finally {
+      rmSync(tempPath, { force: true });
+    }
   });
 
   test('returns true for markdown-editor (imports BROWSER from esm-env)', () => {
@@ -516,14 +537,8 @@ describe('hasHydrationTest', () => {
 // ---------------------------------------------------------------------------
 
 describe('--json output shape on a failing component', () => {
-  test('drawer exits 1 (hydration FAIL) with valid JSON report', async () => {
-    // FRAGILE: this relies on `drawer` currently having a browser guard
-    // ({#if hydrated}) but no renderThenHydrate / svelte-server render test. If
-    // drawer ever gains a hydration test, this assertion flips to PASS and the
-    // test must be repointed at another guarded-but-untested component (or
-    // replaced with a synthetic fixture). The `hydration === fail` assertion
-    // below is what guards against a silent flip.
-    const { stdout, exitCode } = await runPromotionCheck(['drawer', '--json']);
+  test('toast-region exits 1 (hydration FAIL) with valid JSON report', async () => {
+    const { stdout, exitCode } = await runPromotionCheck(['toast-region', '--json']);
     expect(exitCode).toBe(1);
 
     const report = JSON.parse(stdout) as {
@@ -532,12 +547,12 @@ describe('--json output shape on a failing component', () => {
       checks: Record<string, { status: string }>;
     };
     expect(report.result).toBe('FAIL');
-    expect(report.component).toBe('drawer');
+    expect(report.component).toBe('toast-region');
     expect(report.checks['hydration']?.status).toBe('fail');
   });
 
   test('--json emits no stdout text before the JSON object on FAIL', async () => {
-    const { stdout } = await runPromotionCheck(['drawer', '--json']);
+    const { stdout } = await runPromotionCheck(['toast-region', '--json']);
     expect(stdout.trimStart()).toMatch(/^\{/);
   });
 

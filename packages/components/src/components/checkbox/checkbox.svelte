@@ -21,10 +21,12 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import { commitValue } from '../../utilities/value-change.ts';
 
   let {
     id,
     checked = $bindable(false),
+    onValueChange,
     indeterminate = $bindable(false),
     label,
     description,
@@ -34,6 +36,7 @@
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
+    onchange: consumerOnchange,
     ...rest
   }: CheckboxProps = $props();
 
@@ -82,6 +85,41 @@
       inputElement.indeterminate = indeterminate && !checked;
     }
   });
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function syncCheckedAfterFormReset(): void {
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      if (!inputElement) return;
+      checked = inputElement.checked;
+      inputElement.indeterminate = indeterminate && !inputElement.checked;
+    }, 0);
+  }
+
+  $effect(() => {
+    const form = inputElement?.form;
+    if (!form) return;
+
+    form.addEventListener('reset', syncCheckedAfterFormReset);
+    return () => {
+      form.removeEventListener('reset', syncCheckedAfterFormReset);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
+  });
+
+  function handleChange(event: Event): void {
+    const target = event.currentTarget as HTMLInputElement;
+    const committed = commitValue(target.checked, onValueChange, (next) => {
+      checked = next;
+    });
+    target.checked = committed;
+    target.indeterminate = indeterminate && !committed;
+    consumerOnchange?.(event as Parameters<NonNullable<CheckboxProps['onchange']>>[0]);
+  }
 </script>
 
 <div class="cinder-checkbox-field">
@@ -91,13 +129,14 @@
         bind:this={inputElement}
         id={field.id}
         type="checkbox"
+        {...rest}
         disabled={field.disabled}
         required={field.required}
-        bind:checked
+        {checked}
+        onchange={handleChange}
         class={classNames('cinder-checkbox', className)}
         aria-invalid={field.ariaInvalid}
         aria-describedby={field.describedBy}
-        {...rest}
       />
       <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
     </span>

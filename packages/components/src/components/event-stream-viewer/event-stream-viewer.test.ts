@@ -748,24 +748,27 @@ describe('EventStreamViewer', () => {
   });
 
   describe('connection indicator', () => {
-    test('renders ConnectionIndicator when connectionState is provided', () => {
+    test('renders StatusDot connection preset when connectionState is provided', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: [], connectionState: 'connected' },
       });
-      expect(container.querySelector('.cinder-connection-indicator')).not.toBeNull();
+      expect(
+        container.querySelector('.cinder-status-dot[data-cinder-state="connected"]'),
+      ).not.toBeNull();
     });
 
-    test('does not render ConnectionIndicator when connectionState is omitted', () => {
+    test('does not render StatusDot connection preset when connectionState is omitted', () => {
       const { container } = render(EventStreamViewer, { props: { events: [] } });
-      expect(container.querySelector('.cinder-connection-indicator')).toBeNull();
+      expect(container.querySelector('.cinder-status-dot[data-cinder-state]')).toBeNull();
     });
 
     test('passes connection state to the indicator', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: [], connectionState: 'disconnected' },
       });
-      const indicator = container.querySelector('.cinder-connection-indicator');
+      const indicator = container.querySelector('.cinder-status-dot');
       expect(indicator?.getAttribute('data-cinder-state')).toBe('disconnected');
+      expect(indicator?.getAttribute('role')).toBe('status');
     });
   });
 
@@ -1067,9 +1070,9 @@ describe('EventStreamViewer', () => {
         'utf8',
       );
 
-      expect(css).toContain("@import '../connection-indicator/connection-indicator.css';");
       expect(css).toContain("@import '../copy-button/copy-button.css';");
       expect(css).toContain("@import '../json-viewer/json-viewer.css';");
+      expect(css).toContain("@import '../status-dot/status-dot.css';");
     });
   });
 });

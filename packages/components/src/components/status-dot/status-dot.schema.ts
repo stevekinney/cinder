@@ -7,7 +7,12 @@ const schema = {
     status: {
       enum: ['online', 'offline', 'warning', 'danger', 'pending', 'neutral', 'success', 'accent'],
       description:
-        'Required semantic status. Drives color via `data-cinder-status`. `success` maps to `--cinder-success`; `accent` maps to `--cinder-accent`.',
+        'Semantic status. Drives color via `data-cinder-status`; defaults to a neutral dot or derives from `connectionState`. `success` maps to `--cinder-success`; `accent` maps to `--cinder-accent`.',
+    },
+    connectionState: {
+      enum: ['connected', 'connecting', 'disconnected', 'error'],
+      description:
+        'Realtime connection preset. Sets status, default label, and live-region semantics.',
     },
     label: {
       type: 'string',
@@ -18,6 +23,11 @@ const schema = {
       type: 'boolean',
       description: 'Whether to render the visible label.',
       default: true,
+    },
+    live: {
+      type: 'boolean',
+      description:
+        'Use role="status" with polite live-region attributes. Defaults true when connectionState is provided.',
     },
     size: {
       enum: ['sm', 'md'],
@@ -30,7 +40,6 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['status'],
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

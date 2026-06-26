@@ -95,7 +95,7 @@ export type EventStreamViewerProps = Omit<HTMLAttributes<HTMLDivElement>, 'class
   /** Events and additive boundary entries to render in chronological order, oldest first. */
   events: EventStreamEntry[];
   /**
-   * Current connection state. When provided, renders a ConnectionIndicator in
+   * Current connection state. When provided, renders a StatusDot connection preset in
    * the toolbar. Omit when the stream has no live transport.
    */
   connectionState?: EventStreamState;
@@ -158,8 +158,8 @@ export type EventStreamViewerSchemaProps = {
   /** Events and additive boundary entries to render in chronological order, oldest first. */
   events: EventStreamSchemaEntry[];
   /**
-   * Current connection state. When provided, renders a ConnectionIndicator in
-   * the toolbar. Omit when the stream has no live transport.
+   * Current connection state. When provided, renders a StatusDot in the toolbar.
+   * Omit when the stream has no live transport.
    */
   connectionState?: EventStreamState;
   /**

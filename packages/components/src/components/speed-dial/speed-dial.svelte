@@ -171,7 +171,7 @@
   aria-hidden={hidden ? 'true' : undefined}
   inert={hidden ? true : undefined}
   class={classNames('cinder-speed-dial', customClassName)}
-  data-cinder-open={open ? 'true' : 'false'}
+  data-cinder-open={open ? '' : undefined}
   data-cinder-direction={direction}
   data-cinder-hidden={hidden ? 'true' : undefined}
 >
@@ -181,7 +181,7 @@
     aria-label="Actions"
     aria-orientation={orientation}
     class="cinder-speed-dial__actions"
-    data-cinder-open={open ? 'true' : 'false'}
+    data-cinder-open={open ? '' : undefined}
     inert={!open ? true : undefined}
     tabindex="-1"
     onkeydown={handleActionsKeydown}

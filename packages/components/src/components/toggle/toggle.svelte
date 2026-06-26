@@ -18,10 +18,12 @@
   import type { ToggleProps } from './toggle.types.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { commitValue } from '../../utilities/value-change.ts';
 
   let {
     id,
     checked = $bindable(false),
+    onValueChange,
     label,
     disabled,
     hideLabel = false,
@@ -43,7 +45,9 @@
 
   function toggle(): void {
     if (!resolvedDisabled) {
-      checked = !checked;
+      commitValue(!checked, onValueChange, (next) => {
+        checked = next;
+      });
     }
   }
 </script>

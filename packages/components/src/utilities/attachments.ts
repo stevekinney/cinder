@@ -22,8 +22,8 @@ export function createBodyScrollLock(): Attachment<HTMLElement> {
   };
 }
 
-/** Pointer/click events the outside-dismiss listener can key off. */
-export type ClickOutsideEventType = 'click' | 'pointerdown' | 'mousedown';
+/** Pointer/click/touch events the outside-dismiss listener can key off. */
+export type ClickOutsideEventType = 'click' | 'pointerdown' | 'mousedown' | 'touchstart';
 
 export type ClickOutsideOptions = {
   /** Callback when an outside interaction occurs */
@@ -50,12 +50,17 @@ export type ClickOutsideOptions = {
   ignoreRefs?: Array<() => Element | null>;
 };
 
+function isInsideEventPath(event: Event, element: Element): boolean {
+  const path = event.composedPath();
+  return path.some((entry) => entry instanceof Node && element.contains(entry));
+}
+
 /**
  * Creates an outside-interaction attachment that calls a handler when a `click`, `pointerdown`,
- * or `mousedown` lands outside the attached element (and outside any `ignoreRefs`). This is the
- * single canonical mechanism for overlay light-dismiss — dropdowns, menus, popovers — so each
- * overlay does not hand-roll its own `document` listener and inside/trigger exclusion (see
- * `OVERLAY-POLICY.md` § Outside-click).
+ * `mousedown`, or `touchstart` lands outside the attached element (and outside any `ignoreRefs`).
+ * This is the single canonical mechanism for overlay light-dismiss — dropdowns, menus, popovers —
+ * so each overlay does not hand-roll its own `document` listener and inside/trigger exclusion
+ * (see `OVERLAY-POLICY.md` § Outside-click).
  *
  * @example
  * ```svelte
@@ -78,23 +83,21 @@ export function createClickOutside(options: ClickOutsideOptions): Attachment<HTM
   const { handler, enabled = true, eventType = 'click', capture = true, ignoreRefs } = options;
 
   return (node: HTMLElement) => {
-    // All three event types (click, pointerdown, mousedown) produce MouseEvent or its
-    // subtype PointerEvent — typing as MouseEvent is accurate and preserves mouse properties
-    // should the handler or future callers need them.
-    function handleEvent(event: MouseEvent) {
+    function handleEvent(event: MouseEvent | PointerEvent | TouchEvent) {
       const isEnabled = typeof enabled === 'function' ? enabled() : enabled;
       if (!isEnabled) return;
+      if (event.type === 'touchstart' && !event.cancelable) return;
       const target = event.target;
       // A non-Node (or null) target is treated as outside the node.
       if (!(target instanceof Node)) {
         handler();
         return;
       }
-      if (node.contains(target)) return;
+      if (isInsideEventPath(event, node)) return;
       if (ignoreRefs) {
         for (const ref of ignoreRefs) {
           const element = ref();
-          if (element && element.contains(target)) return;
+          if (element && isInsideEventPath(event, element)) return;
         }
       }
       handler();

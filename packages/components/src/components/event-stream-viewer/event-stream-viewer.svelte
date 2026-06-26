@@ -11,7 +11,7 @@
    * @useWhen Showing an append-only diagnostic stream with filtering, copy, and structured detail expansion.
    * @avoidWhen Showing a social activity feed or notification timeline — use feed instead.
    * @avoidWhen Rendering paginated historical records with sorting — use data-table instead.
-   * @related feed, timeline, json-viewer, connection-indicator, copy-button
+   * @related feed, timeline, json-viewer, status-dot, copy-button
    */
   export type {
     EventSeverity,
@@ -36,9 +36,9 @@
     StreamReconnectedBoundary,
   } from './event-stream-viewer.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import ConnectionIndicator from '../connection-indicator/connection-indicator.svelte';
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
+  import StatusDot from '../status-dot/status-dot.svelte';
   import {
     detailsIdForKey,
     reconnectedBoundaryKey,
@@ -301,7 +301,7 @@
   <div class="cinder-event-stream-viewer__toolbar" role="group" aria-label="Stream controls">
     <div class="cinder-event-stream-viewer__toolbar-start">
       {#if connectionState}
-        <ConnectionIndicator state={connectionState} />
+        <StatusDot {connectionState} />
       {/if}
       {#if !followLatest}
         <button

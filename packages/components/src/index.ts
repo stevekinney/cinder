@@ -56,7 +56,12 @@ export type {
 } from './components/avatar-group/index.ts';
 
 export { default as Badge } from './components/badge/index.ts';
-export type { BadgeProps, BadgeSize, BadgeVariant } from './components/badge/index.ts';
+export type {
+  BadgeProps,
+  BadgeSize,
+  BadgeSubscriptionState,
+  BadgeVariant,
+} from './components/badge/index.ts';
 
 export { default as Backdrop } from './components/backdrop/index.ts';
 export type { BackdropProps } from './components/backdrop/index.ts';
@@ -194,12 +199,6 @@ export type { CommandPaletteProps } from './components/command-palette/index.ts'
 
 export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
 export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
-
-export { default as ConnectionIndicator } from './components/connection-indicator/index.ts';
-export type {
-  ConnectionIndicatorProps,
-  ConnectionState,
-} from './components/connection-indicator/index.ts';
 
 export { default as Container } from './components/container/index.ts';
 export type {
@@ -742,16 +741,11 @@ export type {
 
 export { default as StatusDot } from './components/status-dot/index.ts';
 export type {
+  StatusDotConnectionState,
   StatusDotProps,
   StatusDotSize,
   StatusDotStatus,
 } from './components/status-dot/index.ts';
-
-export { default as SubscriptionBadge } from './components/subscription-badge/index.ts';
-export type {
-  SubscriptionBadgeProps,
-  SubscriptionState,
-} from './components/subscription-badge/index.ts';
 
 export { default as Surface } from './components/surface/index.ts';
 export type { SurfaceProps, SurfaceTone } from './components/surface/index.ts';

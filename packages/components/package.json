@@ -1055,31 +1055,6 @@
       "import": "./src/components/confirm-dialog/confirm-dialog.examples.json",
       "default": "./src/components/confirm-dialog/confirm-dialog.examples.json"
     },
-    "./connection-indicator": {
-      "types": "./dist/components/connection-indicator/index.d.ts",
-      "svelte": "./src/components/connection-indicator/index.ts",
-      "node": "./dist/server/components/connection-indicator/index.js",
-      "default": "./dist/components/connection-indicator/index.js"
-    },
-    "./connection-indicator/schema": {
-      "types": "./dist/components/connection-indicator/connection-indicator.schema.d.ts",
-      "svelte": "./src/components/connection-indicator/connection-indicator.schema.ts",
-      "node": "./dist/server/components/connection-indicator/connection-indicator.schema.js",
-      "default": "./dist/components/connection-indicator/connection-indicator.schema.js"
-    },
-    "./connection-indicator/variables": {
-      "types": "./dist/components/connection-indicator/connection-indicator.variables.d.ts",
-      "svelte": "./src/components/connection-indicator/connection-indicator.variables.ts",
-      "node": "./dist/server/components/connection-indicator/connection-indicator.variables.js",
-      "default": "./dist/components/connection-indicator/connection-indicator.variables.js"
-    },
-    "./connection-indicator/styles": {
-      "default": "./dist/components/connection-indicator/connection-indicator.css"
-    },
-    "./connection-indicator/examples": {
-      "import": "./src/components/connection-indicator/connection-indicator.examples.json",
-      "default": "./src/components/connection-indicator/connection-indicator.examples.json"
-    },
     "./container": {
       "types": "./dist/components/container/index.d.ts",
       "svelte": "./src/components/container/index.ts",
@@ -3509,31 +3484,6 @@
       "import": "./src/components/steps/steps.examples.json",
       "default": "./src/components/steps/steps.examples.json"
     },
-    "./subscription-badge": {
-      "types": "./dist/components/subscription-badge/index.d.ts",
-      "svelte": "./src/components/subscription-badge/index.ts",
-      "node": "./dist/server/components/subscription-badge/index.js",
-      "default": "./dist/components/subscription-badge/index.js"
-    },
-    "./subscription-badge/schema": {
-      "types": "./dist/components/subscription-badge/subscription-badge.schema.d.ts",
-      "svelte": "./src/components/subscription-badge/subscription-badge.schema.ts",
-      "node": "./dist/server/components/subscription-badge/subscription-badge.schema.js",
-      "default": "./dist/components/subscription-badge/subscription-badge.schema.js"
-    },
-    "./subscription-badge/variables": {
-      "types": "./dist/components/subscription-badge/subscription-badge.variables.d.ts",
-      "svelte": "./src/components/subscription-badge/subscription-badge.variables.ts",
-      "node": "./dist/server/components/subscription-badge/subscription-badge.variables.js",
-      "default": "./dist/components/subscription-badge/subscription-badge.variables.js"
-    },
-    "./subscription-badge/styles": {
-      "default": "./dist/components/subscription-badge/subscription-badge.css"
-    },
-    "./subscription-badge/examples": {
-      "import": "./src/components/subscription-badge/subscription-badge.examples.json",
-      "default": "./src/components/subscription-badge/subscription-badge.examples.json"
-    },
     "./surface": {
       "types": "./dist/components/surface/index.d.ts",
       "svelte": "./src/components/surface/index.ts",
@@ -4322,27 +4272,6 @@
       "node": "./dist/server/diff/types.js",
       "default": "./dist/diff/types.js"
     },
-    "./experimental/connection-indicator": {
-      "types": "./dist/components/experimental/connection-indicator/index.d.ts",
-      "svelte": "./src/components/experimental/connection-indicator/index.ts",
-      "node": "./dist/server/components/experimental/connection-indicator/index.js",
-      "default": "./dist/components/experimental/connection-indicator/index.js"
-    },
-    "./experimental/connection-indicator/schema": {
-      "types": "./dist/components/connection-indicator/connection-indicator.schema.d.ts",
-      "svelte": "./src/components/connection-indicator/connection-indicator.schema.ts",
-      "node": "./dist/server/components/connection-indicator/connection-indicator.schema.js",
-      "default": "./dist/components/connection-indicator/connection-indicator.schema.js"
-    },
-    "./experimental/connection-indicator/variables": {
-      "types": "./dist/components/connection-indicator/connection-indicator.variables.d.ts",
-      "svelte": "./src/components/connection-indicator/connection-indicator.variables.ts",
-      "node": "./dist/server/components/connection-indicator/connection-indicator.variables.js",
-      "default": "./dist/components/connection-indicator/connection-indicator.variables.js"
-    },
-    "./experimental/connection-indicator/styles": {
-      "default": "./dist/components/connection-indicator/connection-indicator.css"
-    },
     "./experimental/json-viewer": {
       "types": "./dist/components/experimental/json-viewer/index.d.ts",
       "svelte": "./src/components/experimental/json-viewer/index.ts",
@@ -4419,6 +4348,7 @@
   "scripts": {
     "aggregator:check": "bun run scripts/check-aggregator-completeness.ts",
     "build": "bun run scripts/build.ts",
+    "check:data-cinder-boolean-attributes": "bun run scripts/check-data-cinder-boolean-attributes.ts",
     "check:no-bare-console-warn": "bun run scripts/check-no-bare-console-warn.ts",
     "check:no-cycle-imports": "bun run scripts/check-no-cycle-imports.ts",
     "check:no-inline-match-media": "bun run scripts/check-no-inline-match-media.ts",
@@ -4434,7 +4364,7 @@
     "components:promotion-check": "bun run scripts/check-promotion-readiness.ts",
     "exports:check": "bun run scripts/generate-exports.ts --check",
     "exports:generate": "bun run scripts/generate-exports.ts",
-    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json && bun run check:no-cycle-imports && bun run check:no-bare-console-warn && bun run check:no-inline-match-media && bun run check:test-cleanup && bun run tokens:literals -- --strict",
+    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json && bun run check:no-cycle-imports && bun run check:no-bare-console-warn && bun run check:no-inline-match-media && bun run check:data-cinder-boolean-attributes && bun run check:test-cleanup && bun run tokens:literals -- --strict",
     "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
     "prepack": "bun run build",
     "package:weight": "bun run scripts/report-package-weight.ts",

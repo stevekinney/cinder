@@ -29,12 +29,8 @@
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { inDocumentOrder } from '../../utilities/document-order.ts';
-  import {
-    setCommandListContext,
-    type CommandItemRegistrationInput,
-    type CommandListContext,
-  } from '../_internal/command-list-context.ts';
+  import { setCommandListContext } from '../_internal/command-list-context.ts';
+  import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
   const listboxId = $props.id();
@@ -55,7 +51,6 @@
     class: className,
   }: CommandMenuProps = $props();
 
-  type RegistrationRecord = CommandItemRegistrationInput & { id: string; node: HTMLElement };
   const portalAttachment = createPortalAttachment({
     target: () => document.body,
     inheritAttributes: true,
@@ -64,19 +59,11 @@
 
   let mounted = $state(false);
   let listElement: HTMLElement | undefined = $state();
-  let registrations = $state<RegistrationRecord[]>([]);
-  let activeItemId = $state<string | null>(null);
-  let itemCounter = 0;
-  let registrationsReady = $state(false);
-  let readyCycle = 0;
+  const commandList = createCommandListState(listboxId);
 
-  const enabledIds = $derived.by(() => {
-    return inDocumentOrder(registrations)
-      .filter((registration) => !registration.getDisabled())
-      .map((registration) => registration.id);
-  });
-
-  const showEmpty = $derived(mounted && open && registrationsReady && registrations.length === 0);
+  const showEmpty = $derived(
+    mounted && open && commandList.registrationsReady && commandList.registrations.length === 0,
+  );
   const caretAnchor = $derived.by<VirtualElement | null>(() => {
     const anchorElement = anchor;
     const currentCaretIndex = caretIndex;
@@ -104,76 +91,34 @@
   });
 
   $effect(() => {
-    const ids = enabledIds;
     if (!open) {
-      activeItemId = null;
+      commandList.resetActiveItem();
       return;
     }
-    if (activeItemId !== null && ids.includes(activeItemId)) return;
-    activeItemId = ids[0] ?? null;
   });
 
   $effect(() => {
     void query;
-    registrationsReady = false;
-    const cycle = ++readyCycle;
-    queueMicrotask(() => {
-      if (cycle === readyCycle) registrationsReady = true;
-    });
+    commandList.refreshRegistrationsReady();
   });
 
   $effect(() => {
-    onstatechange?.({ listboxId, activeItemId: open ? activeItemId : null });
+    onstatechange?.({ listboxId, activeItemId: open ? commandList.activeItemId : null });
   });
 
   $effect(() => {
-    if (activeItemId === null) return;
-    document.getElementById(activeItemId)?.scrollIntoView({ block: 'nearest' });
+    commandList.scrollActiveItemIntoView();
   });
 
   function activateItemById(id: string) {
-    const record = registrations.find((registration) => registration.id === id);
-    if (!record || record.getDisabled()) return;
-    // Fire the per-item `onselect` callback first (matching command-palette's
-    // shared-context contract), then the menu-level `onselect` prop. Without the
-    // first call, an item's own onselect is silently dropped on activation.
-    record.getOnselect()();
+    const record = commandList.activateItemById(id);
+    if (!record) return;
+    // The command list activates the item callback first; the menu-level
+    // `onselect` prop then receives the committed value and query.
     onselect?.({ value: record.getValue(), query });
   }
 
-  const context: CommandListContext = {
-    get listboxId() {
-      return listboxId;
-    },
-    get activeItemId() {
-      return activeItemId;
-    },
-    register(input: CommandItemRegistrationInput, node: HTMLElement) {
-      const id = `${listboxId}-item-${++itemCounter}`;
-      registrations = [
-        ...registrations,
-        {
-          id,
-          node,
-          getValue: input.getValue,
-          getOnselect: input.getOnselect,
-          getDisabled: input.getDisabled,
-        },
-      ];
-      return {
-        id,
-        unregister: () => {
-          registrations = registrations.filter((registration) => registration.id !== id);
-        },
-      };
-    },
-    setActiveById(id: string) {
-      activeItemId = id;
-    },
-    activateItemById,
-  };
-
-  setCommandListContext(context);
+  setCommandListContext(commandList.createContext(activateItemById));
 
   function dismiss() {
     if (!open) return;
@@ -183,38 +128,12 @@
 
   function handleKeydown(event: KeyboardEvent) {
     if (!open) return;
-    if (event.isComposing || event.keyCode === 229) return;
-    const ids = enabledIds;
-
-    if (event.key === 'ArrowDown') {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      event.preventDefault();
-      if (ids.length === 0) return;
-      const index = activeItemId === null ? -1 : ids.indexOf(activeItemId);
-      activeItemId = ids[(index + 1) % ids.length] ?? null;
-    } else if (event.key === 'ArrowUp') {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      event.preventDefault();
-      if (ids.length === 0) return;
-      const index = activeItemId === null ? 0 : ids.indexOf(activeItemId);
-      activeItemId = ids[index <= 0 ? ids.length - 1 : index - 1] ?? null;
-    } else if (event.key === 'Home') {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      event.preventDefault();
-      activeItemId = ids[0] ?? null;
-    } else if (event.key === 'End') {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      event.preventDefault();
-      activeItemId = ids[ids.length - 1] ?? null;
-    } else if (event.key === 'Enter' && activeItemId !== null) {
-      event.preventDefault();
-      event.stopPropagation();
-      activateItemById(activeItemId);
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      dismiss();
-    }
+    commandList.handleKeydown({
+      event,
+      onEnter: activateItemById,
+      onEscape: dismiss,
+      ignoreModifiedNavigation: true,
+    });
   }
 
   function handleDocumentPointerdown(event: PointerEvent) {

@@ -9,8 +9,10 @@ describe('publish-release existing-version handling', () => {
     );
   });
 
-  test('runs dry-run publish when the package version already exists', () => {
-    expect(resolvePublishAction({ dryRun: true, versionExists: true })).toBe('publish');
+  test('skips dry-run publish when the package version already exists', () => {
+    expect(resolvePublishAction({ dryRun: true, versionExists: true })).toBe(
+      'skip-existing-version',
+    );
   });
 
   test('publishes when the package version is not present on npm', () => {
@@ -18,7 +20,7 @@ describe('publish-release existing-version handling', () => {
     expect(resolvePublishAction({ dryRun: true, versionExists: false })).toBe('publish');
   });
 
-  test('runs the dry-run publish command against an existing validated artifact', async () => {
+  test('skips the dry-run publish command when the package version already exists', async () => {
     const output: string[] = [];
     const spawnPublish = mock((_publishArguments: string[]) => ({ exitCode: 0 }));
     const validateConsumerArtifact = mock(async () => {});
@@ -40,14 +42,10 @@ describe('publish-release existing-version handling', () => {
     });
 
     expect(validateConsumerArtifact).not.toHaveBeenCalled();
-    expect(spawnPublish).toHaveBeenCalledWith([
-      'publish',
-      '/tmp/cinder-package/lostgradient-cinder-9.9.9.tgz',
-      '--dry-run',
-    ]);
-    expect(output.join('')).toContain('using prior validate:consumer artifact');
-    expect(output.join('')).toContain('npm publish');
-    expect(output.join('')).toContain('--dry-run');
+    expect(spawnPublish).not.toHaveBeenCalled();
+    expect(output.join('')).toContain(
+      '@lostgradient/cinder@9.9.9 already exists on npm; skipping dry-run publish',
+    );
   });
 
   test('rebuilds the consumer artifact before a dry-run publish when skip-validation has no tarball', async () => {

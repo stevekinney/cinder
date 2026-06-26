@@ -210,7 +210,7 @@ Rules:
 
 **Not every status element is a `VisuallyHiddenLiveRegion`.** When the visible
 content _is_ the live region — a persistent status pill whose own text changes
-(ConnectionIndicator), or a Toast region whose channels contain the visible
+(StatusDot with `connectionState`), or a Toast region whose channels contain the visible
 toasts — keep the inline `role="status"`/`role="alert"` + `aria-atomic` on that
 element. The shared component is for _hidden, transient string_ announcements, not
 for making visible content a live region.

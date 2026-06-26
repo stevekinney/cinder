@@ -212,7 +212,80 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
   });
 });
 
+describe('StatusDot connection preset', () => {
+  const states = [
+    ['connected', 'online', 'Connected'],
+    ['connecting', 'warning', 'Connecting'],
+    ['disconnected', 'offline', 'Disconnected'],
+    ['error', 'danger', 'Error'],
+  ] as const;
+
+  test.each(states)(
+    'connectionState="%s" derives status, live role, and label',
+    (state, status, label) => {
+      const { container } = render(StatusDot, { props: { connectionState: state } });
+      const root = container.querySelector('.cinder-status-dot');
+
+      expect(root?.getAttribute('data-cinder-state')).toBe(state);
+      expect(root?.getAttribute('data-cinder-status')).toBe(status);
+      expect(root?.getAttribute('role')).toBe('status');
+      expect(root?.getAttribute('aria-live')).toBe('polite');
+      expect(root?.getAttribute('aria-atomic')).toBe('true');
+      expect(root?.textContent).toContain(label);
+    },
+  );
+
+  test('live=false keeps the static image semantics for a connection preset', () => {
+    const { container } = render(StatusDot, {
+      props: { connectionState: 'connected', live: false },
+    });
+    const root = container.querySelector('.cinder-status-dot');
+
+    expect(root?.getAttribute('role')).toBe('img');
+    expect(root?.getAttribute('aria-label')).toBe('Connected');
+    expect(root?.hasAttribute('aria-live')).toBe(false);
+  });
+
+  test('showLabel=false keeps hidden text for the live-region connection preset', () => {
+    const { container } = render(StatusDot, {
+      props: { connectionState: 'connected', showLabel: false },
+    });
+    const root = container.querySelector('.cinder-status-dot');
+
+    expect(root?.getAttribute('role')).toBe('status');
+    expect(root?.getAttribute('aria-label')).toBeNull();
+    expect(root?.textContent).toContain('Connected');
+    expect(container.querySelector('.cinder-sr-only')?.textContent).toBe('Connected');
+  });
+
+  test('consumer aria-label is preserved as live-region text', () => {
+    const { container } = render(StatusDot, {
+      props: { connectionState: 'connected', 'aria-label': 'WebSocket connected' },
+    });
+    const root = container.querySelector('.cinder-status-dot');
+    const visibleLabel = container.querySelector('.cinder-status-dot__label');
+
+    expect(root?.getAttribute('role')).toBe('status');
+    expect(root?.getAttribute('aria-label')).toBeNull();
+    expect(visibleLabel?.textContent).toBe('Connected');
+    expect(visibleLabel?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('.cinder-sr-only')?.textContent).toBe('WebSocket connected');
+  });
+});
+
 describe('StatusDot CSS contract', () => {
+  test('connection presets tint the root text with their semantic state colors', async () => {
+    const css = await Bun.file(new URL('./status-dot.css', import.meta.url)).text();
+    expect(css).toContain("data-cinder-state='connected']");
+    expect(css).toContain('color: var(--cinder-success)');
+    expect(css).toContain("data-cinder-state='connecting']");
+    expect(css).toContain('color: var(--cinder-warning)');
+    expect(css).toContain("data-cinder-state='disconnected']");
+    expect(css).toContain('color: var(--cinder-text-muted)');
+    expect(css).toContain("data-cinder-state='error']");
+    expect(css).toContain('color: var(--cinder-danger)');
+  });
+
   test('neutral status uses --cinder-border-strong not --cinder-text-muted', async () => {
     const css = await Bun.file(new URL('./status-dot.css', import.meta.url)).text();
     expect(css).toContain("data-cinder-status='neutral']");

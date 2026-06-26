@@ -300,7 +300,8 @@ function scriptImportsBrowserFromEsmEnv(scriptNode: unknown): boolean {
 
 /**
  * Recursively walks the Svelte template AST fragment to find an IfBlock
- * whose test expression is the identifier `browser` or `hydrated`.
+ * whose test expression is the identifier `browser` or `hydrated`, or a
+ * member expression ending in `.hydrated`.
  */
 function templateHasBrowserIfBlock(node: unknown): boolean {
   if (!isObjectRecord(node)) return false;
@@ -308,10 +309,7 @@ function templateHasBrowserIfBlock(node: unknown): boolean {
 
   if (record['type'] === 'IfBlock') {
     const test = recordProperty(record, 'test');
-    if (test && test['type'] === 'Identifier') {
-      const name = test['name'];
-      if (name === 'browser' || name === 'hydrated') return true;
-    }
+    if (isBrowserGuardExpression(test)) return true;
   }
 
   // Recurse into all array/object children.
@@ -323,6 +321,19 @@ function templateHasBrowserIfBlock(node: unknown): boolean {
     } else if (value && typeof value === 'object') {
       if (templateHasBrowserIfBlock(value)) return true;
     }
+  }
+  return false;
+}
+
+function isBrowserGuardExpression(test: Record<string, unknown> | undefined): boolean {
+  if (!test) return false;
+  if (test['type'] === 'Identifier') {
+    const name = test['name'];
+    return name === 'browser' || name === 'hydrated';
+  }
+  if (test['type'] === 'MemberExpression') {
+    const property = recordProperty(test, 'property');
+    return property?.['type'] === 'Identifier' && property['name'] === 'hydrated';
   }
   return false;
 }

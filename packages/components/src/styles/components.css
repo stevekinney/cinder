@@ -45,7 +45,6 @@
 @import '../components/command-menu/command-menu.css';
 @import '../components/command-palette/command-palette.css';
 @import '../components/confirm-dialog/confirm-dialog.css';
-@import '../components/connection-indicator/connection-indicator.css';
 @import '../components/container/container.css';
 @import '../components/context-menu/context-menu.css';
 @import '../components/copy-button/copy-button.css';
@@ -132,7 +131,6 @@
 @import '../components/stat-group/stat-group.css';
 @import '../components/status-dot/status-dot.css';
 @import '../components/steps/steps.css';
-@import '../components/subscription-badge/subscription-badge.css';
 @import '../components/surface/surface.css';
 @import '../components/tab/tab.css';
 @import '../components/tab-list/tab-list.css';
