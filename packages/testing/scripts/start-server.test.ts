@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   appendServerOutputBuffer,
   childProcessHasFinished,
+  finalPlaywrightExitCode,
   localPlaygroundUrlForReportedPort,
   parsePlaygroundListeningPort,
   playgroundBundleDependencyBuildArguments,
@@ -122,6 +123,18 @@ describe('child process cleanup', () => {
     expect(childProcessHasFinished({ pid: undefined, exitCode: null, signalCode: null })).toBe(
       true,
     );
+  });
+});
+
+describe('playwright wrapper exit code', () => {
+  test('uses Playwright exit code when no shutdown signal was received', () => {
+    expect(finalPlaywrightExitCode(0, null)).toBe(0);
+    expect(finalPlaywrightExitCode(1, null)).toBe(1);
+  });
+
+  test('prefers shutdown signal exit code over Playwright exit code', () => {
+    expect(finalPlaywrightExitCode(0, 130)).toBe(130);
+    expect(finalPlaywrightExitCode(1, 143)).toBe(143);
   });
 });
 

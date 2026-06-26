@@ -139,6 +139,13 @@ export function childProcessHasFinished(
   );
 }
 
+export function finalPlaywrightExitCode(
+  playwrightExitCode: number,
+  shutdownExitCode: number | null,
+): number {
+  return shutdownExitCode ?? playwrightExitCode;
+}
+
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
@@ -414,6 +421,7 @@ async function main(): Promise<void> {
     }
   }
 
+  await exitIfShuttingDown();
   const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
@@ -457,11 +465,13 @@ async function main(): Promise<void> {
     );
   }
 
+  await exitIfShuttingDown();
   await cleanupOnce();
+  await exitIfShuttingDown();
   // Summary generation is advisory — only Playwright's result drives the
   // suite exit code so a green run never goes red because of summary
-  // failures.
-  process.exit(playwrightCode);
+  // failures unless the wrapper received an interrupt signal.
+  process.exit(finalPlaywrightExitCode(playwrightCode, shutdownExitCode));
 }
 
 if (import.meta.main) {
