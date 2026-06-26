@@ -63,6 +63,7 @@ export interface PropertySchema {
   additionalProperties?: boolean | PropertySchema;
   anyOf?: PropertySchema[];
   minimum?: number;
+  minItems?: number;
   description?: string;
   default?: unknown;
 }
@@ -281,6 +282,11 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'approval-card') {
+    applyApprovalCardSchemaRules(schema);
+    return;
+  }
+
   if (componentName === 'run-step-timeline') {
     applyRunStepTimelineSchemaRules(schema);
     return;
@@ -321,8 +327,37 @@ function applyEventStreamViewerSchemaRules(schema: ComponentSchemaOutput): void 
   }
 }
 
+function applyApprovalCardSchemaRules(schema: ComponentSchemaOutput): void {
+  const operation = schema.properties['operation'];
+  const variants = operation?.anyOf;
+  const fileWriteOperation = variants?.find(
+    (variant) => variant.properties?.['kind']?.const === 'file-write',
+  );
+  const filesTouched = fileWriteOperation?.properties?.['filesTouched'];
+
+  if (fileWriteOperation && filesTouched?.type === 'array') {
+    fileWriteOperation.properties ??= {};
+    fileWriteOperation.properties['filesTouched'] = {
+      ...filesTouched,
+      minItems: 1,
+    };
+    fileWriteOperation.required = sortedUniqueStrings([
+      ...(fileWriteOperation.required ?? []),
+      'filesTouched',
+    ]);
+  }
+}
+
 function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
-  const depthThreeStepSchema = makeRunStepTimelineStepSchema();
+  const cappedChildrenSchema: PropertySchema = {
+    type: 'array',
+    items: {
+      type: 'object',
+      additionalProperties: true,
+    },
+    description: 'Descendants beyond the rendered depth cap; summarized as a depth-limit row.',
+  };
+  const depthThreeStepSchema = makeRunStepTimelineStepSchema(cappedChildrenSchema);
   const depthTwoStepSchema = makeRunStepTimelineStepSchema({
     type: 'array',
     items: depthThreeStepSchema,

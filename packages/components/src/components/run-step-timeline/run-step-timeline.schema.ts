@@ -389,6 +389,15 @@ const schema = {
                               required: ['href', 'label'],
                               description: 'Optional link to logs, traces, or a step detail route.',
                             },
+                            children: {
+                              type: 'array',
+                              items: {
+                                type: 'object',
+                                additionalProperties: true,
+                              },
+                              description:
+                                'Descendants beyond the rendered depth cap; summarized as a depth-limit row.',
+                            },
                           },
                           additionalProperties: false,
                           required: ['id', 'label', 'status'],

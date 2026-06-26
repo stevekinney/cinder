@@ -153,6 +153,47 @@ describe('ApprovalCard', () => {
     ).toBe(false);
   });
 
+  test('schema rejects file-write approvals without touched files', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(approvalCardSchema);
+    const basePayload = {
+      tool: { name: 'write-file', risk: 'high' },
+      policyVersion: 'policy-2026-06',
+      idempotencyKey: 'approval-card-test-key',
+      state: 'pending',
+    };
+
+    expect(
+      validate({
+        ...basePayload,
+        operation: {
+          kind: 'file-write',
+        },
+      }),
+    ).toBe(false);
+
+    expect(
+      validate({
+        ...basePayload,
+        operation: {
+          kind: 'file-write',
+          filesTouched: [],
+        },
+      }),
+    ).toBe(false);
+
+    expect(
+      validate({
+        ...basePayload,
+        operation: {
+          kind: 'file-write',
+          filesTouched: ['src/new-file.ts'],
+        },
+      }),
+    ).toBe(true);
+    expect(validate.errors).toBeNull();
+  });
+
   test('resolves already-expired approvals before timer state initializes', () => {
     const expirationTimestamp = Date.parse('2026-06-24T12:00:00.000Z');
     jest.spyOn(Date, 'now').mockReturnValue(expirationTimestamp);
@@ -309,7 +350,7 @@ describe('ApprovalCard', () => {
     expect(container.textContent).not.toContain('Parse error');
   });
 
-  test('renders serialized JSON strings as string argument values', async () => {
+  test('renders serialized JSON strings as parsed argument previews', async () => {
     const { container, getByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         operation: {
@@ -320,9 +361,9 @@ describe('ApprovalCard', () => {
     });
 
     const badge = container.querySelector('.cinder-payload-inspector__summary .cinder-badge');
-    expect(badge?.textContent?.trim()).toBe('string');
+    expect(badge?.textContent?.trim()).toBe('object');
 
-    await fireEvent.click(getByRole('tab', { name: 'Raw' }));
+    await fireEvent.click(getByRole('tab', { name: 'Tree' }));
 
     expect(container.textContent).toContain('filters');
     expect(container.textContent).not.toContain('Parse error');
@@ -623,6 +664,29 @@ describe('ApprovalCard', () => {
     await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
 
     expect(onapprovewithedits).toHaveBeenCalledWith({ force: true });
+  });
+
+  test('seeds editable arguments from serialized JSON previews', async () => {
+    const onapprovewithedits = mock();
+    const { getByLabelText, getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({
+        editableArgs: true,
+        onapprovewithedits,
+        operation: {
+          kind: 'other',
+          argsPreview: '{"force":false,"files":["src/a.ts"]}',
+        },
+      }),
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Approve with edits' }));
+
+    const textarea = getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    expect(textarea.value).toContain('"force": false');
+    expect(textarea.value).toContain('"files"');
+
+    await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
+    expect(onapprovewithedits).toHaveBeenCalledWith({ force: false, files: ['src/a.ts'] });
   });
 
   test('hides the edit panel when editable arguments are disabled after opening it', async () => {

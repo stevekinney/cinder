@@ -42,8 +42,8 @@ export type ApprovalCommandOperation = {
 export type ApprovalFileWriteOperation = {
   /** Operation family being approved. */
   kind: 'file-write';
-  /** File paths that the operation may read or write. */
-  filesTouched?: string[];
+  /** File paths that the operation may read or write. File-write approvals require at least one path. */
+  filesTouched: string[];
   /**
    * JSON-like argument preview shown to the approver.
    *

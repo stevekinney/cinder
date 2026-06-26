@@ -181,6 +181,44 @@ describe('structure', () => {
         ],
       }),
     ).toBe(true);
+
+    expect(
+      validate({
+        steps: [
+          {
+            id: 'workflow',
+            label: 'Workflow',
+            status: 'running',
+            children: [
+              {
+                id: 'activity',
+                label: 'Activity',
+                status: 'succeeded',
+                children: [
+                  {
+                    id: 'tool-call',
+                    label: 'Tool call',
+                    status: 'waiting_approval',
+                    children: [
+                      {
+                        id: 'nested-subagent',
+                        label: 'Nested subagent',
+                        status: 'running',
+                        children: [
+                          {
+                            reason: 'summarized past the rendered depth cap',
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
   });
 
   test('schema allows nested child details and stops at the rendered depth cap', () => {
@@ -221,7 +259,11 @@ describe('structure', () => {
     expect(depthThreeSchema?.required).toEqual(['id', 'label', 'status']);
     expect(depthThreeProperties).toHaveProperty('details');
     expect(depthThreeProperties).toHaveProperty('link');
-    expect(depthThreeProperties).not.toHaveProperty('children');
+    expect(depthThreeProperties).toHaveProperty('children');
+    const cappedChildren = depthThreeProperties['children'] as
+      | { items?: { additionalProperties?: boolean } }
+      | undefined;
+    expect(cappedChildren?.items?.additionalProperties).toBe(true);
   });
 
   test('renders an ordered list with one item per step', () => {

@@ -113,7 +113,7 @@
     return `Expires in ${formatRemainingTime(expirationTimestamp - currentTime)}`;
   });
   const hasArgumentsPreview = $derived(operation.argsPreview !== undefined);
-  const editableArgumentsValue = $derived(operation.argsPreview);
+  const editableArgumentsValue = $derived(normalizeArgumentsPreviewValue(operation.argsPreview));
   const argumentsPreview = $derived(prepareArgumentsPreview(editableArgumentsValue));
   const filesTouched = $derived(operation.filesTouched ?? []);
   const environmentNames = $derived(sanitizeEnvironmentNames(env));
@@ -246,6 +246,16 @@
         return 'neutral';
       case 'cancelled':
         return 'offline';
+    }
+  }
+
+  function normalizeArgumentsPreviewValue(value: unknown): unknown {
+    if (typeof value !== 'string') return value;
+
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
     }
   }
 

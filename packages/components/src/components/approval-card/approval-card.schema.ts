@@ -79,14 +79,16 @@ const schema = {
               items: {
                 type: 'string',
               },
-              description: 'File paths that the operation may read or write.',
+              description:
+                'File paths that the operation may read or write. File-write approvals require at least one path.',
+              minItems: 1,
             },
             argsPreview: {
               description: 'JSON-like argument preview shown to the approver.',
             },
           },
           additionalProperties: false,
-          required: ['kind'],
+          required: ['filesTouched', 'kind'],
         },
         {
           type: 'object',
