@@ -129,10 +129,14 @@ function waitForExit(childProcess: ChildProcess): Promise<number> {
   });
 }
 
-export function childProcessHasExited(
-  childProcess: Pick<ChildProcess, 'exitCode' | 'signalCode'>,
+export function childProcessHasFinished(
+  childProcess: Pick<ChildProcess, 'pid' | 'exitCode' | 'signalCode'>,
 ): boolean {
-  return childProcess.exitCode !== null || childProcess.signalCode !== null;
+  return (
+    childProcess.pid === undefined ||
+    childProcess.exitCode !== null ||
+    childProcess.signalCode !== null
+  );
 }
 
 function isAbortError(error: unknown): boolean {
@@ -143,7 +147,7 @@ async function waitForExitOrTimeout(
   childProcess: ChildProcess,
   timeoutMs: number,
 ): Promise<boolean> {
-  if (childProcessHasExited(childProcess)) return true;
+  if (childProcessHasFinished(childProcess)) return true;
 
   const abortController = new AbortController();
   const exitPromise = once(childProcess, 'exit', { signal: abortController.signal }).then(
@@ -161,7 +165,7 @@ async function waitForExitOrTimeout(
   const result = await Promise.race([exitPromise, errorPromise, delay(timeoutMs, 'timeout')]);
   abortController.abort();
 
-  return result === 'exited' || childProcessHasExited(childProcess);
+  return result === 'exited' || childProcessHasFinished(childProcess);
 }
 
 function signalChildProcess(
@@ -169,11 +173,12 @@ function signalChildProcess(
   signal: NodeJS.Signals,
 ): void {
   const { childProcess, killProcessGroup, name } = managedChildProcess;
-  if (childProcess.pid === undefined || childProcessHasExited(childProcess)) return;
+  const processId = childProcess.pid;
+  if (processId === undefined || childProcessHasFinished(childProcess)) return;
 
   try {
     if (killProcessGroup && process.platform !== 'win32') {
-      process.kill(-childProcess.pid, signal);
+      process.kill(-processId, signal);
     } else {
       childProcess.kill(signal);
     }
@@ -190,7 +195,7 @@ function signalChildProcess(
 
 async function terminateChildProcess(managedChildProcess: ManagedChildProcess): Promise<void> {
   const { childProcess, name } = managedChildProcess;
-  if (childProcessHasExited(childProcess)) return;
+  if (childProcessHasFinished(childProcess)) return;
 
   signalChildProcess(managedChildProcess, 'SIGTERM');
   if (await waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS)) return;
@@ -295,6 +300,7 @@ async function main(): Promise<void> {
   let playgroundPortFile: string | null = null;
   const children: ManagedChildProcess[] = [];
   let cleanupPromise: Promise<void> | null = null;
+  let shutdownExitCode: number | null = null;
 
   const cleanupOnce = async (): Promise<void> => {
     cleanupPromise ??= cleanup(children, playgroundPortFile);
@@ -302,8 +308,15 @@ async function main(): Promise<void> {
   };
 
   const exitAfterCleanup = async (code: number): Promise<never> => {
+    shutdownExitCode = code;
     await cleanupOnce();
     process.exit(code);
+  };
+
+  const exitIfShuttingDown = async (): Promise<void> => {
+    if (shutdownExitCode !== null) {
+      await exitAfterCleanup(shutdownExitCode);
+    }
   };
 
   process.on('SIGINT', () => {
@@ -408,6 +421,7 @@ async function main(): Promise<void> {
   });
   children.push({ childProcess: prep, name: 'manifest preparation', killProcessGroup: false });
   const prepCode = await waitForExit(prep);
+  await exitIfShuttingDown();
   if (prepCode !== 0) {
     await exitAfterCleanup(prepCode);
   }
@@ -415,9 +429,11 @@ async function main(): Promise<void> {
   try {
     await waitForWarmPlayground();
   } catch (error) {
+    await exitIfShuttingDown();
     await cleanupOnce();
     throw error;
   }
+  await exitIfShuttingDown();
 
   const playwright = spawn('bunx', ['playwright', 'test', ...args], {
     cwd: packageRoot,
@@ -426,6 +442,7 @@ async function main(): Promise<void> {
   });
   children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
   const playwrightCode = await waitForExit(playwright);
+  await exitIfShuttingDown();
 
   const summary = spawn('bun', ['run', 'scripts/summarize-axe.ts'], {
     cwd: packageRoot,

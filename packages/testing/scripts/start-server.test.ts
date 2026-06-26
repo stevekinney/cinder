@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 
 import {
   appendServerOutputBuffer,
-  childProcessHasExited,
+  childProcessHasFinished,
   localPlaygroundUrlForReportedPort,
   parsePlaygroundListeningPort,
   playgroundBundleDependencyBuildArguments,
@@ -101,20 +102,26 @@ describe('playground server process', () => {
     expect(argumentsList).toEqual(['run', 'src/playground-server.ts']);
     expect(argumentsList).not.toContain('dev');
     expect(argumentsList).not.toContain('--watch');
-    expect(playgroundServerWorkingDirectory().endsWith('/packages/playground')).toBe(true);
+    expect(playgroundServerWorkingDirectory().endsWith(join('packages', 'playground'))).toBe(true);
   });
 });
 
 describe('child process cleanup', () => {
   test('does not treat a sent kill signal as process exit', () => {
-    const stillExiting = { killed: true, exitCode: null, signalCode: null };
+    const stillExiting = { pid: 123, killed: true, exitCode: null, signalCode: null };
 
-    expect(childProcessHasExited(stillExiting)).toBe(false);
+    expect(childProcessHasFinished(stillExiting)).toBe(false);
   });
 
   test('treats exit codes and terminal signals as process exit', () => {
-    expect(childProcessHasExited({ exitCode: 0, signalCode: null })).toBe(true);
-    expect(childProcessHasExited({ exitCode: null, signalCode: 'SIGTERM' })).toBe(true);
+    expect(childProcessHasFinished({ pid: 123, exitCode: 0, signalCode: null })).toBe(true);
+    expect(childProcessHasFinished({ pid: 123, exitCode: null, signalCode: 'SIGTERM' })).toBe(true);
+  });
+
+  test('treats failed spawns without a process id as finished', () => {
+    expect(childProcessHasFinished({ pid: undefined, exitCode: null, signalCode: null })).toBe(
+      true,
+    );
   });
 });
 

@@ -1959,13 +1959,11 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
 
 if (import.meta.main) {
   const server = await startServer();
-  let shutdownStarted = false;
+  let shutdownPromise: Promise<void> | null = null;
 
   async function shutdown(code: number): Promise<never> {
-    if (!shutdownStarted) {
-      shutdownStarted = true;
-      await server.dispose();
-    }
+    shutdownPromise ??= server.dispose();
+    await shutdownPromise;
     process.exit(code);
   }
 
