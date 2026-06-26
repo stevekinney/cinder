@@ -50,7 +50,13 @@ export function bumpLevelForPackage(source: string, packageName: string): string
   // and the bump level, because Changesets' YAML parser accepts a quoted scalar
   // (`'@lostgradient/cinder': "major"`).
   const escapedName = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const linePattern = new RegExp(`^["']?${escapedName}["']?\\s*:\\s*["']?(major|minor|patch)["']?`);
+  // Anchor the end of the bump token — a closing quote, optional whitespace, and an
+  // optional inline `# comment`, then end of (trimmed) line. Without the `$` anchor
+  // a malformed value like `patches` would prefix-match `patch`; we leave such
+  // values unmatched (returns null) rather than silently misreading them.
+  const linePattern = new RegExp(
+    `^["']?${escapedName}["']?\\s*:\\s*["']?(major|minor|patch)["']?\\s*(?:#.*)?$`,
+  );
   // Keep the LAST matching entry, not the first — YAML (which Changesets parses
   // with) is last-key-wins, so a duplicate `pkg: minor` then `pkg: major` applies
   // the major. Returning the first match would let that pass the guard.

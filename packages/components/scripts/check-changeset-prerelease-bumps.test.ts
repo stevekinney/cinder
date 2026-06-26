@@ -71,6 +71,18 @@ describe('bumpLevelForPackage', () => {
     ).toBe('minor');
   });
 
+  it('does not prefix-match a malformed bump value', () => {
+    // `patches` must not be read as `patch`, nor `majorly` as `major`.
+    expect(bumpLevelForPackage(`---\n'${PACKAGE}': patches\n---\n`, PACKAGE)).toBeNull();
+    expect(bumpLevelForPackage(`---\n'${PACKAGE}': majorly\n---\n`, PACKAGE)).toBeNull();
+  });
+
+  it('allows a trailing inline comment after the bump value', () => {
+    expect(bumpLevelForPackage(`---\n'${PACKAGE}': major # was minor\n---\n`, PACKAGE)).toBe(
+      'major',
+    );
+  });
+
   it('returns null when the package is not mentioned', () => {
     expect(bumpLevelForPackage(`---\n'@other/pkg': major\n---\n`, PACKAGE)).toBeNull();
   });
