@@ -8,8 +8,9 @@ on:
   pull_request:
     paths:
       - 'packages/components/src/**'
+      - 'packages/components/components.json'
       - 'packages/components/package.json'
-      - 'packages/components/scripts/component-graph.ts'
+      - 'packages/components/scripts/**'
       - 'packages/*/package.json'
       - 'packages/*/tsconfig*.json'
       - 'packages/commentary/src/**'
@@ -33,8 +34,9 @@ on:
       - main
     paths:
       - 'packages/components/src/**'
+      - 'packages/components/components.json'
       - 'packages/components/package.json'
-      - 'packages/components/scripts/component-graph.ts'
+      - 'packages/components/scripts/**'
       - 'packages/*/package.json'
       - 'packages/*/tsconfig*.json'
       - 'packages/commentary/src/**'

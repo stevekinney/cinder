@@ -39,6 +39,10 @@ on:
       - '.github/workflows/deploy-playground.yaml'
       - 'package.json'
       - 'bun.lock'
+      - 'bun.lockb'
+      - 'bunfig.toml'
+      - '.npmrc'
+      - 'tsconfig*.json'
   pull_request:
     paths:
       - 'packages/playground/**'
@@ -60,6 +64,10 @@ on:
       - '.github/workflows/deploy-playground.yaml'
       - 'package.json'
       - 'bun.lock'
+      - 'bun.lockb'
+      - 'bunfig.toml'
+      - '.npmrc'
+      - 'tsconfig*.json'
   workflow_dispatch:
 
 permissions:
