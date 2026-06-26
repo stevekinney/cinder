@@ -21,6 +21,7 @@ import {
   loadWorkspacePackages,
   parsePushRefs,
   phaseMaxConcurrency,
+  prePushPackageScript,
   runHookCommand,
   runWithConcurrencyPool,
   summarizeFailures,
@@ -919,10 +920,18 @@ function planScopedJobs(
     const entry = byName.get(name);
     if (entry === undefined) continue;
     if (entry.hasTypecheck) jobs.push(`${name} typecheck`);
-    if (entry.hasTest) jobs.push(`${name} test`);
+    if (entry.hasTest) jobs.push(`${name} ${prePushPackageScript(name, 'test')}`);
   }
   return jobs.toSorted();
 }
+
+describe('prePushPackageScript', () => {
+  it('uses component-aware test scoping for the cinder package only', () => {
+    expect(prePushPackageScript('@lostgradient/cinder', 'test')).toBe('test:changed');
+    expect(prePushPackageScript('@lostgradient/cinder', 'typecheck')).toBe('typecheck');
+    expect(prePushPackageScript('@cinder/playground', 'test')).toBe('test');
+  });
+});
 
 describe('scoped job derivation (real workspace)', () => {
   it('scopes a CSS-only packages/components change to cinder + playground only', async () => {
@@ -936,7 +945,7 @@ describe('scoped job derivation (real workspace)', () => {
       '@cinder/playground test',
       '@cinder/playground typecheck',
       '@lostgradient/cinder lint',
-      '@lostgradient/cinder test',
+      '@lostgradient/cinder test:changed',
       '@lostgradient/cinder typecheck',
     ]);
     // Negative: no playground *lint* (closure is typecheck/test only), and no

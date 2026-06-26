@@ -342,10 +342,10 @@ describe('pathForceFullReason', () => {
     expect(pathForceFullReason('packages/components/src/styles/tokens.css')).not.toBeNull();
   });
 
-  it('forces full for any workflow change, including browser-tests itself', () => {
-    expect(pathForceFullReason('.github/workflows/main-green.yaml')).not.toBeNull();
-    // A browser-tests.yaml edit can change which tests run / how the scoper is
-    // invoked, so it force-fulls too — no self-edit exception.
+  it('forces full for test workflow changes only', () => {
+    expect(pathForceFullReason('.github/workflows/main-green.yaml')).toBeNull();
+    expect(pathForceFullReason('.github/workflows/changeset-guard.yaml')).toBeNull();
+    expect(pathForceFullReason('.github/workflows/unit-tests.yaml')).not.toBeNull();
     expect(pathForceFullReason('.github/workflows/browser-tests.yaml')).not.toBeNull();
   });
 

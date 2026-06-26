@@ -45,6 +45,11 @@ export const error = (msg: string) => console.error(chalk.red(msg));
 
 export type GateScript = 'lint' | 'typecheck' | 'test';
 
+export function prePushPackageScript(packageName: string, script: GateScript): string {
+  if (packageName === '@lostgradient/cinder' && script === 'test') return 'test:changed';
+  return script;
+}
+
 /**
  * The maximum number of jobs that may run concurrently for a given gate
  * script. This is the side-effect-free seam the regression test imports to
