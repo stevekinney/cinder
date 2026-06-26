@@ -22,6 +22,10 @@ on:
   pull_request:
     paths:
       - 'packages/components/**'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/editor/src/**'
+      - 'packages/markdown/src/**'
       - 'packages/playground/src/discover.ts'
       - 'packages/testing/scripts/changed-components.ts'
       - 'packages/testing/src/helpers/component-filter.ts'
@@ -40,6 +44,10 @@ on:
       - main
     paths:
       - 'packages/components/**'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/editor/src/**'
+      - 'packages/markdown/src/**'
       - 'packages/playground/src/discover.ts'
       - 'packages/testing/scripts/changed-components.ts'
       - 'packages/testing/src/helpers/component-filter.ts'

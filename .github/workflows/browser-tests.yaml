@@ -8,6 +8,12 @@ on:
   pull_request:
     paths:
       - 'packages/components/src/**'
+      - 'packages/components/package.json'
+      - 'packages/components/scripts/component-graph.ts'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/editor/src/**'
+      - 'packages/markdown/src/**'
       - 'packages/playground/src/**'
       - 'packages/testing/**'
       - '.github/workflows/browser-tests.yaml'
@@ -25,6 +31,12 @@ on:
       - main
     paths:
       - 'packages/components/src/**'
+      - 'packages/components/package.json'
+      - 'packages/components/scripts/component-graph.ts'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/editor/src/**'
+      - 'packages/markdown/src/**'
       - 'packages/playground/src/**'
       - 'packages/testing/**'
       - '.github/workflows/browser-tests.yaml'

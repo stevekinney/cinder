@@ -44,8 +44,12 @@ export const warning = (msg: string) => console.log(chalk.yellow(msg));
 export const error = (msg: string) => console.error(chalk.red(msg));
 
 export type GateScript = 'lint' | 'typecheck' | 'test';
+export type PrePushPackageScript = GateScript | 'test:changed';
 
-export function prePushPackageScript(packageName: string, script: GateScript): string {
+export function prePushPackageScript(
+  packageName: string,
+  script: GateScript,
+): PrePushPackageScript {
   if (packageName === '@lostgradient/cinder' && script === 'test') return 'test:changed';
   return script;
 }

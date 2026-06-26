@@ -22,6 +22,7 @@ on:
     paths:
       - 'packages/playground/**'
       - 'packages/components/src/**'
+      - 'packages/components/components.json'
       - '.github/workflows/deploy-playground.yaml'
       - 'package.json'
       - 'bun.lock'
@@ -29,6 +30,7 @@ on:
     paths:
       - 'packages/playground/**'
       - 'packages/components/src/**'
+      - 'packages/components/components.json'
       - '.github/workflows/deploy-playground.yaml'
       - 'package.json'
       - 'bun.lock'

@@ -4,12 +4,6 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
-  computeScope,
-  loadKnownSlugs,
-  loadSourceFiles,
-  type ScopeDecision,
-} from '../component-graph.ts';
-import {
   changedCssLikeFiles,
   changedFilesForRange,
   error,
@@ -242,16 +236,46 @@ function printJobPlan(jobs: readonly Job[]): void {
 async function deriveComponentTestScope(
   changedFiles: readonly string[],
 ): Promise<ComponentTestScope> {
-  const deletedFiles = changedFiles.filter((path) => !existsSync(join(REPO_ROOT, path)));
-  const [sourceFiles, knownSlugs] = await Promise.all([loadSourceFiles(), loadKnownSlugs()]);
-  const scope: ScopeDecision = computeScope({
-    changedFiles: [...changedFiles],
-    deletedFiles,
-    sourceFiles,
-    knownSlugs,
+  const subprocess = Bun.spawn(['bun', 'run', 'packages/testing/scripts/changed-components.ts'], {
+    cwd: REPO_ROOT,
+    stdin: 'pipe',
+    stderr: 'pipe',
+    stdout: 'pipe',
   });
-  if (scope.mode === 'full') return scope;
-  return { mode: 'filtered', components: scope.slugs };
+  subprocess.stdin.write(changedFiles.join('\n'));
+  subprocess.stdin.end();
+
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(subprocess.stdout).text(),
+    new Response(subprocess.stderr).text(),
+    subprocess.exited,
+  ]);
+  if (exitCode !== 0) {
+    throw new Error(stderr.trim() || `changed-components exited with code ${exitCode}`);
+  }
+
+  const values = new Map(
+    stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const index = line.indexOf('=');
+        return index === -1 ? [line, ''] : [line.slice(0, index), line.slice(index + 1)];
+      }),
+  );
+  const mode = values.get('mode');
+  if (mode === 'full') {
+    return { mode: 'full', reason: stderr.trim() || 'changed-components selected full' };
+  }
+  if (mode === 'filtered') {
+    const components = (values.get('components') ?? '')
+      .split(',')
+      .map((component) => component.trim())
+      .filter((component) => component.length > 0);
+    return { mode: 'filtered', components };
+  }
+  throw new Error(`changed-components emitted unknown mode: ${JSON.stringify(mode)}`);
 }
 
 /**
