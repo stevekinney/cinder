@@ -238,6 +238,34 @@ describe('Combobox structure', () => {
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
 
+  test('canceled form reset leaves the current submitted value and visible label unchanged', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container } = render(Combobox, {
+      target: form,
+      props: {
+        id: 'fruit',
+        name: 'fruit',
+        value: 'banana',
+        options: fruits,
+      },
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+
+    await fireEvent.focus(input!);
+    await fireEvent.input(input!, { target: { value: 'ap' } });
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    form.addEventListener('reset', (event) => event.preventDefault());
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(input?.value).toBe('Apple');
+    expect(hidden?.value).toBe('apple');
+  });
+
   test('required named combobox validity follows the selected value, not typed text', async () => {
     const { container } = render(Combobox, {
       id: 'fruit',
@@ -255,6 +283,23 @@ describe('Combobox structure', () => {
     const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
     expect(input?.checkValidity()).toBe(true);
+  });
+
+  test('named combobox validity fails when visible text drifts from the selected value', async () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      value: 'banana',
+      options: fruits,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    expect(input?.checkValidity()).toBe(true);
+
+    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    expect(input?.checkValidity()).toBe(false);
+
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden?.value).toBe('banana');
   });
 
   test('disabled hidden input is omitted from native FormData', () => {

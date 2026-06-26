@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
+import type { DataTableSelectionMode as RootDataTableSelectionMode } from '../../index.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { DataTableRow } from './data-table.types.ts';
 import type { DataTableSelectionMode } from './index.ts';
@@ -282,6 +283,11 @@ describe('DataTable — row selection', () => {
   test('exports the row selection mode type from the public subpath barrel', () => {
     const mode: DataTableSelectionMode = 'multiple';
     expect(mode).toBe('multiple');
+  });
+
+  test('exports the row selection mode type from the root barrel', () => {
+    const mode: RootDataTableSelectionMode = 'single';
+    expect(mode).toBe('single');
   });
 
   test('multiple mode renders row checkboxes and updates a bound selectedRowIds array', async () => {

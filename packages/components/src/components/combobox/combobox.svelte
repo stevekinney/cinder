@@ -208,10 +208,11 @@
     open = false;
   }
 
-  function resetToInitialValue(): void {
+  function resetToInitialValue(event: Event): void {
     if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
     resetSyncTimeout = setTimeout(() => {
       resetSyncTimeout = undefined;
+      if (event.defaultPrevented) return;
       value = initialValue;
       const matched = options.find((option) => option.value === initialValue);
       const nextInputValue = matched?.label ?? initialInputValue;
@@ -239,7 +240,11 @@
   });
 
   $effect(() => {
-    inputElement?.setCustomValidity(resolvedRequired && !value ? 'Please select an option.' : '');
+    inputElement?.setCustomValidity(
+      (resolvedRequired && !value) || (value && inputValue !== committedLabel)
+        ? 'Please select an option.'
+        : '',
+    );
   });
 
   function handleKeydown(event: KeyboardEvent) {
