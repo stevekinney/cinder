@@ -11,7 +11,7 @@ const schema = {
     selectable: {
       enum: ['none', 'single', 'multiple'],
       description:
-        'Enables row selection. `"none"` renders no selection controls, `"single"`\nallows one selected row id, and `"multiple"` allows any number.\nDefaults to `"none"`.',
+        'Enables checkbox-based row selection. `"none"` renders no selection controls,\n`"single"` allows one selected row id, and `"multiple"` allows any number.\nSelection state is exposed through row checkbox controls; native table rows\ndo not emit `aria-selected`.\nDefaults to `"none"`.',
     },
     selectAllLabel: {
       type: 'string',

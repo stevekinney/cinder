@@ -193,10 +193,11 @@
     commitSelectedRowIds(nextSelectedRowIds);
   }
 
-  function syncSelectionAfterFormReset(): void {
+  function syncSelectionAfterFormReset(event: Event): void {
     if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
     resetSyncTimeout = setTimeout(() => {
       resetSyncTimeout = undefined;
+      if (event.defaultPrevented) return;
       commitSelectedRowIds(initialSelectedRowIds);
     }, 0);
   }

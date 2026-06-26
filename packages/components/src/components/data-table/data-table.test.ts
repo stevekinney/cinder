@@ -483,6 +483,39 @@ describe('DataTable — row selection', () => {
     expect(selectedRowIds).toEqual(['ada']);
   });
 
+  test('canceled form reset leaves row selection unchanged', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    let selectedRowIds: string[] = [];
+    render(DataTable, {
+      target: form,
+      props: {
+        columns,
+        rows: rowsWithIds,
+        selectable: 'multiple',
+        get selectedRowIds() {
+          return selectedRowIds;
+        },
+        set selectedRowIds(next: string[] | Set<string>) {
+          selectedRowIds = Array.from(next);
+        },
+      },
+    });
+    const firstCheckbox = form.querySelector<HTMLInputElement>('tbody input[type="checkbox"]');
+
+    await fireEvent.click(firstCheckbox!);
+    await tick();
+    expect(selectedRowIds).toEqual(['ada']);
+
+    form.addEventListener('reset', (event) => event.preventDefault());
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    expect(selectedRowIds).toEqual(['ada']);
+    expect(firstCheckbox?.checked).toBe(true);
+  });
+
   test('virtualized focused rows toggle selection with Space', async () => {
     let selectedRowIds: string[] = [];
     const { container } = render(DataTable, {

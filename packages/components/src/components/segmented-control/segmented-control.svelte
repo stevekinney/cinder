@@ -49,6 +49,7 @@
     ...rest
   }: SegmentedControlProps<T> = $props();
   let resetInputElement = $state<HTMLInputElement | null>(null);
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   const initialSingleValue = untrack(() => (typeof value === 'string' ? value : undefined));
   const initialMultipleValues = untrack(() =>
     selectionMode === 'multiple' && value instanceof SvelteSet ? Array.from(value) : undefined,
@@ -105,15 +106,20 @@
         : [],
   );
 
-  function resetToInitialValue(): void {
-    if (selectionMode === 'multiple') {
-      value =
-        initialMultipleValues === undefined
-          ? undefined
-          : new SvelteSet(initialMultipleValues as T[]);
-      return;
-    }
-    value = initialSingleValue as T | undefined;
+  function resetToInitialValue(event: Event): void {
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      if (event.defaultPrevented) return;
+      if (selectionMode === 'multiple') {
+        value =
+          initialMultipleValues === undefined
+            ? undefined
+            : new SvelteSet(initialMultipleValues as T[]);
+        return;
+      }
+      value = initialSingleValue as T | undefined;
+    }, 0);
   }
 
   $effect(() => {
@@ -121,7 +127,13 @@
     if (input === null) return;
     const form = input.form;
     form?.addEventListener('reset', resetToInitialValue);
-    return () => form?.removeEventListener('reset', resetToInitialValue);
+    return () => {
+      form?.removeEventListener('reset', resetToInitialValue);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
   });
 </script>
 

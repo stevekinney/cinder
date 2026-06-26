@@ -77,8 +77,10 @@ export type DataTableProps<Row extends DataTableRow = DataTableRow> = Omit<
    */
   sort?: TableSort | undefined;
   /**
-   * Enables row selection. `"none"` renders no selection controls, `"single"`
-   * allows one selected row id, and `"multiple"` allows any number.
+   * Enables checkbox-based row selection. `"none"` renders no selection controls,
+   * `"single"` allows one selected row id, and `"multiple"` allows any number.
+   * Selection state is exposed through row checkbox controls; native table rows
+   * do not emit `aria-selected`.
    * Defaults to `"none"`.
    */
   selectable?: DataTableSelectionMode;

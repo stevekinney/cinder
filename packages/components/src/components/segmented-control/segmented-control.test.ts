@@ -241,6 +241,7 @@ describe('SegmentedControl — single mode', () => {
     expect(selected).toBe('rendered');
 
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await tick();
 
     expect(selected).toBe('source');
@@ -432,12 +433,42 @@ describe('SegmentedControl — multiple mode', () => {
     expect(Array.from(selected)).toEqual(['bold', 'italic']);
 
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await tick();
 
     const hiddenInputs = Array.from(
       container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="format"]'),
     );
     expect(hiddenInputs.map((input) => input.value)).toEqual(['bold']);
+  });
+
+  test('canceled form reset leaves the current multiple selection unchanged', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const selected = new SvelteSet<string>(['bold']);
+    const { container } = render(Fixture, {
+      target: form,
+      props: {
+        id: 'text-format',
+        name: 'format',
+        label: 'Text formatting',
+        options: multiOptions,
+        selectionMode: 'multiple',
+        value: selected,
+      },
+    });
+
+    selected.add('italic');
+    await tick();
+    form.addEventListener('reset', (event) => event.preventDefault());
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    const hiddenInputs = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="format"]'),
+    );
+    expect(hiddenInputs.map((input) => input.value)).toEqual(['bold', 'italic']);
   });
 
   test('clicking an unpressed option adds it to the SvelteSet (reactivity check)', async () => {
