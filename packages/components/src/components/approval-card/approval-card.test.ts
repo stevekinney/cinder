@@ -247,7 +247,7 @@ describe('ApprovalCard', () => {
     expect(buttons).toEqual(['Approve', 'Approve with edits', 'Deny', 'Remember', 'Cancel']);
   });
 
-  test('truncates large argument previews and long file lists', () => {
+  test('truncates large argument previews and renders every touched file', () => {
     const filesTouched = Array.from({ length: 8 }, (_, index) => `src/file-${index + 1}.ts`);
     const { container } = render(ApprovalCard, {
       ...approvalCardProps({
@@ -263,10 +263,11 @@ describe('ApprovalCard', () => {
     expect(container.textContent).toContain(
       'Review the touched files and arguments before approving this file write.',
     );
-    expect(container.textContent).toContain('Showing 5 of 8 files');
-    expect(container.textContent).toContain('src/file-5.ts');
-    expect(container.textContent).toContain('3 more files');
-    expect(container.textContent).not.toContain('src/file-8.ts');
+    expect(container.textContent).toContain('8 files');
+    for (const file of filesTouched) {
+      expect(container.textContent).toContain(file);
+    }
+    expect(container.textContent).not.toContain('more files');
     expect(container.textContent).not.toContain('No command or patch body was provided.');
   });
 

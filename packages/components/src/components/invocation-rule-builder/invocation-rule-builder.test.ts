@@ -98,6 +98,7 @@ describe('InvocationRuleBuilder', () => {
       expect(
         invocationRuleBuilderSchema.metadata?.unsupportedProps?.map((prop) => prop.name),
       ).toEqual(['onchange']);
+      expect(invocationRuleBuilderSchema.metadata?.unsupportedProps?.[0]?.required).not.toBe(true);
 
       expect(
         validate({

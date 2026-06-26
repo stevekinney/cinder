@@ -51,7 +51,6 @@
   } from './approval-card.types.ts';
 
   const ARGUMENTS_PREVIEW_MAX_CHARACTERS = 4_096;
-  const FILE_PREVIEW_LIMIT = 5;
 
   const generatedId = $props.id();
 
@@ -117,10 +116,6 @@
   const editableArgumentsValue = $derived(operation.argsPreview);
   const argumentsPreview = $derived(prepareArgumentsPreview(editableArgumentsValue));
   const filesTouched = $derived(operation.filesTouched ?? []);
-  const visibleFilesTouched = $derived(filesTouched.slice(0, FILE_PREVIEW_LIMIT));
-  const remainingFileCount = $derived(
-    Math.max(0, filesTouched.length - visibleFilesTouched.length),
-  );
   const environmentNames = $derived(sanitizeEnvironmentNames(env));
   const currentEditedArgumentsText = $derived(formatEditableArguments(editableArgumentsValue));
   const currentEditedArgumentsSeedKey = $derived(
@@ -462,20 +457,13 @@
           <div class="cinder-approval-card__files">
             <div class="cinder-approval-card__section-heading">
               <h5 class="cinder-approval-card__subsection-title">Files touched</h5>
-              {#if remainingFileCount > 0}
-                <Badge size="sm" variant="warning">
-                  Showing {FILE_PREVIEW_LIMIT} of {filesTouched.length} files
-                </Badge>
-              {/if}
+              <Badge size="sm">{filesTouched.length} files</Badge>
             </div>
             <ul class="cinder-approval-card__file-list">
-              {#each visibleFilesTouched as file, fileIndex (`${fileIndex}:${file}`)}
+              {#each filesTouched as file, fileIndex (`${fileIndex}:${file}`)}
                 <li>{file}</li>
               {/each}
             </ul>
-            {#if remainingFileCount > 0}
-              <p class="cinder-approval-card__muted">{remainingFileCount} more files</p>
-            {/if}
           </div>
         {/if}
       </section>

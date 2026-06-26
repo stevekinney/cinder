@@ -163,9 +163,8 @@ const schema = {
       {
         name: 'onchange',
         reason: 'function-or-snippet',
-        required: true,
         description:
-          'Called whenever the user makes any edit. Receives the next rule\narray (pure, not mutated) and a change descriptor. Consumer owns\npersistence, validation, and execution.',
+          'Called whenever the user makes any edit. Required for editable runtime\nusage; readonly schema-driven usage may omit it because no edit controls\nare rendered. Receives the next rule array (pure, not mutated) and a\nchange descriptor. Consumer owns persistence, validation, and execution.',
       },
     ],
   },

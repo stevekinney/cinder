@@ -100,11 +100,12 @@ export type InvocationRuleBuilderProps = Omit<
   rules: InvocationRule[];
 
   /**
-   * Called whenever the user makes any edit. Receives the next rule
-   * array (pure, not mutated) and a change descriptor. Consumer owns
-   * persistence, validation, and execution.
+   * Called whenever the user makes any edit. Required for editable runtime
+   * usage; readonly schema-driven usage may omit it because no edit controls
+   * are rendered. Receives the next rule array (pure, not mutated) and a
+   * change descriptor. Consumer owns persistence, validation, and execution.
    */
-  onchange: (nextRules: InvocationRule[], change: InvocationRuleChange) => void;
+  onchange?: (nextRules: InvocationRule[], change: InvocationRuleChange) => void;
 
   /**
    * Options for the condition field selector. Consumer-provided list of
