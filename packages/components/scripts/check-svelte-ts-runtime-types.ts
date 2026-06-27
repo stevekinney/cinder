@@ -60,6 +60,23 @@ function collectViolations(sourceFile: ts.SourceFile, filePath: string): Violati
         line: lineFor(sourceFile, statement.getStart(sourceFile)),
         kind: 'export type {...}',
       });
+      continue;
+    }
+
+    if (
+      ts.isExportDeclaration(statement) &&
+      statement.exportClause &&
+      ts.isNamedExports(statement.exportClause)
+    ) {
+      for (const element of statement.exportClause.elements) {
+        if (element.isTypeOnly) {
+          violations.push({
+            filePath,
+            line: lineFor(sourceFile, element.getStart(sourceFile)),
+            kind: 'export { type ... }',
+          });
+        }
+      }
     }
   }
 

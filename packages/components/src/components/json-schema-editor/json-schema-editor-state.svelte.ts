@@ -16,10 +16,9 @@
 import { stableSerialise, useHistory } from '../../utilities/use-history.svelte.ts';
 import type { UseHistory } from '../../utilities/use-history.types.ts';
 
+import type { CreateEditorStateOptions } from './json-schema-editor-state.types.ts';
 import type {
   JsonSchemaDraft,
-  JsonSchemaEditorChangeEvent,
-  JsonSchemaEditorRevertEvent,
   JsonSchemaEditorView,
   JsonSchemaKnownDraft,
   JsonSchemaValidationError,
@@ -47,17 +46,6 @@ const COMPILE_DEBOUNCE_MS = 500;
  * `status: 'pending'` while the gate is active.
  */
 const COMPILE_DEFER_BYTES = 100_000;
-
-export interface CreateEditorStateOptions {
-  schema: JsonSchemaValue | string;
-  original?: JsonSchemaValue | string;
-  draftOverride?: JsonSchemaKnownDraft;
-  readonly?: boolean;
-  maxHistory?: number;
-  onchange?: (event: JsonSchemaEditorChangeEvent) => void;
-  onrevert?: (event: JsonSchemaEditorRevertEvent) => void;
-  onvalidate?: (result: JsonSchemaValidationResult) => void;
-}
 
 function serialise(value: JsonSchemaValue): string {
   return JSON.stringify(value, null, PRETTY_INDENT);
@@ -505,5 +493,3 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
   };
 }
-
-export type EditorState = ReturnType<typeof createEditorState>;

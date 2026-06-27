@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { EditorState } from './json-schema-editor-state.svelte.ts';
+  import type { EditorState } from './json-schema-editor-state.types.ts';
 
   export type JsonSchemaToolbarProps = {
     state: EditorState;
