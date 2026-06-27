@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 
-import type { EditorState } from './json-schema-editor-state.svelte.ts';
+import type { EditorState } from './json-schema-editor-state.types.ts';
 import type { JsonSchemaDraft, JsonSchemaValidationResult } from './json-schema-editor-types.ts';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';

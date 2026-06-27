@@ -2,7 +2,7 @@
   import type {
     MutationCallback,
     UseMutationObserverOptions,
-  } from '../../utilities/use-mutation-observer.svelte.ts';
+  } from '../../utilities/use-mutation-observer.types.ts';
 
   export type UseMutationObserverAttachFixtureProps = {
     onMutate: MutationCallback;

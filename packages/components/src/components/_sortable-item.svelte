@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { Snippet } from 'svelte';
-  import type { SortableItemContext } from '../utilities/sortable-controller.svelte.ts';
+  import type { SortableItemContext } from '../utilities/sortable-controller.types.ts';
 
   /** Internal props for SortableItem — not part of the public package API. */
   export type SortableItemProps<Item> = {
