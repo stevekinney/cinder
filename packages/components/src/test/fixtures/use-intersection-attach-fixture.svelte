@@ -2,7 +2,7 @@
   import type {
     IntersectionCallback,
     UseIntersectionOptions,
-  } from '../../utilities/use-intersection.svelte.ts';
+  } from '../../utilities/use-intersection.types.ts';
 
   export type UseIntersectionAttachFixtureProps = {
     onIntersect: IntersectionCallback;

@@ -13,11 +13,8 @@
  * schema (meta-schema) and compile (debounced).
  */
 
-import {
-  stableSerialise,
-  useHistory,
-  type UseHistory,
-} from '../../utilities/use-history.svelte.ts';
+import { stableSerialise, useHistory } from '../../utilities/use-history.svelte.ts';
+import type { UseHistory } from '../../utilities/use-history.types.ts';
 
 import type {
   JsonSchemaDraft,

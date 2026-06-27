@@ -684,7 +684,7 @@ export type {
   SortableAnnouncements,
   SortableItemContext,
   SortableReorderChange,
-} from './utilities/sortable-controller.svelte.ts';
+} from './utilities/sortable-controller.types.ts';
 
 export { default as Skeleton } from './components/skeleton/index.ts';
 export type { SkeletonProps } from './components/skeleton/index.ts';
@@ -824,7 +824,7 @@ export type {
 } from './components/transfer-list/index.ts';
 
 export { useAnnouncer } from './utilities/use-announcer.svelte.ts';
-export type { Announcer, AnnouncerOptions } from './utilities/use-announcer.svelte.ts';
+export type { Announcer, AnnouncerOptions } from './utilities/use-announcer.types.ts';
 
 export { useHistory } from './utilities/use-history.svelte.ts';
 export type {
@@ -833,12 +833,12 @@ export type {
   UseHistoryEntry,
   UseHistoryEntryMetadata,
   UseHistoryOptions,
-} from './utilities/use-history.svelte.ts';
+} from './utilities/use-history.types.ts';
 
 export { useIntersection } from './utilities/use-intersection.svelte.ts';
 export { useMutationObserver } from './utilities/use-mutation-observer.svelte.ts';
 export { useReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
-export type { UseReducedMotion } from './utilities/use-reduced-motion.svelte.ts';
+export type { UseReducedMotion } from './utilities/use-reduced-motion.types.ts';
 export { useResizeObserver } from './utilities/use-resize-observer.svelte.ts';
 
 export { useToast } from './utilities/use-toast.ts';

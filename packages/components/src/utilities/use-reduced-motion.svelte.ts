@@ -1,9 +1,6 @@
 import { MediaQuery } from 'svelte/reactivity';
 
-export type UseReducedMotion = {
-  /** Reactive boolean — `true` when the user prefers reduced motion. */
-  readonly current: boolean;
-};
+import type { UseReducedMotion } from './use-reduced-motion.types.ts';
 
 /**
  * Reactive `prefers-reduced-motion: reduce` watcher backed by Svelte's `MediaQuery`.

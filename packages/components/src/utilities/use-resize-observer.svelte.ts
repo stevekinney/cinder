@@ -1,13 +1,8 @@
-import type { Attachment } from 'svelte/attachments';
-
-export type ResizeCallback = (entries: ResizeObserverEntry[]) => void;
-
-export type UseResizeObserverOptions = {
-  /** Which box model to observe. Defaults to the ResizeObserver constructor default. */
-  box?: ResizeObserverBoxOptions;
-  /** Getter for whether observation is enabled. Defaults to `() => true`. */
-  enabled?: () => boolean;
-};
+import type {
+  ResizeCallback,
+  ResizeObserverAttachment,
+  UseResizeObserverOptions,
+} from './use-resize-observer.types.ts';
 
 /**
  * Creates an attachment that observes the element with ResizeObserver.
@@ -19,7 +14,7 @@ export type UseResizeObserverOptions = {
 export function useResizeObserver(
   onResize: ResizeCallback,
   options: UseResizeObserverOptions = {},
-): Attachment<HTMLElement> {
+): ResizeObserverAttachment {
   const { box, enabled = () => true } = options;
 
   return (node: HTMLElement) => {

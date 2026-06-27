@@ -2,7 +2,7 @@
   import type {
     ResizeCallback,
     UseResizeObserverOptions,
-  } from '../../utilities/use-resize-observer.svelte.ts';
+  } from '../../utilities/use-resize-observer.types.ts';
 
   export type UseResizeObserverAttachFixtureProps = {
     onResize: ResizeCallback;
