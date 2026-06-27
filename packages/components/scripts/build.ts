@@ -1,6 +1,6 @@
 import { $, Glob } from 'bun';
 import { existsSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
@@ -19,16 +19,6 @@ const workspaceRoot = `${repositoryRoot}/../..`;
 const sourceRoot = `${repositoryRoot}/src`;
 const distributionDirectory = `${repositoryRoot}/dist`;
 const svelteShimsPath = Bun.resolveSync('svelte2tsx/svelte-shims-v4.d.ts', repositoryRoot);
-
-async function createServerEntry(): Promise<string> {
-  const sourcePath = `${sourceRoot}/index.ts`;
-  const serverEntryPath = `${repositoryRoot}/node_modules/.cache/server-entry.ts`;
-  const source = await Bun.file(sourcePath).text();
-
-  await Bun.write(serverEntryPath, createServerEntrySource(source));
-
-  return serverEntryPath;
-}
 
 /**
  * Build the absolute path to `src/components/[experimental/]<name>/index.ts`
@@ -207,42 +197,7 @@ if (sourceCssImportViolations.length > 0) {
 }
 
 // -----------------------------------------------------------------------------
-// 1. Existing single-file server bundle. PRESERVED untouched in this PR —
-//    removal is a follow-up after Track 3 + Track 5 prove the per-component
-//    SSR path works in consumer fixtures.
-// -----------------------------------------------------------------------------
-
-const serverEntryPath = await createServerEntry();
-
-const serverBuildResult = await Bun.build({
-  entrypoints: [serverEntryPath],
-  outdir: `${distributionDirectory}/server`,
-  target: 'node',
-  format: 'esm',
-  naming: {
-    entry: 'index.[ext]',
-    chunk: '[name]-[hash].[ext]',
-    asset: '[name]-[hash].[ext]',
-  },
-  sourcemap: 'external',
-  minify: false,
-  external: [
-    'svelte',
-    '@lostgradient/cinder',
-    '@lostgradient/cinder/*',
-    ...runtimeDependencyExternals,
-  ],
-  plugins: [sveltePlugin({ generate: 'server' })],
-});
-
-if (!serverBuildResult.success) {
-  const messages = ['Server build failed:', ...serverBuildResult.logs.map(String)].join('\n');
-  process.stderr.write(`${messages}\n`);
-  process.exit(1);
-}
-
-// -----------------------------------------------------------------------------
-// 2. Per-component browser ESM build (additive). Entrypoints: every component
+// 1. Per-component browser ESM build (additive). Entrypoints: every component
 //    `index.ts` plus the root barrel `src/index.ts`. Output shape is fixed by
 //    `[dir]/[name].[ext]` naming relative to `root: src/`, which gives us:
 //      dist/index.js
@@ -274,6 +229,16 @@ const staticSubpathEntrypoints = [
   `${sourceRoot}/highlighters/shiki/index.ts`,
   `${sourceRoot}/styles/base-guard.ts`,
 ];
+
+const serverCssNoopPlugin = {
+  name: 'server-css-noop',
+  setup(build: Bun.PluginBuilder): void {
+    build.onLoad({ filter: /\.css$/ }, () => ({
+      contents: '',
+      loader: 'js',
+    }));
+  },
+};
 
 /**
  * Deprecated `@lostgradient/cinder/experimental/<name>` alias shims. Each promoted-out
@@ -388,12 +353,18 @@ if (!browserBuildResult.success) {
 }
 
 // -----------------------------------------------------------------------------
-// 3. Per-component SSR ESM build (additive, lives alongside the existing
-//    single-file server bundle). Outputs to dist/server/components/<name>/.
+// 2. SSR ESM build. The root barrel and component subpaths are compiled in one
+//    split build so root imports and subpath imports share Svelte context
+//    identity when Node SSR resolves both in the same app.
 // -----------------------------------------------------------------------------
+
+const serverRootEntrypoint = `${sourceRoot}/index.server.ts`;
+const serverRootSource = await Bun.file(`${sourceRoot}/index.ts`).text();
+await Bun.write(serverRootEntrypoint, createServerEntrySource(serverRootSource));
 
 const perComponentServerBuildResult = await Bun.build({
   entrypoints: [
+    serverRootEntrypoint,
     ...perComponentEntrypoints,
     ...perComponentMetadataEntrypoints,
     ...staticSubpathEntrypoints,
@@ -403,7 +374,7 @@ const perComponentServerBuildResult = await Bun.build({
   root: sourceRoot,
   target: 'node',
   format: 'esm',
-  splitting: false,
+  splitting: true,
   external: [
     'svelte',
     'svelte/*',
@@ -418,8 +389,10 @@ const perComponentServerBuildResult = await Bun.build({
   },
   sourcemap: 'external',
   minify: false,
-  plugins: [sveltePlugin({ generate: 'server' })],
+  plugins: [serverCssNoopPlugin, sveltePlugin({ generate: 'server' })],
 });
+
+await rm(serverRootEntrypoint, { force: true });
 
 if (!perComponentServerBuildResult.success) {
   const messages = [
@@ -429,6 +402,33 @@ if (!perComponentServerBuildResult.success) {
   process.stderr.write(`${messages}\n`);
   process.exit(1);
 }
+
+const temporaryServerRootOutput = `${distributionDirectory}/server/index.server.js`;
+const temporaryServerRootMapOutput = `${temporaryServerRootOutput}.map`;
+const serverRootOutput = `${distributionDirectory}/server/index.js`;
+const serverRootMapOutput = `${serverRootOutput}.map`;
+const temporaryServerRootContents = await Bun.file(temporaryServerRootOutput).text();
+const serverRootContents = temporaryServerRootContents.includes(
+  '//# sourceMappingURL=index.server.js.map',
+)
+  ? temporaryServerRootContents.replace(
+      /\/\/# sourceMappingURL=index\.server\.js\.map\s*$/u,
+      '//# sourceMappingURL=index.js.map\n',
+    )
+  : `${temporaryServerRootContents.trimEnd()}\n//# sourceMappingURL=index.js.map\n`;
+await Bun.write(serverRootOutput, serverRootContents);
+
+if (existsSync(temporaryServerRootMapOutput)) {
+  const sourceMap = JSON.parse(await Bun.file(temporaryServerRootMapOutput).text()) as Record<
+    string,
+    unknown
+  >;
+  sourceMap['file'] = 'index.js';
+  await Bun.write(serverRootMapOutput, `${JSON.stringify(sourceMap)}\n`);
+}
+
+await rm(temporaryServerRootOutput, { force: true });
+await rm(temporaryServerRootMapOutput, { force: true });
 
 // -----------------------------------------------------------------------------
 // 4. Copy per-component CSS sidecars verbatim. The browser entry's injected

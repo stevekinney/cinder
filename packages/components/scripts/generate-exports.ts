@@ -2,9 +2,9 @@
  * Generates subpath exports for every directory-shaped component under
  * `src/components/`. Each component contributes up to six subpaths:
  *
- *   ./<name>             → component (types/svelte/node/default conditions)
- *   ./<name>/schema      → schema module (types/svelte/node/default conditions)
- *   ./<name>/variables   → variables module (types/svelte/node/default conditions)
+ *   ./<name>             → component (types/browser/node/svelte/default conditions)
+ *   ./<name>/schema      → schema module (types/browser/node/svelte/default conditions)
+ *   ./<name>/variables   → variables module (types/browser/node/svelte/default conditions)
  *   ./<name>/styles      → layer-wrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css). Compound parents (tabs/table/accordion/side-navigation) @import their leaves' sidecars so the family arrives together.
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
@@ -12,9 +12,11 @@
  * Experimental components export under `./experimental/<name>` etc.
  *
  * Condition ordering for component subpaths follows TypeScript `nodenext`
- * requirements: `types` MUST be first within any conditional object, followed
- * by `svelte` (source for Svelte-aware tooling), `node` (per-component SSR
- * build), and `default` (per-component browser ESM build) last.
+ * requirements and SSR safety: `types` MUST be first within any conditional
+ * object, followed by `browser` (source for browser/Svelte tooling that also
+ * activates Bun's built-in `node` condition), `node` (per-component SSR build),
+ * `svelte` (source for Svelte-aware browser tooling), and `default`
+ * (per-component browser ESM build) last.
  *
  * Additionally, a package-level `./manifest` entry is emitted pointing at
  * `./components.json` with `import`/`default` conditions only (no `svelte` or
@@ -23,7 +25,7 @@
  *
  * Reserved (non-component) entries are preserved verbatim:
  *
- *   .                    → root entry (also rewritten with the four-condition shape)
+ *   .                    → root entry (also rewritten with the conditional runtime shape)
  *   ./package.json       → self-export, required for some resolvers
  *   ./styles             → slim base: layer-order declaration + tokens + foundation + shared internals + utilities (NO per-component CSS)
  *   ./styles/all         → full-cascade convenience aggregator (base + EVERY component, not tree-shaken)
@@ -72,6 +74,7 @@ export const discoverDirectoryComponents = discoverComponents;
 
 export type ExportEntry = {
   types?: string;
+  browser?: string;
   svelte?: string;
   import?: string;
   node?: string;
@@ -167,7 +170,7 @@ export function shouldPreserveLegacyEntry(
 }
 
 /**
- * Canonical four-condition entry for `@lostgradient/cinder/highlighters/shiki`. Hand-shaped
+ * Canonical conditional entry for `@lostgradient/cinder/highlighters/shiki`. Hand-shaped
  * because the adapter is a single static sub-path (not a discovered component
  * and not an upstream re-export); the generator stitches this in alongside
  * the styles entries.
@@ -175,6 +178,7 @@ export function shouldPreserveLegacyEntry(
 function highlightersShikiExport(): ExportEntry {
   return orderedExportEntry({
     types: './dist/highlighters/shiki/index.d.ts',
+    browser: './src/highlighters/shiki/index.ts',
     svelte: './src/highlighters/shiki/index.ts',
     node: './dist/server/highlighters/shiki/index.js',
     default: './dist/highlighters/shiki/index.js',
@@ -182,7 +186,7 @@ function highlightersShikiExport(): ExportEntry {
 }
 
 /**
- * Canonical four-condition entry for `@lostgradient/cinder/styles/guard`. This is the
+ * Canonical conditional entry for `@lostgradient/cinder/styles/guard`. This is the
  * dev-only base-loaded guard module: it warns once in browser + dev environments
  * when a per-component CSS subpath is imported without first importing
  * `@lostgradient/cinder/styles`. The guard is stripped by any bundler that performs constant
@@ -191,6 +195,7 @@ function highlightersShikiExport(): ExportEntry {
 export function stylesGuardExport(): ExportEntry {
   return orderedExportEntry({
     types: './dist/styles/base-guard.d.ts',
+    browser: './src/styles/base-guard.ts',
     svelte: './src/styles/base-guard.ts',
     node: './dist/server/styles/base-guard.js',
     default: './dist/styles/base-guard.js',
@@ -219,30 +224,32 @@ export const FORBIDDEN_EXPORT_KEY_PATTERN =
  * `nodenext` resolution and our resolver matrix:
  *
  *   1. `types`
- *   2. `svelte`
+ *   2. `browser`
  *   3. `node`
- *   4. `default`
+ *   4. `svelte`
+ *   5. `default`
  *
  * Returns a fresh object so callers can rely on JSON.stringify output order.
  */
 export function orderedExportEntry(entry: ExportEntry): ExportEntry {
   const out: ExportEntry = {};
   if (entry.types !== undefined) out.types = entry.types;
-  if (entry.svelte !== undefined) out.svelte = entry.svelte;
+  if (entry.browser !== undefined) out.browser = entry.browser;
   if (entry.node !== undefined) out.node = entry.node;
+  if (entry.svelte !== undefined) out.svelte = entry.svelte;
   if (entry.default !== undefined) out.default = entry.default;
   return out;
 }
 
 /**
  * Builds the root `.` export entry. The root barrel is the only entry whose
- * `node` target points at the preserved single-file server bundle Track 4
- * left in place (`dist/server/index.js`); everything else points at the
- * per-component output.
+ * `node` target points at the shared server root (`dist/server/index.js`);
+ * component subpaths point at sibling entries under `dist/server/components/<name>/`.
  */
 export function computeRootExport(): ExportEntry {
   return orderedExportEntry({
     types: './dist/index.d.ts',
+    browser: './src/index.ts',
     svelte: './src/index.ts',
     node: './dist/server/index.js',
     default: './dist/index.js',
@@ -314,6 +321,7 @@ export function computeDeprecatedExperimentalAliases(
 
     out[aliasPrefix] = orderedExportEntry({
       types: `${shimDistDir}/index.d.ts`,
+      browser: `${shimSrcDir}/index.ts`,
       svelte: `${shimSrcDir}/index.ts`,
       node: `${shimServerDistDir}/index.js`,
       default: `${shimDistDir}/index.js`,
@@ -325,12 +333,14 @@ export function computeDeprecatedExperimentalAliases(
     // conditions resolve there too.
     out[`${aliasPrefix}/schema`] = orderedExportEntry({
       types: `${newDistDir}/${name}.schema.d.ts`,
+      browser: `${newSrcDir}/${name}.schema.ts`,
       svelte: `${newSrcDir}/${name}.schema.ts`,
       node: `${newServerDistDir}/${name}.schema.js`,
       default: `${newDistDir}/${name}.schema.js`,
     });
     out[`${aliasPrefix}/variables`] = orderedExportEntry({
       types: `${newDistDir}/${name}.variables.d.ts`,
+      browser: `${newSrcDir}/${name}.variables.ts`,
       svelte: `${newSrcDir}/${name}.variables.ts`,
       node: `${newServerDistDir}/${name}.variables.js`,
       default: `${newDistDir}/${name}.variables.js`,
@@ -352,7 +362,7 @@ export function computeDeprecatedExperimentalAliases(
 
 /**
  * Compute the cinder-side exports entries for every public sub-path of the
- * four `@cinder/*` workspace packages. Each entry mirrors the four-condition
+ * four `@cinder/*` workspace packages. Each entry mirrors the conditional
  * shape used by component sub-paths so in-repo Svelte tooling resolves the
  * generated `.ts` source while published consumers resolve `dist/`.
  */
@@ -387,23 +397,25 @@ export function computeExports(
       ? `./dist/server/components/experimental/${name}`
       : `./dist/server/components/${name}`;
 
-    // Component subpath: full four-condition shape. `types` first for
-    // TypeScript `nodenext`, `svelte` second so Svelte-aware tooling
-    // (SvelteKit, svelte-preprocess consumers) gets source, `node` third so
-    // Node SSR without Svelte tooling gets the SSR build, `default` last as
-    // the catch-all for Vite/Rollup/esbuild/Webpack/Bun browser bundles.
+    // Component subpath: full conditional shape. `types` first for TypeScript
+    // `nodenext`, `browser` second so browser/Bun source workflows that also
+    // activate `node` still get source, `node` third so Node SSR wins when both
+    // `node` and `svelte` are active, `svelte` next so Svelte tooling still gets
+    // source, `default` last as the catch-all for Vite/Rollup/esbuild/Webpack.
     out[prefix] = orderedExportEntry({
       types: `${distDir}/index.d.ts`,
+      browser: `${srcDir}/index.ts`,
       svelte: `${srcDir}/index.ts`,
       node: `${serverDistDir}/index.js`,
       default: `${distDir}/index.js`,
     });
 
-    // Schema and variables modules are full four-condition runtime entry
+    // Schema and variables modules are full conditional runtime entry
     // points, exactly like the component barrel. Each ships:
     //   • `types`   → `<name>.schema.d.ts` / `<name>.variables.d.ts`
-    //   • `svelte`  → the `.ts` source (so in-repo Svelte tooling resolves source)
+    //   • `browser` → the `.ts` source for browser/source test workflows
     //   • `node`    → the per-component SSR build `<name>.schema.js`
+    //   • `svelte`  → the `.ts` source (so browser Svelte tooling resolves source)
     //   • `default` → the per-component browser build `<name>.schema.js`
     //
     // The build (scripts/build.ts) compiles each `<name>.schema.ts` /
@@ -419,12 +431,14 @@ export function computeExports(
     // contract.
     out[`${prefix}/schema`] = orderedExportEntry({
       types: `${distDir}/${name}.schema.d.ts`,
+      browser: `${srcDir}/${name}.schema.ts`,
       svelte: `${srcDir}/${name}.schema.ts`,
       node: `${serverDistDir}/${name}.schema.js`,
       default: `${distDir}/${name}.schema.js`,
     });
     out[`${prefix}/variables`] = orderedExportEntry({
       types: `${distDir}/${name}.variables.d.ts`,
+      browser: `${srcDir}/${name}.variables.ts`,
       svelte: `${srcDir}/${name}.variables.ts`,
       node: `${serverDistDir}/${name}.variables.js`,
       default: `${distDir}/${name}.variables.js`,
@@ -664,7 +678,7 @@ async function main(): Promise<void> {
 
   /**
    * Build the next exports map in deterministic order:
-   *   1. `.` (root, four-condition shape)
+   *   1. `.` (root conditional runtime shape)
    *   2. `./package.json` self-export
    *   3. `./styles*` reserved entries (canonical, base-first)
    *   4. `./styles/guard` dev-only base-loaded guard
@@ -744,7 +758,7 @@ async function main(): Promise<void> {
       }
     }
 
-    // Root entry: must match the four-condition ordered shape exactly.
+    // Root entry: must match the ordered conditional runtime shape exactly.
     if (!existing[ROOT_KEY]) {
       issues.push(`Reserved export "${ROOT_KEY}" is missing`);
     } else if (JSON.stringify(existing[ROOT_KEY]) !== JSON.stringify(rootExport)) {

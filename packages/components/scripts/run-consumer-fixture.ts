@@ -141,13 +141,12 @@ function renderFixture(options: FixtureOptions): string {
 async function main(): Promise<void> {
   const options = parseArgs();
   // Place the fixture inside the package's node_modules/.cache so workspace
-  // module resolution finds the `@lostgradient/cinder` package via the parent monorepo's
-  // node_modules. A temp directory outside the repo cannot resolve workspace
-  // packages.
+  // module resolution finds the `@lostgradient/cinder` package via the parent
+  // monorepo's node_modules. A temp directory outside the repo cannot resolve
+  // workspace packages.
   const packageRoot = join(import.meta.dir, '..');
-  // Place the fixture in the monorepo root's node_modules/.cache, where the
-  // workspace symlink `node_modules/cinder -> packages/components` lives.
-  // Bun's module resolution then finds `@lostgradient/cinder` via the standard lookup.
+  // Place the fixture in the monorepo root's node_modules/.cache, where Bun's
+  // standard lookup can find the workspace package and private dependencies.
   const monorepoRoot = join(packageRoot, '..', '..');
   const fixtureDirectory = join(monorepoRoot, 'node_modules', '.cache', 'cinder-consumer-fixture');
   await mkdir(fixtureDirectory, { recursive: true });
@@ -157,18 +156,16 @@ async function main(): Promise<void> {
   await Bun.write(fixturePath, fixtureSource);
 
   try {
-    // Execute the fixture under Bun with the svelte condition so subpath
-    // exports resolve to source (`./src/...`) the same way every workspace
-    // consumer does. (The package's exports only define `svelte` + `types`
-    // conditions; without `--conditions svelte`, Bun's default resolution
-    // does not match either entry and the import fails.)
+    // Execute the fixture under Bun with the browser + svelte conditions so
+    // subpath exports resolve to source (`./src/...`) while the published
+    // package still lets Node SSR prefer `node` when `browser` is not active.
     //
     // The svelte loader plugin must be preloaded so `.svelte` imports compile;
     // the package's bunfig.toml only preloads for `bun test`, not generic
     // `bun run`, so we pass it explicitly here.
     const preloadPath = join(packageRoot, 'scripts', 'preload.ts');
     const runtimeResult =
-      await $`bun run --conditions svelte --preload ${preloadPath} ${fixturePath}`
+      await $`bun run --conditions browser --conditions svelte --preload ${preloadPath} ${fixturePath}`
         .cwd(packageRoot)
         .nothrow();
 

@@ -4,10 +4,10 @@
  * Imports `@lostgradient/cinder/button` and `@lostgradient/cinder/styles/guard` to exercise their type
  * surfaces. Both tsconfigs (`nodenext` and `bundler`) compile this file with
  * `tsc --noEmit` to confirm the condition ordering (`types` first, then
- * `svelte`, `node`, `default`) resolves under both module-resolution modes.
+ * `browser`, `node`, `svelte`, `default`) resolves under both module-resolution modes.
  *
  * The `@lostgradient/cinder/styles/guard` import specifically validates that the `./styles/guard`
- * export resolves to real files under all four conditions — a regression guard
+ * export resolves to real files under all runtime conditions — a regression guard
  * for the class of defect where the export entry points at files that do not
  * exist in the published package.
  */

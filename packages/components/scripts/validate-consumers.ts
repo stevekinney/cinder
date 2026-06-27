@@ -223,6 +223,24 @@ async function extractTarballForInspection(destinationDirectory: string): Promis
   }
 }
 
+function assertPackedExportConditionOrder(
+  exportsMap: Record<string, unknown>,
+  exportKey: string,
+): void {
+  const entry = exportsMap[exportKey];
+  if (!isObjectRecord(entry)) {
+    fail(`packed exports["${exportKey}"] must be a conditional export object`);
+  }
+
+  const expectedOrder = ['types', 'browser', 'node', 'svelte', 'default'];
+  const actualOrder = Object.keys(entry);
+  if (actualOrder.join(',') !== expectedOrder.join(',')) {
+    fail(
+      `packed exports["${exportKey}"] condition order is [${actualOrder.join(', ')}], expected [${expectedOrder.join(', ')}]`,
+    );
+  }
+}
+
 /**
  * Assert structural invariants on the packed manifest:
  *   - No `workspace:` substrings anywhere (the dep flip would otherwise
@@ -263,6 +281,9 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
   }
 
   const exportsMap = packedManifest.exports ?? {};
+  assertPackedExportConditionOrder(exportsMap, '.');
+  assertPackedExportConditionOrder(exportsMap, './button');
+
   const upstreamReexports = await deriveUpstreamReexports();
   const upstreamKeys = new Set(upstreamReexports.map((r) => r.cinderKey));
   for (const [key, value] of Object.entries(exportsMap)) {
@@ -817,14 +838,6 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     // So the auto-CSS contract here is exactly "the component's own selectors
     // arrive", which is what proves the import pulled the sidecar.
 
-    // Runtime-truth check (defends against manifest/shared-chunk drift): the
-    // route walk above reads the Vite client manifest, which can diverge from
-    // what the runtime SvelteKit loader actually serves. Below, after the
-    // fixture server is up, we ALSO fetch the rendered /no-styles HTML and
-    // assert a referenced <link rel="stylesheet"> DOES contain .cinder-button —
-    // confirming the auto-CSS side effect reaches the live route, not just the
-    // manifest.
-
     // Always-rendered components (not lazy-mount): their root class MUST appear in SSR HTML.
     // Modal, Dropdown, Tooltip are lazy-mount — they render only the trigger surface at open=false.
     const ALWAYS_RENDERED_CLASSES = [
@@ -928,63 +941,75 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         }
       }
 
-      // Runtime-truth check for the auto-CSS side-effect contract.
-      // Fetch the rendered /no-styles HTML, extract every stylesheet href,
-      // fetch each through the running server, and assert that AT LEAST ONE
-      // contains `.cinder-button`. This is the strongest in-fixture assertion
-      // that a bare `@lostgradient/cinder/button` import auto-loads its CSS at runtime — not
-      // just in the manifest, but in what the live route actually serves.
-      const noStylesResponse = await fetch(`http://127.0.0.1:${httpPort}/no-styles`);
-      if (noStylesResponse.status !== 200) {
-        fail(`fixture /no-styles returned ${noStylesResponse.status}, want 200`);
-      }
-      const noStylesBody = await noStylesResponse.text();
-      // Match every <link> tag, then check attributes order-insensitively.
-      // SvelteKit can emit href before rel, and `rel` is a space-separated
-      // token list (`rel="preload stylesheet"`) — we must not miss stylesheets
-      // because of attribute ordering or compound rel values.
-      const linkTagPattern = /<link\b[^>]*>/gi;
-      const noStylesUrl = `http://127.0.0.1:${httpPort}/no-styles`;
-      const stylesheetHrefs: string[] = [];
-      for (const match of noStylesBody.matchAll(linkTagPattern)) {
-        const tag = match[0];
-        const relMatch = /\brel\s*=\s*["']([^"']+)["']/i.exec(tag);
-        if (!relMatch) continue;
-        const relTokens = relMatch[1]!.toLowerCase().split(/\s+/);
-        if (!relTokens.includes('stylesheet')) continue;
-        const hrefMatch = /\bhref\s*=\s*["']([^"']+)["']/i.exec(tag);
-        if (!hrefMatch) continue;
-        stylesheetHrefs.push(hrefMatch[1]!);
-      }
-      // Fetch each stylesheet through the running fixture server. The server
-      // is the source of truth for what /no-styles actually loads, and this
-      // avoids fragile on-disk path resolution (relative hrefs like
-      // `../_app/immutable/...` would otherwise resolve outside the client
-      // output directory and silently be skipped).
-      let buttonCssServed = false;
-      for (const href of stylesheetHrefs) {
-        const stylesheetUrl = new URL(href, noStylesUrl).toString();
-        const stylesheetResponse = await fetch(stylesheetUrl);
-        if (stylesheetResponse.status !== 200) {
+      async function assertRenderedRouteServesButtonCss(
+        routePath: '/a-la-carte',
+        contractLabel: string,
+      ): Promise<void> {
+        // Runtime-truth check for route CSS. Fetch the rendered route HTML,
+        // extract every stylesheet href, fetch each through the running server,
+        // and assert that AT LEAST ONE contains `.cinder-button`. The server is
+        // the source of truth for what the route actually loads and avoids
+        // fragile on-disk path resolution (relative hrefs like
+        // `../_app/immutable/...` would otherwise resolve outside the client
+        // output directory and silently be skipped).
+        const routeResponse = await fetch(`http://127.0.0.1:${httpPort}${routePath}`);
+        if (routeResponse.status !== 200) {
+          fail(`fixture ${routePath} returned ${routeResponse.status}, want 200`);
+        }
+        const routeBody = await routeResponse.text();
+        // Match every <link> tag, then check attributes order-insensitively.
+        // SvelteKit can emit href before rel, and `rel` is a space-separated
+        // token list (`rel="preload stylesheet"`) — we must not miss stylesheets
+        // because of attribute ordering or compound rel values.
+        const linkTagPattern = /<link\b[^>]*>/gi;
+        const routeUrl = `http://127.0.0.1:${httpPort}${routePath}`;
+        const stylesheetHrefs: string[] = [];
+        for (const match of routeBody.matchAll(linkTagPattern)) {
+          const tag = match[0];
+          const relMatch = /\brel\s*=\s*["']([^"']+)["']/i.exec(tag);
+          if (!relMatch) continue;
+          const relTokens = relMatch[1]!.toLowerCase().split(/\s+/);
+          if (!relTokens.includes('stylesheet')) continue;
+          const hrefMatch = /\bhref\s*=\s*["']([^"']+)["']/i.exec(tag);
+          if (!hrefMatch) continue;
+          stylesheetHrefs.push(hrefMatch[1]!);
+        }
+
+        let buttonCssServed = false;
+        for (const href of stylesheetHrefs) {
+          const stylesheetUrl = new URL(href, routeUrl).toString();
+          const stylesheetResponse = await fetch(stylesheetUrl);
+          if (stylesheetResponse.status !== 200) {
+            fail(
+              `${routePath} references stylesheet ${href} (resolved to ${stylesheetUrl}) which returned ${stylesheetResponse.status} — cannot verify the ${contractLabel} styles contract`,
+            );
+          }
+          const source = await stylesheetResponse.text();
+          // Require the `.cinder-button` SELECTOR (the component sidecar), not a
+          // `--cinder-button-*` token: those custom properties are declared by
+          // `@lostgradient/cinder/styles` (the tokens/foundation base) and can appear without
+          // the component sidecar, so a token-only match would pass even when the
+          // route-specific CSS import contract is broken.
+          if (source.includes('.cinder-button')) {
+            buttonCssServed = true;
+          }
+        }
+        if (!buttonCssServed) {
           fail(
-            `/no-styles references stylesheet ${href} (resolved to ${stylesheetUrl}) which returned ${stylesheetResponse.status} — cannot verify the auto-CSS contract`,
+            `${routePath} rendered HTML references no stylesheet containing button CSS — ${contractLabel} did not reach runtime SSR HTML`,
           );
         }
-        const source = await stylesheetResponse.text();
-        // Require the `.cinder-button` SELECTOR (the component sidecar), not a
-        // `--cinder-button-*` token: those custom properties are declared by
-        // `@lostgradient/cinder/styles` (the tokens/foundation base) and can appear without
-        // the component sidecar, so a token-only match would pass even when the
-        // auto-CSS import is broken.
-        if (source.includes('.cinder-button')) {
-          buttonCssServed = true;
-        }
       }
-      if (!buttonCssServed) {
-        fail(
-          `/no-styles rendered HTML references no stylesheet containing button CSS — a bare \`@lostgradient/cinder/button\` import did NOT auto-load its CSS at runtime (auto-CSS side-effect contract broken)`,
-        );
-      }
+
+      // `/no-styles` is intentionally not checked through rendered SSR HTML:
+      // SvelteKit's server manifest resolves the CSS-free `node` condition, so
+      // that route has no SSR stylesheet links even though its client route
+      // manifest includes `.cinder-button`. The client-manifest route walk above
+      // is the contract check for bare-import auto-CSS.
+      await assertRenderedRouteServesButtonCss(
+        '/a-la-carte',
+        'explicit `@lostgradient/cinder/button/styles` import',
+      );
     } finally {
       fixtureServer.kill();
       await fixtureServer.exited;
@@ -1100,6 +1125,36 @@ function hasCustomPropertyStartingWith(artifacts: CssArtifact[], prefix: string)
   );
 }
 
+function verifyNodeSsrConditionPrecedence(fixtureDirectory: string): void {
+  const script = [
+    "const root = import.meta.resolve('@lostgradient/cinder');",
+    "const button = import.meta.resolve('@lostgradient/cinder/button');",
+    'console.log(JSON.stringify({ root, button }));',
+  ].join('\n');
+  const result = Bun.spawnSync(
+    [nodeBinaryPath, '--conditions=svelte', '--input-type=module', '-e', script],
+    {
+      cwd: fixtureDirectory,
+      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+    },
+  );
+  if (result.exitCode !== 0) {
+    fail(
+      `node --conditions=svelte resolver probe exited ${result.exitCode}\n` +
+        `stdout: ${result.stdout.toString()}\n` +
+        `stderr: ${result.stderr.toString()}`,
+    );
+  }
+
+  const resolved = parseJsonFile<{ root: string; button: string }>(result.stdout.toString());
+  if (!resolved.root.includes('/dist/server/index.js')) {
+    fail(`node --conditions=svelte resolved @lostgradient/cinder to ${resolved.root}`);
+  }
+  if (!resolved.button.includes('/dist/server/components/button/index.js')) {
+    fail(`node --conditions=svelte resolved @lostgradient/cinder/button to ${resolved.button}`);
+  }
+}
+
 async function readAllBuiltStylesheets(roots: string[]): Promise<string> {
   const stylesheetGlob = new Glob('**/*.css');
   const stylesheetContents: string[] = [];
@@ -1212,6 +1267,8 @@ async function runManifestConsumerFixture(): Promise<void> {
     await $`rm -rf node_modules`.cwd(fixtureDirectory);
     const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
     if (installResult.exitCode !== 0) fail(`manifest-consumer bun install failed`);
+
+    verifyNodeSsrConditionPrecedence(fixtureDirectory);
 
     const checkResult = Bun.spawnSync([nodeBinaryPath, 'check.mjs'], {
       cwd: fixtureDirectory,

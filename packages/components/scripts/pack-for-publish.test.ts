@@ -69,20 +69,21 @@ describe('buildPublishedManifest', () => {
       exports: {
         './button': {
           types: './dist/components/button/index.d.ts',
-          svelte: './src/components/button/index.ts',
+          browser: './src/components/button/index.ts',
           node: './dist/server/components/button/index.js',
+          svelte: './src/components/button/index.ts',
           default: './dist/components/button/index.js',
         },
         './button/schema': {
           types: './dist/components/button/button.schema.d.ts',
-          svelte: './src/components/button/button.schema.ts',
           node: './dist/server/components/button/button.schema.js',
+          svelte: './src/components/button/button.schema.ts',
           default: './dist/components/button/button.schema.js',
         },
         './button/variables': {
           types: './dist/components/button/button.variables.d.ts',
-          svelte: './src/components/button/button.variables.ts',
           node: './dist/server/components/button/button.variables.js',
+          svelte: './src/components/button/button.variables.ts',
           default: './dist/components/button/button.variables.js',
         },
       },
@@ -104,6 +105,46 @@ describe('buildPublishedManifest', () => {
     });
     expect(files).toContain('!src/components/**/*.schema.ts');
     expect(files).toContain('!src/components/**/*.variables.ts');
+  });
+
+  it('preserves component condition order so Node SSR wins over Svelte source', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {
+        '.': {
+          types: './dist/index.d.ts',
+          browser: './src/index.ts',
+          node: './dist/server/index.js',
+          svelte: './src/index.ts',
+          default: './dist/index.js',
+        },
+        './button': {
+          types: './dist/components/button/index.d.ts',
+          browser: './src/components/button/index.ts',
+          node: './dist/server/components/button/index.js',
+          svelte: './src/components/button/index.ts',
+          default: './dist/components/button/index.js',
+        },
+      },
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+
+    expect(Object.keys(published.exports['.']!)).toEqual([
+      'types',
+      'browser',
+      'node',
+      'svelte',
+      'default',
+    ]);
+    expect(Object.keys(published.exports['./button']!)).toEqual([
+      'types',
+      'browser',
+      'node',
+      'svelte',
+      'default',
+    ]);
   });
 
   it('publishes only exported component JSON sidecars', () => {

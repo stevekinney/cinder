@@ -465,7 +465,7 @@
   function scheduleSubmenuClose(
     submenuKey: string,
     triggerId: string,
-    event?: MouseEvent | PointerEvent,
+    event: MouseEvent | PointerEvent | undefined = undefined,
   ): void {
     clearSubmenuCloseTimer();
     pendingSubmenuCloseKey = submenuKey;

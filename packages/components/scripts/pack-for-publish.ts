@@ -43,6 +43,7 @@ const stagingRoot = join(packageRoot, 'node_modules', '.cache', 'publish-staging
 
 type ExportConditional = {
   types?: string;
+  browser?: string;
   svelte?: string;
   node?: string;
   default?: string;
@@ -169,14 +170,10 @@ function buildPublishedManifest(
       continue;
     }
     // Component sub-paths (and other non-upstream exports) keep their
-    // `svelte` → `./src/components/<id>/index.ts` condition. The published
-    // tarball ships `src/components/**` so Svelte-aware consumers can
-    // resolve the source — the pre-bundled root barrel at `dist/index.js`
-    // is currently a pass-through that lists re-exports without emitting
-    // import statements for them (a known Bun.build limitation tracked
-    // separately), so consumers MUST use the `svelte` source path for
-    // the barrel + per-component sub-paths to work. Only the upstream
-    // re-export sub-paths (handled above) ship dist-only.
+    // `browser`/`svelte` → `./src/components/<id>/index.ts` conditions for
+    // browser and Svelte-aware tooling. The generated condition order places
+    // `node` before `svelte`, so Node SSR still resolves the compiled server
+    // build when `node` and `svelte` are active without `browser`.
     transformedExports[key] = entry;
   }
 
@@ -218,10 +215,8 @@ function buildPublishedManifest(
   //   - `dist/` — built artifacts (per-component JS + types, the vendored
   //     `_upstream/` declarations, server bundles).
   //   - `src/components/**` — Svelte/TS source for component sub-paths
-  //     because the published `svelte` condition points at the source path
-  //     (the pre-bundled `dist/index.js` is currently a re-export
-  //     pass-through that doesn't emit import statements; until that's
-  //     fixed, Svelte-aware bundlers must resolve via source).
+  //     because browser Svelte-aware tooling can still resolve the source
+  //     condition when `node` is not active.
   //   - `src/index.ts` and `src/schema-types.ts` — root barrel source for
   //     the `svelte` condition on `@lostgradient/cinder` itself.
   //   - `src/utilities/**/*.ts` and `src/_internal/**/*.ts` — runtime

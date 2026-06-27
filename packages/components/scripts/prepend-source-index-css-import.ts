@@ -16,10 +16,10 @@
  *
  * Safe for SSR: only bundlers (Vite/SvelteKit with the svelte plugin) resolve
  * the `svelte` condition, and they handle `.css` natively. Bare Node SSR resolves
- * the `node` condition, which points at the SEPARATE generated server bundle
- * (`dist/server/...`, built from `server-entry.ts`) — that bundle is CSS-free and
- * never sees this source file. A relative `./<name>.css` (not `@lostgradient/cinder/<name>/styles`)
- * is correct here because the source entry is co-located with its sidecar.
+ * the `node` condition, which points at `dist/server/...`; that build is CSS-free
+ * and never sees this source file. A relative `./<name>.css` (not
+ * `@lostgradient/cinder/<name>/styles`) is correct here because the source entry
+ * is co-located with its sidecar.
  *
  * Idempotent: an entry that already imports its sidecar is left untouched.
  *

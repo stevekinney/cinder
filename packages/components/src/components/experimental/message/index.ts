@@ -7,11 +7,13 @@
 // Generated/managed by scripts/generate-exports.ts.
 
 import { devWarn } from '../../../utilities/dev-warn.ts';
+import Message from '../../message/index.ts';
 
 devWarn(
   "[cinder] '@lostgradient/cinder/experimental/message' is deprecated and will be removed in the next major. " +
     "Import from '@lostgradient/cinder/message' instead.",
 );
 
-export { default, Message } from '../../message/index.ts';
+export default Message;
 export type { MessageProps, MessageRole } from '../../message/index.ts';
+export { Message };

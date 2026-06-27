@@ -7,11 +7,13 @@
 // next major. Generated/managed by scripts/generate-exports.ts.
 
 import { devWarn } from '../../../utilities/dev-warn.ts';
+import JsonViewer from '../../json-viewer/index.ts';
 
 devWarn(
   "[cinder] '@lostgradient/cinder/experimental/json-viewer' is deprecated and will be removed in the next major. " +
     "Import from '@lostgradient/cinder/json-viewer' instead.",
 );
 
-export { default, JsonViewer } from '../../json-viewer/index.ts';
+export default JsonViewer;
 export type { JsonViewerProps } from '../../json-viewer/index.ts';
+export { JsonViewer };
