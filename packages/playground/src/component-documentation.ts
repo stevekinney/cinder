@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 
 import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
 
@@ -11,6 +11,7 @@ import type {
   DocumentationReadme,
   JsonValue,
 } from './component-documentation-types.ts';
+import { repositorySourceHref, rewriteRelativeRenderedMarkdownLinks } from './repository-links.ts';
 import type { ComponentManifest } from './types.ts';
 
 const PLAYGROUND_ROOT = dirname(import.meta.dirname);
@@ -268,6 +269,37 @@ function trimReadmeForOverview(markdown: string): string {
   return markdown.replace(leadingTitlePattern, '').replace(generatedSectionWithHeadingPattern, '');
 }
 
+function componentReadmeSourceHref(componentName: string, href: string): string {
+  return repositorySourceHref(`packages/components/src/components/${componentName}`, href);
+}
+
+function componentReadmeHref(
+  componentName: string,
+  href: string,
+  componentIds: ReadonlySet<string>,
+): { href: string; attributes: string } {
+  const [path = ''] = href.split('#', 2);
+  const normalizedPath = posix.normalize(posix.join(componentName, path));
+  const match = normalizedPath.match(/^([a-z0-9][a-z0-9-]*)\/README\.md$/);
+  if (match?.[1] !== undefined && componentIds.has(match[1])) {
+    return { href: `/c/${match[1]}`, attributes: ' target="_top"' };
+  }
+  return {
+    href: componentReadmeSourceHref(componentName, href),
+    attributes: ' target="_blank" rel="noopener noreferrer"',
+  };
+}
+
+export function rewriteComponentReadmeLinks(
+  html: string,
+  componentName: string,
+  componentIds: ReadonlySet<string>,
+): string {
+  return rewriteRelativeRenderedMarkdownLinks(html, (href) =>
+    componentReadmeHref(componentName, href, componentIds),
+  );
+}
+
 export function renderReadmeDocumentation(rawMarkdown: string): DocumentationReadme {
   const trimmed = trimReadmeForOverview(rawMarkdown);
   const rendered = renderMarkdown(normalizeReadmeMarkdownForRendering(trimmed));
@@ -358,7 +390,9 @@ export async function buildComponentDocumentation(
     examplesPromise,
     initializeHighlighter(),
   ]);
+  const componentIds = new Set(packageManifest.components.map((component) => component.id));
   const readme = renderReadmeDocumentation(readmeMarkdown);
+  readme.html = rewriteComponentReadmeLinks(readme.html, componentName, componentIds);
   const manifestEntry: JsonValue = {
     name: entry.name,
     id: entry.id,
