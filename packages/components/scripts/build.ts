@@ -13,6 +13,7 @@ import { discoverComponents, type ComponentDiscovery } from './lib/discover-comp
 import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
 import { sveltePlugin } from './svelte-plugin.ts';
+import { isObjectRecord } from './validation-utilities.ts';
 
 const repositoryRoot = process.cwd();
 const workspaceRoot = `${repositoryRoot}/../..`;
@@ -419,10 +420,10 @@ const serverRootContents = temporaryServerRootContents.includes(
 await Bun.write(serverRootOutput, serverRootContents);
 
 if (existsSync(temporaryServerRootMapOutput)) {
-  const sourceMap = JSON.parse(await Bun.file(temporaryServerRootMapOutput).text()) as Record<
-    string,
-    unknown
-  >;
+  const sourceMap: unknown = JSON.parse(await Bun.file(temporaryServerRootMapOutput).text());
+  if (!isObjectRecord(sourceMap)) {
+    throw new TypeError(`Expected ${temporaryServerRootMapOutput} to contain a JSON object.`);
+  }
   sourceMap['file'] = 'index.js';
   await Bun.write(serverRootMapOutput, `${JSON.stringify(sourceMap)}\n`);
 }
