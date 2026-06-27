@@ -1,5 +1,7 @@
 import './menu-bar.css';
-export { default as MenuBar, default } from './menu-bar.svelte';
+import MenuBar from './menu-bar.svelte';
+
+export default MenuBar;
 export type {
   MenuBarEntry,
   MenuBarItem,
@@ -11,3 +13,4 @@ export type {
   MenuBarSubmenu,
   MenuBarSubmenuEntry,
 } from './menu-bar.types.ts';
+export { MenuBar };

@@ -26,10 +26,11 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { Glob } from 'bun';
 import { describe, expect, it } from 'bun:test';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -86,6 +87,28 @@ describe.skipIf(!existsSync(distributionRoot))('server entries are CSS-free', ()
       if (hasCssImportLine(text)) offenders.push(target);
     }
     expect(offenders).toEqual([]);
+  });
+
+  it('emits no CSS assets under dist/server', async () => {
+    const cssFiles: string[] = [];
+    const glob = new Glob('**/*.css');
+    for await (const relativePath of glob.scan({ cwd: join(distributionRoot, 'server') })) {
+      cssFiles.push(relativePath);
+    }
+    expect(cssFiles).toEqual([]);
+  });
+
+  it('publishes the root server entry with a matching source map name', () => {
+    expect(existsSync(join(distributionRoot, 'server', 'index.server.js'))).toBe(false);
+    expect(existsSync(join(distributionRoot, 'server', 'index.server.js.map'))).toBe(false);
+
+    const rootEntry = readFileSync(join(distributionRoot, 'server', 'index.js'), 'utf8');
+    expect(rootEntry).toContain('//# sourceMappingURL=index.js.map');
+
+    const rootSourceMap = JSON.parse(
+      readFileSync(join(distributionRoot, 'server', 'index.js.map'), 'utf8'),
+    ) as Record<string, unknown>;
+    expect(rootSourceMap['file']).toBe('index.js');
   });
 
   it('imports every node-condition entry under bare Node with no ERR_UNKNOWN_FILE_EXTENSION', async () => {

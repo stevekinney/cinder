@@ -1,3 +1,6 @@
 import './tag-input.css';
-export { default as TagInput, default } from './tag-input.svelte';
+import TagInput from './tag-input.svelte';
+
+export default TagInput;
 export type { TagInputProps } from './tag-input.types.ts';
+export { TagInput };

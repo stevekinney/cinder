@@ -45,14 +45,14 @@ describe('review-editor public entrypoint', () => {
       import('./index.ts'),
     ]);
 
-    // After the per-directory migration, the public subpath resolves to the
-    // directory's index.ts via the `svelte` condition. Track 3 added the
-    // `node` and `default` conditions pointing at the per-component build
-    // outputs; `types` is first per TypeScript nodenext requirements.
+    // After the per-directory migration, the public subpath keeps source
+    // conditions for browser/Svelte tooling and a `node` condition for SSR.
+    // `types` stays first per TypeScript nodenext requirements.
     expect(packageJson.exports['./review-editor']).toEqual({
       types: './dist/components/review-editor/index.d.ts',
-      svelte: './src/components/review-editor/index.ts',
+      browser: './src/components/review-editor/index.ts',
       node: './dist/server/components/review-editor/index.js',
+      svelte: './src/components/review-editor/index.ts',
       default: './dist/components/review-editor/index.js',
     });
     expect(ReviewEditor).toBeDefined();

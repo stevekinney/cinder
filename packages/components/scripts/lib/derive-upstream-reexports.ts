@@ -409,9 +409,9 @@ function formatNamedExport(
 
 /**
  * Build a cinder exports-map entry for a single upstream sub-path. Mirrors
- * the four-condition shape used by component sub-paths (types/svelte/node/
- * default), so in-repo Svelte tooling resolves the `.ts` source for HMR and
- * type checks, while published consumers resolve `dist/`.
+ * the conditional shape used by component sub-paths (types/browser/node/
+ * svelte/default), so browser/source tooling resolves the `.ts` source for HMR
+ * and type checks, while published Node SSR consumers resolve `dist/server/`.
  *
  * Note: the in-repo `node` condition points at `dist/server/<rel>` so the
  * server build can resolve these sub-paths from `dist/server` once `build.ts`
@@ -420,6 +420,7 @@ function formatNamedExport(
  */
 export function cinderExportEntry(reexport: UpstreamReexport): {
   types: string;
+  browser: string;
   svelte: string;
   node: string;
   default: string;
@@ -427,6 +428,7 @@ export function cinderExportEntry(reexport: UpstreamReexport): {
   const { sourceRelativePath, distRelativePath } = reexport;
   return {
     types: `./dist/${distRelativePath.replace(/\.js$/, '.d.ts')}`,
+    browser: `./src/${sourceRelativePath}`,
     svelte: `./src/${sourceRelativePath}`,
     node: `./dist/server/${distRelativePath}`,
     default: `./dist/${distRelativePath}`,

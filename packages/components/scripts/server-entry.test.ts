@@ -25,12 +25,33 @@ describe('createServerEntrySource', () => {
 
     const serverEntrySource = createServerEntrySource(source);
 
-    expect(serverEntrySource).toContain("import Button from '../../src/components/button.svelte';");
     expect(serverEntrySource).toContain(
-      "import { buttonVariants, Button as RenamedButton } from '../../src/button';",
+      "import { default as Button } from './components/button.svelte';",
+    );
+    expect(serverEntrySource).toContain(
+      "import { buttonVariants, Button as RenamedButton } from './button';",
     );
     expect(serverEntrySource).not.toContain('type ButtonProps');
     expect(serverEntrySource).toContain('const RenamedButtonExport = RenamedButton;');
     expect(serverEntrySource).toContain('RenamedButtonExport as RenamedButton');
+  });
+
+  it('generates runtime imports for multiline default and named export blocks', () => {
+    const source = [
+      'export {',
+      '  default as ChatConversationList,',
+      '  deriveConversationSummary,',
+      "} from './components/chat-conversation-list/index.ts';",
+    ].join('\n');
+
+    const serverEntrySource = createServerEntrySource(source);
+
+    expect(serverEntrySource).toContain(
+      "import { default as ChatConversationList, deriveConversationSummary } from './components/chat-conversation-list/index.ts';",
+    );
+    expect(serverEntrySource).toContain('ChatConversationListExport as ChatConversationList');
+    expect(serverEntrySource).toContain(
+      'deriveConversationSummaryExport as deriveConversationSummary',
+    );
   });
 });

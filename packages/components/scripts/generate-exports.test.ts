@@ -2,14 +2,14 @@
  * Unit tests for the exports generator. Focus areas:
  *
  *   1. Condition ordering: `types` must be first within every entry, followed
- *      by `svelte`, `node`, `default` in that order. TypeScript `nodenext`
- *      requires `types` first; the rest of the order matters for which
- *      resolver wins at runtime.
+ *      by `browser`, `node`, `svelte`, `default` in that order. TypeScript
+ *      `nodenext` requires `types` first; Node SSR must beat Svelte source
+ *      resolution when `node` and `svelte` are active without `browser`.
  *   2. Forbidden-key guard: any exports map containing keys matching
  *      `/__|test|temp|scratch/i` must throw. CI uses this to refuse to ship
  *      debug or scratch subpaths.
  *   3. Root export shape: `.` points at the per-component-build outputs for
- *      `default` and at the preserved single-file server bundle for `node`.
+ *      `default` and at the shared server root for `node`.
  */
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -35,35 +35,39 @@ import {
 } from './generate-exports.ts';
 
 describe('orderedExportEntry', () => {
-  it('emits keys in [types, svelte, node, default] order regardless of input order', () => {
+  it('emits keys in [types, browser, node, svelte, default] order regardless of input order', () => {
     const entry = orderedExportEntry({
       default: './dist/components/button/index.js',
       node: './dist/server/components/button/index.js',
       svelte: './src/components/button/index.ts',
+      browser: './src/components/button/index.ts',
       types: './dist/components/button/index.d.ts',
     });
-    expect(Object.keys(entry)).toEqual(['types', 'svelte', 'node', 'default']);
+    expect(Object.keys(entry)).toEqual(['types', 'browser', 'node', 'svelte', 'default']);
   });
 
   it('omits missing conditions but keeps surviving keys in order', () => {
     const entry = orderedExportEntry({
       svelte: './src/components/foo/foo.schema.ts',
+      node: './dist/server/components/foo/foo.schema.js',
+      browser: './src/components/foo/foo.schema.ts',
       types: './dist/components/foo/foo.schema.d.ts',
     });
-    expect(Object.keys(entry)).toEqual(['types', 'svelte']);
+    expect(Object.keys(entry)).toEqual(['types', 'browser', 'node', 'svelte']);
   });
 });
 
 describe('computeRootExport', () => {
-  it('points node at the preserved single-file server bundle and default at the root barrel', () => {
+  it('points node at the shared server root and default at the root barrel', () => {
     const root = computeRootExport();
     expect(root).toEqual({
       types: './dist/index.d.ts',
-      svelte: './src/index.ts',
+      browser: './src/index.ts',
       node: './dist/server/index.js',
+      svelte: './src/index.ts',
       default: './dist/index.js',
     });
-    expect(Object.keys(root)).toEqual(['types', 'svelte', 'node', 'default']);
+    expect(Object.keys(root)).toEqual(['types', 'browser', 'node', 'svelte', 'default']);
   });
 });
 
@@ -163,29 +167,38 @@ describe('shouldPreserveLegacyEntry', () => {
 });
 
 describe('computeExports', () => {
-  it('emits the four-condition shape for component subpaths', () => {
+  it('emits the five-condition shape for component subpaths', () => {
     const out = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
     expect(out['./button']).toEqual({
       types: './dist/components/button/index.d.ts',
-      svelte: './src/components/button/index.ts',
+      browser: './src/components/button/index.ts',
       node: './dist/server/components/button/index.js',
+      svelte: './src/components/button/index.ts',
       default: './dist/components/button/index.js',
     });
-    expect(Object.keys(out['./button']!)).toEqual(['types', 'svelte', 'node', 'default']);
+    expect(Object.keys(out['./button']!)).toEqual([
+      'types',
+      'browser',
+      'node',
+      'svelte',
+      'default',
+    ]);
   });
 
-  it('emits the four-condition runtime shape for /schema and /variables', () => {
+  it('emits the five-condition runtime shape for /schema and /variables', () => {
     const out = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
     expect(out['./button/schema']).toEqual({
       types: './dist/components/button/button.schema.d.ts',
-      svelte: './src/components/button/button.schema.ts',
+      browser: './src/components/button/button.schema.ts',
       node: './dist/server/components/button/button.schema.js',
+      svelte: './src/components/button/button.schema.ts',
       default: './dist/components/button/button.schema.js',
     });
     expect(out['./button/variables']).toEqual({
       types: './dist/components/button/button.variables.d.ts',
-      svelte: './src/components/button/button.variables.ts',
+      browser: './src/components/button/button.variables.ts',
       node: './dist/server/components/button/button.variables.js',
+      svelte: './src/components/button/button.variables.ts',
       default: './dist/components/button/button.variables.js',
     });
   });
@@ -210,8 +223,8 @@ describe('computeExports', () => {
       const entry = out[key]!;
       expect(entry).toHaveProperty('default');
       expect(entry).toHaveProperty('node');
-      // Full four-condition shape in the canonical order.
-      expect(Object.keys(entry)).toEqual(['types', 'svelte', 'node', 'default']);
+      // Full five-condition shape in the canonical order.
+      expect(Object.keys(entry)).toEqual(['types', 'browser', 'node', 'svelte', 'default']);
     }
   });
 
@@ -219,8 +232,9 @@ describe('computeExports', () => {
     const out = computeExports([{ name: 'lab', isExperimental: true, hasCss: false }]);
     expect(out['./experimental/lab']).toEqual({
       types: './dist/components/experimental/lab/index.d.ts',
-      svelte: './src/components/experimental/lab/index.ts',
+      browser: './src/components/experimental/lab/index.ts',
       node: './dist/server/components/experimental/lab/index.js',
+      svelte: './src/components/experimental/lab/index.ts',
       default: './dist/components/experimental/lab/index.js',
     });
   });
@@ -245,15 +259,16 @@ describe('computeExports', () => {
 });
 
 describe('stylesGuardExport', () => {
-  it('emits a four-condition entry pointing at the base-guard module', () => {
+  it('emits a five-condition entry pointing at the base-guard module', () => {
     const entry = stylesGuardExport();
     expect(entry).toEqual({
       types: './dist/styles/base-guard.d.ts',
-      svelte: './src/styles/base-guard.ts',
+      browser: './src/styles/base-guard.ts',
       node: './dist/server/styles/base-guard.js',
+      svelte: './src/styles/base-guard.ts',
       default: './dist/styles/base-guard.js',
     });
-    expect(Object.keys(entry)).toEqual(['types', 'svelte', 'node', 'default']);
+    expect(Object.keys(entry)).toEqual(['types', 'browser', 'node', 'svelte', 'default']);
   });
 
   it('is not affected by the component discovery list (it is a reserved entry)', () => {

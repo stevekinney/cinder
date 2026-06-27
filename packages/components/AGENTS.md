@@ -191,8 +191,8 @@ type ButtonSchema = typeof import('@lostgradient/cinder/button/schema').default;
 ```
 
 `@lostgradient/cinder/<name>/schema` and `@lostgradient/cinder/<name>/variables` are full runtime entry
-points. They ship the four-condition shape (`types` + `svelte` + `node` +
-`default`): the build compiles each `<name>.schema.ts` / `<name>.variables.ts`
+points. They ship the five-condition shape (`types` + `browser` + `node` +
+`svelte` + `default`): the build compiles each `<name>.schema.ts` / `<name>.variables.ts`
 to its own JS, so a plain Node or Vite (non-Svelte) consumer can import the
 default-exported value directly:
 
