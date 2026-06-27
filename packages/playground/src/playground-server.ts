@@ -63,6 +63,7 @@ import {
   jsonForScriptTag,
   renderShell,
 } from './render-shell.ts';
+import { repositorySourceHref, rewriteRelativeRenderedMarkdownLinks } from './repository-links.ts';
 import {
   BLOCKED_COLOR_VALUE_PATTERN,
   COLOR_TOKEN_NAMES,
@@ -86,7 +87,6 @@ const MAX_PORT_SCAN_ATTEMPTS = 100;
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
 const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
-const REPOSITORY_README_LINK_BASE = 'https://github.com/stevekinney/cinder/blob/main/';
 
 /**
  * Page-bundle entries: keyed by component name → entry artifact path
@@ -1398,28 +1398,8 @@ function badRequest(message: string): Response {
   return new Response(message, { status: 400, headers: { 'Content-Type': 'text/plain' } });
 }
 
-function isRepositoryRelativeHref(href: string): boolean {
-  return (
-    href !== '' &&
-    !href.startsWith('#') &&
-    !href.startsWith('/') &&
-    !/^[a-z][a-z0-9+.-]*:/i.test(href)
-  );
-}
-
-function repositoryReadmeHref(href: string): string {
-  const normalized = href.replace(/^\.\//, '');
-  return `${REPOSITORY_README_LINK_BASE}${normalized}`;
-}
-
 export function rewriteRepositoryRelativeReadmeLinks(html: string): string {
-  return html.replace(
-    /<a\b([^>]*?)\shref="([^"]+)"([^>]*)>/gi,
-    (match: string, before: string, href: string, after: string) =>
-      isRepositoryRelativeHref(href)
-        ? `<a${before} href="${repositoryReadmeHref(href)}"${after}>`
-        : match,
-  );
+  return rewriteRelativeRenderedMarkdownLinks(html, (href) => repositorySourceHref('', href));
 }
 
 async function renderLandingReadmeHtml(): Promise<string> {

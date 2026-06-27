@@ -4,6 +4,7 @@
   import { getAnnouncer } from './announcer.svelte.ts';
   import type { ThemeChoice } from './preview-store.svelte.ts';
   import { getPreviewStore } from './preview-store.svelte.ts';
+  import { GITHUB_REPOSITORY_URL } from '../repository-links.ts';
   import { buildIframeSrc } from './routing.ts';
   import {
     Button,
@@ -16,7 +17,6 @@
   const store = getPreviewStore();
   const announcer = getAnnouncer();
 
-  const GITHUB_REPOSITORY_URL = 'https://github.com/stevekinney/cinder';
   const NPM_PACKAGE_URL = 'https://www.npmjs.com/package/@lostgradient/cinder';
 
   // The viewport-size presets (Mobile/Tablet/Desktop/Full + custom px) simulate

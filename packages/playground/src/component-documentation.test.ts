@@ -65,6 +65,40 @@ describe('buildComponentDocumentation', () => {
     expect(payload.rawArtifacts.variables).toEqual(['--cinder-avatar-group-overlap']);
   });
 
+  it('rewrites component README links to playground component routes', async () => {
+    const payload = await buildComponentDocumentation('modal', await componentManifest('modal'));
+
+    expect(payload.readme.html).toContain('href="/c/confirm-dialog" target="_top"');
+    expect(payload.readme.html).toContain('href="/c/alert-dialog" target="_top"');
+    expect(payload.readme.html).toContain('href="/c/drawer" target="_top"');
+    expect(payload.readme.html).toContain('href="/c/sidebar" target="_top"');
+    expect(payload.readme.html).toContain('href="/c/sheet" target="_top"');
+    expect(payload.readme.html).toContain('href="/c/popover" target="_top"');
+    expect(payload.readme.html).not.toContain('../confirm-dialog/README.md');
+  });
+
+  it('drops README fragments from component route links because page anchors differ', async () => {
+    const payload = await buildComponentDocumentation(
+      'table-cell',
+      await componentManifest('table-cell'),
+    );
+
+    expect(payload.readme.html).toContain('href="/c/table" target="_top"');
+    expect(payload.readme.html).not.toContain('href="/c/table#usage"');
+  });
+
+  it('rewrites non-component README links to GitHub source URLs', async () => {
+    const payload = await buildComponentDocumentation(
+      'collapsible',
+      await componentManifest('collapsible'),
+    );
+
+    expect(payload.readme.html).toContain(
+      'href="https://github.com/stevekinney/cinder/blob/main/packages/components/src/components/collapsible/collapsible.a11y.md" target="_blank" rel="noopener noreferrer"',
+    );
+    expect(payload.readme.html).not.toContain('href="./collapsible.a11y.md"');
+  });
+
   it('reloads the package manifest for each documentation build request', async () => {
     const first = await loadPackageManifestForDocumentation();
     const second = await loadPackageManifestForDocumentation();
