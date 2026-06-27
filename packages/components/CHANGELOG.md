@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.4.1
+
+### Patch Changes
+
+- [#535](https://github.com/stevekinney/cinder/pull/535) [`fb757d1`](https://github.com/stevekinney/cinder/commit/fb757d1afb82f85457800ba0bb1561906c1a93ce) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix Node SSR export condition precedence so resolvers with both `node` and `svelte` active load compiled server artifacts instead of source entries.
+
 ## 0.4.0
 
 ### Minor Changes
