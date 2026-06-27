@@ -14,7 +14,7 @@ Purpose: Data-driven convenience wrapper over the compositional Table family tha
 ## Avoid when
 
 - You need custom cell rendering, interactive cells, nested components, or column spanning — use the compositional Table family directly.
-- You need row selection — DataTable does not expose a selection prop; use Table with selectable instead.
+- You need `aria-selected` on rows — DataTable keeps native table semantics and exposes selection through checkboxes instead.
 
 ## Keyboard and focus
 

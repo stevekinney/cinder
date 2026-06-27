@@ -1,7 +1,10 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
+import type { DataTableSelectionMode as RootDataTableSelectionMode } from '../../index.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { DataTableRow } from './data-table.types.ts';
+import type { DataTableSelectionMode } from './index.ts';
 
 setupHappyDom();
 
@@ -20,6 +23,12 @@ const columns = [
 const rows = [
   { name: 'Ada Lovelace', role: 'Mathematician', commits: 142 },
   { name: 'Grace Hopper', role: 'Computer Scientist', commits: 98 },
+];
+
+const rowsWithIds = [
+  { id: 'ada', name: 'Ada Lovelace', role: 'Mathematician', commits: 142 },
+  { id: 'grace', name: 'Grace Hopper', role: 'Computer Scientist', commits: 98 },
+  { id: 'alan', name: 'Alan Turing', role: 'Cryptanalyst', commits: 76 },
 ];
 
 function makeRows(count: number) {
@@ -267,6 +276,267 @@ describe('DataTable — data values', () => {
       const cellCount = row.querySelectorAll('th, td').length;
       expect(cellCount).toBe(headerCellCount);
     }
+  });
+});
+
+describe('DataTable — row selection', () => {
+  test('exports the row selection mode type from the public subpath barrel', () => {
+    const mode: DataTableSelectionMode = 'multiple';
+    expect(mode).toBe('multiple');
+  });
+
+  test('exports the row selection mode type from the root barrel', () => {
+    const mode: RootDataTableSelectionMode = 'single';
+    expect(mode).toBe('single');
+  });
+
+  test('multiple mode renders row checkboxes and updates a bound selectedRowIds array', async () => {
+    let selectedRowIds: string[] = [];
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      get selectedRowIds() {
+        return selectedRowIds;
+      },
+      set selectedRowIds(next: string[] | Set<string>) {
+        selectedRowIds = Array.from(next);
+      },
+    });
+
+    const checkboxes = Array.from(
+      container.querySelectorAll<HTMLInputElement>('tbody input[type="checkbox"]'),
+    );
+    expect(checkboxes).toHaveLength(rowsWithIds.length);
+
+    await fireEvent.click(checkboxes[1]!);
+    expect(selectedRowIds).toEqual(['grace']);
+  });
+
+  test('selected native rows do not emit invalid aria-selected attributes', () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      selectedRowIds: ['grace'],
+    });
+
+    expect(bodyDataRows(container)[0]?.hasAttribute('aria-selected')).toBe(false);
+    expect(bodyDataRows(container)[1]?.hasAttribute('aria-selected')).toBe(false);
+  });
+
+  test('select-all toggles every enabled row and reflects an indeterminate state', async () => {
+    let selectedRowIds: string[] = ['ada'];
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      isRowSelectionDisabled: (row: DataTableRow) => row['id'] === 'alan',
+      get selectedRowIds() {
+        return selectedRowIds;
+      },
+      set selectedRowIds(next: string[] | Set<string>) {
+        selectedRowIds = Array.from(next);
+      },
+    });
+
+    const selectAll = container.querySelector<HTMLInputElement>('thead input[type="checkbox"]');
+    expect(selectAll).not.toBeNull();
+    await tick();
+    expect(selectAll?.indeterminate).toBe(true);
+
+    await fireEvent.click(selectAll!);
+    expect(selectedRowIds).toEqual(['ada', 'grace']);
+
+    await fireEvent.click(selectAll!);
+    expect(selectedRowIds).toEqual([]);
+  });
+
+  test('single mode replaces the previous selected row id', async () => {
+    let selectedRowIds = new Set(['ada']);
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'single',
+      get selectedRowIds() {
+        return selectedRowIds;
+      },
+      set selectedRowIds(next: string[] | Set<string>) {
+        selectedRowIds = new Set(next);
+      },
+    });
+
+    const checkboxes = Array.from(
+      container.querySelectorAll<HTMLInputElement>('tbody input[type="checkbox"]'),
+    );
+    await fireEvent.click(checkboxes[1]!);
+    expect(Array.from(selectedRowIds)).toEqual(['grace']);
+    expect(container.querySelector('thead input[type="checkbox"]')).toBeNull();
+  });
+
+  test('single mode labels the empty selection header cell', () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'single',
+    });
+
+    const selectionHeader = container.querySelector<HTMLTableCellElement>(
+      'thead th.cinder-table__header-cell--selection',
+    );
+    expect(selectionHeader?.getAttribute('aria-label')).toBe('Row selection');
+  });
+
+  test('disabled rows render disabled checkboxes and are excluded from select-all', async () => {
+    let selectedRowIds: string[] = [];
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      isRowSelectionDisabled: (row: DataTableRow) => row['id'] === 'grace',
+      get selectedRowIds() {
+        return selectedRowIds;
+      },
+      set selectedRowIds(next: string[] | Set<string>) {
+        selectedRowIds = Array.from(next);
+      },
+    });
+
+    const disabledCheckbox = Array.from(
+      container.querySelectorAll<HTMLInputElement>('tbody input[type="checkbox"]'),
+    ).find((input) => input.disabled);
+    expect(disabledCheckbox?.getAttribute('aria-label')).toBe('Select Grace Hopper');
+
+    const selectAll = container.querySelector<HTMLInputElement>('thead input[type="checkbox"]');
+    await fireEvent.click(selectAll!);
+    expect(selectedRowIds).toEqual(['ada', 'alan']);
+  });
+
+  test('select-all preserves disabled rows that were already selected', async () => {
+    let selectedRowIds: string[] = ['grace'];
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      isRowSelectionDisabled: (row: DataTableRow) => row['id'] === 'grace',
+      get selectedRowIds() {
+        return selectedRowIds;
+      },
+      set selectedRowIds(next: string[] | Set<string>) {
+        selectedRowIds = Array.from(next);
+      },
+    });
+
+    const selectAll = container.querySelector<HTMLInputElement>('thead input[type="checkbox"]');
+    await fireEvent.click(selectAll!);
+    expect(selectedRowIds).toEqual(['grace', 'ada', 'alan']);
+
+    await fireEvent.click(selectAll!);
+    expect(selectedRowIds).toEqual(['grace']);
+  });
+
+  test('row selection labels tolerate undefined custom labels', () => {
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      rowSelectionLabel: (() => undefined) as never,
+    });
+
+    const firstCheckbox = container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]');
+    expect(firstCheckbox?.getAttribute('aria-label')).toBe('Select Ada Lovelace');
+  });
+
+  test('form reset keeps row checkbox state aligned with selectedRowIds', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    let selectedRowIds: string[] = [];
+    const { container } = render(DataTable, {
+      target: form,
+      props: {
+        columns,
+        rows: rowsWithIds,
+        selectable: 'multiple',
+        get selectedRowIds() {
+          return selectedRowIds;
+        },
+        set selectedRowIds(next: string[] | Set<string>) {
+          selectedRowIds = Array.from(next);
+        },
+      },
+    });
+    const firstCheckbox = container.querySelector<HTMLInputElement>('tbody input[type="checkbox"]');
+
+    await fireEvent.click(firstCheckbox!);
+    await tick();
+    expect(selectedRowIds).toEqual(['ada']);
+    expect(firstCheckbox?.checked).toBe(true);
+
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    expect(selectedRowIds).toEqual([]);
+    expect(firstCheckbox?.checked).toBe(false);
+
+    await fireEvent.click(firstCheckbox!);
+    expect(selectedRowIds).toEqual(['ada']);
+  });
+
+  test('canceled form reset leaves row selection unchanged', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    let selectedRowIds: string[] = [];
+    render(DataTable, {
+      target: form,
+      props: {
+        columns,
+        rows: rowsWithIds,
+        selectable: 'multiple',
+        get selectedRowIds() {
+          return selectedRowIds;
+        },
+        set selectedRowIds(next: string[] | Set<string>) {
+          selectedRowIds = Array.from(next);
+        },
+      },
+    });
+    const firstCheckbox = form.querySelector<HTMLInputElement>('tbody input[type="checkbox"]');
+
+    await fireEvent.click(firstCheckbox!);
+    await tick();
+    expect(selectedRowIds).toEqual(['ada']);
+
+    form.addEventListener('reset', (event) => event.preventDefault());
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    expect(selectedRowIds).toEqual(['ada']);
+    expect(firstCheckbox?.checked).toBe(true);
+  });
+
+  test('virtualized focused rows toggle selection with Space', async () => {
+    let selectedRowIds: string[] = [];
+    const { container } = render(DataTable, {
+      columns,
+      rows: rowsWithIds,
+      selectable: 'multiple',
+      virtualized: true,
+      rowHeight: 20,
+      height: '120px',
+      get selectedRowIds() {
+        return selectedRowIds;
+      },
+      set selectedRowIds(next: string[] | Set<string>) {
+        selectedRowIds = Array.from(next);
+      },
+    });
+
+    await waitFor(() => expect(bodyDataRows(container)).toHaveLength(rowsWithIds.length));
+    const firstRow = bodyDataRows(container)[0]!;
+    await fireEvent.keyDown(firstRow, { key: ' ' });
+    expect(selectedRowIds).toEqual(['ada']);
   });
 });
 

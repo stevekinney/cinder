@@ -44,6 +44,9 @@ export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
   rowHeader?: boolean;
 };
 
+/** Row-selection mode for DataTable. */
+export type DataTableSelectionMode = 'none' | 'single' | 'multiple';
+
 /**
  * Props for the DataTable component.
  *
@@ -73,6 +76,30 @@ export type DataTableProps<Row extends DataTableRow = DataTableRow> = Omit<
    * write back `undefined` itself (sort always toggles to a column).
    */
   sort?: TableSort | undefined;
+  /**
+   * Enables checkbox-based row selection. `"none"` renders no selection controls,
+   * `"single"` allows one selected row id, and `"multiple"` allows any number.
+   * Selection state is exposed through row checkbox controls; native table rows
+   * do not emit `aria-selected`.
+   * Defaults to `"none"`.
+   */
+  selectable?: DataTableSelectionMode;
+  /**
+   * Bound selected row ids. Arrays stay arrays on update; Sets stay Sets.
+   * When omitted, DataTable starts with an empty array.
+   */
+  selectedRowIds?: string[] | Set<string>;
+  /**
+   * Resolves the stable row id used for selection. Defaults to `row.id` when it
+   * is a string or number, otherwise the row's current positional index.
+   */
+  getRowId?: (row: Row, index: number) => string;
+  /** Returns true when a row should render a disabled selection checkbox. */
+  isRowSelectionDisabled?: (row: Row, index: number) => boolean;
+  /** Accessible label for the multiple-selection header checkbox. */
+  selectAllLabel?: string;
+  /** Accessible label for an individual row selection checkbox. */
+  rowSelectionLabel?: (row: Row, index: number) => string;
   /** When true, the header sticks to the top of the scrolling container. */
   stickyHeader?: boolean;
   /**

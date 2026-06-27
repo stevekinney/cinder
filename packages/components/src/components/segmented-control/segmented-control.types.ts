@@ -22,6 +22,8 @@ type CommonProps<T extends string> = Omit<
   id: string;
   /** Accessible label for the group. */
   label: string;
+  /** Native form field name. Renders hidden input(s) carrying the selected value(s). */
+  name?: string | undefined;
   /** Visually hide the label while keeping it available to assistive technology. */
   hideLabel?: boolean | undefined;
   /** Disable the whole control. */

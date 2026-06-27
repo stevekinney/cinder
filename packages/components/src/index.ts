@@ -237,6 +237,7 @@ export type {
   DataTableColumn,
   DataTableProps,
   DataTableRow,
+  DataTableSelectionMode,
 } from './components/data-table/index.ts';
 
 export { default as DateRangeField } from './components/date-range-field/index.ts';

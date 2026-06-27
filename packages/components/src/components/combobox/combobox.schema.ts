@@ -8,6 +8,10 @@ const schema = {
       type: 'string',
       description: 'Unique identifier — required for label association and ARIA wiring.',
     },
+    name: {
+      type: 'string',
+      description: 'Native form field name. Renders a hidden input carrying the selected value.',
+    },
     inputValue: {
       type: 'string',
       description: 'Free-text input value (the text the user has typed). Bindable.',

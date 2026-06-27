@@ -189,6 +189,149 @@ describe('Combobox structure', () => {
     expect(container.querySelector(`#fruit`)?.getAttribute('aria-expanded')).toBe('false');
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
+
+  test('renders a hidden input for native form submission when name is provided', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      value: 'banana',
+      options: fruits,
+      required: true,
+    });
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden).not.toBeNull();
+    expect(hidden?.name).toBe('fruit');
+    expect(hidden?.value).toBe('banana');
+    expect(hidden?.required).toBe(false);
+    expect(container.querySelector<HTMLInputElement>('#fruit')?.required).toBe(true);
+  });
+
+  test('form reset restores the initial submitted value and visible label', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container } = render(Combobox, {
+      target: form,
+      props: {
+        id: 'fruit',
+        name: 'fruit',
+        value: 'banana',
+        options: fruits,
+      },
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(input?.value).toBe('Banana');
+    expect(hidden?.value).toBe('banana');
+
+    await fireEvent.focus(input!);
+    await fireEvent.input(input!, { target: { value: 'ap' } });
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    expect(input?.value).toBe('Apple');
+    expect(hidden?.value).toBe('apple');
+
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(input?.value).toBe('Banana');
+    expect(hidden?.value).toBe('banana');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('canceled form reset leaves the current submitted value and visible label unchanged', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container } = render(Combobox, {
+      target: form,
+      props: {
+        id: 'fruit',
+        name: 'fruit',
+        value: 'banana',
+        options: fruits,
+      },
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+
+    await fireEvent.focus(input!);
+    await fireEvent.input(input!, { target: { value: 'ap' } });
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    form.addEventListener('reset', (event) => event.preventDefault());
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(input?.value).toBe('Apple');
+    expect(hidden?.value).toBe('apple');
+  });
+
+  test('required named combobox validity follows the selected value, not typed text', async () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      options: fruits,
+      required: true,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    expect(input?.checkValidity()).toBe(false);
+
+    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    expect(input?.checkValidity()).toBe(false);
+
+    await fireEvent.input(input!, { target: { value: 'app' } });
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    expect(input?.checkValidity()).toBe(true);
+  });
+
+  test('named combobox validity fails when visible text drifts from the selected value', async () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      value: 'banana',
+      options: fruits,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    expect(input?.checkValidity()).toBe(true);
+
+    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    expect(input?.checkValidity()).toBe(false);
+
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden?.value).toBe('banana');
+  });
+
+  test('optional named combobox validity fails for uncommitted visible text', async () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      options: fruits,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    expect(input?.checkValidity()).toBe(true);
+
+    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    expect(input?.checkValidity()).toBe(false);
+
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden?.value).toBe('');
+  });
+
+  test('disabled hidden input is omitted from native FormData', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      name: 'fruit',
+      value: 'banana',
+      options: fruits,
+      disabled: true,
+    });
+    const form = document.createElement('form');
+    const root = container.querySelector('.cinder-combobox');
+    if (!root) throw new Error('combobox root not found');
+    form.append(root);
+    expect(new FormData(form).has('fruit')).toBe(false);
+  });
 });
 
 describe('Combobox filtering', () => {

@@ -16,7 +16,8 @@
 </script>
 
 <script lang="ts" generics="T extends string = string">
-  import type { SvelteSet } from 'svelte/reactivity';
+  import { untrack } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
 
   import { classNames } from '../../utilities/class-names.ts';
 
@@ -31,6 +32,7 @@
     id,
     value = $bindable<T | SvelteSet<T> | undefined>(),
     label,
+    name,
     hideLabel = false,
     disabled = false,
     size = 'md',
@@ -46,6 +48,12 @@
     children,
     ...rest
   }: SegmentedControlProps<T> = $props();
+  let resetInputElement = $state<HTMLInputElement | null>(null);
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+  const initialSingleValue = untrack(() => (typeof value === 'string' ? value : undefined));
+  const initialMultipleValues = untrack(() =>
+    selectionMode === 'multiple' && value instanceof SvelteSet ? Array.from(value) : undefined,
+  );
 
   const controller = new SegmentedControlController({
     selectionMode: () => selectionMode,
@@ -88,6 +96,45 @@
   // toolbars line up with sibling toolbar controls. `data-cinder-size` reflects
   // this resolved size; raw requested `size` is not surfaced through the DOM.
   const effectiveSize = $derived(density === 'toolbar' ? 'sm' : size);
+  const selectedValues = $derived(
+    selectionMode === 'multiple'
+      ? value instanceof SvelteSet
+        ? Array.from(value as SvelteSet<T>)
+        : []
+      : typeof value === 'string'
+        ? [value]
+        : [],
+  );
+
+  function resetToInitialValue(event: Event): void {
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      if (event.defaultPrevented) return;
+      if (selectionMode === 'multiple') {
+        value =
+          initialMultipleValues === undefined
+            ? undefined
+            : new SvelteSet(initialMultipleValues as T[]);
+        return;
+      }
+      value = initialSingleValue as T | undefined;
+    }, 0);
+  }
+
+  $effect(() => {
+    const input = resetInputElement;
+    if (input === null) return;
+    const form = input.form;
+    form?.addEventListener('reset', resetToInitialValue);
+    return () => {
+      form?.removeEventListener('reset', resetToInitialValue);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
+  });
 </script>
 
 <div class="cinder-segmented-control-container">
@@ -116,4 +163,10 @@
   >
     {@render children()}
   </div>
+  {#if name}
+    <input bind:this={resetInputElement} type="hidden" disabled />
+    {#each selectedValues as selectedValue (selectedValue)}
+      <input type="hidden" {name} value={selectedValue} {disabled} />
+    {/each}
+  {/if}
 </div>

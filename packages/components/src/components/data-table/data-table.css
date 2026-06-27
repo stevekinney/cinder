@@ -6,6 +6,7 @@
  * an unstyled table and the scroll override below has no base behaviour to
  * extend. Sibling-leaf paths resolve identically in `src/` and `dist/`. */
 @import '../table/table.css';
+@import '../checkbox/checkbox.css';
 
 @layer cinder.components {
   /* ========================================
@@ -36,6 +37,25 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     contain: layout paint;
+  }
+
+  .cinder-data-table[data-cinder-selectable] .cinder-table__cell--selection,
+  .cinder-data-table[data-cinder-selectable] .cinder-table__header-cell--selection {
+    width: 1px;
+    padding-inline: var(--cinder-space-3);
+    padding-block: var(--cinder-space-2);
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .cinder-data-table .cinder-table__cell--selection .cinder-checkbox-field,
+  .cinder-data-table .cinder-table__header-cell--selection .cinder-checkbox-field {
+    display: inline-block;
+  }
+
+  .cinder-data-table .cinder-table__cell--selection .cinder-checkbox-row,
+  .cinder-data-table .cinder-table__header-cell--selection .cinder-checkbox-row {
+    display: inline-flex;
   }
 
   .cinder-data-table[data-cinder-virtualized] .cinder-table__row[data-cinder-virtual-row] {
