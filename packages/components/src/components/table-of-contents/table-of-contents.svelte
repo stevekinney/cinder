@@ -230,7 +230,6 @@
     let targetParentObserver: MutationObserver | null = null;
     let documentObserver: MutationObserver | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    let selectorRefreshInterval: ReturnType<typeof setInterval> | null = null;
     let observedTarget: HTMLElement | null = null;
     let observedTargetParent: HTMLElement | null = null;
 
@@ -291,12 +290,30 @@
       }
     };
 
+    const shouldDeriveFromTarget =
+      (typeof target === 'string' && target.trim() !== '') || target instanceof HTMLElement;
+    const shouldWatchForTargetBySelector = typeof target === 'string' && target.trim() !== '';
+
+    if (!shouldDeriveFromTarget) {
+      normalizedItems = [];
+      return;
+    }
+
     const refreshDerived = () => {
       const targetElement = resolveTargetElement(target);
       syncTargetObserver(targetElement);
       normalizedItems = deriveItemsFromHeadings(targetElement, headingSelector);
 
-      if (documentObserver === null && typeof MutationObserver !== 'undefined') {
+      if (targetElement !== null) {
+        clearRetryTimer();
+        documentObserver?.disconnect();
+        documentObserver = null;
+      } else if (
+        shouldWatchForTargetBySelector &&
+        documentObserver === null &&
+        typeof MutationObserver !== 'undefined' &&
+        document.body !== null
+      ) {
         documentObserver = new MutationObserver(() => {
           refreshDerived();
         });
@@ -304,24 +321,19 @@
           childList: true,
           subtree: true,
         });
-      } else if (typeof MutationObserver === 'undefined') {
+      } else if (shouldWatchForTargetBySelector && typeof MutationObserver === 'undefined') {
         scheduleRetry();
+      } else {
+        clearRetryTimer();
+        documentObserver?.disconnect();
+        documentObserver = null;
       }
     };
 
     refreshDerived();
 
-    if (typeof target === 'string' && target.trim() !== '') {
-      selectorRefreshInterval = setInterval(() => {
-        refreshDerived();
-      }, 250);
-    }
-
     return () => {
       clearRetryTimer();
-      if (selectorRefreshInterval !== null) {
-        clearInterval(selectorRefreshInterval);
-      }
       targetObserver?.disconnect();
       targetParentObserver?.disconnect();
       documentObserver?.disconnect();
@@ -400,6 +412,8 @@
       return;
     }
 
+    let pendingAnimationFrame: number | null = null;
+
     const updateActiveId = () => {
       const elementsInDocumentOrder = [...observedElements].sort((a, b) => {
         if (a === b) {
@@ -421,9 +435,23 @@
       );
     };
 
+    const scheduleActiveIdUpdate = () => {
+      if (typeof window.requestAnimationFrame !== 'function') {
+        updateActiveId();
+        return;
+      }
+      if (pendingAnimationFrame !== null) {
+        return;
+      }
+      pendingAnimationFrame = window.requestAnimationFrame(() => {
+        pendingAnimationFrame = null;
+        updateActiveId();
+      });
+    };
+
     const observer = new IntersectionObserver(
       () => {
-        updateActiveId();
+        scheduleActiveIdUpdate();
       },
       {
         root: null,
@@ -436,13 +464,19 @@
       observer.observe(element);
     }
 
-    window.addEventListener('scroll', updateActiveId, { passive: true });
-    window.addEventListener('resize', updateActiveId);
+    window.addEventListener('scroll', scheduleActiveIdUpdate, { passive: true });
+    window.addEventListener('resize', scheduleActiveIdUpdate);
     updateActiveId();
 
     return () => {
-      window.removeEventListener('scroll', updateActiveId);
-      window.removeEventListener('resize', updateActiveId);
+      if (
+        pendingAnimationFrame !== null &&
+        typeof window.cancelAnimationFrame === 'function'
+      ) {
+        window.cancelAnimationFrame(pendingAnimationFrame);
+      }
+      window.removeEventListener('scroll', scheduleActiveIdUpdate);
+      window.removeEventListener('resize', scheduleActiveIdUpdate);
       observer.disconnect();
     };
   });
