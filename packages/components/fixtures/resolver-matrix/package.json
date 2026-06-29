@@ -7,24 +7,24 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "browser": "./src/index.ts",
+      "browser": "./dist/index.js",
       "node": "./dist/server/index.js",
-      "svelte": "./src/index.ts",
+      "svelte": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json",
     "./button": {
       "types": "./dist/components/button/index.d.ts",
-      "browser": "./src/components/button/index.ts",
+      "browser": "./dist/components/button/index.js",
       "node": "./dist/server/components/button/index.js",
-      "svelte": "./src/components/button/index.ts",
+      "svelte": "./dist/components/button/index.js",
       "default": "./dist/components/button/index.js"
     },
     "./styles/guard": {
       "types": "./dist/styles/base-guard.d.ts",
-      "browser": "./src/styles/base-guard.ts",
+      "browser": "./dist/styles/base-guard.js",
       "node": "./dist/server/styles/base-guard.js",
-      "svelte": "./src/styles/base-guard.ts",
+      "svelte": "./dist/styles/base-guard.js",
       "default": "./dist/styles/base-guard.js"
     }
   }

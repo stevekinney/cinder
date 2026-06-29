@@ -69,21 +69,23 @@ describe('buildPublishedManifest', () => {
       exports: {
         './button': {
           types: './dist/components/button/index.d.ts',
-          browser: './src/components/button/index.ts',
+          browser: './dist/components/button/index.js',
           node: './dist/server/components/button/index.js',
-          svelte: './src/components/button/index.ts',
+          svelte: './dist/components/button/index.js',
           default: './dist/components/button/index.js',
         },
         './button/schema': {
           types: './dist/components/button/button.schema.d.ts',
+          browser: './dist/components/button/button.schema.js',
           node: './dist/server/components/button/button.schema.js',
-          svelte: './src/components/button/button.schema.ts',
+          svelte: './dist/components/button/button.schema.js',
           default: './dist/components/button/button.schema.js',
         },
         './button/variables': {
           types: './dist/components/button/button.variables.d.ts',
+          browser: './dist/components/button/button.variables.js',
           node: './dist/server/components/button/button.variables.js',
-          svelte: './src/components/button/button.variables.ts',
+          svelte: './dist/components/button/button.variables.js',
           default: './dist/components/button/button.variables.js',
         },
       },
@@ -107,23 +109,23 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('!src/components/**/*.variables.ts');
   });
 
-  it('preserves component condition order so Node SSR wins over Svelte source', () => {
+  it('preserves component condition order so Node SSR wins over browser/svelte builds', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
       exports: {
         '.': {
           types: './dist/index.d.ts',
-          browser: './src/index.ts',
+          browser: './dist/index.js',
           node: './dist/server/index.js',
-          svelte: './src/index.ts',
+          svelte: './dist/index.js',
           default: './dist/index.js',
         },
         './button': {
           types: './dist/components/button/index.d.ts',
-          browser: './src/components/button/index.ts',
+          browser: './dist/components/button/index.js',
           node: './dist/server/components/button/index.js',
-          svelte: './src/components/button/index.ts',
+          svelte: './dist/components/button/index.js',
           default: './dist/components/button/index.js',
         },
       },
