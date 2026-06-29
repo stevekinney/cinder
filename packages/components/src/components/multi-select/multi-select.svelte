@@ -86,6 +86,7 @@
   let reorderAfterReopen = $state(false);
   let openedAtLeastOnce = $state(false);
   let triggerElement = $state<HTMLButtonElement | null>(null);
+  let controlElement = $state<HTMLDivElement | null>(null);
   let filterElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
   let panelElement = $state<HTMLDivElement | null>(null);
@@ -324,13 +325,13 @@
 
     const handlePointerDown = (event: MouseEvent): void => {
       const target = event.target as Node | null;
-      if (target && (triggerElement?.contains(target) || panelElement?.contains(target))) return;
+      if (target && controlElement?.contains(target)) return;
       closeMenu(false);
     };
 
     const handleFocusIn = (event: FocusEvent): void => {
       const target = event.target as Node | null;
-      if (target && (triggerElement?.contains(target) || panelElement?.contains(target))) return;
+      if (target && controlElement?.contains(target)) return;
       closeMenu(false);
     };
 
@@ -366,7 +367,7 @@
     </label>
   {/if}
 
-  <div class="cinder-multi-select__control">
+  <div bind:this={controlElement} class="cinder-multi-select__control">
     <button
       bind:this={triggerElement}
       type="button"
@@ -448,10 +449,12 @@
               data-cinder-active={activeIndex === index || undefined}
               onmousedown={(event) => {
                 event.preventDefault();
+                if (item.disabled) return;
                 activeIndex = index;
                 toggleItem(item);
               }}
               onmouseenter={() => {
+                if (item.disabled) return;
                 activeIndex = index;
               }}
             >
@@ -466,7 +469,9 @@
               </span>
             </li>
           {:else}
-            <li class="cinder-multi-select__empty" role="status">No matching options</li>
+            <li class="cinder-multi-select__empty" role="option" aria-disabled="true">
+              No matching options
+            </li>
           {/each}
         </ul>
       </div>

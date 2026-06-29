@@ -70,6 +70,22 @@ describe('MultiSelect', () => {
     expect(container.querySelector('.cinder-multi-select__count')).toBeNull();
   });
 
+  test('clear button does not close an open menu', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      selectedIds: ['apple', 'banana'],
+    });
+    await openMenu(container);
+
+    const clearButton = container.querySelector<HTMLButtonElement>('.cinder-multi-select__clear');
+    if (!clearButton) throw new Error('clear button not found');
+    await fireEvent.click(clearButton);
+
+    expect(container.querySelector('#fruits-popover')).not.toBeNull();
+    expect(container.querySelector('#fruits')?.textContent).toContain('Select options');
+  });
+
   test('renders one hidden input per selected id when name is set', () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
@@ -140,6 +156,23 @@ describe('MultiSelect', () => {
       ).map((node) => node.textContent?.trim());
       expect(labels).toEqual(['Apple', 'Apricot']);
     });
+  });
+
+  test('empty list row is exposed as a disabled option', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+
+    await openMenu(container);
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    await fireEvent.input(filter, { target: { value: 'zzz' } });
+
+    const empty = container.querySelector('.cinder-multi-select__empty');
+    expect(empty?.getAttribute('role')).toBe('option');
+    expect(empty?.getAttribute('aria-disabled')).toBe('true');
   });
 
   test('filter input has an accessible name and space does not toggle selection', async () => {
@@ -240,6 +273,17 @@ describe('MultiSelect', () => {
     if (!disabledOption) throw new Error('disabled option not found');
     await fireEvent.mouseDown(disabledOption);
     expect(disabledOption.getAttribute('aria-selected')).toBe('false');
+  });
+
+  test('disabled option does not become active on hover', async () => {
+    const { container } = render(MultiSelect, { id: 'fruits', items });
+    await openMenu(container);
+
+    const disabledOption = container.querySelector('#fruits-option-3');
+    if (!disabledOption) throw new Error('disabled option not found');
+    await fireEvent.mouseEnter(disabledOption);
+
+    expect(disabledOption.getAttribute('data-cinder-active')).toBeNull();
   });
 
   test('warning text participates in aria-describedby', () => {
