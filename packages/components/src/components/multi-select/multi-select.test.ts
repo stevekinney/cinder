@@ -9,6 +9,9 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: MultiSelect } = await import('./multi-select.svelte');
+const { default: FormFieldMultiSelectFixture } = await import(
+  '../../test/fixtures/form-field-multi-select-fixture.svelte'
+);
 
 const items = [
   { id: 'apple', label: 'Apple' },
@@ -335,6 +338,35 @@ describe('MultiSelect', () => {
     expect(trigger.getAttribute('aria-activedescendant')).toBeNull();
   });
 
+  test('keyboard navigation scrolls the active option into view', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items: Array.from({ length: 30 }, (_, index) => ({
+        id: `item-${index}`,
+        label: `Item ${index}`,
+      })),
+    });
+
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    let called = false;
+    Element.prototype.scrollIntoView = function () {
+      called = true;
+    };
+
+    try {
+      const trigger = container.querySelector<HTMLButtonElement>('#fruits');
+      if (!trigger) throw new Error('trigger not found');
+      trigger.focus();
+      await fireEvent.keyDown(trigger, { key: 'ArrowDown' });
+      const listbox = container.querySelector('[role="listbox"]');
+      if (!listbox) throw new Error('listbox not found');
+      await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+      expect(called).toBe(true);
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
+  });
+
   test('disabled option cannot be selected', async () => {
     const { container } = render(MultiSelect, { id: 'fruits', items });
     await openMenu(container);
@@ -376,6 +408,24 @@ describe('MultiSelect', () => {
     await openMenu(container);
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox?.getAttribute('aria-labelledby')).toBe('fruits-label');
+  });
+
+  test('listbox uses FormField label id when component label is omitted', async () => {
+    const { container } = render(FormFieldMultiSelectFixture, {
+      fieldId: 'fruits-field',
+      fieldLabel: 'Fruits',
+      items,
+      selectedIds: [],
+    });
+
+    const trigger = container.querySelector<HTMLButtonElement>('#fruits-field');
+    if (!trigger) throw new Error('form-field trigger not found');
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(container.querySelector('[role="listbox"]')).not.toBeNull();
+    });
+    const listbox = container.querySelector('[role="listbox"]');
+    expect(listbox?.getAttribute('aria-labelledby')).toBe('fruits-field-label');
   });
 
   test('open panel is anchored inside control wrapper', async () => {
@@ -427,6 +477,60 @@ describe('MultiSelect', () => {
     await fireEvent.keyDown(filter, { key: 'ArrowDown' });
     expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-1');
     expect(listbox.getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  test('readonly exposes aria-readonly on picker roles', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+      readonly: true,
+    });
+    await openMenu(container);
+
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    const listbox = container.querySelector<HTMLElement>('[role="listbox"]');
+    if (!filter || !listbox) throw new Error('readonly controls not found');
+
+    expect(filter.getAttribute('aria-readonly')).toBe('true');
+    expect(listbox.getAttribute('aria-readonly')).toBe('true');
+  });
+
+  test('filterable Home and End keep native input editing behavior', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+    await openMenu(container);
+
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    const home = new KeyboardEvent('keydown', { key: 'Home', cancelable: true, bubbles: true });
+    const end = new KeyboardEvent('keydown', { key: 'End', cancelable: true, bubbles: true });
+
+    filter.dispatchEvent(home);
+    filter.dispatchEvent(end);
+
+    expect(home.defaultPrevented).toBe(false);
+    expect(end.defaultPrevented).toBe(false);
+  });
+
+  test('empty filtered state announces a status message', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+    await openMenu(container);
+
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    await fireEvent.input(filter, { target: { value: 'zzz' } });
+
+    const status = container.querySelector('.cinder-multi-select__sr-status');
+    expect(status?.getAttribute('role')).toBe('status');
+    expect(status?.textContent).toContain('No matching options');
   });
 
   test('filterable Enter with no active option does not submit parent form', async () => {

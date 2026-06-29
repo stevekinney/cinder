@@ -36,6 +36,10 @@
     cursor: pointer;
   }
 
+  .cinder-multi-select__trigger[data-cinder-has-clear] {
+    padding-inline-end: 3.75rem;
+  }
+
   .cinder-multi-select__control {
     position: relative;
   }
@@ -233,6 +237,19 @@
   }
 
   .cinder-multi-select__validation-proxy {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+    padding: 0;
+    margin: -1px;
+  }
+
+  .cinder-multi-select__sr-status {
     position: absolute;
     width: 1px;
     height: 1px;

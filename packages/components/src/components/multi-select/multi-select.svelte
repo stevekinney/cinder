@@ -77,6 +77,7 @@
   const listboxId = $derived(`${id}-listbox`);
   const filterId = $derived(`${id}-filter`);
   const labelId = $derived(label ? `${id}-label` : undefined);
+  const listboxLabelledBy = $derived(labelId ?? context?.labelId);
   const itemIdSet = $derived(new Set(items.map((item) => item.id)));
   const uniqueSelectedIds = $derived.by(() => {
     const seen = new Set<T>();
@@ -90,6 +91,7 @@
   });
   const selectedSet = $derived(new Set(uniqueSelectedIds));
   const selectedCount = $derived(uniqueSelectedIds.length);
+  const triggerAriaInvalid = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
   const triggerSummary = $derived(selectedCount > 0 ? `${selectedCount} selected` : placeholder);
   let open = $state(false);
   let query = $state('');
@@ -102,6 +104,7 @@
   let listboxElement = $state<HTMLElement | null>(null);
   let panelElement = $state<HTMLDivElement | null>(null);
   let validityProxyElement = $state<HTMLInputElement | null>(null);
+  let nativeError = $state('');
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   const initialSelectedIds = untrack(() => [...selectedIds]);
 
@@ -279,6 +282,7 @@
 
   function handleFilterKeydown(event: KeyboardEvent): void {
     if (event.key === ' ') return;
+    if (event.key === 'Home' || event.key === 'End') return;
     handleListNavigationKeydown(event);
   }
 
@@ -296,6 +300,9 @@
 
   function handleProxyInvalid(event: Event): void {
     event.preventDefault();
+    nativeError =
+      validityProxyElement?.validationMessage ||
+      (validityProxyElement?.validity.valueMissing ? 'Please select at least one option.' : '');
     triggerElement?.focus();
   }
 
@@ -305,6 +312,7 @@
     proxy.setCustomValidity(
       field.required && uniqueSelectedIds.length === 0 ? 'Please select at least one option.' : '',
     );
+    if (proxy.validationMessage === '') nativeError = '';
   });
 
   $effect(() => {
@@ -362,6 +370,12 @@
       document.removeEventListener('focusin', handleFocusIn, true);
     };
   });
+
+  $effect(() => {
+    if (!open || activeIndex < 0) return;
+    const activeOption = document.getElementById(`${id}-option-${activeIndex}`);
+    activeOption?.scrollIntoView?.({ block: 'nearest' });
+  });
 </script>
 
 <div class={classNames('cinder-multi-select', className)}>
@@ -386,13 +400,14 @@
       {id}
       class="cinder-_input-frame cinder-multi-select__trigger"
       disabled={field.disabled}
-      aria-invalid={field.ariaInvalid}
+      aria-invalid={triggerAriaInvalid}
       aria-describedby={field.describedBy}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={listboxId}
       aria-required={field.required || undefined}
       data-cinder-open={open || undefined}
+      data-cinder-has-clear={selectedCount > 0 && !field.disabled && !readonly || undefined}
       data-cinder-readonly={readonly || undefined}
       onclick={() => (open ? closeMenu() : openMenu())}
       onkeydown={handleTriggerKeydown}
@@ -436,6 +451,7 @@
             aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-expanded={open}
+            aria-readonly={readonly || undefined}
             aria-controls={listboxId}
             aria-activedescendant={activeOptionId}
             oninput={handleFilterInput}
@@ -448,8 +464,9 @@
           role="listbox"
           class="cinder-multi-select__listbox"
           aria-multiselectable="true"
-          aria-labelledby={labelId}
-          aria-label={label ? undefined : 'Options'}
+          aria-labelledby={listboxLabelledBy}
+          aria-label={listboxLabelledBy ? undefined : 'Options'}
+          aria-readonly={readonly || undefined}
           aria-activedescendant={filterable ? undefined : activeOptionId}
           tabindex={filterable ? -1 : 0}
           onkeydown={handleListNavigationKeydown}
@@ -460,7 +477,7 @@
               role="option"
               class="cinder-_option-row cinder-multi-select__option"
               aria-selected={selectedSet.has(item.id)}
-              aria-disabled={item.disabled || undefined}
+              aria-disabled={readonly || item.disabled || undefined}
               data-cinder-active={activeIndex === index || undefined}
               onmousedown={(event) => {
                 event.preventDefault();
@@ -493,6 +510,12 @@
     {/if}
   </div>
 
+  {#if filterable && open && visibleItems.length === 0}
+    <p class="cinder-multi-select__sr-status" role="status" aria-live="polite">
+      No matching options
+    </p>
+  {/if}
+
   <input
     bind:this={validityProxyElement}
     type="text"
@@ -523,8 +546,8 @@
     id={field.ownErrorId ?? stableLocalErrorId}
     class="cinder-multi-select__error"
     aria-live="polite"
-    data-cinder-error={!!error || undefined}
+    data-cinder-error={!!error || !!nativeError || undefined}
   >
-    {error ?? ''}
+    {error ?? nativeError}
   </p>
 </div>
