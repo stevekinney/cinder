@@ -77,8 +77,18 @@
   const listboxId = $derived(`${id}-listbox`);
   const filterId = $derived(`${id}-filter`);
   const labelId = $derived(label ? `${id}-label` : undefined);
-  const selectedSet = $derived(new Set(selectedIds));
-  const uniqueSelectedIds = $derived(Array.from(selectedSet));
+  const itemIdSet = $derived(new Set(items.map((item) => item.id)));
+  const uniqueSelectedIds = $derived.by(() => {
+    const seen = new Set<T>();
+    const next: T[] = [];
+    for (const selectedId of selectedIds) {
+      if (!itemIdSet.has(selectedId) || seen.has(selectedId)) continue;
+      seen.add(selectedId);
+      next.push(selectedId);
+    }
+    return next;
+  });
+  const selectedSet = $derived(new Set(uniqueSelectedIds));
   const selectedCount = $derived(uniqueSelectedIds.length);
   const triggerSummary = $derived(selectedCount > 0 ? `${selectedCount} selected` : placeholder);
   let open = $state(false);

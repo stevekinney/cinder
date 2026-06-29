@@ -117,6 +117,22 @@ describe('MultiSelect', () => {
     expect(container.querySelector('#fruits')?.textContent).toContain('2 selected');
   });
 
+  test('ignores orphan selected ids for summary and form serialization', () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      name: 'fruits',
+      items,
+      selectedIds: ['apple', 'missing', 'banana'],
+    });
+
+    const hidden = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="fruits"]'),
+    ).map((input) => input.value);
+
+    expect(hidden).toEqual(['apple', 'banana']);
+    expect(container.querySelector('#fruits')?.textContent).toContain('2 selected');
+  });
+
   test('required validation proxy is invalid when empty and valid when selected', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
