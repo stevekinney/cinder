@@ -8,22 +8,34 @@
 
   let status = $state<'inactive' | 'active' | 'finished' | 'error'>('inactive');
   let message = $state('Saved');
+  let pendingTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function cancelPending(): void {
+    if (pendingTimeout !== null) {
+      clearTimeout(pendingTimeout);
+      pendingTimeout = null;
+    }
+  }
 
   function startSuccess(): void {
+    cancelPending();
     status = 'active';
     message = 'Saving changes';
-    setTimeout(() => {
+    pendingTimeout = setTimeout(() => {
       status = 'finished';
       message = 'Saved';
+      pendingTimeout = null;
     }, 900);
   }
 
   function startError(): void {
+    cancelPending();
     status = 'active';
     message = 'Saving changes';
-    setTimeout(() => {
+    pendingTimeout = setTimeout(() => {
       status = 'error';
       message = 'Save failed';
+      pendingTimeout = null;
     }, 900);
   }
 </script>

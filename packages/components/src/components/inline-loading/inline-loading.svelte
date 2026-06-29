@@ -18,6 +18,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Check from 'lucide-svelte/icons/check';
   import X from 'lucide-svelte/icons/x';
   import { classNames } from '../../utilities/class-names.ts';
@@ -87,7 +88,12 @@
       return;
     }
 
-    if (!Number.isFinite(successDelay) || successDelay <= 0) {
+    // Read successDelay without registering it as a reactive dependency so that
+    // a prop change to successDelay while status is still "finished" (e.g. after
+    // the auto-reset timer already fired) does not re-show the success indicator.
+    const delay = untrack(() => successDelay);
+
+    if (!Number.isFinite(delay) || delay <= 0) {
       visualStatus = 'inactive';
       return;
     }
@@ -96,7 +102,7 @@
     successTimer = setTimeout(() => {
       visualStatus = 'inactive';
       successTimer = null;
-    }, successDelay);
+    }, delay);
   });
 </script>
 
