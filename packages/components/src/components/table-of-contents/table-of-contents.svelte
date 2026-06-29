@@ -41,6 +41,7 @@
 
   const reducedMotion = useReducedMotion();
   let activeId = $state<string | null>(null);
+  let normalizedItems = $state<TableOfContentsItem[]>([]);
 
   const validatedAriaLabel = $derived.by(() => {
     const trimmed = ariaLabel.trim();
@@ -58,7 +59,7 @@
     }
 
     const normalizedChildren =
-      raw.children?.map((child) => normalizeItem(child)).filter((child) => child !== null) ?? [];
+      raw.children?.map((child) => normalizeItem(child)).filter(isNonNullable) ?? [];
 
     const normalized: TableOfContentsItem = {
       id,
@@ -76,7 +77,11 @@
   function normalizeExplicitItems(
     source: TableOfContentsItem[] | undefined,
   ): TableOfContentsItem[] {
-    return source?.map((item) => normalizeItem(item)).filter((item) => item !== null) ?? [];
+    return source?.map((item) => normalizeItem(item)).filter(isNonNullable) ?? [];
+  }
+
+  function isNonNullable<TValue>(value: TValue | null | undefined): value is TValue {
+    return value != null;
   }
 
   function slugifyHeading(text: string): string {
@@ -180,7 +185,7 @@
         const id = ensureHeadingId(heading, label, index, seenIds);
         return { id, label, level };
       })
-      .filter((heading) => heading !== null);
+      .filter(isNonNullable);
 
     const nested: TableOfContentsItem[] = [];
     const stack: Array<{ level: number; item: TableOfContentsItem }> = [];
@@ -209,14 +214,77 @@
     return nested;
   }
 
-  const normalizedItems = $derived.by(() => {
+  $effect(() => {
     const explicit = normalizeExplicitItems(items);
     if (explicit.length > 0) {
-      return explicit;
+      normalizedItems = explicit;
+      return;
     }
 
-    const targetElement = resolveTargetElement(target);
-    return deriveItemsFromHeadings(targetElement, headingSelector);
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      normalizedItems = [];
+      return;
+    }
+
+    let targetObserver: MutationObserver | null = null;
+    let documentObserver: MutationObserver | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearRetryTimer = () => {
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+    };
+
+    const scheduleRetry = () => {
+      if (retryTimer !== null) {
+        return;
+      }
+
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        refreshDerived();
+      }, 50);
+    };
+
+    const refreshDerived = () => {
+      const targetElement = resolveTargetElement(target);
+      normalizedItems = deriveItemsFromHeadings(targetElement, headingSelector);
+
+      if (targetElement !== null) {
+        if (targetObserver === null && typeof MutationObserver !== 'undefined') {
+          targetObserver = new MutationObserver(() => {
+            normalizedItems = deriveItemsFromHeadings(targetElement, headingSelector);
+          });
+          targetObserver.observe(targetElement, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+          });
+        }
+        documentObserver?.disconnect();
+        documentObserver = null;
+      } else if (documentObserver === null && typeof MutationObserver !== 'undefined') {
+        documentObserver = new MutationObserver(() => {
+          refreshDerived();
+        });
+        documentObserver.observe(document.body, {
+          childList: true,
+          subtree: true,
+        });
+      } else if (typeof MutationObserver === 'undefined') {
+        scheduleRetry();
+      }
+    };
+
+    refreshDerived();
+
+    return () => {
+      clearRetryTimer();
+      targetObserver?.disconnect();
+      documentObserver?.disconnect();
+    };
   });
 
   function flattenIds(source: TableOfContentsItem[]): string[] {
@@ -237,21 +305,39 @@
 
   const observedIds = $derived.by(() => flattenIds(normalizedItems));
 
-  function pickActiveId(topById: Map<string, number>): string | null {
-    let bestAbove: { id: string; top: number } | null = null;
-    let bestBelow: { id: string; top: number } | null = null;
+  function parseActivationOffset(rootMargin: string, viewportHeight: number): number {
+    const topToken = rootMargin.trim().split(/\s+/)[0] ?? '0px';
+    if (topToken.endsWith('px')) {
+      const value = Number.parseFloat(topToken);
+      return Number.isFinite(value) ? value : 0;
+    }
+    if (topToken.endsWith('%')) {
+      const percent = Number.parseFloat(topToken);
+      return Number.isFinite(percent) ? (viewportHeight * percent) / 100 : 0;
+    }
+    return 0;
+  }
 
-    for (const [id, top] of topById) {
-      if (top <= 96) {
-        if (bestAbove === null || top > bestAbove.top) {
-          bestAbove = { id, top };
-        }
-      } else if (bestBelow === null || top < bestBelow.top) {
-        bestBelow = { id, top };
+  function pickActiveId(
+    orderedElements: HTMLElement[],
+    activationOffset: number,
+  ): string | null {
+    let lastPassed: { id: string; top: number } | null = null;
+    let firstUpcoming: { id: string; top: number } | null = null;
+
+    for (const element of orderedElements) {
+      const top = element.getBoundingClientRect().top;
+      if (top <= activationOffset) {
+        lastPassed = { id: element.id, top };
+        continue;
+      }
+
+      if (firstUpcoming === null || top < firstUpcoming.top) {
+        firstUpcoming = { id: element.id, top };
       }
     }
 
-    return bestAbove?.id ?? bestBelow?.id ?? null;
+    return lastPassed?.id ?? firstUpcoming?.id ?? null;
   }
 
   $effect(() => {
@@ -264,23 +350,25 @@
       return;
     }
 
-    const topById = new Map<string, number>();
+    const observedElements = observedIds
+      .map((id) => document.getElementById(id))
+      .filter((element): element is HTMLElement => element instanceof HTMLElement);
+
+    if (observedElements.length === 0) {
+      activeId = null;
+      return;
+    }
+
+    const updateActiveId = () => {
+      activeId = pickActiveId(
+        observedElements,
+        parseActivationOffset(observeRootMargin, window.innerHeight),
+      );
+    };
+
     const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const target = entry.target;
-          if (!(target instanceof HTMLElement)) {
-            continue;
-          }
-
-          if (entry.isIntersecting) {
-            topById.set(target.id, entry.boundingClientRect.top);
-          } else {
-            topById.delete(target.id);
-          }
-        }
-
-        activeId = pickActiveId(topById);
+      () => {
+        updateActiveId();
       },
       {
         root: null,
@@ -289,14 +377,17 @@
       },
     );
 
-    for (const id of observedIds) {
-      const element = document.getElementById(id);
-      if (element !== null) {
-        observer.observe(element);
-      }
+    for (const element of observedElements) {
+      observer.observe(element);
     }
 
+    window.addEventListener('scroll', updateActiveId, { passive: true });
+    window.addEventListener('resize', updateActiveId);
+    updateActiveId();
+
     return () => {
+      window.removeEventListener('scroll', updateActiveId);
+      window.removeEventListener('resize', updateActiveId);
       observer.disconnect();
     };
   });
@@ -304,6 +395,17 @@
   function handleItemClick(event: MouseEvent, id: string) {
     const element = document.getElementById(id);
     if (element === null) {
+      return;
+    }
+
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
       return;
     }
 
@@ -320,12 +422,12 @@
   }
 </script>
 
-<nav
-  class={classNames('cinder-table-of-contents', className)}
-  aria-label={validatedAriaLabel}
-  {...rest}
->
-  {#if normalizedItems.length > 0}
+{#if normalizedItems.length > 0}
+  <nav
+    class={classNames('cinder-table-of-contents', className)}
+    aria-label={validatedAriaLabel}
+    {...rest}
+  >
     {#snippet renderItems(entries: TableOfContentsItem[], nested = false)}
       <ul
         class={classNames(
@@ -355,5 +457,5 @@
     {/snippet}
 
     {@render renderItems(normalizedItems)}
-  {/if}
-</nav>
+  </nav>
+{/if}

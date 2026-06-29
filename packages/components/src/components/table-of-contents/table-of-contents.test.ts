@@ -81,6 +81,16 @@ afterEach(() => {
 });
 
 describe('TableOfContents', () => {
+  test('does not render a nav landmark when there are no TOC entries', () => {
+    const { container } = render(TableOfContents, {
+      props: {
+        items: [],
+      },
+    });
+
+    expect(container.querySelector('nav')).toBeNull();
+  });
+
   test('renders nav landmark with default aria label', () => {
     const { container } = render(TableOfContents, {
       props: {
@@ -140,6 +150,26 @@ describe('TableOfContents', () => {
     expect(links[1]?.textContent?.trim()).toBe('Linux');
   });
 
+  test('discovers headings added after initial render in derived mode', async () => {
+    const { container } = render(TableOfContents, {
+      props: {
+        target: '#late-target',
+      },
+    });
+
+    expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(0);
+
+    const article = document.createElement('article');
+    article.id = 'late-target';
+    article.appendChild(createHeading('late-one', 'Late one', 'h2'));
+    document.body.appendChild(article);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    const links = container.querySelectorAll('a.cinder-table-of-contents__link');
+    expect(links.length).toBe(1);
+    expect(links[0]?.getAttribute('href')).toBe('#late-one');
+  });
+
   test('marks link aria-current when observed heading becomes active', async () => {
     const first = createHeading('first', 'First');
     const second = createHeading('second', 'Second');
@@ -182,5 +212,31 @@ describe('TableOfContents', () => {
 
     expect(lastBehavior).toBe('smooth');
     expect(window.location.hash).toBe('#usage');
+  });
+
+  test('modified clicks preserve native anchor behavior', async () => {
+    const section = createHeading('advanced', 'Advanced');
+    let scrollCalls = 0;
+    section.scrollIntoView = () => {
+      scrollCalls += 1;
+    };
+    document.body.appendChild(section);
+
+    const { container } = render(TableOfContents, {
+      props: {
+        items: [{ id: 'advanced', label: 'Advanced' }],
+      },
+    });
+
+    const link = container.querySelector('a.cinder-table-of-contents__link');
+    const clickEvent = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+    });
+    link?.dispatchEvent(clickEvent);
+
+    expect(clickEvent.defaultPrevented).toBe(false);
+    expect(scrollCalls).toBe(0);
   });
 });

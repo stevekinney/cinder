@@ -23,5 +23,14 @@
       "description": "Root margin passed to IntersectionObserver for active-section detection."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "items",
+        "reason": "unknown-shape",
+        "description": "Explicit nested TOC items for controlled mode."
+      }
+    ]
+  }
 }

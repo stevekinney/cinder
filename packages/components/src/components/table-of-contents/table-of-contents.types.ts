@@ -50,6 +50,8 @@ export interface TableOfContentsSchemaProps {
   ariaLabel?: string;
   /** Additional class names merged with `.cinder-table-of-contents`. */
   class?: string;
+  /** Explicit nested TOC items for controlled mode. */
+  items?: TableOfContentsItem[];
   /** CSS selector used to find the target heading container in derived mode. */
   target?: string;
   /** CSS selector used to gather headings inside the target element. */

@@ -26,6 +26,15 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'items',
+        reason: 'unknown-shape',
+        description: 'Explicit nested TOC items for controlled mode.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;
