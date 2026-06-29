@@ -76,6 +76,7 @@
 
   const listboxId = $derived(`${id}-listbox`);
   const filterId = $derived(`${id}-filter`);
+  const filterLabelHintId = $derived(`${id}-filter-label-hint`);
   const labelId = $derived(label ? `${id}-label` : undefined);
   const listboxLabelledBy = $derived(labelId ?? context?.labelId);
   const itemIdSet = $derived(new Set(items.map((item) => item.id)));
@@ -91,8 +92,6 @@
   });
   const selectedSet = $derived(new Set(uniqueSelectedIds));
   const selectedCount = $derived(uniqueSelectedIds.length);
-  const triggerAriaInvalid = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
-  const triggerSummary = $derived(selectedCount > 0 ? `${selectedCount} selected` : placeholder);
   let open = $state(false);
   let query = $state('');
   let activeIndex = $state(-1);
@@ -102,10 +101,22 @@
   let controlElement = $state<HTMLDivElement | null>(null);
   let filterElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
-  let panelElement = $state<HTMLDivElement | null>(null);
   let validityProxyElement = $state<HTMLInputElement | null>(null);
   let nativeError = $state('');
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+  const triggerAriaInvalid = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
+  const triggerDescribedBy = $derived.by(() => {
+    const ids = new Set((field.describedBy ?? '').split(/\s+/).filter(Boolean));
+    if (nativeError) ids.add(field.ownErrorId ?? stableLocalErrorId);
+    const value = Array.from(ids).join(' ');
+    return value === '' ? undefined : value;
+  });
+  const filterAriaLabelledBy = $derived.by(() => {
+    if (!listboxLabelledBy) return filterLabelHintId;
+    return `${listboxLabelledBy} ${filterLabelHintId}`;
+  });
+  const triggerSummary = $derived(selectedCount > 0 ? `${selectedCount} selected` : placeholder);
+  const emptyListMessage = $derived(filterable ? 'No matching options' : 'No options');
   const initialSelectedIds = untrack(() => [...selectedIds]);
 
   const defaultFilter = (item: MultiSelectItem<T>, nextQuery: string): boolean => {
@@ -185,8 +196,8 @@
   function toggleItem(item: MultiSelectItem<T>): void {
     if (field.disabled || readonly || item.disabled) return;
     const nextSelectedIds = selectedSet.has(item.id)
-      ? selectedIds.filter((candidate) => candidate !== item.id)
-      : [...selectedIds, item.id];
+      ? uniqueSelectedIds.filter((candidate) => candidate !== item.id)
+      : [...uniqueSelectedIds, item.id];
     setSelectedIds(nextSelectedIds);
     if (!open) return;
     queueMicrotask(() => {
@@ -281,6 +292,7 @@
   }
 
   function handleFilterKeydown(event: KeyboardEvent): void {
+    if (event.isComposing) return;
     if (event.key === ' ') return;
     if (event.key === 'Home' || event.key === 'End') return;
     handleListNavigationKeydown(event);
@@ -401,11 +413,10 @@
       class="cinder-_input-frame cinder-multi-select__trigger"
       disabled={field.disabled}
       aria-invalid={triggerAriaInvalid}
-      aria-describedby={field.describedBy}
+      aria-describedby={triggerDescribedBy}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={listboxId}
-      aria-required={field.required || undefined}
       data-cinder-open={open || undefined}
       data-cinder-has-clear={selectedCount > 0 && !field.disabled && !readonly || undefined}
       data-cinder-readonly={readonly || undefined}
@@ -447,7 +458,7 @@
             role="combobox"
             placeholder="Filter options"
             value={query}
-            aria-label="Filter options"
+            aria-labelledby={filterAriaLabelledBy}
             aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-expanded={open}
@@ -467,6 +478,7 @@
           aria-multiselectable="true"
           aria-labelledby={listboxLabelledBy}
           aria-label={listboxLabelledBy ? undefined : 'Options'}
+          aria-required={field.required || undefined}
           aria-readonly={readonly || undefined}
           aria-activedescendant={filterable ? undefined : activeOptionId}
           tabindex={filterable ? -1 : 0}
@@ -503,7 +515,7 @@
             </li>
           {:else}
             <li class="cinder-multi-select__empty" role="option" aria-disabled="true">
-              No matching options
+              {emptyListMessage}
             </li>
           {/each}
         </ul>
@@ -511,9 +523,10 @@
     {/if}
   </div>
 
-  {#if filterable && open && visibleItems.length === 0}
+  {#if filterable}
+    <span id={filterLabelHintId} class="cinder-multi-select__sr-status">Filter options</span>
     <p class="cinder-multi-select__sr-status" role="status" aria-live="polite">
-      No matching options
+      {open && visibleItems.length === 0 ? emptyListMessage : ''}
     </p>
   {/if}
 
