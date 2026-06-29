@@ -64,7 +64,7 @@
   function safeDomId(value: string): string {
     return value
       .trim()
-      .replaceAll(/[^a-z0-9_-]+/g, '-')
+      .replaceAll(/[^A-Za-z0-9_-]+/g, '-')
       .replaceAll(/^-+|-+$/g, '');
   }
 
@@ -219,6 +219,12 @@
     closeMenu(true);
   }
 
+  function onRootFocusOut(event: FocusEvent) {
+    if (!navElement) return;
+    if (event.relatedTarget instanceof Node && navElement.contains(event.relatedTarget)) return;
+    closeMenu();
+  }
+
   $effect(() => {
     updateIndicator();
   });
@@ -241,16 +247,29 @@
     return () => document.removeEventListener('mousemove', closeIfOutside, true);
   });
 
+  $effect(() => {
+    if (!openItemId) return;
+    const closeOnOutsidePointer = (event: MouseEvent) => {
+      if (!navElement) return;
+      if (event.target instanceof Node && navElement.contains(event.target)) return;
+      closeMenu(true);
+    };
+    document.addEventListener('mousedown', closeOnOutsidePointer, true);
+    return () => document.removeEventListener('mousedown', closeOnOutsidePointer, true);
+  });
+
   function sections(item: MegaMenuItem | null) {
     return item?.sections ?? [];
   }
 </script>
 
 <nav
+  id={providedId}
   {...rest}
   bind:this={navElement}
   class={classNames('cinder-mega-menu', className)}
   aria-label={label}
+  onfocusout={onRootFocusOut}
 >
   <ul class="cinder-mega-menu__list" role="menubar">
     {#each items as item, index (item.id)}
