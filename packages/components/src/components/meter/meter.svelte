@@ -72,8 +72,8 @@
       : Math.max(effectiveMin, Math.min(effectiveMax, optimum)),
   );
   const optimumDirection = $derived.by<OptimumDirection>(() => {
-    if (effectiveOptimum < segmentLow) return 'low';
-    if (effectiveOptimum > segmentHigh) return 'high';
+    if (effectiveOptimum <= segmentLow) return 'low';
+    if (effectiveOptimum >= segmentHigh) return 'high';
     return 'mid';
   });
   const normalized = $derived((clampedValue - effectiveMin) / range);
@@ -89,12 +89,12 @@
 
   const meterState = $derived.by<MeterState | undefined>(() => {
     if (!hasThresholds) return undefined;
-    if (effectiveOptimum < segmentLow) {
+    if (effectiveOptimum <= segmentLow) {
       if (clampedValue <= segmentLow) return 'optimum';
       if (clampedValue <= segmentHigh) return 'low';
       return 'high';
     }
-    if (effectiveOptimum > segmentHigh) {
+    if (effectiveOptimum >= segmentHigh) {
       if (clampedValue < segmentLow) return 'high';
       if (clampedValue <= segmentHigh) return 'low';
       return 'optimum';
@@ -103,11 +103,15 @@
     if (clampedValue <= segmentHigh) return 'optimum';
     return 'high';
   });
-  const lowSegmentTone = $derived<MeterState>(optimumDirection === 'high' ? 'high' : 'low');
+  const lowSegmentTone = $derived<MeterState>(
+    optimumDirection === 'low' ? 'optimum' : optimumDirection === 'high' ? 'high' : 'low',
+  );
   const optimumSegmentTone = $derived<MeterState>(
     optimumDirection === 'mid' ? 'optimum' : 'low',
   );
-  const highSegmentTone = $derived<MeterState>(optimumDirection === 'low' ? 'high' : 'optimum');
+  const highSegmentTone = $derived<MeterState>(
+    optimumDirection === 'high' ? 'optimum' : 'high',
+  );
 
   const lowPercent = $derived(((segmentLow - effectiveMin) / range) * 100);
   const optimumPercent = $derived(((segmentHigh - segmentLow) / range) * 100);
