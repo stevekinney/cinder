@@ -192,12 +192,12 @@ describe('Meter', () => {
     expect(
       container
         .querySelector('.cinder-meter__segment--band-low')
-        ?.classList.contains('cinder-meter__segment--state-low'),
+        ?.classList.contains('cinder-meter__segment--state-high'),
     ).toBe(true);
     expect(
       container
         .querySelector('.cinder-meter__segment--band-optimum')
-        ?.classList.contains('cinder-meter__segment--state-high'),
+        ?.classList.contains('cinder-meter__segment--state-low'),
     ).toBe(true);
   });
 });

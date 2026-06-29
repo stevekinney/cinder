@@ -95,19 +95,19 @@
       return 'high';
     }
     if (effectiveOptimum > segmentHigh) {
-      if (clampedValue < segmentLow) return 'low';
-      if (clampedValue <= segmentHigh) return 'high';
+      if (clampedValue < segmentLow) return 'high';
+      if (clampedValue <= segmentHigh) return 'low';
       return 'optimum';
     }
     if (clampedValue < segmentLow) return 'low';
     if (clampedValue <= segmentHigh) return 'optimum';
     return 'high';
   });
-  const lowSegmentTone = $derived<MeterState>(optimumDirection === 'low' ? 'optimum' : 'low');
+  const lowSegmentTone = $derived<MeterState>(optimumDirection === 'high' ? 'high' : 'low');
   const optimumSegmentTone = $derived<MeterState>(
-    optimumDirection === 'mid' ? 'optimum' : optimumDirection === 'high' ? 'high' : 'low',
+    optimumDirection === 'mid' ? 'optimum' : 'low',
   );
-  const highSegmentTone = $derived<MeterState>(optimumDirection === 'high' ? 'optimum' : 'high');
+  const highSegmentTone = $derived<MeterState>(optimumDirection === 'low' ? 'high' : 'optimum');
 
   const lowPercent = $derived(((segmentLow - effectiveMin) / range) * 100);
   const optimumPercent = $derived(((segmentHigh - segmentLow) / range) * 100);
