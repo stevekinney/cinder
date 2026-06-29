@@ -643,6 +643,33 @@
       }
     },
     {
+      "name": "Calendar",
+      "id": "calendar",
+      "import": "@lostgradient/cinder/calendar",
+      "exportName": "Calendar",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Keyboard-navigable month grid for choosing a calendar date with full styling control and min/max constraints.",
+      "tags": ["form", "date", "calendar"],
+      "useWhen": [
+        "Rendering a custom date-grid picker inside an input popover.",
+        "Requiring consistent cross-browser calendar behavior that native date controls cannot provide."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A plain browser-managed date input is sufficient and custom keyboard semantics are not required."
+        }
+      ],
+      "related": ["date-picker", "date-range-field"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/calendar/schema",
+        "variables": "@lostgradient/cinder/calendar/variables",
+        "examples": "@lostgradient/cinder/calendar/examples"
+      }
+    },
+    {
       "name": "Callout",
       "id": "callout",
       "import": "@lostgradient/cinder/callout",
@@ -1490,6 +1517,33 @@
         "schema": "@lostgradient/cinder/data-table/schema",
         "variables": "@lostgradient/cinder/data-table/variables",
         "examples": "@lostgradient/cinder/data-table/examples"
+      }
+    },
+    {
+      "name": "DatePicker",
+      "id": "date-picker",
+      "import": "@lostgradient/cinder/date-picker",
+      "exportName": "DatePicker",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Controlled date picker that combines a text trigger, floating calendar grid, and optional time controls.",
+      "tags": ["form", "date", "calendar"],
+      "useWhen": [
+        "Collecting a date with consistent cross-browser UI and keyboard support.",
+        "Collecting local datetime values while keeping ISO strings as the controlled model."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Browser-native date controls are acceptable and custom styling is unnecessary."
+        }
+      ],
+      "related": ["calendar", "date-range-field", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/date-picker/schema",
+        "variables": "@lostgradient/cinder/date-picker/variables",
+        "examples": "@lostgradient/cinder/date-picker/examples"
       }
     },
     {

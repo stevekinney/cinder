@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "calendar",
+  "import": "@lostgradient/cinder/calendar",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic calendar",
+      "description": "Keyboard-navigable calendar grid with controlled ISO date value.",
+      "code": "<script lang=\"ts\">\n  import { Calendar } from '@lostgradient/cinder/calendar';\n\n  let value = $state<string | undefined>('2026-06-29');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; max-inline-size: 22rem;\">\n  <Calendar bind:value />\n  <code>{value ?? 'undefined'}</code>\n</div>\n\n"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  .cinder-date-picker {
+    display: grid;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-date-picker__label {
+    display: block;
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text);
+  }
+
+  .cinder-date-picker__control {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    min-height: 2.25rem;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+  }
+
+  .cinder-date-picker__control[data-invalid] {
+    border-color: var(--cinder-danger);
+  }
+
+  .cinder-date-picker__input {
+    inline-size: 100%;
+    min-inline-size: 0;
+    border: 0;
+    background: transparent;
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    padding: var(--cinder-space-1-5) var(--cinder-space-2);
+  }
+
+  .cinder-date-picker__input:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .cinder-date-picker__trigger {
+    appearance: none;
+    border: 0;
+    border-inline-start: 1px solid var(--cinder-border);
+    background: transparent;
+    color: var(--cinder-text-muted);
+    block-size: 100%;
+    inline-size: 2.25rem;
+    cursor: pointer;
+  }
+
+  .cinder-date-picker__trigger:disabled {
+    cursor: not-allowed;
+    color: var(--cinder-text-disabled);
+  }
+
+  .cinder-date-picker__panel {
+    display: grid;
+    gap: var(--cinder-space-2);
+    min-inline-size: 16rem;
+  }
+
+  .cinder-date-picker__time {
+    display: grid;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-date-picker__time-label {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-date-picker__time-input {
+    min-height: 2rem;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-raised);
+    color: var(--cinder-text);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+  }
+
+  .cinder-date-picker__description {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-date-picker__error {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-danger);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-date-picker__input:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+  }
+}
