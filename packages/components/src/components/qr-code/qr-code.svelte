@@ -34,31 +34,68 @@
 
   const mergedClassName = $derived(classNames('cinder-qr-code', customClassName));
   const resolvedSize = $derived(Number.isFinite(size) && size > 0 ? size : 160);
+  const resolvedMargin = $derived(Number.isFinite(margin) && margin >= 0 ? Math.floor(margin) : 1);
   const safeLabel = $derived(
-    typeof label === 'string' && label.trim().length > 0 ? label.trim() : `QR code for ${value}`,
+    typeof label === 'string' && label.trim().length > 0 ? label.trim() : 'QR code',
   );
-  const qrOptions = $derived({
-    type: 'svg' as const,
-    width: resolvedSize,
-    margin,
-    errorCorrectionLevel,
-    color: {
-      dark: '#000000',
-      light: '#00000000',
-    },
-  });
+
+  function svgCommand(command: string, x: number, y?: number): string {
+    return typeof y === 'number' ? `${command}${x} ${y}` : `${command}${x}`;
+  }
+
+  function qrModulesToPath(data: boolean[], moduleSize: number, marginSize: number): string {
+    let path = '';
+    let moveBy = 0;
+    let newRow = false;
+    let lineLength = 0;
+
+    for (let index = 0; index < data.length; index += 1) {
+      const column = Math.floor(index % moduleSize);
+      const row = Math.floor(index / moduleSize);
+
+      if (!column && !newRow) newRow = true;
+
+      if (data[index]) {
+        lineLength += 1;
+
+        if (!(index > 0 && column > 0 && data[index - 1])) {
+          path += newRow
+            ? svgCommand('M', column + marginSize, 0.5 + row + marginSize)
+            : svgCommand('m', moveBy, 0);
+          moveBy = 0;
+          newRow = false;
+        }
+
+        if (!(column + 1 < moduleSize && data[index + 1])) {
+          path += svgCommand('h', lineLength);
+          lineLength = 0;
+        }
+      } else {
+        moveBy += 1;
+      }
+    }
+
+    return path;
+  }
+
+  function renderSvg(modules: boolean[], moduleSize: number, marginSize: number, width: number): string {
+    const qrSize = moduleSize + marginSize * 2;
+    const widthAndHeight = width > 0 ? ` width="${width}" height="${width}"` : '';
+    return `<svg xmlns="http://www.w3.org/2000/svg"${widthAndHeight} viewBox="0 0 ${qrSize} ${qrSize}" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path stroke="currentColor" d="${qrModulesToPath(modules, moduleSize, marginSize)}"/></svg>`;
+  }
+
   const qrGenerationResult = $derived.by(() => {
     try {
-      let renderedSvg = '';
-      QRCode.toString(value, qrOptions, (error, svg) => {
-        if (error) throw error;
-        renderedSvg = svg ?? '';
-      });
-
-      if (renderedSvg.length === 0) throw new Error('Failed to render QR code');
+      const qrData = QRCode.create(value, { errorCorrectionLevel });
+      const renderedSvg = renderSvg(
+        qrData.modules.data,
+        qrData.modules.size,
+        resolvedMargin,
+        resolvedSize,
+      );
 
       return {
-        svgMarkup: decorateSvg(renderedSvg),
+        svgMarkup: renderedSvg,
         generationFailed: false,
         isGenerating: false,
       };
@@ -78,14 +115,6 @@
     generationFailed ? 'Unable to render QR code' : isGenerating ? undefined : safeLabel,
   );
   const resolvedAriaLive = $derived(generationFailed ? 'polite' : undefined);
-
-  function decorateSvg(svg: string): string {
-    return svg
-      .replace('<svg ', '<svg aria-hidden="true" focusable="false" ')
-      .replaceAll('fill="#000000"', 'fill="currentColor"')
-      .replaceAll('stroke="#000000"', 'stroke="currentColor"');
-  }
-
 </script>
 
 <span

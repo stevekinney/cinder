@@ -24,7 +24,7 @@ describe('QrCode', () => {
     const { container } = render(QrCode, { props: { value: 'https://example.com' } });
     const element = container.querySelector('.cinder-qr-code');
     expect(element?.getAttribute('role')).toBe('img');
-    expect(element?.getAttribute('aria-label')).toBe('QR code for https://example.com');
+    expect(element?.getAttribute('aria-label')).toBe('QR code');
   });
 
   test('merges a custom class alongside cinder-qr-code', () => {

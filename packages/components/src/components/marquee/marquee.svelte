@@ -44,6 +44,7 @@
   const role = $derived(hasAccessibleName ? 'region' : undefined);
   let primaryTrackItem: HTMLDivElement | undefined = $state();
   let duplicateTrackItem: HTMLDivElement | undefined = $state();
+  let duplicateReady = $state(false);
   let duplicateCloneVersion = 0;
 
   function rewriteCloneIds(root: HTMLElement): void {
@@ -126,10 +127,12 @@
     const clone = primaryTrackItem.cloneNode(true) as HTMLElement;
     rewriteCloneIds(clone);
     duplicateTrackItem.replaceChildren(...clone.childNodes);
+    duplicateReady = true;
   }
 
   $effect(() => {
     if (!primaryTrackItem || !duplicateTrackItem) return;
+    duplicateReady = false;
     syncDuplicateTrack();
     const observer = new MutationObserver(() => {
       syncDuplicateTrack();
@@ -160,6 +163,7 @@
   data-cinder-direction={direction}
   data-cinder-pause-hover={pauseOnHover ? 'true' : 'false'}
   data-cinder-pause-focus={pauseOnFocus ? 'true' : 'false'}
+  data-cinder-ready={duplicateReady ? 'true' : 'false'}
   aria-label={normalizedLabel}
   {role}
   style:--cinder-marquee-duration={duration}

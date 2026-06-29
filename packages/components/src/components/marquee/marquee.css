@@ -21,6 +21,10 @@
     will-change: transform;
   }
 
+  .cinder-marquee[data-cinder-ready='false'] .cinder-marquee__track {
+    animation-play-state: paused;
+  }
+
   .cinder-marquee__item {
     flex: 0 0 auto;
   }
