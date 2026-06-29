@@ -16,14 +16,14 @@ Encode a string payload as an inline, theme-aware SVG QR image with accessible l
 
 <!-- generated:props:start -->
 
-| Prop                   | Type                             | Required | Default                  | Description                                   |
-| ---------------------- | -------------------------------- | -------- | ------------------------ | --------------------------------------------- |
-| `class`                | `string`                         | no       | —                        | Custom class merged with `.cinder-qr-code`.   |
-| `errorCorrectionLevel` | `"L"` \| `"M"` \| `"Q"` \| `"H"` | no       | `"M"`                    | QR error correction level.                    |
-| `label`                | `string`                         | no       | `"QR code for ${value}"` | Accessible label announced for the QR image.  |
-| `margin`               | `number`                         | no       | `1`                      | Quiet-zone width in QR modules.               |
-| `size`                 | `number`                         | no       | `160`                    | Square pixel size of the rendered QR code.    |
-| `value`                | `string`                         | yes      | —                        | Text payload encoded into the QR code matrix. |
+| Prop                   | Type                             | Required | Default     | Description                                   |
+| ---------------------- | -------------------------------- | -------- | ----------- | --------------------------------------------- |
+| `class`                | `string`                         | no       | —           | Custom class merged with `.cinder-qr-code`.   |
+| `errorCorrectionLevel` | `"L"` \| `"M"` \| `"Q"` \| `"H"` | no       | `"M"`       | QR error correction level.                    |
+| `label`                | `string`                         | no       | `"QR code"` | Accessible label announced for the QR image.  |
+| `margin`               | `number`                         | no       | `1`         | Quiet-zone width in QR modules.               |
+| `size`                 | `number`                         | no       | `160`       | Square pixel size of the rendered QR code.    |
+| `value`                | `string`                         | yes      | —           | Text payload encoded into the QR code matrix. |
 
 <!-- generated:props:end -->
 

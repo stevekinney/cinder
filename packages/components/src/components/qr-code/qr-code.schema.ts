@@ -11,7 +11,7 @@ const schema = {
     label: {
       type: 'string',
       description: 'Accessible label announced for the QR image.',
-      default: 'QR code for ${value}',
+      default: 'QR code',
     },
     size: {
       type: 'number',
