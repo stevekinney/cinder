@@ -50,4 +50,11 @@ describe('QrCode', () => {
     expect(css).toContain('--cinder-qr-code-bg');
     expect(css).toContain('--cinder-qr-code-radius');
   });
+
+  test('generated svg uses currentColor fills for themeable rendering', async () => {
+    const { container } = render(QrCode, { props: { value: 'https://example.com' } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const svgMarkup = container.querySelector('.cinder-qr-code svg')?.outerHTML ?? '';
+    expect(svgMarkup).toContain('currentColor');
+  });
 });

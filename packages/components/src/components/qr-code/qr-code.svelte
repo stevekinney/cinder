@@ -42,7 +42,10 @@
   );
 
   function decorateSvg(svg: string): string {
-    return svg.replace('<svg ', '<svg aria-hidden="true" focusable="false" ');
+    return svg
+      .replace('<svg ', '<svg aria-hidden="true" focusable="false" ')
+      .replaceAll('fill="#000000"', 'fill="currentColor"')
+      .replaceAll('stroke="#000000"', 'stroke="currentColor"');
   }
 
   $effect(() => {
@@ -56,8 +59,8 @@
       margin,
       errorCorrectionLevel,
       color: {
-        dark: 'currentColor',
-        light: '#0000',
+        dark: '#000000',
+        light: '#00000000',
       },
     })
       .then((svg) => {
@@ -79,8 +82,8 @@
 <span
   {...rest}
   class={mergedClassName}
-  role="img"
-  aria-label={safeLabel}
+  role={generationFailed ? undefined : 'img'}
+  aria-label={generationFailed ? undefined : safeLabel}
   data-cinder-invalid={generationFailed ? 'true' : undefined}
   style:inline-size={`${resolvedSize}px`}
   style:block-size={`${resolvedSize}px`}

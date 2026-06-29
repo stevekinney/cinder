@@ -42,6 +42,13 @@
       (typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0),
   );
   const role = $derived(hasAccessibleName ? 'region' : undefined);
+  let primaryTrackItem: HTMLDivElement | undefined = $state();
+  let duplicateTrackItem: HTMLDivElement | undefined = $state();
+
+  $effect(() => {
+    if (!primaryTrackItem || !duplicateTrackItem) return;
+    duplicateTrackItem.replaceChildren(...primaryTrackItem.cloneNode(true).childNodes);
+  });
 </script>
 
 <div
@@ -57,12 +64,10 @@
 >
   <div class="cinder-marquee__viewport">
     <div class="cinder-marquee__track">
-      <div class="cinder-marquee__item">
+      <div class="cinder-marquee__item" bind:this={primaryTrackItem}>
         {@render children()}
       </div>
-      <div class="cinder-marquee__item" aria-hidden="true" inert>
-        {@render children()}
-      </div>
+      <div class="cinder-marquee__item" aria-hidden="true" inert bind:this={duplicateTrackItem}></div>
     </div>
   </div>
 </div>
