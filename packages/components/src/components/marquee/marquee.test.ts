@@ -41,6 +41,31 @@ function svgReferenceSnippet() {
   }));
 }
 
+function inlineStyleReferenceSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <clipPath id="logoClip">
+            <rect width="10" height="10"></rect>
+          </clipPath>
+        </defs>
+        <rect width="10" height="10" style="clip-path: url(#logoClip)"></rect>
+      </svg>
+    `,
+  }));
+}
+
+function namedFormControlsSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <form>
+        <input name="email" value="user@example.com" />
+      </form>
+    `,
+  }));
+}
+
 describe('Marquee', () => {
   test('renders the cinder-marquee wrapper with duplicated content tracks', () => {
     const { container } = render(Marquee, { children: textSnippet('content') });
@@ -125,5 +150,34 @@ describe('Marquee', () => {
     expect(duplicateGradientId).not.toBe('logoGradient');
     expect(duplicateGradientId).toContain('logoGradient--cinder-marquee-duplicate-');
     expect(duplicateRectFill).toBe(`url(#${duplicateGradientId})`);
+  });
+
+  test('rewrites inline style url references in cloned marquee content', async () => {
+    const { container } = render(Marquee, {
+      children: inlineStyleReferenceSnippet(),
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const duplicateTrack = container.querySelector('.cinder-marquee__item[aria-hidden="true"]');
+    const duplicateClipPathId = duplicateTrack?.querySelector('clipPath')?.getAttribute('id') ?? '';
+    const duplicateRectStyle = duplicateTrack?.querySelector('rect[style]')?.getAttribute('style') ?? '';
+
+    expect(duplicateClipPathId).toContain('logoClip--cinder-marquee-duplicate-');
+    expect(duplicateRectStyle).toContain(`url(#${duplicateClipPathId})`);
+  });
+
+  test('removes names from cloned form controls to avoid duplicate form submissions', async () => {
+    const { container } = render(Marquee, {
+      children: namedFormControlsSnippet(),
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const duplicateTrack = container.querySelector('.cinder-marquee__item[aria-hidden="true"]');
+    const duplicateInput = duplicateTrack?.querySelector('input');
+
+    expect(duplicateInput?.hasAttribute('name')).toBe(false);
+    expect(duplicateInput?.hasAttribute('disabled')).toBe(true);
   });
 });

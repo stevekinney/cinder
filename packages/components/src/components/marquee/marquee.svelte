@@ -47,77 +47,105 @@
   let duplicateReady = $state(false);
   let duplicateCloneVersion = 0;
 
-  function rewriteCloneIds(root: HTMLElement): void {
-    const elementsWithIds = root.querySelectorAll<HTMLElement>('[id]');
-    if (elementsWithIds.length === 0) return;
-
-    duplicateCloneVersion += 1;
-    const idMap = new Map<string, string>();
-    for (const element of elementsWithIds) {
-      const originalId = element.getAttribute('id');
-      if (!originalId) continue;
-      const duplicateId = `${originalId}--cinder-marquee-duplicate-${duplicateCloneVersion}`;
-      idMap.set(originalId, duplicateId);
-      element.setAttribute('id', duplicateId);
+  function rewriteUrlReferences(value: string, idMap: Map<string, string>): string {
+    let nextValue = value;
+    for (const [originalId, duplicateId] of idMap) {
+      nextValue = nextValue.replaceAll(`url(#${originalId})`, `url(#${duplicateId})`);
     }
 
-    if (idMap.size === 0) return;
+    return nextValue;
+  }
 
-    const referenceAttributes = [
-      'href',
-      'xlink:href',
-      'fill',
-      'stroke',
-      'filter',
-      'mask',
-      'clip-path',
-      'marker-start',
-      'marker-mid',
-      'marker-end',
-      'aria-labelledby',
-      'aria-describedby',
-    ];
-    const urlReferenceAttributes = new Set([
-      'fill',
-      'stroke',
-      'filter',
-      'mask',
-      'clip-path',
-      'marker-start',
-      'marker-mid',
-      'marker-end',
-    ]);
+  function rewriteCloneIds(root: HTMLElement): void {
+    const elementsWithIds = root.querySelectorAll<HTMLElement>('[id]');
+    if (elementsWithIds.length > 0) {
+      duplicateCloneVersion += 1;
+      const idMap = new Map<string, string>();
+      for (const element of elementsWithIds) {
+        const originalId = element.getAttribute('id');
+        if (!originalId) continue;
+        const duplicateId = `${originalId}--cinder-marquee-duplicate-${duplicateCloneVersion}`;
+        idMap.set(originalId, duplicateId);
+        element.setAttribute('id', duplicateId);
+      }
 
-    root.querySelectorAll<HTMLElement>('*').forEach((element) => {
-      for (const attribute of referenceAttributes) {
-        const value = element.getAttribute(attribute);
-        if (!value) continue;
+      if (idMap.size > 0) {
+        const referenceAttributes = [
+          'href',
+          'xlink:href',
+          'fill',
+          'stroke',
+          'filter',
+          'mask',
+          'clip-path',
+          'marker-start',
+          'marker-mid',
+          'marker-end',
+          'aria-labelledby',
+          'aria-describedby',
+        ];
+        const urlReferenceAttributes = new Set([
+          'fill',
+          'stroke',
+          'filter',
+          'mask',
+          'clip-path',
+          'marker-start',
+          'marker-mid',
+          'marker-end',
+        ]);
 
-        let nextValue = value;
-        for (const [originalId, duplicateId] of idMap) {
-          if (urlReferenceAttributes.has(attribute)) {
-            nextValue = nextValue.replaceAll(`url(#${originalId})`, `url(#${duplicateId})`);
-            continue;
-          }
+        root.querySelectorAll<HTMLElement>('*').forEach((element) => {
+          for (const attribute of referenceAttributes) {
+            const value = element.getAttribute(attribute);
+            if (!value) continue;
 
-          if (attribute === 'href' || attribute === 'xlink:href') {
-            if (nextValue === `#${originalId}`) {
-              nextValue = `#${duplicateId}`;
+            if (urlReferenceAttributes.has(attribute)) {
+              const rewrittenUrlValue = rewriteUrlReferences(value, idMap);
+              if (rewrittenUrlValue !== value) {
+                element.setAttribute(attribute, rewrittenUrlValue);
+              }
+              continue;
             }
-            continue;
+
+            let nextValue = value;
+            for (const [originalId, duplicateId] of idMap) {
+              if (attribute === 'href' || attribute === 'xlink:href') {
+                if (nextValue === `#${originalId}`) {
+                  nextValue = `#${duplicateId}`;
+                }
+                continue;
+              }
+
+              if (attribute === 'aria-labelledby' || attribute === 'aria-describedby') {
+                nextValue = nextValue
+                  .split(/\s+/)
+                  .map((token) => (token === originalId ? duplicateId : token))
+                  .join(' ');
+              }
+            }
+
+            if (nextValue !== value) {
+              element.setAttribute(attribute, nextValue);
+            }
           }
 
-          if (attribute === 'aria-labelledby' || attribute === 'aria-describedby') {
-            nextValue = nextValue
-              .split(/\s+/)
-              .map((token) => (token === originalId ? duplicateId : token))
-              .join(' ');
+          const styleValue = element.getAttribute('style');
+          if (!styleValue) return;
+          const rewrittenStyle = rewriteUrlReferences(styleValue, idMap);
+          if (rewrittenStyle !== styleValue) {
+            element.setAttribute('style', rewrittenStyle);
           }
-        }
+        });
+      }
+    }
 
-        if (nextValue !== value) {
-          element.setAttribute(attribute, nextValue);
-        }
+    root.querySelectorAll<HTMLElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      'input, select, textarea, button, fieldset, output, option, optgroup, [name]',
+    ).forEach((element) => {
+      element.removeAttribute('name');
+      if ('disabled' in element) {
+        element.setAttribute('disabled', '');
       }
     });
   }
