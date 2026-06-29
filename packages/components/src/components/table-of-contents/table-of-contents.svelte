@@ -326,6 +326,9 @@
       if (!shouldWatchForTargetBySelector || pendingDocumentRefresh !== null) {
         return;
       }
+      if (observedTarget !== null && document.contains(observedTarget)) {
+        return;
+      }
 
       pendingDocumentRefresh = setTimeout(() => {
         pendingDocumentRefresh = null;
