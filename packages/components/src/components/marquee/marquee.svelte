@@ -44,18 +44,87 @@
   const role = $derived(hasAccessibleName ? 'region' : undefined);
   let primaryTrackItem: HTMLDivElement | undefined = $state();
   let duplicateTrackItem: HTMLDivElement | undefined = $state();
+  let duplicateCloneVersion = 0;
 
-  function stripIds(root: HTMLElement) {
-    root.removeAttribute('id');
-    root.querySelectorAll('[id]').forEach((descendant) => {
-      descendant.removeAttribute('id');
+  function rewriteCloneIds(root: HTMLElement): void {
+    const elementsWithIds = root.querySelectorAll<HTMLElement>('[id]');
+    if (elementsWithIds.length === 0) return;
+
+    duplicateCloneVersion += 1;
+    const idMap = new Map<string, string>();
+    for (const element of elementsWithIds) {
+      const originalId = element.getAttribute('id');
+      if (!originalId) continue;
+      const duplicateId = `${originalId}--cinder-marquee-duplicate-${duplicateCloneVersion}`;
+      idMap.set(originalId, duplicateId);
+      element.setAttribute('id', duplicateId);
+    }
+
+    if (idMap.size === 0) return;
+
+    const referenceAttributes = [
+      'href',
+      'xlink:href',
+      'fill',
+      'stroke',
+      'filter',
+      'mask',
+      'clip-path',
+      'marker-start',
+      'marker-mid',
+      'marker-end',
+      'aria-labelledby',
+      'aria-describedby',
+    ];
+    const urlReferenceAttributes = new Set([
+      'fill',
+      'stroke',
+      'filter',
+      'mask',
+      'clip-path',
+      'marker-start',
+      'marker-mid',
+      'marker-end',
+    ]);
+
+    root.querySelectorAll<HTMLElement>('*').forEach((element) => {
+      for (const attribute of referenceAttributes) {
+        const value = element.getAttribute(attribute);
+        if (!value) continue;
+
+        let nextValue = value;
+        for (const [originalId, duplicateId] of idMap) {
+          if (urlReferenceAttributes.has(attribute)) {
+            nextValue = nextValue.replaceAll(`url(#${originalId})`, `url(#${duplicateId})`);
+            continue;
+          }
+
+          if (attribute === 'href' || attribute === 'xlink:href') {
+            if (nextValue === `#${originalId}`) {
+              nextValue = `#${duplicateId}`;
+            }
+            continue;
+          }
+
+          if (attribute === 'aria-labelledby' || attribute === 'aria-describedby') {
+            nextValue = nextValue
+              .split(/\s+/)
+              .map((token) => (token === originalId ? duplicateId : token))
+              .join(' ');
+          }
+        }
+
+        if (nextValue !== value) {
+          element.setAttribute(attribute, nextValue);
+        }
+      }
     });
   }
 
   function syncDuplicateTrack() {
     if (!primaryTrackItem || !duplicateTrackItem) return;
     const clone = primaryTrackItem.cloneNode(true) as HTMLElement;
-    stripIds(clone);
+    rewriteCloneIds(clone);
     duplicateTrackItem.replaceChildren(...clone.childNodes);
   }
 

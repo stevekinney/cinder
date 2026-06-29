@@ -25,6 +25,22 @@ function textSnippet(text: string) {
   }));
 }
 
+function svgReferenceSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="logoGradient">
+            <stop offset="0%" stop-color="red"></stop>
+            <stop offset="100%" stop-color="blue"></stop>
+          </linearGradient>
+        </defs>
+        <rect width="10" height="10" fill="url(#logoGradient)"></rect>
+      </svg>
+    `,
+  }));
+}
+
 describe('Marquee', () => {
   test('renders the cinder-marquee wrapper with duplicated content tracks', () => {
     const { container } = render(Marquee, { children: textSnippet('content') });
@@ -92,5 +108,22 @@ describe('Marquee', () => {
     expect(reducedMotionBlock).toContain('animation: none');
     expect(reducedMotionBlock).toContain('overflow: auto');
     expect(reducedMotionBlock).toContain('display: none');
+  });
+
+  test('rewrites duplicate IDs and matching references in cloned marquee content', async () => {
+    const { container } = render(Marquee, {
+      children: svgReferenceSnippet(),
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const duplicateTrack = container.querySelector('.cinder-marquee__item[aria-hidden="true"]');
+    const gradient = duplicateTrack?.querySelector('linearGradient');
+    const duplicateGradientId = gradient?.getAttribute('id') ?? '';
+    const duplicateRectFill = duplicateTrack?.querySelector('rect')?.getAttribute('fill');
+
+    expect(duplicateGradientId).not.toBe('logoGradient');
+    expect(duplicateGradientId).toContain('logoGradient--cinder-marquee-duplicate-');
+    expect(duplicateRectFill).toBe(`url(#${duplicateGradientId})`);
   });
 });

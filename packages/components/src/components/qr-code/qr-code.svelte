@@ -32,15 +32,47 @@
     ...rest
   }: QrCodeProps = $props();
 
-  let svgMarkup = $state('');
-  let generationFailed = $state(false);
-  let isGenerating = $state(true);
-
   const mergedClassName = $derived(classNames('cinder-qr-code', customClassName));
   const resolvedSize = $derived(Number.isFinite(size) && size > 0 ? size : 160);
   const safeLabel = $derived(
     typeof label === 'string' && label.trim().length > 0 ? label.trim() : `QR code for ${value}`,
   );
+  const qrOptions = $derived({
+    type: 'svg' as const,
+    width: resolvedSize,
+    margin,
+    errorCorrectionLevel,
+    color: {
+      dark: '#000000',
+      light: '#00000000',
+    },
+  });
+  const qrGenerationResult = $derived.by(() => {
+    try {
+      let renderedSvg = '';
+      QRCode.toString(value, qrOptions, (error, svg) => {
+        if (error) throw error;
+        renderedSvg = svg ?? '';
+      });
+
+      if (renderedSvg.length === 0) throw new Error('Failed to render QR code');
+
+      return {
+        svgMarkup: decorateSvg(renderedSvg),
+        generationFailed: false,
+        isGenerating: false,
+      };
+    } catch {
+      return {
+        svgMarkup: '',
+        generationFailed: true,
+        isGenerating: false,
+      };
+    }
+  });
+  const svgMarkup = $derived(qrGenerationResult.svgMarkup);
+  const generationFailed = $derived(qrGenerationResult.generationFailed);
+  const isGenerating = $derived(qrGenerationResult.isGenerating);
   const resolvedRole = $derived(generationFailed ? 'status' : isGenerating ? undefined : 'img');
   const resolvedAriaLabel = $derived(
     generationFailed ? 'Unable to render QR code' : isGenerating ? undefined : safeLabel,
@@ -54,38 +86,6 @@
       .replaceAll('stroke="#000000"', 'stroke="currentColor"');
   }
 
-  $effect(() => {
-    let cancelled = false;
-    isGenerating = true;
-    generationFailed = false;
-    svgMarkup = '';
-
-    void QRCode.toString(value, {
-      type: 'svg',
-      width: resolvedSize,
-      margin,
-      errorCorrectionLevel,
-      color: {
-        dark: '#000000',
-        light: '#00000000',
-      },
-    })
-      .then((svg) => {
-        if (cancelled) return;
-        svgMarkup = decorateSvg(svg);
-        isGenerating = false;
-      })
-      .catch(() => {
-        if (cancelled) return;
-        svgMarkup = '';
-        generationFailed = true;
-        isGenerating = false;
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  });
 </script>
 
 <span
