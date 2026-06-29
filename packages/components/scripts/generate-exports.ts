@@ -178,8 +178,8 @@ export function shouldPreserveLegacyEntry(
 function highlightersShikiExport(): ExportEntry {
   return orderedExportEntry({
     types: './dist/highlighters/shiki/index.d.ts',
-    browser: './dist/highlighters/shiki/index.js',
-    svelte: './dist/highlighters/shiki/index.js',
+    browser: './src/highlighters/shiki/index.ts',
+    svelte: './src/highlighters/shiki/index.ts',
     node: './dist/server/highlighters/shiki/index.js',
     default: './dist/highlighters/shiki/index.js',
   });
@@ -195,8 +195,8 @@ function highlightersShikiExport(): ExportEntry {
 export function stylesGuardExport(): ExportEntry {
   return orderedExportEntry({
     types: './dist/styles/base-guard.d.ts',
-    browser: './dist/styles/base-guard.js',
-    svelte: './dist/styles/base-guard.js',
+    browser: './src/styles/base-guard.ts',
+    svelte: './src/styles/base-guard.ts',
     node: './dist/server/styles/base-guard.js',
     default: './dist/styles/base-guard.js',
   });
@@ -249,8 +249,8 @@ export function orderedExportEntry(entry: ExportEntry): ExportEntry {
 export function computeRootExport(): ExportEntry {
   return orderedExportEntry({
     types: './dist/index.d.ts',
-    browser: './dist/index.js',
-    svelte: './dist/index.js',
+    browser: './src/index.ts',
+    svelte: './src/index.ts',
     node: './dist/server/index.js',
     default: './dist/index.js',
   });
@@ -310,6 +310,7 @@ export function computeDeprecatedExperimentalAliases(
 
   for (const { name, hasCss, hasExamples } of aliases) {
     const aliasPrefix = `./experimental/${name}`;
+    const shimSrcDir = `./src/components/experimental/${name}`;
     const shimDistDir = `./dist/components/experimental/${name}`;
     const shimServerDistDir = `./dist/server/components/experimental/${name}`;
     // Metadata files (schema/variables/styles/examples) moved with the
@@ -320,8 +321,8 @@ export function computeDeprecatedExperimentalAliases(
 
     out[aliasPrefix] = orderedExportEntry({
       types: `${shimDistDir}/index.d.ts`,
-      browser: `${shimDistDir}/index.js`,
-      svelte: `${shimDistDir}/index.js`,
+      browser: `${shimSrcDir}/index.ts`,
+      svelte: `${shimSrcDir}/index.ts`,
       node: `${shimServerDistDir}/index.js`,
       default: `${shimDistDir}/index.js`,
     });
@@ -332,15 +333,15 @@ export function computeDeprecatedExperimentalAliases(
     // conditions resolve there too.
     out[`${aliasPrefix}/schema`] = orderedExportEntry({
       types: `${newDistDir}/${name}.schema.d.ts`,
-      browser: `${newDistDir}/${name}.schema.js`,
-      svelte: `${newDistDir}/${name}.schema.js`,
+      browser: `${newSrcDir}/${name}.schema.ts`,
+      svelte: `${newSrcDir}/${name}.schema.ts`,
       node: `${newServerDistDir}/${name}.schema.js`,
       default: `${newDistDir}/${name}.schema.js`,
     });
     out[`${aliasPrefix}/variables`] = orderedExportEntry({
       types: `${newDistDir}/${name}.variables.d.ts`,
-      browser: `${newDistDir}/${name}.variables.js`,
-      svelte: `${newDistDir}/${name}.variables.js`,
+      browser: `${newSrcDir}/${name}.variables.ts`,
+      svelte: `${newSrcDir}/${name}.variables.ts`,
       node: `${newServerDistDir}/${name}.variables.js`,
       default: `${newDistDir}/${name}.variables.js`,
     });
@@ -403,8 +404,8 @@ export function computeExports(
     // source, `default` last as the catch-all for Vite/Rollup/esbuild/Webpack.
     out[prefix] = orderedExportEntry({
       types: `${distDir}/index.d.ts`,
-      browser: `${distDir}/index.js`,
-      svelte: `${distDir}/index.js`,
+      browser: `${srcDir}/index.ts`,
+      svelte: `${srcDir}/index.ts`,
       node: `${serverDistDir}/index.js`,
       default: `${distDir}/index.js`,
     });
@@ -430,15 +431,15 @@ export function computeExports(
     // contract.
     out[`${prefix}/schema`] = orderedExportEntry({
       types: `${distDir}/${name}.schema.d.ts`,
-      browser: `${distDir}/${name}.schema.js`,
-      svelte: `${distDir}/${name}.schema.js`,
+      browser: `${srcDir}/${name}.schema.ts`,
+      svelte: `${srcDir}/${name}.schema.ts`,
       node: `${serverDistDir}/${name}.schema.js`,
       default: `${distDir}/${name}.schema.js`,
     });
     out[`${prefix}/variables`] = orderedExportEntry({
       types: `${distDir}/${name}.variables.d.ts`,
-      browser: `${distDir}/${name}.variables.js`,
-      svelte: `${distDir}/${name}.variables.js`,
+      browser: `${srcDir}/${name}.variables.ts`,
+      svelte: `${srcDir}/${name}.variables.ts`,
       node: `${serverDistDir}/${name}.variables.js`,
       default: `${distDir}/${name}.variables.js`,
     });

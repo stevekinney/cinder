@@ -131,20 +131,27 @@ function rewriteUpstreamReexportEntry(
 }
 
 /**
- * Metadata sub-paths are plain TypeScript modules. The source manifest keeps a
- * `svelte` condition for in-repository tooling, but published consumers can use
- * the built browser/server entrypoints and declarations directly.
+ * Rewrite a source-backed runtime entry so published consumers resolve the
+ * compiled browser build instead of raw `src/**` TypeScript. The source
+ * manifest keeps `browser`/`svelte` on `src/**` for in-repo tooling; the
+ * tarball should route those conditions to the compiled `default` target.
  */
-function rewriteMetadataEntry(entry: ExportConditional): ExportConditional {
+function rewritePublishedRuntimeEntry(entry: ExportConditional): ExportConditional {
   const result: ExportConditional = {};
   if (entry.types !== undefined) result.types = entry.types;
+  if (entry.browser !== undefined) result.browser = entry.default ?? entry.browser;
   if (entry.node !== undefined) result.node = entry.node;
+  if (entry.svelte !== undefined) result.svelte = entry.default ?? entry.svelte;
   if (entry.default !== undefined) result.default = entry.default;
   return result;
 }
 
-function isMetadataExportKey(key: string): boolean {
-  return key.endsWith('/schema') || key.endsWith('/variables');
+function isSourceBackedRuntimeEntry(entry: ExportConditional): boolean {
+  return (
+    entry.default !== undefined &&
+    ((entry.browser !== undefined && entry.browser.startsWith('./src/')) ||
+      (entry.svelte !== undefined && entry.svelte.startsWith('./src/')))
+  );
 }
 
 /**
@@ -165,15 +172,10 @@ function buildPublishedManifest(
       transformedExports[key] = rewriteUpstreamReexportEntry(entry, reexport);
       continue;
     }
-    if (isMetadataExportKey(key) && typeof entry === 'object') {
-      transformedExports[key] = rewriteMetadataEntry(entry);
+    if (typeof entry === 'object' && isSourceBackedRuntimeEntry(entry)) {
+      transformedExports[key] = rewritePublishedRuntimeEntry(entry);
       continue;
     }
-    // Component sub-paths (and other non-upstream exports) keep their
-    // `browser`/`svelte` → `./src/components/<id>/index.ts` conditions for
-    // browser and Svelte-aware tooling. The generated condition order places
-    // `node` before `svelte`, so Node SSR still resolves the compiled server
-    // build when `node` and `svelte` are active without `browser`.
     transformedExports[key] = entry;
   }
 

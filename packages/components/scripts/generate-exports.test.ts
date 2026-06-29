@@ -62,9 +62,9 @@ describe('computeRootExport', () => {
     const root = computeRootExport();
     expect(root).toEqual({
       types: './dist/index.d.ts',
-      browser: './dist/index.js',
+      browser: './src/index.ts',
       node: './dist/server/index.js',
-      svelte: './dist/index.js',
+      svelte: './src/index.ts',
       default: './dist/index.js',
     });
     expect(Object.keys(root)).toEqual(['types', 'browser', 'node', 'svelte', 'default']);
@@ -171,9 +171,9 @@ describe('computeExports', () => {
     const out = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
     expect(out['./button']).toEqual({
       types: './dist/components/button/index.d.ts',
-      browser: './dist/components/button/index.js',
+      browser: './src/components/button/index.ts',
       node: './dist/server/components/button/index.js',
-      svelte: './dist/components/button/index.js',
+      svelte: './src/components/button/index.ts',
       default: './dist/components/button/index.js',
     });
     expect(Object.keys(out['./button']!)).toEqual([
@@ -189,16 +189,16 @@ describe('computeExports', () => {
     const out = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
     expect(out['./button/schema']).toEqual({
       types: './dist/components/button/button.schema.d.ts',
-      browser: './dist/components/button/button.schema.js',
+      browser: './src/components/button/button.schema.ts',
       node: './dist/server/components/button/button.schema.js',
-      svelte: './dist/components/button/button.schema.js',
+      svelte: './src/components/button/button.schema.ts',
       default: './dist/components/button/button.schema.js',
     });
     expect(out['./button/variables']).toEqual({
       types: './dist/components/button/button.variables.d.ts',
-      browser: './dist/components/button/button.variables.js',
+      browser: './src/components/button/button.variables.ts',
       node: './dist/server/components/button/button.variables.js',
-      svelte: './dist/components/button/button.variables.js',
+      svelte: './src/components/button/button.variables.ts',
       default: './dist/components/button/button.variables.js',
     });
   });
@@ -232,9 +232,9 @@ describe('computeExports', () => {
     const out = computeExports([{ name: 'lab', isExperimental: true, hasCss: false }]);
     expect(out['./experimental/lab']).toEqual({
       types: './dist/components/experimental/lab/index.d.ts',
-      browser: './dist/components/experimental/lab/index.js',
+      browser: './src/components/experimental/lab/index.ts',
       node: './dist/server/components/experimental/lab/index.js',
-      svelte: './dist/components/experimental/lab/index.js',
+      svelte: './src/components/experimental/lab/index.ts',
       default: './dist/components/experimental/lab/index.js',
     });
   });
@@ -263,9 +263,9 @@ describe('stylesGuardExport', () => {
     const entry = stylesGuardExport();
     expect(entry).toEqual({
       types: './dist/styles/base-guard.d.ts',
-      browser: './dist/styles/base-guard.js',
+      browser: './src/styles/base-guard.ts',
       node: './dist/server/styles/base-guard.js',
-      svelte: './dist/styles/base-guard.js',
+      svelte: './src/styles/base-guard.ts',
       default: './dist/styles/base-guard.js',
     });
     expect(Object.keys(entry)).toEqual(['types', 'browser', 'node', 'svelte', 'default']);
