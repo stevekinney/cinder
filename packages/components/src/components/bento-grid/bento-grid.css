@@ -1,6 +1,6 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../bento-cell/bento-cell.css';
 
-@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-bento-grid {
     display: grid;
