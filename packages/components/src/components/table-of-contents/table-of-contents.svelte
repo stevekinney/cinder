@@ -227,8 +227,12 @@
     }
 
     let targetObserver: MutationObserver | null = null;
+    let targetParentObserver: MutationObserver | null = null;
     let documentObserver: MutationObserver | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let selectorRefreshInterval: ReturnType<typeof setInterval> | null = null;
+    let observedTarget: HTMLElement | null = null;
+    let observedTargetParent: HTMLElement | null = null;
 
     const clearRetryTimer = () => {
       if (retryTimer !== null) {
@@ -248,24 +252,51 @@
       }, 50);
     };
 
+    const syncTargetObserver = (nextTarget: HTMLElement | null) => {
+      if (observedTarget !== nextTarget) {
+        targetObserver?.disconnect();
+        targetObserver = null;
+        targetParentObserver?.disconnect();
+        targetParentObserver = null;
+        observedTarget = nextTarget;
+        observedTargetParent = nextTarget?.parentElement ?? null;
+      }
+
+      if (
+        nextTarget !== null &&
+        targetObserver === null &&
+        typeof MutationObserver !== 'undefined'
+      ) {
+        targetObserver = new MutationObserver(() => {
+          refreshDerived();
+        });
+        targetObserver.observe(nextTarget, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
+      }
+
+      if (
+        observedTargetParent !== null &&
+        targetParentObserver === null &&
+        typeof MutationObserver !== 'undefined'
+      ) {
+        targetParentObserver = new MutationObserver(() => {
+          refreshDerived();
+        });
+        targetParentObserver.observe(observedTargetParent, {
+          childList: true,
+        });
+      }
+    };
+
     const refreshDerived = () => {
       const targetElement = resolveTargetElement(target);
+      syncTargetObserver(targetElement);
       normalizedItems = deriveItemsFromHeadings(targetElement, headingSelector);
 
-      if (targetElement !== null) {
-        if (targetObserver === null && typeof MutationObserver !== 'undefined') {
-          targetObserver = new MutationObserver(() => {
-            normalizedItems = deriveItemsFromHeadings(targetElement, headingSelector);
-          });
-          targetObserver.observe(targetElement, {
-            childList: true,
-            subtree: true,
-            characterData: true,
-          });
-        }
-        documentObserver?.disconnect();
-        documentObserver = null;
-      } else if (documentObserver === null && typeof MutationObserver !== 'undefined') {
+      if (documentObserver === null && typeof MutationObserver !== 'undefined') {
         documentObserver = new MutationObserver(() => {
           refreshDerived();
         });
@@ -280,9 +311,19 @@
 
     refreshDerived();
 
+    if (typeof target === 'string' && target.trim() !== '') {
+      selectorRefreshInterval = setInterval(() => {
+        refreshDerived();
+      }, 250);
+    }
+
     return () => {
       clearRetryTimer();
+      if (selectorRefreshInterval !== null) {
+        clearInterval(selectorRefreshInterval);
+      }
       targetObserver?.disconnect();
+      targetParentObserver?.disconnect();
       documentObserver?.disconnect();
     };
   });
@@ -360,8 +401,22 @@
     }
 
     const updateActiveId = () => {
+      const elementsInDocumentOrder = [...observedElements].sort((a, b) => {
+        if (a === b) {
+          return 0;
+        }
+        const relation = a.compareDocumentPosition(b);
+        if ((relation & Node.DOCUMENT_POSITION_FOLLOWING) !== 0) {
+          return -1;
+        }
+        if ((relation & Node.DOCUMENT_POSITION_PRECEDING) !== 0) {
+          return 1;
+        }
+        return 0;
+      });
+
       activeId = pickActiveId(
-        observedElements,
+        elementsInDocumentOrder,
         parseActivationOffset(observeRootMargin, window.innerHeight),
       );
     };

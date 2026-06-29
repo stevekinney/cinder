@@ -193,6 +193,55 @@ describe('TableOfContents', () => {
     expect(current?.getAttribute('href')).toBe('#second');
   });
 
+  test('prefers document order over explicit items order when choosing active heading', async () => {
+    const first = createHeading('first-doc', 'First');
+    first.getBoundingClientRect = () => ({ top: -50 }) as DOMRect;
+    const second = createHeading('second-doc', 'Second');
+    second.getBoundingClientRect = () => ({ top: -10 }) as DOMRect;
+    document.body.appendChild(first);
+    document.body.appendChild(second);
+
+    const { container } = render(TableOfContents, {
+      props: {
+        items: [
+          { id: 'second-doc', label: 'Second' },
+          { id: 'first-doc', label: 'First' },
+        ],
+      },
+    });
+    await Promise.resolve();
+
+    const current = container.querySelector('a[aria-current="location"]');
+    expect(current?.getAttribute('href')).toBe('#second-doc');
+  });
+
+  test('refreshes derived headings when selector target element is replaced', async () => {
+    const firstTarget = document.createElement('article');
+    firstTarget.id = 'replace-target';
+    firstTarget.appendChild(createHeading('original', 'Original', 'h2'));
+    document.body.appendChild(firstTarget);
+
+    const { container } = render(TableOfContents, {
+      props: {
+        target: '#replace-target',
+      },
+    });
+    await Promise.resolve();
+    expect(container.querySelectorAll('a.cinder-table-of-contents__link')[0]?.textContent?.trim()).toBe(
+      'Original',
+    );
+
+    const replacementTarget = document.createElement('article');
+    replacementTarget.id = 'replace-target';
+    replacementTarget.appendChild(createHeading('replacement', 'Replacement', 'h2'));
+    firstTarget.replaceWith(replacementTarget);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const links = container.querySelectorAll('a.cinder-table-of-contents__link');
+    expect(links.length).toBe(1);
+    expect(links[0]?.getAttribute('href')).toBe('#replacement');
+  });
+
   test('clicking a link scrolls to the heading and updates location hash', async () => {
     const section = createHeading('usage', 'Usage');
     let lastBehavior: ScrollBehavior | undefined;
