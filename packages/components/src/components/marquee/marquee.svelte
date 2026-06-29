@@ -1,0 +1,63 @@
+<script lang="ts" module>
+  /**
+   * @cinder
+   * @category layout
+   * @status beta
+   * @purpose Auto-scrolling horizontal or vertical ticker that loops content continuously with reduced-motion-safe behavior.
+   * @tag marquee
+   * @tag ticker
+   * @useWhen Showing repeating announcements, partner logos, or status strips in a constrained space.
+   * @useWhen You need CSS-driven, seamless loop motion that can pause on hover/focus.
+   * @avoidWhen Users need to manually scroll and inspect static overflow content. | scroll-area
+   * @avoidWhen Information should remain fixed in place without motion emphasis.
+   * @related scroll-area, banner
+   */
+  export type { MarqueeDirection, MarqueeProps } from './marquee.types.ts';
+</script>
+
+<script lang="ts">
+  import { classNames } from '../../utilities/class-names.ts';
+
+  import type { MarqueeProps } from './marquee.types.ts';
+
+  let {
+    direction = 'horizontal',
+    duration = '24s',
+    gap = '1.5rem',
+    label,
+    pauseOnHover = true,
+    pauseOnFocus = true,
+    class: customClassName,
+    children,
+    ...rest
+  }: MarqueeProps = $props();
+
+  const mergedClassName = $derived(classNames('cinder-marquee', customClassName));
+  const normalizedLabel = $derived(
+    typeof label === 'string' && label.trim().length > 0 ? label.trim() : undefined,
+  );
+  const role = $derived(normalizedLabel ? 'region' : undefined);
+</script>
+
+<div
+  {...rest}
+  class={mergedClassName}
+  data-cinder-direction={direction}
+  data-cinder-pause-hover={pauseOnHover ? 'true' : 'false'}
+  data-cinder-pause-focus={pauseOnFocus ? 'true' : 'false'}
+  aria-label={normalizedLabel}
+  {role}
+  style:--cinder-marquee-duration={duration}
+  style:--cinder-marquee-gap={gap}
+>
+  <div class="cinder-marquee__viewport">
+    <div class="cinder-marquee__track">
+      <div class="cinder-marquee__item">
+        {@render children()}
+      </div>
+      <div class="cinder-marquee__item" aria-hidden="true" inert>
+        {@render children()}
+      </div>
+    </div>
+  </div>
+</div>

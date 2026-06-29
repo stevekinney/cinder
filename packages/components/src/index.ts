@@ -460,6 +460,9 @@ export type { LocaleProviderProps, TextDirection } from './components/locale-pro
 export { default as LoadMore } from './components/load-more/index.ts';
 export type { LoadMoreProps } from './components/load-more/index.ts';
 
+export { default as Marquee } from './components/marquee/index.ts';
+export type { MarqueeDirection, MarqueeProps } from './components/marquee/index.ts';
+
 export { default as MediaControls } from './components/media-controls/index.ts';
 export type { MediaControlsLayout, MediaControlsProps } from './components/media-controls/index.ts';
 
@@ -554,6 +557,9 @@ export type { PricingCardProps } from './components/pricing-card/index.ts';
 
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
+
+export { default as QrCode } from './components/qr-code/index.ts';
+export type { QrCodeErrorCorrectionLevel, QrCodeProps } from './components/qr-code/index.ts';
 
 export { default as RadioGroup } from './components/radio-group/index.ts';
 // RadioProps is re-exported here (from radio-group) so root-barrel consumers keep

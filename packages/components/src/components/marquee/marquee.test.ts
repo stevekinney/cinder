@@ -1,0 +1,83 @@
+/// <reference lib="dom" />
+import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
+
+import { setupHappyDom } from '../../test/happy-dom.ts';
+
+// setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
+// reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
+// so we register happy-dom's globals first and then dynamic-import testing-library below.
+setupHappyDom();
+
+const { render } = await import('@testing-library/svelte');
+const { default: Marquee } = await import('./marquee.svelte');
+const marqueeCssPath = join(import.meta.dir, './marquee.css');
+// createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
+// the svelte package to resolve to the client build) applies before this import resolves.
+// A top-level static import of 'svelte' resolves to svelte/index-server.js in Bun's
+// non-browser environment, making `mount()` throw "not available on the server".
+const { createRawSnippet } = await import('svelte');
+
+/** Creates a Svelte 5 Snippet that renders text content. */
+function textSnippet(text: string) {
+  return createRawSnippet(() => ({
+    render: () => `<span>${text}</span>`,
+  }));
+}
+
+describe('Marquee', () => {
+  test('renders the cinder-marquee wrapper with duplicated content tracks', () => {
+    const { container } = render(Marquee, { children: textSnippet('content') });
+    const element = container.querySelector('.cinder-marquee');
+    expect(element).not.toBeNull();
+    expect(container.querySelectorAll('.cinder-marquee__item')).toHaveLength(2);
+    expect(container.querySelector('.cinder-marquee__item[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  test('merges a custom class alongside cinder-marquee', () => {
+    const { container } = render(Marquee, {
+      children: textSnippet('content'),
+      class: 'my-custom-class',
+    });
+    const element = container.querySelector('.cinder-marquee');
+    expect(element?.getAttribute('class')).toContain('cinder-marquee');
+    expect(element?.getAttribute('class')).toContain('my-custom-class');
+  });
+
+  test('sets direction and pause-state attributes', () => {
+    const { container } = render(Marquee, {
+      props: {
+        direction: 'vertical',
+        pauseOnHover: false,
+        pauseOnFocus: false,
+        children: textSnippet('content'),
+      },
+    });
+    const element = container.querySelector('.cinder-marquee');
+    expect(element?.getAttribute('data-cinder-direction')).toBe('vertical');
+    expect(element?.getAttribute('data-cinder-pause-hover')).toBe('false');
+    expect(element?.getAttribute('data-cinder-pause-focus')).toBe('false');
+  });
+
+  test('forwards label as aria-label and applies region role', () => {
+    const { container } = render(Marquee, {
+      props: {
+        label: 'Partner logos',
+        children: textSnippet('content'),
+      },
+    });
+    const element = container.querySelector('.cinder-marquee');
+    expect(element?.getAttribute('aria-label')).toBe('Partner logos');
+    expect(element?.getAttribute('role')).toBe('region');
+  });
+
+  test('reduced-motion CSS disables animation and hides duplicated track', async () => {
+    const css = await Bun.file(marqueeCssPath).text();
+    const reducedMotionBlock = css.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-marquee__item\[aria-hidden='true'\]\s*\{[\s\S]*?\}\s*\}/,
+    )?.[0];
+
+    expect(reducedMotionBlock).toContain('animation: none');
+    expect(reducedMotionBlock).toContain('display: none');
+  });
+});

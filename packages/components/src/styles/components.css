@@ -84,6 +84,7 @@
 @import '../components/matrix-chart/matrix-chart.css';
 @import '../components/masonry/masonry.css';
 @import '../components/load-more/load-more.css';
+@import '../components/marquee/marquee.css';
 @import '../components/media-controls/media-controls.css';
 @import '../components/menu-bar/menu-bar.css';
 @import '../components/message/message.css';
@@ -99,6 +100,7 @@
 @import '../components/popover/popover.css';
 @import '../components/pricing-card/pricing-card.css';
 @import '../components/progress/progress.css';
+@import '../components/qr-code/qr-code.css';
 @import '../components/_radio/radio.css';
 @import '../components/radio-group/radio-group.css';
 @import '../components/rating/rating.css';

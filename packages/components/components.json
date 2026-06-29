@@ -2699,6 +2699,37 @@
       }
     },
     {
+      "name": "Marquee",
+      "id": "marquee",
+      "import": "@lostgradient/cinder/marquee",
+      "exportName": "Marquee",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Auto-scrolling horizontal or vertical ticker that loops content continuously with reduced-motion-safe behavior.",
+      "tags": ["marquee", "ticker"],
+      "useWhen": [
+        "Showing repeating announcements, partner logos, or status strips in a constrained space.",
+        "You need CSS-driven, seamless loop motion that can pause on hover/focus."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Users need to manually scroll and inspect static overflow content.",
+          "alternative": "scroll-area"
+        },
+        {
+          "reason": "Information should remain fixed in place without motion emphasis."
+        }
+      ],
+      "related": ["scroll-area", "banner"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/marquee/schema",
+        "variables": "@lostgradient/cinder/marquee/variables",
+        "examples": "@lostgradient/cinder/marquee/examples"
+      }
+    },
+    {
       "name": "Masonry",
       "id": "masonry",
       "import": "@lostgradient/cinder/masonry",
@@ -3240,6 +3271,37 @@
         "schema": "@lostgradient/cinder/progress/schema",
         "variables": "@lostgradient/cinder/progress/variables",
         "examples": "@lostgradient/cinder/progress/examples"
+      }
+    },
+    {
+      "name": "QrCode",
+      "id": "qr-code",
+      "import": "@lostgradient/cinder/qr-code",
+      "exportName": "QrCode",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Encodes a string payload as an inline SVG QR code with an explicit accessible label.",
+      "tags": ["qr-code", "sharing"],
+      "useWhen": [
+        "Presenting a scannable URL, token, or Wi-Fi credential that users can scan from another device.",
+        "You need a theme-aware QR graphic that stays crisp at any scale."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You only need to expose a copyable short text value without camera scanning affordance.",
+          "alternative": "copy-button"
+        },
+        {
+          "reason": "The payload is sensitive and should never be displayed as machine-readable visual data."
+        }
+      ],
+      "related": ["copy-button", "share-card"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/qr-code/schema",
+        "variables": "@lostgradient/cinder/qr-code/variables",
+        "examples": "@lostgradient/cinder/qr-code/examples"
       }
     },
     {

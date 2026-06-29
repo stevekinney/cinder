@@ -1,0 +1,26 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-qr-code {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--cinder-qr-code-radius, var(--cinder-radius-md));
+    color: var(--cinder-qr-code-fg, var(--cinder-text));
+    background: var(--cinder-qr-code-bg, transparent);
+    overflow: hidden;
+  }
+
+  .cinder-qr-code :global(svg) {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  .cinder-qr-code__placeholder {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    border-radius: inherit;
+    background: var(--cinder-surface-inset);
+  }
+}
