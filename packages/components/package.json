@@ -712,6 +712,34 @@
       "import": "./src/components/card/card.examples.json",
       "default": "./src/components/card/card.examples.json"
     },
+    "./carousel": {
+      "types": "./dist/components/carousel/index.d.ts",
+      "browser": "./src/components/carousel/index.ts",
+      "node": "./dist/server/components/carousel/index.js",
+      "svelte": "./src/components/carousel/index.ts",
+      "default": "./dist/components/carousel/index.js"
+    },
+    "./carousel/schema": {
+      "types": "./dist/components/carousel/carousel.schema.d.ts",
+      "browser": "./src/components/carousel/carousel.schema.ts",
+      "node": "./dist/server/components/carousel/carousel.schema.js",
+      "svelte": "./src/components/carousel/carousel.schema.ts",
+      "default": "./dist/components/carousel/carousel.schema.js"
+    },
+    "./carousel/variables": {
+      "types": "./dist/components/carousel/carousel.variables.d.ts",
+      "browser": "./src/components/carousel/carousel.variables.ts",
+      "node": "./dist/server/components/carousel/carousel.variables.js",
+      "svelte": "./src/components/carousel/carousel.variables.ts",
+      "default": "./dist/components/carousel/carousel.variables.js"
+    },
+    "./carousel/styles": {
+      "default": "./dist/components/carousel/carousel.css"
+    },
+    "./carousel/examples": {
+      "import": "./src/components/carousel/carousel.examples.json",
+      "default": "./src/components/carousel/carousel.examples.json"
+    },
     "./chat": {
       "types": "./dist/components/chat/index.d.ts",
       "browser": "./src/components/chat/index.ts",
@@ -1952,6 +1980,34 @@
       "import": "./src/components/focus-trap/focus-trap.examples.json",
       "default": "./src/components/focus-trap/focus-trap.examples.json"
     },
+    "./footer": {
+      "types": "./dist/components/footer/index.d.ts",
+      "browser": "./src/components/footer/index.ts",
+      "node": "./dist/server/components/footer/index.js",
+      "svelte": "./src/components/footer/index.ts",
+      "default": "./dist/components/footer/index.js"
+    },
+    "./footer/schema": {
+      "types": "./dist/components/footer/footer.schema.d.ts",
+      "browser": "./src/components/footer/footer.schema.ts",
+      "node": "./dist/server/components/footer/footer.schema.js",
+      "svelte": "./src/components/footer/footer.schema.ts",
+      "default": "./dist/components/footer/footer.schema.js"
+    },
+    "./footer/variables": {
+      "types": "./dist/components/footer/footer.variables.d.ts",
+      "browser": "./src/components/footer/footer.variables.ts",
+      "node": "./dist/server/components/footer/footer.variables.js",
+      "svelte": "./src/components/footer/footer.variables.ts",
+      "default": "./dist/components/footer/footer.variables.js"
+    },
+    "./footer/styles": {
+      "default": "./dist/components/footer/footer.css"
+    },
+    "./footer/examples": {
+      "import": "./src/components/footer/footer.examples.json",
+      "default": "./src/components/footer/footer.examples.json"
+    },
     "./form-field": {
       "types": "./dist/components/form-field/index.d.ts",
       "browser": "./src/components/form-field/index.ts",
@@ -2599,6 +2655,34 @@
     "./media-controls/examples": {
       "import": "./src/components/media-controls/media-controls.examples.json",
       "default": "./src/components/media-controls/media-controls.examples.json"
+    },
+    "./mega-menu": {
+      "types": "./dist/components/mega-menu/index.d.ts",
+      "browser": "./src/components/mega-menu/index.ts",
+      "node": "./dist/server/components/mega-menu/index.js",
+      "svelte": "./src/components/mega-menu/index.ts",
+      "default": "./dist/components/mega-menu/index.js"
+    },
+    "./mega-menu/schema": {
+      "types": "./dist/components/mega-menu/mega-menu.schema.d.ts",
+      "browser": "./src/components/mega-menu/mega-menu.schema.ts",
+      "node": "./dist/server/components/mega-menu/mega-menu.schema.js",
+      "svelte": "./src/components/mega-menu/mega-menu.schema.ts",
+      "default": "./dist/components/mega-menu/mega-menu.schema.js"
+    },
+    "./mega-menu/variables": {
+      "types": "./dist/components/mega-menu/mega-menu.variables.d.ts",
+      "browser": "./src/components/mega-menu/mega-menu.variables.ts",
+      "node": "./dist/server/components/mega-menu/mega-menu.variables.js",
+      "svelte": "./src/components/mega-menu/mega-menu.variables.ts",
+      "default": "./dist/components/mega-menu/mega-menu.variables.js"
+    },
+    "./mega-menu/styles": {
+      "default": "./dist/components/mega-menu/mega-menu.css"
+    },
+    "./mega-menu/examples": {
+      "import": "./src/components/mega-menu/mega-menu.examples.json",
+      "default": "./src/components/mega-menu/mega-menu.examples.json"
     },
     "./menu-bar": {
       "types": "./dist/components/menu-bar/index.d.ts",

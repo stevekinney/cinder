@@ -282,8 +282,12 @@ describe('discoverSidebarComponents', () => {
     // ceiling rises to 139.
     // Meter adds one standalone feedback family with examples, bringing the
     // measured sidebar ceiling to 140.
+    // Issue #480 adds Carousel, Footer, and MegaMenu examples, each of which now
+    // passes the `exampleCount > 0` sidebar filter, bringing the measured
+    // ceiling to 143. BentoGrid was already counted (+1) from this branch,
+    // so combined the ceiling rises to 143.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(140);
+    expect(sidebar.length).toBeLessThanOrEqual(143);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
