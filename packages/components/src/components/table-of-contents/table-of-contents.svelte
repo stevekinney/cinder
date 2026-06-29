@@ -107,7 +107,7 @@
     }
 
     if (targetProp instanceof HTMLElement) {
-      return targetProp;
+      return targetProp.isConnected ? targetProp : null;
     }
 
     return null;
@@ -301,6 +301,7 @@
     const shouldDeriveFromTarget =
       (typeof target === 'string' && target.trim() !== '') || target instanceof HTMLElement;
     const shouldWatchForTargetBySelector = typeof target === 'string' && target.trim() !== '';
+    const shouldWatchTargetConnection = target instanceof HTMLElement;
 
     if (!shouldDeriveFromTarget) {
       normalizedItems = [];
@@ -322,7 +323,17 @@
     };
 
     const scheduleDocumentRefreshCheck = () => {
-      if (!shouldWatchForTargetBySelector || pendingDocumentRefresh !== null) {
+      if (
+        (!shouldWatchForTargetBySelector && !shouldWatchTargetConnection) ||
+        pendingDocumentRefresh !== null
+      ) {
+        return;
+      }
+      if (observedTarget !== null && !document.contains(observedTarget)) {
+        refreshDerived();
+        return;
+      }
+      if (!shouldWatchForTargetBySelector) {
         return;
       }
       if (observedTarget !== null && document.contains(observedTarget)) {
@@ -345,7 +356,7 @@
     };
 
     if (
-      shouldWatchForTargetBySelector &&
+      (shouldWatchForTargetBySelector || shouldWatchTargetConnection) &&
       typeof MutationObserver !== 'undefined' &&
       document.body !== null
     ) {

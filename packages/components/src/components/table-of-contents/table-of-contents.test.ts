@@ -270,6 +270,44 @@ describe('TableOfContents', () => {
     expect(links[0]?.getAttribute('href')).toBe('#dynamic-new');
   });
 
+  test('clears derived items when an HTMLElement target is detached', async () => {
+    const target = document.createElement('article');
+    target.appendChild(createHeading('detached-heading', 'Detached heading', 'h2'));
+    document.body.appendChild(target);
+
+    const { container } = render(TableOfContents, {
+      props: {
+        target,
+      },
+    });
+    await Promise.resolve();
+    expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(1);
+
+    target.remove();
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(0);
+  });
+
+  test('clears derived items when an HTMLElement target becomes disconnected via ancestor removal', async () => {
+    const wrapper = document.createElement('section');
+    const target = document.createElement('article');
+    target.appendChild(createHeading('nested-heading', 'Nested heading', 'h2'));
+    wrapper.appendChild(target);
+    document.body.appendChild(wrapper);
+
+    const { container } = render(TableOfContents, {
+      props: {
+        target,
+      },
+    });
+    await Promise.resolve();
+    expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(1);
+
+    wrapper.remove();
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(0);
+  });
+
   test('tracks explicit item headings that mount after initial render', async () => {
     const { container } = render(TableOfContents, {
       props: {
