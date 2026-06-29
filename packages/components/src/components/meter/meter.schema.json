@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "number",
+      "description": "Current measurement value. Defaults to 0."
+    },
+    "min": {
+      "type": "number",
+      "description": "Lower bound for the range. Defaults to 0."
+    },
+    "max": {
+      "type": "number",
+      "description": "Upper bound for the range. Defaults to 100."
+    },
+    "low": {
+      "type": "number",
+      "description": "Lower threshold boundary for segmented rendering."
+    },
+    "high": {
+      "type": "number",
+      "description": "Upper threshold boundary for segmented rendering."
+    },
+    "optimum": {
+      "type": "number",
+      "description": "Optimal target value. Influences computed state semantics to match native\nmeter expectations."
+    },
+    "size": {
+      "enum": ["sm", "md", "lg"],
+      "description": "Size token for track height. Default `md`."
+    },
+    "ariaValueText": {
+      "type": "string",
+      "description": "Human-readable text exposed via `aria-valuetext`.\nWhen omitted, `aria-valuetext` is not rendered.\nExample: `50% (6 hours remaining)`."
+    },
+    "ariaLabel": {
+      "type": "string",
+      "description": "Accessible name applied directly to the meter element when no visible\nlabel element is present."
+    },
+    "ariaLabelledby": {
+      "type": "string",
+      "description": "Id of a visible element that serves as the accessible name for the meter.\nPrefer this when a visible label exists."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional class names merged with `.cinder-meter`."
+    }
+  },
+  "additionalProperties": false
+}

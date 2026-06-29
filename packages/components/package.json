@@ -2688,6 +2688,34 @@
       "import": "./src/components/message/message.examples.json",
       "default": "./src/components/message/message.examples.json"
     },
+    "./meter": {
+      "types": "./dist/components/meter/index.d.ts",
+      "browser": "./src/components/meter/index.ts",
+      "node": "./dist/server/components/meter/index.js",
+      "svelte": "./src/components/meter/index.ts",
+      "default": "./dist/components/meter/index.js"
+    },
+    "./meter/schema": {
+      "types": "./dist/components/meter/meter.schema.d.ts",
+      "browser": "./src/components/meter/meter.schema.ts",
+      "node": "./dist/server/components/meter/meter.schema.js",
+      "svelte": "./src/components/meter/meter.schema.ts",
+      "default": "./dist/components/meter/meter.schema.js"
+    },
+    "./meter/variables": {
+      "types": "./dist/components/meter/meter.variables.d.ts",
+      "browser": "./src/components/meter/meter.variables.ts",
+      "node": "./dist/server/components/meter/meter.variables.js",
+      "svelte": "./src/components/meter/meter.variables.ts",
+      "default": "./dist/components/meter/meter.variables.js"
+    },
+    "./meter/styles": {
+      "default": "./dist/components/meter/meter.css"
+    },
+    "./meter/examples": {
+      "import": "./src/components/meter/meter.examples.json",
+      "default": "./src/components/meter/meter.examples.json"
+    },
     "./modal": {
       "types": "./dist/components/modal/index.d.ts",
       "browser": "./src/components/modal/index.ts",
