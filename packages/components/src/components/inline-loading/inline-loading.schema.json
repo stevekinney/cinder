@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "status": {
+      "enum": ["inactive", "active", "finished", "error"],
+      "description": "Lifecycle state for the inline async action indicator.",
+      "default": "inactive"
+    },
+    "description": {
+      "type": "string",
+      "description": "Visible status label rendered next to the indicator."
+    },
+    "iconDescription": {
+      "type": "string",
+      "description": "Accessible status wording used by announcements when no visible description is provided."
+    },
+    "successDelay": {
+      "type": "number",
+      "description": "Delay in milliseconds before auto-resetting `finished` back to `inactive`.",
+      "default": 1500
+    },
+    "class": {
+      "type": "string",
+      "description": "Extra classes appended to the root element."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,48 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-inline-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    min-block-size: 1em;
+    color: var(--cinder-text-muted);
+    vertical-align: middle;
+  }
+
+  .cinder-inline-loading[data-cinder-status='inactive'] {
+    display: none;
+  }
+
+  .cinder-inline-loading[data-cinder-status='active'] {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-inline-loading[data-cinder-status='finished'] {
+    color: var(--cinder-success);
+  }
+
+  .cinder-inline-loading[data-cinder-status='error'] {
+    color: var(--cinder-danger);
+  }
+
+  .cinder-inline-loading__indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  .cinder-inline-loading__indicator :global(.cinder-spinner) {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    border-width: 1.5px;
+  }
+
+  .cinder-inline-loading__label {
+    font-size: var(--cinder-text-sm);
+    line-height: 1.25;
+    color: inherit;
+  }
+}

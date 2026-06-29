@@ -387,6 +387,9 @@ export type { ImageProps } from './components/image/index.ts';
 export { default as Input } from './components/input/index.ts';
 export type { InputProps, InputType } from './components/input/index.ts';
 
+export { default as InlineLoading } from './components/inline-loading/index.ts';
+export type { InlineLoadingProps, InlineLoadingStatus } from './components/inline-loading/index.ts';
+
 export { default as JsonSchemaEditor } from './components/json-schema-editor/index.ts';
 export type {
   JsonSchemaDraft,

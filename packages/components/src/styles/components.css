@@ -71,6 +71,7 @@
 @import '../components/hover-card/hover-card.css';
 @import '../components/image/image.css';
 @import '../components/input/input.css';
+@import '../components/inline-loading/inline-loading.css';
 @import '../components/invocation-rule-builder/invocation-rule-builder.css';
 @import './components/json-highlight.css';
 @import '../components/json-schema-editor/json-schema-editor.css';
