@@ -1,0 +1,31 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    ariaLabel: {
+      type: 'string',
+      description: 'Accessible name for the nav landmark.',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional class names merged with `.cinder-table-of-contents`.',
+    },
+    target: {
+      type: 'string',
+      description: 'CSS selector used to find the target heading container in derived mode.',
+    },
+    headingSelector: {
+      type: 'string',
+      description: 'CSS selector used to gather headings inside the target element.',
+    },
+    observeRootMargin: {
+      type: 'string',
+      description: 'Root margin passed to IntersectionObserver for active-section detection.',
+    },
+  },
+  additionalProperties: false,
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

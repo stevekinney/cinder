@@ -4540,6 +4540,39 @@
       }
     },
     {
+      "name": "TableOfContents",
+      "id": "table-of-contents",
+      "import": "@lostgradient/cinder/table-of-contents",
+      "exportName": "TableOfContents",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "On-page heading outline that renders nested anchor links and highlights the active section while scrolling.",
+      "tags": ["navigation", "docs", "toc"],
+      "useWhen": [
+        "Adding an \"On this page\" rail for long-form docs or settings screens.",
+        "Letting users jump between headings while keeping context via active-section highlighting."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Navigating between routes or top-level app areas — use navigation-bar or side-navigation."
+        },
+        {
+          "reason": "The page has too few headings to justify a secondary navigation rail."
+        }
+      ],
+      "related": ["side-navigation", "breadcrumbs", "section-heading"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/table-of-contents/schema",
+        "variables": "@lostgradient/cinder/table-of-contents/variables",
+        "examples": "@lostgradient/cinder/table-of-contents/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Navigation Landmark"
+      }
+    },
+    {
       "name": "TableRow",
       "id": "table-row",
       "import": "@lostgradient/cinder/table-row",

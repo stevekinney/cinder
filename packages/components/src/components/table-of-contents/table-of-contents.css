@@ -1,0 +1,62 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  .cinder-table-of-contents {
+    --cinder-toc-link-color: var(--cinder-text-secondary);
+    --cinder-toc-link-active-color: var(--cinder-text-primary);
+    --cinder-toc-link-indent-step: var(--cinder-space-3);
+    --cinder-toc-link-border-color: var(--cinder-border);
+    --cinder-toc-link-active-border-color: var(--cinder-border-strong);
+
+    display: block;
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-relaxed);
+    color: var(--cinder-text-secondary);
+  }
+
+  .cinder-table-of-contents__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-table-of-contents__list--nested {
+    margin-top: var(--cinder-space-1);
+    margin-inline-start: var(--cinder-toc-link-indent-step);
+  }
+
+  .cinder-table-of-contents__item {
+    margin: 0;
+    padding: 0;
+  }
+
+  .cinder-table-of-contents__link {
+    display: block;
+    text-decoration: none;
+    color: var(--cinder-toc-link-color);
+    border-inline-start: 2px solid var(--cinder-toc-link-border-color);
+    padding: 0.125rem 0.75rem;
+    transition:
+      color var(--cinder-duration-fast) var(--cinder-ease-standard),
+      border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-table-of-contents__link:hover {
+    color: var(--cinder-toc-link-active-color);
+  }
+
+  .cinder-table-of-contents__link--active {
+    color: var(--cinder-toc-link-active-color);
+    border-inline-start-color: var(--cinder-toc-link-active-border-color);
+    font-weight: var(--cinder-font-weight-medium);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-table-of-contents__link {
+      transition: none;
+    }
+  }
+}

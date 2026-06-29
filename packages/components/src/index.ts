@@ -793,6 +793,12 @@ export type { TableHeaderCellProps } from './components/table-header-cell/index.
 export { default as TableRow } from './components/table-row/index.ts';
 export type { TableRowProps, TableRowSelectionProps } from './components/table-row/index.ts';
 
+export { default as TableOfContents } from './components/table-of-contents/index.ts';
+export type {
+  TableOfContentsItem,
+  TableOfContentsProps,
+} from './components/table-of-contents/index.ts';
+
 export { default as Tabs } from './components/tabs/index.ts';
 export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs/index.ts';
 
