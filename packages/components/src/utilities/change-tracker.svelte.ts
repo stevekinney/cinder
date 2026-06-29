@@ -14,8 +14,6 @@ import {
   contentEqualsWithFrontMatter,
 } from '@lostgradient/cinder/markdown/pipeline';
 
-import type { ChangeTracker, ChangeTrackerOptions } from './change-tracker.types.ts';
-
 /**
  * Fast non-cryptographic hash for change detection.
  * Uses djb2 algorithm - fast and good distribution.
@@ -45,7 +43,9 @@ function simpleHash(str: string): number {
  * </script>
  * ```
  */
-export function createChangeTracker(options: ChangeTrackerOptions = {}): ChangeTracker {
+export function createChangeTracker(
+  options: import('./change-tracker.types.ts').ChangeTrackerOptions = {},
+): import('./change-tracker.types.ts').ChangeTracker {
   const { debounceMs = 300, includeFrontMatter = false } = options;
 
   // Internal state

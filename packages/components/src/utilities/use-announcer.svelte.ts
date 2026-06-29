@@ -26,8 +26,6 @@
  * ```
  */
 
-import type { Announcer, AnnouncerOptions } from './use-announcer.types.ts';
-
 /**
  * Create a screen reader announcer for use with ARIA live regions.
  *
@@ -72,7 +70,9 @@ import type { Announcer, AnnouncerOptions } from './use-announcer.types.ts';
  * </script>
  * ```
  */
-export function useAnnouncer(options?: AnnouncerOptions): Announcer {
+export function useAnnouncer(
+  options?: import('./use-announcer.types.ts').AnnouncerOptions,
+): import('./use-announcer.types.ts').Announcer {
   const { clearDelay = 1000, debounceMs = 0 } = options ?? {};
 
   let message = $state('');

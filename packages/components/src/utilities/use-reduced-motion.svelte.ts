@@ -1,7 +1,5 @@
 import { MediaQuery } from 'svelte/reactivity';
 
-import type { UseReducedMotion } from './use-reduced-motion.types.ts';
-
 /**
  * Reactive `prefers-reduced-motion: reduce` watcher backed by Svelte's `MediaQuery`.
  * Returns an object with a `.current` boolean that updates whenever the OS-level
@@ -34,7 +32,7 @@ import type { UseReducedMotion } from './use-reduced-motion.types.ts';
  * <button type="button" on:click={scrollToEnd}>Scroll to end</button>
  * ```
  */
-export function useReducedMotion(): UseReducedMotion {
+export function useReducedMotion(): import('./use-reduced-motion.types.ts').UseReducedMotion {
   // On the server, `svelte/reactivity` resolves to a stub whose `MediaQuery`
   // never touches `window`. But when the *client* build of `MediaQuery` is
   // loaded in a context without a DOM (e.g. our SSR-contract test harness runs

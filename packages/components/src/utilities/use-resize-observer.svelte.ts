@@ -1,9 +1,3 @@
-import type {
-  ResizeCallback,
-  ResizeObserverAttachment,
-  UseResizeObserverOptions,
-} from './use-resize-observer.types.ts';
-
 /**
  * Creates an attachment that observes the element with ResizeObserver.
  *
@@ -12,9 +6,9 @@ import type {
  * created.
  */
 export function useResizeObserver(
-  onResize: ResizeCallback,
-  options: UseResizeObserverOptions = {},
-): ResizeObserverAttachment {
+  onResize: import('./use-resize-observer.types.ts').ResizeCallback,
+  options: import('./use-resize-observer.types.ts').UseResizeObserverOptions = {},
+): import('./use-resize-observer.types.ts').ResizeObserverAttachment {
   const { box, enabled = () => true } = options;
 
   return (node: HTMLElement) => {
