@@ -1,5 +1,5 @@
 import BentoCell from './bento-cell.svelte';
-import '../bento-grid/bento-grid.css';
+import './bento-cell.css';
 
 export default BentoCell;
 export type { BentoCellProps } from './bento-cell.types.ts';

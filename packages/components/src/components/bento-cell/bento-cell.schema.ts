@@ -10,7 +10,8 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          minimum: 1,
         },
       ],
       description: 'Number of columns this cell spans.',
@@ -21,7 +22,8 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          minimum: 1,
         },
       ],
       description: 'Number of rows this cell spans.',
@@ -32,7 +34,10 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          not: {
+            const: 0,
+          },
         },
       ],
       description: 'Explicit `grid-column-start` value.',
@@ -43,7 +48,10 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          not: {
+            const: 0,
+          },
         },
       ],
       description: 'Explicit `grid-column-end` value.',
@@ -54,7 +62,10 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          not: {
+            const: 0,
+          },
         },
       ],
       description: 'Explicit `grid-row-start` value.',
@@ -65,7 +76,10 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          not: {
+            const: 0,
+          },
         },
       ],
       description: 'Explicit `grid-row-end` value.',

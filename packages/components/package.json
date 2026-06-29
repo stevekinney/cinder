@@ -509,6 +509,9 @@
       "svelte": "./src/components/bento-cell/bento-cell.variables.ts",
       "default": "./dist/components/bento-cell/bento-cell.variables.js"
     },
+    "./bento-cell/styles": {
+      "default": "./dist/components/bento-cell/bento-cell.css"
+    },
     "./bento-grid": {
       "types": "./dist/components/bento-grid/index.d.ts",
       "browser": "./src/components/bento-grid/index.ts",

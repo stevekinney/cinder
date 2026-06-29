@@ -62,6 +62,7 @@ export interface PropertySchema {
   required?: string[];
   additionalProperties?: boolean | PropertySchema;
   anyOf?: PropertySchema[];
+  not?: PropertySchema;
   minimum?: number;
   minItems?: number;
   description?: string;
@@ -273,6 +274,27 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       columns.anyOf = columns.anyOf.map((entry) =>
         entry.type === 'number' ? { ...entry, type: 'integer', minimum: 1 } : entry,
       );
+    }
+    return;
+  }
+
+  if (componentName === 'bento-cell') {
+    for (const spanProp of ['colSpan', 'rowSpan']) {
+      const prop = schema.properties[spanProp];
+      if (prop?.anyOf) {
+        prop.anyOf = prop.anyOf.map((entry) =>
+          entry.type === 'number' ? { ...entry, type: 'integer', minimum: 1 } : entry,
+        );
+      }
+    }
+
+    for (const lineProp of ['columnStart', 'columnEnd', 'rowStart', 'rowEnd']) {
+      const prop = schema.properties[lineProp];
+      if (prop?.anyOf) {
+        prop.anyOf = prop.anyOf.map((entry) =>
+          entry.type === 'number' ? { ...entry, type: 'integer', not: { const: 0 } } : entry,
+        );
+      }
     }
     return;
   }
