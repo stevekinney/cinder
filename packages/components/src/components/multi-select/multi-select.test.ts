@@ -101,6 +101,22 @@ describe('MultiSelect', () => {
     expect(hidden).toEqual(['apple', 'banana']);
   });
 
+  test('deduplicates selected ids for hidden inputs and count summary', () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      name: 'fruits',
+      items,
+      selectedIds: ['apple', 'apple', 'banana'],
+    });
+
+    const hidden = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="fruits"]'),
+    ).map((input) => input.value);
+
+    expect(hidden).toEqual(['apple', 'banana']);
+    expect(container.querySelector('#fruits')?.textContent).toContain('2 selected');
+  });
+
   test('required validation proxy is invalid when empty and valid when selected', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
@@ -187,6 +203,8 @@ describe('MultiSelect', () => {
     if (!filter) throw new Error('filter input not found');
 
     expect(filter.getAttribute('aria-label')).toBe('Filter options');
+    expect(filter.getAttribute('role')).toBe('combobox');
+    expect(filter.getAttribute('aria-haspopup')).toBe('listbox');
     await fireEvent.keyDown(filter, { key: ' ' });
     expect(container.querySelector('#fruits-option-0')?.getAttribute('aria-selected')).toBe(
       'false',

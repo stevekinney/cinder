@@ -78,7 +78,8 @@
   const filterId = $derived(`${id}-filter`);
   const labelId = $derived(label ? `${id}-label` : undefined);
   const selectedSet = $derived(new Set(selectedIds));
-  const selectedCount = $derived(selectedIds.length);
+  const uniqueSelectedIds = $derived(Array.from(selectedSet));
+  const selectedCount = $derived(uniqueSelectedIds.length);
   const triggerSummary = $derived(selectedCount > 0 ? `${selectedCount} selected` : placeholder);
   let open = $state(false);
   let query = $state('');
@@ -417,9 +418,12 @@
             id={filterId}
             class="cinder-_input-frame cinder-multi-select__filter"
             type="text"
+            role="combobox"
             placeholder="Filter options"
             value={query}
             aria-label="Filter options"
+            aria-haspopup="listbox"
+            aria-expanded={open}
             aria-controls={listboxId}
             aria-activedescendant={activeOptionId}
             oninput={handleFilterInput}
@@ -490,7 +494,7 @@
   />
 
   {#if name}
-    {#each selectedIds as selectedId (selectedId)}
+    {#each uniqueSelectedIds as selectedId (selectedId)}
       <input type="hidden" {name} value={selectedId} disabled={field.disabled} />
     {/each}
   {/if}
