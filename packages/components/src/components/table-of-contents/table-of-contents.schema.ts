@@ -7,6 +7,7 @@ const schema = {
     ariaLabel: {
       type: 'string',
       description: 'Accessible name for the nav landmark.',
+      default: 'On this page',
     },
     class: {
       type: 'string',
@@ -19,10 +20,12 @@ const schema = {
     headingSelector: {
       type: 'string',
       description: 'CSS selector used to gather headings inside the target element.',
+      default: 'h2, h3, h4',
     },
     observeRootMargin: {
       type: 'string',
       description: 'Root margin passed to IntersectionObserver for active-section detection.',
+      default: '0% 0% -70% 0%',
     },
   },
   additionalProperties: false,

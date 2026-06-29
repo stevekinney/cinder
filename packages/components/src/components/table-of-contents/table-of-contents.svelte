@@ -230,6 +230,7 @@
     let targetParentObserver: MutationObserver | null = null;
     let documentObserver: MutationObserver | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let pendingDocumentRefresh: ReturnType<typeof setTimeout> | null = null;
     let observedTarget: HTMLElement | null = null;
     let observedTargetParent: HTMLElement | null = null;
 
@@ -237,6 +238,13 @@
       if (retryTimer !== null) {
         clearTimeout(retryTimer);
         retryTimer = null;
+      }
+    };
+
+    const clearPendingDocumentRefresh = () => {
+      if (pendingDocumentRefresh !== null) {
+        clearTimeout(pendingDocumentRefresh);
+        pendingDocumentRefresh = null;
       }
     };
 
@@ -273,6 +281,7 @@
           childList: true,
           subtree: true,
           characterData: true,
+          attributes: true,
         });
       }
 
@@ -306,34 +315,47 @@
 
       if (targetElement !== null) {
         clearRetryTimer();
-        documentObserver?.disconnect();
-        documentObserver = null;
-      } else if (
-        shouldWatchForTargetBySelector &&
-        documentObserver === null &&
-        typeof MutationObserver !== 'undefined' &&
-        document.body !== null
-      ) {
-        documentObserver = new MutationObserver(() => {
-          refreshDerived();
-        });
-        documentObserver.observe(document.body, {
-          childList: true,
-          subtree: true,
-        });
       } else if (shouldWatchForTargetBySelector && typeof MutationObserver === 'undefined') {
         scheduleRetry();
       } else {
         clearRetryTimer();
-        documentObserver?.disconnect();
-        documentObserver = null;
       }
     };
+
+    const scheduleDocumentRefreshCheck = () => {
+      if (!shouldWatchForTargetBySelector || pendingDocumentRefresh !== null) {
+        return;
+      }
+
+      pendingDocumentRefresh = setTimeout(() => {
+        pendingDocumentRefresh = null;
+        const latestTarget = resolveTargetElement(target);
+        if (latestTarget !== observedTarget) {
+          refreshDerived();
+        }
+      }, 50);
+    };
+
+    if (
+      shouldWatchForTargetBySelector &&
+      typeof MutationObserver !== 'undefined' &&
+      document.body !== null
+    ) {
+      documentObserver = new MutationObserver(() => {
+        scheduleDocumentRefreshCheck();
+      });
+      documentObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+    }
 
     refreshDerived();
 
     return () => {
       clearRetryTimer();
+      clearPendingDocumentRefresh();
       targetObserver?.disconnect();
       targetParentObserver?.disconnect();
       documentObserver?.disconnect();
@@ -358,23 +380,31 @@
 
   const observedIds = $derived.by(() => flattenIds(normalizedItems));
 
-  function parseActivationOffset(rootMargin: string, viewportHeight: number): number {
-    const topToken = rootMargin.trim().split(/\s+/)[0] ?? '0px';
-    if (topToken.endsWith('px')) {
-      const value = Number.parseFloat(topToken);
+  function parseRootMarginToken(token: string, viewportHeight: number): number {
+    if (token.endsWith('px')) {
+      const value = Number.parseFloat(token);
       return Number.isFinite(value) ? value : 0;
     }
-    if (topToken.endsWith('%')) {
-      const percent = Number.parseFloat(topToken);
+    if (token.endsWith('%')) {
+      const percent = Number.parseFloat(token);
       return Number.isFinite(percent) ? (viewportHeight * percent) / 100 : 0;
     }
     return 0;
   }
 
-  function pickActiveId(
-    orderedElements: HTMLElement[],
-    activationOffset: number,
-  ): string | null {
+  function parseActivationOffset(rootMargin: string, viewportHeight: number): number {
+    const tokens = rootMargin
+      .trim()
+      .split(/\s+/)
+      .filter((token) => token.length > 0);
+    const [topToken, rightToken = topToken, bottomToken = topToken] = tokens;
+    const resolvedTopToken = topToken ?? '0px';
+    const resolvedBottomToken = bottomToken ?? rightToken ?? resolvedTopToken;
+    const bottom = parseRootMarginToken(resolvedBottomToken, viewportHeight);
+    return viewportHeight + bottom;
+  }
+
+  function pickActiveId(orderedElements: HTMLElement[], activationOffset: number): string | null {
     let lastPassed: { id: string; top: number } | null = null;
     let firstUpcoming: { id: string; top: number } | null = null;
 
@@ -403,18 +433,21 @@
       return;
     }
 
-    const observedElements = observedIds
-      .map((id) => document.getElementById(id))
-      .filter((element): element is HTMLElement => element instanceof HTMLElement);
+    const collectObservedElements = () =>
+      observedIds
+        .map((id) => document.getElementById(id))
+        .filter((element): element is HTMLElement => element instanceof HTMLElement);
 
-    if (observedElements.length === 0) {
-      activeId = null;
-      return;
-    }
+    let observedElements = collectObservedElements();
 
     let pendingAnimationFrame: number | null = null;
 
     const updateActiveId = () => {
+      if (observedElements.length === 0) {
+        activeId = null;
+        return;
+      }
+
       const elementsInDocumentOrder = [...observedElements].sort((a, b) => {
         if (a === b) {
           return 0;
@@ -464,19 +497,48 @@
       observer.observe(element);
     }
 
+    const syncObservedElements = () => {
+      const nextObservedElements = collectObservedElements();
+      const unchanged =
+        observedElements.length === nextObservedElements.length &&
+        observedElements.every((element, index) => element === nextObservedElements[index]);
+      if (unchanged) {
+        return;
+      }
+
+      observedElements = nextObservedElements;
+      observer.disconnect();
+      for (const element of observedElements) {
+        observer.observe(element);
+      }
+      scheduleActiveIdUpdate();
+    };
+
     window.addEventListener('scroll', scheduleActiveIdUpdate, { passive: true });
     window.addEventListener('resize', scheduleActiveIdUpdate);
+
+    let domObserver: MutationObserver | null = null;
+    if (typeof MutationObserver !== 'undefined' && document.body !== null) {
+      domObserver = new MutationObserver(() => {
+        syncObservedElements();
+      });
+      domObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['id'],
+      });
+    }
+
     updateActiveId();
 
     return () => {
-      if (
-        pendingAnimationFrame !== null &&
-        typeof window.cancelAnimationFrame === 'function'
-      ) {
+      if (pendingAnimationFrame !== null && typeof window.cancelAnimationFrame === 'function') {
         window.cancelAnimationFrame(pendingAnimationFrame);
       }
       window.removeEventListener('scroll', scheduleActiveIdUpdate);
       window.removeEventListener('resize', scheduleActiveIdUpdate);
+      domObserver?.disconnect();
       observer.disconnect();
     };
   });

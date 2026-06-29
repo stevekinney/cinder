@@ -46,7 +46,10 @@ export type TableOfContentsProps = Omit<
 };
 
 export interface TableOfContentsSchemaProps {
-  /** Accessible name for the nav landmark. */
+  /**
+   * Accessible name for the nav landmark.
+   * @default "On this page"
+   */
   ariaLabel?: string;
   /** Additional class names merged with `.cinder-table-of-contents`. */
   class?: string;
@@ -54,8 +57,14 @@ export interface TableOfContentsSchemaProps {
   items?: TableOfContentsItem[];
   /** CSS selector used to find the target heading container in derived mode. */
   target?: string;
-  /** CSS selector used to gather headings inside the target element. */
+  /**
+   * CSS selector used to gather headings inside the target element.
+   * @default "h2, h3, h4"
+   */
   headingSelector?: string;
-  /** Root margin passed to IntersectionObserver for active-section detection. */
+  /**
+   * Root margin passed to IntersectionObserver for active-section detection.
+   * @default "0% 0% -70% 0%"
+   */
   observeRootMargin?: string;
 }

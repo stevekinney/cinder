@@ -2,8 +2,8 @@
 
 @layer cinder.components {
   .cinder-table-of-contents {
-    --cinder-table-of-contents-link-color: var(--cinder-text-secondary);
-    --cinder-table-of-contents-link-active-color: var(--cinder-text-primary);
+    --cinder-table-of-contents-link-color: var(--cinder-text-muted);
+    --cinder-table-of-contents-link-active-color: var(--cinder-text);
     --cinder-table-of-contents-link-indent-step: var(--cinder-space-3);
     --cinder-table-of-contents-link-border-color: var(--cinder-border);
     --cinder-table-of-contents-link-active-border-color: var(--cinder-border-strong);
@@ -11,7 +11,7 @@
     display: block;
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-relaxed);
-    color: var(--cinder-text-secondary);
+    color: var(--cinder-text-muted);
   }
 
   .cinder-table-of-contents__list {

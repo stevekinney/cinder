@@ -16,14 +16,14 @@ On-page heading navigation for long-form content and docs layouts.
 
 <!-- generated:props:start -->
 
-| Prop                | Type       | Required | Default | Description                                                                                                               |
-| ------------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `ariaLabel`         | `string`   | no       | —       | Accessible name for the nav landmark.                                                                                     |
-| `class`             | `string`   | no       | —       | Additional class names merged with `.cinder-table-of-contents`.                                                           |
-| `headingSelector`   | `string`   | no       | —       | CSS selector used to gather headings inside the target element.                                                           |
-| `observeRootMargin` | `string`   | no       | —       | Root margin passed to IntersectionObserver for active-section detection.                                                  |
-| `target`            | `string`   | no       | —       | CSS selector used to find the target heading container in derived mode.                                                   |
-| `items`             | `(opaque)` | no       | —       | Explicit nested TOC items for controlled mode. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop                | Type       | Required | Default           | Description                                                                                                               |
+| ------------------- | ---------- | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `ariaLabel`         | `string`   | no       | `"On this page"`  | Accessible name for the nav landmark.                                                                                     |
+| `class`             | `string`   | no       | —                 | Additional class names merged with `.cinder-table-of-contents`.                                                           |
+| `headingSelector`   | `string`   | no       | `"h2, h3, h4"`    | CSS selector used to gather headings inside the target element.                                                           |
+| `observeRootMargin` | `string`   | no       | `"0% 0% -70% 0%"` | Root margin passed to IntersectionObserver for active-section detection.                                                  |
+| `target`            | `string`   | no       | —                 | CSS selector used to find the target heading container in derived mode.                                                   |
+| `items`             | `(opaque)` | no       | —                 | Explicit nested TOC items for controlled mode. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

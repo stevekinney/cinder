@@ -227,9 +227,9 @@ describe('TableOfContents', () => {
       },
     });
     await Promise.resolve();
-    expect(container.querySelectorAll('a.cinder-table-of-contents__link')[0]?.textContent?.trim()).toBe(
-      'Original',
-    );
+    expect(
+      container.querySelectorAll('a.cinder-table-of-contents__link')[0]?.textContent?.trim(),
+    ).toBe('Original');
 
     const replacementTarget = document.createElement('article');
     replacementTarget.id = 'replace-target';
@@ -240,6 +240,86 @@ describe('TableOfContents', () => {
     const links = container.querySelectorAll('a.cinder-table-of-contents__link');
     expect(links.length).toBe(1);
     expect(links[0]?.getAttribute('href')).toBe('#replacement');
+  });
+
+  test('refreshes derived headings when selector matching target id changes', async () => {
+    const target = document.createElement('article');
+    target.id = 'dynamic-target';
+    target.appendChild(createHeading('dynamic-original', 'Dynamic original', 'h2'));
+    document.body.appendChild(target);
+
+    const { container } = render(TableOfContents, {
+      props: {
+        target: '#dynamic-target',
+      },
+    });
+    await Promise.resolve();
+    expect(
+      container.querySelectorAll('a.cinder-table-of-contents__link')[0]?.getAttribute('href'),
+    ).toBe('#dynamic-original');
+
+    target.id = 'dynamic-target-old';
+    const nextTarget = document.createElement('article');
+    nextTarget.id = 'dynamic-target';
+    nextTarget.appendChild(createHeading('dynamic-new', 'Dynamic new', 'h2'));
+    document.body.appendChild(nextTarget);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    const links = container.querySelectorAll('a.cinder-table-of-contents__link');
+    expect(links.length).toBe(1);
+    expect(links[0]?.getAttribute('href')).toBe('#dynamic-new');
+  });
+
+  test('tracks explicit item headings that mount after initial render', async () => {
+    const { container } = render(TableOfContents, {
+      props: {
+        items: [{ id: 'late-explicit', label: 'Late explicit' }],
+      },
+    });
+
+    expect(container.querySelector('a[aria-current="location"]')).toBeNull();
+
+    const lateHeading = createHeading('late-explicit', 'Late explicit', 'h2');
+    lateHeading.getBoundingClientRect = () => ({ top: -12 }) as DOMRect;
+    document.body.appendChild(lateHeading);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const current = container.querySelector('a[aria-current="location"]');
+    expect(current?.getAttribute('href')).toBe('#late-explicit');
+  });
+
+  test('uses root margin bottom edge for active heading threshold', async () => {
+    const first = createHeading('first-margin', 'First');
+    first.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
+    const second = createHeading('second-margin', 'Second');
+    second.getBoundingClientRect = () => ({ top: 350 }) as DOMRect;
+    document.body.appendChild(first);
+    document.body.appendChild(second);
+
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: 500,
+    });
+
+    render(TableOfContents, {
+      props: {
+        items: [
+          { id: 'first-margin', label: 'First' },
+          { id: 'second-margin', label: 'Second' },
+        ],
+        observeRootMargin: '0px 0px -100px 0px',
+      },
+    });
+    await Promise.resolve();
+
+    const current = document.querySelector('a[aria-current="location"]');
+    expect(current?.getAttribute('href')).toBe('#second-margin');
+
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: originalInnerHeight,
+    });
   });
 
   test('clicking a link scrolls to the heading and updates location hash', async () => {
