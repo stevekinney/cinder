@@ -1,0 +1,86 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-meter {
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .cinder-meter__track {
+    position: relative;
+    width: 100%;
+    background: var(--cinder-surface-inset);
+    border-radius: var(--cinder-radius-full);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .cinder-meter[data-cinder-size='sm'] .cinder-meter__track {
+    height: 0.25rem;
+  }
+
+  .cinder-meter[data-cinder-size='md'] .cinder-meter__track {
+    height: 0.5rem;
+  }
+
+  .cinder-meter[data-cinder-size='lg'] .cinder-meter__track {
+    height: 0.75rem;
+  }
+
+  .cinder-meter__segments {
+    position: absolute;
+    inset: 0;
+    display: flex;
+  }
+
+  .cinder-meter__segment {
+    block-size: 100%;
+    inline-size: 0;
+  }
+
+  .cinder-meter__segment--low {
+    background: var(--cinder-warning);
+    opacity: 0.32;
+  }
+
+  .cinder-meter__segment--optimum {
+    background: var(--cinder-success);
+    opacity: 0.28;
+  }
+
+  .cinder-meter__segment--high {
+    background: var(--cinder-danger);
+    opacity: 0.34;
+  }
+
+  .cinder-meter__fill {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: 100%;
+    background: var(--cinder-accent);
+    border-radius: inherit;
+    transform-origin: center left;
+    transform: scaleX(var(--_cinder-meter-progress, 0));
+    transition: transform var(--cinder-duration-moderate) var(--cinder-ease-in-out);
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-meter__fill {
+      transition: none;
+    }
+  }
+
+  .cinder-meter[data-cinder-state='low'] .cinder-meter__fill {
+    background: var(--cinder-warning);
+  }
+
+  .cinder-meter[data-cinder-state='optimum'] .cinder-meter__fill {
+    background: var(--cinder-success);
+  }
+
+  .cinder-meter[data-cinder-state='high'] .cinder-meter__fill {
+    background: var(--cinder-danger);
+  }
+}
