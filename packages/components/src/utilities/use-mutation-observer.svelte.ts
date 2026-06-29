@@ -1,9 +1,3 @@
-import type {
-  MutationCallback,
-  MutationObserverAttachment,
-  UseMutationObserverOptions,
-} from './use-mutation-observer.types.ts';
-
 /**
  * Creates an attachment that observes the element with MutationObserver.
  *
@@ -12,9 +6,9 @@ import type {
  * create a new attachment instance so a new observer is created.
  */
 export function useMutationObserver(
-  onMutate: MutationCallback,
-  options: UseMutationObserverOptions = {},
-): MutationObserverAttachment {
+  onMutate: import('./use-mutation-observer.types.ts').MutationCallback,
+  options: import('./use-mutation-observer.types.ts').UseMutationObserverOptions = {},
+): import('./use-mutation-observer.types.ts').MutationObserverAttachment {
   const {
     childList,
     attributes,

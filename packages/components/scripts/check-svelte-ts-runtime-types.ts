@@ -1,5 +1,5 @@
 /**
- * Guard shared utility rune modules against exported type syntax.
+ * Guard shared utility rune modules against type-only import/export syntax.
  *
  * Cinder publishes source-backed `browser`/`svelte` conditions for component
  * graphs. Vite's dependency optimizer can hand reachable `.svelte.ts` utility
@@ -36,6 +36,31 @@ function collectViolations(sourceFile: ts.SourceFile, filePath: string): Violati
   const violations: Violation[] = [];
 
   for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement) && statement.importClause?.isTypeOnly) {
+      violations.push({
+        filePath,
+        line: lineFor(sourceFile, statement.getStart(sourceFile)),
+        kind: 'import type',
+      });
+      continue;
+    }
+
+    if (
+      ts.isImportDeclaration(statement) &&
+      statement.importClause?.namedBindings &&
+      ts.isNamedImports(statement.importClause.namedBindings)
+    ) {
+      for (const element of statement.importClause.namedBindings.elements) {
+        if (element.isTypeOnly) {
+          violations.push({
+            filePath,
+            line: lineFor(sourceFile, element.getStart(sourceFile)),
+            kind: 'import { type ... }',
+          });
+        }
+      }
+    }
+
     if (ts.isTypeAliasDeclaration(statement) && hasExportModifier(statement)) {
       violations.push({
         filePath,
@@ -108,14 +133,14 @@ async function main(): Promise<void> {
   const violations = await scan();
   if (violations.length === 0) {
     process.stdout.write(
-      'check-svelte-ts-runtime-types — OK (shared utility .svelte.ts runtime modules export values only).\n',
+      'check-svelte-ts-runtime-types — OK (shared utility .svelte.ts runtime modules avoid type-only import/export syntax).\n',
     );
     return;
   }
 
   process.stderr.write(
-    'check-svelte-ts-runtime-types — exported type syntax found in shared utility .svelte.ts runtime modules.\n' +
-      'Move exported type contracts to sibling .types.ts files and re-export them from the package barrel there.\n\n',
+    'check-svelte-ts-runtime-types — type-only import/export syntax found in shared utility .svelte.ts runtime modules.\n' +
+      'Move type contracts to sibling .types.ts files and reference them without type-only import/export statements.\n\n',
   );
   for (const violation of violations) {
     process.stderr.write(`  ${violation.filePath}:${violation.line} (${violation.kind})\n`);
