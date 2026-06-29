@@ -36,7 +36,12 @@
   const normalizedLabel = $derived(
     typeof label === 'string' && label.trim().length > 0 ? label.trim() : undefined,
   );
-  const role = $derived(normalizedLabel ? 'region' : undefined);
+  const ariaLabelledby = $derived((rest as { 'aria-labelledby'?: string })['aria-labelledby']);
+  const hasAccessibleName = $derived(
+    Boolean(normalizedLabel) ||
+      (typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0),
+  );
+  const role = $derived(hasAccessibleName ? 'region' : undefined);
 </script>
 
 <div

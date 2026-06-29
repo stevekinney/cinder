@@ -48,6 +48,7 @@
   $effect(() => {
     let cancelled = false;
     generationFailed = false;
+    svgMarkup = '';
 
     void QRCode.toString(value, {
       type: 'svg',

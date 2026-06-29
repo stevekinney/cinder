@@ -4,7 +4,10 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type MarqueeDirection = 'horizontal' | 'vertical';
 
 /** Props for the Marquee component. */
-export type MarqueeProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'class'> & {
+export type MarqueeProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'aria-label' | 'children' | 'class' | 'role'
+> & {
   /** Scroll direction for the looping track. @default "horizontal" */
   direction?: MarqueeDirection;
   /** Animation duration for one complete loop (valid CSS time). @default "24s" */

@@ -71,13 +71,26 @@ describe('Marquee', () => {
     expect(element?.getAttribute('role')).toBe('region');
   });
 
-  test('reduced-motion CSS disables animation and hides duplicated track', async () => {
+  test('applies region role when aria-labelledby is provided without label', () => {
+    const { container } = render(Marquee, {
+      props: {
+        'aria-labelledby': 'marquee-heading',
+        children: textSnippet('content'),
+      } as never,
+    });
+    const element = container.querySelector('.cinder-marquee');
+    expect(element?.getAttribute('aria-labelledby')).toBe('marquee-heading');
+    expect(element?.getAttribute('role')).toBe('region');
+  });
+
+  test('reduced-motion CSS disables animation, restores overflow access, and hides duplicate', async () => {
     const css = await Bun.file(marqueeCssPath).text();
     const reducedMotionBlock = css.match(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-marquee__item\[aria-hidden='true'\]\s*\{[\s\S]*?\}\s*\}/,
     )?.[0];
 
     expect(reducedMotionBlock).toContain('animation: none');
+    expect(reducedMotionBlock).toContain('overflow: auto');
     expect(reducedMotionBlock).toContain('display: none');
   });
 });
