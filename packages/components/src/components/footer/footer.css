@@ -4,7 +4,7 @@
     display: grid;
     gap: var(--cinder-space-6);
     padding: var(--cinder-space-6) var(--cinder-space-4);
-    border-top: 1px solid var(--cinder-border-subtle);
+    border-top: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface);
   }
 
@@ -22,7 +22,7 @@
 
   .cinder-footer__brand-title {
     margin: 0;
-    font: var(--cinder-font-semibold) var(--cinder-text-lg) / 1.3 var(--cinder-font-family);
+    font: var(--cinder-font-semibold) var(--cinder-text-lg) / 1.3 var(--cinder-font-sans);
   }
 
   .cinder-footer__brand-description {
@@ -39,7 +39,7 @@
 
   .cinder-footer__group-title {
     margin: 0 0 var(--cinder-space-2);
-    font: var(--cinder-font-semibold) var(--cinder-text-sm) / 1.3 var(--cinder-font-family);
+    font: var(--cinder-font-semibold) var(--cinder-text-sm) / 1.3 var(--cinder-font-sans);
   }
 
   .cinder-footer__list {
@@ -82,7 +82,7 @@
     align-items: center;
     flex-wrap: wrap;
     padding-top: var(--cinder-space-4);
-    border-top: 1px solid var(--cinder-border-subtle);
+    border-top: 1px solid var(--cinder-border-muted);
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
   }

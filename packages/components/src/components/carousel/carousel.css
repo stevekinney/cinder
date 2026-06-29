@@ -8,7 +8,7 @@
   .cinder-carousel__viewport {
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--cinder-border-subtle);
+    border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
   }
@@ -24,12 +24,12 @@
     border-radius: var(--cinder-radius-md);
     object-fit: cover;
     aspect-ratio: 16 / 9;
-    background: var(--cinder-surface-muted);
+    background: var(--cinder-surface-inset);
   }
 
   .cinder-carousel__title {
     margin: 0;
-    font: var(--cinder-font-semibold) var(--cinder-text-lg) / 1.3 var(--cinder-font-family);
+    font: var(--cinder-font-semibold) var(--cinder-text-lg) / 1.3 var(--cinder-font-sans);
   }
 
   .cinder-carousel__description {
@@ -55,7 +55,7 @@
   .cinder-carousel__control,
   .cinder-carousel__dot {
     appearance: none;
-    border: 1px solid var(--cinder-border-subtle);
+    border: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface);
     color: inherit;
     border-radius: var(--cinder-radius-full);

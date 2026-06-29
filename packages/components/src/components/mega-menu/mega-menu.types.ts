@@ -16,7 +16,6 @@ export type MegaMenuSection = {
 export type MegaMenuItem = {
   id: string;
   label: string;
-  href?: string;
   description?: string;
   sections?: MegaMenuSection[];
   submenu?: MegaMenuItem[];

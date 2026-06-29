@@ -30,6 +30,7 @@
   import type { MegaMenuItem, MegaMenuProps } from './mega-menu.types.ts';
 
   let {
+    id: providedId,
     items,
     openOnHover = false,
     showViewport = true,
@@ -67,15 +68,16 @@
       .replaceAll(/[^a-z0-9_-]+/g, '-')
       .replaceAll(/^-+|-+$/g, '');
   }
+  const instanceId = $derived(safeDomId(providedId ?? generatedId) || safeDomId(generatedId) || 'menu');
 
   function triggerId(itemId: string): string {
     const normalized = safeDomId(itemId) || 'item';
-    return `cinder-mega-menu-${generatedId}-trigger-${normalized}`;
+    return `cinder-mega-menu-${instanceId}-trigger-${normalized}`;
   }
 
   function contentId(itemId: string): string {
     const normalized = safeDomId(itemId) || 'item';
-    return `cinder-mega-menu-${generatedId}-content-${normalized}`;
+    return `cinder-mega-menu-${instanceId}-content-${normalized}`;
   }
 
   function updateIndicator() {
