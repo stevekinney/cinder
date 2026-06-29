@@ -70,6 +70,22 @@ describe('MultiSelect', () => {
     expect(container.querySelector('.cinder-multi-select__count')).toBeNull();
   });
 
+  test('clear button returns focus to trigger when selections are removed', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      selectedIds: ['apple'],
+    });
+
+    const clearButton = container.querySelector<HTMLButtonElement>('.cinder-multi-select__clear');
+    const trigger = container.querySelector<HTMLButtonElement>('#fruits');
+    if (!clearButton || !trigger) throw new Error('clear controls not found');
+
+    clearButton.focus();
+    await fireEvent.click(clearButton);
+    expect(document.activeElement).toBe(trigger);
+  });
+
   test('clear button does not close an open menu', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',

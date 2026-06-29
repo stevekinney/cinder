@@ -196,6 +196,7 @@
     event?.stopPropagation();
     if (field.disabled || readonly || selectedIds.length === 0) return;
     setSelectedIds([]);
+    triggerElement?.focus();
   }
 
   function moveActive(delta: 1 | -1): void {
