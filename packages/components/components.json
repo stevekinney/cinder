@@ -2850,6 +2850,37 @@
       }
     },
     {
+      "name": "Meter",
+      "id": "meter",
+      "import": "@lostgradient/cinder/meter",
+      "exportName": "Meter",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Bounded measurement gauge with meter semantics for readings like battery, quota, CPU, and memory utilization.",
+      "tags": ["feedback", "measurement", "gauge"],
+      "useWhen": [
+        "Showing a fluctuating value within a known minimum and maximum range.",
+        "Communicating low/optimal/high regions of a bounded measurement."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Reporting task completion over time such as uploads/imports.",
+          "alternative": "progress"
+        }
+      ],
+      "related": ["progress", "stat", "slider"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/meter/schema",
+        "variables": "@lostgradient/cinder/meter/variables",
+        "examples": "@lostgradient/cinder/meter/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Meter"
+      }
+    },
+    {
       "name": "Modal",
       "id": "modal",
       "import": "@lostgradient/cinder/modal",
@@ -3227,13 +3258,17 @@
       ],
       "avoidWhen": [
         {
+          "reason": "Showing a bounded measurement gauge (battery, CPU, quota) that is not task completion.",
+          "alternative": "meter"
+        },
+        {
           "reason": "Showing a small inline busy state next to a control — use spinner."
         },
         {
           "reason": "Reserving placeholder space for incoming content — use skeleton."
         }
       ],
-      "related": ["spinner", "skeleton"],
+      "related": ["meter", "spinner", "skeleton"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
