@@ -9,7 +9,7 @@
   import { BentoGrid } from '@lostgradient/cinder/bento-grid';
 </script>
 
-<BentoGrid columns={4} gap="var(--cinder-space-4)" aria-label="Product highlights">
+<BentoGrid as="section" columns={4} gap="var(--cinder-space-4)" aria-label="Product highlights">
   <BentoGrid.Cell colSpan={2} rowSpan={2}>
     <Card>Realtime analytics</Card>
   </BentoGrid.Cell>

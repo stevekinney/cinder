@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Asymmetric bento mosaic",
       "description": "BentoGrid + BentoGrid.Cell creates a deliberate feature-tile mosaic with row and column spans.",
-      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n  import { BentoGrid } from '@lostgradient/cinder/bento-grid';\n</script>\n\n<BentoGrid columns={4} gap=\"var(--cinder-space-4)\" aria-label=\"Product highlights\">\n  <BentoGrid.Cell colSpan={2} rowSpan={2}>\n    <Card>Realtime analytics</Card>\n  </BentoGrid.Cell>\n  <BentoGrid.Cell colSpan={2}>\n    <Card>Workflow automation</Card>\n  </BentoGrid.Cell>\n  <BentoGrid.Cell rowSpan={2}>\n    <Card>Compliance controls</Card>\n  </BentoGrid.Cell>\n  <BentoGrid.Cell>\n    <Card>Usage insights</Card>\n  </BentoGrid.Cell>\n  <BentoGrid.Cell>\n    <Card>Team collaboration</Card>\n  </BentoGrid.Cell>\n</BentoGrid>\n"
+      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n  import { BentoGrid } from '@lostgradient/cinder/bento-grid';\n</script>\n\n<BentoGrid as=\"section\" columns={4} gap=\"var(--cinder-space-4)\" aria-label=\"Product highlights\">\n  <BentoGrid.Cell colSpan={2} rowSpan={2}>\n    <Card>Realtime analytics</Card>\n  </BentoGrid.Cell>\n  <BentoGrid.Cell colSpan={2}>\n    <Card>Workflow automation</Card>\n  </BentoGrid.Cell>\n  <BentoGrid.Cell rowSpan={2}>\n    <Card>Compliance controls</Card>\n  </BentoGrid.Cell>\n  <BentoGrid.Cell>\n    <Card>Usage insights</Card>\n  </BentoGrid.Cell>\n  <BentoGrid.Cell>\n    <Card>Team collaboration</Card>\n  </BentoGrid.Cell>\n</BentoGrid>\n"
     }
   ]
 }
