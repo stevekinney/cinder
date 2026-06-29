@@ -488,6 +488,58 @@
       "import": "./src/components/bar-chart/bar-chart.examples.json",
       "default": "./src/components/bar-chart/bar-chart.examples.json"
     },
+    "./bento-cell": {
+      "types": "./dist/components/bento-cell/index.d.ts",
+      "browser": "./src/components/bento-cell/index.ts",
+      "node": "./dist/server/components/bento-cell/index.js",
+      "svelte": "./src/components/bento-cell/index.ts",
+      "default": "./dist/components/bento-cell/index.js"
+    },
+    "./bento-cell/schema": {
+      "types": "./dist/components/bento-cell/bento-cell.schema.d.ts",
+      "browser": "./src/components/bento-cell/bento-cell.schema.ts",
+      "node": "./dist/server/components/bento-cell/bento-cell.schema.js",
+      "svelte": "./src/components/bento-cell/bento-cell.schema.ts",
+      "default": "./dist/components/bento-cell/bento-cell.schema.js"
+    },
+    "./bento-cell/variables": {
+      "types": "./dist/components/bento-cell/bento-cell.variables.d.ts",
+      "browser": "./src/components/bento-cell/bento-cell.variables.ts",
+      "node": "./dist/server/components/bento-cell/bento-cell.variables.js",
+      "svelte": "./src/components/bento-cell/bento-cell.variables.ts",
+      "default": "./dist/components/bento-cell/bento-cell.variables.js"
+    },
+    "./bento-cell/styles": {
+      "default": "./dist/components/bento-cell/bento-cell.css"
+    },
+    "./bento-grid": {
+      "types": "./dist/components/bento-grid/index.d.ts",
+      "browser": "./src/components/bento-grid/index.ts",
+      "node": "./dist/server/components/bento-grid/index.js",
+      "svelte": "./src/components/bento-grid/index.ts",
+      "default": "./dist/components/bento-grid/index.js"
+    },
+    "./bento-grid/schema": {
+      "types": "./dist/components/bento-grid/bento-grid.schema.d.ts",
+      "browser": "./src/components/bento-grid/bento-grid.schema.ts",
+      "node": "./dist/server/components/bento-grid/bento-grid.schema.js",
+      "svelte": "./src/components/bento-grid/bento-grid.schema.ts",
+      "default": "./dist/components/bento-grid/bento-grid.schema.js"
+    },
+    "./bento-grid/variables": {
+      "types": "./dist/components/bento-grid/bento-grid.variables.d.ts",
+      "browser": "./src/components/bento-grid/bento-grid.variables.ts",
+      "node": "./dist/server/components/bento-grid/bento-grid.variables.js",
+      "svelte": "./src/components/bento-grid/bento-grid.variables.ts",
+      "default": "./dist/components/bento-grid/bento-grid.variables.js"
+    },
+    "./bento-grid/styles": {
+      "default": "./dist/components/bento-grid/bento-grid.css"
+    },
+    "./bento-grid/examples": {
+      "import": "./src/components/bento-grid/bento-grid.examples.json",
+      "default": "./src/components/bento-grid/bento-grid.examples.json"
+    },
     "./breadcrumbs": {
       "types": "./dist/components/breadcrumbs/index.d.ts",
       "browser": "./src/components/breadcrumbs/index.ts",

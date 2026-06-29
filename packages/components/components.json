@@ -552,6 +552,64 @@
       }
     },
     {
+      "name": "BentoCell",
+      "id": "bento-cell",
+      "import": "@lostgradient/cinder/bento-cell",
+      "exportName": "BentoCell",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Optional placement child for BentoGrid that controls row and column spans or explicit track placement.",
+      "tags": ["layout", "grid", "bento"],
+      "useWhen": [
+        "A tile in BentoGrid needs to span multiple tracks or start at a specific track."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Every tile can use default auto-placement inside BentoGrid.",
+          "alternative": "bento-grid"
+        }
+      ],
+      "related": ["bento-grid", "grid-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/bento-cell/schema",
+        "variables": "@lostgradient/cinder/bento-cell/variables"
+      }
+    },
+    {
+      "name": "BentoGrid",
+      "id": "bento-grid",
+      "import": "@lostgradient/cinder/bento-grid",
+      "exportName": "BentoGrid",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "CSS grid container for deliberate asymmetric bento mosaics with optional single-column collapse at narrow widths.",
+      "tags": ["layout", "grid", "bento"],
+      "useWhen": [
+        "Building feature mosaics where highlight tiles span rows or columns in a controlled layout.",
+        "Keeping bento placement declarative by pairing BentoGrid with BentoGrid.Cell or BentoCell children."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Packing variable-height content automatically - use masonry instead.",
+          "alternative": "masonry"
+        },
+        {
+          "reason": "You only need uniform tracks without feature-tile spans - use grid instead.",
+          "alternative": "grid"
+        }
+      ],
+      "related": ["bento-cell", "grid", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/bento-grid/schema",
+        "variables": "@lostgradient/cinder/bento-grid/variables",
+        "examples": "@lostgradient/cinder/bento-grid/examples"
+      }
+    },
+    {
       "name": "Breadcrumbs",
       "id": "breadcrumbs",
       "import": "@lostgradient/cinder/breadcrumbs",

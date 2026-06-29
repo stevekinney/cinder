@@ -1,0 +1,17 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-bento-cell {
+    grid-column-start: var(--cinder-bento-cell-column-start, auto);
+    grid-column-end: var(--cinder-bento-cell-column-end, auto);
+    grid-row-start: var(--cinder-bento-cell-row-start, auto);
+    grid-row-end: var(--cinder-bento-cell-row-end, auto);
+  }
+
+  .cinder-bento-cell[data-cinder-col-span='true'] {
+    grid-column-end: span var(--cinder-bento-cell-col-span);
+  }
+
+  .cinder-bento-cell[data-cinder-row-span='true'] {
+    grid-row-end: span var(--cinder-bento-cell-row-span);
+  }
+}
