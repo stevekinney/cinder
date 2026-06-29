@@ -380,7 +380,6 @@
       aria-expanded={open}
       aria-controls={listboxId}
       aria-required={field.required || undefined}
-      aria-activedescendant={open && !filterable ? activeOptionId : undefined}
       data-cinder-open={open || undefined}
       data-cinder-readonly={readonly || undefined}
       onclick={() => (open ? closeMenu() : openMenu())}
@@ -435,7 +434,7 @@
           aria-multiselectable="true"
           aria-labelledby={labelId}
           aria-label={label ? undefined : 'Options'}
-          aria-activedescendant={activeOptionId}
+          aria-activedescendant={filterable ? undefined : activeOptionId}
           tabindex={filterable ? -1 : 0}
           onkeydown={handleListNavigationKeydown}
         >

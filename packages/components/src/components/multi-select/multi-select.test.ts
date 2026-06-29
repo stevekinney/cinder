@@ -264,6 +264,8 @@ describe('MultiSelect', () => {
     if (!listbox) throw new Error('listbox not found');
     await fireEvent.keyDown(listbox, { key: ' ' });
     expect(container.querySelector('#fruits-option-0')?.getAttribute('aria-selected')).toBe('true');
+    expect(listbox.getAttribute('aria-activedescendant')).toBe('fruits-option-0');
+    expect(trigger.getAttribute('aria-activedescendant')).toBeNull();
   });
 
   test('disabled option cannot be selected', async () => {
@@ -341,5 +343,22 @@ describe('MultiSelect', () => {
     const trigger = container.querySelector<HTMLButtonElement>('#fruits');
     expect(trigger?.getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(outside);
+  });
+
+  test('filterable mode keeps active descendant on filter input only', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+    await openMenu(container);
+
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    const listbox = container.querySelector<HTMLElement>('[role="listbox"]');
+    if (!filter || !listbox) throw new Error('filterable controls not found');
+
+    await fireEvent.keyDown(filter, { key: 'ArrowDown' });
+    expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-1');
+    expect(listbox.getAttribute('aria-activedescendant')).toBeNull();
   });
 });
