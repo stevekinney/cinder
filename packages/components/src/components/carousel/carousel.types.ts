@@ -11,7 +11,7 @@ export type CarouselSlideContent = {
   description?: string;
   /** Optional image source rendered at the top of the slide. */
   imageSrc?: string;
-  /** Required alt text whenever `imageSrc` is provided. */
+  /** Optional alt text; falls back to `title` and then `label` when omitted. */
   imageAlt?: string;
   /** Optional destination URL for the slide body. */
   href?: string;

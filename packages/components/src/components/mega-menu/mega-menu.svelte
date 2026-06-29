@@ -241,7 +241,7 @@
     const closeIfOutside = (event: MouseEvent) => {
       if (!navElement) return;
       if (event.target instanceof Node && navElement.contains(event.target)) return;
-      closeMenu(true);
+      closeMenu();
     };
     document.addEventListener('mousemove', closeIfOutside, true);
     return () => document.removeEventListener('mousemove', closeIfOutside, true);
@@ -252,7 +252,7 @@
     const closeOnOutsidePointer = (event: MouseEvent) => {
       if (!navElement) return;
       if (event.target instanceof Node && navElement.contains(event.target)) return;
-      closeMenu(true);
+      closeMenu();
     };
     document.addEventListener('mousedown', closeOnOutsidePointer, true);
     return () => document.removeEventListener('mousedown', closeOnOutsidePointer, true);

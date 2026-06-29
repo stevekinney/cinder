@@ -277,8 +277,11 @@ describe('discoverSidebarComponents', () => {
     // context-only and does not add a playground sidebar entry.
     // Stardust agent-ops adds approval-card as a standalone approval family with
     // examples, bringing the combined measured sidebar ceiling to 138.
+    // Issue #480 adds Carousel, Footer, and MegaMenu examples, each of which now
+    // passes the `exampleCount > 0` sidebar filter, bringing the measured
+    // ceiling to 141.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(138);
+    expect(sidebar.length).toBeLessThanOrEqual(141);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it

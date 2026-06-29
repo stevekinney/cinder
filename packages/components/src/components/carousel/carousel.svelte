@@ -158,24 +158,33 @@
             aria-roledescription="slide"
             aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
           >
-            {#if slide.imageSrc}
-              <img
-                class="cinder-carousel__image"
-                src={slide.imageSrc}
-                alt={slide.imageAlt ?? slide.title ?? slide.label}
-              />
-            {/if}
-
             {#if slide.href}
               <a href={slide.href}>
+                {#if slide.imageSrc}
+                  <img
+                    class="cinder-carousel__image"
+                    src={slide.imageSrc}
+                    alt={slide.imageAlt ?? slide.title ?? slide.label}
+                  />
+                {/if}
                 {#if slide.title}
                   <h3 class="cinder-carousel__title">{slide.title}</h3>
                 {/if}
                 {#if slide.description}
                   <p class="cinder-carousel__description">{slide.description}</p>
                 {/if}
+                {#if !slide.imageSrc && !slide.title && !slide.description}
+                  <p class="cinder-carousel__description">{slide.label}</p>
+                {/if}
               </a>
             {:else}
+              {#if slide.imageSrc}
+                <img
+                  class="cinder-carousel__image"
+                  src={slide.imageSrc}
+                  alt={slide.imageAlt ?? slide.title ?? slide.label}
+                />
+              {/if}
               {#if slide.title}
                 <h3 class="cinder-carousel__title">{slide.title}</h3>
               {/if}

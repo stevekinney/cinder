@@ -55,9 +55,11 @@
     text-decoration: none;
   }
 
-  .cinder-footer__link:hover {
-    color: var(--cinder-text);
-    text-decoration: underline;
+  @media (hover: hover) {
+    .cinder-footer__link:hover {
+      color: var(--cinder-text);
+      text-decoration: underline;
+    }
   }
 
   .cinder-footer__link:focus-visible {
