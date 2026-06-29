@@ -159,7 +159,7 @@
             aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
           >
             {#if slide.href}
-              <a href={slide.href}>
+              <a class="cinder-carousel__link" href={slide.href}>
                 {#if slide.imageSrc}
                   <img
                     class="cinder-carousel__image"
@@ -190,6 +190,9 @@
               {/if}
               {#if slide.description}
                 <p class="cinder-carousel__description">{slide.description}</p>
+              {/if}
+              {#if !slide.imageSrc && !slide.title && !slide.description}
+                <p class="cinder-carousel__description">{slide.label}</p>
               {/if}
             {/if}
           </article>

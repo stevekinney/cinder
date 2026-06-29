@@ -19,6 +19,13 @@
     padding: var(--cinder-space-4);
   }
 
+  .cinder-carousel__link {
+    display: grid;
+    gap: var(--cinder-space-3);
+    color: inherit;
+    text-decoration: none;
+  }
+
   .cinder-carousel__image {
     width: 100%;
     border-radius: var(--cinder-radius-md);
