@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "mega-menu",
+  "import": "@lostgradient/cinder/mega-menu",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Mega menu",
+      "description": "Top-level trigger/content navigation with viewport, indicator, and nested submenu.",
+      "code": "<script lang=\"ts\">\n  import { MegaMenu } from '@lostgradient/cinder/mega-menu';\n\n  const items = [\n    {\n      id: 'products',\n      label: 'Products',\n      sections: [\n        {\n          id: 'platform',\n          title: 'Platform',\n          links: [\n            {\n              id: 'components',\n              label: 'Components',\n              href: '/components',\n              description: 'Accessible building blocks for app UIs.',\n            },\n            {\n              id: 'tokens',\n              label: 'Design tokens',\n              href: '/tokens',\n              description: 'Color, typography, spacing, and motion tokens.',\n            },\n          ],\n        },\n      ],\n      submenu: [\n        {\n          id: 'frontend',\n          label: 'Frontend',\n          sections: [\n            {\n              id: 'frontend-links',\n              title: 'Frontend',\n              links: [\n                { id: 'svelte', label: 'Svelte', href: '/integrations/svelte' },\n                { id: 'react', label: 'React', href: '/integrations/react' },\n              ],\n            },\n          ],\n        },\n        {\n          id: 'backend',\n          label: 'Backend',\n          sections: [\n            {\n              id: 'backend-links',\n              title: 'Backend',\n              links: [\n                { id: 'apis', label: 'APIs', href: '/platform/apis' },\n                { id: 'events', label: 'Events', href: '/platform/events' },\n              ],\n            },\n          ],\n        },\n      ],\n    },\n    {\n      id: 'resources',\n      label: 'Resources',\n      sections: [\n        {\n          id: 'learn',\n          title: 'Learn',\n          links: [\n            { id: 'docs', label: 'Documentation', href: '/docs' },\n            { id: 'guides', label: 'Guides', href: '/guides' },\n          ],\n        },\n      ],\n    },\n  ];\n</script>\n\n<MegaMenu {items} openOnHover showViewport showIndicator />\n"
+    }
+  ]
+}

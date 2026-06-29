@@ -1,0 +1,122 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-carousel {
+    display: grid;
+    gap: var(--cinder-space-3);
+  }
+
+  .cinder-carousel__viewport {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--cinder-border-subtle);
+    border-radius: var(--cinder-radius-lg);
+    background: var(--cinder-surface-raised);
+  }
+
+  .cinder-carousel__slide {
+    display: grid;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-4);
+  }
+
+  .cinder-carousel__image {
+    width: 100%;
+    border-radius: var(--cinder-radius-md);
+    object-fit: cover;
+    aspect-ratio: 16 / 9;
+    background: var(--cinder-surface-muted);
+  }
+
+  .cinder-carousel__title {
+    margin: 0;
+    font: var(--cinder-font-semibold) var(--cinder-text-lg) / 1.3 var(--cinder-font-family);
+  }
+
+  .cinder-carousel__description {
+    margin: 0;
+    color: var(--cinder-text-muted);
+    line-height: 1.5;
+  }
+
+  .cinder-carousel__controls {
+    display: flex;
+    gap: var(--cinder-space-2);
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .cinder-carousel__nav {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-carousel__control,
+  .cinder-carousel__dot {
+    appearance: none;
+    border: 1px solid var(--cinder-border-subtle);
+    background: var(--cinder-surface);
+    color: inherit;
+    border-radius: var(--cinder-radius-full);
+    cursor: pointer;
+  }
+
+  .cinder-carousel__control {
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border-radius: var(--cinder-radius-md);
+    font: inherit;
+  }
+
+  .cinder-carousel__dots {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-carousel__dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    padding: 0;
+  }
+
+  .cinder-carousel__dot[aria-current='true'] {
+    background: var(--cinder-accent);
+    border-color: var(--cinder-accent);
+  }
+
+  @media (hover: hover) {
+    .cinder-carousel__control:hover,
+    .cinder-carousel__dot:hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  .cinder-carousel__control:focus-visible,
+  .cinder-carousel__dot:focus-visible {
+    /* cinder-focus-ring-owner: parent */
+    outline: none;
+    box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-carousel__control:focus-visible,
+    .cinder-carousel__dot:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: var(--cinder-ring-width);
+      box-shadow: none;
+    }
+  }
+
+  .cinder-carousel__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
