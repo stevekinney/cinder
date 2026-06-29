@@ -239,4 +239,28 @@ describe('Meter', () => {
 
     expect(el?.getAttribute('data-cinder-state')).toBe('optimum');
   });
+
+  test('reaches optimum at max edge for high-is-better when high is omitted', () => {
+    const { container } = render(Meter, {
+      value: 100,
+      low: 30,
+      optimum: 100,
+      ariaLabel: 'Battery level',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('data-cinder-state')).toBe('optimum');
+  });
+
+  test('reaches high at max edge for low-is-better when high is omitted', () => {
+    const { container } = render(Meter, {
+      value: 100,
+      low: 30,
+      optimum: 0,
+      ariaLabel: 'Latency',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('data-cinder-state')).toBe('high');
+  });
 });

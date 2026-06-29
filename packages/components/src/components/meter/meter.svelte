@@ -91,12 +91,12 @@
     if (!hasThresholds) return undefined;
     if (effectiveOptimum <= segmentLow) {
       if (clampedValue <= segmentLow) return 'optimum';
-      if (clampedValue <= segmentHigh) return 'low';
+      if (clampedValue < segmentHigh) return 'low';
       return 'high';
     }
     if (effectiveOptimum >= segmentHigh) {
-      if (clampedValue < segmentLow) return 'high';
-      if (clampedValue <= segmentHigh) return 'low';
+      if (clampedValue <= segmentLow) return 'high';
+      if (clampedValue < segmentHigh) return 'low';
       return 'optimum';
     }
     if (clampedValue < segmentLow) return 'low';
