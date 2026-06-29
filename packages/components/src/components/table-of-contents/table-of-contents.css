@@ -51,7 +51,7 @@
   .cinder-table-of-contents__link--active {
     color: var(--cinder-table-of-contents-link-active-color);
     border-inline-start-color: var(--cinder-table-of-contents-link-active-border-color);
-    font-weight: var(--cinder-font-weight-medium);
+    font-weight: var(--cinder-font-medium);
   }
 
   @media (prefers-reduced-motion: reduce) {
