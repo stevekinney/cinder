@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "feature-section",
+  "import": "@lostgradient/cinder/feature-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "FeatureSection",
+      "description": "FeatureSection in split layout with icon-rich feature items and supporting screenshot.",
+      "code": "<script lang=\"ts\">\n  import { FeatureSection } from '@lostgradient/cinder/feature-section';\n\n  const items = [\n    { icon: '⚡', title: 'Fast setup', description: 'Install, import styles, and start composing in minutes.' },\n    {\n      icon: '♿',\n      title: 'Accessible by default',\n      description: 'Keyboard interaction and semantic markup are built in.',\n    },\n    {\n      icon: '🎨',\n      title: 'Theme-ready tokens',\n      description: 'Adapt spacing, type, and color with CSS custom properties.',\n    },\n  ];\n</script>\n\n<FeatureSection\n  title=\"Everything your product team needs\"\n  description=\"Ship UI that looks polished from day one, without rebuilding foundational components.\"\n  layout=\"split\"\n  mediaPosition=\"end\"\n  {items}\n>\n  {#snippet media()}\n    <img src=\"https://placehold.co/620x420?text=Feature+Preview\" alt=\"Feature preview screen\" />\n  {/snippet}\n</FeatureSection>\n"
+    }
+  ]
+}

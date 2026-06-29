@@ -97,6 +97,10 @@ export type {
   ChartXValue,
 } from './components/chart.types.ts';
 
+export type { BlogSectionPost } from './components/blog-section/blog-section.types.ts';
+export { default as BlogSection } from './components/blog-section/index.ts';
+export type { BlogSectionProps } from './components/blog-section/index.ts';
+
 export { default as Breadcrumbs } from './components/breadcrumbs/index.ts';
 export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs/index.ts';
 
@@ -216,6 +220,13 @@ export type { ContextMenuTriggerProps } from './components/context-menu-trigger/
 export { default as CopyButton } from './components/copy-button/index.ts';
 export type { CopyButtonProps } from './components/copy-button/index.ts';
 
+export type {
+  CtaSectionAlign,
+  CtaSectionTone,
+} from './components/cta-section/cta-section.types.ts';
+export { default as CtaSection } from './components/cta-section/index.ts';
+export type { CtaSectionProps } from './components/cta-section/index.ts';
+
 export { copyToClipboard } from './utilities/clipboard.ts';
 
 export { default as DataList } from './components/data-list/index.ts';
@@ -332,6 +343,14 @@ export type {
   SelectFacet,
 } from './components/faceted-filter-bar/index.ts';
 
+export type {
+  FeatureSectionItem,
+  FeatureSectionLayout,
+  FeatureSectionMediaPosition,
+} from './components/feature-section/feature-section.types.ts';
+export { default as FeatureSection } from './components/feature-section/index.ts';
+export type { FeatureSectionProps } from './components/feature-section/index.ts';
+
 export { default as FeedEvent } from './components/feed-event/index.ts';
 export type { FeedEventProps, FeedEventVariant } from './components/feed-event/index.ts';
 
@@ -377,6 +396,13 @@ export type { GridListProps } from './components/grid-list/index.ts';
 
 export { default as GridListItem } from './components/grid-list-item/index.ts';
 export type { GridListItemProps } from './components/grid-list-item/index.ts';
+
+export type {
+  HeroSectionAlign,
+  HeroSectionMediaPosition,
+} from './components/hero-section/hero-section.types.ts';
+export { default as HeroSection } from './components/hero-section/index.ts';
+export type { HeroSectionProps } from './components/hero-section/index.ts';
 
 export { default as HoverCard } from './components/hover-card/index.ts';
 export type { HoverCardPlacement, HoverCardProps } from './components/hover-card/index.ts';
@@ -457,6 +483,10 @@ export type { LineChartProps, LineChartSchemaProps } from './components/line-cha
 export { default as LocaleProvider } from './components/locale-provider/index.ts';
 export type { LocaleProviderProps, TextDirection } from './components/locale-provider/index.ts';
 
+export { default as LogoCloud } from './components/logo-cloud/index.ts';
+export type { LogoCloudProps } from './components/logo-cloud/index.ts';
+export type { LogoCloudItem } from './components/logo-cloud/logo-cloud.types.ts';
+
 export { default as LoadMore } from './components/load-more/index.ts';
 export type { LoadMoreProps } from './components/load-more/index.ts';
 
@@ -512,6 +542,9 @@ export type { PortalAttachmentOptions, PortalProps } from './components/portal/i
 export { default as NavigationItem } from './components/navigation-item/index.ts';
 export type { NavigationItemProps } from './components/navigation-item/index.ts';
 
+export { default as NewsletterSection } from './components/newsletter-section/index.ts';
+export type { NewsletterSectionProps } from './components/newsletter-section/index.ts';
+
 export { default as NumberInput } from './components/number-input/index.ts';
 export type { NumberInputProps } from './components/number-input/index.ts';
 
@@ -551,6 +584,10 @@ export type { PopoverPlacement, PopoverProps, PopoverRole } from './components/p
 
 export { default as PricingCard } from './components/pricing-card/index.ts';
 export type { PricingCardProps } from './components/pricing-card/index.ts';
+
+export { default as PricingSection } from './components/pricing-section/index.ts';
+export type { PricingSectionProps } from './components/pricing-section/index.ts';
+export type { PricingSectionPlan } from './components/pricing-section/pricing-section.types.ts';
 
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
@@ -744,6 +781,10 @@ export type {
   StatGroupVariant,
 } from './components/stat-group/index.ts';
 
+export { default as StatsSection } from './components/stats-section/index.ts';
+export type { StatsSectionProps } from './components/stats-section/index.ts';
+export type { StatsSectionItem } from './components/stats-section/stats-section.types.ts';
+
 export { default as StatusDot } from './components/status-dot/index.ts';
 export type {
   StatusDotConnectionState,
@@ -795,6 +836,17 @@ export type { TableRowProps, TableRowSelectionProps } from './components/table-r
 
 export { default as Tabs } from './components/tabs/index.ts';
 export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs/index.ts';
+
+export { default as TeamSection } from './components/team-section/index.ts';
+export type { TeamSectionProps } from './components/team-section/index.ts';
+export type { TeamSectionMember } from './components/team-section/team-section.types.ts';
+
+export { default as TestimonialSection } from './components/testimonial-section/index.ts';
+export type { TestimonialSectionProps } from './components/testimonial-section/index.ts';
+export type {
+  TestimonialSectionItem,
+  TestimonialSectionLayout,
+} from './components/testimonial-section/testimonial-section.types.ts';
 
 export { default as Textarea } from './components/textarea/index.ts';
 export type { TextareaProps } from './components/textarea/index.ts';

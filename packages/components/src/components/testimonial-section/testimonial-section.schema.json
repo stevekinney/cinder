@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "as": {
+      "enum": ["section", "div"],
+      "description": "Wrapper element tag.",
+      "default": "section"
+    },
+    "title": {
+      "type": "string",
+      "description": "Optional section heading."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional heading description."
+    },
+    "testimonials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "quote": {
+            "type": "string",
+            "description": "Quoted testimonial content."
+          },
+          "name": {
+            "type": "string",
+            "description": "Person attribution name."
+          },
+          "role": {
+            "type": "string",
+            "description": "Optional role/job title."
+          },
+          "avatarSrc": {
+            "type": "string",
+            "description": "Optional avatar image source."
+          },
+          "company": {
+            "type": "string",
+            "description": "Optional company or team attribution."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["name", "quote"]
+      },
+      "description": "Testimonials to render."
+    },
+    "layout": {
+      "enum": ["single", "grid"],
+      "description": "Layout mode.",
+      "default": "grid"
+    },
+    "columns": {
+      "enum": [2, 3],
+      "description": "Columns used by grid layout.",
+      "default": 3
+    },
+    "maxWidth": {
+      "enum": ["prose", "narrow", "wide", "full"],
+      "description": "Max width token forwarded to Container.",
+      "default": "wide"
+    },
+    "class": {
+      "type": "string",
+      "description": "Custom class merged with `.cinder-testimonial-section`."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["testimonials"]
+}

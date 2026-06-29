@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "testimonial-section",
+  "import": "@lostgradient/cinder/testimonial-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "TestimonialSection",
+      "description": "TestimonialSection showing attributed customer quotes in a responsive grid.",
+      "code": "<script lang=\"ts\">\n  import { TestimonialSection } from '@lostgradient/cinder/testimonial-section';\n\n  const testimonials = [\n    {\n      quote: 'Cinder helped us replace six internal UI kits with one consistent system.',\n      name: 'Priya Singh',\n      role: 'VP Product',\n      company: 'Kiteworks',\n    },\n    {\n      quote: 'Our engineers now focus on business value instead of reinventing controls.',\n      name: 'Marcus Chen',\n      role: 'Engineering Manager',\n      company: 'Northline',\n    },\n    {\n      quote: 'The accessibility defaults saved us weeks of QA cycles.',\n      name: 'Casey Murray',\n      role: 'Staff Designer',\n      company: 'Anchor',\n    },\n  ];\n</script>\n\n<TestimonialSection\n  title=\"Loved by product teams\"\n  description=\"From startups to large orgs, teams use Cinder to deliver consistent interfaces quickly.\"\n  {testimonials}\n  layout=\"grid\"\n  columns={3}\n/>\n"
+    }
+  ]
+}

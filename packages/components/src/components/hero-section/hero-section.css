@@ -1,0 +1,80 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-hero-section {
+    padding-block: var(--cinder-space-10);
+  }
+
+  .cinder-hero-section__inner {
+    display: grid;
+    gap: var(--cinder-space-8);
+    align-items: center;
+  }
+
+  .cinder-hero-section__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-4);
+    align-items: flex-start;
+  }
+
+  .cinder-hero-section[data-cinder-align='center'] .cinder-hero-section__content {
+    align-items: center;
+    text-align: center;
+  }
+
+  .cinder-hero-section__eyebrow {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cinder-accent-text);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-semibold);
+  }
+
+  .cinder-hero-section__title {
+    margin: 0;
+    font-size: clamp(var(--cinder-text-3xl), 4vw, var(--cinder-text-5xl));
+    line-height: var(--cinder-leading-tight);
+    max-inline-size: 24ch;
+  }
+
+  .cinder-hero-section__description {
+    margin: 0;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-lg);
+    max-inline-size: 60ch;
+  }
+
+  .cinder-hero-section__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-3);
+  }
+
+  .cinder-hero-section__extra {
+    margin-top: var(--cinder-space-1);
+  }
+
+  .cinder-hero-section__media {
+    border: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface-raised);
+    border-radius: var(--cinder-radius-lg);
+    padding: var(--cinder-space-4);
+  }
+
+  @media (min-width: 64rem) {
+    .cinder-hero-section[data-cinder-has-media] .cinder-hero-section__inner {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cinder-hero-section[data-cinder-media-position='start'] .cinder-hero-section__content {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .cinder-hero-section[data-cinder-media-position='start'] .cinder-hero-section__media {
+      grid-column: 1;
+      grid-row: 1;
+    }
+  }
+}

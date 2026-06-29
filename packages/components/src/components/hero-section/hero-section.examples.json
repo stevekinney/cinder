@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "hero-section",
+  "import": "@lostgradient/cinder/hero-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "HeroSection",
+      "description": "HeroSection with eyebrow copy, dual actions, trust note, and a media panel.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { HeroSection } from '@lostgradient/cinder/hero-section';\n</script>\n\n<HeroSection\n  eyebrow=\"Now in public beta\"\n  title=\"Build polished product interfaces in days, not months.\"\n  description=\"Cinder gives your team accessible UI foundations and high-level patterns so you can focus on shipping user value.\"\n  align=\"start\"\n>\n  {#snippet actions()}\n    <Button label=\"Start free trial\" variant=\"primary\" />\n    <Button label=\"View docs\" variant=\"secondary\" />\n  {/snippet}\n\n  {#snippet media()}\n    <img src=\"https://placehold.co/640x420?text=Dashboard+Preview\" alt=\"Product dashboard preview\" />\n  {/snippet}\n\n  <p>Trusted by 2,000+ product teams worldwide.</p>\n</HeroSection>\n"
+    }
+  ]
+}
