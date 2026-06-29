@@ -146,7 +146,9 @@
   {#if description}
     <p id={descriptionId} class="cinder-carousel__sr-only">{description}</p>
   {/if}
-  <p class="cinder-carousel__sr-only" aria-live="polite" aria-atomic="true">{liveAnnouncement}</p>
+  <p class="cinder-carousel__sr-only" aria-live={shouldAutoplay ? 'off' : 'polite'} aria-atomic="true">
+    {liveAnnouncement}
+  </p>
 
   <div class="cinder-carousel__viewport">
     {#if slides.length > 0}

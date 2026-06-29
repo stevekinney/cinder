@@ -277,13 +277,12 @@
   aria-label={label}
   onfocusout={onRootFocusOut}
 >
-  <ul class="cinder-mega-menu__list" role="menubar">
+  <ul class="cinder-mega-menu__list">
     {#each items as item, index (item.id)}
-      <li role="none">
+      <li>
         <button
           id={triggerId(item.id)}
           type="button"
-          role="menuitem"
           class="cinder-mega-menu__trigger"
           aria-controls={openItemId === item.id ? contentId(item.id) : undefined}
           aria-expanded={openItemId === item.id ? 'true' : 'false'}

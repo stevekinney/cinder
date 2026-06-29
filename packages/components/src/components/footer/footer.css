@@ -103,5 +103,9 @@
       grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
       align-items: start;
     }
+
+    .cinder-footer__main > .cinder-footer__groups:first-child {
+      grid-column: 1 / -1;
+    }
   }
 }

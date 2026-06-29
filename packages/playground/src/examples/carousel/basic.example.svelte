@@ -5,12 +5,11 @@
 
 <script lang="ts">
   import { Carousel } from '@lostgradient/cinder/carousel';
-  import { isSnapshotMode } from '../../snapshot-mode.ts';
 
   const autoplayEnabled =
     typeof window === 'undefined'
       ? true
-      : !isSnapshotMode(new URLSearchParams(window.location.search));
+      : new URLSearchParams(window.location.search).get('snapshot') !== '1';
 
   const slides = [
     {
