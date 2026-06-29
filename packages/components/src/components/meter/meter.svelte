@@ -178,7 +178,7 @@
             'cinder-meter__segment--band-low',
             `cinder-meter__segment--state-${lowSegmentTone}`,
           )}
-          style:width="{lowPercent}%"
+          style:inline-size="{lowPercent}%"
         ></div>
         <div
           class={classNames(
@@ -186,7 +186,7 @@
             'cinder-meter__segment--band-optimum',
             `cinder-meter__segment--state-${optimumSegmentTone}`,
           )}
-          style:width="{optimumPercent}%"
+          style:inline-size="{optimumPercent}%"
         ></div>
         <div
           class={classNames(
@@ -194,7 +194,7 @@
             'cinder-meter__segment--band-high',
             `cinder-meter__segment--state-${highSegmentTone}`,
           )}
-          style:width="{highPercent}%"
+          style:inline-size="{highPercent}%"
         ></div>
       </div>
     {/if}

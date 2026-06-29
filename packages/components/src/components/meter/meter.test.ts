@@ -101,8 +101,14 @@ describe('Meter', () => {
       ariaLabel: 'Quota usage',
     });
     const segments = container.querySelectorAll('.cinder-meter__segment');
+    const lowBand = container.querySelector('.cinder-meter__segment--band-low');
+    const optimumBand = container.querySelector('.cinder-meter__segment--band-optimum');
+    const highBand = container.querySelector('.cinder-meter__segment--band-high');
 
     expect(segments).toHaveLength(3);
+    expect(lowBand?.getAttribute('style')).toContain('inline-size: 30%');
+    expect(optimumBand?.getAttribute('style')).toContain('inline-size: 40%');
+    expect(highBand?.getAttribute('style')).toContain('inline-size: 30%');
   });
 
   test('does not render threshold segments when thresholds are omitted', () => {
