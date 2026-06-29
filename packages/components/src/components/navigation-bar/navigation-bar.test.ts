@@ -20,9 +20,50 @@ afterEach(() => {
 const { default: NavigationBar } = await import('./navigation-bar.svelte');
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
 // the svelte package to resolve to the client build) applies before this import resolves.
-const { createRawSnippet } = await import('svelte');
+const { createRawSnippet, tick } = await import('svelte');
 
 const navigationBarCss = readFileSync(new URL('./navigation-bar.css', import.meta.url), 'utf8');
+
+class CapturingResizeObserver implements ResizeObserver {
+  static lastCallback: ResizeObserverCallback | null = null;
+  static lastObserver: CapturingResizeObserver | null = null;
+
+  readonly observed: Element[] = [];
+
+  constructor(callback: ResizeObserverCallback) {
+    CapturingResizeObserver.lastCallback = callback;
+    CapturingResizeObserver.lastObserver = this;
+  }
+
+  observe(target: Element): void {
+    this.observed.push(target);
+  }
+
+  unobserve(): void {}
+
+  disconnect(): void {}
+}
+
+async function withResizeObserver(run: () => void | Promise<void>): Promise<void> {
+  const originalResizeObserver = globalThis.ResizeObserver;
+  CapturingResizeObserver.lastCallback = null;
+  CapturingResizeObserver.lastObserver = null;
+  globalThis.ResizeObserver = CapturingResizeObserver as unknown as typeof ResizeObserver;
+
+  try {
+    await run();
+  } finally {
+    globalThis.ResizeObserver = originalResizeObserver;
+  }
+}
+
+function emitNavigationBarResize(target: Element, width: number): void {
+  const entry = {
+    target,
+    contentRect: { width, height: 0 },
+  } as unknown as ResizeObserverEntry;
+  CapturingResizeObserver.lastCallback?.([entry], CapturingResizeObserver.lastObserver!);
+}
 
 /** Creates a Svelte 5 Snippet that renders text content. */
 function textSnippet(text: string) {
@@ -290,6 +331,48 @@ describe('NavigationBar', () => {
     ).toBe('false');
   });
 
+  test('collapsible desktop layout does not apply inert when menu is closed', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+      });
+
+      await tick();
+      const nav = container.querySelector('nav') as HTMLElement;
+      const itemsRegion = container.querySelector('.cinder-navigation-bar__items') as HTMLElement;
+      expect(CapturingResizeObserver.lastObserver?.observed).toContain(nav);
+
+      emitNavigationBarResize(nav, 1024);
+      await tick();
+
+      expect(itemsRegion.hasAttribute('inert')).toBe(false);
+    });
+  });
+
+  test('collapsible mobile layout applies inert while closed and removes it when opened', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+      });
+
+      await tick();
+      const nav = container.querySelector('nav') as HTMLElement;
+      const itemsRegion = container.querySelector('.cinder-navigation-bar__items') as HTMLElement;
+
+      emitNavigationBarResize(nav, 640);
+      await tick();
+
+      expect(itemsRegion.hasAttribute('inert')).toBe(true);
+
+      const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+      await fireEvent.click(toggle);
+
+      expect(itemsRegion.hasAttribute('inert')).toBe(false);
+    });
+  });
+
   // ── menuToggle snippet and ARIA ──────────────────────────────────────────
 
   test('with menuToggle, toggle button receives aria-expanded="false" initially', () => {
@@ -352,22 +435,28 @@ describe('NavigationBar', () => {
   // ── Escape key handling ──────────────────────────────────────────────────
 
   test('pressing Escape on <nav> while open closes the menu', async () => {
-    const { container } = render(NavigationBar, {
-      items: textSnippet('items'),
-      menuToggle: toggleSnippet(),
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+      });
+      await tick();
+      const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+      const nav = container.querySelector('nav') as HTMLElement;
+
+      emitNavigationBarResize(nav, 640);
+      await tick();
+
+      await fireEvent.click(toggle);
+      expect(
+        container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+      ).toBe('true');
+
+      await fireEvent.keyDown(nav, { key: 'Escape' });
+      expect(
+        container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+      ).toBe('false');
     });
-    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
-    const nav = container.querySelector('nav') as HTMLElement;
-
-    await fireEvent.click(toggle);
-    expect(
-      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
-    ).toBe('true');
-
-    await fireEvent.keyDown(nav, { key: 'Escape' });
-    expect(
-      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
-    ).toBe('false');
   });
 
   test('pressing Escape on <nav> while closed does not error and data-open stays false', async () => {
@@ -464,23 +553,29 @@ describe('NavigationBar', () => {
 
   test('rest-prop onkeydown is composed: spy fires AND menu closes on Escape', async () => {
     let spyFired = false;
-    const { container } = render(NavigationBar, {
-      items: textSnippet('items'),
-      menuToggle: toggleSnippet(),
-      onkeydown: () => {
-        spyFired = true;
-      },
-    } as any);
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+        onkeydown: () => {
+          spyFired = true;
+        },
+      } as any);
 
-    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
-    const nav = container.querySelector('nav') as HTMLElement;
-    await fireEvent.click(toggle);
-    await fireEvent.keyDown(nav, { key: 'Escape' });
+      await tick();
+      const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+      const nav = container.querySelector('nav') as HTMLElement;
+      emitNavigationBarResize(nav, 640);
+      await tick();
 
-    expect(spyFired).toBe(true);
-    expect(
-      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
-    ).toBe('false');
+      await fireEvent.click(toggle);
+      await fireEvent.keyDown(nav, { key: 'Escape' });
+
+      expect(spyFired).toBe(true);
+      expect(
+        container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+      ).toBe('false');
+    });
   });
 
   test('rest-prop onkeydown that calls preventDefault cancels the Escape close', async () => {

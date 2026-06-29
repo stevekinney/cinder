@@ -26,6 +26,8 @@
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
+  const COLLAPSIBLE_MAX_WIDTH_REM = 47.99;
+  const FALLBACK_ROOT_FONT_SIZE_PX = 16;
   const regionId = $props.id();
 
   let {
@@ -49,14 +51,65 @@
   const navigationItemSelector = '[data-cinder-navigation-item]';
 
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
+  let isMobileLayout = $state(false);
 
   const variant: NavigationVariant = $derived(
-    placement === 'bottom' ? 'mobile' : isCollapsible && mobileMenuOpen ? 'mobile' : 'horizontal',
+    placement === 'bottom'
+      ? 'mobile'
+      : isCollapsible && isMobileLayout && mobileMenuOpen
+        ? 'mobile'
+        : 'horizontal',
   );
 
   // Stores the toggle element for focus return after Escape-close.
+  let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
   let itemsRegionElement: HTMLDivElement | null = null;
+
+  function getCollapsibleMaxWidthPx(): number {
+    if (typeof window === 'undefined') {
+      return COLLAPSIBLE_MAX_WIDTH_REM * FALLBACK_ROOT_FONT_SIZE_PX;
+    }
+
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const baseFontSize =
+      Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : FALLBACK_ROOT_FONT_SIZE_PX;
+    return COLLAPSIBLE_MAX_WIDTH_REM * baseFontSize;
+  }
+
+  function updateMobileLayout(width: number): void {
+    if (!Number.isFinite(width) || width <= 0) {
+      return;
+    }
+    isMobileLayout = width <= getCollapsibleMaxWidthPx();
+  }
+
+  $effect(() => {
+    if (!isCollapsible || !navigationBarElement) {
+      isMobileLayout = false;
+      return;
+    }
+
+    const initialWidth = navigationBarElement.getBoundingClientRect().width;
+    updateMobileLayout(initialWidth);
+
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      updateMobileLayout(entry.contentRect.width);
+    });
+
+    observer.observe(navigationBarElement);
+    return () => {
+      observer.disconnect();
+    };
+  });
 
   function handleToggle(event: MouseEvent): void {
     mobileMenuOpen = !mobileMenuOpen;
@@ -107,7 +160,7 @@
     }
     if (event.defaultPrevented) return;
 
-    if (event.key === 'Escape' && isCollapsible && mobileMenuOpen) {
+    if (event.key === 'Escape' && isCollapsible && isMobileLayout && mobileMenuOpen) {
       mobileMenuOpen = false;
       // Return focus synchronously — toggleElement is captured on each click.
       toggleElement?.focus();
@@ -134,6 +187,7 @@
 
 <nav
   {...rest}
+  bind:this={navigationBarElement}
   aria-label={label}
   class={classNames('cinder-navigation-bar', className)}
   data-collapsible={isCollapsible ? 'true' : 'false'}
@@ -162,7 +216,7 @@
     id={regionId}
     class="cinder-navigation-bar__items"
     data-open={mobileMenuOpen ? 'true' : 'false'}
-    inert={isCollapsible && !mobileMenuOpen ? true : undefined}
+    inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
   >
     {@render items({ variant, placement, showLabels })}
   </div>
