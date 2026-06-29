@@ -9,6 +9,7 @@ export type BentoGridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /**
    * Positive integer number of equal-width columns or a full CSS
    * `grid-template-columns` value.
+   * Numeric values render as `repeat(<columns>, minmax(0, 1fr))`.
    */
   columns?: BentoGridColumns;
   /** Uniform row and column gap. */

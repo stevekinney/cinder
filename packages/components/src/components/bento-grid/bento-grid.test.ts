@@ -64,7 +64,9 @@ describe('BentoGrid', () => {
       props: { columns: 4, children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe('repeat(4, 1fr)');
+    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe(
+      'repeat(4, minmax(0, 1fr))',
+    );
   });
 
   test('threads string columns verbatim', () => {

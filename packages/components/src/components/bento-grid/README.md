@@ -22,16 +22,16 @@ rows and columns through `BentoGrid.Cell` (or standalone `BentoCell`).
 
 <!-- generated:props:start -->
 
-| Prop        | Type                 | Required | Default | Description                                                                                                           |
-| ----------- | -------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| `as`        | `string`             | no       | —       | Rendered HTML tag.                                                                                                    |
-| `class`     | `string`             | no       | —       | Custom class merged with `.cinder-bento-grid`.                                                                        |
-| `collapse`  | `boolean`            | no       | `true`  | Enables a narrow-screen fallback where BentoGrid becomes a single column and BentoCell placement resets to auto flow. |
-| `columnGap` | `string`             | no       | —       | Column gap override. Wins over `gap` for columns.                                                                     |
-| `columns`   | `string` \| `number` | no       | —       | Positive integer number of equal-width columns or a full CSS `grid-template-columns` value.                           |
-| `gap`       | `string`             | no       | —       | Uniform row and column gap.                                                                                           |
-| `rowGap`    | `string`             | no       | —       | Row gap override. Wins over `gap` for rows.                                                                           |
-| `children`  | `(opaque)`           | yes      | —       | Bento grid contents. Not expressible in JSON Schema; see the component types for the signature.                       |
+| Prop        | Type                  | Required | Default | Description                                                                                                                                               |
+| ----------- | --------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `as`        | `string`              | no       | —       | Rendered HTML tag.                                                                                                                                        |
+| `class`     | `string`              | no       | —       | Custom class merged with `.cinder-bento-grid`.                                                                                                            |
+| `collapse`  | `boolean`             | no       | `true`  | Enables a narrow-screen fallback where BentoGrid becomes a single column and BentoCell placement resets to auto flow.                                     |
+| `columnGap` | `string`              | no       | —       | Column gap override. Wins over `gap` for columns.                                                                                                         |
+| `columns`   | `string` \| `integer` | no       | —       | Positive integer number of equal-width columns or a full CSS `grid-template-columns` value. Numeric values render as `repeat(<columns>, minmax(0, 1fr))`. |
+| `gap`       | `string`              | no       | —       | Uniform row and column gap.                                                                                                                               |
+| `rowGap`    | `string`              | no       | —       | Row gap override. Wins over `gap` for rows.                                                                                                               |
+| `children`  | `(opaque)`            | yes      | —       | Bento grid contents. Not expressible in JSON Schema; see the component types for the signature.                                                           |
 
 <!-- generated:props:end -->
 

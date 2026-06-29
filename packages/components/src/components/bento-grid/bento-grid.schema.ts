@@ -10,11 +10,12 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          minimum: 1,
         },
       ],
       description:
-        'Positive integer number of equal-width columns or a full CSS\n`grid-template-columns` value.',
+        'Positive integer number of equal-width columns or a full CSS\n`grid-template-columns` value.\nNumeric values render as `repeat(<columns>, minmax(0, 1fr))`.',
     },
     gap: {
       type: 'string',

@@ -35,7 +35,7 @@
   const resolvedColumns = $derived.by(() => {
     if (typeof columns === 'number') {
       if (!Number.isInteger(columns) || columns < 1) return undefined;
-      return `repeat(${columns}, 1fr)`;
+      return `repeat(${columns}, minmax(0, 1fr))`;
     }
     if (typeof columns === 'string' && columns.length > 0) return columns;
     return undefined;

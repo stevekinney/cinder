@@ -6,10 +6,14 @@ BentoCell controls row and column placement for one tile inside a `BentoGrid`.
 
 ```svelte
 <script lang="ts">
+  import { BentoGrid } from '@lostgradient/cinder/bento-grid';
   import { BentoCell } from '@lostgradient/cinder/bento-cell';
 </script>
 
-<BentoCell colSpan={2} rowSpan={2}>Featured tile</BentoCell>
+<BentoGrid columns={4} gap="var(--cinder-space-4)">
+  <BentoCell colSpan={2} rowSpan={2}>Featured tile</BentoCell>
+  <BentoCell>Standard tile</BentoCell>
+</BentoGrid>
 ```
 
 ## Props

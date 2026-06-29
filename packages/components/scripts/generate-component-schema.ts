@@ -267,7 +267,7 @@ function makeUnsupportedProp(
 }
 
 function applyComponentSchemaRules(componentName: string, schema: ComponentSchemaOutput): void {
-  if (componentName === 'grid') {
+  if (componentName === 'grid' || componentName === 'bento-grid') {
     const columns = schema.properties['columns'];
     if (columns?.anyOf) {
       columns.anyOf = columns.anyOf.map((entry) =>
