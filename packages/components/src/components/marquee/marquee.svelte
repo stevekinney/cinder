@@ -45,9 +45,18 @@
   let primaryTrackItem: HTMLDivElement | undefined = $state();
   let duplicateTrackItem: HTMLDivElement | undefined = $state();
 
+  function stripIds(root: HTMLElement) {
+    root.removeAttribute('id');
+    root.querySelectorAll('[id]').forEach((descendant) => {
+      descendant.removeAttribute('id');
+    });
+  }
+
   function syncDuplicateTrack() {
     if (!primaryTrackItem || !duplicateTrackItem) return;
-    duplicateTrackItem.replaceChildren(...primaryTrackItem.cloneNode(true).childNodes);
+    const clone = primaryTrackItem.cloneNode(true) as HTMLElement;
+    stripIds(clone);
+    duplicateTrackItem.replaceChildren(...clone.childNodes);
   }
 
   $effect(() => {

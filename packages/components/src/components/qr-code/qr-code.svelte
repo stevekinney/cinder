@@ -111,5 +111,8 @@
         <span class="cinder-qr-code__error-mark">!</span>
       {/if}
     </span>
+    {#if generationFailed}
+      <span class="cinder-sr-only">Unable to render QR code.</span>
+    {/if}
   {/if}
 </span>

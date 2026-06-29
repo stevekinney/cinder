@@ -5,7 +5,7 @@ export type QrCodeErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
 /** Props for the QrCode component. */
 export type QrCodeProps = Omit<
   HTMLAttributes<HTMLSpanElement>,
-  'aria-label' | 'children' | 'class' | 'role'
+  'aria-label' | 'aria-live' | 'children' | 'class' | 'role'
 > & {
   /** Text payload encoded into the QR code matrix. */
   value: string;
