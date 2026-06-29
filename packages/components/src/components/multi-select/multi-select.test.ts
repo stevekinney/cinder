@@ -252,6 +252,7 @@ describe('MultiSelect', () => {
 
     expect(filter.getAttribute('aria-label')).toBe('Filter options');
     expect(filter.getAttribute('role')).toBe('combobox');
+    expect(filter.getAttribute('aria-autocomplete')).toBe('list');
     expect(filter.getAttribute('aria-haspopup')).toBe('listbox');
     await fireEvent.keyDown(filter, { key: ' ' });
     expect(container.querySelector('#fruits-option-0')?.getAttribute('aria-selected')).toBe(

@@ -433,6 +433,7 @@
             placeholder="Filter options"
             value={query}
             aria-label="Filter options"
+            aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-expanded={open}
             aria-controls={listboxId}

@@ -19,7 +19,8 @@ MultiSelect uses an anchored picker surface with a listbox (`aria-multiselectabl
 | Enter / Space        | Open the menu from the trigger.                 |
 | ArrowDown / ArrowUp  | Open and move active option.                    |
 | Home / End           | Jump to first/last enabled option.              |
-| Enter / Space (list) | Toggle the active option.                       |
+| Enter / Space (list) | Toggle the active option (non-filterable mode). |
+| Space (filter input) | Insert a literal space in the query.            |
 | Escape               | Close the menu and return focus to the trigger. |
 
 ## Notes
