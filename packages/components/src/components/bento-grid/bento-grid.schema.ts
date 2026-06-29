@@ -1,0 +1,59 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    columns: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description:
+        'Positive integer number of equal-width columns or a full CSS\n`grid-template-columns` value.',
+    },
+    gap: {
+      type: 'string',
+      description: 'Uniform row and column gap.',
+    },
+    rowGap: {
+      type: 'string',
+      description: 'Row gap override. Wins over `gap` for rows.',
+    },
+    columnGap: {
+      type: 'string',
+      description: 'Column gap override. Wins over `gap` for columns.',
+    },
+    collapse: {
+      type: 'boolean',
+      description:
+        'Enables a narrow-screen fallback where BentoGrid becomes a single column\nand BentoCell placement resets to auto flow.',
+      default: true,
+    },
+    as: {
+      type: 'string',
+      description: 'Rendered HTML tag.',
+    },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-bento-grid`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Bento grid contents.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

@@ -69,6 +69,16 @@ export type { BackdropProps } from './components/backdrop/index.ts';
 export { default as Banner } from './components/banner/index.ts';
 export type { BannerProps, BannerVariant } from './components/banner/index.ts';
 
+export { default as BentoCell } from './components/bento-cell/index.ts';
+export type { BentoCellProps } from './components/bento-cell/index.ts';
+
+export { default as BentoGrid } from './components/bento-grid/index.ts';
+export type {
+  BentoCellProps as BentoGridCellProps,
+  BentoGridColumns,
+  BentoGridProps,
+} from './components/bento-grid/index.ts';
+
 export { default as BarChart } from './components/bar-chart/index.ts';
 export type { BarChartProps, BarChartSchemaProps } from './components/bar-chart/index.ts';
 export type {
