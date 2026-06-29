@@ -41,7 +41,7 @@
 
   const reducedMotion = useReducedMotion();
   let activeId = $state<string | null>(null);
-  let normalizedItems = $state<TableOfContentsItem[]>([]);
+  let normalizedItems = $state<TableOfContentsItem[]>(normalizeExplicitItems(items));
 
   const validatedAriaLabel = $derived.by(() => {
     const trimmed = ariaLabel.trim();
@@ -215,9 +215,8 @@
   }
 
   $effect(() => {
-    const explicit = normalizeExplicitItems(items);
-    if (explicit.length > 0) {
-      normalizedItems = explicit;
+    if (items !== undefined) {
+      normalizedItems = normalizeExplicitItems(items);
       return;
     }
 
@@ -327,6 +326,12 @@
         return;
       }
       if (observedTarget !== null && document.contains(observedTarget)) {
+        const latestTarget = resolveTargetElement(target);
+        if (latestTarget === observedTarget) {
+          return;
+        }
+      } else if (observedTarget !== null) {
+        refreshDerived();
         return;
       }
 

@@ -14,7 +14,7 @@
   let apiPaginationId = $derived(`${mountIdPrefix ?? uid}-api-pagination`);
   let apiErrorsId = $derived(`${mountIdPrefix ?? uid}-api-errors`);
 
-  let items = $derived([
+  const items = [
     {
       id: apiOverviewId,
       label: 'API Overview',
@@ -27,7 +27,7 @@
       id: apiErrorsId,
       label: 'Error handling',
     },
-  ]);
+  ];
 </script>
 
 <div style="display: grid; grid-template-columns: 16rem 1fr; gap: 1.5rem; align-items: start;">
