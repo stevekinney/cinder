@@ -62,8 +62,16 @@
       characterData: true,
       attributes: true,
     });
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(() => {
+            syncDuplicateTrack();
+          });
+    resizeObserver?.observe(primaryTrackItem);
     return () => {
       observer.disconnect();
+      resizeObserver?.disconnect();
     };
   });
 </script>

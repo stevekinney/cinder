@@ -41,6 +41,11 @@
   const safeLabel = $derived(
     typeof label === 'string' && label.trim().length > 0 ? label.trim() : `QR code for ${value}`,
   );
+  const resolvedRole = $derived(generationFailed ? 'status' : isGenerating ? undefined : 'img');
+  const resolvedAriaLabel = $derived(
+    generationFailed ? 'Unable to render QR code' : isGenerating ? undefined : safeLabel,
+  );
+  const resolvedAriaLive = $derived(generationFailed ? 'polite' : undefined);
 
   function decorateSvg(svg: string): string {
     return svg
@@ -86,9 +91,9 @@
 <span
   {...rest}
   class={mergedClassName}
-  role={generationFailed ? 'status' : 'img'}
-  aria-label={generationFailed ? 'Unable to render QR code' : safeLabel}
-  aria-live={generationFailed ? 'polite' : undefined}
+  role={resolvedRole}
+  aria-label={resolvedAriaLabel}
+  aria-live={resolvedAriaLive}
   data-cinder-invalid={generationFailed ? 'true' : undefined}
   data-cinder-state={generationFailed ? 'error' : isGenerating ? 'loading' : 'ready'}
   style:inline-size={`${resolvedSize}px`}

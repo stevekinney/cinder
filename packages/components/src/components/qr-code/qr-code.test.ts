@@ -20,8 +20,9 @@ describe('QrCode', () => {
     expect(element).not.toBeNull();
   });
 
-  test('uses role="img" with fallback accessible name', () => {
+  test('uses role="img" with fallback accessible name once rendering is ready', async () => {
     const { container } = render(QrCode, { props: { value: 'https://example.com' } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
     const element = container.querySelector('.cinder-qr-code');
     expect(element?.getAttribute('role')).toBe('img');
     expect(element?.getAttribute('aria-label')).toBe('QR code for https://example.com');
