@@ -45,9 +45,26 @@
   let primaryTrackItem: HTMLDivElement | undefined = $state();
   let duplicateTrackItem: HTMLDivElement | undefined = $state();
 
-  $effect(() => {
+  function syncDuplicateTrack() {
     if (!primaryTrackItem || !duplicateTrackItem) return;
     duplicateTrackItem.replaceChildren(...primaryTrackItem.cloneNode(true).childNodes);
+  }
+
+  $effect(() => {
+    if (!primaryTrackItem || !duplicateTrackItem) return;
+    syncDuplicateTrack();
+    const observer = new MutationObserver(() => {
+      syncDuplicateTrack();
+    });
+    observer.observe(primaryTrackItem, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+    });
+    return () => {
+      observer.disconnect();
+    };
   });
 </script>
 

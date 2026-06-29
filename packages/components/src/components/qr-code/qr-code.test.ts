@@ -44,11 +44,11 @@ describe('QrCode', () => {
     expect(style).toContain('block-size: 192px');
   });
 
-  test('qr-code.css defines theme variables for fg/bg/radius', async () => {
+  test('qr-code.css uses shared design tokens and no local qr-code variables', async () => {
     const css = await Bun.file(qrCodeCssPath).text();
-    expect(css).toContain('--cinder-qr-code-fg');
-    expect(css).toContain('--cinder-qr-code-bg');
-    expect(css).toContain('--cinder-qr-code-radius');
+    expect(css).toContain('var(--cinder-radius-md)');
+    expect(css).toContain('var(--cinder-text)');
+    expect(css).not.toContain('--cinder-qr-code-');
   });
 
   test('generated svg uses currentColor fills for themeable rendering', async () => {

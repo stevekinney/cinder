@@ -34,6 +34,7 @@
 
   let svgMarkup = $state('');
   let generationFailed = $state(false);
+  let isGenerating = $state(true);
 
   const mergedClassName = $derived(classNames('cinder-qr-code', customClassName));
   const resolvedSize = $derived(Number.isFinite(size) && size > 0 ? size : 160);
@@ -50,6 +51,7 @@
 
   $effect(() => {
     let cancelled = false;
+    isGenerating = true;
     generationFailed = false;
     svgMarkup = '';
 
@@ -66,11 +68,13 @@
       .then((svg) => {
         if (cancelled) return;
         svgMarkup = decorateSvg(svg);
+        isGenerating = false;
       })
       .catch(() => {
         if (cancelled) return;
         svgMarkup = '';
         generationFailed = true;
+        isGenerating = false;
       });
 
     return () => {
@@ -82,15 +86,25 @@
 <span
   {...rest}
   class={mergedClassName}
-  role={generationFailed ? undefined : 'img'}
-  aria-label={generationFailed ? undefined : safeLabel}
+  role={generationFailed ? 'status' : 'img'}
+  aria-label={generationFailed ? 'Unable to render QR code' : safeLabel}
+  aria-live={generationFailed ? 'polite' : undefined}
   data-cinder-invalid={generationFailed ? 'true' : undefined}
+  data-cinder-state={generationFailed ? 'error' : isGenerating ? 'loading' : 'ready'}
   style:inline-size={`${resolvedSize}px`}
   style:block-size={`${resolvedSize}px`}
 >
   {#if svgMarkup.length > 0}
     {@html svgMarkup}
   {:else}
-    <span class="cinder-qr-code__placeholder" aria-hidden="true"></span>
+    <span
+      class="cinder-qr-code__placeholder"
+      data-cinder-state={generationFailed ? 'error' : 'loading'}
+      aria-hidden="true"
+    >
+      {#if generationFailed}
+        <span class="cinder-qr-code__error-mark">!</span>
+      {/if}
+    </span>
   {/if}
 </span>

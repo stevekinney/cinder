@@ -31,7 +31,7 @@
   }
 
   .cinder-marquee[data-cinder-direction='vertical'] .cinder-marquee__viewport {
-    block-size: var(--cinder-marquee-viewport-size, 8rem);
+    block-size: 8rem;
   }
 
   .cinder-marquee[data-cinder-direction='vertical'] .cinder-marquee__item {
