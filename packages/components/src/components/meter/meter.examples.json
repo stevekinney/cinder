@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "meter",
+  "import": "@lostgradient/cinder/meter",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic meter",
+      "description": "Bounded measurement for a fluctuating value.",
+      "code": "<script lang=\"ts\">\n  import { Meter } from '@lostgradient/cinder/meter';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n  <Meter value={32} ariaLabel=\"Battery level\" />\n  <Meter value={68} ariaLabel=\"Memory usage\" />\n</div>\n"
+    },
+    {
+      "id": "custom-range",
+      "title": "Custom range",
+      "description": "Map the meter to a non-zero bounded range.",
+      "code": "<script lang=\"ts\">\n  import { Meter } from '@lostgradient/cinder/meter';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n  <Meter value={45} min={20} max={80} ariaLabel=\"Disk usage percent\" />\n  <Meter value={73} min={20} max={80} ariaLabel=\"Disk usage percent\" />\n</div>\n"
+    },
+    {
+      "id": "segmented-thresholds",
+      "title": "Segmented thresholds",
+      "description": "Render low, optimal, and high regions while preserving meter semantics for assistive technology.",
+      "code": "<script lang=\"ts\">\n  import { Meter } from '@lostgradient/cinder/meter';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n  <Meter\n    value={82}\n    low={30}\n    high={70}\n    optimum={50}\n    ariaLabel=\"CPU utilization\"\n    ariaValueText=\"82 percent, above the recommended range\"\n  />\n  <Meter\n    value={48}\n    low={30}\n    high={70}\n    optimum={50}\n    ariaLabel=\"CPU utilization\"\n    ariaValueText=\"48 percent, in the recommended range\"\n  />\n</div>\n"
+    }
+  ]
+}

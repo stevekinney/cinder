@@ -497,6 +497,9 @@ export type {
 export { default as Message } from './components/message/index.ts';
 export type { MessageProps, MessageRole } from './components/message/index.ts';
 
+export { default as Meter } from './components/meter/index.ts';
+export type { MeterProps, MeterSize, MeterState } from './components/meter/index.ts';
+
 export { default as MatrixChart } from './components/matrix-chart/index.ts';
 export type { MatrixChartProps, MatrixChartSchemaProps } from './components/matrix-chart/index.ts';
 export type { MatrixColorScale } from './components/matrix-chart/matrix-chart.types.ts';
