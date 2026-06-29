@@ -240,6 +240,19 @@ describe('Meter', () => {
     expect(el?.getAttribute('data-cinder-state')).toBe('optimum');
   });
 
+  test('treats value at high boundary as optimum in high-is-better mode', () => {
+    const { container } = render(Meter, {
+      value: 80,
+      low: 20,
+      high: 80,
+      optimum: 80,
+      ariaLabel: 'Battery level',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('data-cinder-state')).toBe('optimum');
+  });
+
   test('reaches optimum at max edge for high-is-better when high is omitted', () => {
     const { container } = render(Meter, {
       value: 100,
