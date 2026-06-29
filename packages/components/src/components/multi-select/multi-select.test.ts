@@ -105,6 +105,23 @@ describe('MultiSelect', () => {
     expect(proxy.checkValidity()).toBe(true);
   });
 
+  test('required validation focuses the trigger instead of the hidden proxy', () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      required: true,
+      items,
+    });
+
+    const proxy = container.querySelector<HTMLInputElement>(
+      '.cinder-multi-select__validation-proxy',
+    );
+    const trigger = container.querySelector<HTMLButtonElement>('#fruits');
+    if (!proxy || !trigger) throw new Error('required controls not found');
+
+    expect(proxy.reportValidity()).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+  });
+
   test('filterable mode filters options by label', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
@@ -246,5 +263,17 @@ describe('MultiSelect', () => {
     await openMenu(container);
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox?.getAttribute('aria-labelledby')).toBe('fruits-label');
+  });
+
+  test('open panel is anchored inside control wrapper', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      warning: 'Keep at least one selection.',
+      items,
+    });
+
+    await openMenu(container);
+    const panel = container.querySelector('#fruits-popover');
+    expect(panel?.closest('.cinder-multi-select__control')).not.toBeNull();
   });
 });

@@ -24,6 +24,7 @@
 <script lang="ts" generics="T extends string = string">
   import { tick, untrack } from 'svelte';
 
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -280,6 +281,11 @@
     }, 0);
   }
 
+  function handleProxyInvalid(event: Event): void {
+    event.preventDefault();
+    triggerElement?.focus();
+  }
+
   $effect(() => {
     const proxy = validityProxyElement;
     if (!proxy) return;
@@ -322,18 +328,17 @@
       closeMenu();
     };
 
-    const handleWindowKeydown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
+    const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
+      if (event?.key === 'Escape') {
+        event?.preventDefault();
         closeMenu();
       }
-    };
+    });
 
     document.addEventListener('mousedown', handlePointerDown, true);
-    window.addEventListener('keydown', handleWindowKeydown, true);
     return () => {
+      releaseEscape();
       document.removeEventListener('mousedown', handlePointerDown, true);
-      window.removeEventListener('keydown', handleWindowKeydown, true);
     };
   });
 </script>
@@ -389,6 +394,75 @@
         ×
       </button>
     {/if}
+
+    {#if open}
+      <div
+        bind:this={panelElement}
+        id={`${id}-popover`}
+        class="cinder-_floating-surface cinder-multi-select__panel"
+        data-cinder-direction={direction}
+        data-cinder-open
+      >
+        {#if filterable}
+          <input
+            bind:this={filterElement}
+            id={filterId}
+            class="cinder-_input-frame cinder-multi-select__filter"
+            type="text"
+            placeholder="Filter options"
+            value={query}
+            aria-label="Filter options"
+            aria-controls={listboxId}
+            aria-activedescendant={activeOptionId}
+            oninput={handleFilterInput}
+            onkeydown={handleFilterKeydown}
+          />
+        {/if}
+        <ul
+          bind:this={listboxElement}
+          id={listboxId}
+          role="listbox"
+          class="cinder-multi-select__listbox"
+          aria-multiselectable="true"
+          aria-labelledby={labelId}
+          aria-label={label ? undefined : 'Options'}
+          aria-activedescendant={activeOptionId}
+          tabindex={filterable ? -1 : 0}
+          onkeydown={handleListNavigationKeydown}
+        >
+          {#each visibleItems as item, index (item.id)}
+            <li
+              id="{id}-option-{index}"
+              role="option"
+              class="cinder-_option-row cinder-multi-select__option"
+              aria-selected={selectedSet.has(item.id)}
+              aria-disabled={item.disabled || undefined}
+              data-cinder-active={activeIndex === index || undefined}
+              onmousedown={(event) => {
+                event.preventDefault();
+                activeIndex = index;
+                toggleItem(item);
+              }}
+              onmouseenter={() => {
+                activeIndex = index;
+              }}
+            >
+              <span class="cinder-multi-select__checkbox" aria-hidden="true">
+                {#if selectedSet.has(item.id)}✓{/if}
+              </span>
+              <span class="cinder-multi-select__option-text">
+                <span class="cinder-multi-select__option-label">{item.label}</span>
+                {#if item.description}
+                  <span class="cinder-multi-select__option-description">{item.description}</span>
+                {/if}
+              </span>
+            </li>
+          {:else}
+            <li class="cinder-multi-select__empty" role="status">No matching options</li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
   </div>
 
   <input
@@ -400,81 +474,13 @@
     value={selectedCount > 0 ? 'selected' : ''}
     required={field.required}
     disabled={field.disabled}
+    oninvalid={handleProxyInvalid}
   />
 
   {#if name}
     {#each selectedIds as selectedId (selectedId)}
       <input type="hidden" {name} value={selectedId} disabled={field.disabled} />
     {/each}
-  {/if}
-
-  {#if open}
-    <div
-      bind:this={panelElement}
-      id={`${id}-popover`}
-      class="cinder-_floating-surface cinder-multi-select__panel"
-      data-cinder-direction={direction}
-      data-cinder-open
-    >
-      {#if filterable}
-        <input
-          bind:this={filterElement}
-          id={filterId}
-          class="cinder-_input-frame cinder-multi-select__filter"
-          type="text"
-          placeholder="Filter options"
-          value={query}
-          aria-label="Filter options"
-          aria-controls={listboxId}
-          aria-activedescendant={activeOptionId}
-          oninput={handleFilterInput}
-          onkeydown={handleFilterKeydown}
-        />
-      {/if}
-      <ul
-        bind:this={listboxElement}
-        id={listboxId}
-        role="listbox"
-        class="cinder-multi-select__listbox"
-        aria-multiselectable="true"
-        aria-labelledby={labelId}
-        aria-label={label ? undefined : 'Options'}
-        aria-activedescendant={activeOptionId}
-        tabindex={filterable ? -1 : 0}
-        onkeydown={handleListNavigationKeydown}
-      >
-        {#each visibleItems as item, index (item.id)}
-          <li
-            id="{id}-option-{index}"
-            role="option"
-            class="cinder-_option-row cinder-multi-select__option"
-            aria-selected={selectedSet.has(item.id)}
-            aria-disabled={item.disabled || undefined}
-            data-cinder-active={activeIndex === index || undefined}
-            onmousedown={(event) => {
-              event.preventDefault();
-              activeIndex = index;
-              toggleItem(item);
-            }}
-            onmouseenter={() => {
-              activeIndex = index;
-            }}
-          >
-            <span class="cinder-multi-select__checkbox" aria-hidden="true">
-              {#if selectedSet.has(item.id)}✓{/if}
-            </span>
-            <span class="cinder-multi-select__option-text">
-              <span class="cinder-multi-select__option-label">{item.label}</span>
-              {#if item.description}
-                <span class="cinder-multi-select__option-description">{item.description}</span>
-              {/if}
-            </span>
-          </li>
-        {:else}
-          <li class="cinder-multi-select__empty" role="status">No matching options</li>
-        {/each}
-      </ul>
-    </div>
   {/if}
 
   {#if description}
