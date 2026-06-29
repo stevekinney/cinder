@@ -452,6 +452,7 @@
             aria-haspopup="listbox"
             aria-expanded={open}
             aria-readonly={readonly || undefined}
+            {readonly}
             aria-controls={listboxId}
             aria-activedescendant={activeOptionId}
             oninput={handleFilterInput}
@@ -477,7 +478,7 @@
               role="option"
               class="cinder-_option-row cinder-multi-select__option"
               aria-selected={selectedSet.has(item.id)}
-              aria-disabled={readonly || item.disabled || undefined}
+              aria-disabled={item.disabled || undefined}
               data-cinder-active={activeIndex === index || undefined}
               onmousedown={(event) => {
                 event.preventDefault();

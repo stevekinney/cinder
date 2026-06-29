@@ -493,7 +493,9 @@ describe('MultiSelect', () => {
     if (!filter || !listbox) throw new Error('readonly controls not found');
 
     expect(filter.getAttribute('aria-readonly')).toBe('true');
+    expect(filter.readOnly).toBe(true);
     expect(listbox.getAttribute('aria-readonly')).toBe('true');
+    expect(container.querySelector('#fruits-option-0')?.getAttribute('aria-disabled')).toBeNull();
   });
 
   test('filterable Home and End keep native input editing behavior', async () => {
