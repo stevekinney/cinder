@@ -18,6 +18,8 @@
    */
   export type {
     MegaMenuItem,
+    MegaMenuItemWithSections,
+    MegaMenuItemWithSubmenu,
     MegaMenuLink,
     MegaMenuProps,
     MegaMenuSection,
@@ -46,6 +48,9 @@
   let previousOpenIndex = $state<number | null>(null);
   let openSubmenuId = $state<string | null>(null);
   let indicatorStyle = $state('');
+  // Tracks the id of the item that hover-opened; cleared once the click path runs,
+  // preventing the immediately-following synthesised click from closing what hover opened.
+  let hoverOpenedId = $state<string | null>(null);
 
   const openItem = $derived(items.find((item) => item.id === openItemId) ?? null);
   const openIndex = $derived(openItemId ? items.findIndex((item) => item.id === openItemId) : -1);
@@ -152,6 +157,13 @@
   function onTriggerClick(index: number) {
     const target = items[index];
     if (!target) return;
+    // If hover just opened this item, clear the flag and do nothing —
+    // the synthesised click (touch / hybrid browser) must not immediately toggle it closed.
+    if (hoverOpenedId === target.id) {
+      hoverOpenedId = null;
+      return;
+    }
+    hoverOpenedId = null;
     if (openItemId === target.id) {
       closeMenu();
       return;
@@ -161,6 +173,9 @@
 
   function onTriggerEnter(index: number) {
     if (!openOnHover) return;
+    const target = items[index];
+    if (!target) return;
+    hoverOpenedId = target.id;
     openItemByIndex(index);
   }
 

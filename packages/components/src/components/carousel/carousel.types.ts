@@ -23,6 +23,8 @@ export type CarouselControlLabel = {
   previous?: string;
   next?: string;
   picker?: string;
+  pause?: string;
+  play?: string;
 };
 
 export type CarouselProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'class'> & {

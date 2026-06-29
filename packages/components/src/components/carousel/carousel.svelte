@@ -46,6 +46,7 @@
 
   let isHovered = $state(false);
   let hasFocusWithin = $state(false);
+  let userPaused = $state(false);
 
   const clampedLength = $derived(slides.length);
   const currentIndex = $derived.by(() => {
@@ -68,7 +69,8 @@
       autoplayInterval > 0 &&
       !reducedMotion.current &&
       !isHovered &&
-      !hasFocusWithin,
+      !hasFocusWithin &&
+      !userPaused,
   );
   const liveAnnouncement = $derived.by(() => {
     if (!slides[currentIndex]) return '';
@@ -222,6 +224,17 @@
         {controlLabels?.next ?? 'Next'}
       </button>
     </div>
+
+    {#if autoplay && !reducedMotion.current}
+      <button
+        type="button"
+        class="cinder-carousel__control cinder-carousel__control--pause"
+        aria-pressed={userPaused}
+        onclick={() => (userPaused = !userPaused)}
+      >
+        {userPaused ? (controlLabels?.play ?? 'Play') : (controlLabels?.pause ?? 'Pause')}
+      </button>
+    {/if}
 
     <div
       class="cinder-carousel__dots"

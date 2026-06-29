@@ -13,13 +13,24 @@ export type MegaMenuSection = {
   links: MegaMenuLink[];
 };
 
-export type MegaMenuItem = {
+export type MegaMenuItemWithSections = {
+  id: string;
+  label: string;
+  description?: string;
+  sections: MegaMenuSection[];
+  submenu?: MegaMenuItem[];
+};
+
+export type MegaMenuItemWithSubmenu = {
   id: string;
   label: string;
   description?: string;
   sections?: MegaMenuSection[];
-  submenu?: MegaMenuItem[];
+  submenu: MegaMenuItem[];
 };
+
+/** A top-level mega-menu item must supply at least one content source: sections or submenu. */
+export type MegaMenuItem = MegaMenuItemWithSections | MegaMenuItemWithSubmenu;
 
 export type MegaMenuProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'class'> & {
   /** Top-level trigger/content entries. */
