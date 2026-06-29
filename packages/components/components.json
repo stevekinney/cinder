@@ -3092,6 +3092,36 @@
       }
     },
     {
+      "name": "MultiSelect",
+      "id": "multi-select",
+      "import": "@lostgradient/cinder/multi-select",
+      "exportName": "MultiSelect",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Multi-value dropdown with checkbox options, optional filtering, and count-summary trigger text.",
+      "tags": ["form", "selection", "multiselect"],
+      "useWhen": [
+        "Selecting multiple values from a fixed option list while preserving compact form layout.",
+        "Showing many options in an anchored picker instead of a permanently-expanded checkbox group."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Selecting a single value from a short fixed list — use select instead."
+        },
+        {
+          "reason": "Moving items between available/selected panes — use transfer-list instead."
+        }
+      ],
+      "related": ["select", "combobox", "checkbox-group", "transfer-list"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/multi-select/schema",
+        "variables": "@lostgradient/cinder/multi-select/variables",
+        "examples": "@lostgradient/cinder/multi-select/examples"
+      }
+    },
+    {
       "name": "NavigationBar",
       "id": "navigation-bar",
       "import": "@lostgradient/cinder/navigation-bar",

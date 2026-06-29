@@ -2800,6 +2800,34 @@
       "import": "./src/components/modal/modal.constraints.json",
       "default": "./src/components/modal/modal.constraints.json"
     },
+    "./multi-select": {
+      "types": "./dist/components/multi-select/index.d.ts",
+      "browser": "./src/components/multi-select/index.ts",
+      "node": "./dist/server/components/multi-select/index.js",
+      "svelte": "./src/components/multi-select/index.ts",
+      "default": "./dist/components/multi-select/index.js"
+    },
+    "./multi-select/schema": {
+      "types": "./dist/components/multi-select/multi-select.schema.d.ts",
+      "browser": "./src/components/multi-select/multi-select.schema.ts",
+      "node": "./dist/server/components/multi-select/multi-select.schema.js",
+      "svelte": "./src/components/multi-select/multi-select.schema.ts",
+      "default": "./dist/components/multi-select/multi-select.schema.js"
+    },
+    "./multi-select/variables": {
+      "types": "./dist/components/multi-select/multi-select.variables.d.ts",
+      "browser": "./src/components/multi-select/multi-select.variables.ts",
+      "node": "./dist/server/components/multi-select/multi-select.variables.js",
+      "svelte": "./src/components/multi-select/multi-select.variables.ts",
+      "default": "./dist/components/multi-select/multi-select.variables.js"
+    },
+    "./multi-select/styles": {
+      "default": "./dist/components/multi-select/multi-select.css"
+    },
+    "./multi-select/examples": {
+      "import": "./src/components/multi-select/multi-select.examples.json",
+      "default": "./src/components/multi-select/multi-select.examples.json"
+    },
     "./navigation-bar": {
       "types": "./dist/components/navigation-bar/index.d.ts",
       "browser": "./src/components/navigation-bar/index.ts",
