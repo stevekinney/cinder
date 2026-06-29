@@ -133,6 +133,22 @@ describe('MultiSelect', () => {
     expect(container.querySelector('#fruits')?.textContent).toContain('2 selected');
   });
 
+  test('required validation remains invalid when selected ids are all orphaned', () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      name: 'fruits',
+      required: true,
+      items,
+      selectedIds: ['missing'],
+    });
+    const proxy = container.querySelector<HTMLInputElement>(
+      '.cinder-multi-select__validation-proxy',
+    );
+    if (!proxy) throw new Error('validation proxy not found');
+
+    expect(proxy.checkValidity()).toBe(false);
+  });
+
   test('required validation proxy is invalid when empty and valid when selected', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
@@ -394,5 +410,30 @@ describe('MultiSelect', () => {
     await fireEvent.keyDown(filter, { key: 'ArrowDown' });
     expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-1');
     expect(listbox.getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  test('filterable Enter with no active option does not submit parent form', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+    const form = document.createElement('form');
+    document.body.append(form);
+    form.append(container);
+
+    let submitCount = 0;
+    form.addEventListener('submit', (event) => {
+      submitCount += 1;
+      event.preventDefault();
+    });
+
+    await openMenu(form);
+    const filter = form.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    await fireEvent.input(filter, { target: { value: 'zzz' } });
+    await fireEvent.keyDown(filter, { key: 'Enter' });
+
+    expect(submitCount).toBe(0);
   });
 });

@@ -240,9 +240,9 @@
       return;
     }
     if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
       const item = visibleItems[activeIndex];
       if (!item) return;
-      event.preventDefault();
       toggleItem(item);
     }
   }
@@ -302,7 +302,7 @@
     const proxy = validityProxyElement;
     if (!proxy) return;
     proxy.setCustomValidity(
-      field.required && selectedIds.length === 0 ? 'Please select at least one option.' : '',
+      field.required && uniqueSelectedIds.length === 0 ? 'Please select at least one option.' : '',
     );
   });
 
