@@ -128,6 +128,12 @@ export function stripExampleHarness(source: string, scenarioKey: string): string
       new RegExp(`(\\b(?:id|name|target|for|aria-labelledby)=)\\{\\s*${escaped}\\s*\\}`, 'g'),
       (_full, attribute: string) => `${attribute}"${literal}"`,
     );
+    // Script object-literal values used for explicit-items examples:
+    // `{ id: fieldId }` → `{ id: 'field' }`.
+    stripped = stripped.replace(
+      new RegExp(`(\\bid\\s*:\\s*)${escaped}\\b`, 'g'),
+      (_full, prefix: string) => `${prefix}'${literal}'`,
+    );
   }
 
   // Fail closed (1): no harness marker may survive a partial strip. A derived

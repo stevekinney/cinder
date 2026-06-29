@@ -4301,6 +4301,34 @@
     "./table-header-cell/styles": {
       "default": "./dist/components/table-header-cell/table-header-cell.css"
     },
+    "./table-of-contents": {
+      "types": "./dist/components/table-of-contents/index.d.ts",
+      "browser": "./src/components/table-of-contents/index.ts",
+      "node": "./dist/server/components/table-of-contents/index.js",
+      "svelte": "./src/components/table-of-contents/index.ts",
+      "default": "./dist/components/table-of-contents/index.js"
+    },
+    "./table-of-contents/schema": {
+      "types": "./dist/components/table-of-contents/table-of-contents.schema.d.ts",
+      "browser": "./src/components/table-of-contents/table-of-contents.schema.ts",
+      "node": "./dist/server/components/table-of-contents/table-of-contents.schema.js",
+      "svelte": "./src/components/table-of-contents/table-of-contents.schema.ts",
+      "default": "./dist/components/table-of-contents/table-of-contents.schema.js"
+    },
+    "./table-of-contents/variables": {
+      "types": "./dist/components/table-of-contents/table-of-contents.variables.d.ts",
+      "browser": "./src/components/table-of-contents/table-of-contents.variables.ts",
+      "node": "./dist/server/components/table-of-contents/table-of-contents.variables.js",
+      "svelte": "./src/components/table-of-contents/table-of-contents.variables.ts",
+      "default": "./dist/components/table-of-contents/table-of-contents.variables.js"
+    },
+    "./table-of-contents/styles": {
+      "default": "./dist/components/table-of-contents/table-of-contents.css"
+    },
+    "./table-of-contents/examples": {
+      "import": "./src/components/table-of-contents/table-of-contents.examples.json",
+      "default": "./src/components/table-of-contents/table-of-contents.examples.json"
+    },
     "./table-row": {
       "types": "./dist/components/table-row/index.d.ts",
       "browser": "./src/components/table-row/index.ts",

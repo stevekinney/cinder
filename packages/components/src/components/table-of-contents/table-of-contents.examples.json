@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "table-of-contents",
+  "import": "@lostgradient/cinder/table-of-contents",
+  "examples": [
+    {
+      "id": "derived-headings",
+      "title": "Derived from heading region",
+      "description": "Automatically derives nested entries from headings in a target content region.",
+      "code": "<script lang=\"ts\">\n  import { TableOfContents } from '@lostgradient/cinder/table-of-contents';\n\n</script>\n\n<div style=\"display: grid; grid-template-columns: 16rem 1fr; gap: 1.5rem; align-items: start;\">\n  <aside style=\"position: sticky; top: 1rem;\">\n    <TableOfContents target=\"#toc-example-article\" />\n  </aside>\n\n  <article id=\"toc-example-article\" style=\"display: flex; flex-direction: column; gap: 2rem;\">\n    <section>\n      <h2 id=\"overview\">Overview</h2>\n      <p style=\"margin: 0.5rem 0 0;\">A quick summary of what this page covers.</p>\n    </section>\n    <section>\n      <h2 id=\"setup\">Setup</h2>\n      <p style=\"margin: 0.5rem 0 0;\">Install dependencies and configure your environment.</p>\n      <h3 id=\"setup-install\">Install packages</h3>\n      <p style=\"margin: 0.5rem 0 0;\">Install the dependencies needed for your project.</p>\n      <h3 id=\"setup-configure\">Configure project</h3>\n      <p style=\"margin: 0.5rem 0 0;\">Add and tune configuration values.</p>\n    </section>\n    <section>\n      <h2 id=\"deployment\">Deployment</h2>\n      <p style=\"margin: 0.5rem 0 0;\">Push your build to production.</p>\n    </section>\n  </article>\n</div>\n"
+    },
+    {
+      "id": "explicit-items",
+      "title": "Explicit items",
+      "description": "Uses a controlled nested items array for custom table-of-contents ordering.",
+      "code": "<script lang=\"ts\">\n  import { TableOfContents } from '@lostgradient/cinder/table-of-contents';\n\n  const items = [\n    {\n      id: 'api-overview',\n      label: 'API Overview',\n      children: [\n        { id: 'api-auth', label: 'Authentication' },\n        { id: 'api-pagination', label: 'Pagination' },\n      ],\n    },\n    {\n      id: 'api-errors',\n      label: 'Error handling',\n    },\n  ];\n</script>\n\n<div style=\"display: grid; grid-template-columns: 16rem 1fr; gap: 1.5rem; align-items: start;\">\n  <aside style=\"position: sticky; top: 1rem;\">\n    <TableOfContents {items} />\n  </aside>\n\n  <article style=\"display: flex; flex-direction: column; gap: 2rem;\">\n    <section>\n      <h2 id=\"api-overview\">API Overview</h2>\n      <p style=\"margin: 0.5rem 0 0;\">Endpoints and request/response shape at a glance.</p>\n      <h3 id=\"api-auth\">Authentication</h3>\n      <p style=\"margin: 0.5rem 0 0;\">How to pass and rotate API credentials.</p>\n      <h3 id=\"api-pagination\">Pagination</h3>\n      <p style=\"margin: 0.5rem 0 0;\">Cursor and offset pagination tradeoffs.</p>\n    </section>\n    <section>\n      <h2 id=\"api-errors\">Error handling</h2>\n      <p style=\"margin: 0.5rem 0 0;\">How to interpret structured API error payloads.</p>\n    </section>\n  </article>\n</div>\n"
+    }
+  ]
+}
