@@ -81,7 +81,7 @@
   function renderSvg(modules: boolean[], moduleSize: number, marginSize: number, width: number): string {
     const qrSize = moduleSize + marginSize * 2;
     const widthAndHeight = width > 0 ? ` width="${width}" height="${width}"` : '';
-    return `<svg xmlns="http://www.w3.org/2000/svg"${widthAndHeight} viewBox="0 0 ${qrSize} ${qrSize}" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path stroke="currentColor" d="${qrModulesToPath(modules, moduleSize, marginSize)}"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg"${widthAndHeight} viewBox="0 0 ${qrSize} ${qrSize}" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" d="${qrModulesToPath(modules, moduleSize, marginSize)}"/></svg>`;
   }
 
   const qrGenerationResult = $derived.by(() => {

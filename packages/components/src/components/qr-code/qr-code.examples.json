@@ -13,7 +13,7 @@
       "id": "sizing-and-levels",
       "title": "Size and error correction",
       "description": "Compare QR size and recovery level for short and long payloads.",
-      "code": "<script lang=\"ts\">\n  import { QrCode } from '@lostgradient/cinder/qr-code';\n</script>\n\n<div style=\"display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.25rem;\">\n  <QrCode value=\"otpauth://totp/cinder?secret=ABC123DEF456&issuer=Cinder\" size={128} />\n  <QrCode value=\"https://cinder.design/docs/advanced/accessibility?source=playground\" size={200} />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { QrCode } from '@lostgradient/cinder/qr-code';\n</script>\n\n<div style=\"display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.25rem;\">\n  <QrCode\n    value=\"otpauth://totp/cinder?secret=ABC123DEF456&issuer=Cinder\"\n    size={128}\n    errorCorrectionLevel=\"L\"\n  />\n  <QrCode\n    value=\"https://cinder.design/docs/advanced/accessibility?source=playground\"\n    size={200}\n    errorCorrectionLevel=\"H\"\n  />\n</div>\n"
     }
   ]
 }
