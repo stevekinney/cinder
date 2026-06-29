@@ -84,4 +84,17 @@ describe('MegaMenu', () => {
     await fireEvent.keyDown(first, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(second);
   });
+
+  test('closes stale open menu state when the current item is removed', async () => {
+    const { container, rerender } = render(MegaMenu, { items });
+    const products = getTriggerByLabel(container, 'Products');
+    await fireEvent.click(products);
+    expect(products.getAttribute('aria-expanded')).toBe('true');
+
+    await rerender({ items: items.filter((item) => item.id !== 'products') });
+
+    const resources = getTriggerByLabel(container, 'Resources');
+    expect(resources.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelector('.cinder-mega-menu__content')).toBeNull();
+  });
 });

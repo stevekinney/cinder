@@ -34,14 +34,16 @@
 
 <footer {...rest} class={classNames('cinder-footer', className)} aria-label={label}>
   <div class="cinder-footer__main">
-    <section class="cinder-footer__brand">
-      {#if brand}
-        <h2 class="cinder-footer__brand-title">{brand}</h2>
-      {/if}
-      {#if description}
-        <p class="cinder-footer__brand-description">{description}</p>
-      {/if}
-    </section>
+    {#if brand || description}
+      <section class="cinder-footer__brand">
+        {#if brand}
+          <h2 class="cinder-footer__brand-title">{brand}</h2>
+        {/if}
+        {#if description}
+          <p class="cinder-footer__brand-description">{description}</p>
+        {/if}
+      </section>
+    {/if}
 
     {#if groups.length > 0}
       <div class="cinder-footer__groups">

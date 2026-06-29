@@ -61,6 +61,12 @@
     );
   });
 
+  $effect(() => {
+    if (!openItemId) return;
+    if (items.some((item) => item.id === openItemId)) return;
+    closeMenu();
+  });
+
   function safeDomId(value: string): string {
     return value
       .trim()

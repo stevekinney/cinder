@@ -218,7 +218,11 @@
       </button>
     </div>
 
-    <div class="cinder-carousel__dots" aria-label={controlLabels?.picker ?? 'Choose slide'}>
+    <div
+      class="cinder-carousel__dots"
+      role="group"
+      aria-label={controlLabels?.picker ?? 'Choose slide'}
+    >
       {#each slides as slide, index (slide.id)}
         <button
           type="button"
