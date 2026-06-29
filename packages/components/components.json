@@ -733,6 +733,47 @@
       }
     },
     {
+      "name": "Carousel",
+      "id": "carousel",
+      "import": "@lostgradient/cinder/carousel",
+      "exportName": "Carousel",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Rotating content viewport with previous/next controls, picker dots, and optional autoplay.",
+      "tags": ["navigation", "carousel", "media"],
+      "useWhen": [
+        "Presenting a finite set of visual highlights with sequential browsing controls.",
+        "Cycling between promotional or tutorial panels inside a single region."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Content should remain simultaneously visible and scannable.",
+          "alternative": "grid"
+        },
+        {
+          "reason": "You only need one static hero panel with no sequence controls."
+        }
+      ],
+      "related": ["image", "aspect-ratio", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/carousel/schema",
+        "variables": "@lostgradient/cinder/carousel/variables",
+        "examples": "@lostgradient/cinder/carousel/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Carousel",
+        "keyboard": [
+          {
+            "keys": "ArrowLeft / ArrowRight / Home / End",
+            "action": "Moves between slides."
+          }
+        ],
+        "notes": ["Auto-advance pauses on hover and focus, and is disabled under reduced motion."]
+      }
+    },
+    {
       "name": "Chat",
       "id": "chat",
       "import": "@lostgradient/cinder/chat",
@@ -2113,6 +2154,37 @@
       }
     },
     {
+      "name": "Footer",
+      "id": "footer",
+      "import": "@lostgradient/cinder/footer",
+      "exportName": "Footer",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Footer composition primitive with brand copy, grouped links, and legal row content.",
+      "tags": ["layout", "navigation", "footer"],
+      "useWhen": [
+        "Building page-level footer chrome with grouped resource links and legal text.",
+        "Keeping lower-page wayfinding and compliance links in one responsive region."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You need top-level route switching with active state handling.",
+          "alternative": "navigation-bar"
+        },
+        {
+          "reason": "You need dense in-content navigation rather than page chrome."
+        }
+      ],
+      "related": ["navigation-bar", "side-navigation", "container", "grid"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/footer/schema",
+        "variables": "@lostgradient/cinder/footer/variables",
+        "examples": "@lostgradient/cinder/footer/examples"
+      }
+    },
+    {
       "name": "FormField",
       "id": "form-field",
       "import": "@lostgradient/cinder/form-field",
@@ -2787,6 +2859,50 @@
         "schema": "@lostgradient/cinder/media-controls/schema",
         "variables": "@lostgradient/cinder/media-controls/variables",
         "examples": "@lostgradient/cinder/media-controls/examples"
+      }
+    },
+    {
+      "name": "MegaMenu",
+      "id": "mega-menu",
+      "import": "@lostgradient/cinder/mega-menu",
+      "exportName": "MegaMenu",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Wide primary navigation menu with trigger/content panels, shared viewport, active indicator, and nested submenu support.",
+      "tags": ["navigation", "mega-menu", "menu"],
+      "useWhen": [
+        "Building site-level navigation where top-level categories reveal rich multi-column content.",
+        "You need optional hover-open behavior with keyboard-first trigger traversal."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A simple single-trigger flyout is sufficient.",
+          "alternative": "dropdown"
+        },
+        {
+          "reason": "You need command-style application menus with item-by-item keyboard semantics.",
+          "alternative": "menu-bar"
+        }
+      ],
+      "related": ["navigation-bar", "menu-bar", "dropdown"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/mega-menu/schema",
+        "variables": "@lostgradient/cinder/mega-menu/variables",
+        "examples": "@lostgradient/cinder/mega-menu/examples"
+      },
+      "a11y": {
+        "pattern": "Navigation landmark + disclosure buttons",
+        "keyboard": [
+          {
+            "keys": "ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape",
+            "action": "Traverses triggers and opens/closes panels."
+          }
+        ],
+        "notes": [
+          "Trigger focus remains in the tab order; Escape closes and returns focus to the active trigger."
+        ]
       }
     },
     {

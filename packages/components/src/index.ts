@@ -112,6 +112,14 @@ export type { CalloutProps, CalloutVariant } from './components/callout/index.ts
 export { default as Card } from './components/card/index.ts';
 export type { CardPadding, CardProps, CardTone, CardVariant } from './components/card/index.ts';
 
+export { default as Carousel } from './components/carousel/index.ts';
+export type {
+  CarouselControlLabel,
+  CarouselProps,
+  CarouselSlide,
+  CarouselSlideContent,
+} from './components/carousel/index.ts';
+
 export { default as Chat } from './components/chat/index.ts';
 export type { ChatProps } from './components/chat/index.ts';
 
@@ -366,6 +374,9 @@ export type { FormSectionHeadingLevel, FormSectionProps } from './components/for
 
 export type { FormFieldContext } from './_internal/form-field-context.ts';
 
+export { default as Footer } from './components/footer/index.ts';
+export type { FooterGroup, FooterLink, FooterProps } from './components/footer/index.ts';
+
 export { default as Grid } from './components/grid/index.ts';
 export type { GridColumns, GridProps } from './components/grid/index.ts';
 
@@ -462,6 +473,14 @@ export type { LoadMoreProps } from './components/load-more/index.ts';
 
 export { default as MediaControls } from './components/media-controls/index.ts';
 export type { MediaControlsLayout, MediaControlsProps } from './components/media-controls/index.ts';
+
+export { default as MegaMenu } from './components/mega-menu/index.ts';
+export type {
+  MegaMenuItem,
+  MegaMenuLink,
+  MegaMenuProps,
+  MegaMenuSection,
+} from './components/mega-menu/index.ts';
 
 export { default as MarkdownEditor } from './components/markdown-editor/index.ts';
 export type {

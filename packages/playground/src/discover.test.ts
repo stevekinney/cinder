@@ -279,8 +279,11 @@ describe('discoverSidebarComponents', () => {
     // examples, bringing the combined measured sidebar ceiling to 138.
     // Meter adds one standalone feedback family with examples, bringing the
     // measured sidebar ceiling to 139.
+    // Issue #480 adds Carousel, Footer, and MegaMenu examples, each of which now
+    // passes the `exampleCount > 0` sidebar filter, bringing the measured
+    // ceiling to 142.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(139);
+    expect(sidebar.length).toBeLessThanOrEqual(142);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
