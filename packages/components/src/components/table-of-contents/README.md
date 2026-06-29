@@ -31,11 +31,11 @@ On-page heading navigation for long-form content and docs layouts.
 
 <!-- generated:variables:start -->
 
-- `--cinder-toc-link-active-border-color`
-- `--cinder-toc-link-active-color`
-- `--cinder-toc-link-border-color`
-- `--cinder-toc-link-color`
-- `--cinder-toc-link-indent-step`
+- `--cinder-table-of-contents-link-active-border-color`
+- `--cinder-table-of-contents-link-active-color`
+- `--cinder-table-of-contents-link-border-color`
+- `--cinder-table-of-contents-link-color`
+- `--cinder-table-of-contents-link-indent-step`
 <!-- generated:variables:end -->
 
 ## Subcomponents
