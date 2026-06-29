@@ -12,7 +12,7 @@
    * @avoidWhen A simple single-trigger flyout is sufficient. | dropdown
    * @avoidWhen You need command-style application menus with item-by-item keyboard semantics. | menu-bar
    * @related navigation-bar, menu-bar, dropdown
-   * @a11yPattern WAI-ARIA Menubar
+   * @a11yPattern Navigation landmark + disclosure buttons
    * @keyboardShortcut ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape | Traverses triggers and opens/closes panels.
    * @a11yNote Trigger focus remains in the tab order; Escape closes and returns focus to the active trigger.
    */
@@ -255,13 +255,27 @@
 
   $effect(() => {
     if (!openItemId) return;
-    const closeOnOutsidePointer = (event: MouseEvent) => {
+    const closeOnOutsidePointer = (event: PointerEvent | MouseEvent | TouchEvent) => {
       if (!navElement) return;
       if (event.target instanceof Node && navElement.contains(event.target)) return;
       closeMenu();
     };
-    document.addEventListener('mousedown', closeOnOutsidePointer, true);
-    return () => document.removeEventListener('mousedown', closeOnOutsidePointer, true);
+    const supportsPointerEvents =
+      typeof window !== 'undefined' && typeof window.PointerEvent !== 'undefined';
+    if (supportsPointerEvents) {
+      document.addEventListener('pointerdown', closeOnOutsidePointer as EventListener, true);
+      return () =>
+        document.removeEventListener('pointerdown', closeOnOutsidePointer as EventListener, true);
+    }
+    document.addEventListener('mousedown', closeOnOutsidePointer as EventListener, true);
+    document.addEventListener('touchstart', closeOnOutsidePointer as EventListener, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsidePointer as EventListener, true);
+      document.removeEventListener('touchstart', closeOnOutsidePointer as EventListener, true);
+    };
   });
 
   function sections(item: MegaMenuItem | null) {

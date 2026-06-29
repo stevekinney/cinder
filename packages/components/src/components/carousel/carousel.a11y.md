@@ -5,4 +5,4 @@
 - Keyboard support: `ArrowLeft`, `ArrowRight`, `Home`, and `End` on the carousel region.
 - Auto-advance pauses while hovered or focus is inside the carousel.
 - Auto-advance is disabled when `prefers-reduced-motion: reduce` is active.
-- A polite live region announces the active slide label and position.
+- A live region announces the active slide label and position; it is `polite` for user-driven navigation and switches to `off` while autoplay is advancing.

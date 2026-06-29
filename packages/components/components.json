@@ -2893,7 +2893,7 @@
         "examples": "@lostgradient/cinder/mega-menu/examples"
       },
       "a11y": {
-        "pattern": "WAI-ARIA Menubar",
+        "pattern": "Navigation landmark + disclosure buttons",
         "keyboard": [
           {
             "keys": "ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape",
