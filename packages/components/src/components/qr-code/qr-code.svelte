@@ -97,23 +97,18 @@
       return {
         svgMarkup: renderedSvg,
         generationFailed: false,
-        isGenerating: false,
       };
     } catch {
       return {
         svgMarkup: '',
         generationFailed: true,
-        isGenerating: false,
       };
     }
   });
   const svgMarkup = $derived(qrGenerationResult.svgMarkup);
   const generationFailed = $derived(qrGenerationResult.generationFailed);
-  const isGenerating = $derived(qrGenerationResult.isGenerating);
-  const resolvedRole = $derived(generationFailed ? 'status' : isGenerating ? undefined : 'img');
-  const resolvedAriaLabel = $derived(
-    generationFailed ? 'Unable to render QR code' : isGenerating ? undefined : safeLabel,
-  );
+  const resolvedRole = $derived(generationFailed ? 'status' : 'img');
+  const resolvedAriaLabel = $derived(generationFailed ? 'Unable to render QR code' : safeLabel);
   const resolvedAriaLive = $derived(generationFailed ? 'polite' : undefined);
 </script>
 
@@ -124,7 +119,7 @@
   aria-label={resolvedAriaLabel}
   aria-live={resolvedAriaLive}
   data-cinder-invalid={generationFailed ? 'true' : undefined}
-  data-cinder-state={generationFailed ? 'error' : isGenerating ? 'loading' : 'ready'}
+  data-cinder-state={generationFailed ? 'error' : 'ready'}
   style:inline-size={`${resolvedSize}px`}
   style:block-size={`${resolvedSize}px`}
 >
@@ -133,7 +128,7 @@
   {:else}
     <span
       class="cinder-qr-code__placeholder"
-      data-cinder-state={generationFailed ? 'error' : 'loading'}
+      data-cinder-state={generationFailed ? 'error' : 'ready'}
       aria-hidden="true"
     >
       {#if generationFailed}
