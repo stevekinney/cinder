@@ -64,20 +64,30 @@
   function safeDomId(value: string): string {
     return value
       .trim()
-      .toLowerCase()
       .replaceAll(/[^a-z0-9_-]+/g, '-')
       .replaceAll(/^-+|-+$/g, '');
   }
-  const instanceId = $derived(safeDomId(providedId ?? generatedId) || safeDomId(generatedId) || 'menu');
+
+  function stableHash(value: string): string {
+    let hash = 0;
+    for (const character of value) {
+      hash = (hash * 31 + character.charCodeAt(0)) | 0;
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  const instanceId = $derived(
+    safeDomId(providedId ?? generatedId) || safeDomId(generatedId) || 'menu',
+  );
 
   function triggerId(itemId: string): string {
     const normalized = safeDomId(itemId) || 'item';
-    return `cinder-mega-menu-${instanceId}-trigger-${normalized}`;
+    return `cinder-mega-menu-${instanceId}-trigger-${normalized}-${stableHash(itemId)}`;
   }
 
   function contentId(itemId: string): string {
     const normalized = safeDomId(itemId) || 'item';
-    return `cinder-mega-menu-${instanceId}-content-${normalized}`;
+    return `cinder-mega-menu-${instanceId}-content-${normalized}-${stableHash(itemId)}`;
   }
 
   function updateIndicator() {
@@ -107,9 +117,23 @@
     openSubmenuId = next.submenu?.[0]?.id ?? null;
   }
 
-  function closeMenu() {
+  function closeMenu(restoreFocus = false) {
+    const currentItemId = openItemId;
+    const shouldRestoreFocus =
+      restoreFocus &&
+      currentItemId !== null &&
+      typeof document !== 'undefined' &&
+      navElement?.contains(document.activeElement);
+
     openItemId = null;
     openSubmenuId = null;
+    previousOpenIndex = null;
+
+    if (shouldRestoreFocus && currentItemId) {
+      void tick().then(() => {
+        document.getElementById(triggerId(currentItemId))?.focus();
+      });
+    }
   }
 
   function focusTriggerAt(index: number) {
@@ -189,14 +213,10 @@
     }
   }
 
-  async function onContentKeydown(event: KeyboardEvent) {
+  function onContentKeydown(event: KeyboardEvent) {
     if (event.key !== 'Escape') return;
     event.preventDefault();
-    const currentItemId = openItemId;
-    closeMenu();
-    if (!currentItemId || typeof document === 'undefined') return;
-    await tick();
-    document.getElementById(triggerId(currentItemId))?.focus();
+    closeMenu(true);
   }
 
   $effect(() => {
@@ -215,7 +235,7 @@
     const closeIfOutside = (event: MouseEvent) => {
       if (!navElement) return;
       if (event.target instanceof Node && navElement.contains(event.target)) return;
-      closeMenu();
+      closeMenu(true);
     };
     document.addEventListener('mousemove', closeIfOutside, true);
     return () => document.removeEventListener('mousemove', closeIfOutside, true);
