@@ -45,6 +45,15 @@ const items = [
 ];
 
 describe('MegaMenu', () => {
+  function getTriggerByLabel(container: HTMLElement, label: string): HTMLButtonElement {
+    const triggers = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__trigger'),
+    );
+    const trigger = triggers.find((element) => element.textContent?.trim() === label);
+    if (!trigger) throw new Error(`Missing trigger: ${label}`);
+    return trigger;
+  }
+
   test('renders nav landmark and top-level triggers', () => {
     const { container } = render(MegaMenu, { items, label: 'Primary' });
     const nav = container.querySelector('nav');
@@ -56,26 +65,21 @@ describe('MegaMenu', () => {
 
   test('click opens panel content and escape closes it', async () => {
     const { container } = render(MegaMenu, { items });
-    const trigger = container.querySelector(
-      '#cinder-mega-menu-trigger-products',
-    ) as HTMLButtonElement;
+    const trigger = getTriggerByLabel(container, 'Products');
     await fireEvent.click(trigger);
     expect(container.textContent).toContain('UI Kit');
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
 
-    const panel = container.querySelector('#cinder-mega-menu-content-products') as HTMLElement;
+    const panelId = trigger.getAttribute('aria-controls') as string;
+    const panel = container.querySelector(`#${panelId}`) as HTMLElement;
     await fireEvent.keyDown(panel, { key: 'Escape' });
-    expect(container.querySelector('#cinder-mega-menu-content-products')).toBeNull();
+    expect(container.querySelector(`#${panelId}`)).toBeNull();
   });
 
   test('arrow navigation moves focus between top-level triggers', async () => {
     const { container } = render(MegaMenu, { items });
-    const first = container.querySelector(
-      '#cinder-mega-menu-trigger-products',
-    ) as HTMLButtonElement;
-    const second = container.querySelector(
-      '#cinder-mega-menu-trigger-resources',
-    ) as HTMLButtonElement;
+    const first = getTriggerByLabel(container, 'Products');
+    const second = getTriggerByLabel(container, 'Resources');
     first.focus();
     await fireEvent.keyDown(first, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(second);

@@ -61,7 +61,9 @@
 
   {#if copyright || legalLinks.length > 0}
     <div class="cinder-footer__legal">
-      <span>{copyright}</span>
+      {#if copyright}
+        <span>{copyright}</span>
+      {/if}
 
       {#if legalLinks.length > 0}
         <ul class="cinder-footer__legal-links">

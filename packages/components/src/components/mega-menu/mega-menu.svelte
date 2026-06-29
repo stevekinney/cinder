@@ -40,6 +40,7 @@
   }: MegaMenuProps = $props();
 
   let navElement = $state<HTMLElement | null>(null);
+  const generatedId = $props.id();
   let openItemId = $state<string | null>(null);
   let previousOpenIndex = $state<number | null>(null);
   let openSubmenuId = $state<string | null>(null);
@@ -59,12 +60,22 @@
     );
   });
 
+  function safeDomId(value: string): string {
+    return value
+      .trim()
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9_-]+/g, '-')
+      .replaceAll(/^-+|-+$/g, '');
+  }
+
   function triggerId(itemId: string): string {
-    return `cinder-mega-menu-trigger-${itemId}`;
+    const normalized = safeDomId(itemId) || 'item';
+    return `cinder-mega-menu-${generatedId}-trigger-${normalized}`;
   }
 
   function contentId(itemId: string): string {
-    return `cinder-mega-menu-content-${itemId}`;
+    const normalized = safeDomId(itemId) || 'item';
+    return `cinder-mega-menu-${generatedId}-content-${normalized}`;
   }
 
   function updateIndicator() {
@@ -121,6 +132,21 @@
     openItemByIndex(index);
   }
 
+  async function focusPanelContent(itemId: string) {
+    if (typeof document === 'undefined') return;
+    await tick();
+    const panel = document.getElementById(contentId(itemId));
+    if (!(panel instanceof HTMLElement)) return;
+    const firstFocusable = panel.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (firstFocusable) {
+      firstFocusable.focus();
+      return;
+    }
+    panel.focus();
+  }
+
   function onTriggerKeydown(event: KeyboardEvent, index: number) {
     switch (event.key) {
       case 'ArrowRight':
@@ -147,7 +173,10 @@
       case 'Enter':
       case ' ':
         event.preventDefault();
+        const target = items[index];
+        if (!target) return;
         openItemByIndex(index);
+        void focusPanelContent(target.id);
         break;
       case 'Escape':
         event.preventDefault();
@@ -180,7 +209,7 @@
   });
 
   $effect(() => {
-    if (!openOnHover) return;
+    if (!openOnHover || !openItemId) return;
     const closeIfOutside = (event: MouseEvent) => {
       if (!navElement) return;
       if (event.target instanceof Node && navElement.contains(event.target)) return;
@@ -209,7 +238,7 @@
           type="button"
           role="menuitem"
           class="cinder-mega-menu__trigger"
-          aria-controls={contentId(item.id)}
+          aria-controls={openItemId === item.id ? contentId(item.id) : undefined}
           aria-expanded={openItemId === item.id ? 'true' : 'false'}
           onmouseenter={() => onTriggerEnter(index)}
           onclick={() => onTriggerClick(index)}
@@ -234,6 +263,7 @@
         class="cinder-mega-menu__content"
         role="group"
         aria-labelledby={triggerId(openItem.id)}
+        tabindex="-1"
         data-motion={motionDirection}
         onkeydown={onContentKeydown}
       >

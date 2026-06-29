@@ -109,6 +109,14 @@
       goTo(clampedLength - 1);
     }
   }
+
+  function onFocusOut(event: FocusEvent) {
+    const nextFocus = event.relatedTarget;
+    if (nextFocus instanceof Node && event.currentTarget instanceof HTMLElement) {
+      if (event.currentTarget.contains(nextFocus)) return;
+    }
+    hasFocusWithin = false;
+  }
 </script>
 
 <section
@@ -123,7 +131,7 @@
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}
   onfocusin={() => (hasFocusWithin = true)}
-  onfocusout={() => (hasFocusWithin = false)}
+  onfocusout={onFocusOut}
 >
   {#if description}
     <p id={descriptionId} class="cinder-carousel__sr-only">{description}</p>
@@ -141,7 +149,11 @@
             aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
           >
             {#if slide.imageSrc}
-              <img class="cinder-carousel__image" src={slide.imageSrc} alt={slide.imageAlt ?? ''} />
+              <img
+                class="cinder-carousel__image"
+                src={slide.imageSrc}
+                alt={slide.imageAlt ?? slide.title ?? slide.label}
+              />
             {/if}
 
             {#if slide.href}
