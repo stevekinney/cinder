@@ -8,9 +8,10 @@
    * @tag progress
    * @useWhen Reporting measurable progress of a known task such as a file upload or multi-step import.
    * @useWhen Showing an indeterminate work indicator when the task duration is unknown but the surface needs a progressbar role.
+   * @avoidWhen Showing a bounded measurement gauge (battery, CPU, quota) that is not task completion. | meter
    * @avoidWhen Showing a small inline busy state next to a control — use spinner.
    * @avoidWhen Reserving placeholder space for incoming content — use skeleton.
-   * @related spinner, skeleton
+   * @related meter, spinner, skeleton
    */
   export type { ProgressProps, ProgressSize, ProgressVariant } from './progress.types.ts';
 </script>
