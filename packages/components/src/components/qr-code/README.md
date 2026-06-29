@@ -21,7 +21,7 @@ Encode a string payload as an inline, theme-aware SVG QR image with accessible l
 | `class`                | `string`                         | no       | —           | Custom class merged with `.cinder-qr-code`.   |
 | `errorCorrectionLevel` | `"L"` \| `"M"` \| `"Q"` \| `"H"` | no       | `"M"`       | QR error correction level.                    |
 | `label`                | `string`                         | no       | `"QR code"` | Accessible label announced for the QR image.  |
-| `margin`               | `number`                         | no       | `1`         | Quiet-zone width in QR modules.               |
+| `margin`               | `number`                         | no       | `4`         | Quiet-zone width in QR modules.               |
 | `size`                 | `number`                         | no       | `160`       | Square pixel size of the rendered QR code.    |
 | `value`                | `string`                         | yes      | —           | Text payload encoded into the QR code matrix. |
 

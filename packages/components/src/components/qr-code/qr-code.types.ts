@@ -13,7 +13,7 @@ export type QrCodeProps = Omit<
   label?: string;
   /** Square pixel size of the rendered QR code. @default 160 */
   size?: number;
-  /** Quiet-zone width in QR modules. @default 1 */
+  /** Quiet-zone width in QR modules. @default 4 */
   margin?: number;
   /** QR error correction level. @default "M" */
   errorCorrectionLevel?: QrCodeErrorCorrectionLevel;
@@ -27,7 +27,7 @@ export interface QrCodeSchemaProps {
   label?: string;
   /** Square pixel size of the rendered QR code. @default 160 */
   size?: number;
-  /** Quiet-zone width in QR modules. @default 1 */
+  /** Quiet-zone width in QR modules. @default 4 */
   margin?: number;
   /** QR error correction level. @default "M" */
   errorCorrectionLevel?: QrCodeErrorCorrectionLevel;

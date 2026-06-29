@@ -21,7 +21,7 @@ const schema = {
     margin: {
       type: 'number',
       description: 'Quiet-zone width in QR modules.',
-      default: 1,
+      default: 4,
     },
     errorCorrectionLevel: {
       enum: ['L', 'M', 'Q', 'H'],

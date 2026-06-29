@@ -47,7 +47,8 @@ describe('QrCode', () => {
   test('qr-code.css uses shared design tokens and no local qr-code variables', async () => {
     const css = await Bun.file(qrCodeCssPath).text();
     expect(css).toContain('var(--cinder-radius-md)');
-    expect(css).toContain('var(--cinder-text)');
+    expect(css).toContain('color: #000');
+    expect(css).toContain('background: #fff');
     expect(css).not.toContain('--cinder-qr-code-');
   });
 

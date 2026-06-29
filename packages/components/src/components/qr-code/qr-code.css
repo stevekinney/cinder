@@ -5,8 +5,8 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--cinder-radius-md);
-    color: var(--cinder-text);
-    background: transparent;
+    color: #000;
+    background: #fff;
     overflow: hidden;
   }
 

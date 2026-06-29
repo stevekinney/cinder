@@ -26,7 +26,7 @@
     value,
     label,
     size = 160,
-    margin = 1,
+    margin = 4,
     errorCorrectionLevel = 'M',
     class: customClassName,
     ...rest
@@ -34,7 +34,7 @@
 
   const mergedClassName = $derived(classNames('cinder-qr-code', customClassName));
   const resolvedSize = $derived(Number.isFinite(size) && size > 0 ? size : 160);
-  const resolvedMargin = $derived(Number.isFinite(margin) && margin >= 0 ? Math.floor(margin) : 1);
+  const resolvedMargin = $derived(Number.isFinite(margin) && margin >= 0 ? Math.floor(margin) : 4);
   const safeLabel = $derived(
     typeof label === 'string' && label.trim().length > 0 ? label.trim() : 'QR code',
   );

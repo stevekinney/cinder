@@ -144,9 +144,6 @@
       'input, select, textarea, button, fieldset, output, option, optgroup, [name]',
     ).forEach((element) => {
       element.removeAttribute('name');
-      if ('disabled' in element) {
-        element.setAttribute('disabled', '');
-      }
     });
   }
 

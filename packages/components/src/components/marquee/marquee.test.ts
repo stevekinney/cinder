@@ -178,6 +178,6 @@ describe('Marquee', () => {
     const duplicateInput = duplicateTrack?.querySelector('input');
 
     expect(duplicateInput?.hasAttribute('name')).toBe(false);
-    expect(duplicateInput?.hasAttribute('disabled')).toBe(true);
+    expect(duplicateInput?.hasAttribute('disabled')).toBe(false);
   });
 });
