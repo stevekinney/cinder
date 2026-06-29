@@ -143,6 +143,32 @@ describe('Meter', () => {
     expect(el?.getAttribute('data-cinder-state')).toBe('high');
   });
 
+  test('keeps omitted high threshold at range edge', () => {
+    const { container } = render(Meter, {
+      value: 90,
+      low: 20,
+      ariaLabel: 'Battery level',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('data-cinder-state')).toBe('optimum');
+  });
+
+  test('keeps middle band distinct when optimum is below low', () => {
+    const { container } = render(Meter, {
+      value: 150,
+      min: 0,
+      max: 500,
+      low: 100,
+      high: 300,
+      optimum: 0,
+      ariaLabel: 'Latency',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('data-cinder-state')).toBe('low');
+  });
+
   test('maps segment tones from high-is-better optimum', () => {
     const { container } = render(Meter, {
       value: 82,
@@ -161,6 +187,11 @@ describe('Meter', () => {
       container
         .querySelector('.cinder-meter__segment--band-low')
         ?.classList.contains('cinder-meter__segment--state-low'),
+    ).toBe(true);
+    expect(
+      container
+        .querySelector('.cinder-meter__segment--band-optimum')
+        ?.classList.contains('cinder-meter__segment--state-high'),
     ).toBe(true);
   });
 });

@@ -55,12 +55,12 @@
 
   const lowBoundary = $derived(
     low === undefined || !Number.isFinite(low)
-      ? effectiveMin + range / 3
+      ? effectiveMin
       : Math.max(effectiveMin, Math.min(effectiveMax, low)),
   );
   const highBoundary = $derived(
     high === undefined || !Number.isFinite(high)
-      ? effectiveMin + (range * 2) / 3
+      ? effectiveMax
       : Math.max(effectiveMin, Math.min(effectiveMax, high)),
   );
 
@@ -91,11 +91,12 @@
     if (!hasThresholds) return undefined;
     if (effectiveOptimum < segmentLow) {
       if (clampedValue <= segmentLow) return 'optimum';
+      if (clampedValue <= segmentHigh) return 'low';
       return 'high';
     }
     if (effectiveOptimum > segmentHigh) {
       if (clampedValue < segmentLow) return 'low';
-      if (clampedValue <= segmentHigh) return 'low';
+      if (clampedValue <= segmentHigh) return 'high';
       return 'optimum';
     }
     if (clampedValue < segmentLow) return 'low';
@@ -104,7 +105,7 @@
   });
   const lowSegmentTone = $derived<MeterState>(optimumDirection === 'low' ? 'optimum' : 'low');
   const optimumSegmentTone = $derived<MeterState>(
-    optimumDirection === 'mid' ? 'optimum' : optimumDirection === 'high' ? 'low' : 'high',
+    optimumDirection === 'mid' ? 'optimum' : optimumDirection === 'high' ? 'high' : 'low',
   );
   const highSegmentTone = $derived<MeterState>(optimumDirection === 'high' ? 'optimum' : 'high');
 
