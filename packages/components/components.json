@@ -571,11 +571,10 @@
       ],
       "related": ["bento-grid", "grid-item"],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/bento-cell/schema",
-        "variables": "@lostgradient/cinder/bento-cell/variables",
-        "examples": "@lostgradient/cinder/bento-cell/examples"
+        "variables": "@lostgradient/cinder/bento-cell/variables"
       }
     },
     {

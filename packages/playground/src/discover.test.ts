@@ -277,8 +277,11 @@ describe('discoverSidebarComponents', () => {
     // context-only and does not add a playground sidebar entry.
     // Stardust agent-ops adds approval-card as a standalone approval family with
     // examples, bringing the combined measured sidebar ceiling to 138.
+    // BentoGrid adds one standalone layout family with examples. BentoCell is a
+    // compose-only leaf and stays out of the sidebar, so the combined measured
+    // ceiling rises to 139.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(138);
+    expect(sidebar.length).toBeLessThanOrEqual(139);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -306,6 +309,7 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('number-input');
     expect(sidebar).toContain('sortable-list');
     expect(sidebar).toContain('approval-card');
+    expect(sidebar).toContain('bento-grid');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

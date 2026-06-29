@@ -509,10 +509,6 @@
       "svelte": "./src/components/bento-cell/bento-cell.variables.ts",
       "default": "./dist/components/bento-cell/bento-cell.variables.js"
     },
-    "./bento-cell/examples": {
-      "import": "./src/components/bento-cell/bento-cell.examples.json",
-      "default": "./src/components/bento-cell/bento-cell.examples.json"
-    },
     "./bento-grid": {
       "types": "./dist/components/bento-grid/index.d.ts",
       "browser": "./src/components/bento-grid/index.ts",
