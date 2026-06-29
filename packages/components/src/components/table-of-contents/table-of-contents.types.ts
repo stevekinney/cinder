@@ -24,7 +24,7 @@ export type TableOfContentsProps = Omit<
   /** Additional class names merged with `.cinder-table-of-contents`. */
   class?: string;
   /**
-   * Explicit TOC items. When provided and non-empty, this source wins.
+   * Explicit TOC items. When provided, this source wins.
    * If omitted, headings are derived from `target` + `headingSelector`.
    */
   items?: TableOfContentsItem[];
