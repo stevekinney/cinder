@@ -276,4 +276,26 @@ describe('MultiSelect', () => {
     const panel = container.querySelector('#fruits-popover');
     expect(panel?.closest('.cinder-multi-select__control')).not.toBeNull();
   });
+
+  test('menu closes when focus moves away with keyboard navigation', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+    await openMenu(container);
+
+    const outside = document.createElement('button');
+    outside.type = 'button';
+    document.body.append(outside);
+    outside.focus();
+
+    await waitFor(() => {
+      expect(container.querySelector('#fruits-popover')).toBeNull();
+    });
+
+    const trigger = container.querySelector<HTMLButtonElement>('#fruits');
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(outside);
+  });
 });

@@ -156,11 +156,11 @@
     });
   }
 
-  function closeMenu(): void {
+  function closeMenu(restoreFocus = true): void {
     open = false;
     activeIndex = -1;
     query = '';
-    triggerElement?.focus();
+    if (restoreFocus) triggerElement?.focus();
   }
 
   function setSelectedIds(next: T[]): void {
@@ -325,7 +325,13 @@
     const handlePointerDown = (event: MouseEvent): void => {
       const target = event.target as Node | null;
       if (target && (triggerElement?.contains(target) || panelElement?.contains(target))) return;
-      closeMenu();
+      closeMenu(false);
+    };
+
+    const handleFocusIn = (event: FocusEvent): void => {
+      const target = event.target as Node | null;
+      if (target && (triggerElement?.contains(target) || panelElement?.contains(target))) return;
+      closeMenu(false);
     };
 
     const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
@@ -336,9 +342,11 @@
     });
 
     document.addEventListener('mousedown', handlePointerDown, true);
+    document.addEventListener('focusin', handleFocusIn, true);
     return () => {
       releaseEscape();
       document.removeEventListener('mousedown', handlePointerDown, true);
+      document.removeEventListener('focusin', handleFocusIn, true);
     };
   });
 </script>
