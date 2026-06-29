@@ -75,6 +75,7 @@
 
   const listboxId = $derived(`${id}-listbox`);
   const filterId = $derived(`${id}-filter`);
+  const labelId = $derived(label ? `${id}-label` : undefined);
   const selectedSet = $derived(new Set(selectedIds));
   const selectedCount = $derived(selectedIds.length);
   const triggerSummary = $derived(selectedCount > 0 ? `${selectedCount} selected` : placeholder);
@@ -167,11 +168,15 @@
 
   function toggleItem(item: MultiSelectItem<T>): void {
     if (field.disabled || readonly || item.disabled) return;
-    if (selectedSet.has(item.id)) {
-      setSelectedIds(selectedIds.filter((candidate) => candidate !== item.id));
-      return;
-    }
-    setSelectedIds([...selectedIds, item.id]);
+    const nextSelectedIds = selectedSet.has(item.id)
+      ? selectedIds.filter((candidate) => candidate !== item.id)
+      : [...selectedIds, item.id];
+    setSelectedIds(nextSelectedIds);
+    if (!open) return;
+    queueMicrotask(() => {
+      const nextIndex = visibleItems.findIndex((candidate) => candidate.id === item.id);
+      if (nextIndex >= 0) activeIndex = nextIndex;
+    });
   }
 
   function clearSelection(event?: Event): void {
@@ -258,6 +263,11 @@
     activeIndex = firstEnabledIndex(visibleItems);
   }
 
+  function handleFilterKeydown(event: KeyboardEvent): void {
+    if (event.key === ' ') return;
+    handleListNavigationKeydown(event);
+  }
+
   function resetToInitialValue(event: Event): void {
     if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
     resetSyncTimeout = setTimeout(() => {
@@ -330,7 +340,12 @@
 
 <div class={classNames('cinder-multi-select', className)}>
   {#if label}
-    <label for={id} class="cinder-multi-select__label" data-disabled={field.disabled || undefined}>
+    <label
+      id={labelId}
+      for={id}
+      class="cinder-multi-select__label"
+      data-disabled={field.disabled || undefined}
+    >
       {label}
       {#if field.required}
         <span class="cinder-_required-marker" aria-hidden="true">*</span>
@@ -397,7 +412,6 @@
     <div
       bind:this={panelElement}
       id={`${id}-popover`}
-      role="dialog"
       class="cinder-_floating-surface cinder-multi-select__panel"
       data-cinder-direction={direction}
       data-cinder-open
@@ -410,10 +424,11 @@
           type="text"
           placeholder="Filter options"
           value={query}
+          aria-label="Filter options"
           aria-controls={listboxId}
           aria-activedescendant={activeOptionId}
           oninput={handleFilterInput}
-          onkeydown={handleListNavigationKeydown}
+          onkeydown={handleFilterKeydown}
         />
       {/if}
       <ul
@@ -422,6 +437,7 @@
         role="listbox"
         class="cinder-multi-select__listbox"
         aria-multiselectable="true"
+        aria-labelledby={labelId}
         aria-label={label ? undefined : 'Options'}
         aria-activedescendant={activeOptionId}
         tabindex={filterable ? -1 : 0}

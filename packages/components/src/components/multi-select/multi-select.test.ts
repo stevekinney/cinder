@@ -125,6 +125,24 @@ describe('MultiSelect', () => {
     });
   });
 
+  test('filter input has an accessible name and space does not toggle selection', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+
+    await openMenu(container);
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+
+    expect(filter.getAttribute('aria-label')).toBe('Filter options');
+    await fireEvent.keyDown(filter, { key: ' ' });
+    expect(container.querySelector('#fruits-option-0')?.getAttribute('aria-selected')).toBe(
+      'false',
+    );
+  });
+
   test('selectionFeedback="top" keeps selected options first', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
@@ -216,5 +234,17 @@ describe('MultiSelect', () => {
     const trigger = container.querySelector('#fruits');
     expect(trigger?.getAttribute('aria-describedby')).toContain('fruits-warning');
     expect(container.querySelector('#fruits-warning')?.textContent).toContain('seasonal');
+  });
+
+  test('listbox is labelled by the component label', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      label: 'Fruits',
+      items,
+    });
+
+    await openMenu(container);
+    const listbox = container.querySelector('[role="listbox"]');
+    expect(listbox?.getAttribute('aria-labelledby')).toBe('fruits-label');
   });
 });
