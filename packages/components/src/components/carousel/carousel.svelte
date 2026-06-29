@@ -52,6 +52,16 @@
     if (clampedLength < 1) return 0;
     return Math.max(0, Math.min(clampedLength - 1, activeIndex));
   });
+
+  $effect(() => {
+    if (clampedLength < 1) {
+      if (activeIndex !== 0) activeIndex = 0;
+      return;
+    }
+    const normalizedIndex = Math.max(0, Math.min(clampedLength - 1, activeIndex));
+    if (activeIndex !== normalizedIndex) activeIndex = normalizedIndex;
+  });
+
   const shouldAutoplay = $derived(
     autoplay &&
       clampedLength > 1 &&
