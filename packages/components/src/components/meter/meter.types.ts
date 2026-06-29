@@ -31,6 +31,7 @@ export type MeterProps = {
   size?: MeterSize;
   /**
    * Human-readable text exposed via `aria-valuetext`.
+   * When omitted, `aria-valuetext` is not rendered.
    * Example: `50% (6 hours remaining)`.
    */
   ariaValueText?: string;

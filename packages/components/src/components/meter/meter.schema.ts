@@ -36,7 +36,7 @@ const schema = {
     ariaValueText: {
       type: 'string',
       description:
-        'Human-readable text exposed via `aria-valuetext`.\nExample: `50% (6 hours remaining)`.',
+        'Human-readable text exposed via `aria-valuetext`.\nWhen omitted, `aria-valuetext` is not rendered.\nExample: `50% (6 hours remaining)`.',
     },
     ariaLabel: {
       type: 'string',

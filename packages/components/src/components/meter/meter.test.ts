@@ -17,7 +17,7 @@ describe('Meter', () => {
     expect(el?.getAttribute('aria-valuemin')).toBe('0');
     expect(el?.getAttribute('aria-valuemax')).toBe('100');
     expect(el?.getAttribute('aria-valuenow')).toBe('0');
-    expect(el?.getAttribute('aria-valuetext')).toBe('0%');
+    expect(el?.getAttribute('aria-valuetext')).toBeNull();
   });
 
   test('clamps values outside [min,max]', () => {
@@ -40,7 +40,7 @@ describe('Meter', () => {
     expect(el?.getAttribute('aria-valuemin')).toBe('20');
     expect(el?.getAttribute('aria-valuemax')).toBe('60');
     expect(el?.getAttribute('aria-valuenow')).toBe('40');
-    expect(el?.getAttribute('aria-valuetext')).toBe('50%');
+    expect(el?.getAttribute('aria-valuetext')).toBeNull();
   });
 
   test('forwards accessible-name attributes', () => {
@@ -63,6 +63,18 @@ describe('Meter', () => {
     const el = container.querySelector('[role="meter"]');
 
     expect(el?.getAttribute('aria-valuetext')).toBe('50% (6 hours remaining)');
+  });
+
+  test('omits empty-string aria name attributes', () => {
+    const { container } = render(Meter, {
+      value: 30,
+      ariaLabel: '',
+      ariaLabelledby: '',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.getAttribute('aria-label')).toBeNull();
+    expect(el?.getAttribute('aria-labelledby')).toBeNull();
   });
 
   test('exposes data value range attributes for styling', () => {
@@ -93,6 +105,20 @@ describe('Meter', () => {
     expect(segments).toHaveLength(3);
   });
 
+  test('does not render threshold segments when thresholds are omitted', () => {
+    const { container } = render(Meter, {
+      value: 40,
+      min: 0,
+      max: 100,
+      ariaLabel: 'Quota usage',
+    });
+    const el = container.querySelector('[role="meter"]');
+    const segments = container.querySelectorAll('.cinder-meter__segment');
+
+    expect(segments).toHaveLength(0);
+    expect(el?.getAttribute('data-cinder-state')).toBeNull();
+  });
+
   test('computes optimum state by default for middle values', () => {
     const { container } = render(Meter, {
       value: 50,
@@ -115,5 +141,26 @@ describe('Meter', () => {
     const el = container.querySelector('[role="meter"]');
 
     expect(el?.getAttribute('data-cinder-state')).toBe('high');
+  });
+
+  test('maps segment tones from high-is-better optimum', () => {
+    const { container } = render(Meter, {
+      value: 82,
+      low: 20,
+      high: 80,
+      optimum: 100,
+      ariaLabel: 'Battery level',
+    });
+
+    expect(
+      container
+        .querySelector('.cinder-meter__segment--band-high')
+        ?.classList.contains('cinder-meter__segment--state-optimum'),
+    ).toBe(true);
+    expect(
+      container
+        .querySelector('.cinder-meter__segment--band-low')
+        ?.classList.contains('cinder-meter__segment--state-low'),
+    ).toBe(true);
   });
 });

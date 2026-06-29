@@ -38,17 +38,17 @@
     inline-size: 0;
   }
 
-  .cinder-meter__segment--low {
+  .cinder-meter__segment--state-low {
     background: var(--cinder-warning);
     opacity: 0.32;
   }
 
-  .cinder-meter__segment--optimum {
+  .cinder-meter__segment--state-optimum {
     background: var(--cinder-success);
     opacity: 0.28;
   }
 
-  .cinder-meter__segment--high {
+  .cinder-meter__segment--state-high {
     background: var(--cinder-danger);
     opacity: 0.34;
   }
@@ -64,6 +64,10 @@
     transform: scaleX(var(--_cinder-meter-progress, 0));
     transition: transform var(--cinder-duration-moderate) var(--cinder-ease-in-out);
     z-index: 1;
+  }
+
+  :dir(rtl) .cinder-meter__fill {
+    transform-origin: center right;
   }
 
   @media (prefers-reduced-motion: reduce) {

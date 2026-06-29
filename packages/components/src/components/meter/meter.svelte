@@ -23,6 +23,7 @@
 
   const DEFAULT_MIN = 0;
   const DEFAULT_MAX = 100;
+  type OptimumDirection = 'low' | 'mid' | 'high';
 
   let {
     value = 0,
@@ -46,6 +47,11 @@
   const hasFiniteValue = $derived(Number.isFinite(value));
   const rawValue = $derived(hasFiniteValue ? value : effectiveMin);
   const clampedValue = $derived(Math.max(effectiveMin, Math.min(effectiveMax, rawValue)));
+  const hasThresholds = $derived(
+    (low !== undefined && Number.isFinite(low)) ||
+      (high !== undefined && Number.isFinite(high)) ||
+      (optimum !== undefined && Number.isFinite(optimum)),
+  );
 
   const lowBoundary = $derived(
     low === undefined || !Number.isFinite(low)
@@ -65,16 +71,26 @@
       ? effectiveMin + range / 2
       : Math.max(effectiveMin, Math.min(effectiveMax, optimum)),
   );
+  const optimumDirection = $derived.by<OptimumDirection>(() => {
+    if (effectiveOptimum < segmentLow) return 'low';
+    if (effectiveOptimum > segmentHigh) return 'high';
+    return 'mid';
+  });
   const normalized = $derived((clampedValue - effectiveMin) / range);
   const progressScale = $derived(normalized);
-  const percent = $derived(Math.round(progressScale * 100));
-  const defaultValueText = $derived(`${percent}%`);
-  const valueText = $derived(ariaValueText ?? defaultValueText);
+  const normalizedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
+  );
+  const normalizedAriaLabelledby = $derived(
+    typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0
+      ? ariaLabelledby
+      : undefined,
+  );
 
-  const meterState = $derived.by<MeterState>(() => {
+  const meterState = $derived.by<MeterState | undefined>(() => {
+    if (!hasThresholds) return undefined;
     if (effectiveOptimum < segmentLow) {
       if (clampedValue <= segmentLow) return 'optimum';
-      if (clampedValue <= segmentHigh) return 'high';
       return 'high';
     }
     if (effectiveOptimum > segmentHigh) {
@@ -86,6 +102,11 @@
     if (clampedValue <= segmentHigh) return 'optimum';
     return 'high';
   });
+  const lowSegmentTone = $derived<MeterState>(optimumDirection === 'low' ? 'optimum' : 'low');
+  const optimumSegmentTone = $derived<MeterState>(
+    optimumDirection === 'mid' ? 'optimum' : optimumDirection === 'high' ? 'low' : 'high',
+  );
+  const highSegmentTone = $derived<MeterState>(optimumDirection === 'high' ? 'optimum' : 'high');
 
   const lowPercent = $derived(((segmentLow - effectiveMin) / range) * 100);
   const optimumPercent = $derived(((segmentHigh - segmentLow) / range) * 100);
@@ -122,9 +143,8 @@
         `[cinder/Meter] optimum threshold must be finite when provided. Received ${String(optimum)}.`,
       );
     }
-    const hasAriaLabel = typeof ariaLabel === 'string' && ariaLabel.trim().length > 0;
-    const hasAriaLabelledby =
-      typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0;
+    const hasAriaLabel = normalizedAriaLabel !== undefined;
+    const hasAriaLabelledby = normalizedAriaLabelledby !== undefined;
     if (!hasAriaLabel && !hasAriaLabelledby) {
       devWarn(
         '[cinder/Meter] rendered without an accessible name — pass `ariaLabel` or `ariaLabelledby`.',
@@ -136,33 +156,47 @@
 <div
   class={classNames('cinder-meter', className)}
   role="meter"
-  aria-label={ariaLabel}
-  aria-labelledby={ariaLabelledby}
+  aria-label={normalizedAriaLabel}
+  aria-labelledby={normalizedAriaLabelledby}
   aria-valuemin={effectiveMin}
   aria-valuemax={effectiveMax}
   aria-valuenow={clampedValue}
-  aria-valuetext={valueText}
+  aria-valuetext={ariaValueText}
   data-cinder-size={size}
-  data-cinder-state={meterState}
+  data-cinder-state={meterState || undefined}
   data-value={clampedValue}
   data-min={effectiveMin}
   data-max={effectiveMax}
 >
   <div class="cinder-meter__track">
-    <div class="cinder-meter__segments" aria-hidden="true">
-      <div
-        class="cinder-meter__segment cinder-meter__segment--low"
-        style:width="{lowPercent}%"
-      ></div>
-      <div
-        class="cinder-meter__segment cinder-meter__segment--optimum"
-        style:width="{optimumPercent}%"
-      ></div>
-      <div
-        class="cinder-meter__segment cinder-meter__segment--high"
-        style:width="{highPercent}%"
-      ></div>
-    </div>
+    {#if hasThresholds}
+      <div class="cinder-meter__segments" aria-hidden="true">
+        <div
+          class={classNames(
+            'cinder-meter__segment',
+            'cinder-meter__segment--band-low',
+            `cinder-meter__segment--state-${lowSegmentTone}`,
+          )}
+          style:width="{lowPercent}%"
+        ></div>
+        <div
+          class={classNames(
+            'cinder-meter__segment',
+            'cinder-meter__segment--band-optimum',
+            `cinder-meter__segment--state-${optimumSegmentTone}`,
+          )}
+          style:width="{optimumPercent}%"
+        ></div>
+        <div
+          class={classNames(
+            'cinder-meter__segment',
+            'cinder-meter__segment--band-high',
+            `cinder-meter__segment--state-${highSegmentTone}`,
+          )}
+          style:width="{highPercent}%"
+        ></div>
+      </div>
+    {/if}
     <div class="cinder-meter__fill" style:--_cinder-meter-progress={progressScale}></div>
   </div>
 </div>
