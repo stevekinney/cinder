@@ -153,11 +153,17 @@ function tokenize(source: string): string {
     if (source.startsWith(KEYWORD_NULL, index)) {
       output += span('null', KEYWORD_NULL);
       index += KEYWORD_NULL.length;
+      continue;
     }
+
+    output += escapeHtml(character);
+    index += 1;
   }
 
   return `<code class="cinder-json">${output}</code>`;
 }
+
+export const jsonHighlightInternalsForTesting = { tokenize };
 
 /**
  * Highlight a JSON value as syntax-colored HTML. Non-JSON input is returned as

@@ -209,6 +209,19 @@ describe('resizable-panels sizing', () => {
     expect(state.panels[1]!.sizePixels).toBeCloseTo(200, 3);
   });
 
+  test('scales sub-pixel minimum totals across the full available budget', () => {
+    const constrainedPanes: ResizablePanelDefinition[] = [
+      { id: 'left', label: 'Left', minSize: { value: 0.2, unit: 'px' } },
+      { id: 'right', label: 'Right', minSize: { value: 0.2, unit: 'px' } },
+    ];
+
+    const state = createInitialLayoutState(constrainedPanes, 0.2, 'horizontal');
+
+    expect(state.panels.reduce((sum, panel) => sum + panel.sizePixels, 0)).toBeCloseTo(0.2, 6);
+    expect(state.panels[0]!.sizePixels).toBeCloseTo(0.1, 6);
+    expect(state.panels[1]!.sizePixels).toBeCloseTo(0.1, 6);
+  });
+
   test('keeps collapsed panes at zero while redistributing the remaining space', () => {
     const collapsiblePanes: ResizablePanelDefinition[] = [
       {

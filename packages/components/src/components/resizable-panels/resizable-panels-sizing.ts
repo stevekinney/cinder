@@ -202,7 +202,7 @@ function scaleSizesToTotal(sizes: number[], targetTotal: number): number[] {
   for (const value of sizes) {
     total += value;
   }
-  const currentTotal = Math.max(1, total);
+  const currentTotal = total > 0 ? total : 1;
   const scale = targetTotal / currentTotal;
   const scaledSizes: number[] = [];
   for (const size of sizes) {
