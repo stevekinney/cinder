@@ -1,19 +1,19 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
+const TREE_RENAME_FIXTURE_SOURCE = new URL(
+  '../../test/fixtures/tree-rename-fixture.svelte',
+  import.meta.url,
+).pathname;
 const { default: TreeRenameFixture } =
   await import('../../test/fixtures/tree-rename-fixture.svelte');
-const treeItemSource = readFileSync(
-  new URL('../tree-item/tree-item.svelte', import.meta.url),
-  'utf8',
-);
 
 afterEach(() => cleanup());
 
@@ -322,13 +322,9 @@ describe('Tree — inline label rename', () => {
     });
   });
 
-  test('SSR never emits a mid-rename input', () => {
-    const editingStateIndex = treeItemSource.indexOf('let editing = $state(false);');
-    const editingBranchIndex = treeItemSource.indexOf('{:else if editing}');
-    const renameInputIndex = treeItemSource.indexOf('class="cinder-tree-item__rename-input"');
+  test('SSR never emits a mid-rename input', async () => {
+    const html = await renderToServerHtml(TREE_RENAME_FIXTURE_SOURCE);
 
-    expect(editingStateIndex).toBeGreaterThanOrEqual(0);
-    expect(editingBranchIndex).toBeGreaterThan(editingStateIndex);
-    expect(renameInputIndex).toBeGreaterThan(editingBranchIndex);
+    expect(html).not.toContain('cinder-tree-item__rename-input');
   });
 });
