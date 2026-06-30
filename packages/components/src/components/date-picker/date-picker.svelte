@@ -41,6 +41,9 @@
 
   let open = $state(false);
   let inputElement = $state<HTMLInputElement | null>(null);
+  let triggerElement = $state<HTMLButtonElement | null>(null);
+  let suppressFocusOpen = $state(false);
+  let wasOpen = $state(false);
 
   function isLeapYear(year: number): boolean {
     return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
@@ -104,6 +107,7 @@
   );
   const step = $derived(granularity === 'second' ? 1 : granularity === 'minute' ? 60 : 3600);
   const inputType = $derived(granularity === 'day' ? 'date' : 'datetime-local');
+  const invalid = $derived(error ? 'true' : ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined);
   const describedById = $derived(
     [
       ariaDescribedBy,
@@ -119,30 +123,42 @@
     value = normalizedValue;
   });
 
+  $effect(() => {
+    if (wasOpen && !open) suppressFocusOpen = true;
+    wasOpen = open;
+  });
+
   function emit(next: string | undefined) {
     value = next;
     onchange?.(next);
   }
 
+  function clampToBounds(next: string | undefined): string | undefined {
+    if (!next) return undefined;
+    if (normalizedMin && next < normalizedMin) return normalizedMin;
+    if (normalizedMax && next > normalizedMax) return normalizedMax;
+    return next;
+  }
+
   function handleCalendarChange(nextDate: string) {
     if (granularity === 'day') {
-      emit(nextDate);
+      emit(clampToBounds(nextDate));
       open = false;
       return;
     }
     const existingTime = selectedTime ?? (granularity === 'second' ? '00:00:00' : '00:00');
-    emit(normalizeValue(`${nextDate}T${existingTime}`, granularity));
+    emit(clampToBounds(normalizeValue(`${nextDate}T${existingTime}`, granularity)));
   }
 
   function handleTimeChange(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
     if (!selectedDate) return;
-    emit(normalizeValue(`${selectedDate}T${target.value}`, granularity));
+    emit(clampToBounds(normalizeValue(`${selectedDate}T${target.value}`, granularity)));
   }
 
   function handleInputChange(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
-    emit(normalizeValue(target.value, granularity));
+    emit(clampToBounds(normalizeValue(target.value, granularity)));
   }
 
   const timeMin = $derived.by(() => {
@@ -162,7 +178,7 @@
     <label class="cinder-date-picker__label" for={id}>{label}</label>
   {/if}
 
-  <div class="cinder-date-picker__control" data-invalid={error ? '' : undefined}>
+  <div class="cinder-date-picker__control" data-invalid={invalid ? '' : undefined}>
     <input
       bind:this={inputElement}
       class="cinder-date-picker__input"
@@ -174,20 +190,25 @@
       step={granularity === 'day' ? undefined : step}
       {placeholder}
       {disabled}
-      aria-invalid={error ? 'true' : ariaInvalid}
+      aria-invalid={invalid}
       aria-describedby={describedById}
       onchange={handleInputChange}
       onfocus={() => {
+        if (suppressFocusOpen) {
+          suppressFocusOpen = false;
+          return;
+        }
         if (!disabled) open = true;
       }}
     />
     <button
+      bind:this={triggerElement}
       type="button"
       class="cinder-date-picker__trigger"
       aria-label="Open date picker"
       {disabled}
       onclick={() => {
-        if (!disabled) open = !open;
+        if (!disabled) open = true;
       }}
     >
       Open
@@ -196,7 +217,7 @@
 
   <Popover
     bind:open
-    triggerRef={inputElement}
+    triggerRef={triggerElement ?? inputElement}
     role="dialog"
     label={label ? `${label} calendar` : 'Date picker calendar'}
     focusManagement="panel"

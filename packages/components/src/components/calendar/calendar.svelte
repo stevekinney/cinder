@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { CalendarProps } from './calendar.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
@@ -109,18 +110,19 @@
 
   const todayIso = $derived(toISODate(new Date()));
   const selectedDate = $derived(parseISODate(value));
-  const anchorDate = $derived(
-    selectedDate ?? parseISODate(month) ?? parseISODate(todayIso) ?? new Date(),
-  );
+  const anchorIso = $derived(value ?? month ?? todayIso);
+  const anchorDate = $derived(parseISODate(anchorIso) ?? parseISODate(todayIso) ?? new Date());
   let visibleMonthDate = $state(startOfMonth(anchorDate));
-  let focusedIso = $state(value ?? toISODate(anchorDate));
+  let focusedIso = $state(value ?? anchorIso);
+  let lastSyncedAnchorIso = $state(anchorIso);
+  const focusedDayId = $derived(`${monthGridId}-day-${focusedIso}`);
 
   $effect(() => {
+    if (anchorIso === lastSyncedAnchorIso) return;
     visibleMonthDate = startOfMonth(anchorDate);
-  });
-
-  $effect(() => {
-    focusedIso = value ?? toISODate(anchorDate);
+    if (value) focusedIso = value;
+    else focusedIso = anchorIso;
+    lastSyncedAnchorIso = anchorIso;
   });
 
   const monthLabel = $derived(
@@ -164,12 +166,16 @@
     return next;
   });
 
-  function focusDate(iso: string) {
+  async function focusDate(iso: string, moveDomFocus = false) {
     focusedIso = iso;
     const parsed = parseISODate(iso);
     if (parsed) {
       visibleMonthDate = startOfMonth(parsed);
     }
+    if (!moveDomFocus) return;
+    await tick();
+    const target = document.getElementById(focusedDayId) as HTMLButtonElement | null;
+    target?.focus();
   }
 
   function commitDate(iso: string) {
@@ -179,60 +185,65 @@
     onchange?.(iso);
   }
 
-  function moveFocusedByDays(delta: number) {
+  async function moveFocusedByDays(delta: number) {
     const base = parseISODate(focusedIso) ?? visibleMonthDate;
     const next = addDays(base, delta);
-    focusDate(toISODate(next));
+    await focusDate(toISODate(next), true);
   }
 
-  function moveFocusedByMonths(delta: number) {
+  function clampDayToMonth(year: number, monthValue: number, day: number): Date {
+    const lastDay = new Date(year, monthValue + 1, 0).getDate();
+    return new Date(year, monthValue, Math.min(day, lastDay));
+  }
+
+  async function moveFocusedByMonths(delta: number, moveDomFocus = true) {
     const base = parseISODate(focusedIso) ?? visibleMonthDate;
     const monthStart = addMonths(startOfMonth(base), delta);
-    const candidate = new Date(monthStart.getFullYear(), monthStart.getMonth(), base.getDate());
-    focusDate(toISODate(candidate));
+    const candidate = clampDayToMonth(monthStart.getFullYear(), monthStart.getMonth(), base.getDate());
+    await focusDate(toISODate(candidate), moveDomFocus);
   }
 
-  function handleKeydown(event: KeyboardEvent) {
+  async function handleKeydown(event: KeyboardEvent) {
     if (disabled) return;
 
     switch (event.key) {
       case 'ArrowLeft':
         event.preventDefault();
-        moveFocusedByDays(-1);
+        await moveFocusedByDays(-1);
         break;
       case 'ArrowRight':
         event.preventDefault();
-        moveFocusedByDays(1);
+        await moveFocusedByDays(1);
         break;
       case 'ArrowUp':
         event.preventDefault();
-        moveFocusedByDays(-7);
+        await moveFocusedByDays(-7);
         break;
       case 'ArrowDown':
         event.preventDefault();
-        moveFocusedByDays(7);
+        await moveFocusedByDays(7);
         break;
       case 'Home': {
         event.preventDefault();
         const focused = parseISODate(focusedIso) ?? visibleMonthDate;
         const weekStart = startOfWeek(focused, firstDayOfWeek);
-        focusDate(toISODate(weekStart));
+        await focusDate(toISODate(weekStart), true);
         break;
       }
       case 'End': {
         event.preventDefault();
         const focused = parseISODate(focusedIso) ?? visibleMonthDate;
         const weekEnd = addDays(startOfWeek(focused, firstDayOfWeek), 6);
-        focusDate(toISODate(weekEnd));
+        await focusDate(toISODate(weekEnd), true);
         break;
       }
       case 'PageUp':
         event.preventDefault();
-        moveFocusedByMonths(-1);
+        await moveFocusedByMonths(-1);
         break;
       case 'PageDown':
         event.preventDefault();
-        moveFocusedByMonths(1);
+        await moveFocusedByMonths(1);
         break;
       case 'Enter':
       case ' ':
@@ -266,7 +277,7 @@
       class="cinder-calendar__nav"
       aria-label="Previous month"
       onclick={() => {
-        visibleMonthDate = addMonths(visibleMonthDate, -1);
+        void moveFocusedByMonths(-1, false);
       }}
       disabled={disabled || !canGoPrevMonth()}
     >
@@ -278,7 +289,7 @@
       class="cinder-calendar__nav"
       aria-label="Next month"
       onclick={() => {
-        visibleMonthDate = addMonths(visibleMonthDate, 1);
+        void moveFocusedByMonths(1, false);
       }}
       disabled={disabled || !canGoNextMonth()}
     >
@@ -296,7 +307,7 @@
     id={monthGridId}
     class="cinder-calendar__grid"
     role="grid"
-    aria-labelledby={titleId}
+    aria-labelledby={label ? undefined : titleId}
     aria-label={label}
     onkeydown={handleKeydown}
   >
@@ -310,6 +321,7 @@
           >
             <button
               type="button"
+              id={`${monthGridId}-day-${cell.iso}`}
               class="cinder-calendar__day"
               data-outside={cell.inMonth ? undefined : ''}
               data-selected={cell.selected ? '' : undefined}

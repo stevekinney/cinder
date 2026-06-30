@@ -1,3 +1,5 @@
+@import '../calendar/calendar.css';
+
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 
 @layer cinder.components {

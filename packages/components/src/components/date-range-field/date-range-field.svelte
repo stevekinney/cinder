@@ -354,7 +354,7 @@
         id={startId}
         class="cinder-date-range-field__date-picker"
         {granularity}
-        value={normalizedValue.start ?? ''}
+        value={normalizedValue.start}
         max={normalizedValue.end ?? undefined}
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
@@ -377,7 +377,7 @@
         id={endId}
         class="cinder-date-range-field__date-picker"
         {granularity}
-        value={normalizedValue.end ?? ''}
+        value={normalizedValue.end}
         min={normalizedValue.start ?? undefined}
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
