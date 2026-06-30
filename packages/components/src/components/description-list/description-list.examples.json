@@ -17,8 +17,8 @@
     },
     {
       "id": "rich-definitions",
-      "title": "Description list with rich definitions",
-      "description": "Definitions can be snippets when plain text is not enough.",
+      "title": "Description list rich definitions",
+      "description": "Definitions can render rich snippet content when plain text is not enough.",
       "code": "<script lang=\"ts\">\n  import { DescriptionList } from '@lostgradient/cinder/description-list';\n  import type { DescriptionListItem } from '@lostgradient/cinder/description-list';\n\n  const items: DescriptionListItem[] = [\n    { term: 'Run ID', definition: runIdDefinition },\n    { term: 'Status', definition: statusDefinition },\n  ];\n</script>\n\n{#snippet runIdDefinition()}\n  <code>abc-123</code>\n{/snippet}\n\n{#snippet statusDefinition()}\n  <span class=\"example-status\">Active</span>\n{/snippet}\n\n<DescriptionList {items} />\n"
     }
   ]
