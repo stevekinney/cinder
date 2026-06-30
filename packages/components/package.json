@@ -2218,6 +2218,34 @@
       "import": "./src/components/image/image.examples.json",
       "default": "./src/components/image/image.examples.json"
     },
+    "./inline-loading": {
+      "types": "./dist/components/inline-loading/index.d.ts",
+      "browser": "./src/components/inline-loading/index.ts",
+      "node": "./dist/server/components/inline-loading/index.js",
+      "svelte": "./src/components/inline-loading/index.ts",
+      "default": "./dist/components/inline-loading/index.js"
+    },
+    "./inline-loading/schema": {
+      "types": "./dist/components/inline-loading/inline-loading.schema.d.ts",
+      "browser": "./src/components/inline-loading/inline-loading.schema.ts",
+      "node": "./dist/server/components/inline-loading/inline-loading.schema.js",
+      "svelte": "./src/components/inline-loading/inline-loading.schema.ts",
+      "default": "./dist/components/inline-loading/inline-loading.schema.js"
+    },
+    "./inline-loading/variables": {
+      "types": "./dist/components/inline-loading/inline-loading.variables.d.ts",
+      "browser": "./src/components/inline-loading/inline-loading.variables.ts",
+      "node": "./dist/server/components/inline-loading/inline-loading.variables.js",
+      "svelte": "./src/components/inline-loading/inline-loading.variables.ts",
+      "default": "./dist/components/inline-loading/inline-loading.variables.js"
+    },
+    "./inline-loading/styles": {
+      "default": "./dist/components/inline-loading/inline-loading.css"
+    },
+    "./inline-loading/examples": {
+      "import": "./src/components/inline-loading/inline-loading.examples.json",
+      "default": "./src/components/inline-loading/inline-loading.examples.json"
+    },
     "./input": {
       "types": "./dist/components/input/index.d.ts",
       "browser": "./src/components/input/index.ts",

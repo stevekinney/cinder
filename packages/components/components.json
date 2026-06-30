@@ -2469,6 +2469,36 @@
       }
     },
     {
+      "name": "InlineLoading",
+      "id": "inline-loading",
+      "import": "@lostgradient/cinder/inline-loading",
+      "exportName": "InlineLoading",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Inline async-action status indicator that transitions from loading to success or error with accessible announcements.",
+      "tags": ["async", "feedback", "loading", "status"],
+      "useWhen": [
+        "Showing a compact Submit -> loading -> success/error lifecycle beside a button or form row.",
+        "Communicating short-lived async state transitions without reserving large layout space."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing indeterminate work without success/error transitions — use spinner."
+        },
+        {
+          "reason": "Reporting static non-loading status in dense lists — use status-dot."
+        }
+      ],
+      "related": ["spinner", "status-dot"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/inline-loading/schema",
+        "variables": "@lostgradient/cinder/inline-loading/variables",
+        "examples": "@lostgradient/cinder/inline-loading/examples"
+      }
+    },
+    {
       "name": "Input",
       "id": "input",
       "import": "@lostgradient/cinder/input",
