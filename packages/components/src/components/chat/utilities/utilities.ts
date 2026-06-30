@@ -143,14 +143,29 @@ export function toMultiModalArray(
   return 'type' in input ? [input] : input;
 }
 
-/**
- * Type predicate for text content parts.
- */
-function isTextPart(part: MultiModalContent): part is TextPart {
-  return part.type === 'text';
+function formatJSONValue(value: unknown): string {
+  return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 }
 
-type TextPart = MultiModalContent & { type: 'text'; text: string };
+function getServerContentText(part: MultiModalContent): string | undefined {
+  switch (part.type) {
+    case 'text':
+      return part.text;
+    case 'server_tool_use':
+      return [`Server tool use: ${part.name}`, formatJSONValue(part.input)].join('\n');
+    case 'web_search_tool_result':
+      return [`Web search result: ${part.tool_use_id}`, formatJSONValue(part.content)].join('\n');
+    case 'code_execution_tool_result':
+    case 'bash_code_execution_tool_result':
+    case 'text_editor_code_execution_tool_result':
+    case 'web_fetch_tool_result':
+      return [`Server tool result: ${part.tool_use_id}`, formatJSONValue(part.content)].join('\n');
+    case 'container_upload':
+      return `Container upload: ${part.file_id}`;
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Extracts all content parts from a message as a multi-modal array.
@@ -185,8 +200,8 @@ export function getMessageParts(message: Message): ReadonlyArray<MultiModalConte
  */
 export function getMessageText(message: Message): string {
   return getMessageParts(message)
-    .filter(isTextPart)
-    .map((part) => part.text)
+    .map(getServerContentText)
+    .filter((text): text is string => typeof text === 'string' && text.length > 0)
     .join('\n');
 }
 

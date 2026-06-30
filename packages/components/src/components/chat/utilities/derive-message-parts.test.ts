@@ -94,6 +94,23 @@ describe('deriveMessageParts — markdown body', () => {
     });
     expect(parts[0]).not.toMatchObject({ content: 'encrypted-payload' });
   });
+
+  it('renders published server tool content as markdown summaries', () => {
+    const content: MultiModalContent[] = [
+      { type: 'server_tool_use', id: 'tool-1', name: 'web_search', input: { query: 'cinder' } },
+      { type: 'web_search_tool_result', tool_use_id: 'tool-1', content: { title: 'Result' } },
+      { type: 'container_upload', file_id: 'file-1' },
+    ];
+    const parts = deriveMessageParts(message({ role: 'assistant', content }));
+    expect(parts).toHaveLength(1);
+    expect(parts[0]).toMatchObject({ type: 'markdown' });
+    const markdown = parts[0];
+    expect(markdown?.type).toBe('markdown');
+    if (markdown?.type !== 'markdown') throw new Error('expected markdown part');
+    expect(markdown.content).toContain('Server tool use: web_search');
+    expect(markdown.content).toContain('Web search result: tool-1');
+    expect(markdown.content).toContain('Container upload: file-1');
+  });
 });
 
 describe('deriveMessageParts — images', () => {

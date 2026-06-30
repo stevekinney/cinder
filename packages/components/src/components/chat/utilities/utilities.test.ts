@@ -4,6 +4,7 @@ import type { Message, MultiModalContent } from '../conversation-model.ts';
 import {
   getMessageParts,
   getMessageRoleLabel,
+  getMessageText,
   resolveMessageReasoning,
   resolveMessageSteps,
   resolveMessageSuggestions,
@@ -59,6 +60,34 @@ describe('getMessageParts', () => {
     const content = [{ type: 'text', text: 'x' }] as const;
     const parts = getMessageParts(message({ role: 'assistant', content }));
     expect(parts).toEqual([{ type: 'text', text: 'x' }]);
+  });
+});
+
+describe('getMessageText', () => {
+  it('serializes published server tool content blocks instead of dropping them', () => {
+    const content: MultiModalContent[] = [
+      { type: 'server_tool_use', id: 'tool-1', name: 'web_search', input: { query: 'cinder' } },
+      { type: 'web_search_tool_result', tool_use_id: 'tool-1', content: { title: 'Result' } },
+      {
+        type: 'code_execution_tool_result',
+        tool_use_id: 'tool-2',
+        content: { stdout: 'ok' },
+      },
+      { type: 'container_upload', file_id: 'file-1' },
+    ];
+
+    expect(getMessageText(message({ role: 'assistant', content }))).toContain(
+      'Server tool use: web_search',
+    );
+    expect(getMessageText(message({ role: 'assistant', content }))).toContain(
+      'Web search result: tool-1',
+    );
+    expect(getMessageText(message({ role: 'assistant', content }))).toContain(
+      'Server tool result: tool-2',
+    );
+    expect(getMessageText(message({ role: 'assistant', content }))).toContain(
+      'Container upload: file-1',
+    );
   });
 });
 
