@@ -430,9 +430,7 @@ describe('NavigationBar', () => {
     const toggle = container.querySelector('#toggle-btn') as HTMLElement;
     await fireEvent.click(toggle);
     const itemsRegion = container.querySelector('.cinder-navigation-bar__items');
-    expect(
-      itemsRegion?.getAttribute('data-open'),
-    ).toBe('true');
+    expect(itemsRegion?.getAttribute('data-open')).toBe('true');
     expect(itemsRegion).not.toBeNull();
     expect(itemsRegion?.hasAttribute('inert')).toBe(false);
   });

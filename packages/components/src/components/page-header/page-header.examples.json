@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "page-header",
+  "import": "@lostgradient/cinder/page-header",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic page header",
+      "description": "Page-level heading with optional metadata and right-aligned actions using the default snippet.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { PageHeader } from '@lostgradient/cinder/page-header';\n</script>\n\n<div>\n  <PageHeader title=\"Approvals\" meta=\"3 pending · 12 resolved\" />\n</div>\n\n<div style=\"margin-top: var(--cinder-space-4);\">\n  <PageHeader title=\"Schedules\" meta=\"No schedules\">\n    <Button variant=\"primary\" size=\"sm\" label=\"+ New schedule\" />\n  </PageHeader>\n</div>\n"
+    }
+  ]
+}
