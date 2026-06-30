@@ -127,7 +127,10 @@ export function preserveServerComponentIdentity(source: string, fileName = 'comp
   if (insertionIndexes.length === 0) return source;
 
   let transformedSource = source;
-  for (const insertionIndex of insertionIndexes.toSorted((left, right) => right - left)) {
+  // Do not use Array.prototype.toSorted(): the package targets ES2022.
+  const sortedInsertionIndexes = Array.from(insertionIndexes);
+  sortedInsertionIndexes.sort((left, right) => right - left);
+  for (const insertionIndex of sortedInsertionIndexes) {
     transformedSource =
       transformedSource.slice(0, insertionIndex) +
       `, ${componentName}` +
