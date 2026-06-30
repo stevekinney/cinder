@@ -215,6 +215,27 @@ describe('Marquee', () => {
     expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('false');
   });
 
+  test('manual resume override stays active when pointer leaves while control is focused', async () => {
+    const { container, getByRole } = render(Marquee, {
+      props: { children: textSnippet('content') },
+    });
+    const element = container.querySelector<HTMLElement>('.cinder-marquee');
+    const control = getByRole('button', { name: 'Pause marquee animation' });
+
+    control.click();
+    control.click();
+    control.focus();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.activeElement).toBe(control);
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+
+    element?.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+  });
+
   test('viewport has keyboard access for reduced-motion scroll access', () => {
     const { container } = render(Marquee, { children: textSnippet('content') });
     const viewport = container.querySelector<HTMLDivElement>('.cinder-marquee__viewport');

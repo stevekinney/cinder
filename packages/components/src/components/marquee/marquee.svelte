@@ -185,6 +185,17 @@
     clearManualResumeRequest();
   }
 
+  function clearManualResumeRequestAfterPointerLeaves(event: PointerEvent): void {
+    if (
+      event.currentTarget instanceof HTMLElement &&
+      event.currentTarget.contains(document.activeElement)
+    ) {
+      return;
+    }
+
+    clearManualResumeRequest();
+  }
+
   $effect(() => {
     if (!primaryTrackItem || !duplicateTrackItem) return;
     duplicateReady = false;
@@ -226,7 +237,7 @@
   style:--cinder-marquee-duration={duration}
   style:--cinder-marquee-gap={gap}
   onfocusout={clearManualResumeRequestAfterFocusLeaves}
-  onpointerleave={clearManualResumeRequest}
+  onpointerleave={clearManualResumeRequestAfterPointerLeaves}
 >
   <div
     class="cinder-marquee__viewport"
