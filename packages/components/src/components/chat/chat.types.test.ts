@@ -1,9 +1,9 @@
 /**
  * Public prop-shape regression guard for Chat.
  *
- * `ChatProps.conversation` is the vendored `ConversationHistory` (a breaking
- * change from the previous conversationalist `Conversation`). This asserts, at
- * the type level and through the PUBLIC `@lostgradient/cinder/chat`-equivalent barrel, that:
+ * `ChatProps.conversation` is the published Conversationalist
+ * `ConversationHistory` snapshot. This asserts, at the type level and through
+ * the PUBLIC `@lostgradient/cinder/chat`-equivalent barrel, that:
  *   1. `ConversationHistory` is publicly importable alongside `ChatProps`.
  *   2. The actual `<Chat>` component accepts a `ConversationHistory`-shaped
  *      `conversation` prop (via `ComponentProps<typeof Chat>`), not just
@@ -21,7 +21,7 @@ import type { ChatProps, ConversationHistory } from './index.ts';
 
 type Assignable<A, B> = A extends B ? true : false;
 
-// The component's accepted props must include a `conversation` of the vendored
+// The component's accepted props must include a `conversation` of the published
 // ConversationHistory type.
 type ChatComponentProps = ComponentProps<typeof Chat>;
 const conversationPropIsHistory: Assignable<

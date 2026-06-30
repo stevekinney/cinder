@@ -1,7 +1,7 @@
 /**
  * Utility functions for chat message operations.
  *
- * These helpers work with the vendored {@link Message} type to extract
+ * These helpers work with the published {@link Message} type to extract
  * content for copy/export operations.
  */
 

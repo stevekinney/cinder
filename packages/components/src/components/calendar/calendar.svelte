@@ -110,7 +110,6 @@
   }
 
   const todayIso = $derived(toISODate(new Date()));
-  const selectedDate = $derived(parseISODate(value));
   const anchorIso = $derived.by(() => {
     // Validate value and month before using them; fall back to today so
     // focusedIso always resolves to a parseable date (avoids a grid with
@@ -214,7 +213,11 @@
   async function moveFocusedByMonths(delta: number, moveDomFocus = true) {
     const base = parseISODate(focusedIso) ?? visibleMonthDate;
     const monthStart = addMonths(startOfMonth(base), delta);
-    const candidate = clampDayToMonth(monthStart.getFullYear(), monthStart.getMonth(), base.getDate());
+    const candidate = clampDayToMonth(
+      monthStart.getFullYear(),
+      monthStart.getMonth(),
+      base.getDate(),
+    );
     await focusDate(toISODate(candidate), moveDomFocus);
   }
 

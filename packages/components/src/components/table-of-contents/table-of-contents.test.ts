@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: TableOfContents } = await import('./table-of-contents.svelte');
 
 type ObserverRecord = {
@@ -320,10 +320,11 @@ describe('TableOfContents', () => {
     const lateHeading = createHeading('late-explicit', 'Late explicit', 'h2');
     lateHeading.getBoundingClientRect = () => ({ top: -12 }) as DOMRect;
     document.body.appendChild(lateHeading);
-    await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const current = container.querySelector('a[aria-current="location"]');
-    expect(current?.getAttribute('href')).toBe('#late-explicit');
+    await waitFor(() => {
+      const current = container.querySelector('a[aria-current="location"]');
+      expect(current?.getAttribute('href')).toBe('#late-explicit');
+    });
   });
 
   test('uses root margin bottom edge for active heading threshold', async () => {

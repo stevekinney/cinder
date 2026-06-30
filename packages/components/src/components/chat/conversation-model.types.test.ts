@@ -1,12 +1,9 @@
 /**
- * Interop guard for the vendored conversation data model.
+ * Interop guard for the Chat conversation data model.
  *
- * Chat's whole reason for vendoring its own types is "max interop": a value
- * produced by `conversationalist` (a `Message`/`ToolCall`) or by `armorer`
- * (a tool call `{ id, name, arguments }` / a tool result
- * `{ callId, outcome, content }`) must satisfy the vendored types with ZERO
- * casts. These compile-time `satisfies` assertions fail the typecheck if that
- * structural compatibility ever drifts.
+ * Chat should expose the published `conversationalist` types directly instead
+ * of a bespoke mirror. These compile-time assertions fail the typecheck if the
+ * local bridge drifts from the package surface.
  *
  * Named `*.types.test.ts` so it is covered by typecheck/svelte-check but
  * excluded from the published build (`tsconfig.build.json` excludes `**\/*.test.ts`).
@@ -14,10 +11,48 @@
 
 import { expect, test } from 'bun:test';
 
-import type { ConversationHistory, Message, ToolCall, ToolResult } from './conversation-model.ts';
+import type {
+  ConversationHistory as ConversationalistConversationHistory,
+  Message as ConversationalistMessage,
+  MultiModalContent as ConversationalistMultiModalContent,
+  ToolCall as ConversationalistToolCall,
+  ToolResult as ConversationalistToolResult,
+} from 'conversationalist';
+import type { ToolCallPair as ConversationalistToolCallPair } from 'conversationalist/utilities';
 
-// A message exactly as `conversationalist` materializes it (immutable shape,
-// readonly content array, tool-call role). Must satisfy the vendored `Message`.
+import type {
+  ConversationHistory,
+  Message,
+  MultiModalContent,
+  ToolCall,
+  ToolCallPair,
+  ToolResult,
+} from './conversation-model.ts';
+
+type Assignable<A, B> = A extends B ? true : false;
+
+const publishedHistoryAssignableToCinder: Assignable<
+  ConversationalistConversationHistory,
+  ConversationHistory
+> = true;
+const cinderHistoryAssignableToPublished: Assignable<
+  ConversationHistory,
+  ConversationalistConversationHistory
+> = true;
+const publishedMessageAssignableToCinder: Assignable<ConversationalistMessage, Message> = true;
+const cinderMessageAssignableToPublished: Assignable<Message, ConversationalistMessage> = true;
+const publishedToolCallAssignableToCinder: Assignable<ConversationalistToolCall, ToolCall> = true;
+const publishedToolResultAssignableToCinder: Assignable<ConversationalistToolResult, ToolResult> =
+  true;
+const publishedToolCallPairAssignableToCinder: Assignable<
+  ConversationalistToolCallPair,
+  ToolCallPair
+> = true;
+const cinderContentAssignableToPublished: Assignable<
+  MultiModalContent,
+  ConversationalistMultiModalContent
+> = true;
+
 const conversationalistMessage = {
   id: 'm1',
   role: 'tool-call',
@@ -29,15 +64,12 @@ const conversationalistMessage = {
   toolCall: { id: 'call-1', name: 'exports_check', arguments: { package: '@lostgradient/cinder' } },
 } satisfies Message;
 
-// A tool call exactly as `armorer.createToolCall(...)` returns it.
 const armorerToolCall = {
   id: 'call-1',
   name: 'exports_check',
   arguments: { package: '@lostgradient/cinder' },
 } satisfies ToolCall;
 
-// A tool result exactly as `armorer`/`interoperability` materializes it,
-// including the structured `error` object (not a string).
 const armorerToolResult = {
   callId: 'call-1',
   outcome: 'error',
@@ -50,7 +82,6 @@ const armorerToolResult = {
   },
 } satisfies ToolResult;
 
-// A conversation snapshot exactly as `createConversationHistory(...)` produces it.
 const conversationalistHistory = {
   schemaVersion: 4,
   id: 'conversation-1',
@@ -62,11 +93,24 @@ const conversationalistHistory = {
   updatedAt: '2026-06-02T00:00:00.000Z',
 } satisfies ConversationHistory;
 
-test('vendored conversation model stays structurally compatible with conversationalist + armorer', () => {
-  // The `satisfies` checks above are the real assertion (compile-time). These
-  // runtime expectations keep the file a live test and pin a couple of values.
+const extendedThinkingContent = {
+  type: 'thinking',
+  thinking: 'private reasoning',
+  signature: 'signature-1',
+} satisfies MultiModalContent;
+
+test('chat conversation model re-exports published Conversationalist types', () => {
+  expect(publishedHistoryAssignableToCinder).toBe(true);
+  expect(cinderHistoryAssignableToPublished).toBe(true);
+  expect(publishedMessageAssignableToCinder).toBe(true);
+  expect(cinderMessageAssignableToPublished).toBe(true);
+  expect(publishedToolCallAssignableToCinder).toBe(true);
+  expect(publishedToolResultAssignableToCinder).toBe(true);
+  expect(publishedToolCallPairAssignableToCinder).toBe(true);
+  expect(cinderContentAssignableToPublished).toBe(true);
   expect(conversationalistMessage.role).toBe('tool-call');
   expect(armorerToolCall.id).toBe('call-1');
   expect(armorerToolResult.error?.message).toBe('exports map drifted');
   expect(conversationalistHistory.ids).toContain('m1');
+  expect(extendedThinkingContent.type).toBe('thinking');
 });

@@ -64,9 +64,9 @@ describe('discoverComponents', () => {
     expect(components.length).toBeGreaterThanOrEqual(21);
   });
 
-  it('does not include removed date-picker component', async () => {
+  it('includes date-picker', async () => {
     const components = await discoverComponents();
-    expect(components).not.toContain('date-picker');
+    expect(components).toContain('date-picker');
   });
 });
 
@@ -92,9 +92,9 @@ describe('discoverExamples', () => {
     expect(examples).toEqual([]);
   });
 
-  it('returns no standalone examples for date-picker', async () => {
+  it('returns standalone examples for date-picker', async () => {
     const examples = await discoverExamples('date-picker');
-    expect(examples).toEqual([]);
+    expect(examples).toEqual(['basic', 'date-time']);
   });
 
   it('returns names without the .example.svelte extension', async () => {
@@ -142,9 +142,10 @@ describe('discoverAll', () => {
     expect(names).toContain('modal');
   });
 
-  it('does not include removed date-picker component', async () => {
+  it('includes date-picker component metadata', async () => {
     const results = await discoverAll();
-    expect(results.map((entry) => entry.name)).not.toContain('date-picker');
+    const datePickerEntry = results.find((entry) => entry.name === 'date-picker');
+    expect(datePickerEntry?.exampleCount).toBe(2);
   });
 });
 
@@ -171,9 +172,9 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).not.toContain('label');
   });
 
-  it('excludes date-picker because native date inputs replace it', async () => {
+  it('includes date-picker because it has standalone examples', async () => {
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar).not.toContain('date-picker');
+    expect(sidebar).toContain('date-picker');
   });
 
   it('returns an array of strings, no duplicates', async () => {
@@ -288,9 +289,11 @@ describe('discoverSidebarComponents', () => {
     // passes the `exampleCount > 0` sidebar filter, bringing the measured
     // ceiling to 144.
     // QrCode and Marquee each add their first standalone playground examples,
-    // bringing the measured sidebar ceiling to 147.
+    // bringing the measured sidebar ceiling to 147. DatePicker now ships with
+    // two standalone examples, raising the measured ceiling to 148. Chat adds
+    // two more standalone composition families, bringing this branch to 150.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(147);
+    expect(sidebar.length).toBeLessThanOrEqual(150);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -323,6 +326,7 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('multi-select');
     expect(sidebar).toContain('qr-code');
     expect(sidebar).toContain('marquee');
+    expect(sidebar).toContain('date-picker');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

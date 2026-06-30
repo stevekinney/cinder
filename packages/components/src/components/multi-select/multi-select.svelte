@@ -418,7 +418,7 @@
       aria-expanded={open}
       aria-controls={listboxId}
       data-cinder-open={open || undefined}
-      data-cinder-has-clear={selectedCount > 0 && !field.disabled && !readonly || undefined}
+      data-cinder-has-clear={(selectedCount > 0 && !field.disabled && !readonly) || undefined}
       data-cinder-readonly={readonly || undefined}
       onclick={() => (open ? closeMenu() : openMenu())}
       onkeydown={handleTriggerKeydown}
@@ -443,7 +443,6 @@
 
     {#if open}
       <div
-        bind:this={panelElement}
         id={`${id}-popover`}
         class="cinder-_floating-surface cinder-multi-select__panel"
         data-cinder-direction={direction}
@@ -458,6 +457,7 @@
             role="combobox"
             placeholder="Filter options"
             value={query}
+            aria-label="Filter options"
             aria-labelledby={filterAriaLabelledBy}
             aria-autocomplete="list"
             aria-haspopup="listbox"
@@ -524,10 +524,10 @@
   </div>
 
   {#if filterable}
-    <span id={filterLabelHintId} class="cinder-multi-select__sr-status">Filter options</span>
     <p class="cinder-multi-select__sr-status" role="status" aria-live="polite">
       {open && visibleItems.length === 0 ? emptyListMessage : ''}
     </p>
+    <span id={filterLabelHintId} class="cinder-multi-select__sr-status">Filter options</span>
   {/if}
 
   <input

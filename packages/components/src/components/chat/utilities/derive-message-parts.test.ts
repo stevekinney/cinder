@@ -1,5 +1,5 @@
 /**
- * Unit tests for `deriveMessageParts` — the pure bridge from the vendored
+ * Unit tests for `deriveMessageParts` — the pure bridge from the published
  * {@link Message} mirror to the cinder-owned {@link ChatMessagePart} render
  * layer. The bridge must mirror the historical role-branch rendering exactly:
  * tool-call / tool-result / markdown bodies, images as trailing parts, stable
