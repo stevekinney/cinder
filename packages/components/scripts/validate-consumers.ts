@@ -904,7 +904,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       await waitForUrl(`http://127.0.0.1:${httpPort}/`, 10_000, fixtureServer);
 
       // Barrel page
-      const response = await fetch(`http://127.0.0.1:${httpPort}/`);
+      const response = await fetchWithTimeout(
+        `http://127.0.0.1:${httpPort}/`,
+        10_000,
+        'sveltekit-consumer / SSR',
+      );
       if (response.status !== 200) fail(`fixture / returned ${response.status}, want 200`);
       const body = await response.text();
       for (const cls of ALWAYS_RENDERED_CLASSES) {
@@ -929,9 +933,18 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       if (!body.includes('cinder-share-card')) {
         fail(`fixture HTML (/) does not contain class "cinder-share-card" (ShareCard did not SSR)`);
       }
+      if (!body.includes('data-fixture-nav-toggle="barrel"')) {
+        fail(
+          'fixture HTML (/) is missing the NavigationBar menuToggle trigger marker (barrel route SSR did not render the toggle snippet)',
+        );
+      }
 
       // Subpath page
-      const subpathResponse = await fetch(`http://127.0.0.1:${httpPort}/subpath`);
+      const subpathResponse = await fetchWithTimeout(
+        `http://127.0.0.1:${httpPort}/subpath`,
+        10_000,
+        'sveltekit-consumer /subpath SSR',
+      );
       if (subpathResponse.status !== 200)
         fail(`fixture /subpath returned ${subpathResponse.status}, want 200`);
       const subpathBody = await subpathResponse.text();
@@ -939,6 +952,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         if (!subpathBody.includes(cls)) {
           fail(`fixture HTML (/subpath) does not contain class "${cls}"`);
         }
+      }
+      if (!subpathBody.includes('data-fixture-nav-toggle="subpath"')) {
+        fail(
+          'fixture HTML (/subpath) is missing the NavigationBar menuToggle trigger marker (subpath route SSR did not render the toggle snippet)',
+        );
       }
 
       async function assertRenderedRouteServesButtonCss(
@@ -952,7 +970,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         // fragile on-disk path resolution (relative hrefs like
         // `../_app/immutable/...` would otherwise resolve outside the client
         // output directory and silently be skipped).
-        const routeResponse = await fetch(`http://127.0.0.1:${httpPort}${routePath}`);
+        const routeResponse = await fetchWithTimeout(
+          `http://127.0.0.1:${httpPort}${routePath}`,
+          10_000,
+          `sveltekit-consumer ${routePath} SSR`,
+        );
         if (routeResponse.status !== 200) {
           fail(`fixture ${routePath} returned ${routeResponse.status}, want 200`);
         }
@@ -978,7 +1000,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         let buttonCssServed = false;
         for (const href of stylesheetHrefs) {
           const stylesheetUrl = new URL(href, routeUrl).toString();
-          const stylesheetResponse = await fetch(stylesheetUrl);
+          const stylesheetResponse = await fetchWithTimeout(
+            stylesheetUrl,
+            10_000,
+            `${routePath} stylesheet fetch`,
+          );
           if (stylesheetResponse.status !== 200) {
             fail(
               `${routePath} references stylesheet ${href} (resolved to ${stylesheetUrl}) which returned ${stylesheetResponse.status} — cannot verify the ${contractLabel} styles contract`,
@@ -1186,6 +1212,19 @@ async function waitForUrl(
     await Bun.sleep(200);
   }
   fail(`timeout waiting for ${url}`);
+}
+
+async function fetchWithTimeout(
+  url: string,
+  timeoutMs: number,
+  description: string,
+): Promise<Response> {
+  try {
+    return await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail(`${description} failed or timed out after ${timeoutMs}ms: ${message}`);
+  }
 }
 
 async function runNodeFixture(): Promise<void> {

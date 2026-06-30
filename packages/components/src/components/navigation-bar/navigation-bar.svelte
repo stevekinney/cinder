@@ -24,6 +24,7 @@
 
 <script lang="ts">
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
+  import { BROWSER as browser } from 'esm-env';
   import { classNames } from '../../utilities/class-names.ts';
 
   const regionId = $props.id();
@@ -152,7 +153,7 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        onclick: handleToggle,
+        ...(browser ? { onclick: handleToggle } : {}),
       })}
     </div>
   {/if}
