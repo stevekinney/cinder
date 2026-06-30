@@ -292,8 +292,10 @@ describe('discoverSidebarComponents', () => {
     // bringing the measured sidebar ceiling to 147. DatePicker now ships with
     // two standalone examples, raising the measured ceiling to 148. Chat adds
     // two more standalone composition families, bringing this branch to 150.
+    // Marketing sections add 10 standalone families with examples, bringing the
+    // measured ceiling to 160.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(150);
+    expect(sidebar.length).toBeLessThanOrEqual(160);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
