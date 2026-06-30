@@ -11,7 +11,7 @@ const schema = {
     open: {
       type: 'boolean',
       description:
-        'Bindable open state. Without binding, the initial value the component then\nmanages.',
+        'Bindable open state. Without `bind:open`, this seeds local state and can be\nupdated by parent prop changes. Use `bind:open` for full parent/trigger\nsynchronization.',
       default: false,
     },
     disabled: {
@@ -19,10 +19,15 @@ const schema = {
       description: 'When true, the trigger cannot be toggled.',
       default: false,
     },
+    triggerAriaLabel: {
+      type: 'string',
+      description:
+        'Accessible name override for the trigger button. The runtime prop also\naccepts a state-aware function (`{ open, disabled } => string`), but JSON\nSchema can only model the string variant.',
+    },
     idBase: {
       type: 'string',
       description:
-        'Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted.',
+        'Base used to derive the trigger, label, and panel ARIA ids. Auto-generated when omitted.',
     },
     class: {
       type: 'string',
