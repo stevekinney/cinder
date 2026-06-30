@@ -236,9 +236,17 @@ describe('Alert rendering', () => {
 
   test('variant="danger" stamps data-cinder-variant="danger" — canonical failure-severity spelling', () => {
     // danger is the canonical severity spelling matching banner and callout.
-    // No alias normalization occurs; the data attribute value equals the prop value.
     const { container } = render(Alert, {
       props: { variant: 'danger', children: emptySnippet },
+    });
+    expect(container.querySelector('.cinder-alert')?.getAttribute('data-cinder-variant')).toBe(
+      'danger',
+    );
+  });
+
+  test('variant="error" normalizes to data-cinder-variant="danger" for backward compatibility', () => {
+    const { container } = render(Alert, {
+      props: { variant: 'error', children: emptySnippet },
     });
     expect(container.querySelector('.cinder-alert')?.getAttribute('data-cinder-variant')).toBe(
       'danger',
