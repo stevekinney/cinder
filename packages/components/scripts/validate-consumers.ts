@@ -629,7 +629,7 @@ async function pickEphemeralPort(): Promise<number> {
  */
 function injectTarballIntoFixture(
   fixtureDirectory: string,
-  options: { svelteVersion?: string } = {},
+  options: { svelteVersion?: string; typescriptVersion?: string } = {},
 ): () => void {
   const manifestPath = join(fixtureDirectory, 'package.json');
   const originalContent = readFileSync(manifestPath, 'utf8');
@@ -649,12 +649,19 @@ function injectTarballIntoFixture(
   parsed['overrides'] = overrides;
 
   dependencies['@lostgradient/cinder'] = `file:${tarballFilePath}`;
-  if (options.svelteVersion !== undefined) {
+  if (options.svelteVersion !== undefined || options.typescriptVersion !== undefined) {
     const rawDevDependencies = parsed['devDependencies'];
     if (!isObjectRecord(rawDevDependencies)) {
-      fail(`${manifestPath} is missing a devDependencies object for Svelte compatibility testing`);
+      fail(
+        `${manifestPath} is missing a devDependencies object for compatibility testing overrides`,
+      );
     }
-    rawDevDependencies['svelte'] = options.svelteVersion;
+    if (options.svelteVersion !== undefined) {
+      rawDevDependencies['svelte'] = options.svelteVersion;
+    }
+    if (options.typescriptVersion !== undefined) {
+      rawDevDependencies['typescript'] = options.typescriptVersion;
+    }
   }
   for (const dependencyPackage of workspaceDependencyPackages) {
     const fileSpecifier = `file:${dependencyPackage.tarballFilePath}`;
@@ -698,6 +705,39 @@ async function runTypescriptConsumerSvelteGate(
   }
 }
 
+type InstallLikeResult = {
+  stdout: { toString(): string };
+  stderr: { toString(): string };
+};
+
+function assertNoPeerDependencyWarnings(installResult: InstallLikeResult, label: string): void {
+  const installOutput = `${installResult.stdout.toString()}\n${installResult.stderr.toString()}`;
+  const peerWarningPatterns = [
+    /issues with peer dependencies found/i,
+    /unmet peer/i,
+    /incorrect peer dependency/i,
+  ];
+  if (peerWarningPatterns.some((pattern) => pattern.test(installOutput))) {
+    fail(
+      `typescript-consumer ${label} bun install reported peer dependency warnings:\n${installOutput}`,
+    );
+  }
+}
+
+async function runTypescriptConsumerNodenextGate(
+  fixtureDirectory: string,
+  label: string,
+): Promise<void> {
+  const result = await $`bunx tsc --noEmit -p tsconfig.nodenext.json`
+    .cwd(fixtureDirectory)
+    .nothrow();
+  if (result.exitCode !== 0) {
+    fail(
+      `typescript-consumer ${label} gate 1 - nodenext (no svelte condition) failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
+    );
+  }
+}
+
 async function runSveltePeerCompatibilityFixture(
   label: string,
   svelteVersion: string,
@@ -719,6 +759,35 @@ async function runSveltePeerCompatibilityFixture(
     await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
     process.stdout.write(
       `[validate-consumers] svelte peer compatibility OK (${label}: ${svelteVersion}).\n`,
+    );
+  } finally {
+    restoreManifest();
+  }
+}
+
+async function runTypescriptCompatibilityFixture(
+  label: string,
+  typescriptVersion: string,
+): Promise<void> {
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/typescript-consumer');
+  process.stdout.write(
+    `[validate-consumers] step: typescript compatibility (${label}: ${typescriptVersion})…\n`,
+  );
+  const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { typescriptVersion });
+
+  try {
+    await $`rm -rf node_modules src/generated`.cwd(fixtureDirectory);
+    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    if (installResult.exitCode !== 0) {
+      fail(
+        `typescript-consumer ${label} bun install failed for typescript@${typescriptVersion}:\n${installResult.stdout.toString()}\n${installResult.stderr.toString()}`,
+      );
+    }
+    assertNoPeerDependencyWarnings(installResult, label);
+    await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
+    await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
+    process.stdout.write(
+      `[validate-consumers] typescript compatibility OK (${label}: ${typescriptVersion}).\n`,
     );
   } finally {
     restoreManifest();
@@ -1441,17 +1510,7 @@ async function runTypescriptConsumerFixture(): Promise<void> {
     // survive a run, and the probe must cover whatever the tarball publishes.
     await runTypescriptConsumerSvelteGate(fixtureDirectory, 'workspace default');
 
-    const tscGates: Array<{ label: string; tsconfig: string }> = [
-      { label: 'gate 1 — nodenext (no svelte condition)', tsconfig: 'tsconfig.nodenext.json' },
-    ];
-    for (const { label, tsconfig } of tscGates) {
-      const result = await $`bunx tsc --noEmit -p ${tsconfig}`.cwd(fixtureDirectory).nothrow();
-      if (result.exitCode !== 0) {
-        fail(
-          `typescript-consumer ${label} failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
-        );
-      }
-    }
+    await runTypescriptConsumerNodenextGate(fixtureDirectory, 'workspace default');
 
     process.stdout.write('[validate-consumers] typescript-consumer OK (gates 1–3 green).\n');
   } finally {
@@ -1613,6 +1672,7 @@ try {
   await runManifestConsumerFixture();
   await runNodeFixture();
   await runTypescriptConsumerFixture();
+  await runTypescriptCompatibilityFixture('latest TypeScript 6', '^6.0.3');
   await runSveltePeerCompatibilityFixture('minimum', sveltePeerContract.minimum);
   await runSveltePeerCompatibilityFixture('latest Svelte 5', sveltePeerContract.latest);
   await runSveltekitFixture('minimum', sveltePeerContract.minimum);
