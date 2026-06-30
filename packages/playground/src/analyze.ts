@@ -11,11 +11,18 @@
  * the manifest. If the Props type has a property not in the destructuring, it is skipped.
  */
 
-import { basename, dirname, join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
 
 import type { Expression, Pattern, Property, SpreadElement } from 'estree';
 import { type AST, parse } from 'svelte/compiler';
-import { Project, type PropertySignature, SyntaxKind, type Type, type TypeNode } from 'ts-morph';
+import {
+  Project,
+  type PropertySignature,
+  type SourceFile,
+  SyntaxKind,
+  type TypeNode,
+} from 'ts-morph';
 
 import { discoverComponentFilePaths } from './discover.ts';
 import type { ComponentManifest, ControlKind, PropManifest } from './types.ts';
@@ -81,31 +88,89 @@ function inferControlKindFromTypeNode(
       return inferControlKindFromTypeNode(resolvedNode, resolvedNode?.getText() ?? typeText);
     }
 
-    return inferControlKindFromResolvedType(typeNode.getType(), typeText);
+    const importedControl = inferControlKindFromImportedAlias(sf, name, typeText);
+    if (importedControl !== undefined) return importedControl;
+
+    return { kind: 'unknown', rawType: typeText };
   }
 
   return { kind: 'unknown', rawType: typeText };
 }
 
-function inferControlKindFromResolvedType(type: Type, typeText: string): ControlKind {
-  if (type.isBoolean()) return { kind: 'boolean' };
-  if (type.isNumber()) return { kind: 'number' };
-  if (type.isString()) return { kind: 'text' };
+const importedLiteralUnionCache = new Map<string, ControlKind | null>();
 
-  if (type.isUnion()) {
-    const options: string[] = [];
-    for (const member of type.getUnionTypes()) {
-      if (!member.isStringLiteral()) return { kind: 'unknown', rawType: typeText };
-      const value = member.getLiteralValue();
-      if (typeof value !== 'string') return { kind: 'unknown', rawType: typeText };
-      options.push(value);
+function inferControlKindFromImportedAlias(
+  sourceFile: SourceFile,
+  name: string,
+  typeText: string,
+): ControlKind | undefined {
+  for (const declaration of sourceFile.getImportDeclarations()) {
+    const moduleSpecifier = declaration.getModuleSpecifierValue();
+    if (!moduleSpecifier.startsWith('.')) continue;
+
+    for (const namedImport of declaration.getNamedImports()) {
+      const importedName = namedImport.getNameNode().getText();
+      const localName = namedImport.getAliasNode()?.getText() ?? importedName;
+      if (localName !== name) continue;
+
+      return inferControlKindFromRelativeTypeAlias(
+        sourceFile.getFilePath(),
+        moduleSpecifier,
+        importedName,
+        typeText,
+      );
     }
-    return options.length > 0
-      ? { kind: 'select', options }
-      : { kind: 'unknown', rawType: typeText };
   }
 
-  return { kind: 'unknown', rawType: typeText };
+  return undefined;
+}
+
+function inferControlKindFromRelativeTypeAlias(
+  importerPath: string,
+  moduleSpecifier: string,
+  typeName: string,
+  typeText: string,
+): ControlKind {
+  const importedPath = resolveRelativeTypeModule(importerPath, moduleSpecifier);
+  if (importedPath === undefined) return { kind: 'unknown', rawType: typeText };
+
+  const cacheKey = `${importedPath}:${typeName}`;
+  const cached = importedLiteralUnionCache.get(cacheKey);
+  if (cached !== undefined) return cached ?? { kind: 'unknown', rawType: typeText };
+
+  const control = controlKindFromTypeAliasSource(readFileSync(importedPath, 'utf8'), typeName);
+  importedLiteralUnionCache.set(cacheKey, control);
+
+  return control ?? { kind: 'unknown', rawType: typeText };
+}
+
+function resolveRelativeTypeModule(
+  importerPath: string,
+  moduleSpecifier: string,
+): string | undefined {
+  const basePath = resolve(dirname(importerPath), moduleSpecifier);
+  const candidates = moduleSpecifier.endsWith('.ts')
+    ? [basePath]
+    : [`${basePath}.ts`, join(basePath, 'index.ts')];
+
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
+function controlKindFromTypeAliasSource(source: string, typeName: string): ControlKind | null {
+  const escapedTypeName = typeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`(?:export\\s+)?type\\s+${escapedTypeName}\\s*=\\s*([\\s\\S]*?);`).exec(
+    source,
+  );
+  if (match === null) return null;
+
+  const options: string[] = [];
+  for (const member of (match[1] ?? '').split('|')) {
+    const literal = /^(['"])(.*)\1$/.exec(member.trim());
+    if (literal === null) return null;
+    options.push(literal[2] ?? '');
+  }
+
+  return options.length > 0 ? { kind: 'select', options } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -571,6 +636,12 @@ async function detectCompound(svelteFilePath: string): Promise<boolean> {
 
 const SKIP_PROPS = new Set(['class', 'rest']);
 
+function isPublicPropName(name: string): boolean {
+  if (SKIP_PROPS.has(name)) return false;
+  if (name.startsWith('aria-')) return false;
+  return !name.includes(':');
+}
+
 /** Analyzes a single Svelte component file and returns its ComponentManifest. */
 export async function analyzeComponent(filePath: string): Promise<ComponentManifest> {
   const source = await Bun.file(filePath).text();
@@ -578,31 +649,18 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
   const componentName = toPascalCase(fileBaseName);
 
   const rawProps = extractPropsFromSvelteAst(source);
+  const publicRawProps = rawProps.filter((prop) => isPublicPropName(prop.name));
   let moduleScriptContent = extractModuleScriptContent(source);
 
-  // After the per-directory migration, the .svelte module script may only
-  // re-export types from <name>.types.ts. Concatenate the types-file content
-  // so the existing module-script type walker finds the Props alias.
-  const typesFilePath = filePath.replace(/\.svelte$/, '.types.ts');
-  const typesFile = Bun.file(typesFilePath);
-  if (await typesFile.exists()) {
-    const typesSource = await typesFile.text();
-    moduleScriptContent = `${moduleScriptContent}\n${typesSource}`;
-  }
-
-  const typeInfoMap = buildTypeInfoMap(moduleScriptContent, componentName, dirname(filePath));
+  const typeInfoMap =
+    publicRawProps.length > 0
+      ? await buildComponentTypeInfoMap(filePath, moduleScriptContent, componentName)
+      : new Map<string, TypeInfo>();
 
   const props: PropManifest[] = [];
 
-  for (const rawProp of rawProps) {
+  for (const rawProp of publicRawProps) {
     const { name, defaultValue, bindable } = rawProp;
-
-    // Skip class, ...rest, and aria-* attributes
-    if (SKIP_PROPS.has(name)) continue;
-    if (name.startsWith('aria-')) continue;
-    // Skip names with colons (e.g. aria-* style quoted keys aren't possible here,
-    // but guard against potential 'class:...' patterns)
-    if (name.includes(':')) continue;
 
     const typeInfo = typeInfoMap.get(name);
     const control: ControlKind = typeInfo?.control ?? { kind: 'unknown', rawType: '?' };
@@ -632,6 +690,24 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
     props,
     ...(isCompound ? { isCompound: true } : {}),
   };
+}
+
+async function buildComponentTypeInfoMap(
+  filePath: string,
+  moduleScriptContent: string,
+  componentName: string,
+): Promise<Map<string, TypeInfo>> {
+  // After the per-directory migration, the .svelte module script may only
+  // re-export types from <name>.types.ts. Concatenate the types-file content
+  // so the existing module-script type walker finds the Props alias.
+  const typesFilePath = filePath.replace(/\.svelte$/, '.types.ts');
+  const typesFile = Bun.file(typesFilePath);
+  if (await typesFile.exists()) {
+    const typesSource = await typesFile.text();
+    moduleScriptContent = `${moduleScriptContent}\n${typesSource}`;
+  }
+
+  return buildTypeInfoMap(moduleScriptContent, componentName, dirname(filePath));
 }
 
 /**
