@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { resolve as resolvePath } from 'node:path';
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 
 // Integration test: exercises the REAL `@lostgradient/cinder/highlighters/shiki` adapter
 // through CodeBlock's default-highlighter seam (no module mock). The fast unit
@@ -56,4 +56,25 @@ describe('CodeBlock default-highlighter seam (real Shiki adapter)', () => {
     expect(probe.escaped).not.toContain('<img src=x onerror=alert(1)>');
     expect(probe.escaped.toLowerCase()).toMatch(/&lt;|&#x3c;|&#60;/);
   }, 30_000);
+
+  test('loader module memoizes the adapter-created highlighter in this process', async () => {
+    const highlighter = mock((code: string) => `<pre><code>${code}</code></pre>`);
+    const shikiHighlighter = mock(() => highlighter);
+
+    mock.module('../../highlighters/shiki/index.ts', () => ({ shikiHighlighter }));
+    try {
+      const { loadDefaultHighlighter } = await import('./code-block-default-highlighter.ts');
+      const first = await loadDefaultHighlighter();
+      const second = await loadDefaultHighlighter();
+
+      expect(first).toBe(second);
+      expect(shikiHighlighter).toHaveBeenCalledTimes(1);
+      await expect(Promise.resolve(first('const x: number = 1;', 'typescript'))).resolves.toContain(
+        '<pre>',
+      );
+      expect(highlighter).toHaveBeenCalledWith('const x: number = 1;', 'typescript');
+    } finally {
+      mock.restore();
+    }
+  });
 });
