@@ -410,7 +410,7 @@ type TarballExpectations = {
 async function buildTarballExpectations(): Promise<TarballExpectations> {
   const components = await discoverComponents();
   const componentRequiredEntries: string[] = [];
-  for (const { name, isExperimental } of components) {
+  for (const { name, isExperimental, hasCss } of components) {
     const sourceDirectory = isExperimental
       ? `package/src/components/experimental/${name}`
       : `package/src/components/${name}`;
@@ -426,6 +426,12 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       `${distributionDirectory}/index.js`,
       `${distributionDirectory}/index.d.ts`,
     );
+    if (hasCss) {
+      componentRequiredEntries.push(
+        `${distributionDirectory}/${name}.css`,
+        `${distributionDirectory}/${name}.css.d.ts`,
+      );
+    }
   }
   return {
     required: [
@@ -549,7 +555,7 @@ async function inspectTarball(): Promise<void> {
   // whitelist that omits the path).
   const packageJsonPath = join(repositoryRoot, 'package.json');
   const packageJsonContent = parseJsonFile<{
-    exports?: Record<string, { default?: string }>;
+    exports?: Record<string, { types?: string; default?: string }>;
   }>(await Bun.file(packageJsonPath).text());
   const stylesExports = Object.entries(packageJsonContent.exports ?? {}).filter(
     ([key, entry]) =>
@@ -557,7 +563,18 @@ async function inspectTarball(): Promise<void> {
   );
   const tarballEntrySet = new Set(entries);
   const danglingStylesExports: string[] = [];
+  const missingStylesTypeTargets: string[] = [];
   for (const [key, entry] of stylesExports) {
+    if (typeof entry.types !== 'string') {
+      missingStylesTypeTargets.push(`${key} is missing a string "types" target`);
+      continue;
+    }
+    const tarballTypesEntry = `package/${entry.types.replace(/^\.\//, '')}`;
+    if (!tarballEntrySet.has(tarballTypesEntry)) {
+      missingStylesTypeTargets.push(
+        `${key} -> ${entry.types} (expected tarball entry ${tarballTypesEntry})`,
+      );
+    }
     // package.json `default` paths are package-relative (`./dist/...`); npm
     // pack rewrites tarball entries as `package/dist/...`.
     const tarballEntry = `package/${entry.default!.replace(/^\.\//, '')}`;
@@ -570,6 +587,11 @@ async function inspectTarball(): Promise<void> {
   if (danglingStylesExports.length > 0) {
     fail(
       `Tarball is missing CSS artifacts for published /styles exports:\n  ${danglingStylesExports.join('\n  ')}`,
+    );
+  }
+  if (missingStylesTypeTargets.length > 0) {
+    fail(
+      `Tarball is missing style type declaration artifacts for published /styles exports:\n  ${missingStylesTypeTargets.join('\n  ')}`,
     );
   }
 }

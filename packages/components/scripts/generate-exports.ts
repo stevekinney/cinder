@@ -5,7 +5,7 @@
  *   ./<name>             → component (types/browser/node/svelte/default conditions)
  *   ./<name>/schema      → schema module (types/browser/node/svelte/default conditions)
  *   ./<name>/variables   → variables module (types/browser/node/svelte/default conditions)
- *   ./<name>/styles      → layer-wrapped CSS sidecar (default condition; emitted when the component ships a source <name>.css). Compound parents (tabs/table/accordion/side-navigation) @import their leaves' sidecars so the family arrives together.
+ *   ./<name>/styles      → layer-wrapped CSS sidecar (`types` + `default`; emitted when the component ships a source <name>.css). Compound parents (tabs/table/accordion/side-navigation) @import their leaves' sidecars so the family arrives together.
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
  *
@@ -347,9 +347,10 @@ export function computeDeprecatedExperimentalAliases(
     });
 
     if (hasCss) {
-      out[`${aliasPrefix}/styles`] = {
+      out[`${aliasPrefix}/styles`] = orderedExportEntry({
+        types: `${newDistDir}/${name}.css.d.ts`,
         default: `${newDistDir}/${name}.css`,
-      };
+      });
     }
 
     if (hasExamples) {
@@ -448,15 +449,17 @@ export function computeExports(
     // `@layer cinder.components { … }`). Consumers must import `@lostgradient/cinder/styles`
     // FIRST so the `@layer` order is established before per-component CSS
     // arrives; the sidecar then slots into the correct layer regardless of
-    // import order.
+    // import order. The `types` companion points at a side-effect declaration
+    // stub (`export {};`) emitted next to the copied CSS in dist.
     //
     // Only emitted when the component ships a source CSS sidecar — emitting
     // `/styles` for a component without CSS would publish a dead export
     // pointing at a non-existent dist artifact.
     if (hasCss) {
-      out[`${prefix}/styles`] = {
+      out[`${prefix}/styles`] = orderedExportEntry({
+        types: `${distDir}/${name}.css.d.ts`,
         default: `${distDir}/${name}.css`,
-      };
+      });
     }
 
     // JSON sidecar subpaths — emitted only when the file exists on disk.
