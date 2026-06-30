@@ -2,6 +2,8 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 /** Layout variant for the description list. */
 export type DescriptionListVariant = 'default' | 'striped' | 'two-column' | 'narrow';
+/** Term definition content: plain text or rich snippet content. */
+export type DescriptionListDefinition = string | Snippet;
 export type DescriptionListItem = {
   /**
    * Stable identity for keyed rendering. Falls back to `term` when omitted.
@@ -10,8 +12,8 @@ export type DescriptionListItem = {
   id?: string;
   /** The label rendered inside `<dt>`. */
   term: string;
-  /** The value rendered inside `<dd>`. */
-  definition: string;
+  /** The value rendered inside `<dd>`. May be plain text or a snippet. */
+  definition: DescriptionListDefinition;
 };
 export type DescriptionListProps = Omit<HTMLAttributes<HTMLDListElement>, 'class'> & {
   items: DescriptionListItem[];

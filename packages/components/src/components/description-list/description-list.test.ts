@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { DescriptionListDefinition } from './description-list.types.ts';
 
 setupHappyDom();
 
@@ -9,7 +10,7 @@ const { render } = await import('@testing-library/svelte');
 const { default: DescriptionList } = await import('./description-list.svelte');
 const { createRawSnippet } = await import('svelte');
 
-type Item = { id?: string; term: string; definition: string };
+type Item = { id?: string; term: string; definition: DescriptionListDefinition };
 
 function actionSnippet(transform: (item: Item) => string) {
   // createRawSnippet receives getter functions at runtime even though
@@ -17,6 +18,12 @@ function actionSnippet(transform: (item: Item) => string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return createRawSnippet<[Item]>((getItem: any) => ({
     render: () => transform(getItem()),
+  }));
+}
+
+function definitionSnippet(html: string): DescriptionListDefinition {
+  return createRawSnippet(() => ({
+    render: () => html,
   }));
 }
 
@@ -96,6 +103,19 @@ describe('DescriptionList', () => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const secondActions = actionsWrappers[1]!;
     expect(secondActions.querySelector('[aria-label="Edit Owner"]')).not.toBeNull();
+  });
+
+  test('definition snippets render rich HTML inside the definition wrapper', () => {
+    const items: Item[] = [
+      { term: 'Run ID', definition: definitionSnippet('<code>abc-123</code>') },
+      { term: 'Status', definition: 'Active' },
+    ];
+    const { container } = render(DescriptionList, { items });
+
+    const dds = container.querySelectorAll('dd');
+    expect(dds).toHaveLength(2);
+    expect(dds[0]?.querySelector('code')?.textContent).toBe('abc-123');
+    expect(dds[1]?.textContent).toContain('Active');
   });
 
   test('class prop is composed onto the root <dl>', () => {

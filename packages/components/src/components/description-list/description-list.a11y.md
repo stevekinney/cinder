@@ -4,6 +4,8 @@
 
 `<dl>` is the correct container for term/definition pairs. The HTML Living Standard permits `<dl>` to contain either (a) bare `<dt>`/`<dd>` pairs, or (b) `<div>` elements where **each row `<div>` must contain only `<dt>`, `<dd>`, and script-supporting elements** — no other flow content.
 
+`DescriptionListItem.definition` may be plain text or rich snippet content. When a snippet is used, the rendered markup still lives inside the `<dd>` content model, so authors can include inline tags like `<code>` or structured UI such as small action chips without falling back to a raw `<dl>`.
+
 This component renders actions **inside `<dd>`** (wrapped in a `<div class="cinder-description-list__actions">`), not as a sibling of `<dd>`. This keeps the row `<div>` strictly conforming to the `<dl>` content model. `<dd>`'s content model is flow content, which permits a `<div>` wrapper — and `<div>` is the right element choice because the consumer's snippet may render block-level UI (button groups, dropdown triggers) that a `<span>` cannot legally contain.
 
 ## Two-Column Variant
