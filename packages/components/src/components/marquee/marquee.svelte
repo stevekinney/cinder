@@ -42,6 +42,10 @@
       (typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0),
   );
   const role = $derived(hasAccessibleName ? 'region' : undefined);
+  let manuallyPaused = $state(false);
+  const pauseControlLabel = $derived(
+    manuallyPaused ? 'Resume marquee animation' : 'Pause marquee animation',
+  );
   let primaryTrackItem: HTMLDivElement | undefined = $state();
   let duplicateTrackItem: HTMLDivElement | undefined = $state();
   let duplicateReady = $state(false);
@@ -140,11 +144,13 @@
       }
     }
 
-    root.querySelectorAll<HTMLElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-      'input, select, textarea, button, fieldset, output, option, optgroup, [name]',
-    ).forEach((element) => {
-      element.removeAttribute('name');
-    });
+    root
+      .querySelectorAll<
+        HTMLElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >('input, select, textarea, button, fieldset, output, option, optgroup, [name]')
+      .forEach((element) => {
+        element.removeAttribute('name');
+      });
   }
 
   function syncDuplicateTrack() {
@@ -153,6 +159,10 @@
     rewriteCloneIds(clone);
     duplicateTrackItem.replaceChildren(...clone.childNodes);
     duplicateReady = true;
+  }
+
+  function toggleManualPausedState(): void {
+    manuallyPaused = !manuallyPaused;
   }
 
   $effect(() => {
@@ -188,6 +198,7 @@
   data-cinder-direction={direction}
   data-cinder-pause-hover={pauseOnHover ? 'true' : 'false'}
   data-cinder-pause-focus={pauseOnFocus ? 'true' : 'false'}
+  data-cinder-manual-paused={manuallyPaused ? 'true' : 'false'}
   data-cinder-ready={duplicateReady ? 'true' : 'false'}
   aria-label={normalizedLabel}
   {role}
@@ -195,11 +206,24 @@
   style:--cinder-marquee-gap={gap}
 >
   <div class="cinder-marquee__viewport">
+    <button
+      type="button"
+      class="cinder-marquee__control"
+      aria-pressed={manuallyPaused}
+      onclick={toggleManualPausedState}
+    >
+      {pauseControlLabel}
+    </button>
     <div class="cinder-marquee__track">
       <div class="cinder-marquee__item" bind:this={primaryTrackItem}>
         {@render children()}
       </div>
-      <div class="cinder-marquee__item" aria-hidden="true" inert bind:this={duplicateTrackItem}></div>
+      <div
+        class="cinder-marquee__item"
+        aria-hidden="true"
+        inert
+        bind:this={duplicateTrackItem}
+      ></div>
     </div>
   </div>
 </div>

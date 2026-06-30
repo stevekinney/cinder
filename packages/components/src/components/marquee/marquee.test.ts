@@ -100,6 +100,26 @@ describe('Marquee', () => {
     expect(element?.getAttribute('data-cinder-pause-focus')).toBe('false');
   });
 
+  test('renders a keyboard-accessible pause control inside the viewport', async () => {
+    const { container, getByRole } = render(Marquee, {
+      children: textSnippet('content'),
+    });
+
+    const element = container.querySelector('.cinder-marquee');
+    const control = getByRole('button', { name: 'Pause marquee animation' });
+
+    expect(container.querySelector('.cinder-marquee__viewport')?.contains(control)).toBe(true);
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+    expect(element?.getAttribute('data-cinder-manual-paused')).toBe('false');
+
+    control.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getByRole('button', { name: 'Resume marquee animation' })).toBe(control);
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    expect(element?.getAttribute('data-cinder-manual-paused')).toBe('true');
+  });
+
   test('forwards label as aria-label and applies region role', () => {
     const { container } = render(Marquee, {
       props: {
@@ -126,6 +146,8 @@ describe('Marquee', () => {
 
   test('reduced-motion CSS disables animation, restores overflow access, and hides duplicate', async () => {
     const css = await Bun.file(marqueeCssPath).text();
+    expect(css).toContain('overflow: clip');
+
     const reducedMotionBlock = css.match(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-marquee__item\[aria-hidden='true'\]\s*\{[\s\S]*?\}\s*\}/,
     )?.[0];
@@ -161,7 +183,8 @@ describe('Marquee', () => {
 
     const duplicateTrack = container.querySelector('.cinder-marquee__item[aria-hidden="true"]');
     const duplicateClipPathId = duplicateTrack?.querySelector('clipPath')?.getAttribute('id') ?? '';
-    const duplicateRectStyle = duplicateTrack?.querySelector('rect[style]')?.getAttribute('style') ?? '';
+    const duplicateRectStyle =
+      duplicateTrack?.querySelector('rect[style]')?.getAttribute('style') ?? '';
 
     expect(duplicateClipPathId).toContain('logoClip--cinder-marquee-duplicate-');
     expect(duplicateRectStyle).toContain(`url(#${duplicateClipPathId})`);
