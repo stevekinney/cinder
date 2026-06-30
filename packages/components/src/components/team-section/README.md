@@ -1,15 +1,21 @@
 # TeamSection
 
-TODO: one-line purpose statement for TeamSection.
+Renders a team roster section with avatars, roles, bios, and optional profile links.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
   import TeamSection from '@lostgradient/cinder/team-section';
+
+  const members = [
+    { name: 'Alex Morgan', role: 'CEO', bio: 'Leads product and strategy.' },
+    { name: 'Riley Chen', role: 'CTO', bio: 'Owns architecture and platform.' },
+    { name: 'Jordan Lee', role: 'Design Lead', bio: 'Shapes the design system.' },
+  ];
 </script>
 
-<TeamSection>Content</TeamSection>
+<TeamSection title="Meet the team" {members} />
 ```
 
 ## Props

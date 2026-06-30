@@ -1,15 +1,24 @@
 # BlogSection
 
-TODO: one-line purpose statement for BlogSection.
+Renders a marketing blog section with post cards, metadata, and author attribution.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
   import BlogSection from '@lostgradient/cinder/blog-section';
+
+  const posts = [
+    {
+      title: 'Introducing Cinder',
+      excerpt: 'A quick look at our new UI component library.',
+      href: '/blog/introducing-cinder',
+      authorName: 'Alex Morgan',
+    },
+  ];
 </script>
 
-<BlogSection>Content</BlogSection>
+<BlogSection title="From the blog" {posts} />
 ```
 
 ## Props

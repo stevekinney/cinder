@@ -29,8 +29,8 @@
     DateRangeValue,
   } from './date-range-field.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import DatePicker from '../date-picker/date-picker.svelte';
   import {
-    ariaInvalid,
     composeDescribedBy,
     describeId,
     errorId as buildErrorId,
@@ -194,17 +194,6 @@
     return left.start === right.start && left.end === right.end;
   }
 
-  function inputTypeFor(nextGranularity: DateRangeGranularity): 'date' | 'datetime-local' {
-    return nextGranularity === 'day' ? 'date' : 'datetime-local';
-  }
-
-  function inputStepFor(nextGranularity: DateRangeGranularity): number | undefined {
-    if (nextGranularity === 'hour') return 3600;
-    if (nextGranularity === 'minute') return 60;
-    if (nextGranularity === 'second') return 1;
-    return undefined;
-  }
-
   function isLeapYear(year: number): boolean {
     return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   }
@@ -266,8 +255,6 @@
     };
   }
 
-  const inputType = $derived(inputTypeFor(granularity));
-  const inputStep = $derived(inputStepFor(granularity));
   const normalizedValue = $derived(normalizeDateRangeValue(value, granularity));
 
   $effect(() => {
@@ -291,11 +278,10 @@
     onchange?.(next);
   }
 
-  function handleStartChange(event: Event) {
-    const target = event.target as HTMLInputElement;
+  function handleStartChange(nextStart: string | undefined) {
     const next = normalizeDateRangeValue(
       {
-        start: target.value,
+        start: nextStart,
         end: value.end,
       },
       granularity,
@@ -305,12 +291,11 @@
     onchange?.(next);
   }
 
-  function handleEndChange(event: Event) {
-    const target = event.target as HTMLInputElement;
+  function handleEndChange(nextEnd: string | undefined) {
     const next = normalizeDateRangeValue(
       {
         start: value.start,
-        end: target.value,
+        end: nextEnd,
       },
       granularity,
     );
@@ -320,7 +305,6 @@
   }
 
   const hasError = $derived(!!error);
-  const invalid = $derived(ariaInvalid(hasError));
 </script>
 
 <div
@@ -328,6 +312,7 @@
   class={classNames('cinder-date-range-field', className)}
   role="group"
   aria-labelledby={legendId}
+  aria-describedby={describedBy}
 >
   {#if label}
     <p id={legendId} class="cinder-date-range-field__legend" data-disabled={disabled || undefined}>
@@ -365,17 +350,16 @@
       >
         {resolvedStartLabel}
       </label>
-      <input
+      <DatePicker
         id={startId}
-        type={inputType}
-        class="cinder-date-range-field__date-input"
-        value={normalizedValue.start ?? ''}
+        class="cinder-date-range-field__date-picker"
+        {granularity}
+        value={normalizedValue.start}
         max={normalizedValue.end ?? undefined}
-        step={inputStep}
         {disabled}
-        aria-invalid={invalid}
+        aria-invalid={hasError ? 'true' : undefined}
         aria-describedby={describedBy}
-        onchange={handleStartChange}
+        onchange={(next) => handleStartChange(next)}
       />
     </div>
 
@@ -389,17 +373,16 @@
       >
         {resolvedEndLabel}
       </label>
-      <input
+      <DatePicker
         id={endId}
-        type={inputType}
-        class="cinder-date-range-field__date-input"
-        value={normalizedValue.end ?? ''}
+        class="cinder-date-range-field__date-picker"
+        {granularity}
+        value={normalizedValue.end}
         min={normalizedValue.start ?? undefined}
-        step={inputStep}
         {disabled}
-        aria-invalid={invalid}
+        aria-invalid={hasError ? 'true' : undefined}
         aria-describedby={describedBy}
-        onchange={handleEndChange}
+        onchange={(next) => handleEndChange(next)}
       />
     </div>
   </div>

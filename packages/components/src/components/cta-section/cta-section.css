@@ -1,4 +1,9 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* Compound composition aggregation: CtaSection renders these primitives internally,
+ * so `cinder/cta-section/styles` includes their sidecar styles for slim imports. */
+@import '../button/button.css';
+@import '../container/container.css';
+
 @layer cinder.components {
   .cinder-cta-section {
     padding-block: var(--cinder-space-10);

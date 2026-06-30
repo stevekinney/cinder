@@ -1,15 +1,20 @@
 # TestimonialSection
 
-TODO: one-line purpose statement for TestimonialSection.
+Renders customer testimonial quotes in a single-featured or multi-card grid layout.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
   import TestimonialSection from '@lostgradient/cinder/testimonial-section';
+
+  const testimonials = [
+    { quote: 'Cinder cut our page build time in half.', name: 'Alex Morgan', role: 'VP Product' },
+    { quote: 'We shipped our redesign in two weeks.', name: 'Riley Chen', role: 'Design Lead' },
+  ];
 </script>
 
-<TestimonialSection>Content</TestimonialSection>
+<TestimonialSection title="Loved by product teams" {testimonials} />
 ```
 
 ## Props

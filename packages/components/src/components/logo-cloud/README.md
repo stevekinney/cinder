@@ -1,15 +1,21 @@
 # LogoCloud
 
-TODO: one-line purpose statement for LogoCloud.
+Renders a responsive cloud of customer or partner logos with optional links.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
   import LogoCloud from '@lostgradient/cinder/logo-cloud';
+
+  const logos = [
+    { name: 'Acme', src: '/logos/acme.svg', href: 'https://example.com/acme' },
+    { name: 'Globex', src: '/logos/globex.svg' },
+    { name: 'Umbra', src: '/logos/umbra.svg' },
+  ];
 </script>
 
-<LogoCloud>Content</LogoCloud>
+<LogoCloud title="Trusted by leading teams" {logos} />
 ```
 
 ## Props

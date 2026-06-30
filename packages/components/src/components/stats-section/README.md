@@ -1,15 +1,21 @@
 # StatsSection
 
-TODO: one-line purpose statement for StatsSection.
+Renders a key-metrics section by composing StatGroup and Stat cards.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
   import StatsSection from '@lostgradient/cinder/stats-section';
+
+  const stats = [
+    { label: 'Active users', value: '12,400' },
+    { label: 'Avg. response time', value: '180ms' },
+    { label: 'Uptime', value: '99.99%' },
+  ];
 </script>
 
-<StatsSection>Content</StatsSection>
+<StatsSection title="Performance at a glance" {stats} />
 ```
 
 ## Props

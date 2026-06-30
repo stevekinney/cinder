@@ -67,12 +67,14 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .cinder-hero-section[data-cinder-media-position='start'] .cinder-hero-section__content {
+    .cinder-hero-section[data-cinder-has-media][data-cinder-media-position='start']
+      .cinder-hero-section__content {
       grid-column: 2;
       grid-row: 1;
     }
 
-    .cinder-hero-section[data-cinder-media-position='start'] .cinder-hero-section__media {
+    .cinder-hero-section[data-cinder-has-media][data-cinder-media-position='start']
+      .cinder-hero-section__media {
       grid-column: 1;
       grid-row: 1;
     }

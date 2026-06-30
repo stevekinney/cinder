@@ -552,6 +552,64 @@
       }
     },
     {
+      "name": "BentoCell",
+      "id": "bento-cell",
+      "import": "@lostgradient/cinder/bento-cell",
+      "exportName": "BentoCell",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Optional placement child for BentoGrid that controls row and column spans or explicit track placement.",
+      "tags": ["layout", "grid", "bento"],
+      "useWhen": [
+        "A tile in BentoGrid needs to span multiple tracks or start at a specific track."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Every tile can use default auto-placement inside BentoGrid.",
+          "alternative": "bento-grid"
+        }
+      ],
+      "related": ["bento-grid", "grid-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/bento-cell/schema",
+        "variables": "@lostgradient/cinder/bento-cell/variables"
+      }
+    },
+    {
+      "name": "BentoGrid",
+      "id": "bento-grid",
+      "import": "@lostgradient/cinder/bento-grid",
+      "exportName": "BentoGrid",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "CSS grid container for deliberate asymmetric bento mosaics with optional single-column collapse at narrow widths.",
+      "tags": ["layout", "grid", "bento"],
+      "useWhen": [
+        "Building feature mosaics where highlight tiles span rows or columns in a controlled layout.",
+        "Keeping bento placement declarative by pairing BentoGrid with BentoGrid.Cell or BentoCell children."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Packing variable-height content automatically - use masonry instead.",
+          "alternative": "masonry"
+        },
+        {
+          "reason": "You only need uniform tracks without feature-tile spans - use grid instead.",
+          "alternative": "grid"
+        }
+      ],
+      "related": ["bento-cell", "grid", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/bento-grid/schema",
+        "variables": "@lostgradient/cinder/bento-grid/variables",
+        "examples": "@lostgradient/cinder/bento-grid/examples"
+      }
+    },
+    {
       "name": "BlogSection",
       "id": "blog-section",
       "import": "@lostgradient/cinder/blog-section",
@@ -675,6 +733,33 @@
       }
     },
     {
+      "name": "Calendar",
+      "id": "calendar",
+      "import": "@lostgradient/cinder/calendar",
+      "exportName": "Calendar",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Keyboard-navigable month grid for choosing a calendar date with full styling control and min/max constraints.",
+      "tags": ["form", "date", "calendar"],
+      "useWhen": [
+        "Rendering a custom date-grid picker inside an input popover.",
+        "Requiring consistent cross-browser calendar behavior that native date controls cannot provide."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A plain browser-managed date input is sufficient and custom keyboard semantics are not required."
+        }
+      ],
+      "related": ["date-picker", "date-range-field"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/calendar/schema",
+        "variables": "@lostgradient/cinder/calendar/variables",
+        "examples": "@lostgradient/cinder/calendar/examples"
+      }
+    },
+    {
       "name": "Callout",
       "id": "callout",
       "import": "@lostgradient/cinder/callout",
@@ -762,6 +847,47 @@
         "schema": "@lostgradient/cinder/card/schema",
         "variables": "@lostgradient/cinder/card/variables",
         "examples": "@lostgradient/cinder/card/examples"
+      }
+    },
+    {
+      "name": "Carousel",
+      "id": "carousel",
+      "import": "@lostgradient/cinder/carousel",
+      "exportName": "Carousel",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Rotating content viewport with previous/next controls, picker dots, and optional autoplay.",
+      "tags": ["navigation", "carousel", "media"],
+      "useWhen": [
+        "Presenting a finite set of visual highlights with sequential browsing controls.",
+        "Cycling between promotional or tutorial panels inside a single region."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Content should remain simultaneously visible and scannable.",
+          "alternative": "grid"
+        },
+        {
+          "reason": "You only need one static hero panel with no sequence controls."
+        }
+      ],
+      "related": ["image", "aspect-ratio", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/carousel/schema",
+        "variables": "@lostgradient/cinder/carousel/variables",
+        "examples": "@lostgradient/cinder/carousel/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Carousel",
+        "keyboard": [
+          {
+            "keys": "ArrowLeft / ArrowRight / Home / End",
+            "action": "Moves between slides."
+          }
+        ],
+        "notes": ["Auto-advance pauses on hover and focus, and is disabled under reduced motion."]
       }
     },
     {
@@ -1557,6 +1683,33 @@
       }
     },
     {
+      "name": "DatePicker",
+      "id": "date-picker",
+      "import": "@lostgradient/cinder/date-picker",
+      "exportName": "DatePicker",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Controlled date picker that combines a text trigger, floating calendar grid, and optional time controls.",
+      "tags": ["form", "date", "calendar"],
+      "useWhen": [
+        "Collecting a date with consistent cross-browser UI and keyboard support.",
+        "Collecting local datetime values while keeping ISO strings as the controlled model."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Browser-native date controls are acceptable and custom styling is unnecessary."
+        }
+      ],
+      "related": ["calendar", "date-range-field", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/date-picker/schema",
+        "variables": "@lostgradient/cinder/date-picker/variables",
+        "examples": "@lostgradient/cinder/date-picker/examples"
+      }
+    },
+    {
       "name": "DateRangeField",
       "id": "date-range-field",
       "import": "@lostgradient/cinder/date-range-field",
@@ -2209,6 +2362,37 @@
       }
     },
     {
+      "name": "Footer",
+      "id": "footer",
+      "import": "@lostgradient/cinder/footer",
+      "exportName": "Footer",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Footer composition primitive with brand copy, grouped links, and legal row content.",
+      "tags": ["layout", "navigation", "footer"],
+      "useWhen": [
+        "Building page-level footer chrome with grouped resource links and legal text.",
+        "Keeping lower-page wayfinding and compliance links in one responsive region."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You need top-level route switching with active state handling.",
+          "alternative": "navigation-bar"
+        },
+        {
+          "reason": "You need dense in-content navigation rather than page chrome."
+        }
+      ],
+      "related": ["navigation-bar", "side-navigation", "container", "grid"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/footer/schema",
+        "variables": "@lostgradient/cinder/footer/variables",
+        "examples": "@lostgradient/cinder/footer/examples"
+      }
+    },
+    {
       "name": "FormField",
       "id": "form-field",
       "import": "@lostgradient/cinder/form-field",
@@ -2464,6 +2648,36 @@
         "schema": "@lostgradient/cinder/image/schema",
         "variables": "@lostgradient/cinder/image/variables",
         "examples": "@lostgradient/cinder/image/examples"
+      }
+    },
+    {
+      "name": "InlineLoading",
+      "id": "inline-loading",
+      "import": "@lostgradient/cinder/inline-loading",
+      "exportName": "InlineLoading",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Inline async-action status indicator that transitions from loading to success or error with accessible announcements.",
+      "tags": ["async", "feedback", "loading", "status"],
+      "useWhen": [
+        "Showing a compact Submit -> loading -> success/error lifecycle beside a button or form row.",
+        "Communicating short-lived async state transitions without reserving large layout space."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing indeterminate work without success/error transitions — use spinner."
+        },
+        {
+          "reason": "Reporting static non-loading status in dense lists — use status-dot."
+        }
+      ],
+      "related": ["spinner", "status-dot"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/inline-loading/schema",
+        "variables": "@lostgradient/cinder/inline-loading/variables",
+        "examples": "@lostgradient/cinder/inline-loading/examples"
       }
     },
     {
@@ -2859,6 +3073,37 @@
       }
     },
     {
+      "name": "Marquee",
+      "id": "marquee",
+      "import": "@lostgradient/cinder/marquee",
+      "exportName": "Marquee",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Auto-scrolling horizontal or vertical ticker that loops content continuously with reduced-motion-safe behavior.",
+      "tags": ["marquee", "ticker"],
+      "useWhen": [
+        "Showing repeating announcements, partner logos, or status strips in a constrained space.",
+        "You need CSS-driven, seamless loop motion that can pause on hover/focus."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Users need to manually scroll and inspect static overflow content.",
+          "alternative": "scroll-area"
+        },
+        {
+          "reason": "Information should remain fixed in place without motion emphasis."
+        }
+      ],
+      "related": ["scroll-area", "banner"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/marquee/schema",
+        "variables": "@lostgradient/cinder/marquee/variables",
+        "examples": "@lostgradient/cinder/marquee/examples"
+      }
+    },
+    {
       "name": "Masonry",
       "id": "masonry",
       "import": "@lostgradient/cinder/masonry",
@@ -2950,6 +3195,50 @@
       }
     },
     {
+      "name": "MegaMenu",
+      "id": "mega-menu",
+      "import": "@lostgradient/cinder/mega-menu",
+      "exportName": "MegaMenu",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Wide primary navigation menu with trigger/content panels, shared viewport, active indicator, and nested submenu support.",
+      "tags": ["navigation", "mega-menu", "menu"],
+      "useWhen": [
+        "Building site-level navigation where top-level categories reveal rich multi-column content.",
+        "You need optional hover-open behavior with keyboard-first trigger traversal."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A simple single-trigger flyout is sufficient.",
+          "alternative": "dropdown"
+        },
+        {
+          "reason": "You need command-style application menus with item-by-item keyboard semantics.",
+          "alternative": "menu-bar"
+        }
+      ],
+      "related": ["navigation-bar", "menu-bar", "dropdown"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/mega-menu/schema",
+        "variables": "@lostgradient/cinder/mega-menu/variables",
+        "examples": "@lostgradient/cinder/mega-menu/examples"
+      },
+      "a11y": {
+        "pattern": "Navigation landmark + disclosure buttons",
+        "keyboard": [
+          {
+            "keys": "ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape",
+            "action": "Traverses triggers and opens/closes panels."
+          }
+        ],
+        "notes": [
+          "Trigger focus remains in the tab order; Escape closes and returns focus to the active trigger."
+        ]
+      }
+    },
+    {
       "name": "MenuBar",
       "id": "menu-bar",
       "import": "@lostgradient/cinder/menu-bar",
@@ -3010,6 +3299,37 @@
       }
     },
     {
+      "name": "Meter",
+      "id": "meter",
+      "import": "@lostgradient/cinder/meter",
+      "exportName": "Meter",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Bounded measurement gauge with meter semantics for readings like battery, quota, CPU, and memory utilization.",
+      "tags": ["feedback", "measurement", "gauge"],
+      "useWhen": [
+        "Showing a fluctuating value within a known minimum and maximum range.",
+        "Communicating low/optimal/high regions of a bounded measurement."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Reporting task completion over time such as uploads/imports.",
+          "alternative": "progress"
+        }
+      ],
+      "related": ["progress", "stat", "slider"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/meter/schema",
+        "variables": "@lostgradient/cinder/meter/variables",
+        "examples": "@lostgradient/cinder/meter/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Meter"
+      }
+    },
+    {
       "name": "Modal",
       "id": "modal",
       "import": "@lostgradient/cinder/modal",
@@ -3044,6 +3364,36 @@
         "variables": "@lostgradient/cinder/modal/variables",
         "examples": "@lostgradient/cinder/modal/examples",
         "constraints": "@lostgradient/cinder/modal/constraints"
+      }
+    },
+    {
+      "name": "MultiSelect",
+      "id": "multi-select",
+      "import": "@lostgradient/cinder/multi-select",
+      "exportName": "MultiSelect",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Multi-value dropdown with checkbox options, optional filtering, and count-summary trigger text.",
+      "tags": ["form", "selection", "multiselect"],
+      "useWhen": [
+        "Selecting multiple values from a fixed option list while preserving compact form layout.",
+        "Showing many options in an anchored picker instead of a permanently-expanded checkbox group."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Selecting a single value from a short fixed list — use select instead."
+        },
+        {
+          "reason": "Moving items between available/selected panes — use transfer-list instead."
+        }
+      ],
+      "related": ["select", "combobox", "checkbox-group", "transfer-list"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/multi-select/schema",
+        "variables": "@lostgradient/cinder/multi-select/variables",
+        "examples": "@lostgradient/cinder/multi-select/examples"
       }
     },
     {
@@ -3451,19 +3801,54 @@
       ],
       "avoidWhen": [
         {
+          "reason": "Showing a bounded measurement gauge (battery, CPU, quota) that is not task completion.",
+          "alternative": "meter"
+        },
+        {
           "reason": "Showing a small inline busy state next to a control — use spinner."
         },
         {
           "reason": "Reserving placeholder space for incoming content — use skeleton."
         }
       ],
-      "related": ["spinner", "skeleton"],
+      "related": ["meter", "spinner", "skeleton"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/progress/schema",
         "variables": "@lostgradient/cinder/progress/variables",
         "examples": "@lostgradient/cinder/progress/examples"
+      }
+    },
+    {
+      "name": "QrCode",
+      "id": "qr-code",
+      "import": "@lostgradient/cinder/qr-code",
+      "exportName": "QrCode",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Encodes a string payload as an inline SVG QR code with an explicit accessible label.",
+      "tags": ["qr-code", "sharing"],
+      "useWhen": [
+        "Presenting a scannable URL, token, or Wi-Fi credential that users can scan from another device.",
+        "You need a theme-aware QR graphic that stays crisp at any scale."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You only need to expose a copyable short text value without camera scanning affordance.",
+          "alternative": "copy-button"
+        },
+        {
+          "reason": "The payload is sensitive and should never be displayed as machine-readable visual data."
+        }
+      ],
+      "related": ["copy-button", "share-card"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/qr-code/schema",
+        "variables": "@lostgradient/cinder/qr-code/variables",
+        "examples": "@lostgradient/cinder/qr-code/examples"
       }
     },
     {
@@ -4793,6 +5178,39 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/table-header-cell/schema",
         "variables": "@lostgradient/cinder/table-header-cell/variables"
+      }
+    },
+    {
+      "name": "TableOfContents",
+      "id": "table-of-contents",
+      "import": "@lostgradient/cinder/table-of-contents",
+      "exportName": "TableOfContents",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "On-page heading outline that renders nested anchor links and highlights the active section while scrolling.",
+      "tags": ["navigation", "docs", "toc"],
+      "useWhen": [
+        "Adding an \"On this page\" rail for long-form docs or settings screens.",
+        "Letting users jump between headings while keeping context via active-section highlighting."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Navigating between routes or top-level app areas — use navigation-bar or side-navigation."
+        },
+        {
+          "reason": "The page has too few headings to justify a secondary navigation rail."
+        }
+      ],
+      "related": ["side-navigation", "breadcrumbs", "section-heading"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/table-of-contents/schema",
+        "variables": "@lostgradient/cinder/table-of-contents/variables",
+        "examples": "@lostgradient/cinder/table-of-contents/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Navigation Landmark"
       }
     },
     {

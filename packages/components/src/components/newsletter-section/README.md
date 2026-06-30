@@ -1,6 +1,6 @@
 # NewsletterSection
 
-TODO: one-line purpose statement for NewsletterSection.
+Renders an email signup section with heading copy and an inline newsletter form.
 
 ## Usage
 
@@ -9,7 +9,7 @@ TODO: one-line purpose statement for NewsletterSection.
   import NewsletterSection from '@lostgradient/cinder/newsletter-section';
 </script>
 
-<NewsletterSection>Content</NewsletterSection>
+<NewsletterSection title="Get product updates in your inbox" />
 ```
 
 ## Props

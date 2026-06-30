@@ -1,6 +1,6 @@
 # CtaSection
 
-TODO: one-line purpose statement for CtaSection.
+Renders a focused call-to-action section with a primary button and optional secondary action.
 
 ## Usage
 
@@ -9,7 +9,7 @@ TODO: one-line purpose statement for CtaSection.
   import CtaSection from '@lostgradient/cinder/cta-section';
 </script>
 
-<CtaSection>Content</CtaSection>
+<CtaSection title="Ready to get started?" primaryActionLabel="Start free trial" />
 ```
 
 ## Props

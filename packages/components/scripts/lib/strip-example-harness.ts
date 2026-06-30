@@ -59,7 +59,7 @@ const UID_LINE = /^[^\n]*const\s+uid\s*=\s*\$props\.id\(\)\s*;?[^\n]*\n/m;
  * the displayed literal is self-describing rather than read from a side table.
  */
 const DERIVED_ID_LINE =
-  /^[^\n]*let\s+(?<var>[A-Za-z_$][\w$]*)\s*=\s*\$derived\(\s*`\$\{mountIdPrefix\s*\?\?\s*uid\}-(?<suffix>[^`]*)`\s*\)\s*;?[^\n]*\n/m;
+  /^[^\n]*(?:let|const)\s+(?<var>[A-Za-z_$][\w$]*)\s*=\s*\$derived\(\s*`\$\{mountIdPrefix\s*\?\?\s*uid\}-(?<suffix>[^`]*)`\s*\)\s*;?[^\n]*\n/m;
 
 /** Markers that prove the harness was only partially removed — none may survive. */
 const RESIDUAL_HARNESS_MARKERS: ReadonlyArray<readonly [string, RegExp]> = [
@@ -127,6 +127,12 @@ export function stripExampleHarness(source: string, scenarioKey: string): string
     stripped = stripped.replace(
       new RegExp(`(\\b(?:id|name|target|for|aria-labelledby)=)\\{\\s*${escaped}\\s*\\}`, 'g'),
       (_full, attribute: string) => `${attribute}"${literal}"`,
+    );
+    // Script object-literal values used for explicit-items examples:
+    // `{ id: fieldId }` → `{ id: 'field' }`.
+    stripped = stripped.replace(
+      new RegExp(`(\\bid\\s*:\\s*)${escaped}\\b`, 'g'),
+      (_full, prefix: string) => `${prefix}'${literal}'`,
     );
   }
 

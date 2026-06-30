@@ -1,15 +1,21 @@
 # FeatureSection
 
-TODO: one-line purpose statement for FeatureSection.
+Renders a feature highlight section in grid or split layout with optional media content.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
   import FeatureSection from '@lostgradient/cinder/feature-section';
+
+  const items = [
+    { title: 'Fast setup', description: 'Ship your first page in minutes.' },
+    { title: 'Accessible by default', description: 'Built with semantic and inclusive defaults.' },
+    { title: 'Themeable', description: 'Use tokens to match your brand quickly.' },
+  ];
 </script>
 
-<FeatureSection>Content</FeatureSection>
+<FeatureSection title="Why teams choose Cinder" {items} />
 ```
 
 ## Props

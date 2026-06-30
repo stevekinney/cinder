@@ -1,0 +1,24 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../bento-cell/bento-cell.css';
+
+@layer cinder.components {
+  .cinder-bento-grid {
+    display: grid;
+    grid-template-columns: var(--cinder-bento-grid-columns, repeat(4, minmax(0, 1fr)));
+    row-gap: var(--cinder-bento-grid-row-gap, var(--cinder-space-4));
+    column-gap: var(--cinder-bento-grid-column-gap, var(--cinder-space-4));
+  }
+
+  @media (max-width: 48rem) {
+    .cinder-bento-grid[data-cinder-collapse='true'] {
+      grid-template-columns: 1fr;
+    }
+
+    .cinder-bento-grid[data-cinder-collapse='true'] > .cinder-bento-cell {
+      grid-column-start: auto;
+      grid-column-end: auto;
+      grid-row-start: auto;
+      grid-row-end: auto;
+    }
+  }
+}

@@ -488,6 +488,58 @@
       "import": "./src/components/bar-chart/bar-chart.examples.json",
       "default": "./src/components/bar-chart/bar-chart.examples.json"
     },
+    "./bento-cell": {
+      "types": "./dist/components/bento-cell/index.d.ts",
+      "browser": "./src/components/bento-cell/index.ts",
+      "node": "./dist/server/components/bento-cell/index.js",
+      "svelte": "./src/components/bento-cell/index.ts",
+      "default": "./dist/components/bento-cell/index.js"
+    },
+    "./bento-cell/schema": {
+      "types": "./dist/components/bento-cell/bento-cell.schema.d.ts",
+      "browser": "./src/components/bento-cell/bento-cell.schema.ts",
+      "node": "./dist/server/components/bento-cell/bento-cell.schema.js",
+      "svelte": "./src/components/bento-cell/bento-cell.schema.ts",
+      "default": "./dist/components/bento-cell/bento-cell.schema.js"
+    },
+    "./bento-cell/variables": {
+      "types": "./dist/components/bento-cell/bento-cell.variables.d.ts",
+      "browser": "./src/components/bento-cell/bento-cell.variables.ts",
+      "node": "./dist/server/components/bento-cell/bento-cell.variables.js",
+      "svelte": "./src/components/bento-cell/bento-cell.variables.ts",
+      "default": "./dist/components/bento-cell/bento-cell.variables.js"
+    },
+    "./bento-cell/styles": {
+      "default": "./dist/components/bento-cell/bento-cell.css"
+    },
+    "./bento-grid": {
+      "types": "./dist/components/bento-grid/index.d.ts",
+      "browser": "./src/components/bento-grid/index.ts",
+      "node": "./dist/server/components/bento-grid/index.js",
+      "svelte": "./src/components/bento-grid/index.ts",
+      "default": "./dist/components/bento-grid/index.js"
+    },
+    "./bento-grid/schema": {
+      "types": "./dist/components/bento-grid/bento-grid.schema.d.ts",
+      "browser": "./src/components/bento-grid/bento-grid.schema.ts",
+      "node": "./dist/server/components/bento-grid/bento-grid.schema.js",
+      "svelte": "./src/components/bento-grid/bento-grid.schema.ts",
+      "default": "./dist/components/bento-grid/bento-grid.schema.js"
+    },
+    "./bento-grid/variables": {
+      "types": "./dist/components/bento-grid/bento-grid.variables.d.ts",
+      "browser": "./src/components/bento-grid/bento-grid.variables.ts",
+      "node": "./dist/server/components/bento-grid/bento-grid.variables.js",
+      "svelte": "./src/components/bento-grid/bento-grid.variables.ts",
+      "default": "./dist/components/bento-grid/bento-grid.variables.js"
+    },
+    "./bento-grid/styles": {
+      "default": "./dist/components/bento-grid/bento-grid.css"
+    },
+    "./bento-grid/examples": {
+      "import": "./src/components/bento-grid/bento-grid.examples.json",
+      "default": "./src/components/bento-grid/bento-grid.examples.json"
+    },
     "./blog-section": {
       "types": "./dist/components/blog-section/index.d.ts",
       "browser": "./src/components/blog-section/index.ts",
@@ -604,6 +656,34 @@
       "import": "./src/components/button-group/button-group.examples.json",
       "default": "./src/components/button-group/button-group.examples.json"
     },
+    "./calendar": {
+      "types": "./dist/components/calendar/index.d.ts",
+      "browser": "./src/components/calendar/index.ts",
+      "node": "./dist/server/components/calendar/index.js",
+      "svelte": "./src/components/calendar/index.ts",
+      "default": "./dist/components/calendar/index.js"
+    },
+    "./calendar/schema": {
+      "types": "./dist/components/calendar/calendar.schema.d.ts",
+      "browser": "./src/components/calendar/calendar.schema.ts",
+      "node": "./dist/server/components/calendar/calendar.schema.js",
+      "svelte": "./src/components/calendar/calendar.schema.ts",
+      "default": "./dist/components/calendar/calendar.schema.js"
+    },
+    "./calendar/variables": {
+      "types": "./dist/components/calendar/calendar.variables.d.ts",
+      "browser": "./src/components/calendar/calendar.variables.ts",
+      "node": "./dist/server/components/calendar/calendar.variables.js",
+      "svelte": "./src/components/calendar/calendar.variables.ts",
+      "default": "./dist/components/calendar/calendar.variables.js"
+    },
+    "./calendar/styles": {
+      "default": "./dist/components/calendar/calendar.css"
+    },
+    "./calendar/examples": {
+      "import": "./src/components/calendar/calendar.examples.json",
+      "default": "./src/components/calendar/calendar.examples.json"
+    },
     "./callout": {
       "types": "./dist/components/callout/index.d.ts",
       "browser": "./src/components/callout/index.ts",
@@ -687,6 +767,34 @@
     "./card/examples": {
       "import": "./src/components/card/card.examples.json",
       "default": "./src/components/card/card.examples.json"
+    },
+    "./carousel": {
+      "types": "./dist/components/carousel/index.d.ts",
+      "browser": "./src/components/carousel/index.ts",
+      "node": "./dist/server/components/carousel/index.js",
+      "svelte": "./src/components/carousel/index.ts",
+      "default": "./dist/components/carousel/index.js"
+    },
+    "./carousel/schema": {
+      "types": "./dist/components/carousel/carousel.schema.d.ts",
+      "browser": "./src/components/carousel/carousel.schema.ts",
+      "node": "./dist/server/components/carousel/carousel.schema.js",
+      "svelte": "./src/components/carousel/carousel.schema.ts",
+      "default": "./dist/components/carousel/carousel.schema.js"
+    },
+    "./carousel/variables": {
+      "types": "./dist/components/carousel/carousel.variables.d.ts",
+      "browser": "./src/components/carousel/carousel.variables.ts",
+      "node": "./dist/server/components/carousel/carousel.variables.js",
+      "svelte": "./src/components/carousel/carousel.variables.ts",
+      "default": "./dist/components/carousel/carousel.variables.js"
+    },
+    "./carousel/styles": {
+      "default": "./dist/components/carousel/carousel.css"
+    },
+    "./carousel/examples": {
+      "import": "./src/components/carousel/carousel.examples.json",
+      "default": "./src/components/carousel/carousel.examples.json"
     },
     "./chat": {
       "types": "./dist/components/chat/index.d.ts",
@@ -1423,6 +1531,34 @@
       "import": "./src/components/data-table/data-table.examples.json",
       "default": "./src/components/data-table/data-table.examples.json"
     },
+    "./date-picker": {
+      "types": "./dist/components/date-picker/index.d.ts",
+      "browser": "./src/components/date-picker/index.ts",
+      "node": "./dist/server/components/date-picker/index.js",
+      "svelte": "./src/components/date-picker/index.ts",
+      "default": "./dist/components/date-picker/index.js"
+    },
+    "./date-picker/schema": {
+      "types": "./dist/components/date-picker/date-picker.schema.d.ts",
+      "browser": "./src/components/date-picker/date-picker.schema.ts",
+      "node": "./dist/server/components/date-picker/date-picker.schema.js",
+      "svelte": "./src/components/date-picker/date-picker.schema.ts",
+      "default": "./dist/components/date-picker/date-picker.schema.js"
+    },
+    "./date-picker/variables": {
+      "types": "./dist/components/date-picker/date-picker.variables.d.ts",
+      "browser": "./src/components/date-picker/date-picker.variables.ts",
+      "node": "./dist/server/components/date-picker/date-picker.variables.js",
+      "svelte": "./src/components/date-picker/date-picker.variables.ts",
+      "default": "./dist/components/date-picker/date-picker.variables.js"
+    },
+    "./date-picker/styles": {
+      "default": "./dist/components/date-picker/date-picker.css"
+    },
+    "./date-picker/examples": {
+      "import": "./src/components/date-picker/date-picker.examples.json",
+      "default": "./src/components/date-picker/date-picker.examples.json"
+    },
     "./date-range-field": {
       "types": "./dist/components/date-range-field/index.d.ts",
       "browser": "./src/components/date-range-field/index.ts",
@@ -1984,6 +2120,34 @@
       "import": "./src/components/focus-trap/focus-trap.examples.json",
       "default": "./src/components/focus-trap/focus-trap.examples.json"
     },
+    "./footer": {
+      "types": "./dist/components/footer/index.d.ts",
+      "browser": "./src/components/footer/index.ts",
+      "node": "./dist/server/components/footer/index.js",
+      "svelte": "./src/components/footer/index.ts",
+      "default": "./dist/components/footer/index.js"
+    },
+    "./footer/schema": {
+      "types": "./dist/components/footer/footer.schema.d.ts",
+      "browser": "./src/components/footer/footer.schema.ts",
+      "node": "./dist/server/components/footer/footer.schema.js",
+      "svelte": "./src/components/footer/footer.schema.ts",
+      "default": "./dist/components/footer/footer.schema.js"
+    },
+    "./footer/variables": {
+      "types": "./dist/components/footer/footer.variables.d.ts",
+      "browser": "./src/components/footer/footer.variables.ts",
+      "node": "./dist/server/components/footer/footer.variables.js",
+      "svelte": "./src/components/footer/footer.variables.ts",
+      "default": "./dist/components/footer/footer.variables.js"
+    },
+    "./footer/styles": {
+      "default": "./dist/components/footer/footer.css"
+    },
+    "./footer/examples": {
+      "import": "./src/components/footer/footer.examples.json",
+      "default": "./src/components/footer/footer.examples.json"
+    },
     "./form-field": {
       "types": "./dist/components/form-field/index.d.ts",
       "browser": "./src/components/form-field/index.ts",
@@ -2221,6 +2385,34 @@
     "./image/examples": {
       "import": "./src/components/image/image.examples.json",
       "default": "./src/components/image/image.examples.json"
+    },
+    "./inline-loading": {
+      "types": "./dist/components/inline-loading/index.d.ts",
+      "browser": "./src/components/inline-loading/index.ts",
+      "node": "./dist/server/components/inline-loading/index.js",
+      "svelte": "./src/components/inline-loading/index.ts",
+      "default": "./dist/components/inline-loading/index.js"
+    },
+    "./inline-loading/schema": {
+      "types": "./dist/components/inline-loading/inline-loading.schema.d.ts",
+      "browser": "./src/components/inline-loading/inline-loading.schema.ts",
+      "node": "./dist/server/components/inline-loading/inline-loading.schema.js",
+      "svelte": "./src/components/inline-loading/inline-loading.schema.ts",
+      "default": "./dist/components/inline-loading/inline-loading.schema.js"
+    },
+    "./inline-loading/variables": {
+      "types": "./dist/components/inline-loading/inline-loading.variables.d.ts",
+      "browser": "./src/components/inline-loading/inline-loading.variables.ts",
+      "node": "./dist/server/components/inline-loading/inline-loading.variables.js",
+      "svelte": "./src/components/inline-loading/inline-loading.variables.ts",
+      "default": "./dist/components/inline-loading/inline-loading.variables.js"
+    },
+    "./inline-loading/styles": {
+      "default": "./dist/components/inline-loading/inline-loading.css"
+    },
+    "./inline-loading/examples": {
+      "import": "./src/components/inline-loading/inline-loading.examples.json",
+      "default": "./src/components/inline-loading/inline-loading.examples.json"
     },
     "./input": {
       "types": "./dist/components/input/index.d.ts",
@@ -2604,6 +2796,34 @@
       "import": "./src/components/markdown-editor/markdown-editor.examples.json",
       "default": "./src/components/markdown-editor/markdown-editor.examples.json"
     },
+    "./marquee": {
+      "types": "./dist/components/marquee/index.d.ts",
+      "browser": "./src/components/marquee/index.ts",
+      "node": "./dist/server/components/marquee/index.js",
+      "svelte": "./src/components/marquee/index.ts",
+      "default": "./dist/components/marquee/index.js"
+    },
+    "./marquee/schema": {
+      "types": "./dist/components/marquee/marquee.schema.d.ts",
+      "browser": "./src/components/marquee/marquee.schema.ts",
+      "node": "./dist/server/components/marquee/marquee.schema.js",
+      "svelte": "./src/components/marquee/marquee.schema.ts",
+      "default": "./dist/components/marquee/marquee.schema.js"
+    },
+    "./marquee/variables": {
+      "types": "./dist/components/marquee/marquee.variables.d.ts",
+      "browser": "./src/components/marquee/marquee.variables.ts",
+      "node": "./dist/server/components/marquee/marquee.variables.js",
+      "svelte": "./src/components/marquee/marquee.variables.ts",
+      "default": "./dist/components/marquee/marquee.variables.js"
+    },
+    "./marquee/styles": {
+      "default": "./dist/components/marquee/marquee.css"
+    },
+    "./marquee/examples": {
+      "import": "./src/components/marquee/marquee.examples.json",
+      "default": "./src/components/marquee/marquee.examples.json"
+    },
     "./masonry": {
       "types": "./dist/components/masonry/index.d.ts",
       "browser": "./src/components/masonry/index.ts",
@@ -2688,6 +2908,34 @@
       "import": "./src/components/media-controls/media-controls.examples.json",
       "default": "./src/components/media-controls/media-controls.examples.json"
     },
+    "./mega-menu": {
+      "types": "./dist/components/mega-menu/index.d.ts",
+      "browser": "./src/components/mega-menu/index.ts",
+      "node": "./dist/server/components/mega-menu/index.js",
+      "svelte": "./src/components/mega-menu/index.ts",
+      "default": "./dist/components/mega-menu/index.js"
+    },
+    "./mega-menu/schema": {
+      "types": "./dist/components/mega-menu/mega-menu.schema.d.ts",
+      "browser": "./src/components/mega-menu/mega-menu.schema.ts",
+      "node": "./dist/server/components/mega-menu/mega-menu.schema.js",
+      "svelte": "./src/components/mega-menu/mega-menu.schema.ts",
+      "default": "./dist/components/mega-menu/mega-menu.schema.js"
+    },
+    "./mega-menu/variables": {
+      "types": "./dist/components/mega-menu/mega-menu.variables.d.ts",
+      "browser": "./src/components/mega-menu/mega-menu.variables.ts",
+      "node": "./dist/server/components/mega-menu/mega-menu.variables.js",
+      "svelte": "./src/components/mega-menu/mega-menu.variables.ts",
+      "default": "./dist/components/mega-menu/mega-menu.variables.js"
+    },
+    "./mega-menu/styles": {
+      "default": "./dist/components/mega-menu/mega-menu.css"
+    },
+    "./mega-menu/examples": {
+      "import": "./src/components/mega-menu/mega-menu.examples.json",
+      "default": "./src/components/mega-menu/mega-menu.examples.json"
+    },
     "./menu-bar": {
       "types": "./dist/components/menu-bar/index.d.ts",
       "browser": "./src/components/menu-bar/index.ts",
@@ -2744,6 +2992,34 @@
       "import": "./src/components/message/message.examples.json",
       "default": "./src/components/message/message.examples.json"
     },
+    "./meter": {
+      "types": "./dist/components/meter/index.d.ts",
+      "browser": "./src/components/meter/index.ts",
+      "node": "./dist/server/components/meter/index.js",
+      "svelte": "./src/components/meter/index.ts",
+      "default": "./dist/components/meter/index.js"
+    },
+    "./meter/schema": {
+      "types": "./dist/components/meter/meter.schema.d.ts",
+      "browser": "./src/components/meter/meter.schema.ts",
+      "node": "./dist/server/components/meter/meter.schema.js",
+      "svelte": "./src/components/meter/meter.schema.ts",
+      "default": "./dist/components/meter/meter.schema.js"
+    },
+    "./meter/variables": {
+      "types": "./dist/components/meter/meter.variables.d.ts",
+      "browser": "./src/components/meter/meter.variables.ts",
+      "node": "./dist/server/components/meter/meter.variables.js",
+      "svelte": "./src/components/meter/meter.variables.ts",
+      "default": "./dist/components/meter/meter.variables.js"
+    },
+    "./meter/styles": {
+      "default": "./dist/components/meter/meter.css"
+    },
+    "./meter/examples": {
+      "import": "./src/components/meter/meter.examples.json",
+      "default": "./src/components/meter/meter.examples.json"
+    },
     "./modal": {
       "types": "./dist/components/modal/index.d.ts",
       "browser": "./src/components/modal/index.ts",
@@ -2775,6 +3051,34 @@
     "./modal/constraints": {
       "import": "./src/components/modal/modal.constraints.json",
       "default": "./src/components/modal/modal.constraints.json"
+    },
+    "./multi-select": {
+      "types": "./dist/components/multi-select/index.d.ts",
+      "browser": "./src/components/multi-select/index.ts",
+      "node": "./dist/server/components/multi-select/index.js",
+      "svelte": "./src/components/multi-select/index.ts",
+      "default": "./dist/components/multi-select/index.js"
+    },
+    "./multi-select/schema": {
+      "types": "./dist/components/multi-select/multi-select.schema.d.ts",
+      "browser": "./src/components/multi-select/multi-select.schema.ts",
+      "node": "./dist/server/components/multi-select/multi-select.schema.js",
+      "svelte": "./src/components/multi-select/multi-select.schema.ts",
+      "default": "./dist/components/multi-select/multi-select.schema.js"
+    },
+    "./multi-select/variables": {
+      "types": "./dist/components/multi-select/multi-select.variables.d.ts",
+      "browser": "./src/components/multi-select/multi-select.variables.ts",
+      "node": "./dist/server/components/multi-select/multi-select.variables.js",
+      "svelte": "./src/components/multi-select/multi-select.variables.ts",
+      "default": "./dist/components/multi-select/multi-select.variables.js"
+    },
+    "./multi-select/styles": {
+      "default": "./dist/components/multi-select/multi-select.css"
+    },
+    "./multi-select/examples": {
+      "import": "./src/components/multi-select/multi-select.examples.json",
+      "default": "./src/components/multi-select/multi-select.examples.json"
     },
     "./navigation-bar": {
       "types": "./dist/components/navigation-bar/index.d.ts",
@@ -3160,6 +3464,34 @@
     "./progress/examples": {
       "import": "./src/components/progress/progress.examples.json",
       "default": "./src/components/progress/progress.examples.json"
+    },
+    "./qr-code": {
+      "types": "./dist/components/qr-code/index.d.ts",
+      "browser": "./src/components/qr-code/index.ts",
+      "node": "./dist/server/components/qr-code/index.js",
+      "svelte": "./src/components/qr-code/index.ts",
+      "default": "./dist/components/qr-code/index.js"
+    },
+    "./qr-code/schema": {
+      "types": "./dist/components/qr-code/qr-code.schema.d.ts",
+      "browser": "./src/components/qr-code/qr-code.schema.ts",
+      "node": "./dist/server/components/qr-code/qr-code.schema.js",
+      "svelte": "./src/components/qr-code/qr-code.schema.ts",
+      "default": "./dist/components/qr-code/qr-code.schema.js"
+    },
+    "./qr-code/variables": {
+      "types": "./dist/components/qr-code/qr-code.variables.d.ts",
+      "browser": "./src/components/qr-code/qr-code.variables.ts",
+      "node": "./dist/server/components/qr-code/qr-code.variables.js",
+      "svelte": "./src/components/qr-code/qr-code.variables.ts",
+      "default": "./dist/components/qr-code/qr-code.variables.js"
+    },
+    "./qr-code/styles": {
+      "default": "./dist/components/qr-code/qr-code.css"
+    },
+    "./qr-code/examples": {
+      "import": "./src/components/qr-code/qr-code.examples.json",
+      "default": "./src/components/qr-code/qr-code.examples.json"
     },
     "./radio-group": {
       "types": "./dist/components/radio-group/index.d.ts",
@@ -4361,6 +4693,34 @@
     "./table-header-cell/styles": {
       "default": "./dist/components/table-header-cell/table-header-cell.css"
     },
+    "./table-of-contents": {
+      "types": "./dist/components/table-of-contents/index.d.ts",
+      "browser": "./src/components/table-of-contents/index.ts",
+      "node": "./dist/server/components/table-of-contents/index.js",
+      "svelte": "./src/components/table-of-contents/index.ts",
+      "default": "./dist/components/table-of-contents/index.js"
+    },
+    "./table-of-contents/schema": {
+      "types": "./dist/components/table-of-contents/table-of-contents.schema.d.ts",
+      "browser": "./src/components/table-of-contents/table-of-contents.schema.ts",
+      "node": "./dist/server/components/table-of-contents/table-of-contents.schema.js",
+      "svelte": "./src/components/table-of-contents/table-of-contents.schema.ts",
+      "default": "./dist/components/table-of-contents/table-of-contents.schema.js"
+    },
+    "./table-of-contents/variables": {
+      "types": "./dist/components/table-of-contents/table-of-contents.variables.d.ts",
+      "browser": "./src/components/table-of-contents/table-of-contents.variables.ts",
+      "node": "./dist/server/components/table-of-contents/table-of-contents.variables.js",
+      "svelte": "./src/components/table-of-contents/table-of-contents.variables.ts",
+      "default": "./dist/components/table-of-contents/table-of-contents.variables.js"
+    },
+    "./table-of-contents/styles": {
+      "default": "./dist/components/table-of-contents/table-of-contents.css"
+    },
+    "./table-of-contents/examples": {
+      "import": "./src/components/table-of-contents/table-of-contents.examples.json",
+      "default": "./src/components/table-of-contents/table-of-contents.examples.json"
+    },
     "./table-row": {
       "types": "./dist/components/table-row/index.d.ts",
       "browser": "./src/components/table-row/index.ts",
@@ -5235,6 +5595,7 @@
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.41.3",
+    "qrcode": "^1.5.4",
     "rehype-katex": "^7.0.1",
     "rehype-sanitize": "^6.0.0",
     "rehype-stringify": "^10.0.1",
@@ -5259,6 +5620,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.2.7",
     "@types/bun": "^1.3.11",
+    "@types/qrcode": "^1.5.6",
     "chalk": "^5.6.2",
     "change-case": "^5.4.4",
     "happy-dom": "^15.11.7",

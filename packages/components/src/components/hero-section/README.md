@@ -1,6 +1,6 @@
 # HeroSection
 
-TODO: one-line purpose statement for HeroSection.
+Renders a landing-page hero with headline, supporting copy, actions, and optional media.
 
 ## Usage
 
@@ -9,7 +9,10 @@ TODO: one-line purpose statement for HeroSection.
   import HeroSection from '@lostgradient/cinder/hero-section';
 </script>
 
-<HeroSection>Content</HeroSection>
+<HeroSection
+  title="Build better products with Cinder"
+  description="Composable sections for modern marketing pages."
+/>
 ```
 
 ## Props

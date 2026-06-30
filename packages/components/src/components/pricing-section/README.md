@@ -1,15 +1,30 @@
 # PricingSection
 
-TODO: one-line purpose statement for PricingSection.
+Renders a pricing plans section using PricingCard blocks with optional selection callbacks.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
   import PricingSection from '@lostgradient/cinder/pricing-section';
+
+  const plans = [
+    {
+      name: 'Starter',
+      price: '$0',
+      features: ['1 project', 'Community support'],
+      cta: 'Start free',
+    },
+    {
+      name: 'Pro',
+      price: '$29',
+      features: ['Unlimited projects', 'Priority support'],
+      cta: 'Upgrade',
+    },
+  ];
 </script>
 
-<PricingSection>Content</PricingSection>
+<PricingSection title="Simple pricing" {plans} />
 ```
 
 ## Props

@@ -95,6 +95,22 @@ describe('stripExampleHarness — fixtures', () => {
     expect(stripped).not.toContain('mainId');
   });
 
+  it('rewrites script object-literal id values (table-of-contents explicit-items shape)', () => {
+    const source = `<script lang="ts">
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let apiOverviewId = $derived(\`\${mountIdPrefix ?? uid}-api-overview\`);
+</script>
+
+<TableOfContents items={[{ id: apiOverviewId, label: 'Overview' }]} />
+<h2 id={apiOverviewId}>Overview</h2>
+`;
+    const stripped = stripExampleHarness(source, 'table-of-contents/explicit-items');
+    expect(stripped).toContain(`items={[{ id: 'api-overview', label: 'Overview' }]}`);
+    expect(stripped).toContain('<h2 id="api-overview">Overview</h2>');
+    expect(stripped).not.toContain('apiOverviewId');
+  });
+
   it('leaves a harness-free example untouched', () => {
     const source = `<script lang="ts">
   import { Button } from '@lostgradient/cinder/button';

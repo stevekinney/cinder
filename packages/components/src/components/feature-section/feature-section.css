@@ -98,13 +98,13 @@
       align-items: center;
     }
 
-    .cinder-feature-section[data-cinder-layout='split'][data-cinder-media-position='start']
+    .cinder-feature-section[data-cinder-layout='split'][data-cinder-has-media][data-cinder-media-position='start']
       .cinder-feature-section__list {
       grid-column: 2;
       grid-row: 1;
     }
 
-    .cinder-feature-section[data-cinder-layout='split'][data-cinder-media-position='start']
+    .cinder-feature-section[data-cinder-layout='split'][data-cinder-has-media][data-cinder-media-position='start']
       .cinder-feature-section__media {
       grid-column: 1;
       grid-row: 1;

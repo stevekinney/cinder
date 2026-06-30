@@ -1,0 +1,35 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    status: {
+      enum: ['inactive', 'active', 'finished', 'error'],
+      description:
+        'Lifecycle state for the inline async action indicator. Bindable: the\ncomponent resets this to `"inactive"` after the `successDelay` timer fires\nso a subsequent `status = "finished"` from the parent is always a real\nvalue transition that re-shows the success indicator.',
+      default: 'inactive',
+    },
+    description: {
+      type: 'string',
+      description: 'Visible status label rendered next to the indicator.',
+    },
+    iconDescription: {
+      type: 'string',
+      description:
+        'Accessible status wording used by announcements when no visible description is provided.',
+    },
+    successDelay: {
+      type: 'number',
+      description: 'Delay in milliseconds before auto-resetting `finished` back to `inactive`.',
+      default: 1500,
+    },
+    class: {
+      type: 'string',
+      description: 'Extra classes appended to the root element.',
+    },
+  },
+  additionalProperties: false,
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

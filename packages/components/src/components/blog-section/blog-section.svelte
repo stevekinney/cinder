@@ -48,9 +48,11 @@
 >
   <Container {maxWidth}>
     <div class="cinder-blog-section__inner">
-      {#if title}
+      {#if title || description}
         <header class="cinder-blog-section__header">
-          <h2 class="cinder-blog-section__title">{title}</h2>
+          {#if title}
+            <h2 class="cinder-blog-section__title">{title}</h2>
+          {/if}
           {#if description}
             <p class="cinder-blog-section__description">{description}</p>
           {/if}

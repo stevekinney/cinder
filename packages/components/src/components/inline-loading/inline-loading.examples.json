@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "inline-loading",
+  "import": "@lostgradient/cinder/inline-loading",
+  "examples": [
+    {
+      "id": "lifecycle",
+      "title": "Inline loading lifecycle",
+      "description": "Inline async action states: active, finished, and error.",
+      "code": "<script lang=\"ts\">\n  import { onDestroy } from 'svelte';\n  import { Button, InlineLoading } from '@lostgradient/cinder';\n\n  let status = $state<'inactive' | 'active' | 'finished' | 'error'>('inactive');\n  let message = $state('Saved');\n  let pendingTimeout: ReturnType<typeof setTimeout> | null = null;\n\n  function cancelPending(): void {\n    if (pendingTimeout !== null) {\n      clearTimeout(pendingTimeout);\n      pendingTimeout = null;\n    }\n  }\n\n  onDestroy(cancelPending);\n\n  function startSuccess(): void {\n    cancelPending();\n    status = 'active';\n    message = 'Saving changes';\n    pendingTimeout = setTimeout(() => {\n      status = 'finished';\n      message = 'Saved';\n      pendingTimeout = null;\n    }, 900);\n  }\n\n  function startError(): void {\n    cancelPending();\n    status = 'active';\n    message = 'Saving changes';\n    pendingTimeout = setTimeout(() => {\n      status = 'error';\n      message = 'Save failed';\n      pendingTimeout = null;\n    }, 900);\n  }\n</script>\n\n<div class=\"example-preview-column\" style=\"align-items: flex-start; gap: 0.75rem;\">\n  <div class=\"example-preview-row\" style=\"align-items: center; gap: 0.75rem;\">\n    <Button type=\"button\" onclick={startSuccess}>Save (success)</Button>\n    <Button type=\"button\" variant=\"secondary\" onclick={startError}>Save (error)</Button>\n    <InlineLoading bind:status description={message} />\n  </div>\n</div>\n"
+    }
+  ]
+}

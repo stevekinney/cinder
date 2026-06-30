@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "activeIndex": {
+      "type": "number",
+      "description": "Zero-based active index (bindable)."
+    },
+    "autoplay": {
+      "type": "boolean",
+      "description": "Enables interval-based auto-advance."
+    },
+    "autoplayInterval": {
+      "type": "number",
+      "description": "Milliseconds between auto-advance ticks."
+    },
+    "label": {
+      "type": "string",
+      "description": "Accessible name for the carousel region."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional accessible description linked to the region."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional classes merged onto the root element."
+    }
+  },
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "controlLabels",
+        "reason": "unknown-shape",
+        "description": "Override labels for controls and picker."
+      },
+      {
+        "name": "slides",
+        "reason": "unknown-shape",
+        "required": true,
+        "description": "Ordered list of slides."
+      }
+    ]
+  }
+}
