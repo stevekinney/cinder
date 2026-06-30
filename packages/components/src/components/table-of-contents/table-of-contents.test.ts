@@ -163,10 +163,12 @@ describe('TableOfContents', () => {
     article.id = 'late-target';
     article.appendChild(createHeading('late-one', 'Late one', 'h2'));
     document.body.appendChild(article);
-    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(1);
+    });
 
     const links = container.querySelectorAll('a.cinder-table-of-contents__link');
-    expect(links.length).toBe(1);
     expect(links[0]?.getAttribute('href')).toBe('#late-one');
   });
 

@@ -63,25 +63,32 @@
         {#each posts as post, index (`${post.title}-${index}`)}
           <li class="cinder-blog-section__item">
             <Card>
-              {#if post.imageSrc}
-                <img class="cinder-blog-section__image" src={post.imageSrc} alt="" loading="lazy" />
-              {/if}
-              {#if post.category || post.publishedAt}
-                <p class="cinder-blog-section__meta">
-                  {[post.category, post.publishedAt].filter(Boolean).join(' · ')}
-                </p>
-              {/if}
-              <h3 class="cinder-blog-section__post-title">
-                <a href={post.href} class="cinder-blog-section__link">{post.title}</a>
-              </h3>
-              <p class="cinder-blog-section__excerpt">{post.excerpt}</p>
-              <div class="cinder-blog-section__author">
-                <Avatar {...avatarProps(post.authorName, post.authorAvatarSrc)} size="sm" />
-                <div class="cinder-blog-section__author-meta">
-                  <p class="cinder-blog-section__author-name">{post.authorName}</p>
-                  {#if post.authorRole}
-                    <p class="cinder-blog-section__author-role">{post.authorRole}</p>
-                  {/if}
+              <div class="cinder-blog-section__card-content">
+                {#if post.imageSrc}
+                  <img
+                    class="cinder-blog-section__image"
+                    src={post.imageSrc}
+                    alt=""
+                    loading="lazy"
+                  />
+                {/if}
+                {#if post.category || post.publishedAt}
+                  <p class="cinder-blog-section__meta">
+                    {[post.category, post.publishedAt].filter(Boolean).join(' · ')}
+                  </p>
+                {/if}
+                <h3 class="cinder-blog-section__post-title">
+                  <a href={post.href} class="cinder-blog-section__link">{post.title}</a>
+                </h3>
+                <p class="cinder-blog-section__excerpt">{post.excerpt}</p>
+                <div class="cinder-blog-section__author">
+                  <Avatar {...avatarProps(post.authorName, post.authorAvatarSrc)} size="sm" />
+                  <div class="cinder-blog-section__author-meta">
+                    <p class="cinder-blog-section__author-name">{post.authorName}</p>
+                    {#if post.authorRole}
+                      <p class="cinder-blog-section__author-role">{post.authorRole}</p>
+                    {/if}
+                  </div>
                 </div>
               </div>
             </Card>
