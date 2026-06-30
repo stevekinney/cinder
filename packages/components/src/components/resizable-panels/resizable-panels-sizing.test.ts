@@ -316,7 +316,7 @@ describe('resizable-panels sizing', () => {
     expect(state.panels[1]!.sizePixels).toBeCloseTo(300, 3);
   });
 
-  test('distributes budget evenly when every finite max constraint is zero', () => {
+  test('keeps zero-sized panes at zero when every finite max constraint is zero', () => {
     const maxConstrainedPanes: ResizablePanelDefinition[] = [
       {
         id: 'left',
@@ -332,9 +332,9 @@ describe('resizable-panels sizing', () => {
 
     const state = createInitialLayoutState(maxConstrainedPanes, 600, 'horizontal');
 
-    expect(state.panels.reduce((sum, panel) => sum + panel.sizePixels, 0)).toBeCloseTo(600, 3);
-    expect(state.panels[0]!.sizePixels).toBeCloseTo(300, 3);
-    expect(state.panels[1]!.sizePixels).toBeCloseTo(300, 3);
+    expect(state.panels.reduce((sum, panel) => sum + panel.sizePixels, 0)).toBe(0);
+    expect(state.panels[0]!.sizePixels).toBe(0);
+    expect(state.panels[1]!.sizePixels).toBe(0);
   });
 
   test('keeps every default-collapsed pane at zero', () => {
