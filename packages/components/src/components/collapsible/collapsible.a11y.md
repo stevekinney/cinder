@@ -10,13 +10,13 @@ The collapsible implementation follows the [WAI-ARIA Disclosure pattern](https:/
 - `aria-expanded="true|false"` — reflects whether the controlled panel is currently visible. Screen readers announce "expanded" or "collapsed" alongside the button label.
 - Optional `aria-label` override via `triggerAriaLabel` — accepts a static string or a state-aware function (`{ open, disabled } => string`) for cases where the visible trigger content is not the desired accessible name.
 - `aria-controls="{base}-panel"` — emitted only while the panel exists in the DOM. When the panel is removed on close, the attribute is dropped so it never points to a missing element. This differs from `AccordionItem`, which always emits `aria-controls` because its panel IDs are stable and predictable — see [Relation to Accordion](#relation-to-accordion).
-- `id="{base}-header"` — stable ID used by the panel's `aria-labelledby` to form the label association.
+- `id="{base}-header"` — stable ID used by `aria-controls` and internal trigger/panel wiring.
 - `disabled` — the native HTML boolean is used exclusively; `aria-disabled` is intentionally omitted alongside native `disabled` on a `<button>` to avoid double-announcement in some screen reader + browser combinations.
 
 ### Panel
 
 - `role="region"` — applied to every open panel, making it a named landmark. Use Collapsible when a single disclosure should be reachable by landmark navigation (e.g., a prominent filter panel or a help section).
-- `aria-labelledby="{base}-header"` — associates the panel region with its trigger so assistive technologies announce "expanded, region, [trigger label]" when navigating into it.
+- `aria-labelledby="{base}-label"` — associates the panel region with the visible trigger label content so trigger-only `aria-label` overrides do not rename the panel landmark.
 - Removed from the DOM when closed. Standard disclosure behavior — no `display:none` or `visibility:hidden` approach. `aria-controls` on the trigger is cleared simultaneously.
 
 > [!NOTE] Landmark count

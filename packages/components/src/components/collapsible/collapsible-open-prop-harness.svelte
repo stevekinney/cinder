@@ -1,7 +1,7 @@
 <!--
   Test-only harness pinning the unbound `open` contract: `open={...}` seeds the
-  initial state, and parent writes can drive panel visibility through `open={...}`.
-  Not a public component.
+  initial state. Parent writes can update it, but trigger clicks remain local
+  unless `bind:open` is used. Not a public component.
 -->
 <script lang="ts">
   import Collapsible from './collapsible.svelte';

@@ -38,6 +38,10 @@ function panel(container: HTMLElement): HTMLElement | null {
   return container.querySelector('.cinder-collapsible__panel');
 }
 
+function triggerLabel(container: HTMLElement): HTMLElement | null {
+  return container.querySelector('.cinder-collapsible__label > span[id]');
+}
+
 describe('Collapsible (uncontrolled)', () => {
   test('panel is absent initially and renders after clicking the trigger', async () => {
     const { container } = render(Collapsible, {
@@ -65,7 +69,7 @@ describe('Collapsible (uncontrolled)', () => {
     expect(region).not.toBeNull();
     expect(region?.getAttribute('role')).toBe('region');
     expect(button.getAttribute('aria-controls')).toBe(region?.getAttribute('id') ?? null);
-    expect(region?.getAttribute('aria-labelledby')).toBe(button.getAttribute('id'));
+    expect(region?.getAttribute('aria-labelledby')).toBe(triggerLabel(container)?.getAttribute('id') ?? null);
   });
 
   test('omits aria-controls while closed so the reference never dangles', async () => {

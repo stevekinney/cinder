@@ -11,7 +11,7 @@ const schema = {
     open: {
       type: 'boolean',
       description:
-        'Bindable open state. Parents can drive it directly and may use `bind:open`\nfor two-way synchronization.',
+        'Bindable open state. Without `bind:open`, this seeds local state and can be\nupdated by parent prop changes. Use `bind:open` for full parent/trigger\nsynchronization.',
       default: false,
     },
     disabled: {

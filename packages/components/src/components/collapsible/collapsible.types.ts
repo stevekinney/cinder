@@ -13,8 +13,9 @@ export type CollapsibleProps = Omit<
   /** Panel content shown when open. */
   children: Snippet;
   /**
-   * Bindable open state. Parents can drive it directly by updating `open`, and
-   * can opt into two-way synchronization with `bind:open`.
+   * Bindable open state. Without `bind:open`, this seeds local state and can be
+   * updated by parent prop changes, while trigger clicks update local state.
+   * Use `bind:open` for full parent/trigger synchronization.
    * @default false
    */
   open?: boolean;
@@ -49,8 +50,9 @@ export interface CollapsibleSchemaProps {
   /** Trigger label text. (The snippet form is template-only; see the type above.) */
   trigger: string;
   /**
-   * Bindable open state. Parents can drive it directly and may use `bind:open`
-   * for two-way synchronization.
+   * Bindable open state. Without `bind:open`, this seeds local state and can be
+   * updated by parent prop changes. Use `bind:open` for full parent/trigger
+   * synchronization.
    * @default false
    */
   open?: boolean;

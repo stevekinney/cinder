@@ -44,6 +44,7 @@
   const autoId = $props.id();
   const baseId = $derived(idBase ?? autoId);
   const headerId = $derived(`${baseId}-header`);
+  const labelId = $derived(`${baseId}-label`);
   const panelId = $derived(`${baseId}-panel`);
   const computedTriggerAriaLabelRaw = $derived.by(() =>
     typeof triggerAriaLabel === 'function'
@@ -82,9 +83,11 @@
   >
     <span class="cinder-collapsible__label">
       {#if typeof trigger === 'string'}
-        {trigger}
+        <span id={labelId}>{trigger}</span>
       {:else}
-        {@render trigger({ open, disabled })}
+        <span id={labelId}>
+          {@render trigger({ open, disabled })}
+        </span>
       {/if}
     </span>
     <svg
@@ -108,7 +111,7 @@
       transition:slide={{ duration: slideMs }}
       id={panelId}
       role="region"
-      aria-labelledby={headerId}
+      aria-labelledby={labelId}
       class="cinder-collapsible__panel"
     >
       <div class="cinder-collapsible__panel-inner">
