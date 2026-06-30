@@ -10,16 +10,16 @@
       "code": "<script lang=\"ts\">\n  import { DescriptionList } from '@lostgradient/cinder/description-list';\n  import type { DescriptionListItem } from '@lostgradient/cinder/description-list';\n\n  const items: DescriptionListItem[] = [\n    { term: 'Component', definition: 'DescriptionList' },\n    { term: 'Status', definition: 'Stable' },\n    { term: 'Version', definition: '1.0.0' },\n    { term: 'License', definition: 'MIT' },\n    { term: 'Maintainer', definition: 'Cinder team' },\n  ];\n</script>\n\n<DescriptionList {items} />\n"
     },
     {
-      "id": "variants",
-      "title": "Description list variants",
-      "description": "Striped and two-column layout variants.",
-      "code": "<script lang=\"ts\">\n  import { DescriptionList } from '@lostgradient/cinder/description-list';\n  import type { DescriptionListItem } from '@lostgradient/cinder/description-list';\n\n  const items: DescriptionListItem[] = [\n    { term: 'Repository', definition: '@lostgradient/cinder' },\n    { term: 'Language', definition: 'TypeScript' },\n    { term: 'Framework', definition: 'Svelte 5' },\n    { term: 'Runtime', definition: 'Bun' },\n  ];\n</script>\n\n<div class=\"example-preview-column\">\n  <DescriptionList {items} variant=\"striped\" />\n  <DescriptionList {items} variant=\"two-column\" />\n</div>\n"
-    },
-    {
       "id": "rich-definitions",
       "title": "Description list rich definitions",
       "description": "Definitions can render rich snippet content when plain text is not enough.",
       "code": "<script lang=\"ts\">\n  import { DescriptionList } from '@lostgradient/cinder/description-list';\n  import type { DescriptionListItem } from '@lostgradient/cinder/description-list';\n\n  const items: DescriptionListItem[] = [\n    { term: 'Run ID', definition: runIdDefinition },\n    { term: 'Status', definition: statusDefinition },\n  ];\n</script>\n\n{#snippet runIdDefinition()}\n  <code>abc-123</code>\n{/snippet}\n\n{#snippet statusDefinition()}\n  <span class=\"example-status\">Active</span>\n{/snippet}\n\n<DescriptionList {items} />\n"
+    },
+    {
+      "id": "variants",
+      "title": "Description list variants",
+      "description": "Striped and two-column layout variants.",
+      "code": "<script lang=\"ts\">\n  import { DescriptionList } from '@lostgradient/cinder/description-list';\n  import type { DescriptionListItem } from '@lostgradient/cinder/description-list';\n\n  const items: DescriptionListItem[] = [\n    { term: 'Repository', definition: '@lostgradient/cinder' },\n    { term: 'Language', definition: 'TypeScript' },\n    { term: 'Framework', definition: 'Svelte 5' },\n    { term: 'Runtime', definition: 'Bun' },\n  ];\n</script>\n\n<div class=\"example-preview-column\">\n  <DescriptionList {items} variant=\"striped\" />\n  <DescriptionList {items} variant=\"two-column\" />\n</div>\n"
     }
   ]
 }
