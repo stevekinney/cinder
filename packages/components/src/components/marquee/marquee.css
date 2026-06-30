@@ -8,7 +8,23 @@
   }
 
   .cinder-marquee__viewport {
+    position: relative;
     overflow: hidden;
+  }
+
+  .cinder-marquee__viewport:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-marquee__viewport:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
+    }
   }
 
   .cinder-marquee__track {

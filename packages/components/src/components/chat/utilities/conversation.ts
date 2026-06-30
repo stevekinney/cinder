@@ -1,75 +1,26 @@
 /**
- * Cinder-owned conversation-reading helpers.
+ * Conversation-reading helpers for Chat.
  *
- * These reimplement the small slice of conversation-reading behavior Chat needs
- * (message ordering and tool-call pairing) so Chat depends only on the vendored
- * {@link ConversationHistory}/{@link Message} shapes, not on a runtime library.
- * Behavior is transcribed from `conversationalist`'s `getOrderedMessages`/`getMessages`
- * and `pairToolCallsWithResults`; tests pin the contract so any divergence is visible.
+ * These delegate to `conversationalist` so message ordering stays aligned with
+ * the published conversation package. Tool pairing keeps Chat's role gate so an
+ * incidental tool-shaped field on a non-tool message never renders as a pair.
  */
 
-import type {
-  ConversationHistory,
-  Message,
-  ToolCallPair,
-  ToolResult,
-} from '../conversation-model.ts';
+import { getMessages } from 'conversationalist';
+import { pairToolCallsWithResults as pairConversationalistToolCallsWithResults } from 'conversationalist/utilities';
 
-/**
- * Returns a conversation's messages in canonical order.
- *
- * Walks `conversation.ids` in order, resolving each id from the `messages`
- * record. Ids with no matching record are skipped (no throw); records not
- * referenced by `ids` are excluded. Hidden messages are filtered out unless
- * `includeHidden` is true.
- *
- * @param conversation - The conversation snapshot to read
- * @param options - `includeHidden` keeps hidden messages in the result
- * @returns Ordered messages
- */
-export function getMessages(
-  conversation: ConversationHistory,
-  options?: { includeHidden?: boolean },
-): Message[] {
-  const includeHidden = options?.includeHidden ?? false;
-  const ordered: Message[] = [];
-  for (const id of conversation.ids) {
-    const message = conversation.messages[id];
-    if (message && (includeHidden || !message.hidden)) {
-      ordered.push(message);
-    }
-  }
-  return ordered;
+import type { Message, ToolCallPair } from '../conversation-model.ts';
+
+function hasPairableToolField(message: Message): boolean {
+  return (
+    (message.role === 'tool-call' && message.toolCall !== undefined) ||
+    (message.role === 'tool-result' && message.toolResult !== undefined)
+  );
 }
 
-/**
- * Pairs tool calls with their results from an already-ordered message array.
- *
- * Consumes an ordered array only — pass {@link getMessages} output — so pairing
- * can never disagree with render ordering or surface a stale message that
- * `getMessages` would have excluded. Two passes: collect results by their
- * `callId`, then emit one pair per message bearing a `toolCall`, attaching the
- * matching result if one exists. When two results share a `callId`, the later
- * one wins (last write to the map).
- *
- * @param messages - Messages in canonical order
- * @returns One pair per tool call, in call order
- */
+/** Pairs tool calls with role-valid tool results from an already-ordered message array. */
 export function pairToolCallsWithResults(messages: ReadonlyArray<Message>): ToolCallPair[] {
-  const resultsByCallId = new Map<string, ToolResult>();
-  for (const message of messages) {
-    // Role-gate (not just `toolResult` presence) so a non-tool message carrying
-    // an incidental tool-shaped field never contributes a phantom result.
-    if (message.role === 'tool-result' && message.toolResult) {
-      resultsByCallId.set(message.toolResult.callId, message.toolResult);
-    }
-  }
-
-  const pairs: ToolCallPair[] = [];
-  for (const message of messages) {
-    if (message.role === 'tool-call' && message.toolCall) {
-      pairs.push({ call: message.toolCall, result: resultsByCallId.get(message.toolCall.id) });
-    }
-  }
-  return pairs;
+  return pairConversationalistToolCallsWithResults(messages.filter(hasPairableToolField));
 }
+
+export { getMessages };

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "blog-section",
+  "import": "@lostgradient/cinder/blog-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "BlogSection",
+      "description": "BlogSection showing recent articles with category, excerpt, and author attribution.",
+      "code": "<script lang=\"ts\">\n  import { BlogSection } from '@lostgradient/cinder/blog-section';\n\n  const posts = [\n    {\n      title: 'How we scaled our design system governance',\n      excerpt: 'A practical playbook for cross-team contributions and review workflows.',\n      href: '#',\n      category: 'Engineering',\n      publishedAt: 'Jun 20, 2026',\n      authorName: 'Morgan Yu',\n      authorRole: 'Staff Engineer',\n      imageSrc: 'https://placehold.co/640x360?text=Design+System',\n    },\n    {\n      title: 'Product launch checklist for frontend teams',\n      excerpt: 'A repeatable checklist that reduces launch-day surprises.',\n      href: '#',\n      category: 'Product',\n      publishedAt: 'Jun 8, 2026',\n      authorName: 'Jamie Patel',\n      authorRole: 'Product Manager',\n      imageSrc: 'https://placehold.co/640x360?text=Launch+Checklist',\n    },\n    {\n      title: 'Accessibility debt: how to find and fix it early',\n      excerpt: 'Methods for integrating inclusive QA before code reaches production.',\n      href: '#',\n      category: 'Accessibility',\n      publishedAt: 'May 27, 2026',\n      authorName: 'Casey Murray',\n      authorRole: 'Design Systems Lead',\n      imageSrc: 'https://placehold.co/640x360?text=A11y+Debt',\n    },\n  ];\n</script>\n\n<BlogSection\n  title=\"Latest from the Cinder blog\"\n  description=\"Guides, launch lessons, and design-system practices from our product team.\"\n  {posts}\n/>\n"
+    }
+  ]
+}

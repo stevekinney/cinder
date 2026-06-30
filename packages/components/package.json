@@ -540,6 +540,34 @@
       "import": "./src/components/bento-grid/bento-grid.examples.json",
       "default": "./src/components/bento-grid/bento-grid.examples.json"
     },
+    "./blog-section": {
+      "types": "./dist/components/blog-section/index.d.ts",
+      "browser": "./src/components/blog-section/index.ts",
+      "node": "./dist/server/components/blog-section/index.js",
+      "svelte": "./src/components/blog-section/index.ts",
+      "default": "./dist/components/blog-section/index.js"
+    },
+    "./blog-section/schema": {
+      "types": "./dist/components/blog-section/blog-section.schema.d.ts",
+      "browser": "./src/components/blog-section/blog-section.schema.ts",
+      "node": "./dist/server/components/blog-section/blog-section.schema.js",
+      "svelte": "./src/components/blog-section/blog-section.schema.ts",
+      "default": "./dist/components/blog-section/blog-section.schema.js"
+    },
+    "./blog-section/variables": {
+      "types": "./dist/components/blog-section/blog-section.variables.d.ts",
+      "browser": "./src/components/blog-section/blog-section.variables.ts",
+      "node": "./dist/server/components/blog-section/blog-section.variables.js",
+      "svelte": "./src/components/blog-section/blog-section.variables.ts",
+      "default": "./dist/components/blog-section/blog-section.variables.js"
+    },
+    "./blog-section/styles": {
+      "default": "./dist/components/blog-section/blog-section.css"
+    },
+    "./blog-section/examples": {
+      "import": "./src/components/blog-section/blog-section.examples.json",
+      "default": "./src/components/blog-section/blog-section.examples.json"
+    },
     "./breadcrumbs": {
       "types": "./dist/components/breadcrumbs/index.d.ts",
       "browser": "./src/components/breadcrumbs/index.ts",
@@ -1391,6 +1419,34 @@
       "import": "./src/components/copy-button/copy-button.examples.json",
       "default": "./src/components/copy-button/copy-button.examples.json"
     },
+    "./cta-section": {
+      "types": "./dist/components/cta-section/index.d.ts",
+      "browser": "./src/components/cta-section/index.ts",
+      "node": "./dist/server/components/cta-section/index.js",
+      "svelte": "./src/components/cta-section/index.ts",
+      "default": "./dist/components/cta-section/index.js"
+    },
+    "./cta-section/schema": {
+      "types": "./dist/components/cta-section/cta-section.schema.d.ts",
+      "browser": "./src/components/cta-section/cta-section.schema.ts",
+      "node": "./dist/server/components/cta-section/cta-section.schema.js",
+      "svelte": "./src/components/cta-section/cta-section.schema.ts",
+      "default": "./dist/components/cta-section/cta-section.schema.js"
+    },
+    "./cta-section/variables": {
+      "types": "./dist/components/cta-section/cta-section.variables.d.ts",
+      "browser": "./src/components/cta-section/cta-section.variables.ts",
+      "node": "./dist/server/components/cta-section/cta-section.variables.js",
+      "svelte": "./src/components/cta-section/cta-section.variables.ts",
+      "default": "./dist/components/cta-section/cta-section.variables.js"
+    },
+    "./cta-section/styles": {
+      "default": "./dist/components/cta-section/cta-section.css"
+    },
+    "./cta-section/examples": {
+      "import": "./src/components/cta-section/cta-section.examples.json",
+      "default": "./src/components/cta-section/cta-section.examples.json"
+    },
     "./data-grid": {
       "types": "./dist/components/data-grid/index.d.ts",
       "browser": "./src/components/data-grid/index.ts",
@@ -1906,6 +1962,34 @@
       "import": "./src/components/faceted-filter-bar/faceted-filter-bar.examples.json",
       "default": "./src/components/faceted-filter-bar/faceted-filter-bar.examples.json"
     },
+    "./feature-section": {
+      "types": "./dist/components/feature-section/index.d.ts",
+      "browser": "./src/components/feature-section/index.ts",
+      "node": "./dist/server/components/feature-section/index.js",
+      "svelte": "./src/components/feature-section/index.ts",
+      "default": "./dist/components/feature-section/index.js"
+    },
+    "./feature-section/schema": {
+      "types": "./dist/components/feature-section/feature-section.schema.d.ts",
+      "browser": "./src/components/feature-section/feature-section.schema.ts",
+      "node": "./dist/server/components/feature-section/feature-section.schema.js",
+      "svelte": "./src/components/feature-section/feature-section.schema.ts",
+      "default": "./dist/components/feature-section/feature-section.schema.js"
+    },
+    "./feature-section/variables": {
+      "types": "./dist/components/feature-section/feature-section.variables.d.ts",
+      "browser": "./src/components/feature-section/feature-section.variables.ts",
+      "node": "./dist/server/components/feature-section/feature-section.variables.js",
+      "svelte": "./src/components/feature-section/feature-section.variables.ts",
+      "default": "./dist/components/feature-section/feature-section.variables.js"
+    },
+    "./feature-section/styles": {
+      "default": "./dist/components/feature-section/feature-section.css"
+    },
+    "./feature-section/examples": {
+      "import": "./src/components/feature-section/feature-section.examples.json",
+      "default": "./src/components/feature-section/feature-section.examples.json"
+    },
     "./feed": {
       "types": "./dist/components/feed/index.d.ts",
       "browser": "./src/components/feed/index.ts",
@@ -2217,6 +2301,34 @@
       "node": "./dist/server/components/grid-list-item/grid-list-item.variables.js",
       "svelte": "./src/components/grid-list-item/grid-list-item.variables.ts",
       "default": "./dist/components/grid-list-item/grid-list-item.variables.js"
+    },
+    "./hero-section": {
+      "types": "./dist/components/hero-section/index.d.ts",
+      "browser": "./src/components/hero-section/index.ts",
+      "node": "./dist/server/components/hero-section/index.js",
+      "svelte": "./src/components/hero-section/index.ts",
+      "default": "./dist/components/hero-section/index.js"
+    },
+    "./hero-section/schema": {
+      "types": "./dist/components/hero-section/hero-section.schema.d.ts",
+      "browser": "./src/components/hero-section/hero-section.schema.ts",
+      "node": "./dist/server/components/hero-section/hero-section.schema.js",
+      "svelte": "./src/components/hero-section/hero-section.schema.ts",
+      "default": "./dist/components/hero-section/hero-section.schema.js"
+    },
+    "./hero-section/variables": {
+      "types": "./dist/components/hero-section/hero-section.variables.d.ts",
+      "browser": "./src/components/hero-section/hero-section.variables.ts",
+      "node": "./dist/server/components/hero-section/hero-section.variables.js",
+      "svelte": "./src/components/hero-section/hero-section.variables.ts",
+      "default": "./dist/components/hero-section/hero-section.variables.js"
+    },
+    "./hero-section/styles": {
+      "default": "./dist/components/hero-section/hero-section.css"
+    },
+    "./hero-section/examples": {
+      "import": "./src/components/hero-section/hero-section.examples.json",
+      "default": "./src/components/hero-section/hero-section.examples.json"
     },
     "./hover-card": {
       "types": "./dist/components/hover-card/index.d.ts",
@@ -2631,6 +2743,34 @@
       "svelte": "./src/components/locale-provider/locale-provider.variables.ts",
       "default": "./dist/components/locale-provider/locale-provider.variables.js"
     },
+    "./logo-cloud": {
+      "types": "./dist/components/logo-cloud/index.d.ts",
+      "browser": "./src/components/logo-cloud/index.ts",
+      "node": "./dist/server/components/logo-cloud/index.js",
+      "svelte": "./src/components/logo-cloud/index.ts",
+      "default": "./dist/components/logo-cloud/index.js"
+    },
+    "./logo-cloud/schema": {
+      "types": "./dist/components/logo-cloud/logo-cloud.schema.d.ts",
+      "browser": "./src/components/logo-cloud/logo-cloud.schema.ts",
+      "node": "./dist/server/components/logo-cloud/logo-cloud.schema.js",
+      "svelte": "./src/components/logo-cloud/logo-cloud.schema.ts",
+      "default": "./dist/components/logo-cloud/logo-cloud.schema.js"
+    },
+    "./logo-cloud/variables": {
+      "types": "./dist/components/logo-cloud/logo-cloud.variables.d.ts",
+      "browser": "./src/components/logo-cloud/logo-cloud.variables.ts",
+      "node": "./dist/server/components/logo-cloud/logo-cloud.variables.js",
+      "svelte": "./src/components/logo-cloud/logo-cloud.variables.ts",
+      "default": "./dist/components/logo-cloud/logo-cloud.variables.js"
+    },
+    "./logo-cloud/styles": {
+      "default": "./dist/components/logo-cloud/logo-cloud.css"
+    },
+    "./logo-cloud/examples": {
+      "import": "./src/components/logo-cloud/logo-cloud.examples.json",
+      "default": "./src/components/logo-cloud/logo-cloud.examples.json"
+    },
     "./markdown-editor": {
       "types": "./dist/components/markdown-editor/index.d.ts",
       "browser": "./src/components/markdown-editor/index.ts",
@@ -2992,6 +3132,34 @@
     "./navigation-item/styles": {
       "default": "./dist/components/navigation-item/navigation-item.css"
     },
+    "./newsletter-section": {
+      "types": "./dist/components/newsletter-section/index.d.ts",
+      "browser": "./src/components/newsletter-section/index.ts",
+      "node": "./dist/server/components/newsletter-section/index.js",
+      "svelte": "./src/components/newsletter-section/index.ts",
+      "default": "./dist/components/newsletter-section/index.js"
+    },
+    "./newsletter-section/schema": {
+      "types": "./dist/components/newsletter-section/newsletter-section.schema.d.ts",
+      "browser": "./src/components/newsletter-section/newsletter-section.schema.ts",
+      "node": "./dist/server/components/newsletter-section/newsletter-section.schema.js",
+      "svelte": "./src/components/newsletter-section/newsletter-section.schema.ts",
+      "default": "./dist/components/newsletter-section/newsletter-section.schema.js"
+    },
+    "./newsletter-section/variables": {
+      "types": "./dist/components/newsletter-section/newsletter-section.variables.d.ts",
+      "browser": "./src/components/newsletter-section/newsletter-section.variables.ts",
+      "node": "./dist/server/components/newsletter-section/newsletter-section.variables.js",
+      "svelte": "./src/components/newsletter-section/newsletter-section.variables.ts",
+      "default": "./dist/components/newsletter-section/newsletter-section.variables.js"
+    },
+    "./newsletter-section/styles": {
+      "default": "./dist/components/newsletter-section/newsletter-section.css"
+    },
+    "./newsletter-section/examples": {
+      "import": "./src/components/newsletter-section/newsletter-section.examples.json",
+      "default": "./src/components/newsletter-section/newsletter-section.examples.json"
+    },
     "./number-input": {
       "types": "./dist/components/number-input/index.d.ts",
       "browser": "./src/components/number-input/index.ts",
@@ -3240,6 +3408,34 @@
     "./pricing-card/examples": {
       "import": "./src/components/pricing-card/pricing-card.examples.json",
       "default": "./src/components/pricing-card/pricing-card.examples.json"
+    },
+    "./pricing-section": {
+      "types": "./dist/components/pricing-section/index.d.ts",
+      "browser": "./src/components/pricing-section/index.ts",
+      "node": "./dist/server/components/pricing-section/index.js",
+      "svelte": "./src/components/pricing-section/index.ts",
+      "default": "./dist/components/pricing-section/index.js"
+    },
+    "./pricing-section/schema": {
+      "types": "./dist/components/pricing-section/pricing-section.schema.d.ts",
+      "browser": "./src/components/pricing-section/pricing-section.schema.ts",
+      "node": "./dist/server/components/pricing-section/pricing-section.schema.js",
+      "svelte": "./src/components/pricing-section/pricing-section.schema.ts",
+      "default": "./dist/components/pricing-section/pricing-section.schema.js"
+    },
+    "./pricing-section/variables": {
+      "types": "./dist/components/pricing-section/pricing-section.variables.d.ts",
+      "browser": "./src/components/pricing-section/pricing-section.variables.ts",
+      "node": "./dist/server/components/pricing-section/pricing-section.variables.js",
+      "svelte": "./src/components/pricing-section/pricing-section.variables.ts",
+      "default": "./dist/components/pricing-section/pricing-section.variables.js"
+    },
+    "./pricing-section/styles": {
+      "default": "./dist/components/pricing-section/pricing-section.css"
+    },
+    "./pricing-section/examples": {
+      "import": "./src/components/pricing-section/pricing-section.examples.json",
+      "default": "./src/components/pricing-section/pricing-section.examples.json"
     },
     "./progress": {
       "types": "./dist/components/progress/index.d.ts",
@@ -4189,6 +4385,34 @@
       "import": "./src/components/stat-group/stat-group.examples.json",
       "default": "./src/components/stat-group/stat-group.examples.json"
     },
+    "./stats-section": {
+      "types": "./dist/components/stats-section/index.d.ts",
+      "browser": "./src/components/stats-section/index.ts",
+      "node": "./dist/server/components/stats-section/index.js",
+      "svelte": "./src/components/stats-section/index.ts",
+      "default": "./dist/components/stats-section/index.js"
+    },
+    "./stats-section/schema": {
+      "types": "./dist/components/stats-section/stats-section.schema.d.ts",
+      "browser": "./src/components/stats-section/stats-section.schema.ts",
+      "node": "./dist/server/components/stats-section/stats-section.schema.js",
+      "svelte": "./src/components/stats-section/stats-section.schema.ts",
+      "default": "./dist/components/stats-section/stats-section.schema.js"
+    },
+    "./stats-section/variables": {
+      "types": "./dist/components/stats-section/stats-section.variables.d.ts",
+      "browser": "./src/components/stats-section/stats-section.variables.ts",
+      "node": "./dist/server/components/stats-section/stats-section.variables.js",
+      "svelte": "./src/components/stats-section/stats-section.variables.ts",
+      "default": "./dist/components/stats-section/stats-section.variables.js"
+    },
+    "./stats-section/styles": {
+      "default": "./dist/components/stats-section/stats-section.css"
+    },
+    "./stats-section/examples": {
+      "import": "./src/components/stats-section/stats-section.examples.json",
+      "default": "./src/components/stats-section/stats-section.examples.json"
+    },
     "./status-dot": {
       "types": "./dist/components/status-dot/index.d.ts",
       "browser": "./src/components/status-dot/index.ts",
@@ -4576,6 +4800,62 @@
     "./tag-input/examples": {
       "import": "./src/components/tag-input/tag-input.examples.json",
       "default": "./src/components/tag-input/tag-input.examples.json"
+    },
+    "./team-section": {
+      "types": "./dist/components/team-section/index.d.ts",
+      "browser": "./src/components/team-section/index.ts",
+      "node": "./dist/server/components/team-section/index.js",
+      "svelte": "./src/components/team-section/index.ts",
+      "default": "./dist/components/team-section/index.js"
+    },
+    "./team-section/schema": {
+      "types": "./dist/components/team-section/team-section.schema.d.ts",
+      "browser": "./src/components/team-section/team-section.schema.ts",
+      "node": "./dist/server/components/team-section/team-section.schema.js",
+      "svelte": "./src/components/team-section/team-section.schema.ts",
+      "default": "./dist/components/team-section/team-section.schema.js"
+    },
+    "./team-section/variables": {
+      "types": "./dist/components/team-section/team-section.variables.d.ts",
+      "browser": "./src/components/team-section/team-section.variables.ts",
+      "node": "./dist/server/components/team-section/team-section.variables.js",
+      "svelte": "./src/components/team-section/team-section.variables.ts",
+      "default": "./dist/components/team-section/team-section.variables.js"
+    },
+    "./team-section/styles": {
+      "default": "./dist/components/team-section/team-section.css"
+    },
+    "./team-section/examples": {
+      "import": "./src/components/team-section/team-section.examples.json",
+      "default": "./src/components/team-section/team-section.examples.json"
+    },
+    "./testimonial-section": {
+      "types": "./dist/components/testimonial-section/index.d.ts",
+      "browser": "./src/components/testimonial-section/index.ts",
+      "node": "./dist/server/components/testimonial-section/index.js",
+      "svelte": "./src/components/testimonial-section/index.ts",
+      "default": "./dist/components/testimonial-section/index.js"
+    },
+    "./testimonial-section/schema": {
+      "types": "./dist/components/testimonial-section/testimonial-section.schema.d.ts",
+      "browser": "./src/components/testimonial-section/testimonial-section.schema.ts",
+      "node": "./dist/server/components/testimonial-section/testimonial-section.schema.js",
+      "svelte": "./src/components/testimonial-section/testimonial-section.schema.ts",
+      "default": "./dist/components/testimonial-section/testimonial-section.schema.js"
+    },
+    "./testimonial-section/variables": {
+      "types": "./dist/components/testimonial-section/testimonial-section.variables.d.ts",
+      "browser": "./src/components/testimonial-section/testimonial-section.variables.ts",
+      "node": "./dist/server/components/testimonial-section/testimonial-section.variables.js",
+      "svelte": "./src/components/testimonial-section/testimonial-section.variables.ts",
+      "default": "./dist/components/testimonial-section/testimonial-section.variables.js"
+    },
+    "./testimonial-section/styles": {
+      "default": "./dist/components/testimonial-section/testimonial-section.css"
+    },
+    "./testimonial-section/examples": {
+      "import": "./src/components/testimonial-section/testimonial-section.examples.json",
+      "default": "./src/components/testimonial-section/testimonial-section.examples.json"
     },
     "./textarea": {
       "types": "./dist/components/textarea/index.d.ts",
@@ -5306,6 +5586,7 @@
     "@tanstack/virtual-core": "^3.17.1",
     "ajv": "^8",
     "comlink": "^4.4.2",
+    "conversationalist": "^0.2.1",
     "diff-match-patch": "^1.0.5",
     "esm-env": "^1.2.0",
     "hast-util-sanitize": "^5.0.0",
@@ -5328,7 +5609,8 @@
     "shiki": "^3.21.0",
     "unified": "^11.0.5",
     "unist-util-remove": "^4.0.0",
-    "unist-util-visit": "^5.0.0"
+    "unist-util-visit": "^5.0.0",
+    "zod": "4.4.1"
   },
   "devDependencies": {
     "@changesets/parse": "0.4.3",
@@ -5357,8 +5639,7 @@
     "svelte-check": "^4.0.0",
     "svelte2tsx": "^0.7.33",
     "ts-morph": "^28.0.0",
-    "typescript": "^5.9.0",
-    "zod": "4.4.1"
+    "typescript": "^5.9.0"
   },
   "peerDependencies": {
     "lucide-svelte": ">=0.400.0 <1",

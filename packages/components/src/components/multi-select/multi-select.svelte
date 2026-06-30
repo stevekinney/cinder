@@ -406,6 +406,7 @@
   {/if}
 
   <div bind:this={controlElement} class="cinder-multi-select__control">
+    <!-- svelte-ignore a11y_role_supports_aria_props_implicit (the focusable picker trigger intentionally mirrors invalid state for assistive tech) -->
     <button
       bind:this={triggerElement}
       type="button"
@@ -417,8 +418,9 @@
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={listboxId}
+      data-cinder-invalid={triggerAriaInvalid ? 'true' : undefined}
       data-cinder-open={open || undefined}
-      data-cinder-has-clear={selectedCount > 0 && !field.disabled && !readonly || undefined}
+      data-cinder-has-clear={(selectedCount > 0 && !field.disabled && !readonly) || undefined}
       data-cinder-readonly={readonly || undefined}
       onclick={() => (open ? closeMenu() : openMenu())}
       onkeydown={handleTriggerKeydown}
@@ -443,7 +445,6 @@
 
     {#if open}
       <div
-        bind:this={panelElement}
         id={`${id}-popover`}
         class="cinder-_floating-surface cinder-multi-select__panel"
         data-cinder-direction={direction}
@@ -514,7 +515,12 @@
               </span>
             </li>
           {:else}
-            <li class="cinder-multi-select__empty" role="option" aria-disabled="true">
+            <li
+              class="cinder-multi-select__empty"
+              role="option"
+              aria-disabled="true"
+              aria-selected="false"
+            >
               {emptyListMessage}
             </li>
           {/each}
@@ -524,10 +530,10 @@
   </div>
 
   {#if filterable}
-    <span id={filterLabelHintId} class="cinder-multi-select__sr-status">Filter options</span>
     <p class="cinder-multi-select__sr-status" role="status" aria-live="polite">
       {open && visibleItems.length === 0 ? emptyListMessage : ''}
     </p>
+    <span id={filterLabelHintId} class="cinder-multi-select__sr-status">Filter options</span>
   {/if}
 
   <input

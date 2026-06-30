@@ -39,11 +39,15 @@
     typeof label === 'string' && label.trim().length > 0 ? label.trim() : 'QR code',
   );
 
-  function svgCommand(command: string, x: number, y?: number): string {
+  function svgCommand(command: string, x: number, y: number | undefined = undefined): string {
     return typeof y === 'number' ? `${command}${x} ${y}` : `${command}${x}`;
   }
 
-  function qrModulesToPath(data: boolean[], moduleSize: number, marginSize: number): string {
+  function qrModulesToPath(
+    data: ArrayLike<boolean | number>,
+    moduleSize: number,
+    marginSize: number,
+  ): string {
     let path = '';
     let moveBy = 0;
     let newRow = false;
@@ -78,7 +82,12 @@
     return path;
   }
 
-  function renderSvg(modules: boolean[], moduleSize: number, marginSize: number, width: number): string {
+  function renderSvg(
+    modules: ArrayLike<boolean | number>,
+    moduleSize: number,
+    marginSize: number,
+    width: number,
+  ): string {
     const qrSize = moduleSize + marginSize * 2;
     const widthAndHeight = width > 0 ? ` width="${width}" height="${width}"` : '';
     return `<svg xmlns="http://www.w3.org/2000/svg"${widthAndHeight} viewBox="0 0 ${qrSize} ${qrSize}" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" d="${qrModulesToPath(modules, moduleSize, marginSize)}"/></svg>`;

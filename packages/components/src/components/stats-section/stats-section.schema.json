@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "as": {
+      "enum": ["section", "div"],
+      "description": "Wrapper element tag.",
+      "default": "section"
+    },
+    "title": {
+      "type": "string",
+      "description": "Optional section heading text."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional section description text."
+    },
+    "stats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Metric label text."
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "description": "Metric value."
+          },
+          "changeValue": {
+            "type": "string",
+            "description": "Optional change value, e.g. \"+12%\"."
+          },
+          "changeDirection": {
+            "enum": ["up", "down", "neutral"],
+            "description": "Direction for change indicator."
+          },
+          "changeDescription": {
+            "type": "string",
+            "description": "Optional descriptor for change value."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["label", "value"]
+      },
+      "description": "Stats to render via StatGroup + Stat."
+    },
+    "columns": {
+      "enum": [1, 2, 3, 4, "auto"],
+      "description": "Columns forwarded to StatGroup.",
+      "default": "auto"
+    },
+    "variant": {
+      "enum": ["default", "cards", "shared-borders"],
+      "description": "Variant forwarded to StatGroup.",
+      "default": "cards"
+    },
+    "label": {
+      "type": "string",
+      "description": "Accessible label forwarded to StatGroup.",
+      "default": "Key metrics"
+    },
+    "maxWidth": {
+      "enum": ["prose", "narrow", "wide", "full"],
+      "description": "Max width token forwarded to Container.",
+      "default": "wide"
+    },
+    "class": {
+      "type": "string",
+      "description": "Custom class merged with `.cinder-stats-section`."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["stats"]
+}

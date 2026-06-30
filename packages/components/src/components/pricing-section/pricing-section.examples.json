@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "pricing-section",
+  "import": "@lostgradient/cinder/pricing-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "PricingSection",
+      "description": "PricingSection with multi-tier plans composed from PricingCard and plan selection callback.",
+      "code": "<script lang=\"ts\">\n  import { PricingSection } from '@lostgradient/cinder/pricing-section';\n\n  const plans = [\n    {\n      name: 'Starter',\n      price: '$0',\n      features: ['3 projects', 'Community support'],\n      cta: 'Start free',\n    },\n    {\n      name: 'Pro',\n      price: '$49 / month',\n      features: ['Unlimited projects', 'Priority support', 'Team roles'],\n      cta: 'Choose Pro',\n      selected: true,\n    },\n    {\n      name: 'Enterprise',\n      price: 'Contact us',\n      features: ['SSO + SCIM', 'Audit logs', 'Dedicated support'],\n      cta: 'Talk to sales',\n    },\n  ];\n\n  function handlePlanSelect(plan: (typeof plans)[number]) {\n    // eslint-disable-next-line no-console\n    console.log('selected plan', plan.name);\n  }\n</script>\n\n<PricingSection\n  title=\"Pricing for teams of every size\"\n  description=\"Start free, then scale with advanced collaboration and enterprise controls.\"\n  {plans}\n  onPlanSelect={handlePlanSelect}\n/>\n"
+    }
+  ]
+}

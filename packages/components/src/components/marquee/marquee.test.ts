@@ -100,6 +100,14 @@ describe('Marquee', () => {
     expect(element?.getAttribute('data-cinder-pause-focus')).toBe('false');
   });
 
+  test('viewport has keyboard access for reduced-motion scroll access', () => {
+    const { container } = render(Marquee, { children: textSnippet('content') });
+    const viewport = container.querySelector<HTMLDivElement>('.cinder-marquee__viewport');
+    expect(viewport?.tabIndex).toBe(0);
+    expect(viewport?.getAttribute('role')).toBe('group');
+    expect(viewport?.getAttribute('aria-label')).toBe('Marquee content');
+  });
+
   test('forwards label as aria-label and applies region role', () => {
     const { container } = render(Marquee, {
       props: {
@@ -135,6 +143,13 @@ describe('Marquee', () => {
     expect(reducedMotionBlock).toContain('display: none');
   });
 
+  test('viewport focus ring is visible for keyboard users', async () => {
+    const css = await Bun.file(marqueeCssPath).text();
+    expect(css).toContain('.cinder-marquee__viewport:focus-visible');
+    expect(css).toContain('var(--cinder-ring-color)');
+    expect(css).toContain('outline: var(--cinder-ring-width) solid ButtonText');
+  });
+
   test('rewrites duplicate IDs and matching references in cloned marquee content', async () => {
     const { container } = render(Marquee, {
       children: svgReferenceSnippet(),
@@ -161,7 +176,8 @@ describe('Marquee', () => {
 
     const duplicateTrack = container.querySelector('.cinder-marquee__item[aria-hidden="true"]');
     const duplicateClipPathId = duplicateTrack?.querySelector('clipPath')?.getAttribute('id') ?? '';
-    const duplicateRectStyle = duplicateTrack?.querySelector('rect[style]')?.getAttribute('style') ?? '';
+    const duplicateRectStyle =
+      duplicateTrack?.querySelector('rect[style]')?.getAttribute('style') ?? '';
 
     expect(duplicateClipPathId).toContain('logoClip--cinder-marquee-duplicate-');
     expect(duplicateRectStyle).toContain(`url(#${duplicateClipPathId})`);
