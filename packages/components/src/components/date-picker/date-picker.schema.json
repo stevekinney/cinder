@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable id for label/input/error wiring."
+    },
+    "placeholder": {
+      "type": "string",
+      "description": "Placeholder shown when empty."
+    },
+    "value": {
+      "type": "string",
+      "description": "Controlled value as local ISO string. Bindable."
+    },
+    "label": {
+      "type": "string",
+      "description": "Field label text."
+    },
+    "granularity": {
+      "enum": ["day", "hour", "minute", "second"],
+      "description": "Date-time precision. Defaults to day."
+    },
+    "min": {
+      "type": "string",
+      "description": "Minimum allowed value (same format as `value`)."
+    },
+    "max": {
+      "type": "string",
+      "description": "Maximum allowed value (same format as `value`)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional helper text."
+    },
+    "error": {
+      "type": "string",
+      "description": "Optional validation error text."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Disable interaction."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional classes for the root."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "onchange",
+        "reason": "function-or-snippet",
+        "description": "Called when the value changes."
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Optional root id."
+    },
+    "value": {
+      "type": "string",
+      "description": "Selected ISO date (`YYYY-MM-DD`). Bindable."
+    },
+    "month": {
+      "type": "string",
+      "description": "Visible month anchor (`YYYY-MM-DD`), defaults to selected date or today."
+    },
+    "min": {
+      "type": "string",
+      "description": "Earliest selectable day (`YYYY-MM-DD`)."
+    },
+    "max": {
+      "type": "string",
+      "description": "Latest selectable day (`YYYY-MM-DD`)."
+    },
+    "firstDayOfWeek": {
+      "type": "number",
+      "description": "First weekday index, `0` Sunday to `6` Saturday. Defaults to `0`."
+    },
+    "locale": {
+      "type": "string",
+      "description": "Localized month label locale. Defaults to `en-US`."
+    },
+    "label": {
+      "type": "string",
+      "description": "Accessible label for the grid. Defaults to `Calendar`."
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Disable interaction."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional classes for the root node."
+    }
+  },
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "disabledDate",
+        "reason": "function-or-snippet",
+        "description": "Return true to disable a specific day."
+      },
+      {
+        "name": "onchange",
+        "reason": "function-or-snippet",
+        "description": "Called when the user commits a day selection."
+      }
+    ]
+  }
+}

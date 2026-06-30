@@ -30,6 +30,7 @@
 @import '../components/button/button.css';
 @import '../components/button-group/button-group.css';
 @import '../components/callout/callout.css';
+@import '../components/calendar/calendar.css';
 @import '../components/card/card.css';
 @import '../components/carousel/carousel.css';
 @import '../components/capability-gate/capability-gate.css';
@@ -54,6 +55,7 @@
 @import '../components/data-grid/data-grid.css';
 @import '../components/data-list/data-list.css';
 @import '../components/data-table/data-table.css';
+@import '../components/date-picker/date-picker.css';
 @import '../components/date-range-field/date-range-field.css';
 @import '../components/description-list/description-list.css';
 @import '../components/diff-statistics/diff-statistics.css';

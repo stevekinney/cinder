@@ -628,6 +628,34 @@
       "import": "./src/components/button-group/button-group.examples.json",
       "default": "./src/components/button-group/button-group.examples.json"
     },
+    "./calendar": {
+      "types": "./dist/components/calendar/index.d.ts",
+      "browser": "./src/components/calendar/index.ts",
+      "node": "./dist/server/components/calendar/index.js",
+      "svelte": "./src/components/calendar/index.ts",
+      "default": "./dist/components/calendar/index.js"
+    },
+    "./calendar/schema": {
+      "types": "./dist/components/calendar/calendar.schema.d.ts",
+      "browser": "./src/components/calendar/calendar.schema.ts",
+      "node": "./dist/server/components/calendar/calendar.schema.js",
+      "svelte": "./src/components/calendar/calendar.schema.ts",
+      "default": "./dist/components/calendar/calendar.schema.js"
+    },
+    "./calendar/variables": {
+      "types": "./dist/components/calendar/calendar.variables.d.ts",
+      "browser": "./src/components/calendar/calendar.variables.ts",
+      "node": "./dist/server/components/calendar/calendar.variables.js",
+      "svelte": "./src/components/calendar/calendar.variables.ts",
+      "default": "./dist/components/calendar/calendar.variables.js"
+    },
+    "./calendar/styles": {
+      "default": "./dist/components/calendar/calendar.css"
+    },
+    "./calendar/examples": {
+      "import": "./src/components/calendar/calendar.examples.json",
+      "default": "./src/components/calendar/calendar.examples.json"
+    },
     "./callout": {
       "types": "./dist/components/callout/index.d.ts",
       "browser": "./src/components/callout/index.ts",
@@ -1446,6 +1474,34 @@
     "./data-table/examples": {
       "import": "./src/components/data-table/data-table.examples.json",
       "default": "./src/components/data-table/data-table.examples.json"
+    },
+    "./date-picker": {
+      "types": "./dist/components/date-picker/index.d.ts",
+      "browser": "./src/components/date-picker/index.ts",
+      "node": "./dist/server/components/date-picker/index.js",
+      "svelte": "./src/components/date-picker/index.ts",
+      "default": "./dist/components/date-picker/index.js"
+    },
+    "./date-picker/schema": {
+      "types": "./dist/components/date-picker/date-picker.schema.d.ts",
+      "browser": "./src/components/date-picker/date-picker.schema.ts",
+      "node": "./dist/server/components/date-picker/date-picker.schema.js",
+      "svelte": "./src/components/date-picker/date-picker.schema.ts",
+      "default": "./dist/components/date-picker/date-picker.schema.js"
+    },
+    "./date-picker/variables": {
+      "types": "./dist/components/date-picker/date-picker.variables.d.ts",
+      "browser": "./src/components/date-picker/date-picker.variables.ts",
+      "node": "./dist/server/components/date-picker/date-picker.variables.js",
+      "svelte": "./src/components/date-picker/date-picker.variables.ts",
+      "default": "./dist/components/date-picker/date-picker.variables.js"
+    },
+    "./date-picker/styles": {
+      "default": "./dist/components/date-picker/date-picker.css"
+    },
+    "./date-picker/examples": {
+      "import": "./src/components/date-picker/date-picker.examples.json",
+      "default": "./src/components/date-picker/date-picker.examples.json"
     },
     "./date-range-field": {
       "types": "./dist/components/date-range-field/index.d.ts",

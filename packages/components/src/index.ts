@@ -119,6 +119,9 @@ export type { ButtonGroupOrientation, ButtonGroupProps } from './components/butt
 export { default as Callout } from './components/callout/index.ts';
 export type { CalloutProps, CalloutVariant } from './components/callout/index.ts';
 
+export { default as Calendar } from './components/calendar/index.ts';
+export type { CalendarProps } from './components/calendar/index.ts';
+
 export { default as Card } from './components/card/index.ts';
 export type { CardPadding, CardProps, CardTone, CardVariant } from './components/card/index.ts';
 
@@ -257,6 +260,9 @@ export type {
   DataTableRow,
   DataTableSelectionMode,
 } from './components/data-table/index.ts';
+
+export { default as DatePicker } from './components/date-picker/index.ts';
+export type { DatePickerGranularity, DatePickerProps } from './components/date-picker/index.ts';
 
 export { default as DateRangeField } from './components/date-range-field/index.ts';
 export type {
