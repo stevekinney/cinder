@@ -1,0 +1,51 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-page-header {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+    min-width: 0;
+    padding: var(--cinder-space-3) var(--cinder-space-4);
+    border-bottom: 1px solid var(--cinder-border);
+  }
+
+  .cinder-page-header__heading-group {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: baseline;
+    gap: var(--cinder-space-3);
+    min-width: 0;
+  }
+
+  .cinder-page-header__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-xl);
+    font-weight: var(--cinder-font-semibold);
+    line-height: var(--cinder-leading-tight);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cinder-page-header__meta {
+    min-width: 0;
+    margin: 0;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-tight);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cinder-page-header__actions {
+    margin-inline-start: auto;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+}

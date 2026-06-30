@@ -241,7 +241,11 @@ export { default as CopyButton } from './components/copy-button/index.ts';
 export type { CopyButtonProps } from './components/copy-button/index.ts';
 
 export { default as CtaSection } from './components/cta-section/index.ts';
-export type { CtaSectionAlign, CtaSectionProps, CtaSectionTone } from './components/cta-section/index.ts';
+export type {
+  CtaSectionAlign,
+  CtaSectionProps,
+  CtaSectionTone,
+} from './components/cta-section/index.ts';
 
 export { copyToClipboard } from './utilities/clipboard.ts';
 
@@ -423,7 +427,11 @@ export { default as HoverCard } from './components/hover-card/index.ts';
 export type { HoverCardPlacement, HoverCardProps } from './components/hover-card/index.ts';
 
 export { default as HeroSection } from './components/hero-section/index.ts';
-export type { HeroSectionAlign, HeroSectionMediaPosition, HeroSectionProps } from './components/hero-section/index.ts';
+export type {
+  HeroSectionAlign,
+  HeroSectionMediaPosition,
+  HeroSectionProps,
+} from './components/hero-section/index.ts';
 
 export { default as Image } from './components/image/index.ts';
 export type { ImageProps } from './components/image/index.ts';
@@ -582,7 +590,10 @@ export { default as Portal, createPortalAttachment } from './components/portal/i
 export type { PortalAttachmentOptions, PortalProps } from './components/portal/index.ts';
 
 export { default as PricingSection } from './components/pricing-section/index.ts';
-export type { PricingSectionPlan, PricingSectionProps } from './components/pricing-section/index.ts';
+export type {
+  PricingSectionPlan,
+  PricingSectionProps,
+} from './components/pricing-section/index.ts';
 
 export { default as NavigationItem } from './components/navigation-item/index.ts';
 export type { NavigationItemProps } from './components/navigation-item/index.ts';
@@ -595,6 +606,9 @@ export type { NumberInputProps } from './components/number-input/index.ts';
 
 export { default as Pagination } from './components/pagination/index.ts';
 export type { PaginationProps } from './components/pagination/index.ts';
+
+export { default as PageHeader } from './components/page-header/index.ts';
+export type { PageHeaderProps } from './components/page-header/index.ts';
 
 export { default as PayloadInspector } from './components/payload-inspector/index.ts';
 export type {

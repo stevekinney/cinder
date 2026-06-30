@@ -3518,6 +3518,36 @@
       }
     },
     {
+      "name": "PageHeader",
+      "id": "page-header",
+      "import": "@lostgradient/cinder/page-header",
+      "exportName": "PageHeader",
+      "category": "layout",
+      "status": "stable",
+      "purpose": "Page-level heading row that pairs a required title with optional metadata and optional trailing actions.",
+      "tags": ["page", "heading", "layout"],
+      "useWhen": [
+        "Rendering a route-level heading that needs consistent spacing and border treatment across pages.",
+        "Showing high-level page metadata (counts or state summaries) beside a title with optional right-aligned controls."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering section-scoped headings within page content — use section-heading."
+        },
+        {
+          "reason": "Building complex hero layouts with rich copy and media — use hero-section."
+        }
+      ],
+      "related": ["section-heading", "hero-section"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/page-header/schema",
+        "variables": "@lostgradient/cinder/page-header/variables",
+        "examples": "@lostgradient/cinder/page-header/examples"
+      }
+    },
+    {
       "name": "Pagination",
       "id": "pagination",
       "import": "@lostgradient/cinder/pagination",

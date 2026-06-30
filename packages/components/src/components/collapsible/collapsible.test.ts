@@ -69,7 +69,9 @@ describe('Collapsible (uncontrolled)', () => {
     expect(region).not.toBeNull();
     expect(region?.getAttribute('role')).toBe('region');
     expect(button.getAttribute('aria-controls')).toBe(region?.getAttribute('id') ?? null);
-    expect(region?.getAttribute('aria-labelledby')).toBe(triggerLabel(container)?.getAttribute('id') ?? null);
+    expect(region?.getAttribute('aria-labelledby')).toBe(
+      triggerLabel(container)?.getAttribute('id') ?? null,
+    );
   });
 
   test('omits aria-controls while closed so the reference never dangles', async () => {
