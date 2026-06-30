@@ -393,7 +393,10 @@
   });
 </script>
 
-<div class={classNames('cinder-multi-select', className)} aria-invalid={triggerAriaInvalid}>
+<div
+  class={classNames('cinder-multi-select', className)}
+  data-cinder-invalid={triggerAriaInvalid ? true : undefined}
+>
   {#if label}
     <label
       id={labelId}

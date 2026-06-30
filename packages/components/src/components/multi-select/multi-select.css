@@ -56,7 +56,7 @@
     cursor: not-allowed;
   }
 
-  .cinder-multi-select[aria-invalid='true'] .cinder-multi-select__trigger {
+  .cinder-multi-select[data-cinder-invalid] .cinder-multi-select__trigger {
     border-color: var(--cinder-danger);
   }
 

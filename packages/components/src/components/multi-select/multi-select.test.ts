@@ -204,6 +204,22 @@ describe('MultiSelect', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  test('required invalid state is announced only by the trigger', () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      error: 'Select at least one fruit',
+      items,
+    });
+
+    const root = container.querySelector<HTMLElement>('.cinder-multi-select');
+    const trigger = container.querySelector<HTMLButtonElement>('#fruits');
+    if (!root || !trigger) throw new Error('multi-select controls not found');
+
+    expect(root.hasAttribute('aria-invalid')).toBe(false);
+    expect(root.hasAttribute('data-cinder-invalid')).toBe(true);
+    expect(trigger.getAttribute('aria-invalid')).toBe('true');
+  });
+
   test('filterable mode filters options by label', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
