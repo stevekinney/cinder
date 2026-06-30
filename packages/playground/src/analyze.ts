@@ -21,6 +21,7 @@ import {
   type PropertySignature,
   type SourceFile,
   SyntaxKind,
+  type Type,
   type TypeNode,
 } from 'ts-morph';
 
@@ -91,6 +92,9 @@ function inferControlKindFromTypeNode(
     const importedControl = inferControlKindFromImportedAlias(sf, name, typeText);
     if (importedControl !== undefined) return importedControl;
 
+    const resolvedControl = inferControlKindFromResolvedType(ref.getType());
+    if (resolvedControl !== undefined) return resolvedControl;
+
     return { kind: 'unknown', rawType: typeText };
   }
 
@@ -98,6 +102,21 @@ function inferControlKindFromTypeNode(
 }
 
 const importedLiteralUnionCache = new Map<string, ControlKind | null>();
+
+function inferControlKindFromResolvedType(type: Type): ControlKind | undefined {
+  const stringLiterals: string[] = [];
+  const unionTypes = type.isUnion() ? type.getUnionTypes() : [type];
+
+  for (const unionType of unionTypes) {
+    if (!unionType.isStringLiteral()) return undefined;
+    const literalValue = unionType.getLiteralValue();
+    if (typeof literalValue !== 'string') return undefined;
+    stringLiterals.push(literalValue);
+  }
+
+  if (stringLiterals.length === 0) return undefined;
+  return { kind: 'select', options: stringLiterals };
+}
 
 function inferControlKindFromImportedAlias(
   sourceFile: SourceFile,
@@ -165,7 +184,10 @@ function controlKindFromTypeAliasSource(source: string, typeName: string): Contr
 
   const options: string[] = [];
   for (const member of (match[1] ?? '').split('|')) {
-    const literal = /^(['"])(.*)\1$/.exec(member.trim());
+    const text = member.trim();
+    if (text.length === 0) continue;
+
+    const literal = /^(['"])(.*)\1$/.exec(text);
     if (literal === null) return null;
     options.push(literal[2] ?? '');
   }
@@ -437,6 +459,7 @@ function getSharedProject(): Project {
 export function resetProject(): void {
   sharedProject = undefined;
   analyzeAllCache.clear();
+  importedLiteralUnionCache.clear();
 }
 
 /**

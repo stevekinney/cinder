@@ -173,6 +173,43 @@ describe('analyzeComponent — surface.svelte', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Imported prop type aliases
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — imported prop type aliases', () => {
+  it('resolves imported multiline literal unions that start with a pipe', async () => {
+    const manifest = await analyzeComponent(componentPath('command-menu'));
+    const placement = manifest.props.find((p) => p.name === 'placement');
+
+    expect(placement?.control).toEqual({
+      kind: 'select',
+      options: [
+        'top',
+        'bottom',
+        'left',
+        'right',
+        'top-start',
+        'top-end',
+        'bottom-start',
+        'bottom-end',
+      ],
+    });
+  });
+
+  it('falls back to resolved type information for package-imported literal unions', async () => {
+    const manifest = await analyzeComponent(componentPath('phone-input'));
+    const country = manifest.props.find((p) => p.name === 'country');
+
+    expect(country?.control.kind).toBe('select');
+    if (country?.control.kind === 'select') {
+      expect(country.control.options).toContain('US');
+      expect(country.control.options).toContain('CA');
+      expect(country.control.options).toContain('GB');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Accordion — bindable expandedIds
 // ---------------------------------------------------------------------------
 
@@ -495,6 +532,42 @@ describe('analyzeComponent — bare <script module> block', () => {
     );
     const manifest = await analyzeComponent(filePath);
     expect(manifest.isCompound).toBeUndefined();
+  });
+
+  it('clears imported type-alias cache when the shared project is reset', async () => {
+    const typeFilePath = join(fixtureDir, 'fixture-types.ts');
+    const componentFilePath = await writeFixture(
+      'cached-widget',
+      `<script lang="ts" module>
+  import type { FixtureTone } from './fixture-types.ts';
+
+  export type CachedWidgetProps = {
+    tone?: FixtureTone;
+  };
+</script>
+
+<script lang="ts">
+  let { tone = 'alpha' }: CachedWidgetProps = $props();
+</script>
+
+<div>{tone}</div>`,
+    );
+
+    await Bun.write(typeFilePath, `export type FixtureTone = 'alpha' | 'beta';\n`);
+    const first = await analyzeComponent(componentFilePath);
+    expect(first.props.find((p) => p.name === 'tone')?.control).toEqual({
+      kind: 'select',
+      options: ['alpha', 'beta'],
+    });
+
+    await Bun.write(typeFilePath, `export type FixtureTone = 'gamma' | 'delta';\n`);
+    resetProject();
+
+    const second = await analyzeComponent(componentFilePath);
+    expect(second.props.find((p) => p.name === 'tone')?.control).toEqual({
+      kind: 'select',
+      options: ['gamma', 'delta'],
+    });
   });
 });
 
