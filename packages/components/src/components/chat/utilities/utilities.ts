@@ -213,6 +213,32 @@ function deriveImageParts(message: Message): ImageMessagePart[] {
   return parts;
 }
 
+function deriveReasoningContent(
+  message: Message,
+  explicitReasoning: string | undefined,
+): string | undefined {
+  const reasoningSegments =
+    explicitReasoning && explicitReasoning.length > 0 ? [explicitReasoning] : [];
+  if (typeof message.content !== 'string') {
+    let hasRedactedThinking = false;
+    for (const segment of message.content) {
+      if (segment.type === 'thinking' && segment.thinking.length > 0) {
+        reasoningSegments.push(segment.thinking);
+      }
+      if (segment.type === 'redacted_thinking') {
+        hasRedactedThinking = true;
+      }
+    }
+    if (hasRedactedThinking) {
+      reasoningSegments.push(
+        'Redacted reasoning is preserved in this transcript but cannot be displayed.',
+      );
+    }
+  }
+
+  return reasoningSegments.length > 0 ? reasoningSegments.join('\n\n') : undefined;
+}
+
 /**
  * Builds a {@link ToolApprovalMessagePart} from an `action_required` tool result.
  *
@@ -363,11 +389,12 @@ export function deriveMessageParts(
   }
 
   // C4: Reasoning part — emitted before the markdown body when present.
-  if (context.reasoning && context.reasoning.length > 0) {
+  const reasoningContent = deriveReasoningContent(message, context.reasoning);
+  if (reasoningContent) {
     bodyParts.push({
       type: 'reasoning',
       key: `${message.id}:reasoning`,
-      content: context.reasoning,
+      content: reasoningContent,
       streaming: context.streaming ?? false,
     });
   }

@@ -69,6 +69,31 @@ describe('deriveMessageParts — markdown body', () => {
     expect(parts).toHaveLength(1);
     expect(parts[0]).toMatchObject({ type: 'markdown', content: 'line one\nline two' });
   });
+
+  it('renders published thinking content through the reasoning part', () => {
+    const content: MultiModalContent[] = [
+      { type: 'thinking', thinking: 'private reasoning', signature: 'sig-1' },
+      { type: 'text', text: 'final answer' },
+    ];
+    const parts = deriveMessageParts(message({ role: 'assistant', content }));
+    expect(parts.map((part) => part.type)).toEqual(['reasoning', 'markdown']);
+    expect(parts[0]).toMatchObject({ type: 'reasoning', content: 'private reasoning' });
+    expect(parts[1]).toMatchObject({ type: 'markdown', content: 'final answer' });
+  });
+
+  it('renders redacted thinking as a non-secret reasoning placeholder', () => {
+    const content: MultiModalContent[] = [
+      { type: 'redacted_thinking', data: 'encrypted-payload' },
+      { type: 'text', text: 'final answer' },
+    ];
+    const parts = deriveMessageParts(message({ role: 'assistant', content }));
+    expect(parts.map((part) => part.type)).toEqual(['reasoning', 'markdown']);
+    expect(parts[0]).toMatchObject({
+      type: 'reasoning',
+      content: 'Redacted reasoning is preserved in this transcript but cannot be displayed.',
+    });
+    expect(parts[0]).not.toMatchObject({ content: 'encrypted-payload' });
+  });
 });
 
 describe('deriveMessageParts — images', () => {
