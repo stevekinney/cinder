@@ -529,6 +529,14 @@ export type { MasonryProps } from './components/masonry/index.ts';
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
 
+export { default as MultiSelect } from './components/multi-select/index.ts';
+export type {
+  MultiSelectDirection,
+  MultiSelectItem,
+  MultiSelectProps,
+  MultiSelectSelectionFeedback,
+} from './components/multi-select/index.ts';
+
 export { default as NavigationBar } from './components/navigation-bar/index.ts';
 export type {
   NavigationBarItemsContext,
