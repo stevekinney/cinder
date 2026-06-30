@@ -44,9 +44,9 @@ Consumer `onkeydown` handlers passed via rest props are also respected: the cons
 
 ## Focus Return
 
-When the user presses Escape to close the menu, focus is returned to the toggle button that opened it. This focus-return guarantee requires that the consumer's `menuToggle` snippet spreads `toggleAttributes.onclick` onto a native `<button>` element so `event.currentTarget` is a real focusable DOM element.
+When the user presses Escape to close the menu, focus is returned to the toggle button that opened it. This focus-return guarantee requires that, on the client, the consumer's `menuToggle` snippet spreads `toggleAttributes.onclick` onto a native `<button>` element so `event.currentTarget` is a real focusable DOM element.
 
-If a consumer wraps the toggle in a custom component without ensuring the native button receives `onclick` directly (when present on the client), Escape still closes the menu but focus does not move. This is a documented degradation, not a bug.
+If a consumer wraps the toggle in a custom component without ensuring the native button receives `onclick` directly, Escape still closes the menu but focus does not move. This is a documented degradation, not a bug.
 
 ## Disclosure, Not Modal
 
