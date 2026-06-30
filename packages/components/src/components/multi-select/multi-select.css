@@ -250,6 +250,7 @@
     margin: -1px;
   }
 
+  .cinder-multi-select__sr-label,
   .cinder-multi-select__sr-status {
     position: absolute;
     width: 1px;

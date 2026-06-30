@@ -42,6 +42,11 @@
       (typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0),
   );
   const role = $derived(hasAccessibleName ? 'region' : undefined);
+  let manuallyPaused = $state(false);
+  let manualResumeRequested = $state(false);
+  const pauseControlLabel = $derived(
+    manuallyPaused ? 'Resume marquee animation' : 'Pause marquee animation',
+  );
   let primaryTrackItem: HTMLDivElement | undefined = $state();
   let duplicateTrackItem: HTMLDivElement | undefined = $state();
   let duplicateReady = $state(false);
@@ -157,21 +162,38 @@
     duplicateReady = true;
   }
 
-  function duplicateTrack(node: HTMLDivElement) {
-    duplicateTrackItem = node;
-    syncDuplicateTrack();
-
-    return {
-      destroy() {
-        if (duplicateTrackItem === node) {
-          duplicateTrackItem = undefined;
-        }
-      },
-    };
+  function toggleManualPausedState(): void {
+    const nextPaused = !manuallyPaused;
+    manuallyPaused = nextPaused;
+    manualResumeRequested = !nextPaused;
   }
 
-  function makeScrollableRegionFocusable(node: HTMLDivElement) {
-    node.tabIndex = 0;
+  function clearManualResumeRequest(): void {
+    manualResumeRequested = false;
+  }
+
+  function clearManualResumeRequestAfterFocusLeaves(event: FocusEvent): void {
+    const nextTarget = event.relatedTarget;
+    if (
+      event.currentTarget instanceof HTMLElement &&
+      nextTarget instanceof Node &&
+      event.currentTarget.contains(nextTarget)
+    ) {
+      return;
+    }
+
+    clearManualResumeRequest();
+  }
+
+  function clearManualResumeRequestAfterPointerLeaves(event: PointerEvent): void {
+    if (
+      event.currentTarget instanceof HTMLElement &&
+      event.currentTarget.contains(document.activeElement)
+    ) {
+      return;
+    }
+
+    clearManualResumeRequest();
   }
 
   $effect(() => {
@@ -207,23 +229,40 @@
   data-cinder-direction={direction}
   data-cinder-pause-hover={pauseOnHover ? 'true' : 'false'}
   data-cinder-pause-focus={pauseOnFocus ? 'true' : 'false'}
+  data-cinder-manual-paused={manuallyPaused ? 'true' : 'false'}
+  data-cinder-manual-resumed={manualResumeRequested ? 'true' : 'false'}
   data-cinder-ready={duplicateReady ? 'true' : 'false'}
   aria-label={normalizedLabel}
   {role}
   style:--cinder-marquee-duration={duration}
   style:--cinder-marquee-gap={gap}
+  onfocusout={clearManualResumeRequestAfterFocusLeaves}
+  onpointerleave={clearManualResumeRequestAfterPointerLeaves}
 >
   <div
     class="cinder-marquee__viewport"
     role="group"
     aria-label={normalizedLabel ? `${normalizedLabel} scroll area` : 'Marquee content'}
-    use:makeScrollableRegionFocusable
+    tabindex="0"
   >
+    <button
+      type="button"
+      class="cinder-marquee__control"
+      aria-pressed={manuallyPaused}
+      onclick={toggleManualPausedState}
+    >
+      {pauseControlLabel}
+    </button>
     <div class="cinder-marquee__track">
       <div class="cinder-marquee__item" bind:this={primaryTrackItem}>
         {@render children()}
       </div>
-      <div class="cinder-marquee__item" aria-hidden="true" inert use:duplicateTrack></div>
+      <div
+        class="cinder-marquee__item"
+        aria-hidden="true"
+        inert
+        bind:this={duplicateTrackItem}
+      ></div>
     </div>
   </div>
 </div>

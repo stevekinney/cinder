@@ -75,7 +75,7 @@ export const MISSING_BASE_WARNING =
 //   - In production (`DEV === false`): the entire block is dead code, tree-shaken.
 //   - On the server (`BROWSER === false`): `getComputedStyle` is unavailable; skip.
 //   - In the browser during development: check once at module evaluation time.
-if (DEV && BROWSER) {
+export function runBaseLoadedGuard(): void {
   // `requestAnimationFrame` defers the check one tick so any same-module-chunk
   // CSS that was co-imported with this guard has a chance to be applied before
   // we read computed styles. Without the deferral, the check races the
@@ -93,3 +93,5 @@ if (DEV && BROWSER) {
     }
   });
 }
+
+if (DEV && BROWSER) runBaseLoadedGuard();

@@ -34,6 +34,7 @@
 import { Glob } from 'bun';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DEFAULT_FILE_SCAN_CONCURRENCY, mapWithConcurrencyLimit } from './validation-utilities.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const componentsRoot = resolve(scriptDirectory, '..');
@@ -181,36 +182,55 @@ export async function scan(): Promise<{ counts: FeatureCount[]; viewportFlags: F
     tier: probe.tier,
     count: 0,
   }));
-  const viewportFlags: Flag[] = [];
 
   const allFiles = new Glob('**/*.{css,svelte,ts}');
+  const relativePaths: string[] = [];
   for await (const relativePath of allFiles.scan({ cwd: componentsSource })) {
     // The inventory reflects real component usage, not test fixtures: a probe like
     // `inert` or `showPopover` matches strings/identifiers in test files and would
     // overstate adoption. Skip test/spec sources.
-    if (isTestPath(relativePath)) continue;
-    const filePath = join(componentsSource, relativePath);
-    const content = await Bun.file(filePath).text();
+    if (!isTestPath(relativePath)) relativePaths.push(relativePath);
+  }
 
-    for (const line of content.split('\n')) {
-      for (const probeIndex of matchedProbesForLine(relativePath, line)) {
-        const entry = counts[probeIndex];
-        if (entry) entry.count += 1;
-      }
-    }
+  const scannedFiles = await mapWithConcurrencyLimit(
+    relativePaths,
+    DEFAULT_FILE_SCAN_CONCURRENCY,
+    async (relativePath) => {
+      const filePath = join(componentsSource, relativePath);
+      const content = await Bun.file(filePath).text();
+      const fileCounts = Array.from({ length: FEATURE_PROBES.length }, () => 0);
+      const viewportFlags: Flag[] = [];
 
-    if (relativePath.endsWith('.css') || relativePath.endsWith('.svelte')) {
-      for (const hit of findViewportMediaQueries(content)) {
-        viewportFlags.push({
-          // Build the key from the POSIX-style scan path (Glob yields forward
-          // slashes on every OS) so baseline keys are stable across platforms —
-          // path.relative() would emit backslashes on Windows and break the gate.
-          filePath: `src/${toPosixPath(relativePath)}`,
-          lineNumber: hit.lineNumber,
-          query: hit.query,
-        });
+      for (const line of content.split('\n')) {
+        for (const probeIndex of matchedProbesForLine(relativePath, line)) {
+          fileCounts[probeIndex] = (fileCounts[probeIndex] ?? 0) + 1;
+        }
       }
+
+      if (relativePath.endsWith('.css') || relativePath.endsWith('.svelte')) {
+        for (const hit of findViewportMediaQueries(content)) {
+          viewportFlags.push({
+            // Build the key from the POSIX-style scan path (Glob yields forward
+            // slashes on every OS) so baseline keys are stable across platforms —
+            // path.relative() would emit backslashes on Windows and break the gate.
+            filePath: `src/${toPosixPath(relativePath)}`,
+            lineNumber: hit.lineNumber,
+            query: hit.query,
+          });
+        }
+      }
+
+      return { fileCounts, viewportFlags };
+    },
+  );
+
+  const viewportFlags: Flag[] = [];
+  for (const scannedFile of scannedFiles) {
+    for (let probeIndex = 0; probeIndex < scannedFile.fileCounts.length; probeIndex++) {
+      const entry = counts[probeIndex];
+      if (entry) entry.count += scannedFile.fileCounts[probeIndex] ?? 0;
     }
+    viewportFlags.push(...scannedFile.viewportFlags);
   }
 
   return { counts, viewportFlags };

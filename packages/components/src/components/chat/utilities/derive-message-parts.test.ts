@@ -159,6 +159,99 @@ describe('deriveMessageParts — images', () => {
   });
 });
 
+describe('deriveMessageParts — context parts', () => {
+  it('emits step parts before the markdown body', () => {
+    const parts = deriveMessageParts(message({ id: 'plan', role: 'assistant', content: 'done' }), {
+      steps: [
+        { title: 'Inspect', content: 'Read the source', status: 'done' },
+        { title: 'Patch', content: 'Add coverage', status: 'running' },
+      ],
+    });
+
+    expect(parts).toEqual([
+      {
+        type: 'step',
+        key: 'plan:step:0',
+        index: 0,
+        title: 'Inspect',
+        content: 'Read the source',
+        status: 'done',
+      },
+      {
+        type: 'step',
+        key: 'plan:step:1',
+        index: 1,
+        title: 'Patch',
+        content: 'Add coverage',
+        status: 'running',
+      },
+      {
+        type: 'markdown',
+        key: 'plan:body',
+        content: 'done',
+        streaming: false,
+        expanded: true,
+      },
+    ]);
+  });
+
+  it('emits reasoning before the markdown body and forwards streaming state', () => {
+    const parts = deriveMessageParts(
+      message({ id: 'reasoned', role: 'assistant', content: 'final answer' }),
+      {
+        reasoning: 'Working through the constraints',
+        streaming: true,
+      },
+    );
+
+    expect(parts).toEqual([
+      {
+        type: 'reasoning',
+        key: 'reasoned:reasoning',
+        content: 'Working through the constraints',
+        streaming: true,
+      },
+      {
+        type: 'markdown',
+        key: 'reasoned:body',
+        content: 'final answer',
+        streaming: true,
+        expanded: true,
+      },
+    ]);
+  });
+
+  it('emits suggestions after the markdown body and before images', () => {
+    const content: MultiModalContent[] = [
+      { type: 'text', text: 'choose one' },
+      { type: 'image', url: 'https://example.test/suggestion.png' },
+    ];
+    const parts = deriveMessageParts(message({ id: 'suggest', role: 'assistant', content }), {
+      suggestions: ['Retry', 'Open details'],
+    });
+
+    expect(parts.map((part) => part.type)).toEqual([
+      'markdown',
+      'suggestion',
+      'suggestion',
+      'image',
+    ]);
+    expect(parts[1]).toEqual({
+      type: 'suggestion',
+      key: 'suggest:suggestion:0',
+      index: 0,
+      label: 'Retry',
+    });
+    expect(parts[2]).toEqual({
+      type: 'suggestion',
+      key: 'suggest:suggestion:1',
+      index: 1,
+      label: 'Open details',
+    });
+    expect(parts[3]).toMatchObject({ type: 'image', key: 'suggest:image:1' });
+  });
+});
+
 describe('deriveMessageParts — tool-call body', () => {
   const toolCall = { id: 'call-1', name: 'search', arguments: { q: 'svelte' } };
 

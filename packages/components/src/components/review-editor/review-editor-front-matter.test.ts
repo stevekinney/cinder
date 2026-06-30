@@ -7,6 +7,7 @@ import {
   combineFrontMatterAndBody,
   documentAnchorToBodyAnchor,
   documentPersistedAnchorToBodyAnchor,
+  documentPositionToBodyPosition,
   parseReviewEditorFrontMatter,
   parseYamlFieldValue,
   remapDocumentAnchorBodyOffset,
@@ -46,6 +47,15 @@ describe('review editor front matter helpers', () => {
     expect(combineFrontMatterAndBody(frontMatter, frontMatter.body)).toBe(markdown);
   });
 
+  test('preserves non-empty raw front matter that cannot be parsed', () => {
+    const markdown = '---\nowner: [\n---\n\n# Architecture\n';
+    const frontMatter = parseReviewEditorFrontMatter(markdown);
+
+    expect(frontMatter.hasFrontMatter).toBe(true);
+    expect(frontMatter.data).toBeNull();
+    expect(combineFrontMatterAndBody(frontMatter, frontMatter.body)).toBe(markdown);
+  });
+
   test('reconstructs older body-only review state with front matter', () => {
     expect(
       reviewStateToMarkdown({
@@ -63,6 +73,17 @@ describe('review editor front matter helpers', () => {
     expect(parsed).toEqual({
       valid: true,
       value: { labels: ['editor', 'review'], priority: 2 },
+    });
+  });
+
+  test('serializes scalar YAML field values on one line', () => {
+    expect(serializeYamlFieldValue('platform')).toBe('platform');
+  });
+
+  test('reports invalid YAML field values without throwing', () => {
+    expect(parseYamlFieldValue('[')).toEqual({
+      valid: false,
+      error: expect.stringContaining('unexpected end of the stream'),
     });
   });
 
@@ -106,6 +127,10 @@ describe('review editor front matter helpers', () => {
         30,
       ).lastKnownOffset,
     ).toBe(40);
+  });
+
+  test('clamps document positions before the body offset to the start of the body', () => {
+    expect(documentPositionToBodyPosition(12, 30)).toBe(0);
   });
 
   test('translates persisted reanchor fallback offsets into body-editor positions', () => {

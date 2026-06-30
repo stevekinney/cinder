@@ -258,6 +258,21 @@ describe('overflowFade', () => {
     expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
   });
 
+  test('stops observing descendants removed after a mutation', () => {
+    const node = document.createElement('div');
+    const child = document.createElement('div');
+    node.appendChild(child);
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
+
+    overflowFade()(node);
+    expect(FakeResizeObserver.instances[0]?.observedElements).toContain(child);
+
+    child.remove();
+    FakeMutationObserver.instances[0]?.trigger();
+
+    expect(FakeResizeObserver.instances[0]?.observedElements).not.toContain(child);
+  });
+
   test('clears stale state and exits when ResizeObserver is unavailable', () => {
     const node = document.createElement('div');
     node.setAttribute('data-cinder-overflows', '');
@@ -288,6 +303,26 @@ describe('overflowFade', () => {
     node.dispatchEvent(new Event('scroll'));
     flushAnimationFrames();
 
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
+  });
+
+  test('falls back to timeout scheduling when animation frames are unavailable', async () => {
+    const node = document.createElement('div');
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
+    globalThis.requestAnimationFrame = undefined as unknown as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = undefined as unknown as typeof cancelAnimationFrame;
+
+    const cleanup = overflowFade()(node);
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 160 });
+    node.dispatchEvent(new Event('scroll'));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
+
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
+    node.dispatchEvent(new Event('scroll'));
+    cleanup?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
   });
 });

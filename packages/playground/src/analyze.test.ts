@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -169,6 +169,43 @@ describe('analyzeComponent — surface.svelte', () => {
       options: ['default', 'raised', 'inset', 'transparent'],
     });
     expect(tone?.defaultValue).toBe('default');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Imported prop type aliases
+// ---------------------------------------------------------------------------
+
+describe('analyzeComponent — imported prop type aliases', () => {
+  it('resolves imported multiline literal unions that start with a pipe', async () => {
+    const manifest = await analyzeComponent(componentPath('command-menu'));
+    const placement = manifest.props.find((p) => p.name === 'placement');
+
+    expect(placement?.control).toEqual({
+      kind: 'select',
+      options: [
+        'top',
+        'bottom',
+        'left',
+        'right',
+        'top-start',
+        'top-end',
+        'bottom-start',
+        'bottom-end',
+      ],
+    });
+  });
+
+  it('falls back to resolved type information for package-imported literal unions', async () => {
+    const manifest = await analyzeComponent(componentPath('phone-input'));
+    const country = manifest.props.find((p) => p.name === 'country');
+
+    expect(country?.control.kind).toBe('select');
+    if (country?.control.kind === 'select') {
+      expect(country.control.options).toContain('US');
+      expect(country.control.options).toContain('CA');
+      expect(country.control.options).toContain('GB');
+    }
   });
 });
 
@@ -495,6 +532,85 @@ describe('analyzeComponent — bare <script module> block', () => {
     );
     const manifest = await analyzeComponent(filePath);
     expect(manifest.isCompound).toBeUndefined();
+  });
+
+  it('clears imported type-alias cache when the shared project is reset', async () => {
+    const typeFilePath = join(fixtureDir, 'fixture-types.ts');
+    const componentFilePath = await writeFixture(
+      'cached-widget',
+      `<script lang="ts" module>
+  import type { FixtureTone } from './fixture-types.ts';
+
+  export type CachedWidgetProps = {
+    tone?: FixtureTone;
+  };
+</script>
+
+<script lang="ts">
+  let { tone = 'alpha' }: CachedWidgetProps = $props();
+</script>
+
+<div>{tone}</div>`,
+    );
+
+    await Bun.write(typeFilePath, `export type FixtureTone = 'alpha' | 'beta';\n`);
+    const first = await analyzeComponent(componentFilePath);
+    expect(first.props.find((p) => p.name === 'tone')?.control).toEqual({
+      kind: 'select',
+      options: ['alpha', 'beta'],
+    });
+
+    await Bun.write(typeFilePath, `export type FixtureTone = 'gamma' | 'delta';\n`);
+    resetProject();
+
+    const second = await analyzeComponent(componentFilePath);
+    expect(second.props.find((p) => p.name === 'tone')?.control).toEqual({
+      kind: 'select',
+      options: ['gamma', 'delta'],
+    });
+  });
+
+  it('resolves primitive aliases imported from a package', async () => {
+    const packageDirectory = join(fixtureDir, 'node_modules', 'primitive-alias-package');
+    mkdirSync(packageDirectory, { recursive: true });
+    await Bun.write(join(packageDirectory, 'package.json'), `{"types":"index.d.ts"}\n`);
+    await Bun.write(
+      join(packageDirectory, 'index.d.ts'),
+      [
+        'export type ExternalFlag = boolean;',
+        'export type ExternalCount = number;',
+        'export type ExternalLabel = string;',
+        '',
+      ].join('\n'),
+    );
+
+    const componentFilePath = await writeFixture(
+      'primitive-widget',
+      `<script lang="ts" module>
+  import type {
+    ExternalCount,
+    ExternalFlag,
+    ExternalLabel,
+  } from 'primitive-alias-package';
+
+  export type PrimitiveWidgetProps = {
+    flag?: ExternalFlag;
+    count?: ExternalCount;
+    label?: ExternalLabel;
+  };
+</script>
+
+<script lang="ts">
+  let { flag = false, count = 0, label = '' }: PrimitiveWidgetProps = $props();
+</script>
+
+<div>{label}</div>`,
+    );
+
+    const manifest = await analyzeComponent(componentFilePath);
+    expect(manifest.props.find((p) => p.name === 'flag')?.control.kind).toBe('boolean');
+    expect(manifest.props.find((p) => p.name === 'count')?.control.kind).toBe('number');
+    expect(manifest.props.find((p) => p.name === 'label')?.control.kind).toBe('text');
   });
 });
 

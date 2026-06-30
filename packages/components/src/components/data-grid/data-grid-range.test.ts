@@ -70,6 +70,70 @@ describe('DataGrid selection model', () => {
 });
 
 describe('DataGrid keyboard model', () => {
+  test('returns no action when the grid has no navigable cells', () => {
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'ArrowRight' }), {
+        activeRowIndex: 0,
+        activeColumnIndex: 0,
+        rowCount: 0,
+        columnCount: 4,
+      }),
+    ).toBeUndefined();
+  });
+
+  test('maps command shortcuts and selection keys', () => {
+    const context = {
+      activeRowIndex: 1,
+      activeColumnIndex: 1,
+      rowCount: 4,
+      columnCount: 4,
+    };
+
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'a', metaKey: true }), context),
+    ).toEqual({ type: 'select-all' });
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'C', ctrlKey: true }), context),
+    ).toEqual({ type: 'copy-selection' });
+    expect(dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'Escape' }), context)).toEqual({
+      type: 'collapse-selection',
+    });
+    expect(dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'Enter' }), context)).toEqual({
+      type: 'select-active-cell',
+    });
+    expect(dataGridKeyToAction(new KeyboardEvent('keydown', { key: ' ' }), context)).toEqual({
+      type: 'select-active-cell',
+    });
+  });
+
+  test('maps arrow keys to neighboring cell movement', () => {
+    const context = {
+      activeRowIndex: 1,
+      activeColumnIndex: 1,
+      rowCount: 4,
+      columnCount: 4,
+    };
+
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'ArrowRight' }), context),
+    ).toEqual({ type: 'move-cell', rowIndex: 1, columnIndex: 2, extend: false });
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'ArrowLeft' }), context),
+    ).toEqual({ type: 'move-cell', rowIndex: 1, columnIndex: 0, extend: false });
+    expect(
+      dataGridKeyToAction(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', shiftKey: true }),
+        context,
+      ),
+    ).toEqual({ type: 'move-cell', rowIndex: 2, columnIndex: 1, extend: true });
+    expect(dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'ArrowUp' }), context)).toEqual({
+      type: 'move-cell',
+      rowIndex: 0,
+      columnIndex: 1,
+      extend: false,
+    });
+  });
+
   test('maps spreadsheet keys to clamped movement actions', () => {
     const action = dataGridKeyToAction(
       new KeyboardEvent('keydown', { key: 'End', ctrlKey: true, shiftKey: true }),
@@ -81,6 +145,41 @@ describe('DataGrid keyboard model', () => {
       rowIndex: 3,
       columnIndex: 3,
       extend: true,
+    });
+  });
+
+  test('maps home, end, and page keys to grid movement', () => {
+    const context = {
+      activeRowIndex: 2,
+      activeColumnIndex: 1,
+      rowCount: 5,
+      columnCount: 4,
+      pageSize: 2,
+    };
+
+    expect(dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'Home' }), context)).toEqual({
+      type: 'move-cell',
+      rowIndex: 2,
+      columnIndex: 0,
+      extend: false,
+    });
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'Home', ctrlKey: true }), context),
+    ).toEqual({ type: 'move-cell', rowIndex: 0, columnIndex: 0, extend: false });
+    expect(dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'End' }), context)).toEqual({
+      type: 'move-cell',
+      rowIndex: 2,
+      columnIndex: 3,
+      extend: false,
+    });
+    expect(dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'PageDown' }), context)).toEqual(
+      { type: 'move-cell', rowIndex: 4, columnIndex: 1, extend: false },
+    );
+    expect(dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'PageUp' }), context)).toEqual({
+      type: 'move-cell',
+      rowIndex: 0,
+      columnIndex: 1,
+      extend: false,
     });
   });
 
@@ -114,6 +213,17 @@ describe('DataGrid keyboard model', () => {
       dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'Tab' }), {
         activeRowIndex: 3,
         activeColumnIndex: 3,
+        rowCount: 4,
+        columnCount: 4,
+      }),
+    ).toBeUndefined();
+  });
+
+  test('returns no action for unrelated keys', () => {
+    expect(
+      dataGridKeyToAction(new KeyboardEvent('keydown', { key: 'x' }), {
+        activeRowIndex: 0,
+        activeColumnIndex: 0,
         rowCount: 4,
         columnCount: 4,
       }),

@@ -53,6 +53,30 @@ describe('computeNationalResult', () => {
     expect(result.isValid).toBe(false);
   });
 
+  test('possible but invalid national digits are incomplete', () => {
+    const result = computeNationalResult('GB', '020794609');
+    expect(result).toMatchObject({
+      value: '',
+      formatted: '020 7946 09',
+      nationalNumber: '020794609',
+      isValid: false,
+      isPossible: true,
+      reason: 'incomplete',
+    });
+  });
+
+  test('impossible US digits are invalid but preserve the formatted draft', () => {
+    const result = computeNationalResult('US', '0');
+    expect(result).toMatchObject({
+      value: '',
+      formatted: '0',
+      nationalNumber: '0',
+      isValid: false,
+      isPossible: false,
+      reason: 'invalid',
+    });
+  });
+
   test('valid US number yields E.164', () => {
     const result = computeNationalResult('US', '4155550132');
     expect(result.reason).toBe('valid');
@@ -132,6 +156,31 @@ describe('displayNameForCountry', () => {
   });
 
   test('falls back to the country code when locale is unknown', () => {
-    expect(displayNameForCountry('US', 'not-a-locale')).toBeTruthy();
+    expect(displayNameForCountry('US', 'invalid_locale')).toBe('US');
+  });
+
+  test('falls back to the country code when DisplayNames cannot resolve it', () => {
+    expect(displayNameForCountry('XX' as never, 'en-US')).toBe('XX');
+  });
+
+  test('falls back to the country code when DisplayNames.of throws', () => {
+    const originalDisplayNamesDescriptor = Object.getOwnPropertyDescriptor(Intl, 'DisplayNames');
+    class ThrowingDisplayNames {
+      of(): string {
+        throw new Error('unsupported region');
+      }
+    }
+    Object.defineProperty(Intl, 'DisplayNames', {
+      configurable: true,
+      value: ThrowingDisplayNames,
+    });
+
+    try {
+      expect(displayNameForCountry('US', 'throwing-display-names')).toBe('US');
+    } finally {
+      if (originalDisplayNamesDescriptor) {
+        Object.defineProperty(Intl, 'DisplayNames', originalDisplayNamesDescriptor);
+      }
+    }
   });
 });

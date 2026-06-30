@@ -15,7 +15,12 @@
 
 import { describe, expect, mock, test } from 'bun:test';
 
-import { BASE_LOADED_PROPERTY, isBaseLoaded, MISSING_BASE_WARNING } from './base-guard.ts';
+import {
+  BASE_LOADED_PROPERTY,
+  isBaseLoaded,
+  MISSING_BASE_WARNING,
+  runBaseLoadedGuard,
+} from './base-guard.ts';
 
 /**
  * Installs a `getComputedStyle` shim that returns the given value for any
@@ -178,6 +183,41 @@ function simulateGuardSideEffect(options: {
   }
 }
 
+function runGuardWithMocks(options: {
+  styleSheetsLength: number;
+  baseLoadedValue: string;
+  warnSpy: ReturnType<typeof mock>;
+}): void {
+  const { styleSheetsLength, baseLoadedValue, warnSpy } = options;
+
+  const fakeRoot = {} as Element;
+  const originalGetComputedStyle = globalThis.getComputedStyle;
+  const originalDocument = globalThis.document;
+  const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+  const originalWarn = console.warn;
+
+  globalThis.getComputedStyle = (_element: Element) =>
+    ({ getPropertyValue: (_property: string) => baseLoadedValue }) as CSSStyleDeclaration;
+  (globalThis as unknown as { document: unknown }).document = {
+    styleSheets: { length: styleSheetsLength },
+    documentElement: fakeRoot,
+  };
+  globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  };
+  console.warn = warnSpy;
+
+  try {
+    runBaseLoadedGuard();
+  } finally {
+    globalThis.getComputedStyle = originalGetComputedStyle;
+    (globalThis as unknown as { document: unknown }).document = originalDocument;
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+    console.warn = originalWarn;
+  }
+}
+
 describe('warn side-effect: base absent triggers console.warn exactly once', () => {
   test('warns with MISSING_BASE_WARNING when stylesheets are attached and base is absent', () => {
     const warnSpy = mock(() => {});
@@ -202,6 +242,18 @@ describe('warn side-effect: base absent triggers console.warn exactly once', () 
   test('does not warn when base has whitespace-padded value " 1 "', () => {
     const warnSpy = mock(() => {});
     simulateGuardSideEffect({ styleSheetsLength: 2, baseLoadedValue: ' 1 ', warnSpy });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('runBaseLoadedGuard warns through the deferred module side-effect path', () => {
+    const warnSpy = mock(() => {});
+    runGuardWithMocks({ styleSheetsLength: 1, baseLoadedValue: '', warnSpy });
+    expect(warnSpy).toHaveBeenCalledWith(MISSING_BASE_WARNING);
+  });
+
+  test('runBaseLoadedGuard skips when the document has no stylesheets', () => {
+    const warnSpy = mock(() => {});
+    runGuardWithMocks({ styleSheetsLength: 0, baseLoadedValue: '', warnSpy });
     expect(warnSpy).not.toHaveBeenCalled();
   });
 });

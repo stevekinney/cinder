@@ -41,21 +41,10 @@ function plainCode(raw: string): string {
  * Returns the literal source slice including the surrounding quotes.
  */
 function readStringLiteral(source: string, startIndex: number): string {
-  let index = startIndex + 1;
-  while (index < source.length) {
-    const character = source[index];
-    if (character === '\\') {
-      index += 2;
-      continue;
-    }
-    if (character === '"') {
-      return source.slice(startIndex, index + 1);
-    }
-    index += 1;
-  }
-  // JSON.parse already validated input, so this branch is unreachable for
-  // well-formed JSON. Return the rest of the source as a defensive fallback.
-  return source.slice(startIndex);
+  const stringPattern = /"(?:\\.|[^"\\])*"/y;
+  stringPattern.lastIndex = startIndex;
+  const match = stringPattern.exec(source);
+  return match?.[0] ?? source[startIndex] ?? '';
 }
 
 /**
@@ -88,7 +77,6 @@ function tokenize(source: string): string {
 
   while (index < source.length) {
     const character = source[index];
-
     if (character === undefined) break;
 
     if (character === ' ' || character === '\t' || character === '\n' || character === '\r') {
@@ -169,14 +157,14 @@ function tokenize(source: string): string {
       continue;
     }
 
-    // Defensive: well-formed JSON has no other tokens. Emit the character
-    // escaped so we never mis-render unexpected input.
     output += escapeHtml(character);
     index += 1;
   }
 
   return `<code class="cinder-json">${output}</code>`;
 }
+
+export const jsonHighlightInternalsForTesting = { tokenize };
 
 /**
  * Highlight a JSON value as syntax-colored HTML. Non-JSON input is returned as

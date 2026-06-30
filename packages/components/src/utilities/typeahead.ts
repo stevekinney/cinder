@@ -38,26 +38,29 @@ export function findTypeaheadMatch<T>(
 }
 
 export class TypeaheadBuffer {
-  #value = '';
-  #timer: ReturnType<typeof setTimeout> | null = null;
+  private value: string;
+  private timer: ReturnType<typeof setTimeout> | null;
+
+  constructor() {
+    this.value = '';
+    this.timer = null;
+  }
 
   push(character: string): string {
     this.clearTimer();
-    this.#value += character.toLocaleLowerCase();
-    this.#timer = setTimeout(() => {
-      this.reset();
-    }, 500);
-    return this.#value;
+    this.value += character.toLocaleLowerCase();
+    this.timer = setTimeout(() => this.reset(), 500);
+    return this.value;
   }
 
   reset(): void {
     this.clearTimer();
-    this.#value = '';
+    this.value = '';
   }
 
   clearTimer(): void {
-    if (this.#timer === null) return;
-    clearTimeout(this.#timer);
-    this.#timer = null;
+    if (this.timer === null) return;
+    clearTimeout(this.timer);
+    this.timer = null;
   }
 }

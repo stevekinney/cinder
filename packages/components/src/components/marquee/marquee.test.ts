@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -9,7 +9,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, render } = await import('@testing-library/svelte');
 const { default: Marquee } = await import('./marquee.svelte');
 const marqueeCssPath = join(import.meta.dir, './marquee.css');
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
@@ -17,6 +17,10 @@ const marqueeCssPath = join(import.meta.dir, './marquee.css');
 // A top-level static import of 'svelte' resolves to svelte/index-server.js in Bun's
 // non-browser environment, making `mount()` throw "not available on the server".
 const { createRawSnippet } = await import('svelte');
+
+afterEach(() => {
+  cleanup();
+});
 
 /** Creates a Svelte 5 Snippet that renders text content. */
 function textSnippet(text: string) {
@@ -100,6 +104,138 @@ describe('Marquee', () => {
     expect(element?.getAttribute('data-cinder-pause-focus')).toBe('false');
   });
 
+  test('renders a keyboard-accessible pause control inside the viewport', async () => {
+    const { container, getByRole } = render(Marquee, {
+      children: textSnippet('content'),
+    });
+
+    const element = container.querySelector('.cinder-marquee');
+    const control = getByRole('button', { name: 'Pause marquee animation' });
+
+    expect(container.querySelector('.cinder-marquee__viewport')?.contains(control)).toBe(true);
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+    expect(element?.getAttribute('data-cinder-manual-paused')).toBe('false');
+
+    control.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getByRole('button', { name: 'Resume marquee animation' })).toBe(control);
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    expect(element?.getAttribute('data-cinder-manual-paused')).toBe('true');
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('false');
+
+    control.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getByRole('button', { name: 'Pause marquee animation' })).toBe(control);
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+    expect(element?.getAttribute('data-cinder-manual-paused')).toBe('false');
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+  });
+
+  test('manual resume overrides focus pause while the control remains focused', async () => {
+    const css = await Bun.file(marqueeCssPath).text();
+
+    expect(css).toMatch(
+      /\.cinder-marquee\[data-cinder-pause-focus='true'\]:not\(\s*\[data-cinder-manual-resumed='true'\]\s*\):focus-within\s+\.cinder-marquee__track/,
+    );
+  });
+
+  test('manual resume overrides hover pause while the pointer remains over the marquee', async () => {
+    const css = await Bun.file(marqueeCssPath).text();
+
+    expect(css).toMatch(
+      /\.cinder-marquee\[data-cinder-pause-hover='true'\]:not\(\s*\[data-cinder-manual-resumed='true'\]\s*\):hover\s+\.cinder-marquee__track/,
+    );
+  });
+
+  test('manual resume override stays active when focus moves from the control to the viewport', async () => {
+    const { container, getByRole } = render(Marquee, {
+      props: { children: textSnippet('content') },
+    });
+    const element = container.querySelector<HTMLElement>('.cinder-marquee');
+    const viewport = container.querySelector<HTMLDivElement>('.cinder-marquee__viewport');
+    const control = getByRole('button', { name: 'Pause marquee animation' });
+
+    control.click();
+    control.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+
+    element?.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: viewport }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+  });
+
+  test('manual resume override clears after focus leaves the marquee', async () => {
+    const { container, getByRole } = render(Marquee, {
+      props: { children: textSnippet('content') },
+    });
+    const element = container.querySelector<HTMLElement>('.cinder-marquee');
+    const outsideButton = document.createElement('button');
+    document.body.append(outsideButton);
+    const control = getByRole('button', { name: 'Pause marquee animation' });
+
+    try {
+      control.click();
+      control.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+
+      element?.dispatchEvent(
+        new FocusEvent('focusout', { bubbles: true, relatedTarget: outsideButton }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('false');
+    } finally {
+      outsideButton.remove();
+    }
+  });
+
+  test('manual resume override clears after pointer leaves the marquee', async () => {
+    const { container, getByRole } = render(Marquee, {
+      props: { children: textSnippet('content') },
+    });
+    const element = container.querySelector<HTMLElement>('.cinder-marquee');
+    const control = getByRole('button', { name: 'Pause marquee animation' });
+
+    control.click();
+    control.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+
+    element?.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('false');
+  });
+
+  test('manual resume override stays active when pointer leaves while control is focused', async () => {
+    const { container, getByRole } = render(Marquee, {
+      props: { children: textSnippet('content') },
+    });
+    const element = container.querySelector<HTMLElement>('.cinder-marquee');
+    const control = getByRole('button', { name: 'Pause marquee animation' });
+
+    control.click();
+    control.click();
+    control.focus();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.activeElement).toBe(control);
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+
+    element?.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+  });
+
   test('viewport has keyboard access for reduced-motion scroll access', () => {
     const { container } = render(Marquee, { children: textSnippet('content') });
     const viewport = container.querySelector<HTMLDivElement>('.cinder-marquee__viewport');
@@ -134,6 +270,8 @@ describe('Marquee', () => {
 
   test('reduced-motion CSS disables animation, restores overflow access, and hides duplicate', async () => {
     const css = await Bun.file(marqueeCssPath).text();
+    expect(css).toContain('overflow: clip');
+
     const reducedMotionBlock = css.match(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-marquee__item\[aria-hidden='true'\]\s*\{[\s\S]*?\}\s*\}/,
     )?.[0];

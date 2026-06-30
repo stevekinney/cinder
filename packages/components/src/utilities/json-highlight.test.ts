@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { highlightJson } from './json-highlight.ts';
+import { highlightJson, jsonHighlightInternalsForTesting } from './json-highlight.ts';
 
 describe('highlightJson — valid JSON', () => {
   test('object: keys, strings, separators each get a token span', () => {
@@ -23,6 +23,12 @@ describe('highlightJson — valid JSON', () => {
     expect(html).toContain('cinder-json-token-boolean">true');
     expect(html).toContain('cinder-json-token-boolean">false');
     expect(html).toContain('cinder-json-token-null">null');
+  });
+
+  test('top-level null tokenizes as a null value', () => {
+    expect(highlightJson('null')).toBe(
+      '<code class="cinder-json"><span class="cinder-json-token cinder-json-token-null">null</span></code>',
+    );
   });
 
   test('numbers including exponents tokenize as a single number', () => {
@@ -79,6 +85,20 @@ describe('highlightJson — valid JSON', () => {
     const html = highlightJson(JSON.stringify({ a: 'foo"bar', b: 1 }));
     expect(html).toContain('cinder-json-token-key">"b"');
     expect(html).not.toContain('cinder-json-token-string">"b"');
+  });
+
+  test('tokenizer fallback escapes unexpected characters and keeps advancing', () => {
+    const html = jsonHighlightInternalsForTesting.tokenize('null<');
+    expect(html).toBe(
+      '<code class="cinder-json"><span class="cinder-json-token cinder-json-token-null">null</span>&lt;</code>',
+    );
+  });
+
+  test('tokenizer fallback does not throw on unterminated strings', () => {
+    const html = jsonHighlightInternalsForTesting.tokenize('"oops');
+    expect(html).toBe(
+      '<code class="cinder-json"><span class="cinder-json-token cinder-json-token-string">"</span>oops</code>',
+    );
   });
 });
 

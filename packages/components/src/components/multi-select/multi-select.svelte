@@ -99,6 +99,7 @@
   let openedAtLeastOnce = $state(false);
   let triggerElement = $state<HTMLButtonElement | null>(null);
   let controlElement = $state<HTMLDivElement | null>(null);
+  let panelElement = $state<HTMLDivElement | null>(null);
   let filterElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
   let validityProxyElement = $state<HTMLInputElement | null>(null);
@@ -358,12 +359,14 @@
     const handlePointerDown = (event: MouseEvent): void => {
       const target = event.target as Node | null;
       if (target && controlElement?.contains(target)) return;
+      if (target && panelElement?.contains(target)) return;
       closeMenu(false);
     };
 
     const handleFocusIn = (event: FocusEvent): void => {
       const target = event.target as Node | null;
       if (target && controlElement?.contains(target)) return;
+      if (target && panelElement?.contains(target)) return;
       closeMenu(false);
     };
 
@@ -445,6 +448,7 @@
 
     {#if open}
       <div
+        bind:this={panelElement}
         id={`${id}-popover`}
         class="cinder-_floating-surface cinder-multi-select__panel"
         data-cinder-direction={direction}

@@ -29,6 +29,10 @@ describe('chartPaletteColor', () => {
     expect(chartPaletteColor(chartPalette.length)).toBe(chartPalette[0]);
     expect(chartPaletteColor(chartPalette.length + 2)).toBe(chartPalette[2]);
   });
+
+  test('falls back to the first palette color for negative indices', () => {
+    expect(chartPaletteColor(-1)).toBe(chartPalette[0]);
+  });
 });
 
 describe('normalizeXValue', () => {
@@ -239,6 +243,17 @@ describe('nearestTarget', () => {
     expect(nearestTarget(targets, 100, 190)?.id).toBe('t-1');
   });
 
+  test('compares the previous distinct x bucket when duplicate targets straddle the boundary', () => {
+    const targets = buildTargets([
+      { x: 0, y: 10 },
+      { x: 100, y: 500 },
+      { x: 100, y: 600 },
+      { x: 200, y: 10 },
+    ]);
+
+    expect(nearestTarget(targets, 150, 10)?.id).toBe('t-3');
+  });
+
   test('supports searching on the y axis for horizontal layouts', () => {
     const targets = buildTargets([
       { x: 50, y: 0 },
@@ -353,6 +368,25 @@ describe('createCartesianModel', () => {
       expect(Number.isFinite(point.pixelX)).toBe(true);
       expect(Number.isFinite(point.pixelY)).toBe(true);
     }
+  });
+
+  test('creates stable paths for a single-point series', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'visits',
+          label: 'Visits',
+          data: [{ x: 'Jan', y: 10 }],
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+    const [series] = model.normalizedSeries;
+    expect(series?.path).toStartWith('M');
+    expect(series?.areaPath).toContain('Z');
   });
 
   test('places x ticks at scaled positions for numeric domains', () => {
@@ -474,6 +508,26 @@ describe('createCartesianModel', () => {
     expect(modelAll.yDomain[1]).toBeGreaterThan(modelHidden.yDomain[1]);
   });
 
+  test('uses series value formatters for cartesian table rows and targets', () => {
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series: [
+        {
+          id: 's',
+          label: 'S',
+          valueFormatter: (value, context) => `${context.seriesId}:${value}`,
+          data: [{ x: 'Jan', y: 5 }],
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+
+    expect(model.tableRows[0]?.valueLabel).toBe('s:5');
+    expect(model.targets[0]?.valueLabel).toBe('s:5');
+  });
+
   test('rejects negative values in stacked-area mode', () => {
     expect(() =>
       createCartesianModel({
@@ -485,6 +539,118 @@ describe('createCartesianModel', () => {
         stackedArea: true,
       }),
     ).toThrow('negative-stacked-area');
+  });
+
+  test('rejects duplicate x values within a series', () => {
+    expect(() =>
+      createCartesianModel({
+        componentId: 'line-chart',
+        series: [
+          {
+            id: 's',
+            label: 'S',
+            data: [
+              { x: 'Jan', y: 1 },
+              { x: 'Jan', y: 2 },
+            ],
+          },
+        ],
+        hiddenSeriesIds: [],
+        width: 640,
+        height: 280,
+      }),
+    ).toThrow('duplicate-x');
+  });
+
+  test('rejects mixed x domain kinds', () => {
+    expect(() =>
+      createCartesianModel({
+        componentId: 'line-chart',
+        series: [
+          {
+            id: 's',
+            label: 'S',
+            data: [
+              { x: 'Jan', y: 1 },
+              { x: 2, y: 2 },
+            ],
+          },
+        ],
+        hiddenSeriesIds: [],
+        width: 640,
+        height: 280,
+      }),
+    ).toThrow('mixed-x-domain-kind');
+  });
+
+  test('rejects non-finite y values', () => {
+    expect(() =>
+      createCartesianModel({
+        componentId: 'line-chart',
+        series: [{ id: 's', label: 'S', data: [{ x: 'Jan', y: Number.NaN }] }],
+        hiddenSeriesIds: [],
+        width: 640,
+        height: 280,
+      }),
+    ).toThrow('non-finite-y');
+  });
+
+  test('samples x ticks when tickCount is smaller than the domain length', () => {
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series: [
+        {
+          id: 's',
+          label: 'S',
+          data: [
+            { x: 'Jan', y: 1 },
+            { x: 'Feb', y: 2 },
+            { x: 'Mar', y: 3 },
+            { x: 'Apr', y: 4 },
+          ],
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      xAxis: { tickCount: 3 },
+    });
+
+    expect(model.xTicks.map((tick) => tick.label)).toEqual(['Jan', 'Mar', 'Apr']);
+  });
+
+  test('stacked area points accumulate visible series offsets', () => {
+    const model = createCartesianModel({
+      componentId: 'area-chart',
+      series: [
+        {
+          id: 'first',
+          label: 'First',
+          data: [
+            { x: 'Jan', y: 10 },
+            { x: 'Feb', y: 20 },
+          ],
+        },
+        {
+          id: 'second',
+          label: 'Second',
+          data: [
+            { x: 'Jan', y: 5 },
+            { x: 'Feb', y: 15 },
+          ],
+        },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      stackedArea: true,
+    });
+
+    const [first, second] = model.normalizedSeries;
+    expect(model.yDomain[1]).toBeGreaterThan(30);
+    expect(first?.points[0]?.pixelY).toBeGreaterThan(second?.points[0]?.pixelY ?? 0);
+    expect(first?.areaPath).not.toBe('');
+    expect(second?.areaPath).not.toBe('');
   });
 });
 
@@ -585,6 +751,69 @@ describe('createBarModel', () => {
     ).toThrow('invalid-bar-category');
   });
 
+  test('throws when the category key is missing', () => {
+    expect(() =>
+      createBarModel({
+        data: [{ value: 1 }],
+        categoryKey: 'month',
+        series: [{ id: 's', label: 'S', valueKey: 'value' }],
+        hiddenSeriesIds: [],
+        width: 640,
+        height: 280,
+        orientation: 'vertical',
+        mode: 'grouped',
+      }),
+    ).toThrow('invalid-bar-category');
+  });
+
+  test('throws when a series value key is missing', () => {
+    expect(() =>
+      createBarModel({
+        data: [{ month: 'Jan' }],
+        categoryKey: 'month',
+        series: [{ id: 's', label: 'S', valueKey: 'value' }],
+        hiddenSeriesIds: [],
+        width: 640,
+        height: 280,
+        orientation: 'vertical',
+        mode: 'grouped',
+      }),
+    ).toThrow('missing-bar-value-key');
+  });
+
+  test('throws when a bar value is not numeric or empty', () => {
+    expect(() =>
+      createBarModel({
+        data: [{ month: 'Jan', value: 'bad' as unknown as number }],
+        categoryKey: 'month',
+        series: [{ id: 's', label: 'S', valueKey: 'value' }],
+        hiddenSeriesIds: [],
+        width: 640,
+        height: 280,
+        orientation: 'vertical',
+        mode: 'grouped',
+      }),
+    ).toThrow('invalid-bar-value');
+  });
+
+  test('throws when category values mix domain kinds', () => {
+    expect(() =>
+      createBarModel({
+        data: [
+          { month: 'Jan', value: 1 },
+          { month: 2, value: 2 },
+        ],
+        categoryKey: 'month',
+        series: [{ id: 's', label: 'S', valueKey: 'value' }],
+        hiddenSeriesIds: [],
+        width: 640,
+        height: 280,
+        orientation: 'vertical',
+        mode: 'grouped',
+      }),
+    ).toThrow('mixed-bar-category-kind');
+  });
+
   test('throws on duplicate categories', () => {
     expect(() =>
       createBarModel({
@@ -620,6 +849,28 @@ describe('createBarModel', () => {
     });
     const ys = model.targets.map((target) => target.y);
     expect(ys).toEqual([...ys].toSorted((a, b) => a - b));
+  });
+
+  test('horizontal stacked bars accumulate positive and negative offsets', () => {
+    const model = createBarModel({
+      data: [{ month: 'Jan', positive: 10, negative: -4 }],
+      categoryKey: 'month',
+      series: [
+        { id: 'positive', label: 'Positive', valueKey: 'positive' },
+        { id: 'negative', label: 'Negative', valueKey: 'negative' },
+      ],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      orientation: 'horizontal',
+      mode: 'stacked',
+    });
+
+    const positive = model.bars.find((bar) => bar.seriesId === 'positive');
+    const negative = model.bars.find((bar) => bar.seriesId === 'negative');
+    expect(positive?.width).toBeGreaterThan(0);
+    expect(negative?.width).toBeGreaterThan(0);
+    expect(negative?.x).toBeLessThan(positive?.x ?? 0);
   });
 
   test('category ticks use the category band scale instead of even index spacing', () => {

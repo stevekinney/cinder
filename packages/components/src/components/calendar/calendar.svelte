@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { CalendarProps } from './calendar.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
@@ -109,19 +109,27 @@
     return disabledDate?.(iso) ?? false;
   }
 
+  function resolveAnchorIso(
+    valueProp: string | undefined,
+    monthProp: string | undefined,
+    fallbackIso: string,
+  ): string {
+    if (valueProp && parseISODate(valueProp)) return valueProp;
+    if (monthProp && parseISODate(monthProp)) return monthProp;
+    return fallbackIso;
+  }
+
+  const initialTodayIso = toISODate(new Date());
+  const initialAnchorIso = untrack(() => resolveAnchorIso(value, month, initialTodayIso));
+  const initialFocusedIso = untrack(() =>
+    value && parseISODate(value) ? value : initialAnchorIso,
+  );
   const todayIso = $derived(toISODate(new Date()));
-  const anchorIso = $derived.by(() => {
-    // Validate value and month before using them; fall back to today so
-    // focusedIso always resolves to a parseable date (avoids a grid with
-    // no tabbable cell when an empty/invalid string is passed).
-    if (value && parseISODate(value)) return value;
-    if (month && parseISODate(month)) return month;
-    return todayIso;
-  });
+  const anchorIso = $derived(resolveAnchorIso(value, month, todayIso));
   const anchorDate = $derived(parseISODate(anchorIso) ?? new Date());
-  let visibleMonthDate = $state(startOfMonth(anchorDate));
-  let focusedIso = $state(value ?? anchorIso);
-  let lastSyncedAnchorIso = $state(anchorIso);
+  let visibleMonthDate = $state(startOfMonth(parseISODate(initialAnchorIso) ?? new Date()));
+  let focusedIso = $state(initialFocusedIso);
+  let lastSyncedAnchorIso = $state<string | null>(initialAnchorIso);
   const focusedDayId = $derived(`${monthGridId}-day-${focusedIso}`);
 
   $effect(() => {
@@ -316,7 +324,7 @@
   </div>
 
   <div class="cinder-calendar__weekdays" aria-hidden="true">
-    {#each weekdayLabels as weekday}
+    {#each weekdayLabels as weekday (weekday)}
       <span class="cinder-calendar__weekday">{weekday}</span>
     {/each}
   </div>
@@ -326,11 +334,12 @@
     class="cinder-calendar__grid"
     role="grid"
     aria-labelledby={titleId}
+    tabindex="-1"
     onkeydown={handleKeydown}
   >
-    {#each rows as row}
+    {#each rows as row, rowIndex (row[0]?.iso ?? rowIndex)}
       <div role="row" class="cinder-calendar__grid-row">
-        {#each row as cell}
+        {#each row as cell (cell.iso)}
           <div
             role="gridcell"
             aria-selected={cell.selected || undefined}

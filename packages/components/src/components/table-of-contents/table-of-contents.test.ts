@@ -68,6 +68,16 @@ function createEntry(
   };
 }
 
+async function waitForTableOfContentsLinks(container: Element, expectedCount: number) {
+  await waitFor(() => {
+    expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(
+      expectedCount,
+    );
+  });
+
+  return container.querySelectorAll('a.cinder-table-of-contents__link');
+}
+
 beforeEach(() => {
   FakeIntersectionObserver.records = [];
   globalThis.IntersectionObserver =
@@ -164,11 +174,7 @@ describe('TableOfContents', () => {
     article.appendChild(createHeading('late-one', 'Late one', 'h2'));
     document.body.appendChild(article);
 
-    await waitFor(() => {
-      expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(1);
-    });
-
-    const links = container.querySelectorAll('a.cinder-table-of-contents__link');
+    const links = await waitForTableOfContentsLinks(container, 1);
     expect(links[0]?.getAttribute('href')).toBe('#late-one');
   });
 
@@ -272,6 +278,44 @@ describe('TableOfContents', () => {
     expect(links[0]?.getAttribute('href')).toBe('#dynamic-new');
   });
 
+  test('does not reuse stale derived headings after switching back from explicit items', async () => {
+    const target = document.createElement('article');
+    target.id = 'mode-switch-target';
+    target.appendChild(createHeading('derived-old', 'Derived old', 'h2'));
+    document.body.appendChild(target);
+
+    const view = render(TableOfContents, {
+      props: {
+        target: '#mode-switch-target',
+      },
+    });
+    await Promise.resolve();
+    expect(
+      view.container.querySelector('a.cinder-table-of-contents__link')?.getAttribute('href'),
+    ).toBe('#derived-old');
+
+    await view.rerender({
+      items: [{ id: 'explicit-item', label: 'Explicit item' }],
+      target: '#mode-switch-target',
+    });
+    await Promise.resolve();
+
+    target.replaceChildren(createHeading('derived-new', 'Derived new', 'h2'));
+
+    const derivedModeProps = {
+      items: undefined,
+      target: '#mode-switch-target',
+    } as unknown as Parameters<typeof view.rerender>[0];
+
+    await view.rerender(derivedModeProps);
+
+    expect(view.container.querySelector('a[href="#derived-old"]')).toBeNull();
+
+    await waitFor(() => {
+      expect(view.container.querySelector('a[href="#derived-new"]')).not.toBeNull();
+    });
+  });
+
   test('clears derived items when an HTMLElement target is detached', async () => {
     const target = document.createElement('article');
     target.appendChild(createHeading('detached-heading', 'Detached heading', 'h2'));
@@ -361,6 +405,41 @@ describe('TableOfContents', () => {
       configurable: true,
       value: originalInnerHeight,
     });
+  });
+
+  test('scroll updates do not rescan observed heading ids', async () => {
+    const first = createHeading('first-scroll', 'First');
+    first.getBoundingClientRect = () => ({ top: -100 }) as DOMRect;
+    const second = createHeading('second-scroll', 'Second');
+    second.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
+    document.body.appendChild(first);
+    document.body.appendChild(second);
+
+    render(TableOfContents, {
+      props: {
+        items: [
+          { id: 'first-scroll', label: 'First' },
+          { id: 'second-scroll', label: 'Second' },
+        ],
+      },
+    });
+    await Promise.resolve();
+
+    const originalGetElementById = document.getElementById.bind(document);
+    let getElementByIdCalls = 0;
+    document.getElementById = ((id: string) => {
+      getElementByIdCalls += 1;
+      return originalGetElementById(id);
+    }) as typeof document.getElementById;
+
+    try {
+      window.dispatchEvent(new Event('scroll'));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      document.getElementById = originalGetElementById;
+    }
+
+    expect(getElementByIdCalls).toBe(0);
   });
 
   test('clicking a link scrolls to the heading and updates location hash', async () => {

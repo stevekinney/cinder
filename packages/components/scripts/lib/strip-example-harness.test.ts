@@ -149,11 +149,13 @@ describe('stripExampleHarness — fixtures', () => {
     expect(() => stripExampleHarness(source, 'thing/basic')).toThrow(/still referenced/);
   });
 
-  it('strips a const derived id declaration', () => {
+  it('strips a multiline derived id declaration', () => {
     const source = `<script lang="ts">
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
   const uid = $props.id();
-  const fieldId = $derived(\`\${mountIdPrefix ?? uid}-field\`);
+  let fieldId = $derived(
+    \`\${mountIdPrefix ?? uid}-field\`,
+  );
 </script>
 
 <Input id={fieldId} />

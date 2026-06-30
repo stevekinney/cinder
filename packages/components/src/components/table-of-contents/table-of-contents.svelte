@@ -41,7 +41,10 @@
 
   const reducedMotion = useReducedMotion();
   let activeId = $state<string | null>(null);
-  let normalizedItems = $state<TableOfContentsItem[]>(normalizeExplicitItems(items));
+  let derivedHeadingItems = $state<TableOfContentsItem[]>([]);
+  const normalizedItems = $derived(
+    items === undefined ? derivedHeadingItems : normalizeExplicitItems(items),
+  );
 
   const validatedAriaLabel = $derived.by(() => {
     const trimmed = ariaLabel.trim();
@@ -216,12 +219,12 @@
 
   $effect(() => {
     if (items !== undefined) {
-      normalizedItems = normalizeExplicitItems(items);
+      derivedHeadingItems = [];
       return;
     }
 
     if (typeof window === 'undefined' || typeof document === 'undefined') {
-      normalizedItems = [];
+      derivedHeadingItems = [];
       return;
     }
 
@@ -304,14 +307,14 @@
     const shouldWatchTargetConnection = target instanceof HTMLElement;
 
     if (!shouldDeriveFromTarget) {
-      normalizedItems = [];
+      derivedHeadingItems = [];
       return;
     }
 
     const refreshDerived = () => {
       const targetElement = resolveTargetElement(target);
       syncTargetObserver(targetElement);
-      normalizedItems = deriveItemsFromHeadings(targetElement, headingSelector);
+      derivedHeadingItems = deriveItemsFromHeadings(targetElement, headingSelector);
 
       if (targetElement !== null) {
         clearRetryTimer();
@@ -487,7 +490,7 @@
       );
     };
 
-    const scheduleActiveIdUpdate = () => {
+    function scheduleActiveIdUpdate() {
       if (typeof window.requestAnimationFrame !== 'function') {
         updateActiveId();
         return;
@@ -499,7 +502,7 @@
         pendingAnimationFrame = null;
         updateActiveId();
       });
-    };
+    }
 
     const observer = new IntersectionObserver(
       () => {
@@ -516,7 +519,7 @@
       observer.observe(element);
     }
 
-    const syncObservedElements = () => {
+    function syncObservedElements() {
       const nextObservedElements = collectObservedElements();
       const unchanged =
         observedElements.length === nextObservedElements.length &&
@@ -531,7 +534,7 @@
         observer.observe(element);
       }
       scheduleActiveIdUpdate();
-    };
+    }
 
     window.addEventListener('scroll', scheduleActiveIdUpdate, { passive: true });
     window.addEventListener('resize', scheduleActiveIdUpdate);

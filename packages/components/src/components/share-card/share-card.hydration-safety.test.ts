@@ -11,19 +11,14 @@
  * (`VisuallyHiddenLiveRegion`), making it the "component with unconditional
  * child-effects" case the helper is built for.
  *
- * What this proves and what it does not: it documents that the SHIPPED ShareCard
- * is build-flag-invariant — its SSR output is identical under `BROWSER=false` and
- * `BROWSER=true`. It is NOT a complete regression net on its own: the native-share
- * affordance is gated on `hydrated && navigator.share`, and `hydrated` is false in
- * both SSR passes, so a regression that re-introduced a bare `{#if BROWSER}` gate
- * could still render the button absent in both passes (the `navigator.share` half
- * is never reached) and slip through here.
- * The proof that the harness CATCHES a `{#if BROWSER}` regression lives in the
- * synthetic `hydration-probe-child-browser-flag` fixture (a ShareCard-shaped
- * parent with an unconditional child), which the helper reports as
- * `buildFlagInvariant: false`. This test is the real-world companion to that
- * synthetic proof.
+ * The expensive two-build SSR discriminator is covered by the synthetic
+ * `hydration-probe-child-browser-flag` fixture in `src/test/hydration-safety.test.ts`.
+ * This real-world companion keeps ShareCard itself pinned to the safe source
+ * shape: no `esm-env` browser import, and the native-share capability check must
+ * be guarded by the post-hydration state.
  */
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, test } from 'bun:test';
 
 import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
@@ -31,13 +26,25 @@ import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
 const shareCardPath = new URL('./share-card.svelte', import.meta.url).pathname;
 
 describe('ShareCard build-flag hydration safety', () => {
-  test('SSR markup is invariant under the BROWSER build-flag flip', async () => {
+  test('native-share capability stays behind the post-hydration gate', () => {
+    const source = readFileSync(shareCardPath, 'utf-8');
+
+    expect(source).not.toMatch(/from\s+['"]esm-env['"]/);
+    expect(source).toMatch(/let\s+hydrated\s*=\s*\$state\(\s*false\s*\);/);
+    expect(source).toMatch(/\$effect\(\s*\(\)\s*=>\s*{\s*hydrated\s*=\s*true;\s*}\s*\);/);
+    expect(source).toMatch(
+      /const canNativeShare = \$derived\(\s*hydrated && typeof navigator !== 'undefined' && typeof navigator\.share === 'function',\s*\);/,
+    );
+    expect(source).toMatch(/{#if !actions && canNativeShare}\s*{@render shareButton/s);
+  });
+
+  test('real ShareCard SSR output stays invariant and omits the native-share affordance', async () => {
     const result = await checkBuildFlagHydrationSafety(shareCardPath, {
       value: 'https://example.com/share/abc',
     });
+
     expect(result.buildFlagInvariant).toBe(true);
-    // The native-share affordance must be absent from BOTH renders — it only
-    // appears after the `hydrated` $effect runs post-hydration, never in SSR.
+    expect(result.serverHtml).toBe(result.clientHtml);
     expect(result.serverHtml).not.toContain('data-cinder-action="native-share"');
     expect(result.clientHtml).not.toContain('data-cinder-action="native-share"');
   });

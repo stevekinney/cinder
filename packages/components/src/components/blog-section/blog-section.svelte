@@ -18,7 +18,6 @@
 
 <script lang="ts">
   import Avatar from '../avatar/avatar.svelte';
-  import Card from '../card/card.svelte';
   import Container from '../container/container.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
@@ -37,6 +36,10 @@
 
   function avatarProps(name: string, src: string | undefined): { name: string; src?: string } {
     return src ? { name, src } : { name };
+  }
+
+  function postMetadata(category: string | undefined, publishedAt: string | undefined): string {
+    return [category, publishedAt].filter(Boolean).join(' · ');
   }
 </script>
 
@@ -62,8 +65,12 @@
       <ul class="cinder-blog-section__list">
         {#each posts as post, index (`${post.title}-${index}`)}
           <li class="cinder-blog-section__item">
-            <Card>
-              <div class="cinder-blog-section__card-content">
+            <article class="cinder-card" data-cinder-variant="card">
+              <div
+                class="cinder-card__body"
+                data-cinder-tone="default"
+                data-cinder-padding="default"
+              >
                 {#if post.imageSrc}
                   <img
                     class="cinder-blog-section__image"
@@ -74,7 +81,7 @@
                 {/if}
                 {#if post.category || post.publishedAt}
                   <p class="cinder-blog-section__meta">
-                    {[post.category, post.publishedAt].filter(Boolean).join(' · ')}
+                    {postMetadata(post.category, post.publishedAt)}
                   </p>
                 {/if}
                 <h3 class="cinder-blog-section__post-title">
@@ -91,7 +98,7 @@
                   </div>
                 </div>
               </div>
-            </Card>
+            </article>
           </li>
         {/each}
       </ul>

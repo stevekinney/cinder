@@ -4,11 +4,13 @@ import {
   compareTimeParts,
   displayHourFromTwentyFourHour,
   isTimePartsInRange,
+  minuteStepFromSeconds,
   normalizeTimeStep,
   normalizeTimeString,
   parseTimeString,
   rangeValues,
   resolveHourCycle,
+  secondStepFromSeconds,
   serializeTimeParts,
   twentyFourHourFromDisplayHour,
 } from './time-parts.ts';
@@ -58,12 +60,18 @@ describe('time parts helpers', () => {
   test('maps h11 and h24 display semantics distinctly', () => {
     expect(displayHourFromTwentyFourHour(0, 'h11')).toEqual({ hour: 0, period: 'AM' });
     expect(displayHourFromTwentyFourHour(12, 'h11')).toEqual({ hour: 0, period: 'PM' });
+    expect(displayHourFromTwentyFourHour(23, 'h23')).toEqual({ hour: 23, period: null });
     expect(displayHourFromTwentyFourHour(0, 'h24')).toEqual({ hour: 24, period: null });
     expect(twentyFourHourFromDisplayHour(0, 'PM', 'h11')).toBe(12);
   });
 
   test('resolves explicit hour cycle first', () => {
     expect(resolveHourCycle('h23', 'en-US')).toBe('h23');
+  });
+
+  test('resolves locale hour cycles and falls back for invalid locales', () => {
+    expect(resolveHourCycle(undefined, 'en-GB')).toBe('h23');
+    expect(resolveHourCycle(undefined, 'not a locale')).toBe('h12');
   });
 
   test('normalizes steps to values the picker columns can represent', () => {
@@ -73,6 +81,19 @@ describe('time parts helpers', () => {
     expect(normalizeTimeStep(15, true)).toBe(15);
     expect(normalizeTimeStep(90, true)).toBe(60);
     expect(normalizeTimeStep(Number.NaN, false)).toBe(60);
+  });
+
+  test('derives minute and second column steps from seconds', () => {
+    expect(minuteStepFromSeconds(Number.NaN)).toBe(1);
+    expect(minuteStepFromSeconds(30)).toBe(1);
+    expect(minuteStepFromSeconds(90)).toBe(1);
+    expect(minuteStepFromSeconds(300)).toBe(5);
+    expect(minuteStepFromSeconds(7_200)).toBe(60);
+
+    expect(secondStepFromSeconds(Number.NaN)).toBe(1);
+    expect(secondStepFromSeconds(90)).toBe(60);
+    expect(secondStepFromSeconds(7)).toBe(1);
+    expect(secondStepFromSeconds(15)).toBe(15);
   });
 
   test('generates inclusive stepped ranges without special-case branches', () => {

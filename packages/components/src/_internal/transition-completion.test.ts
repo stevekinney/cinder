@@ -69,4 +69,36 @@ describe('waitForTransitionCompletion', () => {
     await Promise.resolve();
     expect(completionCount).toBe(1);
   });
+
+  test('completes on the first transitionend when all transition properties are tracked', () => {
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'all',
+          transitionDuration: '100ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      element.dispatchEvent(createTransitionEndEvent('opacity'));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
 });

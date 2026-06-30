@@ -153,7 +153,7 @@ describe('PermissionMatrix', () => {
       label: `operation:${index + 1}`,
     }));
 
-    const { container, getByRole } = render(PermissionMatrix, {
+    const { container } = render(PermissionMatrix, {
       label: 'Large scope matrix',
       rows: largeRows,
       columns: largeColumns,
@@ -162,9 +162,14 @@ describe('PermissionMatrix', () => {
       onCellClick: mock(),
     });
 
+    const grantedCell = container.querySelector(
+      '[data-cinder-row="scope-22"][data-cinder-column="operation-30"]',
+    );
+
     expect(container.querySelector('[data-cinder-scroll-container]')).not.toBeNull();
     expect(container.querySelectorAll('.cinder-permission-matrix__cell-control').length).toBe(660);
-    expect(getByRole('button', { name: 'scope:22 × operation:30: granted' })).toBeTruthy();
+    expect(grantedCell?.getAttribute('aria-label')).toBe('scope:22 × operation:30: granted');
+    expect(grantedCell?.getAttribute('data-cinder-state')).toBe('granted');
     expect(container.querySelector('tbody th[scope="row"]')?.textContent).toContain('scope:1');
     expect(container.querySelector('thead th[scope="col"]:last-child')?.textContent).toContain(
       'operation:30',

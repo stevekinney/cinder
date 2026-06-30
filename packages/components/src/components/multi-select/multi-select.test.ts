@@ -350,6 +350,9 @@ describe('MultiSelect', () => {
     const trigger = container.querySelector<HTMLButtonElement>('#fruits');
     if (!trigger) throw new Error('trigger not found');
 
+    expect(trigger.getAttribute('role')).toBeNull();
+    expect(trigger.getAttribute('aria-haspopup')).toBe('listbox');
+
     trigger.focus();
     await fireEvent.keyDown(trigger, { key: 'ArrowDown' });
     await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());

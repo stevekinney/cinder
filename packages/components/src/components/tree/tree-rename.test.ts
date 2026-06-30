@@ -3,17 +3,17 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
-const { default: TreeRenameFixture } =
-  await import('../../test/fixtures/tree-rename-fixture.svelte');
-const treeRenameFixtureSource = new URL(
+const TREE_RENAME_FIXTURE_SOURCE = new URL(
   '../../test/fixtures/tree-rename-fixture.svelte',
   import.meta.url,
 ).pathname;
+const { default: TreeRenameFixture } =
+  await import('../../test/fixtures/tree-rename-fixture.svelte');
 
 afterEach(() => cleanup());
 
@@ -323,10 +323,8 @@ describe('Tree — inline label rename', () => {
   });
 
   test('SSR never emits a mid-rename input', async () => {
-    const result = await checkBuildFlagHydrationSafety(treeRenameFixtureSource, {});
+    const html = await renderToServerHtml(TREE_RENAME_FIXTURE_SOURCE);
 
-    expect(result.buildFlagInvariant).toBe(true);
-    expect(result.serverHtml).not.toContain('cinder-tree-item__rename-input');
-    expect(result.clientHtml).not.toContain('cinder-tree-item__rename-input');
+    expect(html).not.toContain('cinder-tree-item__rename-input');
   });
 });

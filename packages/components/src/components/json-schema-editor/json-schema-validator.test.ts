@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import type { JsonSchemaObject } from './json-schema-editor-types.ts';
 import {
   detectDraft,
   normaliseSchemaInput,
@@ -75,6 +76,22 @@ describe('validateMetaSchema', () => {
     expect(result.valid).toBe(true);
   });
 
+  test('2019-09 schema validated against draft 2019-09 passes', () => {
+    const result = validateMetaSchema(
+      { $schema: 'https://json-schema.org/draft/2019-09/schema', type: 'string' },
+      '2019-09',
+    );
+    expect(result.valid).toBe(true);
+  });
+
+  test('non-object schemas are invalid', () => {
+    const result = validateMetaSchema('not a schema');
+    expect(result).toEqual({
+      valid: false,
+      errors: [{ path: '', message: 'Schema must be an object or boolean', keyword: '' }],
+    });
+  });
+
   // Regression: AJV threw "no schema with key or ref ..." synchronously when
   // a 2020-12 schema was validated through a draft-07 instance (or vice versa)
   // because the meta-schema URI in $schema wasn't registered on the chosen
@@ -113,6 +130,26 @@ describe('tryCompile', () => {
     expect(tryCompile(schema).ok).toBe(true);
     expect(tryCompile(schema).ok).toBe(true);
   });
+
+  test('2019-09 schemas compile through the matching AJV instance', () => {
+    const result = tryCompile(
+      { $schema: 'https://json-schema.org/draft/2019-09/schema', type: 'string' },
+      '2019-09',
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  test('draft-07 schemas compile through the matching AJV instance', () => {
+    const result = tryCompile(
+      { $schema: 'http://json-schema.org/draft-07/schema#', type: 'string' },
+      'draft-07',
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  test('non-object schemas do not compile', () => {
+    expect(tryCompile('not a schema').ok).toBe(false);
+  });
 });
 
 describe('tryParseJson', () => {
@@ -130,6 +167,55 @@ describe('tryParseJson', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.message.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('returns extracted line and column when the syntax error includes a position', () => {
+    const originalParse = JSON.parse;
+    JSON.parse = (() => {
+      throw new SyntaxError('JSON Parse error at position 8');
+    }) as typeof JSON.parse;
+    try {
+      const result = tryParseJson('{\n  "a":');
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toEqual({
+          message: 'JSON Parse error at position 8',
+          line: 2,
+          column: 7,
+        });
+      }
+    } finally {
+      JSON.parse = originalParse;
+    }
+  });
+
+  test('omits line and column when a reported parse position is invalid', () => {
+    const originalParse = JSON.parse;
+    JSON.parse = (() => {
+      throw new SyntaxError('JSON Parse error at position 999');
+    }) as typeof JSON.parse;
+    try {
+      const result = tryParseJson('{}');
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toEqual({ message: 'JSON Parse error at position 999' });
+      }
+    } finally {
+      JSON.parse = originalParse;
+    }
+  });
+
+  test('handles non-SyntaxError parse failures defensively', () => {
+    const originalParse = JSON.parse;
+    JSON.parse = (() => {
+      throw new Error('custom parse failure');
+    }) as typeof JSON.parse;
+    try {
+      const result = tryParseJson('{}');
+      expect(result).toEqual({ ok: false, error: { message: 'custom parse failure' } });
+    } finally {
+      JSON.parse = originalParse;
     }
   });
 });
@@ -153,9 +239,42 @@ describe('normaliseSchemaInput', () => {
     }
   });
 
+  test('accepts an empty plain object schema', () => {
+    const result = normaliseSchemaInput({});
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.schema).toEqual({});
+    }
+  });
+
+  test('accepts JSON-compatible arrays inside object schemas', () => {
+    const result = normaliseSchemaInput({ enum: ['draft', 'published'] });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.schema).toEqual({ enum: ['draft', 'published'] });
+    }
+  });
+
   test('accepts a boolean schema', () => {
     expect(normaliseSchemaInput(true).ok).toBe(true);
     expect(normaliseSchemaInput(false).ok).toBe(true);
+  });
+
+  test('rejects non-object non-boolean values', () => {
+    const result = normaliseSchemaInput(42 as never);
+    expect(result).toEqual({
+      ok: false,
+      rawText: '',
+      error: 'Top-level schema must be an object or boolean',
+    });
+  });
+
+  test('rejects non-plain objects', () => {
+    const result = normaliseSchemaInput({ minimum: new Date('2026-06-01T00:00:00.000Z') } as never);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe('non-plain object (Date) at .minimum');
+    }
   });
 
   test('rejects undefined inside an object', () => {
@@ -193,6 +312,18 @@ describe('normaliseSchemaInput', () => {
     cyclic['self'] = cyclic;
     const result = normaliseSchemaInput(cyclic as never);
     expect(result.ok).toBe(false);
+  });
+
+  test('allows repeated object references that are not cyclic', () => {
+    const shared: JsonSchemaObject = { type: 'string' };
+    const result = normaliseSchemaInput({
+      properties: {
+        first: shared,
+        second: shared,
+      },
+    });
+
+    expect(result.ok).toBe(true);
   });
 
   test('rejects malformed JSON string', () => {

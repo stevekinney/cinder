@@ -117,12 +117,17 @@ type ShikiModule = {
   bundledLanguages: BundledLanguages;
 };
 
+type ShikiModuleLoader = () => Promise<ShikiModule>;
+
 /**
  * Create a Shiki-backed {@link Highlighter} suitable for
  * `<CodeBlock highlighter={...} />`. See module-level JSDoc for the
  * full behavior contract.
  */
-export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlighter {
+export function shikiHighlighter(
+  options: ShikiHighlighterOptions = {},
+  moduleLoader?: ShikiModuleLoader,
+): Highlighter {
   const { theme = DEFAULT_THEME, langs } = options;
   const warnedLanguages = new Set<string>();
 
@@ -130,27 +135,30 @@ export function shikiHighlighter(options: ShikiHighlighterOptions = {}): Highlig
   // de-duplicates concurrent loads and evicts rejected promises so a
   // transient import failure does not lock the adapter into the plaintext
   // fallback for the lifetime of this `shikiHighlighter()` instance.
-  const loadShiki = createRetryingLoaderCache(async (): Promise<ShikiModule> => {
-    const module_ = await import('shiki');
-    // Optional preload — if the consumer named specific languages,
-    // force them through `codeToHtml` once so Shiki resolves and
-    // caches them before the first real call. Failures here are
-    // non-fatal; per-call language lookup will still try (and fall
-    // back to plaintext on its own miss).
-    if (langs !== undefined) {
-      for (const lang of langs) {
-        try {
-          await module_.codeToHtml('', { lang, ...buildThemeOption(theme) });
-        } catch {
-          // Swallow — the per-call path below logs and falls back.
+  const loadShiki = createRetryingLoaderCache(
+    moduleLoader ??
+      (async (): Promise<ShikiModule> => {
+        const module_ = await import('shiki');
+        // Optional preload — if the consumer named specific languages,
+        // force them through `codeToHtml` once so Shiki resolves and
+        // caches them before the first real call. Failures here are
+        // non-fatal; per-call language lookup will still try (and fall
+        // back to plaintext on its own miss).
+        if (langs !== undefined) {
+          for (const lang of langs) {
+            try {
+              await module_.codeToHtml('', { lang, ...buildThemeOption(theme) });
+            } catch {
+              // Swallow — the per-call path below logs and falls back.
+            }
+          }
         }
-      }
-    }
-    return {
-      codeToHtml: module_.codeToHtml,
-      bundledLanguages: module_.bundledLanguages,
-    };
-  });
+        return {
+          codeToHtml: module_.codeToHtml,
+          bundledLanguages: module_.bundledLanguages,
+        };
+      }),
+  );
 
   return async function highlight(code: string, lang: string): Promise<string> {
     // Normalize defensively: the documented contract is "empty or missing
