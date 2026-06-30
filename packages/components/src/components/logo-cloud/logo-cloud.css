@@ -1,0 +1,103 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-logo-cloud {
+    padding-block: var(--cinder-space-8);
+  }
+
+  .cinder-logo-cloud__inner {
+    display: grid;
+    gap: var(--cinder-space-5);
+  }
+
+  .cinder-logo-cloud__header {
+    display: grid;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-logo-cloud__title,
+  .cinder-logo-cloud__description {
+    margin: 0;
+  }
+
+  .cinder-logo-cloud__description {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-logo-cloud__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--cinder-space-5);
+    align-items: center;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cinder-logo-cloud[data-cinder-columns='3'] .cinder-logo-cloud__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cinder-logo-cloud[data-cinder-columns='4'] .cinder-logo-cloud__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cinder-logo-cloud[data-cinder-columns='6'] .cinder-logo-cloud__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cinder-logo-cloud__item {
+    display: flex;
+    justify-content: center;
+  }
+
+  .cinder-logo-cloud__link {
+    display: inline-flex;
+  }
+
+  .cinder-logo-cloud__image {
+    max-inline-size: 100%;
+    max-block-size: 2.25rem;
+    object-fit: contain;
+  }
+
+  .cinder-logo-cloud[data-cinder-grayscale] .cinder-logo-cloud__image {
+    filter: grayscale(1);
+    opacity: 0.75;
+    transition:
+      filter var(--cinder-duration-fast) var(--cinder-ease-standard),
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-logo-cloud[data-cinder-grayscale]
+    .cinder-logo-cloud__item:hover
+    .cinder-logo-cloud__image {
+    filter: grayscale(0);
+    opacity: 1;
+  }
+
+  @media (min-width: 48rem) {
+    .cinder-logo-cloud[data-cinder-columns='3'] .cinder-logo-cloud__list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .cinder-logo-cloud[data-cinder-columns='4'] .cinder-logo-cloud__list,
+    .cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list,
+    .cinder-logo-cloud[data-cinder-columns='6'] .cinder-logo-cloud__list {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .cinder-logo-cloud[data-cinder-columns='6'] .cinder-logo-cloud__list {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+}

@@ -1,0 +1,97 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-blog-section {
+    padding-block: var(--cinder-space-10);
+  }
+
+  .cinder-blog-section__inner {
+    display: grid;
+    gap: var(--cinder-space-6);
+  }
+
+  .cinder-blog-section__header {
+    display: grid;
+    gap: var(--cinder-space-2);
+    max-inline-size: 60ch;
+  }
+
+  .cinder-blog-section__title,
+  .cinder-blog-section__description {
+    margin: 0;
+  }
+
+  .cinder-blog-section__description {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-blog-section__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--cinder-space-4);
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .cinder-blog-section[data-cinder-columns='2'] .cinder-blog-section__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cinder-blog-section[data-cinder-columns='3'] .cinder-blog-section__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cinder-blog-section__image {
+    inline-size: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: var(--cinder-radius-md);
+    margin-bottom: var(--cinder-space-3);
+  }
+
+  .cinder-blog-section__meta,
+  .cinder-blog-section__excerpt,
+  .cinder-blog-section__author-name,
+  .cinder-blog-section__author-role {
+    margin: 0;
+  }
+
+  .cinder-blog-section__meta,
+  .cinder-blog-section__excerpt,
+  .cinder-blog-section__author-role {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-blog-section__post-title {
+    margin: var(--cinder-space-2) 0;
+    font-size: var(--cinder-text-lg);
+  }
+
+  .cinder-blog-section__link {
+    color: var(--cinder-text);
+    text-decoration: none;
+  }
+
+  .cinder-blog-section__link:hover {
+    text-decoration: underline;
+  }
+
+  .cinder-blog-section__author {
+    margin-top: var(--cinder-space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+  }
+
+  .cinder-blog-section__author-meta {
+    display: grid;
+    gap: var(--cinder-space-1);
+  }
+
+  @media (max-width: 56rem) {
+    .cinder-blog-section__list {
+      grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    }
+  }
+}

@@ -1,0 +1,93 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-team-section {
+    padding-block: var(--cinder-space-10);
+  }
+
+  .cinder-team-section__inner {
+    display: grid;
+    gap: var(--cinder-space-6);
+  }
+
+  .cinder-team-section__header {
+    display: grid;
+    gap: var(--cinder-space-2);
+    max-inline-size: 60ch;
+  }
+
+  .cinder-team-section__title {
+    margin: 0;
+    font-size: var(--cinder-text-3xl);
+  }
+
+  .cinder-team-section__description {
+    margin: 0;
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-team-section__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--cinder-space-4);
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .cinder-team-section[data-cinder-columns='2'] .cinder-team-section__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cinder-team-section[data-cinder-columns='3'] .cinder-team-section__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cinder-team-section[data-cinder-columns='4'] .cinder-team-section__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .cinder-team-section__person {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-3);
+  }
+
+  .cinder-team-section__meta {
+    display: grid;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-team-section__name,
+  .cinder-team-section__role,
+  .cinder-team-section__bio {
+    margin: 0;
+  }
+
+  .cinder-team-section__role,
+  .cinder-team-section__bio {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-team-section__bio {
+    margin-top: var(--cinder-space-3);
+  }
+
+  .cinder-team-section__link {
+    display: inline-flex;
+    margin-top: var(--cinder-space-3);
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-accent-text);
+    text-decoration: none;
+  }
+
+  .cinder-team-section__link:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 56rem) {
+    .cinder-team-section__list {
+      grid-template-columns: 1fr !important;
+    }
+  }
+}

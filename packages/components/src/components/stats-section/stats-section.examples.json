@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "stats-section",
+  "import": "@lostgradient/cinder/stats-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "StatsSection",
+      "description": "StatsSection composing StatGroup + Stat for a marketing KPI band with trends.",
+      "code": "<script lang=\"ts\">\n  import { StatsSection } from '@lostgradient/cinder/stats-section';\n\n  const stats = [\n    { label: 'Uptime', value: '99.99%' },\n    { label: 'Deploys / month', value: 420, changeValue: '+18%', changeDirection: 'up' as const },\n    {\n      label: 'Mean time to ship',\n      value: '2.4 days',\n      changeValue: '-11%',\n      changeDirection: 'down' as const,\n    },\n  ];\n</script>\n\n<StatsSection\n  title=\"Outcomes teams achieve with Cinder\"\n  description=\"Measured improvements after standardizing on shared UI patterns.\"\n  {stats}\n  variant=\"cards\"\n/>\n"
+    }
+  ]
+}
