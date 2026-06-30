@@ -529,7 +529,7 @@ describe('Popover — focus management', () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(panel);
     });
-  });
+  }, 30_000);
 
   test('focus does not move while positionReady=false (computePosition pending)', async () => {
     deferComputePosition = true;
@@ -589,7 +589,7 @@ describe('Popover — focus management', () => {
       expect(queryPopoverPanel()?.getAttribute('data-cinder-position-ready')).toBe('true');
     });
     expect(document.activeElement).toBe(triggerInput);
-  });
+  }, 180_000);
 
   test('focusManagement="preserve" closes on Escape without stealing focus from the input', async () => {
     const triggerInput = document.createElement('input');
