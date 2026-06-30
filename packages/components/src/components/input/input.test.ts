@@ -48,6 +48,17 @@ describe('Input rendering', () => {
     expect(label?.textContent?.trim()).toBe('Username');
   });
 
+  test('hideLabel keeps label in the DOM, applies sr-only class, and preserves label association', () => {
+    const { container } = render(Input, {
+      props: { id: 'demo-token', value: '', label: 'Demo token', hideLabel: true },
+    });
+    const label = container.querySelector('label[for="demo-token"]');
+    const input = container.querySelector('#demo-token') as HTMLInputElement;
+    expect(label).not.toBeNull();
+    expect(label?.classList.contains('cinder-sr-only')).toBe(true);
+    expect(input.labels?.[0]?.getAttribute('for')).toBe('demo-token');
+  });
+
   test('no <label> element rendered when label prop is omitted', () => {
     const { container } = render(Input, {
       props: { id: 'email', value: '' },
@@ -98,6 +109,23 @@ describe('Input rendering', () => {
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('email-description');
     expect(describedBy).toContain('email-error');
+  });
+
+  test('hideLabel does not change description/error aria-describedby wiring', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'hidden-label-described',
+        value: '',
+        label: 'Demo token',
+        hideLabel: true,
+        description: 'Paste your invite token.',
+        error: 'Token is invalid.',
+      },
+    });
+    const input = container.querySelector('#hidden-label-described');
+    const describedBy = input?.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('hidden-label-described-description');
+    expect(describedBy).toContain('hidden-label-described-error');
   });
 
   test('no aria-invalid when error prop is absent', () => {

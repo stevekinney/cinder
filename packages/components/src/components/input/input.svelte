@@ -29,6 +29,7 @@
     value = $bindable(''),
     onValueChange,
     label,
+    hideLabel = false,
     description,
     error,
     disabled,
@@ -155,7 +156,11 @@
 
 <div class="cinder-input-field">
   {#if label}
-    <label for={id} class="cinder-input-field__label" data-disabled={resolvedDisabled || undefined}>
+    <label
+      for={id}
+      class={classNames('cinder-input-field__label', hideLabel && 'cinder-sr-only')}
+      data-disabled={resolvedDisabled || undefined}
+    >
       {label}
       {#if resolvedRequired}
         <span class="cinder-_required-marker" aria-hidden="true">*</span>
