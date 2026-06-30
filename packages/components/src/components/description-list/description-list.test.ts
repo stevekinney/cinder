@@ -112,10 +112,10 @@ describe('DescriptionList', () => {
     ];
     const { container } = render(DescriptionList, { items });
 
-    const dds = container.querySelectorAll('dd');
-    expect(dds).toHaveLength(2);
-    expect(dds[0]?.querySelector('code')?.textContent).toBe('abc-123');
-    expect(dds[1]?.textContent).toContain('Active');
+    const definitions = container.querySelectorAll('.cinder-description-list__definition');
+    expect(definitions).toHaveLength(2);
+    expect(definitions[0]?.querySelector('code')?.textContent).toBe('abc-123');
+    expect(definitions[1]?.textContent).toContain('Active');
   });
 
   test('class prop is composed onto the root <dl>', () => {

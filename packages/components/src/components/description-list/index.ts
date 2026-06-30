@@ -3,6 +3,7 @@ import DescriptionList from './description-list.svelte';
 
 export default DescriptionList;
 export type {
+  DescriptionListDefinition,
   DescriptionListItem,
   DescriptionListProps,
   DescriptionListVariant,
