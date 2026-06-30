@@ -38,7 +38,7 @@ When `disabled={true}` is passed, the native `disabled` attribute is set on `<in
 
 ## Content Guidance
 
-- Always provide a `label` unless the input's purpose is unambiguous from surrounding context (e.g., a search field immediately following a "Search" heading). Even then, pass a visually hidden label via CSS (`sr-only`) rather than omitting it.
+- Always provide a `label` unless the input's purpose is unambiguous from surrounding context (e.g., a search field immediately following a "Search" heading). For compact layouts, keep `label` and set `hideLabel` instead of omitting the label.
 - Keep `description` text concise — one sentence of supplementary guidance. Do not repeat information already in the label.
 - `error` messages must describe what went wrong and, where possible, how to fix it. Avoid generic messages like "Invalid input."
 - Do not rely solely on placeholder text to communicate requirements; use `description` instead, as placeholder text disappears on input and is not consistently announced by all screen reader/browser combinations.

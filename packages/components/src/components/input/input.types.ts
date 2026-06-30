@@ -46,6 +46,8 @@ export type InputProps = HTMLInputAttributes &
     onValueChange?: (next: string) => string | void;
     /** Visible label text rendered above the input and linked via `for`/`id`. */
     label?: string;
+    /** Visually hide the rendered `label` while keeping it programmatically associated. */
+    hideLabel?: boolean;
     /** Helper text rendered below the input and associated via `aria-describedby`. */
     description?: string;
     /** Error message rendered below the input; also sets `aria-invalid` on the input. */

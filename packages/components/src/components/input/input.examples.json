@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let name = $state('');\n</script>\n\n<Input id=\"field\" bind:value={name} label=\"Full name\" placeholder=\"Jane Smith\" />\n{#if name}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Hello, {name}!</p>\n{/if}\n"
     },
     {
+      "id": "compact-hidden-label",
+      "title": "Compact field with hidden label",
+      "description": "Keep the accessible name from label while visually hiding it for compact auth/token layouts.",
+      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n\n  let token = $state('');\n</script>\n\n<Input\n  id=\"demo-token\"\n  bind:value={token}\n  label=\"Demo token\"\n  hideLabel\n  autocomplete=\"off\"\n  placeholder=\"Enter demo token\"\n/>\n"
+    },
+    {
       "id": "sign-in",
       "title": "Sign-in composition",
       "description": "Composition of FormField + Input + Button with a top-of-form Alert auth-error region. Demonstrates the required autocomplete values and the assertive announcement pattern via role=\"alert\".",

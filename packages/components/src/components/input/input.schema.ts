@@ -37,6 +37,11 @@ const schema = {
       type: 'string',
       description: 'Visible label text rendered above the input and linked via `for`/`id`.',
     },
+    hideLabel: {
+      type: 'boolean',
+      description:
+        'Visually hide the rendered `label` while keeping it programmatically associated.',
+    },
     description: {
       type: 'string',
       description: 'Helper text rendered below the input and associated via `aria-describedby`.',
