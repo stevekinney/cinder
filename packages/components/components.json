@@ -610,6 +610,38 @@
       }
     },
     {
+      "name": "BlogSection",
+      "id": "blog-section",
+      "import": "@lostgradient/cinder/blog-section",
+      "exportName": "BlogSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Blog/article listing section that renders post cards with metadata, excerpt text, and author attribution.",
+      "tags": ["marketing", "blog", "content"],
+      "useWhen": [
+        "Showing recent posts or resources on a landing page.",
+        "Building a featured-articles grid with author and publish metadata."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering partner logos or brand marks only.",
+          "alternative": "logo-cloud"
+        },
+        {
+          "reason": "Presenting customer testimonials in quote format.",
+          "alternative": "testimonial-section"
+        }
+      ],
+      "related": ["logo-cloud", "testimonial-section", "card", "avatar", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/blog-section/schema",
+        "variables": "@lostgradient/cinder/blog-section/variables",
+        "examples": "@lostgradient/cinder/blog-section/examples"
+      }
+    },
+    {
       "name": "Breadcrumbs",
       "id": "breadcrumbs",
       "import": "@lostgradient/cinder/breadcrumbs",
@@ -1521,6 +1553,38 @@
       }
     },
     {
+      "name": "CtaSection",
+      "id": "cta-section",
+      "import": "@lostgradient/cinder/cta-section",
+      "exportName": "CtaSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Focused conversion band with a short headline, supporting copy, and primary/secondary action buttons.",
+      "tags": ["marketing", "cta", "conversion"],
+      "useWhen": [
+        "Inserting a repeated “ready to get started?” conversion section between page segments.",
+        "Prompting sign-up or demo actions after readers consume feature or testimonial content."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Building a full top-of-page hero with complex media and long-form messaging.",
+          "alternative": "hero-section"
+        },
+        {
+          "reason": "Capturing an email address inline with form fields.",
+          "alternative": "newsletter-section"
+        }
+      ],
+      "related": ["hero-section", "newsletter-section", "button", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/cta-section/schema",
+        "variables": "@lostgradient/cinder/cta-section/variables",
+        "examples": "@lostgradient/cinder/cta-section/examples"
+      }
+    },
+    {
       "name": "DataGrid",
       "id": "data-grid",
       "import": "@lostgradient/cinder/data-grid",
@@ -2132,6 +2196,38 @@
       }
     },
     {
+      "name": "FeatureSection",
+      "id": "feature-section",
+      "import": "@lostgradient/cinder/feature-section",
+      "exportName": "FeatureSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Marketing section for highlighting product capabilities as a structured feature grid with optional side media.",
+      "tags": ["marketing", "features", "layout"],
+      "useWhen": [
+        "Showing a list of core benefits with concise title + description content.",
+        "Pairing a feature list with a screenshot or product demo in a two-column split."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering customer quotes authored by people with avatars.",
+          "alternative": "testimonial-section"
+        },
+        {
+          "reason": "Presenting team-member profiles and social links.",
+          "alternative": "team-section"
+        }
+      ],
+      "related": ["hero-section", "testimonial-section", "team-section", "card", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/feature-section/schema",
+        "variables": "@lostgradient/cinder/feature-section/variables",
+        "examples": "@lostgradient/cinder/feature-section/examples"
+      }
+    },
+    {
       "name": "Feed",
       "id": "feed",
       "import": "@lostgradient/cinder/feed",
@@ -2460,6 +2556,38 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/grid-list-item/schema",
         "variables": "@lostgradient/cinder/grid-list-item/variables"
+      }
+    },
+    {
+      "name": "HeroSection",
+      "id": "hero-section",
+      "import": "@lostgradient/cinder/hero-section",
+      "exportName": "HeroSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Landing-page hero scaffold with eyebrow, heading, supporting copy, CTA row, and optional media panel.",
+      "tags": ["marketing", "hero", "layout"],
+      "useWhen": [
+        "Building the first section of a marketing page where a primary message and call-to-action must stand out.",
+        "Pairing conversion copy with a visual demo, screenshot, or illustration in a split layout."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Presenting only a compact call-to-action strip between content sections.",
+          "alternative": "cta-section"
+        },
+        {
+          "reason": "Listing repeatable product benefits or cards — use a dedicated features grid instead.",
+          "alternative": "feature-section"
+        }
+      ],
+      "related": ["cta-section", "feature-section", "section-heading", "container", "button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/hero-section/schema",
+        "variables": "@lostgradient/cinder/hero-section/variables",
+        "examples": "@lostgradient/cinder/hero-section/examples"
       }
     },
     {
@@ -2883,6 +3011,38 @@
       }
     },
     {
+      "name": "LogoCloud",
+      "id": "logo-cloud",
+      "import": "@lostgradient/cinder/logo-cloud",
+      "exportName": "LogoCloud",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Responsive logo grid for “trusted by” sections that display partner/customer brand marks.",
+      "tags": ["marketing", "logos", "social-proof"],
+      "useWhen": [
+        "Displaying customer or partner logos near pricing, hero, or testimonial content.",
+        "Creating a compact proof strip that links out to partner pages or case studies."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Presenting individual people with names and roles.",
+          "alternative": "team-section"
+        },
+        {
+          "reason": "Listing article content with headlines and excerpts.",
+          "alternative": "blog-section"
+        }
+      ],
+      "related": ["team-section", "testimonial-section", "blog-section", "container", "image"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/logo-cloud/schema",
+        "variables": "@lostgradient/cinder/logo-cloud/variables",
+        "examples": "@lostgradient/cinder/logo-cloud/examples"
+      }
+    },
+    {
       "name": "MarkdownEditor",
       "id": "markdown-editor",
       "import": "@lostgradient/cinder/markdown-editor",
@@ -3296,6 +3456,38 @@
       }
     },
     {
+      "name": "NewsletterSection",
+      "id": "newsletter-section",
+      "import": "@lostgradient/cinder/newsletter-section",
+      "exportName": "NewsletterSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Email capture section with heading copy, inline email field, and submit action for newsletter signups.",
+      "tags": ["marketing", "newsletter", "form"],
+      "useWhen": [
+        "Collecting subscriber email addresses in a dedicated marketing section.",
+        "Adding a lightweight signup form beneath blog or CTA content."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing a generic call-to-action with buttons only and no data entry.",
+          "alternative": "cta-section"
+        },
+        {
+          "reason": "Collecting multi-field account or billing details.",
+          "alternative": "form-section"
+        }
+      ],
+      "related": ["cta-section", "form-section", "input", "button", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/newsletter-section/schema",
+        "variables": "@lostgradient/cinder/newsletter-section/variables",
+        "examples": "@lostgradient/cinder/newsletter-section/examples"
+      }
+    },
+    {
       "name": "NumberInput",
       "id": "number-input",
       "import": "@lostgradient/cinder/number-input",
@@ -3560,6 +3752,38 @@
         "schema": "@lostgradient/cinder/pricing-card/schema",
         "variables": "@lostgradient/cinder/pricing-card/variables",
         "examples": "@lostgradient/cinder/pricing-card/examples"
+      }
+    },
+    {
+      "name": "PricingSection",
+      "id": "pricing-section",
+      "import": "@lostgradient/cinder/pricing-section",
+      "exportName": "PricingSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Pricing comparison section that lays out multiple plans using the existing PricingCard primitive.",
+      "tags": ["marketing", "pricing", "plans"],
+      "useWhen": [
+        "Presenting tiered subscription plans with features and action buttons.",
+        "Highlighting a recommended plan while still allowing side-by-side comparison."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing generic metrics without plan selection controls.",
+          "alternative": "stats-section"
+        },
+        {
+          "reason": "Rendering a single standalone plan card outside of a section context.",
+          "alternative": "pricing-card"
+        }
+      ],
+      "related": ["pricing-card", "stats-section", "cta-section", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/pricing-section/schema",
+        "variables": "@lostgradient/cinder/pricing-section/variables",
+        "examples": "@lostgradient/cinder/pricing-section/examples"
       }
     },
     {
@@ -4618,6 +4842,38 @@
       }
     },
     {
+      "name": "StatsSection",
+      "id": "stats-section",
+      "import": "@lostgradient/cinder/stats-section",
+      "exportName": "StatsSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Marketing metrics section that wraps StatGroup/Stat to present headline numbers with optional trend indicators.",
+      "tags": ["marketing", "metrics", "stats"],
+      "useWhen": [
+        "Showing key outcomes such as uptime, customers, revenue, or latency in landing-page copy.",
+        "Presenting a short metrics band between hero/features and pricing sections."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Comparing plan pricing and feature lists across tiers.",
+          "alternative": "pricing-section"
+        },
+        {
+          "reason": "Rendering freeform cards that are not structured numeric metrics.",
+          "alternative": "feature-section"
+        }
+      ],
+      "related": ["stat", "stat-group", "pricing-section", "feature-section", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/stats-section/schema",
+        "variables": "@lostgradient/cinder/stats-section/variables",
+        "examples": "@lostgradient/cinder/stats-section/examples"
+      }
+    },
+    {
       "name": "StatusDot",
       "id": "status-dot",
       "import": "@lostgradient/cinder/status-dot",
@@ -5041,6 +5297,77 @@
         "schema": "@lostgradient/cinder/tag-input/schema",
         "variables": "@lostgradient/cinder/tag-input/variables",
         "examples": "@lostgradient/cinder/tag-input/examples"
+      }
+    },
+    {
+      "name": "TeamSection",
+      "id": "team-section",
+      "import": "@lostgradient/cinder/team-section",
+      "exportName": "TeamSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Marketing team roster section that renders profile cards with avatars, roles, and optional profile links.",
+      "tags": ["marketing", "team", "profile"],
+      "useWhen": [
+        "Introducing company teammates with names, titles, and short bios.",
+        "Showing a small \"meet the team\" grid in landing and about pages."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing customer quotes and outcomes rather than internal team members.",
+          "alternative": "testimonial-section"
+        },
+        {
+          "reason": "Rendering brand/customer logos without person profiles.",
+          "alternative": "logo-cloud"
+        }
+      ],
+      "related": [
+        "testimonial-section",
+        "logo-cloud",
+        "avatar",
+        "avatar-group",
+        "card",
+        "container"
+      ],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/team-section/schema",
+        "variables": "@lostgradient/cinder/team-section/variables",
+        "examples": "@lostgradient/cinder/team-section/examples"
+      }
+    },
+    {
+      "name": "TestimonialSection",
+      "id": "testimonial-section",
+      "import": "@lostgradient/cinder/testimonial-section",
+      "exportName": "TestimonialSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Customer quote section that renders one or more testimonials with author identity and optional role/company context.",
+      "tags": ["marketing", "testimonial", "social-proof"],
+      "useWhen": [
+        "Building a social-proof block with customer quotes and attributed people.",
+        "Displaying one featured quote or a compact testimonial grid on landing pages."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Listing product capabilities with icon + title + description rows.",
+          "alternative": "feature-section"
+        },
+        {
+          "reason": "Showing team roster information for your own company.",
+          "alternative": "team-section"
+        }
+      ],
+      "related": ["feature-section", "team-section", "avatar", "card", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/testimonial-section/schema",
+        "variables": "@lostgradient/cinder/testimonial-section/variables",
+        "examples": "@lostgradient/cinder/testimonial-section/examples"
       }
     },
     {

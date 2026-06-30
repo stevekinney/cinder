@@ -7,13 +7,13 @@
       "id": "basic",
       "title": "Basic date picker",
       "description": "Single-date picker with a custom calendar popover.",
-      "code": "<script lang=\"ts\">\n  import { DatePicker } from '@lostgradient/cinder/date-picker';\n\n  let value = $state<string | undefined>('2026-06-29');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; max-inline-size: 22rem;\">\n  <DatePicker id=\"playground-basic-date-picker\" bind:value label=\"Event date\" />\n  <code>{value ?? 'undefined'}</code>\n</div>\n\n"
+      "code": "<script lang=\"ts\">\n  import { DatePicker } from '@lostgradient/cinder/date-picker';\n\n  let value = $state<string | undefined>('2026-06-29');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; max-inline-size: 22rem;\">\n  <DatePicker id=\"basic-date-picker\" bind:value label=\"Event date\" />\n  <code>{value ?? 'undefined'}</code>\n</div>\n"
     },
     {
       "id": "date-time",
       "title": "Date-time picker",
       "description": "Calendar selection plus time input for minute-level granularity.",
-      "code": "<script lang=\"ts\">\n  import { DatePicker } from '@lostgradient/cinder/date-picker';\n\n  let value = $state<string | undefined>('2026-06-29T09:30');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; max-inline-size: 22rem;\">\n  <DatePicker\n    id=\"playground-date-time-picker\"\n    bind:value\n    granularity=\"minute\"\n    label=\"Scheduled at\"\n    min=\"2026-06-01T00:00\"\n    max=\"2026-12-31T23:59\"\n  />\n  <code>{value ?? 'undefined'}</code>\n</div>\n\n"
+      "code": "<script lang=\"ts\">\n  import { DatePicker } from '@lostgradient/cinder/date-picker';\n\n  let value = $state<string | undefined>('2026-06-29T09:30');\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; max-inline-size: 22rem;\">\n  <DatePicker\n    id=\"date-time-picker\"\n    bind:value\n    granularity=\"minute\"\n    label=\"Scheduled at\"\n    min=\"2026-06-01T00:00\"\n    max=\"2026-12-31T23:59\"\n  />\n  <code>{value ?? 'undefined'}</code>\n</div>\n"
     }
   ]
 }

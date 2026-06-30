@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "newsletter-section",
+  "import": "@lostgradient/cinder/newsletter-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "NewsletterSection",
+      "description": "NewsletterSection with email capture form, helper text, and submission callback.",
+      "code": "<script lang=\"ts\">\n  import { NewsletterSection } from '@lostgradient/cinder/newsletter-section';\n\n  function handleSubmit(email: string) {\n    // eslint-disable-next-line no-console\n    console.log('newsletter signup', email);\n  }\n</script>\n\n<NewsletterSection\n  title=\"Stay ahead with monthly product insights\"\n  description=\"Get shipping tips, release notes, and real-world examples from the Cinder team.\"\n  consentText=\"No spam. One email per month. Unsubscribe anytime.\"\n  onSubmit={handleSubmit}\n>\n  We respect your inbox and your privacy.\n</NewsletterSection>\n"
+    }
+  ]
+}

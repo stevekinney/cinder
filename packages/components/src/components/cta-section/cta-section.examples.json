@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "cta-section",
+  "import": "@lostgradient/cinder/cta-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "CtaSection",
+      "description": "CtaSection with accent tone and primary/secondary conversion actions.",
+      "code": "<script lang=\"ts\">\n  import { CtaSection } from '@lostgradient/cinder/cta-section';\n</script>\n\n<CtaSection\n  title=\"Ready to level up your product UI?\"\n  description=\"Start with Cinder and ship accessible components with confidence.\"\n  primaryActionLabel=\"Start free\"\n  secondaryActionLabel=\"Talk to sales\"\n  tone=\"accent\"\n>\n  <span>No credit card required.</span>\n</CtaSection>\n"
+    }
+  ]
+}

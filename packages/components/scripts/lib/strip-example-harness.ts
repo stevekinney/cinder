@@ -59,7 +59,7 @@ const UID_LINE = /^[^\n]*const\s+uid\s*=\s*\$props\.id\(\)\s*;?[^\n]*\n/m;
  * the displayed literal is self-describing rather than read from a side table.
  */
 const DERIVED_ID_LINE =
-  /^[^\n]*let\s+(?<var>[A-Za-z_$][\w$]*)\s*=\s*\$derived\(\s*`\$\{mountIdPrefix\s*\?\?\s*uid\}-(?<suffix>[^`]*)`\s*\)\s*;?[^\n]*\n/m;
+  /^[^\n]*(?:let|const)\s+(?<var>[A-Za-z_$][\w$]*)\s*=\s*\$derived\(\s*`\$\{mountIdPrefix\s*\?\?\s*uid\}-(?<suffix>[^`]*)`\s*\)\s*;?[^\n]*\n/m;
 
 /** Markers that prove the harness was only partially removed — none may survive. */
 const RESIDUAL_HARNESS_MARKERS: ReadonlyArray<readonly [string, RegExp]> = [

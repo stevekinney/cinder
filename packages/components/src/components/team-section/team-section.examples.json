@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "team-section",
+  "import": "@lostgradient/cinder/team-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "TeamSection",
+      "description": "TeamSection with member cards, bios, profile links, and avatar-group summary.",
+      "code": "<script lang=\"ts\">\n  import { TeamSection } from '@lostgradient/cinder/team-section';\n\n  const members = [\n    {\n      name: 'Jordan Lee',\n      role: 'Engineering Lead',\n      bio: 'Leads our platform architecture and component quality initiatives.',\n      href: '#',\n    },\n    {\n      name: 'Taylor Green',\n      role: 'Product Designer',\n      bio: 'Designs cohesive product experiences across web and mobile.',\n      href: '#',\n    },\n    {\n      name: 'Riley Park',\n      role: 'Developer Advocate',\n      bio: 'Helps teams adopt Cinder with docs, examples, and workshops.',\n      href: '#',\n    },\n  ];\n</script>\n\n<TeamSection\n  title=\"Meet the team behind Cinder\"\n  description=\"A cross-functional group of engineers, designers, and educators.\"\n  {members}\n  showAvatarGroup\n/>\n"
+    }
+  ]
+}

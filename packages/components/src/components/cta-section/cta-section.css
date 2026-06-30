@@ -1,0 +1,54 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* Compound composition aggregation: CtaSection renders these primitives internally,
+ * so `cinder/cta-section/styles` includes their sidecar styles for slim imports. */
+@import '../button/button.css';
+@import '../container/container.css';
+
+@layer cinder.components {
+  .cinder-cta-section {
+    padding-block: var(--cinder-space-10);
+  }
+
+  .cinder-cta-section__inner {
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-xl);
+    background: var(--cinder-surface-raised);
+    padding: var(--cinder-space-7);
+    display: grid;
+    gap: var(--cinder-space-4);
+    justify-items: start;
+  }
+
+  .cinder-cta-section[data-cinder-align='center'] .cinder-cta-section__inner {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .cinder-cta-section[data-cinder-tone='accent'] .cinder-cta-section__inner {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+    border-color: color-mix(in oklch, var(--cinder-accent), transparent 65%);
+  }
+
+  .cinder-cta-section__title {
+    margin: 0;
+    font-size: var(--cinder-text-3xl);
+    line-height: var(--cinder-leading-tight);
+  }
+
+  .cinder-cta-section__description {
+    margin: 0;
+    color: var(--cinder-text-muted);
+    max-inline-size: 60ch;
+  }
+
+  .cinder-cta-section__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-3);
+  }
+
+  .cinder-cta-section__extra {
+    color: var(--cinder-text-subtle);
+    font-size: var(--cinder-text-sm);
+  }
+}

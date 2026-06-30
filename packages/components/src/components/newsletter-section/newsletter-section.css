@@ -1,0 +1,52 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-newsletter-section {
+    padding-block: var(--cinder-space-10);
+  }
+
+  .cinder-newsletter-section__inner {
+    border: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface-raised);
+    border-radius: var(--cinder-radius-xl);
+    padding: var(--cinder-space-6);
+    display: grid;
+    gap: var(--cinder-space-4);
+  }
+
+  .cinder-newsletter-section__header {
+    display: grid;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-newsletter-section__title,
+  .cinder-newsletter-section__description,
+  .cinder-newsletter-section__consent {
+    margin: 0;
+  }
+
+  .cinder-newsletter-section__description,
+  .cinder-newsletter-section__consent {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-newsletter-section__form {
+    display: grid;
+    gap: var(--cinder-space-3);
+    align-items: end;
+  }
+
+  .cinder-newsletter-section__field {
+    min-inline-size: 0;
+  }
+
+  .cinder-newsletter-section__extra {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-subtle);
+  }
+
+  @media (min-width: 48rem) {
+    .cinder-newsletter-section__form {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+}

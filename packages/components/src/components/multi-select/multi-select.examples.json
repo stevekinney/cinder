@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic multi-select",
       "description": "Pick multiple values and show the selected count on the trigger.",
-      "code": "<script lang=\"ts\">\n  import { MultiSelect } from '@lostgradient/cinder/multi-select';\n\n  const items = [\n    { id: 'apple', label: 'Apple' },\n    { id: 'banana', label: 'Banana' },\n    { id: 'cherry', label: 'Cherry' },\n    { id: 'mango', label: 'Mango' },\n    { id: 'orange', label: 'Orange' },\n  ] as const;\n\n  let selected = $state<Array<(typeof items)[number]['id']>>(['banana']);\n</script>\n\n<MultiSelect id=\"fruit\" label=\"Fruits\" items={items} bind:selectedIds={selected} />\n"
+      "code": "<script lang=\"ts\">\n  import { MultiSelect } from '@lostgradient/cinder/multi-select';\n\n  const items = [\n    { id: 'apple', label: 'Apple' },\n    { id: 'banana', label: 'Banana' },\n    { id: 'cherry', label: 'Cherry' },\n    { id: 'mango', label: 'Mango' },\n    { id: 'orange', label: 'Orange' },\n  ] as const;\n\n  let selected = $state<Array<(typeof items)[number]['id']>>(['banana']);\n</script>\n\n<MultiSelect id=\"fruit\" label=\"Fruits\" {items} bind:selectedIds={selected} />\n"
     },
     {
       "id": "filterable",
