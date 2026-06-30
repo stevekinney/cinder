@@ -232,4 +232,11 @@ describe('buildPublishedManifest', () => {
     expect(stripped.strippedCount).toBe(0);
     expect(stripped.text).toBe(input);
   });
+
+  it('strips dangling block sourceMappingURL comments when corresponding .map files are absent', () => {
+    const input = 'export const value = 1;\n/*# sourceMappingURL=index.js.map */\n';
+    const stripped = stripDanglingSourceMapUrlComments(input, () => false);
+    expect(stripped.strippedCount).toBe(1);
+    expect(stripped.text).toBe('export const value = 1;\n');
+  });
 });
