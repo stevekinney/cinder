@@ -170,6 +170,10 @@
     };
   }
 
+  function makeScrollableRegionFocusable(node: HTMLDivElement) {
+    node.tabIndex = 0;
+  }
+
   $effect(() => {
     if (!primaryTrackItem || !duplicateTrackItem) return;
     duplicateReady = false;
@@ -209,9 +213,12 @@
   style:--cinder-marquee-duration={duration}
   style:--cinder-marquee-gap={gap}
 >
-  <div class="cinder-marquee__viewport">
-    <button class="cinder-marquee__viewport-focus" type="button" aria-label="Marquee content"
-    ></button>
+  <div
+    class="cinder-marquee__viewport"
+    role="region"
+    aria-label={normalizedLabel ? `${normalizedLabel} scroll area` : 'Marquee content'}
+    use:makeScrollableRegionFocusable
+  >
     <div class="cinder-marquee__track">
       <div class="cinder-marquee__item" bind:this={primaryTrackItem}>
         {@render children()}

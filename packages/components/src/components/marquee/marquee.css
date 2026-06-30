@@ -12,21 +12,7 @@
     overflow: hidden;
   }
 
-  .cinder-marquee__viewport-focus {
-    position: absolute;
-    inset-block-start: 0;
-    inset-inline-start: 0;
-    inline-size: 1px;
-    block-size: 1px;
-    padding: 0;
-    border: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-    background: transparent;
-  }
-
-  .cinder-marquee__viewport:has(.cinder-marquee__viewport-focus:focus-visible) {
+  .cinder-marquee__viewport:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
@@ -34,7 +20,7 @@
   }
 
   @media (forced-colors: active) {
-    .cinder-marquee__viewport:has(.cinder-marquee__viewport-focus:focus-visible) {
+    .cinder-marquee__viewport:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: calc(var(--cinder-ring-width) * -1);
       box-shadow: none;

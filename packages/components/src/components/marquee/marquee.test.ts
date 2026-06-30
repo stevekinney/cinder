@@ -102,11 +102,10 @@ describe('Marquee', () => {
 
   test('viewport has keyboard access for reduced-motion scroll access', () => {
     const { container } = render(Marquee, { children: textSnippet('content') });
-    const viewport = container.querySelector('.cinder-marquee__viewport');
-    const focusControl = viewport?.querySelector('.cinder-marquee__viewport-focus');
-    expect(focusControl?.tagName).toBe('BUTTON');
-    expect(focusControl?.getAttribute('type')).toBe('button');
-    expect(focusControl?.getAttribute('aria-label')).toBe('Marquee content');
+    const viewport = container.querySelector<HTMLDivElement>('.cinder-marquee__viewport');
+    expect(viewport?.tabIndex).toBe(0);
+    expect(viewport?.getAttribute('role')).toBe('region');
+    expect(viewport?.getAttribute('aria-label')).toBe('Marquee content');
   });
 
   test('forwards label as aria-label and applies region role', () => {
@@ -146,9 +145,7 @@ describe('Marquee', () => {
 
   test('viewport focus ring is visible for keyboard users', async () => {
     const css = await Bun.file(marqueeCssPath).text();
-    expect(css).toContain(
-      '.cinder-marquee__viewport:has(.cinder-marquee__viewport-focus:focus-visible)',
-    );
+    expect(css).toContain('.cinder-marquee__viewport:focus-visible');
     expect(css).toContain('var(--cinder-ring-color)');
     expect(css).toContain('outline: var(--cinder-ring-width) solid ButtonText');
   });

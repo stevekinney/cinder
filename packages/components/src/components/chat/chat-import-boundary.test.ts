@@ -24,6 +24,30 @@ type ModuleSpecifier = {
   typeOnly: boolean;
 };
 
+function namedImportsAreTypeOnly(namedBindings: ts.NamedImportBindings | undefined): boolean {
+  return (
+    namedBindings !== undefined &&
+    ts.isNamedImports(namedBindings) &&
+    namedBindings.elements.length > 0 &&
+    namedBindings.elements.every((element) => element.isTypeOnly)
+  );
+}
+
+function importDeclarationIsTypeOnly(node: ts.ImportDeclaration): boolean {
+  if (node.importClause?.isTypeOnly) return true;
+  if (node.importClause?.name !== undefined) return false;
+  return namedImportsAreTypeOnly(node.importClause?.namedBindings);
+}
+
+function exportDeclarationIsTypeOnly(node: ts.ExportDeclaration): boolean {
+  if (node.isTypeOnly) return true;
+  if (node.exportClause === undefined || !ts.isNamedExports(node.exportClause)) return false;
+  return (
+    node.exportClause.elements.length > 0 &&
+    node.exportClause.elements.every((element) => element.isTypeOnly)
+  );
+}
+
 /** Collect every static and dynamic import/export module specifier in a source file. */
 function collectModuleSpecifiers(filePath: string, source: string): ModuleSpecifier[] {
   const scriptKind = filePath.endsWith('.svelte') ? ts.ScriptKind.TS : undefined;
@@ -40,7 +64,7 @@ function collectModuleSpecifiers(filePath: string, source: string): ModuleSpecif
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       specifiers.push({
         specifier: node.moduleSpecifier.text,
-        typeOnly: node.importClause?.isTypeOnly ?? false,
+        typeOnly: importDeclarationIsTypeOnly(node),
       });
     }
     if (
@@ -50,7 +74,7 @@ function collectModuleSpecifiers(filePath: string, source: string): ModuleSpecif
     ) {
       specifiers.push({
         specifier: node.moduleSpecifier.text,
-        typeOnly: node.isTypeOnly,
+        typeOnly: exportDeclarationIsTypeOnly(node),
       });
     }
     if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
@@ -104,6 +128,25 @@ describe('chat import boundary', () => {
     expect(
       CONVERSATIONALIST_MODULE_SPECIFIER_PATTERN.test("await import('conversationalist');"),
     ).toBe(true);
+  });
+
+  it('collector recognizes per-specifier type-only imports and exports', () => {
+    const specifiers = collectModuleSpecifiers(
+      'inline.ts',
+      `
+        import { type ConversationHistory } from 'conversationalist';
+        import { type Message, createConversationHistory } from 'conversationalist/conversation';
+        export { type ToolCallPair } from 'conversationalist/utilities';
+        export { type MessageInput, appendMessages } from 'conversationalist';
+      `,
+    );
+
+    expect(specifiers).toEqual([
+      { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: true },
+      { specifier: `${CONVERSATIONALIST_PACKAGE}/conversation`, typeOnly: false },
+      { specifier: `${CONVERSATIONALIST_PACKAGE}/utilities`, typeOnly: true },
+      { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: false },
+    ]);
   });
 
   it('runtime Conversationalist imports stay isolated to bridge modules', async () => {
