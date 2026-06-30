@@ -9,9 +9,8 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: MultiSelect } = await import('./multi-select.svelte');
-const { default: FormFieldMultiSelectFixture } = await import(
-  '../../test/fixtures/form-field-multi-select-fixture.svelte'
-);
+const { default: FormFieldMultiSelectFixture } =
+  await import('../../test/fixtures/form-field-multi-select-fixture.svelte');
 
 const items = [
   { id: 'apple', label: 'Apple' },
@@ -253,7 +252,8 @@ describe('MultiSelect', () => {
     const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
     if (!filter) throw new Error('filter input not found');
 
-    expect(filter.getAttribute('aria-label')).toBe('Filter options');
+    expect(filter.getAttribute('aria-label')).toBeNull();
+    expect(filter.getAttribute('aria-labelledby')).toBe('fruits-filter-label-hint');
     expect(filter.getAttribute('role')).toBe('combobox');
     expect(filter.getAttribute('aria-autocomplete')).toBe('list');
     expect(filter.getAttribute('aria-haspopup')).toBe('listbox');

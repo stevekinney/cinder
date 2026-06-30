@@ -415,7 +415,9 @@
       {id}
       class="cinder-_input-frame cinder-multi-select__trigger"
       disabled={field.disabled}
+      role="combobox"
       aria-describedby={triggerDescribedBy}
+      aria-invalid={triggerAriaInvalid}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={listboxId}
@@ -460,7 +462,6 @@
             role="combobox"
             placeholder="Filter options"
             value={query}
-            aria-label="Filter options"
             aria-labelledby={filterAriaLabelledBy}
             aria-autocomplete="list"
             aria-haspopup="listbox"

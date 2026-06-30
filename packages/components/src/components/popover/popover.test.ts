@@ -513,7 +513,7 @@ describe('Popover — focus management', () => {
     await waitFor(() => {
       const inside = queryPopoverPanel()?.querySelector('button') ?? null;
       expect(inside).not.toBeNull();
-      expect(document.activeElement?.textContent).toBe(inside?.textContent);
+      expect(document.activeElement).toBe(inside);
     });
   });
 
@@ -527,7 +527,7 @@ describe('Popover — focus management', () => {
     const panel = queryPopoverPanel()!;
     expect(panel.getAttribute('tabindex')).toBe('-1');
     await waitFor(() => {
-      expect(document.activeElement?.id).toBe(panel.id);
+      expect(document.activeElement).toBe(panel);
     });
   });
 

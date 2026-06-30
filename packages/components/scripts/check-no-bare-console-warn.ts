@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const componentsRoot = resolve(scriptDirectory, '..', 'src', 'components');
+const FILE_SCAN_CONCURRENCY = 24;
 
 /**
  * Component-relative paths permitted to call `console.warn` directly. Currently
@@ -41,6 +42,27 @@ const CONSOLE_WARN_PATTERN = /\bconsole\s*\.\s*warn\s*\(/;
 
 export type BareConsoleWarnViolation = { filePath: string; lineNumber: number; line: string };
 
+async function mapWithConcurrencyLimit<TValue, TResult>(
+  values: TValue[],
+  concurrencyLimit: number,
+  worker: (value: TValue) => Promise<TResult>,
+): Promise<TResult[]> {
+  const results = Array.from<TResult>({ length: values.length });
+  let nextIndex = 0;
+
+  async function runWorker(): Promise<void> {
+    while (nextIndex < values.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await worker(values[currentIndex]!);
+    }
+  }
+
+  const workerCount = Math.min(Math.max(1, concurrencyLimit), values.length);
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+  return results;
+}
+
 export async function scanBareConsoleWarn(): Promise<BareConsoleWarnViolation[]> {
   const glob = new Glob('**/*.{svelte,ts}');
   const relativePaths: string[] = [];
@@ -48,8 +70,10 @@ export async function scanBareConsoleWarn(): Promise<BareConsoleWarnViolation[]>
     if (!ALLOWED_FILES.has(relativePath)) relativePaths.push(relativePath);
   }
 
-  const violationGroups = await Promise.all(
-    relativePaths.map(async (relativePath): Promise<BareConsoleWarnViolation[]> => {
+  const violationGroups = await mapWithConcurrencyLimit(
+    relativePaths,
+    FILE_SCAN_CONCURRENCY,
+    async (relativePath): Promise<BareConsoleWarnViolation[]> => {
       const violations: BareConsoleWarnViolation[] = [];
       const absolutePath = resolve(componentsRoot, relativePath);
       const source = await Bun.file(absolutePath).text();
@@ -65,7 +89,7 @@ export async function scanBareConsoleWarn(): Promise<BareConsoleWarnViolation[]>
         }
       }
       return violations;
-    }),
+    },
   );
 
   return violationGroups.flat();

@@ -299,7 +299,7 @@ end_of_record
     expect(computeCoverageAverages(records).functions).toBe(75);
   });
 
-  test('excludes non-runtime coverage scope from the ratchet denominator', () => {
+  test('keeps package source in the ratchet denominator while excluding test harnesses', () => {
     const scopedFixture = `${lcovFixture}TN:
 SF:scripts/build.ts
 FNF:10

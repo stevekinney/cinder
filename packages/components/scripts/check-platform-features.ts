@@ -39,6 +39,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const componentsRoot = resolve(scriptDirectory, '..');
 const componentsSource = join(componentsRoot, 'src');
 const baselinePath = join(scriptDirectory, 'platform-viewport-baseline.json');
+const FILE_SCAN_CONCURRENCY = 24;
 
 /** A classified feature and the regex that detects its usage in source. */
 export type FeatureProbe = {
@@ -112,6 +113,27 @@ export const VIEWPORT_WIDTH_MEDIA =
 
 export type FeatureCount = { feature: string; tier: 1 | 2 | 3; count: number };
 export type Flag = { filePath: string; lineNumber: number; query: string };
+
+async function mapWithConcurrencyLimit<TValue, TResult>(
+  values: TValue[],
+  concurrencyLimit: number,
+  worker: (value: TValue) => Promise<TResult>,
+): Promise<TResult[]> {
+  const results = Array.from<TResult>({ length: values.length });
+  let nextIndex = 0;
+
+  async function runWorker(): Promise<void> {
+    while (nextIndex < values.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await worker(values[currentIndex]!);
+    }
+  }
+
+  const workerCount = Math.min(Math.max(1, concurrencyLimit), values.length);
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+  return results;
+}
 
 /** Normalizes a path to forward slashes so baseline keys are OS-independent. */
 export function toPosixPath(path: string): string {
@@ -191,8 +213,10 @@ export async function scan(): Promise<{ counts: FeatureCount[]; viewportFlags: F
     if (!isTestPath(relativePath)) relativePaths.push(relativePath);
   }
 
-  const scannedFiles = await Promise.all(
-    relativePaths.map(async (relativePath) => {
+  const scannedFiles = await mapWithConcurrencyLimit(
+    relativePaths,
+    FILE_SCAN_CONCURRENCY,
+    async (relativePath) => {
       const filePath = join(componentsSource, relativePath);
       const content = await Bun.file(filePath).text();
       const fileCounts = Array.from({ length: FEATURE_PROBES.length }, () => 0);
@@ -218,7 +242,7 @@ export async function scan(): Promise<{ counts: FeatureCount[]; viewportFlags: F
       }
 
       return { fileCounts, viewportFlags };
-    }),
+    },
   );
 
   const viewportFlags: Flag[] = [];

@@ -316,6 +316,27 @@ describe('resizable-panels sizing', () => {
     expect(state.panels[1]!.sizePixels).toBeCloseTo(300, 3);
   });
 
+  test('distributes budget evenly when every finite max constraint is zero', () => {
+    const maxConstrainedPanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        maxSize: { value: 0, unit: 'px' },
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        maxSize: { value: 0, unit: 'px' },
+      },
+    ];
+
+    const state = createInitialLayoutState(maxConstrainedPanes, 600, 'horizontal');
+
+    expect(state.panels.reduce((sum, panel) => sum + panel.sizePixels, 0)).toBeCloseTo(600, 3);
+    expect(state.panels[0]!.sizePixels).toBeCloseTo(300, 3);
+    expect(state.panels[1]!.sizePixels).toBeCloseTo(300, 3);
+  });
+
   test('rebases finite max constraints across the full available budget', () => {
     const maxConstrainedPanes: ResizablePanelDefinition[] = [
       {

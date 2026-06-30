@@ -202,6 +202,14 @@ function scaleSizesToTotal(sizes: number[], targetTotal: number): number[] {
   for (const value of sizes) {
     total += value;
   }
+  if (total <= 0) {
+    const distributedSize = targetTotal / Math.max(1, sizes.length);
+    const distributedSizes: number[] = [];
+    for (let index = 0; index < sizes.length; index++) {
+      distributedSizes.push(distributedSize);
+    }
+    return distributedSizes;
+  }
   const currentTotal = Math.max(1, total);
   const scale = targetTotal / currentTotal;
   const scaledSizes: number[] = [];
@@ -260,7 +268,7 @@ function normalizeToAvailable(
       maximumTotal = Number.POSITIVE_INFINITY;
     }
   }
-  if (maximumTotal > 0 && maximumTotal < availablePanePixels)
+  if (maximumTotal < availablePanePixels)
     return scaleSizesToTotal(finiteMaximums, availablePanePixels);
 
   let currentTotal = 0;

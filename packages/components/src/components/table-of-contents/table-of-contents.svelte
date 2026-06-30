@@ -41,7 +41,10 @@
 
   const reducedMotion = useReducedMotion();
   let activeId = $state<string | null>(null);
-  let normalizedItems = $state<TableOfContentsItem[]>([]);
+  let derivedHeadingItems = $state<TableOfContentsItem[]>([]);
+  const normalizedItems = $derived(
+    items === undefined ? derivedHeadingItems : normalizeExplicitItems(items),
+  );
 
   const validatedAriaLabel = $derived.by(() => {
     const trimmed = ariaLabel.trim();
@@ -216,12 +219,11 @@
 
   $effect(() => {
     if (items !== undefined) {
-      normalizedItems = normalizeExplicitItems(items);
       return;
     }
 
     if (typeof window === 'undefined' || typeof document === 'undefined') {
-      normalizedItems = [];
+      derivedHeadingItems = [];
       return;
     }
 
@@ -304,14 +306,14 @@
     const shouldWatchTargetConnection = target instanceof HTMLElement;
 
     if (!shouldDeriveFromTarget) {
-      normalizedItems = [];
+      derivedHeadingItems = [];
       return;
     }
 
     const refreshDerived = () => {
       const targetElement = resolveTargetElement(target);
       syncTargetObserver(targetElement);
-      normalizedItems = deriveItemsFromHeadings(targetElement, headingSelector);
+      derivedHeadingItems = deriveItemsFromHeadings(targetElement, headingSelector);
 
       if (targetElement !== null) {
         clearRetryTimer();
