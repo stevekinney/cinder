@@ -250,6 +250,19 @@ describe('Collapsible trigger forms', () => {
     await fireEvent.click(trigger(container));
     expect(trigger(container).getAttribute('aria-label')).toBe('Collapse details');
   });
+
+  test('omits trigger aria-label when triggerAriaLabel resolves to whitespace', async () => {
+    const { container } = render(Collapsible, {
+      trigger: 'Visible label',
+      triggerAriaLabel: ({ open }: CollapsibleTriggerState) => (open ? ' ' : '   '),
+      children: bodySnippet(),
+    });
+
+    expect(trigger(container).hasAttribute('aria-label')).toBe(false);
+
+    await fireEvent.click(trigger(container));
+    expect(trigger(container).hasAttribute('aria-label')).toBe(false);
+  });
 });
 
 describe('Collapsible keyboard semantics', () => {

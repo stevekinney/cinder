@@ -59,7 +59,11 @@ export interface CollapsibleSchemaProps {
    * @default false
    */
   disabled?: boolean;
-  /** Accessible name override for the trigger button. */
+  /**
+   * Accessible name override for the trigger button. The runtime prop also
+   * accepts a state-aware function (`{ open, disabled } => string`), but JSON
+   * Schema can only model the string variant.
+   */
   triggerAriaLabel?: string;
   /** Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted. */
   idBase?: string;

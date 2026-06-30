@@ -45,10 +45,15 @@
   const baseId = $derived(idBase ?? autoId);
   const headerId = $derived(`${baseId}-header`);
   const panelId = $derived(`${baseId}-panel`);
-  const computedTriggerAriaLabel = $derived.by(() =>
+  const computedTriggerAriaLabelRaw = $derived.by(() =>
     typeof triggerAriaLabel === 'function'
       ? triggerAriaLabel({ open, disabled })
       : triggerAriaLabel,
+  );
+  const computedTriggerAriaLabel = $derived(
+    typeof computedTriggerAriaLabelRaw === 'string' && computedTriggerAriaLabelRaw.trim().length > 0
+      ? computedTriggerAriaLabelRaw
+      : undefined,
   );
 
   function handleClick(): void {

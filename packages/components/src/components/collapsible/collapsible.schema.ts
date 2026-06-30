@@ -21,7 +21,8 @@ const schema = {
     },
     triggerAriaLabel: {
       type: 'string',
-      description: 'Accessible name override for the trigger button.',
+      description:
+        'Accessible name override for the trigger button. The runtime prop also\naccepts a state-aware function (`{ open, disabled } => string`), but JSON\nSchema can only model the string variant.',
     },
     idBase: {
       type: 'string',
