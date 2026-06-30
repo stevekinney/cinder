@@ -13,8 +13,8 @@ export type CollapsibleProps = Omit<
   /** Panel content shown when open. */
   children: Snippet;
   /**
-   * Bindable open state. Without `bind:open`, this is the initial value and the
-   * component manages subsequent toggles. With `bind:open`, the parent owns it.
+   * Bindable open state. Parents can drive it directly by updating `open`, and
+   * can opt into two-way synchronization with `bind:open`.
    * @default false
    */
   open?: boolean;
@@ -25,6 +25,12 @@ export type CollapsibleProps = Omit<
    * @default false
    */
   disabled?: boolean;
+  /**
+   * Accessible name override for the internal trigger button. Accepts either a
+   * fixed string or a function receiving `{ open, disabled }` so labels can
+   * react without requiring `bind:open`.
+   */
+  triggerAriaLabel?: string | ((state: CollapsibleTriggerState) => string);
   /**
    * Base used to derive the trigger and panel ARIA ids (`<base>-header`,
    * `<base>-panel`). NOT the root element id. Auto-generated when omitted.
@@ -43,8 +49,8 @@ export interface CollapsibleSchemaProps {
   /** Trigger label text. (The snippet form is template-only; see the type above.) */
   trigger: string;
   /**
-   * Bindable open state. Without binding, the initial value the component then
-   * manages.
+   * Bindable open state. Parents can drive it directly and may use `bind:open`
+   * for two-way synchronization.
    * @default false
    */
   open?: boolean;
@@ -53,6 +59,8 @@ export interface CollapsibleSchemaProps {
    * @default false
    */
   disabled?: boolean;
+  /** Accessible name override for the trigger button. */
+  triggerAriaLabel?: string;
   /** Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted. */
   idBase?: string;
   /** Additional classes merged onto the root element. */

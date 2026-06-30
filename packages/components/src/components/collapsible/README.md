@@ -32,9 +32,10 @@ Controlled — the parent owns the state with `bind:open`:
 
 ### State model
 
-Without `bind:open`, `open` is the initial local value and the component manages subsequent toggles; pass `open={true}` to render initially open. With `bind:open`, the parent owns the state. `ontoggle` fires on every toggle with the next boolean, so one-way observers stay in sync.
+`open` is bindable and can be driven directly by parent updates (`open={...}`), including initial-open use cases like replacing `<details open>`. `bind:open` adds two-way synchronization so trigger clicks flow back into parent state automatically. `ontoggle` fires on every toggle with the next boolean, so one-way observers stay in sync.
 
 The `trigger` prop is either a string or a snippet receiving `{ open, disabled }`, letting the label react to state (for example, swapping "Show" and "Hide").
+Use `triggerAriaLabel` when you need a dedicated accessible name on the internal trigger button (for example, icon-heavy labels or test selectors based on `getByRole(..., { name })`).
 
 ## Accessibility
 
@@ -49,15 +50,16 @@ For multiple coordinated sections where opening one may close others, use [`Acco
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                                                                      |
-| ---------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`   | no       | —       | Additional classes merged onto the root element.                                                                                                                 |
-| `disabled` | `boolean`  | no       | `false` | When true, the trigger cannot be toggled.                                                                                                                        |
-| `idBase`   | `string`   | no       | —       | Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted.                                                                                 |
-| `open`     | `boolean`  | no       | `false` | Bindable open state. Without binding, the initial value the component then manages.                                                                              |
-| `trigger`  | `string`   | yes      | —       | Trigger label text. (The snippet form is template-only; see the type above.)                                                                                     |
-| `children` | `(opaque)` | yes      | —       | Panel content shown when open. Not expressible in JSON Schema; see the component types for the signature.                                                        |
-| `ontoggle` | `(opaque)` | no       | —       | Fired on every successful toggle with the next open state. Not called while disabled. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop               | Type       | Required | Default | Description                                                                                                                                                      |
+| ------------------ | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`            | `string`   | no       | —       | Additional classes merged onto the root element.                                                                                                                 |
+| `disabled`         | `boolean`  | no       | `false` | When true, the trigger cannot be toggled.                                                                                                                        |
+| `idBase`           | `string`   | no       | —       | Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted.                                                                                 |
+| `open`             | `boolean`  | no       | `false` | Bindable open state. Parents can drive it directly and may use `bind:open` for two-way synchronization.                                                          |
+| `trigger`          | `string`   | yes      | —       | Trigger label text. (The snippet form is template-only; see the type above.)                                                                                     |
+| `triggerAriaLabel` | `string`   | no       | —       | Accessible name override for the trigger button.                                                                                                                 |
+| `children`         | `(opaque)` | yes      | —       | Panel content shown when open. Not expressible in JSON Schema; see the component types for the signature.                                                        |
+| `ontoggle`         | `(opaque)` | no       | —       | Fired on every successful toggle with the next open state. Not called while disabled. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

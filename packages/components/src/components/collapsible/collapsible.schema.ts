@@ -11,13 +11,17 @@ const schema = {
     open: {
       type: 'boolean',
       description:
-        'Bindable open state. Without binding, the initial value the component then\nmanages.',
+        'Bindable open state. Parents can drive it directly and may use `bind:open`\nfor two-way synchronization.',
       default: false,
     },
     disabled: {
       type: 'boolean',
       description: 'When true, the trigger cannot be toggled.',
       default: false,
+    },
+    triggerAriaLabel: {
+      type: 'string',
+      description: 'Accessible name override for the trigger button.',
     },
     idBase: {
       type: 'string',

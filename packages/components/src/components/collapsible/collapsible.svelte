@@ -29,6 +29,7 @@
     open = $bindable(false),
     ontoggle,
     disabled = false,
+    triggerAriaLabel,
     idBase,
     class: className,
     ...rest
@@ -44,6 +45,11 @@
   const baseId = $derived(idBase ?? autoId);
   const headerId = $derived(`${baseId}-header`);
   const panelId = $derived(`${baseId}-panel`);
+  const computedTriggerAriaLabel = $derived.by(() =>
+    typeof triggerAriaLabel === 'function'
+      ? triggerAriaLabel({ open, disabled })
+      : triggerAriaLabel,
+  );
 
   function handleClick(): void {
     if (disabled) return;
@@ -63,6 +69,7 @@
     type="button"
     id={headerId}
     class="cinder-collapsible__trigger"
+    aria-label={computedTriggerAriaLabel}
     aria-expanded={open}
     aria-controls={open ? panelId : undefined}
     {disabled}

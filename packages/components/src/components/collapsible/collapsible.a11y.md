@@ -8,6 +8,7 @@ The collapsible implementation follows the [WAI-ARIA Disclosure pattern](https:/
 
 - Uses a native `<button type="button">`, so Enter and Space activation and tab-order placement come from the browser without any additional key handlers.
 - `aria-expanded="true|false"` — reflects whether the controlled panel is currently visible. Screen readers announce "expanded" or "collapsed" alongside the button label.
+- Optional `aria-label` override via `triggerAriaLabel` — accepts a static string or a state-aware function (`{ open, disabled } => string`) for cases where the visible trigger content is not the desired accessible name.
 - `aria-controls="{base}-panel"` — emitted only while the panel exists in the DOM. When the panel is removed on close, the attribute is dropped so it never points to a missing element. This differs from `AccordionItem`, which always emits `aria-controls` because its panel IDs are stable and predictable — see [Relation to Accordion](#relation-to-accordion).
 - `id="{base}-header"` — stable ID used by the panel's `aria-labelledby` to form the label association.
 - `disabled` — the native HTML boolean is used exclusively; `aria-disabled` is intentionally omitted alongside native `disabled` on a `<button>` to avoid double-announcement in some screen reader + browser combinations.
