@@ -80,6 +80,31 @@ describe('chat conversation builders', () => {
     expect(message.hidden).toBe(false);
   });
 
+  test('appendMessages accepts Cinder-style tool-call and tool-result transcripts', () => {
+    const conversation = appendMessages(
+      createConversation({ id: 'conversation-tool-transcript' }),
+      {
+        role: 'tool-call',
+        content: '',
+        toolCall: { id: 'call-1', name: 'lookup', arguments: { package: '@lostgradient/cinder' } },
+      },
+      {
+        role: 'tool-result',
+        content: '',
+        toolResult: { callId: 'call-1', outcome: 'success', content: { found: true } },
+      },
+    );
+
+    const [callMessageId, resultMessageId] = conversation.ids;
+    const callMessage = conversation.messages[callMessageId!]!;
+    const resultMessage = conversation.messages[resultMessageId!]!;
+
+    expect(callMessage.role).toBe('tool-call');
+    expect(callMessage.toolCall?.id).toBe('call-1');
+    expect(resultMessage.role).toBe('tool-result');
+    expect(resultMessage.toolResult?.callId).toBe('call-1');
+  });
+
   test('role-specific append helpers preserve order and assign positions', () => {
     const conversation = appendAssistantMessage(
       appendUserMessage(createConversation({ id: 'conversation-roles' }), 'Hi'),

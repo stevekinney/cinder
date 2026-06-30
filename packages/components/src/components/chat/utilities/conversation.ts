@@ -11,11 +11,16 @@ import { pairToolCallsWithResults as pairConversationalistToolCallsWithResults }
 
 import type { Message, ToolCallPair } from '../conversation-model.ts';
 
+function hasPairableToolField(message: Message): boolean {
+  return (
+    (message.role === 'tool-call' && message.toolCall !== undefined) ||
+    (message.role === 'tool-result' && message.toolResult !== undefined)
+  );
+}
+
 /** Pairs tool calls with role-valid tool results from an already-ordered message array. */
 export function pairToolCallsWithResults(messages: ReadonlyArray<Message>): ToolCallPair[] {
-  return pairConversationalistToolCallsWithResults(
-    messages.filter((message) => message.role === 'tool-call' || message.role === 'tool-result'),
-  );
+  return pairConversationalistToolCallsWithResults(messages.filter(hasPairableToolField));
 }
 
 export { getMessages };

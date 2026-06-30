@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { stripRootPreTabIndex } from './strip-root-pre-tab-index.ts';
 
 setupHappyDom();
 
@@ -112,6 +113,13 @@ describe('shikiHighlighter — happy path', () => {
     const html = await highlight('const x = 1;', 'javascript');
     expect(html).toMatch(/^<pre\b/);
     expect(html).not.toMatch(/^<pre\b[^>]*\stabindex=/);
+  });
+
+  test('strips tabindex from mocked Shiki root <pre> output', () => {
+    const html = '<pre class="shiki" tabindex="0"><code><span>const x = 1;</span></code></pre>';
+    expect(stripRootPreTabIndex(html)).toBe(
+      '<pre class="shiki"><code><span>const x = 1;</span></code></pre>',
+    );
   });
 });
 
