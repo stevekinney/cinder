@@ -12,7 +12,7 @@ import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
-import { sveltePlugin } from './svelte-plugin.ts';
+import { findOneArgumentServerComponentBoundaries, sveltePlugin } from './svelte-plugin.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
 const repositoryRoot = process.cwd();
@@ -241,6 +241,32 @@ const serverCssNoopPlugin = {
   },
 };
 
+async function assertServerComponentBoundariesPreserveIdentity(): Promise<void> {
+  const offenders: string[] = [];
+  const serverJavaScriptGlob = new Glob('**/*.js');
+  for await (const relativePath of serverJavaScriptGlob.scan({
+    cwd: `${distributionDirectory}/server`,
+  })) {
+    const filePath = `${distributionDirectory}/server/${relativePath}`;
+    const boundaries = findOneArgumentServerComponentBoundaries(
+      await Bun.file(filePath).text(),
+      filePath,
+    );
+    for (const boundary of boundaries) {
+      offenders.push(`${relativePath}:${boundary.line}:${boundary.column}`);
+    }
+  }
+  if (offenders.length > 0) {
+    process.stderr.write(
+      'Build aborted: server component boundaries must preserve component identity.\n' +
+        'One-argument `renderer.component(...)` calls poison Svelte dev SSR when a compiled Cinder component renders a consumer snippet containing an element.\n' +
+        offenders.map((offender) => `  ${offender}`).join('\n') +
+        '\n',
+    );
+    process.exit(1);
+  }
+}
+
 /**
  * Deprecated `@lostgradient/cinder/experimental/<name>` alias shims. Each promoted-out
  * component keeps a thin re-export shim at
@@ -253,8 +279,12 @@ const deprecatedAliasEntrypoints = DEPRECATED_EXPERIMENTAL_ALIASES.map(
   ({ name }) => `${sourceRoot}/components/experimental/${name}/index.ts`,
 );
 
+const browserRootEntrypoint = `${sourceRoot}/index.browser.ts`;
+const browserRootSource = await Bun.file(`${sourceRoot}/index.ts`).text();
+await Bun.write(browserRootEntrypoint, createServerEntrySource(browserRootSource));
+
 const browserEntrypoints = [
-  `${sourceRoot}/index.ts`,
+  browserRootEntrypoint,
   ...perComponentEntrypoints,
   ...perComponentMetadataEntrypoints,
   ...staticSubpathEntrypoints,
@@ -337,12 +367,14 @@ const browserBuildResult = await Bun.build({
   plugins: [
     cssImportPlugin({
       perComponentStyleSpecifiers,
-      rootBarrelEntrypoint: `${sourceRoot}/index.ts`,
+      rootBarrelEntrypoint: browserRootEntrypoint,
       rootBarrelStyleSpecifiers,
     }),
     sveltePlugin({ generate: 'client' }),
   ],
 });
+
+await rm(browserRootEntrypoint, { force: true });
 
 if (!browserBuildResult.success) {
   const messages = [
@@ -352,6 +384,33 @@ if (!browserBuildResult.success) {
   process.stderr.write(`${messages}\n`);
   process.exit(1);
 }
+
+const temporaryBrowserRootOutput = `${distributionDirectory}/index.browser.js`;
+const temporaryBrowserRootMapOutput = `${temporaryBrowserRootOutput}.map`;
+const browserRootOutput = `${distributionDirectory}/index.js`;
+const browserRootMapOutput = `${browserRootOutput}.map`;
+const temporaryBrowserRootContents = await Bun.file(temporaryBrowserRootOutput).text();
+const browserRootContents = temporaryBrowserRootContents.includes(
+  '//# sourceMappingURL=index.browser.js.map',
+)
+  ? temporaryBrowserRootContents.replace(
+      /\/\/# sourceMappingURL=index\.browser\.js\.map\s*$/u,
+      '//# sourceMappingURL=index.js.map\n',
+    )
+  : `${temporaryBrowserRootContents.trimEnd()}\n//# sourceMappingURL=index.js.map\n`;
+await Bun.write(browserRootOutput, browserRootContents);
+
+if (existsSync(temporaryBrowserRootMapOutput)) {
+  const sourceMap: unknown = JSON.parse(await Bun.file(temporaryBrowserRootMapOutput).text());
+  if (!isObjectRecord(sourceMap)) {
+    throw new TypeError(`Expected ${temporaryBrowserRootMapOutput} to contain a JSON object.`);
+  }
+  sourceMap['file'] = 'index.js';
+  await Bun.write(browserRootMapOutput, `${JSON.stringify(sourceMap)}\n`);
+}
+
+await rm(temporaryBrowserRootOutput, { force: true });
+await rm(temporaryBrowserRootMapOutput, { force: true });
 
 // -----------------------------------------------------------------------------
 // 2. SSR ESM build. The root barrel and component subpaths are compiled in one
@@ -852,6 +911,8 @@ for (const component of components) {
     process.exit(1);
   }
 }
+
+await assertServerComponentBoundariesPreserveIdentity();
 
 process.stdout.write(
   `Build complete. ${components.length} components, ${copiedSidecars.length} CSS sidecars copied.\n`,

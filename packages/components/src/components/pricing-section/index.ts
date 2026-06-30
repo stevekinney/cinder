@@ -1,3 +1,4 @@
+import './pricing-section.css';
 import PricingSection from './pricing-section.svelte';
 
 export default PricingSection;

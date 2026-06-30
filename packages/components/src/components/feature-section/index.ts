@@ -1,3 +1,4 @@
+import './feature-section.css';
 import FeatureSection from './feature-section.svelte';
 
 export default FeatureSection;

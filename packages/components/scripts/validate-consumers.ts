@@ -742,6 +742,63 @@ function ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory: string): vo
   }
 }
 
+const SVELTEKIT_DEV_SSR_MARKERS = [
+  'data-dev-ssr-card-body',
+  'data-dev-ssr-sidebar-brand',
+  'data-dev-ssr-sidebar-navigation',
+  'data-dev-ssr-tabs-namespace-trigger',
+  'data-dev-ssr-tabs-namespace-panel',
+  'data-dev-ssr-tabs-direct-trigger',
+  'data-dev-ssr-tabs-direct-panel',
+];
+
+function formatHtmlExcerpt(body: string): string {
+  return body.replace(/\s+/g, ' ').trim().slice(0, 1_000);
+}
+
+async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: string): Promise<void> {
+  const httpPort = await pickEphemeralPort();
+  const devServer = Bun.spawn(
+    ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(httpPort), '--strictPort'],
+    {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: {
+        ...Bun.env,
+        TZ: 'UTC',
+        LANG: 'en_US.UTF-8',
+      },
+    },
+  );
+
+  try {
+    await waitForUrl(`http://127.0.0.1:${httpPort}/`, 15_000, devServer);
+    const routeUrl = `http://127.0.0.1:${httpPort}/dev-ssr`;
+    const response = await fetchWithTimeout(
+      routeUrl,
+      10_000,
+      `sveltekit-consumer ${label} /dev-ssr dev SSR`,
+    );
+    const body = await response.text();
+    if (response.status !== 200) {
+      fail(
+        `sveltekit-consumer ${label} /dev-ssr dev SSR returned ${response.status}, want 200:\n${formatHtmlExcerpt(body)}`,
+      );
+    }
+
+    const missingMarkers = SVELTEKIT_DEV_SSR_MARKERS.filter((marker) => !body.includes(marker));
+    if (missingMarkers.length > 0) {
+      fail(
+        `sveltekit-consumer ${label} /dev-ssr dev SSR missing marker(s): ${missingMarkers.join(', ')}\n${formatHtmlExcerpt(body)}`,
+      );
+    }
+  } finally {
+    devServer.kill();
+    await devServer.exited;
+  }
+}
+
 async function runSveltekitFixture(label = 'workspace', svelteVersion?: string): Promise<void> {
   const fixtureDirectory = join(repositoryRoot, 'fixtures/sveltekit-consumer');
   process.stdout.write(
@@ -777,6 +834,8 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         `svelte-check failed in sveltekit-consumer ${label}:\n${checkResult.stdout.toString()}\n${checkResult.stderr.toString()}`,
       );
     }
+
+    await assertSvelteKitDevSsrRoute(fixtureDirectory, label);
 
     const viteBuildResult = await $`bunx vite build`.cwd(fixtureDirectory).nothrow();
     if (viteBuildResult.exitCode !== 0) {

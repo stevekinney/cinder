@@ -1,3 +1,4 @@
+import './newsletter-section.css';
 import NewsletterSection from './newsletter-section.svelte';
 
 export default NewsletterSection;
