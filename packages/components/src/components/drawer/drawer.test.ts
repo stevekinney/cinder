@@ -1077,7 +1077,7 @@ describe('Drawer SSR contract', () => {
     const hydratedGateIndex = source.indexOf('{#if dialogState.hydrated}');
     const dialogIndex = source.indexOf('<dialog', hydratedGateIndex);
 
-    expect(source).toContain('$effect(() => {\n    dialogState.markHydrated();\n  });');
+    expect(source).toMatch(/\$effect\(\(\) => \{\s*dialogState\.markHydrated\(\);\s*\}\);/);
     expect(hydratedGateIndex).toBeGreaterThan(-1);
     expect(dialogIndex).toBeGreaterThan(hydratedGateIndex);
   });
