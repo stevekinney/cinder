@@ -149,14 +149,16 @@ describe('stripExampleHarness — fixtures', () => {
     expect(() => stripExampleHarness(source, 'thing/basic')).toThrow(/still referenced/);
   });
 
-  it('fails closed when an unrecognized derived shape leaves mountIdPrefix behind', () => {
-    // A `const` (not `let`) derived declaration is not matched by DERIVED_ID_LINE,
-    // so the prop/uid lines are removed but `mountIdPrefix ?? uid` survives. The
+  it('fails closed when an unrecognized multiline derived shape leaves mountIdPrefix behind', () => {
+    // Multiline derived declarations are not matched by DERIVED_ID_LINE, so the
+    // prop/uid lines are removed but `mountIdPrefix ?? uid` survives. The
     // residual-marker scan must catch this rather than serve half-stripped code.
     const source = `<script lang="ts">
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
   const uid = $props.id();
-  const fieldId = $derived(\`\${mountIdPrefix ?? uid}-field\`);
+  let fieldId = $derived(
+    \`\${mountIdPrefix ?? uid}-field\`,
+  );
 </script>
 
 <Input id={fieldId} />

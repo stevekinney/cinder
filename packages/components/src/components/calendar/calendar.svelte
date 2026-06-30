@@ -110,7 +110,6 @@
   }
 
   const todayIso = $derived(toISODate(new Date()));
-  const selectedDate = $derived(parseISODate(value));
   const anchorIso = $derived.by(() => {
     // Validate value and month before using them; fall back to today so
     // focusedIso always resolves to a parseable date (avoids a grid with
@@ -120,9 +119,9 @@
     return todayIso;
   });
   const anchorDate = $derived(parseISODate(anchorIso) ?? new Date());
-  let visibleMonthDate = $state(startOfMonth(anchorDate));
-  let focusedIso = $state(value ?? anchorIso);
-  let lastSyncedAnchorIso = $state(anchorIso);
+  let visibleMonthDate = $state(startOfMonth(new Date()));
+  let focusedIso = $state('');
+  let lastSyncedAnchorIso = $state<string | null>(null);
   const focusedDayId = $derived(`${monthGridId}-day-${focusedIso}`);
 
   $effect(() => {
@@ -214,7 +213,11 @@
   async function moveFocusedByMonths(delta: number, moveDomFocus = true) {
     const base = parseISODate(focusedIso) ?? visibleMonthDate;
     const monthStart = addMonths(startOfMonth(base), delta);
-    const candidate = clampDayToMonth(monthStart.getFullYear(), monthStart.getMonth(), base.getDate());
+    const candidate = clampDayToMonth(
+      monthStart.getFullYear(),
+      monthStart.getMonth(),
+      base.getDate(),
+    );
     await focusDate(toISODate(candidate), moveDomFocus);
   }
 
@@ -313,7 +316,7 @@
   </div>
 
   <div class="cinder-calendar__weekdays" aria-hidden="true">
-    {#each weekdayLabels as weekday}
+    {#each weekdayLabels as weekday (weekday)}
       <span class="cinder-calendar__weekday">{weekday}</span>
     {/each}
   </div>
@@ -323,11 +326,12 @@
     class="cinder-calendar__grid"
     role="grid"
     aria-labelledby={titleId}
+    tabindex="-1"
     onkeydown={handleKeydown}
   >
-    {#each rows as row}
+    {#each rows as row, rowIndex (row[0]?.iso ?? rowIndex)}
       <div role="row" class="cinder-calendar__grid-row">
-        {#each row as cell}
+        {#each row as cell (cell.iso)}
           <div
             role="gridcell"
             aria-selected={cell.selected || undefined}

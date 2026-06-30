@@ -37,10 +37,9 @@ export function stringify(value: unknown, indent: number = 2): string {
   try {
     const serializedValue = JSON.stringify(value, null, indent);
     if (serializedValue !== undefined) return serializedValue;
-    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'symbol') {
-      return String(value);
-    }
-    return '[Unserializable value]';
+    return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'symbol'
+      ? String(value)
+      : '[Unserializable value]';
   } catch {
     if (
       typeof value === 'number' ||

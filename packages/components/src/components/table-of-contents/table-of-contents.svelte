@@ -41,7 +41,7 @@
 
   const reducedMotion = useReducedMotion();
   let activeId = $state<string | null>(null);
-  let normalizedItems = $state<TableOfContentsItem[]>(normalizeExplicitItems(items));
+  let normalizedItems = $state<TableOfContentsItem[]>([]);
 
   const validatedAriaLabel = $derived.by(() => {
     const trimmed = ariaLabel.trim();
@@ -462,6 +462,8 @@
     let pendingAnimationFrame: number | null = null;
 
     const updateActiveId = () => {
+      syncObservedElements();
+
       if (observedElements.length === 0) {
         activeId = null;
         return;
@@ -487,7 +489,7 @@
       );
     };
 
-    const scheduleActiveIdUpdate = () => {
+    function scheduleActiveIdUpdate() {
       if (typeof window.requestAnimationFrame !== 'function') {
         updateActiveId();
         return;
@@ -499,7 +501,7 @@
         pendingAnimationFrame = null;
         updateActiveId();
       });
-    };
+    }
 
     const observer = new IntersectionObserver(
       () => {
@@ -516,7 +518,7 @@
       observer.observe(element);
     }
 
-    const syncObservedElements = () => {
+    function syncObservedElements() {
       const nextObservedElements = collectObservedElements();
       const unchanged =
         observedElements.length === nextObservedElements.length &&
@@ -531,7 +533,7 @@
         observer.observe(element);
       }
       scheduleActiveIdUpdate();
-    };
+    }
 
     window.addEventListener('scroll', scheduleActiveIdUpdate, { passive: true });
     window.addEventListener('resize', scheduleActiveIdUpdate);
@@ -539,7 +541,7 @@
     let domObserver: MutationObserver | null = null;
     if (typeof MutationObserver !== 'undefined' && document.body !== null) {
       domObserver = new MutationObserver(() => {
-        syncObservedElements();
+        updateActiveId();
       });
       domObserver.observe(document.body, {
         childList: true,

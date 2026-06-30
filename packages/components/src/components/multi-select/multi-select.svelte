@@ -99,6 +99,7 @@
   let openedAtLeastOnce = $state(false);
   let triggerElement = $state<HTMLButtonElement | null>(null);
   let controlElement = $state<HTMLDivElement | null>(null);
+  let panelElement = $state<HTMLDivElement | null>(null);
   let filterElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
   let validityProxyElement = $state<HTMLInputElement | null>(null);
@@ -358,12 +359,14 @@
     const handlePointerDown = (event: MouseEvent): void => {
       const target = event.target as Node | null;
       if (target && controlElement?.contains(target)) return;
+      if (target && panelElement?.contains(target)) return;
       closeMenu(false);
     };
 
     const handleFocusIn = (event: FocusEvent): void => {
       const target = event.target as Node | null;
       if (target && controlElement?.contains(target)) return;
+      if (target && panelElement?.contains(target)) return;
       closeMenu(false);
     };
 
@@ -390,7 +393,7 @@
   });
 </script>
 
-<div class={classNames('cinder-multi-select', className)}>
+<div class={classNames('cinder-multi-select', className)} aria-invalid={triggerAriaInvalid}>
   {#if label}
     <label
       id={labelId}
@@ -412,13 +415,12 @@
       {id}
       class="cinder-_input-frame cinder-multi-select__trigger"
       disabled={field.disabled}
-      aria-invalid={triggerAriaInvalid}
       aria-describedby={triggerDescribedBy}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={listboxId}
       data-cinder-open={open || undefined}
-      data-cinder-has-clear={selectedCount > 0 && !field.disabled && !readonly || undefined}
+      data-cinder-has-clear={(selectedCount > 0 && !field.disabled && !readonly) || undefined}
       data-cinder-readonly={readonly || undefined}
       onclick={() => (open ? closeMenu() : openMenu())}
       onkeydown={handleTriggerKeydown}
@@ -458,6 +460,7 @@
             role="combobox"
             placeholder="Filter options"
             value={query}
+            aria-label="Filter options"
             aria-labelledby={filterAriaLabelledBy}
             aria-autocomplete="list"
             aria-haspopup="listbox"
@@ -514,7 +517,12 @@
               </span>
             </li>
           {:else}
-            <li class="cinder-multi-select__empty" role="option" aria-disabled="true">
+            <li
+              class="cinder-multi-select__empty"
+              role="option"
+              aria-disabled="true"
+              aria-selected="false"
+            >
               {emptyListMessage}
             </li>
           {/each}
@@ -524,7 +532,7 @@
   </div>
 
   {#if filterable}
-    <span id={filterLabelHintId} class="cinder-multi-select__sr-status">Filter options</span>
+    <span id={filterLabelHintId} class="cinder-multi-select__sr-label">Filter options</span>
     <p class="cinder-multi-select__sr-status" role="status" aria-live="polite">
       {open && visibleItems.length === 0 ? emptyListMessage : ''}
     </p>

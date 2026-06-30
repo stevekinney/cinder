@@ -43,7 +43,11 @@
     return typeof y === 'number' ? `${command}${x} ${y}` : `${command}${x}`;
   }
 
-  function qrModulesToPath(data: boolean[], moduleSize: number, marginSize: number): string {
+  function qrModulesToPath(
+    data: ArrayLike<boolean | number>,
+    moduleSize: number,
+    marginSize: number,
+  ): string {
     let path = '';
     let moveBy = 0;
     let newRow = false;
@@ -78,34 +82,38 @@
     return path;
   }
 
-  function renderSvg(modules: boolean[], moduleSize: number, marginSize: number, width: number): string {
+  function renderSvgData(
+    modules: ArrayLike<boolean | number>,
+    moduleSize: number,
+    marginSize: number,
+  ): { pathData: string; viewBox: string } {
     const qrSize = moduleSize + marginSize * 2;
-    const widthAndHeight = width > 0 ? ` width="${width}" height="${width}"` : '';
-    return `<svg xmlns="http://www.w3.org/2000/svg"${widthAndHeight} viewBox="0 0 ${qrSize} ${qrSize}" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" d="${qrModulesToPath(modules, moduleSize, marginSize)}"/></svg>`;
+    return {
+      pathData: qrModulesToPath(modules, moduleSize, marginSize),
+      viewBox: `0 0 ${qrSize} ${qrSize}`,
+    };
   }
 
   const qrGenerationResult = $derived.by(() => {
     try {
       const qrData = QRCode.create(value, { errorCorrectionLevel });
-      const renderedSvg = renderSvg(
-        qrData.modules.data,
-        qrData.modules.size,
-        resolvedMargin,
-        resolvedSize,
-      );
+      const svgData = renderSvgData(qrData.modules.data, qrData.modules.size, resolvedMargin);
 
       return {
-        svgMarkup: renderedSvg,
+        pathData: svgData.pathData,
+        viewBox: svgData.viewBox,
         generationFailed: false,
       };
     } catch {
       return {
-        svgMarkup: '',
+        pathData: '',
+        viewBox: '0 0 0 0',
         generationFailed: true,
       };
     }
   });
-  const svgMarkup = $derived(qrGenerationResult.svgMarkup);
+  const pathData = $derived(qrGenerationResult.pathData);
+  const viewBox = $derived(qrGenerationResult.viewBox);
   const generationFailed = $derived(qrGenerationResult.generationFailed);
   const resolvedRole = $derived(generationFailed ? 'status' : 'img');
   const resolvedAriaLabel = $derived(generationFailed ? 'Unable to render QR code' : safeLabel);
@@ -123,8 +131,18 @@
   style:inline-size={`${resolvedSize}px`}
   style:block-size={`${resolvedSize}px`}
 >
-  {#if svgMarkup.length > 0}
-    {@html svgMarkup}
+  {#if pathData.length > 0}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={resolvedSize}
+      height={resolvedSize}
+      {viewBox}
+      shape-rendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path fill="none" stroke="currentColor" d={pathData} />
+    </svg>
   {:else}
     <span
       class="cinder-qr-code__placeholder"
