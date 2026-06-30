@@ -73,7 +73,13 @@
     <div class="cinder-description-list__row">
       <dt class={variant === 'narrow' ? 'cinder-sr-only' : undefined}>{item.term}</dt>
       <dd>
-        <div class="cinder-description-list__definition">{item.definition}</div>
+        <div class="cinder-description-list__definition">
+          {#if typeof item.definition === 'string'}
+            {item.definition}
+          {:else}
+            {@render item.definition()}
+          {/if}
+        </div>
         {#if actions}
           <div class="cinder-description-list__actions">{@render actions(item)}</div>
         {/if}
