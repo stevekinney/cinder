@@ -111,8 +111,15 @@
 
   const todayIso = $derived(toISODate(new Date()));
   const selectedDate = $derived(parseISODate(value));
-  const anchorIso = $derived(value ?? month ?? todayIso);
-  const anchorDate = $derived(parseISODate(anchorIso) ?? parseISODate(todayIso) ?? new Date());
+  const anchorIso = $derived.by(() => {
+    // Validate value and month before using them; fall back to today so
+    // focusedIso always resolves to a parseable date (avoids a grid with
+    // no tabbable cell when an empty/invalid string is passed).
+    if (value && parseISODate(value)) return value;
+    if (month && parseISODate(month)) return month;
+    return todayIso;
+  });
+  const anchorDate = $derived(parseISODate(anchorIso) ?? new Date());
   let visibleMonthDate = $state(startOfMonth(anchorDate));
   let focusedIso = $state(value ?? anchorIso);
   let lastSyncedAnchorIso = $state(anchorIso);

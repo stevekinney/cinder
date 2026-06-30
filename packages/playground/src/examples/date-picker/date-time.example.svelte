@@ -6,12 +6,16 @@
 <script lang="ts">
   import { DatePicker } from '@lostgradient/cinder/date-picker';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  const pickerId = $derived(`${mountIdPrefix ?? uid}-date-time-picker`);
+
   let value = $state<string | undefined>('2026-06-29T09:30');
 </script>
 
 <div style="display: grid; gap: 0.75rem; max-inline-size: 22rem;">
   <DatePicker
-    id="playground-date-time-picker"
+    id={pickerId}
     bind:value
     granularity="minute"
     label="Scheduled at"

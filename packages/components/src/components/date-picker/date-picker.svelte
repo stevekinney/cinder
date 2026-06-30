@@ -42,8 +42,6 @@
   let open = $state(false);
   let inputElement = $state<HTMLInputElement | null>(null);
   let triggerElement = $state<HTMLButtonElement | null>(null);
-  let suppressFocusOpen = $state(false);
-  let wasOpen = $state(false);
 
   function isLeapYear(year: number): boolean {
     return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
@@ -123,11 +121,6 @@
     value = normalizedValue;
   });
 
-  $effect(() => {
-    if (wasOpen && !open) suppressFocusOpen = true;
-    wasOpen = open;
-  });
-
   function emit(next: string | undefined) {
     value = next;
     onchange?.(next);
@@ -193,13 +186,6 @@
       aria-invalid={invalid}
       aria-describedby={describedById}
       onchange={handleInputChange}
-      onfocus={() => {
-        if (suppressFocusOpen) {
-          suppressFocusOpen = false;
-          return;
-        }
-        if (!disabled) open = true;
-      }}
     />
     <button
       bind:this={triggerElement}
