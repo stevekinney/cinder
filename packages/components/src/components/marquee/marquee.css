@@ -95,7 +95,10 @@
     }
   }
 
-  .cinder-marquee[data-cinder-pause-focus='true']:focus-within .cinder-marquee__track {
+  .cinder-marquee[data-cinder-pause-focus='true']:not(
+      [data-cinder-manual-resumed='true']
+    ):focus-within
+    .cinder-marquee__track {
     --cinder-marquee-play-state: paused;
   }
 

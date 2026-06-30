@@ -268,6 +268,7 @@ function normalizeToAvailable(
       maximumTotal = Number.POSITIVE_INFINITY;
     }
   }
+  if (maximumTotal === 0 && collapsedFlags.every(Boolean)) return finiteMaximums;
   if (maximumTotal < availablePanePixels)
     return scaleSizesToTotal(finiteMaximums, availablePanePixels);
 

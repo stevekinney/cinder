@@ -118,6 +118,23 @@ describe('Marquee', () => {
     expect(getByRole('button', { name: 'Resume marquee animation' })).toBe(control);
     expect(control.getAttribute('aria-pressed')).toBe('true');
     expect(element?.getAttribute('data-cinder-manual-paused')).toBe('true');
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('false');
+
+    control.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getByRole('button', { name: 'Pause marquee animation' })).toBe(control);
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+    expect(element?.getAttribute('data-cinder-manual-paused')).toBe('false');
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+  });
+
+  test('manual resume overrides focus pause while the control remains focused', async () => {
+    const css = await Bun.file(marqueeCssPath).text();
+
+    expect(css).toMatch(
+      /\.cinder-marquee\[data-cinder-pause-focus='true'\]:not\(\s*\[data-cinder-manual-resumed='true'\]\s*\):focus-within\s+\.cinder-marquee__track/,
+    );
   });
 
   test('forwards label as aria-label and applies region role', () => {

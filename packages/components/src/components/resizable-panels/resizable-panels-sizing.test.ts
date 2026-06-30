@@ -337,6 +337,28 @@ describe('resizable-panels sizing', () => {
     expect(state.panels[1]!.sizePixels).toBeCloseTo(300, 3);
   });
 
+  test('keeps every default-collapsed pane at zero', () => {
+    const collapsedPanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        collapsible: true,
+        defaultCollapsed: true,
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        collapsible: true,
+        defaultCollapsed: true,
+      },
+    ];
+
+    const state = createInitialLayoutState(collapsedPanes, 600, 'horizontal');
+
+    expect(state.panels.map((panel) => panel.sizePixels)).toEqual([0, 0]);
+    expect(state.panels.map((panel) => panel.collapsed)).toEqual([true, true]);
+  });
+
   test('rebases finite max constraints across the full available budget', () => {
     const maxConstrainedPanes: ResizablePanelDefinition[] = [
       {

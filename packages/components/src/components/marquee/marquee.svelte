@@ -43,6 +43,7 @@
   );
   const role = $derived(hasAccessibleName ? 'region' : undefined);
   let manuallyPaused = $state(false);
+  let manualResumeRequested = $state(false);
   const pauseControlLabel = $derived(
     manuallyPaused ? 'Resume marquee animation' : 'Pause marquee animation',
   );
@@ -162,7 +163,9 @@
   }
 
   function toggleManualPausedState(): void {
-    manuallyPaused = !manuallyPaused;
+    const nextPaused = !manuallyPaused;
+    manuallyPaused = nextPaused;
+    manualResumeRequested = !nextPaused;
   }
 
   $effect(() => {
@@ -199,6 +202,7 @@
   data-cinder-pause-hover={pauseOnHover ? 'true' : 'false'}
   data-cinder-pause-focus={pauseOnFocus ? 'true' : 'false'}
   data-cinder-manual-paused={manuallyPaused ? 'true' : 'false'}
+  data-cinder-manual-resumed={manualResumeRequested ? 'true' : 'false'}
   data-cinder-ready={duplicateReady ? 'true' : 'false'}
   aria-label={normalizedLabel}
   {role}
