@@ -1,3 +1,4 @@
+import './stats-section.css';
 import StatsSection from './stats-section.svelte';
 
 export default StatsSection;

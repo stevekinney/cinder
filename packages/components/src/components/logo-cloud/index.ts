@@ -1,3 +1,4 @@
+import './logo-cloud.css';
 import LogoCloud from './logo-cloud.svelte';
 
 export default LogoCloud;

@@ -1,7 +1,14 @@
 import type { BunPlugin } from 'bun';
 import { compile, compileModule } from 'svelte/compiler';
+import ts from 'typescript';
 
 type GenerationTarget = 'client' | 'server';
+
+export type ServerComponentBoundary = {
+  column: number;
+  index: number;
+  line: number;
+};
 
 const DOMAIN_SUITE_STYLE_COMPONENTS = new Set([
   'chat',
@@ -22,6 +29,111 @@ function allowsStyleBlock(path: string): boolean {
   const componentPathMatch = normalizedPath.match(/\/src\/components\/([^/]+)(?:\/|\.svelte$)/);
   const componentName = componentPathMatch?.[1];
   return componentName !== undefined && DOMAIN_SUITE_STYLE_COMPONENTS.has(componentName);
+}
+
+function hasModifier(
+  node: ts.Node & { modifiers?: ts.NodeArray<ts.ModifierLike> },
+  kind: ts.SyntaxKind,
+): boolean {
+  return node.modifiers?.some((modifier) => modifier.kind === kind) ?? false;
+}
+
+function isServerComponentBoundaryCall(node: ts.CallExpression): boolean {
+  const [firstArgument] = node.arguments;
+  return (
+    ts.isPropertyAccessExpression(node.expression) &&
+    node.expression.name.text === 'component' &&
+    node.arguments.length === 1 &&
+    firstArgument !== undefined &&
+    (ts.isArrowFunction(firstArgument) || ts.isFunctionExpression(firstArgument))
+  );
+}
+
+function findDefaultComponentFunction(
+  sourceFile: ts.SourceFile,
+): ts.FunctionDeclaration | undefined {
+  let defaultExportName: string | undefined;
+
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isFunctionDeclaration(statement) &&
+      statement.name !== undefined &&
+      hasModifier(statement, ts.SyntaxKind.ExportKeyword) &&
+      hasModifier(statement, ts.SyntaxKind.DefaultKeyword)
+    ) {
+      return statement;
+    }
+
+    if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
+      defaultExportName = statement.expression.text;
+    }
+  }
+
+  if (defaultExportName === undefined) return undefined;
+
+  return sourceFile.statements.find(
+    (statement): statement is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(statement) && statement.name?.text === defaultExportName,
+  );
+}
+
+function parseJavaScript(source: string, fileName: string): ts.SourceFile {
+  return ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+}
+
+export function findOneArgumentServerComponentBoundaries(
+  source: string,
+  fileName = 'component.js',
+): ServerComponentBoundary[] {
+  const sourceFile = parseJavaScript(source, fileName);
+  const boundaries: ServerComponentBoundary[] = [];
+
+  function visit(node: ts.Node): void {
+    if (ts.isCallExpression(node) && isServerComponentBoundaryCall(node)) {
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+      boundaries.push({
+        column: position.character + 1,
+        index: node.getStart(sourceFile),
+        line: position.line + 1,
+      });
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return boundaries;
+}
+
+export function preserveServerComponentIdentity(source: string, fileName = 'component.js'): string {
+  const sourceFile = parseJavaScript(source, fileName);
+  const componentFunction = findDefaultComponentFunction(sourceFile);
+  const componentName = componentFunction?.name?.text;
+  if (componentFunction?.body === undefined || componentName === undefined) return source;
+
+  const insertionIndexes: number[] = [];
+
+  function visit(node: ts.Node): void {
+    if (ts.isCallExpression(node) && isServerComponentBoundaryCall(node)) {
+      const firstArgument = node.arguments[0];
+      if (firstArgument !== undefined) insertionIndexes.push(firstArgument.getEnd());
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(componentFunction.body);
+
+  if (insertionIndexes.length === 0) return source;
+
+  let transformedSource = source;
+  for (const insertionIndex of insertionIndexes.toSorted((left, right) => right - left)) {
+    transformedSource =
+      transformedSource.slice(0, insertionIndex) +
+      `, ${componentName}` +
+      transformedSource.slice(insertionIndex);
+  }
+  return transformedSource;
 }
 
 /**
@@ -55,20 +167,25 @@ export function sveltePlugin(
         const source = await Bun.file(path).text();
         const isPlaygroundFile = path.replaceAll('\\', '/').includes('/packages/playground/');
         const css = isPlaygroundFile || injectCss ? 'injected' : 'external';
+        const dev = process.env['NODE_ENV'] !== 'production';
         const compileResult = compile(source, {
           filename: path,
           generate: options.generate,
           css,
           // Read the same environment source that `scripts/build.ts` writes before `Bun.build()`
           // runs so production builds and test/dev loads stay in sync.
-          dev: process.env['NODE_ENV'] !== 'production',
+          dev,
         });
         if (!isPlaygroundFile && compileResult.css?.code?.trim() && !allowsStyleBlock(path)) {
           throw new Error(
             `[svelte-plugin] <style> block in ${path} — not allowed. Put styles in src/styles/.`,
           );
         }
-        return { contents: compileResult.js.code, loader: 'js' };
+        const compiledSource =
+          options.generate === 'server' && !dev
+            ? preserveServerComponentIdentity(compileResult.js.code, path)
+            : compileResult.js.code;
+        return { contents: compiledSource, loader: 'js' };
       });
 
       builder.onLoad({ filter: /\.svelte\.(js|ts)$/ }, async ({ path }) => {

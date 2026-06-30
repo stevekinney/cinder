@@ -91,7 +91,7 @@ export function cssImportPlugin(options: CssImportPluginOptions): BunPlugin {
   return {
     name: 'cinder-css-import',
     setup(builder) {
-      builder.onLoad({ filter: /\/index\.ts$/ }, async ({ path }) => {
+      builder.onLoad({ filter: /\/index(?:\.browser)?\.ts$/ }, async ({ path }) => {
         const source = await Bun.file(path).text();
         const normalized = normalizePath(path);
 

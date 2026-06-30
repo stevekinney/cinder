@@ -1,3 +1,4 @@
+import './hero-section.css';
 import HeroSection from './hero-section.svelte';
 
 export default HeroSection;

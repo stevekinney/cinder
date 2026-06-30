@@ -1,3 +1,4 @@
+import './cta-section.css';
 import CtaSection from './cta-section.svelte';
 
 export default CtaSection;

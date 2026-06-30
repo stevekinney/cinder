@@ -1,3 +1,4 @@
+import './team-section.css';
 import TeamSection from './team-section.svelte';
 
 export default TeamSection;

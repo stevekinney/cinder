@@ -1,3 +1,4 @@
+import './blog-section.css';
 import BlogSection from './blog-section.svelte';
 
 export default BlogSection;
