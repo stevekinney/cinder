@@ -94,6 +94,7 @@
       "default": "./dist/components/access-gate/access-gate.variables.js"
     },
     "./access-gate/styles": {
+      "types": "./dist/components/access-gate/access-gate.css.d.ts",
       "default": "./dist/components/access-gate/access-gate.css"
     },
     "./access-gate/examples": {
@@ -122,6 +123,7 @@
       "default": "./dist/components/accordion/accordion.variables.js"
     },
     "./accordion/styles": {
+      "types": "./dist/components/accordion/accordion.css.d.ts",
       "default": "./dist/components/accordion/accordion.css"
     },
     "./accordion/examples": {
@@ -150,6 +152,7 @@
       "default": "./dist/components/accordion-item/accordion-item.variables.js"
     },
     "./accordion-item/styles": {
+      "types": "./dist/components/accordion-item/accordion-item.css.d.ts",
       "default": "./dist/components/accordion-item/accordion-item.css"
     },
     "./alert": {
@@ -174,6 +177,7 @@
       "default": "./dist/components/alert/alert.variables.js"
     },
     "./alert/styles": {
+      "types": "./dist/components/alert/alert.css.d.ts",
       "default": "./dist/components/alert/alert.css"
     },
     "./alert/examples": {
@@ -202,6 +206,7 @@
       "default": "./dist/components/alert-dialog/alert-dialog.variables.js"
     },
     "./alert-dialog/styles": {
+      "types": "./dist/components/alert-dialog/alert-dialog.css.d.ts",
       "default": "./dist/components/alert-dialog/alert-dialog.css"
     },
     "./alert-dialog/examples": {
@@ -230,6 +235,7 @@
       "default": "./dist/components/approval-card/approval-card.variables.js"
     },
     "./approval-card/styles": {
+      "types": "./dist/components/approval-card/approval-card.css.d.ts",
       "default": "./dist/components/approval-card/approval-card.css"
     },
     "./approval-card/examples": {
@@ -258,6 +264,7 @@
       "default": "./dist/components/area-chart/area-chart.variables.js"
     },
     "./area-chart/styles": {
+      "types": "./dist/components/area-chart/area-chart.css.d.ts",
       "default": "./dist/components/area-chart/area-chart.css"
     },
     "./area-chart/examples": {
@@ -286,6 +293,7 @@
       "default": "./dist/components/aspect-ratio/aspect-ratio.variables.js"
     },
     "./aspect-ratio/styles": {
+      "types": "./dist/components/aspect-ratio/aspect-ratio.css.d.ts",
       "default": "./dist/components/aspect-ratio/aspect-ratio.css"
     },
     "./aspect-ratio/examples": {
@@ -314,6 +322,7 @@
       "default": "./dist/components/autocomplete/autocomplete.variables.js"
     },
     "./autocomplete/styles": {
+      "types": "./dist/components/autocomplete/autocomplete.css.d.ts",
       "default": "./dist/components/autocomplete/autocomplete.css"
     },
     "./autocomplete/examples": {
@@ -342,6 +351,7 @@
       "default": "./dist/components/avatar/avatar.variables.js"
     },
     "./avatar/styles": {
+      "types": "./dist/components/avatar/avatar.css.d.ts",
       "default": "./dist/components/avatar/avatar.css"
     },
     "./avatar/examples": {
@@ -370,6 +380,7 @@
       "default": "./dist/components/avatar-group/avatar-group.variables.js"
     },
     "./avatar-group/styles": {
+      "types": "./dist/components/avatar-group/avatar-group.css.d.ts",
       "default": "./dist/components/avatar-group/avatar-group.css"
     },
     "./avatar-group/examples": {
@@ -398,6 +409,7 @@
       "default": "./dist/components/backdrop/backdrop.variables.js"
     },
     "./backdrop/styles": {
+      "types": "./dist/components/backdrop/backdrop.css.d.ts",
       "default": "./dist/components/backdrop/backdrop.css"
     },
     "./backdrop/examples": {
@@ -426,6 +438,7 @@
       "default": "./dist/components/badge/badge.variables.js"
     },
     "./badge/styles": {
+      "types": "./dist/components/badge/badge.css.d.ts",
       "default": "./dist/components/badge/badge.css"
     },
     "./badge/examples": {
@@ -454,6 +467,7 @@
       "default": "./dist/components/banner/banner.variables.js"
     },
     "./banner/styles": {
+      "types": "./dist/components/banner/banner.css.d.ts",
       "default": "./dist/components/banner/banner.css"
     },
     "./banner/examples": {
@@ -482,6 +496,7 @@
       "default": "./dist/components/bar-chart/bar-chart.variables.js"
     },
     "./bar-chart/styles": {
+      "types": "./dist/components/bar-chart/bar-chart.css.d.ts",
       "default": "./dist/components/bar-chart/bar-chart.css"
     },
     "./bar-chart/examples": {
@@ -510,6 +525,7 @@
       "default": "./dist/components/bento-cell/bento-cell.variables.js"
     },
     "./bento-cell/styles": {
+      "types": "./dist/components/bento-cell/bento-cell.css.d.ts",
       "default": "./dist/components/bento-cell/bento-cell.css"
     },
     "./bento-grid": {
@@ -534,6 +550,7 @@
       "default": "./dist/components/bento-grid/bento-grid.variables.js"
     },
     "./bento-grid/styles": {
+      "types": "./dist/components/bento-grid/bento-grid.css.d.ts",
       "default": "./dist/components/bento-grid/bento-grid.css"
     },
     "./bento-grid/examples": {
@@ -562,6 +579,7 @@
       "default": "./dist/components/blog-section/blog-section.variables.js"
     },
     "./blog-section/styles": {
+      "types": "./dist/components/blog-section/blog-section.css.d.ts",
       "default": "./dist/components/blog-section/blog-section.css"
     },
     "./blog-section/examples": {
@@ -590,6 +608,7 @@
       "default": "./dist/components/breadcrumbs/breadcrumbs.variables.js"
     },
     "./breadcrumbs/styles": {
+      "types": "./dist/components/breadcrumbs/breadcrumbs.css.d.ts",
       "default": "./dist/components/breadcrumbs/breadcrumbs.css"
     },
     "./breadcrumbs/examples": {
@@ -618,6 +637,7 @@
       "default": "./dist/components/button/button.variables.js"
     },
     "./button/styles": {
+      "types": "./dist/components/button/button.css.d.ts",
       "default": "./dist/components/button/button.css"
     },
     "./button/examples": {
@@ -650,6 +670,7 @@
       "default": "./dist/components/button-group/button-group.variables.js"
     },
     "./button-group/styles": {
+      "types": "./dist/components/button-group/button-group.css.d.ts",
       "default": "./dist/components/button-group/button-group.css"
     },
     "./button-group/examples": {
@@ -678,6 +699,7 @@
       "default": "./dist/components/calendar/calendar.variables.js"
     },
     "./calendar/styles": {
+      "types": "./dist/components/calendar/calendar.css.d.ts",
       "default": "./dist/components/calendar/calendar.css"
     },
     "./calendar/examples": {
@@ -706,6 +728,7 @@
       "default": "./dist/components/callout/callout.variables.js"
     },
     "./callout/styles": {
+      "types": "./dist/components/callout/callout.css.d.ts",
       "default": "./dist/components/callout/callout.css"
     },
     "./callout/examples": {
@@ -734,6 +757,7 @@
       "default": "./dist/components/capability-gate/capability-gate.variables.js"
     },
     "./capability-gate/styles": {
+      "types": "./dist/components/capability-gate/capability-gate.css.d.ts",
       "default": "./dist/components/capability-gate/capability-gate.css"
     },
     "./capability-gate/examples": {
@@ -762,6 +786,7 @@
       "default": "./dist/components/card/card.variables.js"
     },
     "./card/styles": {
+      "types": "./dist/components/card/card.css.d.ts",
       "default": "./dist/components/card/card.css"
     },
     "./card/examples": {
@@ -790,6 +815,7 @@
       "default": "./dist/components/carousel/carousel.variables.js"
     },
     "./carousel/styles": {
+      "types": "./dist/components/carousel/carousel.css.d.ts",
       "default": "./dist/components/carousel/carousel.css"
     },
     "./carousel/examples": {
@@ -843,6 +869,7 @@
       "default": "./dist/components/chat-conversation-header/chat-conversation-header.variables.js"
     },
     "./chat-conversation-header/styles": {
+      "types": "./dist/components/chat-conversation-header/chat-conversation-header.css.d.ts",
       "default": "./dist/components/chat-conversation-header/chat-conversation-header.css"
     },
     "./chat-conversation-header/examples": {
@@ -871,6 +898,7 @@
       "default": "./dist/components/chat-conversation-list/chat-conversation-list.variables.js"
     },
     "./chat-conversation-list/styles": {
+      "types": "./dist/components/chat-conversation-list/chat-conversation-list.css.d.ts",
       "default": "./dist/components/chat-conversation-list/chat-conversation-list.css"
     },
     "./chat-conversation-list/examples": {
@@ -899,6 +927,7 @@
       "default": "./dist/components/checkbox/checkbox.variables.js"
     },
     "./checkbox/styles": {
+      "types": "./dist/components/checkbox/checkbox.css.d.ts",
       "default": "./dist/components/checkbox/checkbox.css"
     },
     "./checkbox/examples": {
@@ -927,6 +956,7 @@
       "default": "./dist/components/checkbox-group/checkbox-group.variables.js"
     },
     "./checkbox-group/styles": {
+      "types": "./dist/components/checkbox-group/checkbox-group.css.d.ts",
       "default": "./dist/components/checkbox-group/checkbox-group.css"
     },
     "./checkbox-group/examples": {
@@ -955,6 +985,7 @@
       "default": "./dist/components/chip/chip.variables.js"
     },
     "./chip/styles": {
+      "types": "./dist/components/chip/chip.css.d.ts",
       "default": "./dist/components/chip/chip.css"
     },
     "./chip/examples": {
@@ -983,6 +1014,7 @@
       "default": "./dist/components/choice-grid/choice-grid.variables.js"
     },
     "./choice-grid/styles": {
+      "types": "./dist/components/choice-grid/choice-grid.css.d.ts",
       "default": "./dist/components/choice-grid/choice-grid.css"
     },
     "./choice-grid/examples": {
@@ -1011,6 +1043,7 @@
       "default": "./dist/components/choice-grid-item/choice-grid-item.variables.js"
     },
     "./choice-grid-item/styles": {
+      "types": "./dist/components/choice-grid-item/choice-grid-item.css.d.ts",
       "default": "./dist/components/choice-grid-item/choice-grid-item.css"
     },
     "./click-away-listener": {
@@ -1060,6 +1093,7 @@
       "default": "./dist/components/code-block/code-block.variables.js"
     },
     "./code-block/styles": {
+      "types": "./dist/components/code-block/code-block.css.d.ts",
       "default": "./dist/components/code-block/code-block.css"
     },
     "./code-block/examples": {
@@ -1088,6 +1122,7 @@
       "default": "./dist/components/collapsible/collapsible.variables.js"
     },
     "./collapsible/styles": {
+      "types": "./dist/components/collapsible/collapsible.css.d.ts",
       "default": "./dist/components/collapsible/collapsible.css"
     },
     "./collapsible/examples": {
@@ -1116,6 +1151,7 @@
       "default": "./dist/components/color-field/color-field.variables.js"
     },
     "./color-field/styles": {
+      "types": "./dist/components/color-field/color-field.css.d.ts",
       "default": "./dist/components/color-field/color-field.css"
     },
     "./color-field/examples": {
@@ -1144,6 +1180,7 @@
       "default": "./dist/components/color-picker/color-picker.variables.js"
     },
     "./color-picker/styles": {
+      "types": "./dist/components/color-picker/color-picker.css.d.ts",
       "default": "./dist/components/color-picker/color-picker.css"
     },
     "./color-picker/examples": {
@@ -1172,6 +1209,7 @@
       "default": "./dist/components/color-swatch-picker/color-swatch-picker.variables.js"
     },
     "./color-swatch-picker/styles": {
+      "types": "./dist/components/color-swatch-picker/color-swatch-picker.css.d.ts",
       "default": "./dist/components/color-swatch-picker/color-swatch-picker.css"
     },
     "./color-swatch-picker/examples": {
@@ -1200,6 +1238,7 @@
       "default": "./dist/components/combobox/combobox.variables.js"
     },
     "./combobox/styles": {
+      "types": "./dist/components/combobox/combobox.css.d.ts",
       "default": "./dist/components/combobox/combobox.css"
     },
     "./combobox/examples": {
@@ -1228,6 +1267,7 @@
       "default": "./dist/components/command-item/command-item.variables.js"
     },
     "./command-item/styles": {
+      "types": "./dist/components/command-item/command-item.css.d.ts",
       "default": "./dist/components/command-item/command-item.css"
     },
     "./command-menu": {
@@ -1252,6 +1292,7 @@
       "default": "./dist/components/command-menu/command-menu.variables.js"
     },
     "./command-menu/styles": {
+      "types": "./dist/components/command-menu/command-menu.css.d.ts",
       "default": "./dist/components/command-menu/command-menu.css"
     },
     "./command-menu/examples": {
@@ -1280,6 +1321,7 @@
       "default": "./dist/components/command-palette/command-palette.variables.js"
     },
     "./command-palette/styles": {
+      "types": "./dist/components/command-palette/command-palette.css.d.ts",
       "default": "./dist/components/command-palette/command-palette.css"
     },
     "./command-palette/examples": {
@@ -1308,6 +1350,7 @@
       "default": "./dist/components/confirm-dialog/confirm-dialog.variables.js"
     },
     "./confirm-dialog/styles": {
+      "types": "./dist/components/confirm-dialog/confirm-dialog.css.d.ts",
       "default": "./dist/components/confirm-dialog/confirm-dialog.css"
     },
     "./confirm-dialog/examples": {
@@ -1336,6 +1379,7 @@
       "default": "./dist/components/container/container.variables.js"
     },
     "./container/styles": {
+      "types": "./dist/components/container/container.css.d.ts",
       "default": "./dist/components/container/container.css"
     },
     "./container/examples": {
@@ -1364,6 +1408,7 @@
       "default": "./dist/components/context-menu/context-menu.variables.js"
     },
     "./context-menu/styles": {
+      "types": "./dist/components/context-menu/context-menu.css.d.ts",
       "default": "./dist/components/context-menu/context-menu.css"
     },
     "./context-menu/examples": {
@@ -1413,6 +1458,7 @@
       "default": "./dist/components/copy-button/copy-button.variables.js"
     },
     "./copy-button/styles": {
+      "types": "./dist/components/copy-button/copy-button.css.d.ts",
       "default": "./dist/components/copy-button/copy-button.css"
     },
     "./copy-button/examples": {
@@ -1441,6 +1487,7 @@
       "default": "./dist/components/cta-section/cta-section.variables.js"
     },
     "./cta-section/styles": {
+      "types": "./dist/components/cta-section/cta-section.css.d.ts",
       "default": "./dist/components/cta-section/cta-section.css"
     },
     "./cta-section/examples": {
@@ -1469,6 +1516,7 @@
       "default": "./dist/components/data-grid/data-grid.variables.js"
     },
     "./data-grid/styles": {
+      "types": "./dist/components/data-grid/data-grid.css.d.ts",
       "default": "./dist/components/data-grid/data-grid.css"
     },
     "./data-grid/examples": {
@@ -1497,6 +1545,7 @@
       "default": "./dist/components/data-list/data-list.variables.js"
     },
     "./data-list/styles": {
+      "types": "./dist/components/data-list/data-list.css.d.ts",
       "default": "./dist/components/data-list/data-list.css"
     },
     "./data-list/examples": {
@@ -1525,6 +1574,7 @@
       "default": "./dist/components/data-table/data-table.variables.js"
     },
     "./data-table/styles": {
+      "types": "./dist/components/data-table/data-table.css.d.ts",
       "default": "./dist/components/data-table/data-table.css"
     },
     "./data-table/examples": {
@@ -1553,6 +1603,7 @@
       "default": "./dist/components/date-picker/date-picker.variables.js"
     },
     "./date-picker/styles": {
+      "types": "./dist/components/date-picker/date-picker.css.d.ts",
       "default": "./dist/components/date-picker/date-picker.css"
     },
     "./date-picker/examples": {
@@ -1581,6 +1632,7 @@
       "default": "./dist/components/date-range-field/date-range-field.variables.js"
     },
     "./date-range-field/styles": {
+      "types": "./dist/components/date-range-field/date-range-field.css.d.ts",
       "default": "./dist/components/date-range-field/date-range-field.css"
     },
     "./date-range-field/examples": {
@@ -1609,6 +1661,7 @@
       "default": "./dist/components/description-list/description-list.variables.js"
     },
     "./description-list/styles": {
+      "types": "./dist/components/description-list/description-list.css.d.ts",
       "default": "./dist/components/description-list/description-list.css"
     },
     "./description-list/examples": {
@@ -1637,6 +1690,7 @@
       "default": "./dist/components/diff-statistics/diff-statistics.variables.js"
     },
     "./diff-statistics/styles": {
+      "types": "./dist/components/diff-statistics/diff-statistics.css.d.ts",
       "default": "./dist/components/diff-statistics/diff-statistics.css"
     },
     "./diff-statistics/examples": {
@@ -1690,6 +1744,7 @@
       "default": "./dist/components/divider/divider.variables.js"
     },
     "./divider/styles": {
+      "types": "./dist/components/divider/divider.css.d.ts",
       "default": "./dist/components/divider/divider.css"
     },
     "./divider/examples": {
@@ -1718,6 +1773,7 @@
       "default": "./dist/components/drawer/drawer.variables.js"
     },
     "./drawer/styles": {
+      "types": "./dist/components/drawer/drawer.css.d.ts",
       "default": "./dist/components/drawer/drawer.css"
     },
     "./drawer/examples": {
@@ -1746,6 +1802,7 @@
       "default": "./dist/components/dropdown/dropdown.variables.js"
     },
     "./dropdown/styles": {
+      "types": "./dist/components/dropdown/dropdown.css.d.ts",
       "default": "./dist/components/dropdown/dropdown.css"
     },
     "./dropdown/examples": {
@@ -1900,6 +1957,7 @@
       "default": "./dist/components/empty-state/empty-state.variables.js"
     },
     "./empty-state/styles": {
+      "types": "./dist/components/empty-state/empty-state.css.d.ts",
       "default": "./dist/components/empty-state/empty-state.css"
     },
     "./empty-state/examples": {
@@ -1928,6 +1986,7 @@
       "default": "./dist/components/event-stream-viewer/event-stream-viewer.variables.js"
     },
     "./event-stream-viewer/styles": {
+      "types": "./dist/components/event-stream-viewer/event-stream-viewer.css.d.ts",
       "default": "./dist/components/event-stream-viewer/event-stream-viewer.css"
     },
     "./event-stream-viewer/examples": {
@@ -1956,6 +2015,7 @@
       "default": "./dist/components/faceted-filter-bar/faceted-filter-bar.variables.js"
     },
     "./faceted-filter-bar/styles": {
+      "types": "./dist/components/faceted-filter-bar/faceted-filter-bar.css.d.ts",
       "default": "./dist/components/faceted-filter-bar/faceted-filter-bar.css"
     },
     "./faceted-filter-bar/examples": {
@@ -1984,6 +2044,7 @@
       "default": "./dist/components/feature-section/feature-section.variables.js"
     },
     "./feature-section/styles": {
+      "types": "./dist/components/feature-section/feature-section.css.d.ts",
       "default": "./dist/components/feature-section/feature-section.css"
     },
     "./feature-section/examples": {
@@ -2012,6 +2073,7 @@
       "default": "./dist/components/feed/feed.variables.js"
     },
     "./feed/styles": {
+      "types": "./dist/components/feed/feed.css.d.ts",
       "default": "./dist/components/feed/feed.css"
     },
     "./feed/examples": {
@@ -2061,6 +2123,7 @@
       "default": "./dist/components/file-upload/file-upload.variables.js"
     },
     "./file-upload/styles": {
+      "types": "./dist/components/file-upload/file-upload.css.d.ts",
       "default": "./dist/components/file-upload/file-upload.css"
     },
     "./file-upload/examples": {
@@ -2089,6 +2152,7 @@
       "default": "./dist/components/floating-action-button/floating-action-button.variables.js"
     },
     "./floating-action-button/styles": {
+      "types": "./dist/components/floating-action-button/floating-action-button.css.d.ts",
       "default": "./dist/components/floating-action-button/floating-action-button.css"
     },
     "./floating-action-button/examples": {
@@ -2142,6 +2206,7 @@
       "default": "./dist/components/footer/footer.variables.js"
     },
     "./footer/styles": {
+      "types": "./dist/components/footer/footer.css.d.ts",
       "default": "./dist/components/footer/footer.css"
     },
     "./footer/examples": {
@@ -2170,6 +2235,7 @@
       "default": "./dist/components/form-field/form-field.variables.js"
     },
     "./form-field/styles": {
+      "types": "./dist/components/form-field/form-field.css.d.ts",
       "default": "./dist/components/form-field/form-field.css"
     },
     "./form-field/examples": {
@@ -2198,6 +2264,7 @@
       "default": "./dist/components/form-section/form-section.variables.js"
     },
     "./form-section/styles": {
+      "types": "./dist/components/form-section/form-section.css.d.ts",
       "default": "./dist/components/form-section/form-section.css"
     },
     "./form-section/examples": {
@@ -2226,6 +2293,7 @@
       "default": "./dist/components/grid/grid.variables.js"
     },
     "./grid/styles": {
+      "types": "./dist/components/grid/grid.css.d.ts",
       "default": "./dist/components/grid/grid.css"
     },
     "./grid/examples": {
@@ -2275,6 +2343,7 @@
       "default": "./dist/components/grid-list/grid-list.variables.js"
     },
     "./grid-list/styles": {
+      "types": "./dist/components/grid-list/grid-list.css.d.ts",
       "default": "./dist/components/grid-list/grid-list.css"
     },
     "./grid-list/examples": {
@@ -2324,6 +2393,7 @@
       "default": "./dist/components/hero-section/hero-section.variables.js"
     },
     "./hero-section/styles": {
+      "types": "./dist/components/hero-section/hero-section.css.d.ts",
       "default": "./dist/components/hero-section/hero-section.css"
     },
     "./hero-section/examples": {
@@ -2352,6 +2422,7 @@
       "default": "./dist/components/hover-card/hover-card.variables.js"
     },
     "./hover-card/styles": {
+      "types": "./dist/components/hover-card/hover-card.css.d.ts",
       "default": "./dist/components/hover-card/hover-card.css"
     },
     "./hover-card/examples": {
@@ -2380,6 +2451,7 @@
       "default": "./dist/components/image/image.variables.js"
     },
     "./image/styles": {
+      "types": "./dist/components/image/image.css.d.ts",
       "default": "./dist/components/image/image.css"
     },
     "./image/examples": {
@@ -2408,6 +2480,7 @@
       "default": "./dist/components/inline-loading/inline-loading.variables.js"
     },
     "./inline-loading/styles": {
+      "types": "./dist/components/inline-loading/inline-loading.css.d.ts",
       "default": "./dist/components/inline-loading/inline-loading.css"
     },
     "./inline-loading/examples": {
@@ -2436,6 +2509,7 @@
       "default": "./dist/components/input/input.variables.js"
     },
     "./input/styles": {
+      "types": "./dist/components/input/input.css.d.ts",
       "default": "./dist/components/input/input.css"
     },
     "./input/examples": {
@@ -2468,6 +2542,7 @@
       "default": "./dist/components/invocation-rule-builder/invocation-rule-builder.variables.js"
     },
     "./invocation-rule-builder/styles": {
+      "types": "./dist/components/invocation-rule-builder/invocation-rule-builder.css.d.ts",
       "default": "./dist/components/invocation-rule-builder/invocation-rule-builder.css"
     },
     "./invocation-rule-builder/examples": {
@@ -2496,6 +2571,7 @@
       "default": "./dist/components/json-schema-editor/json-schema-editor.variables.js"
     },
     "./json-schema-editor/styles": {
+      "types": "./dist/components/json-schema-editor/json-schema-editor.css.d.ts",
       "default": "./dist/components/json-schema-editor/json-schema-editor.css"
     },
     "./json-schema-editor/examples": {
@@ -2524,6 +2600,7 @@
       "default": "./dist/components/json-viewer/json-viewer.variables.js"
     },
     "./json-viewer/styles": {
+      "types": "./dist/components/json-viewer/json-viewer.css.d.ts",
       "default": "./dist/components/json-viewer/json-viewer.css"
     },
     "./json-viewer/examples": {
@@ -2552,6 +2629,7 @@
       "default": "./dist/components/kanban-board/kanban-board.variables.js"
     },
     "./kanban-board/styles": {
+      "types": "./dist/components/kanban-board/kanban-board.css.d.ts",
       "default": "./dist/components/kanban-board/kanban-board.css"
     },
     "./kanban-board/examples": {
@@ -2580,6 +2658,7 @@
       "default": "./dist/components/kbd/kbd.variables.js"
     },
     "./kbd/styles": {
+      "types": "./dist/components/kbd/kbd.css.d.ts",
       "default": "./dist/components/kbd/kbd.css"
     },
     "./kbd/examples": {
@@ -2608,6 +2687,7 @@
       "default": "./dist/components/keyboard-shortcuts/keyboard-shortcuts.variables.js"
     },
     "./keyboard-shortcuts/styles": {
+      "types": "./dist/components/keyboard-shortcuts/keyboard-shortcuts.css.d.ts",
       "default": "./dist/components/keyboard-shortcuts/keyboard-shortcuts.css"
     },
     "./keyboard-shortcuts/examples": {
@@ -2636,6 +2716,7 @@
       "default": "./dist/components/label/label.variables.js"
     },
     "./label/styles": {
+      "types": "./dist/components/label/label.css.d.ts",
       "default": "./dist/components/label/label.css"
     },
     "./line-chart": {
@@ -2660,6 +2741,7 @@
       "default": "./dist/components/line-chart/line-chart.variables.js"
     },
     "./line-chart/styles": {
+      "types": "./dist/components/line-chart/line-chart.css.d.ts",
       "default": "./dist/components/line-chart/line-chart.css"
     },
     "./line-chart/examples": {
@@ -2688,6 +2770,7 @@
       "default": "./dist/components/link/link.variables.js"
     },
     "./link/styles": {
+      "types": "./dist/components/link/link.css.d.ts",
       "default": "./dist/components/link/link.css"
     },
     "./link/examples": {
@@ -2716,6 +2799,7 @@
       "default": "./dist/components/load-more/load-more.variables.js"
     },
     "./load-more/styles": {
+      "types": "./dist/components/load-more/load-more.css.d.ts",
       "default": "./dist/components/load-more/load-more.css"
     },
     "./load-more/examples": {
@@ -2765,6 +2849,7 @@
       "default": "./dist/components/logo-cloud/logo-cloud.variables.js"
     },
     "./logo-cloud/styles": {
+      "types": "./dist/components/logo-cloud/logo-cloud.css.d.ts",
       "default": "./dist/components/logo-cloud/logo-cloud.css"
     },
     "./logo-cloud/examples": {
@@ -2818,6 +2903,7 @@
       "default": "./dist/components/marquee/marquee.variables.js"
     },
     "./marquee/styles": {
+      "types": "./dist/components/marquee/marquee.css.d.ts",
       "default": "./dist/components/marquee/marquee.css"
     },
     "./marquee/examples": {
@@ -2846,6 +2932,7 @@
       "default": "./dist/components/masonry/masonry.variables.js"
     },
     "./masonry/styles": {
+      "types": "./dist/components/masonry/masonry.css.d.ts",
       "default": "./dist/components/masonry/masonry.css"
     },
     "./masonry/examples": {
@@ -2874,6 +2961,7 @@
       "default": "./dist/components/matrix-chart/matrix-chart.variables.js"
     },
     "./matrix-chart/styles": {
+      "types": "./dist/components/matrix-chart/matrix-chart.css.d.ts",
       "default": "./dist/components/matrix-chart/matrix-chart.css"
     },
     "./matrix-chart/examples": {
@@ -2902,6 +2990,7 @@
       "default": "./dist/components/media-controls/media-controls.variables.js"
     },
     "./media-controls/styles": {
+      "types": "./dist/components/media-controls/media-controls.css.d.ts",
       "default": "./dist/components/media-controls/media-controls.css"
     },
     "./media-controls/examples": {
@@ -2930,6 +3019,7 @@
       "default": "./dist/components/mega-menu/mega-menu.variables.js"
     },
     "./mega-menu/styles": {
+      "types": "./dist/components/mega-menu/mega-menu.css.d.ts",
       "default": "./dist/components/mega-menu/mega-menu.css"
     },
     "./mega-menu/examples": {
@@ -2958,6 +3048,7 @@
       "default": "./dist/components/menu-bar/menu-bar.variables.js"
     },
     "./menu-bar/styles": {
+      "types": "./dist/components/menu-bar/menu-bar.css.d.ts",
       "default": "./dist/components/menu-bar/menu-bar.css"
     },
     "./menu-bar/examples": {
@@ -2986,6 +3077,7 @@
       "default": "./dist/components/message/message.variables.js"
     },
     "./message/styles": {
+      "types": "./dist/components/message/message.css.d.ts",
       "default": "./dist/components/message/message.css"
     },
     "./message/examples": {
@@ -3014,6 +3106,7 @@
       "default": "./dist/components/meter/meter.variables.js"
     },
     "./meter/styles": {
+      "types": "./dist/components/meter/meter.css.d.ts",
       "default": "./dist/components/meter/meter.css"
     },
     "./meter/examples": {
@@ -3042,6 +3135,7 @@
       "default": "./dist/components/modal/modal.variables.js"
     },
     "./modal/styles": {
+      "types": "./dist/components/modal/modal.css.d.ts",
       "default": "./dist/components/modal/modal.css"
     },
     "./modal/examples": {
@@ -3074,6 +3168,7 @@
       "default": "./dist/components/multi-select/multi-select.variables.js"
     },
     "./multi-select/styles": {
+      "types": "./dist/components/multi-select/multi-select.css.d.ts",
       "default": "./dist/components/multi-select/multi-select.css"
     },
     "./multi-select/examples": {
@@ -3102,6 +3197,7 @@
       "default": "./dist/components/navigation-bar/navigation-bar.variables.js"
     },
     "./navigation-bar/styles": {
+      "types": "./dist/components/navigation-bar/navigation-bar.css.d.ts",
       "default": "./dist/components/navigation-bar/navigation-bar.css"
     },
     "./navigation-bar/examples": {
@@ -3130,6 +3226,7 @@
       "default": "./dist/components/navigation-item/navigation-item.variables.js"
     },
     "./navigation-item/styles": {
+      "types": "./dist/components/navigation-item/navigation-item.css.d.ts",
       "default": "./dist/components/navigation-item/navigation-item.css"
     },
     "./newsletter-section": {
@@ -3154,6 +3251,7 @@
       "default": "./dist/components/newsletter-section/newsletter-section.variables.js"
     },
     "./newsletter-section/styles": {
+      "types": "./dist/components/newsletter-section/newsletter-section.css.d.ts",
       "default": "./dist/components/newsletter-section/newsletter-section.css"
     },
     "./newsletter-section/examples": {
@@ -3182,6 +3280,7 @@
       "default": "./dist/components/number-input/number-input.variables.js"
     },
     "./number-input/styles": {
+      "types": "./dist/components/number-input/number-input.css.d.ts",
       "default": "./dist/components/number-input/number-input.css"
     },
     "./number-input/examples": {
@@ -3210,6 +3309,7 @@
       "default": "./dist/components/page-header/page-header.variables.js"
     },
     "./page-header/styles": {
+      "types": "./dist/components/page-header/page-header.css.d.ts",
       "default": "./dist/components/page-header/page-header.css"
     },
     "./page-header/examples": {
@@ -3238,6 +3338,7 @@
       "default": "./dist/components/pagination/pagination.variables.js"
     },
     "./pagination/styles": {
+      "types": "./dist/components/pagination/pagination.css.d.ts",
       "default": "./dist/components/pagination/pagination.css"
     },
     "./pagination/examples": {
@@ -3266,6 +3367,7 @@
       "default": "./dist/components/payload-inspector/payload-inspector.variables.js"
     },
     "./payload-inspector/styles": {
+      "types": "./dist/components/payload-inspector/payload-inspector.css.d.ts",
       "default": "./dist/components/payload-inspector/payload-inspector.css"
     },
     "./payload-inspector/examples": {
@@ -3294,6 +3396,7 @@
       "default": "./dist/components/permission-matrix/permission-matrix.variables.js"
     },
     "./permission-matrix/styles": {
+      "types": "./dist/components/permission-matrix/permission-matrix.css.d.ts",
       "default": "./dist/components/permission-matrix/permission-matrix.css"
     },
     "./permission-matrix/examples": {
@@ -3322,6 +3425,7 @@
       "default": "./dist/components/phone-input/phone-input.variables.js"
     },
     "./phone-input/styles": {
+      "types": "./dist/components/phone-input/phone-input.css.d.ts",
       "default": "./dist/components/phone-input/phone-input.css"
     },
     "./phone-input/examples": {
@@ -3350,6 +3454,7 @@
       "default": "./dist/components/pin-input/pin-input.variables.js"
     },
     "./pin-input/styles": {
+      "types": "./dist/components/pin-input/pin-input.css.d.ts",
       "default": "./dist/components/pin-input/pin-input.css"
     },
     "./pin-input/examples": {
@@ -3378,6 +3483,7 @@
       "default": "./dist/components/popover/popover.variables.js"
     },
     "./popover/styles": {
+      "types": "./dist/components/popover/popover.css.d.ts",
       "default": "./dist/components/popover/popover.css"
     },
     "./popover/examples": {
@@ -3431,6 +3537,7 @@
       "default": "./dist/components/pricing-card/pricing-card.variables.js"
     },
     "./pricing-card/styles": {
+      "types": "./dist/components/pricing-card/pricing-card.css.d.ts",
       "default": "./dist/components/pricing-card/pricing-card.css"
     },
     "./pricing-card/examples": {
@@ -3459,6 +3566,7 @@
       "default": "./dist/components/pricing-section/pricing-section.variables.js"
     },
     "./pricing-section/styles": {
+      "types": "./dist/components/pricing-section/pricing-section.css.d.ts",
       "default": "./dist/components/pricing-section/pricing-section.css"
     },
     "./pricing-section/examples": {
@@ -3487,6 +3595,7 @@
       "default": "./dist/components/progress/progress.variables.js"
     },
     "./progress/styles": {
+      "types": "./dist/components/progress/progress.css.d.ts",
       "default": "./dist/components/progress/progress.css"
     },
     "./progress/examples": {
@@ -3515,6 +3624,7 @@
       "default": "./dist/components/qr-code/qr-code.variables.js"
     },
     "./qr-code/styles": {
+      "types": "./dist/components/qr-code/qr-code.css.d.ts",
       "default": "./dist/components/qr-code/qr-code.css"
     },
     "./qr-code/examples": {
@@ -3543,6 +3653,7 @@
       "default": "./dist/components/radio-group/radio-group.variables.js"
     },
     "./radio-group/styles": {
+      "types": "./dist/components/radio-group/radio-group.css.d.ts",
       "default": "./dist/components/radio-group/radio-group.css"
     },
     "./radio-group/examples": {
@@ -3571,6 +3682,7 @@
       "default": "./dist/components/rating/rating.variables.js"
     },
     "./rating/styles": {
+      "types": "./dist/components/rating/rating.css.d.ts",
       "default": "./dist/components/rating/rating.css"
     },
     "./rating/examples": {
@@ -3599,6 +3711,7 @@
       "default": "./dist/components/resizable-panels/resizable-panels.variables.js"
     },
     "./resizable-panels/styles": {
+      "types": "./dist/components/resizable-panels/resizable-panels.css.d.ts",
       "default": "./dist/components/resizable-panels/resizable-panels.css"
     },
     "./resizable-panels/examples": {
@@ -3627,6 +3740,7 @@
       "default": "./dist/components/review-editor/review-editor.variables.js"
     },
     "./review-editor/styles": {
+      "types": "./dist/components/review-editor/review-editor.css.d.ts",
       "default": "./dist/components/review-editor/review-editor.css"
     },
     "./review-editor/examples": {
@@ -3655,6 +3769,7 @@
       "default": "./dist/components/run-step-timeline/run-step-timeline.variables.js"
     },
     "./run-step-timeline/styles": {
+      "types": "./dist/components/run-step-timeline/run-step-timeline.css.d.ts",
       "default": "./dist/components/run-step-timeline/run-step-timeline.css"
     },
     "./run-step-timeline/examples": {
@@ -3683,6 +3798,7 @@
       "default": "./dist/components/schema-form/schema-form.variables.js"
     },
     "./schema-form/styles": {
+      "types": "./dist/components/schema-form/schema-form.css.d.ts",
       "default": "./dist/components/schema-form/schema-form.css"
     },
     "./schema-form/examples": {
@@ -3711,6 +3827,7 @@
       "default": "./dist/components/scroll-area/scroll-area.variables.js"
     },
     "./scroll-area/styles": {
+      "types": "./dist/components/scroll-area/scroll-area.css.d.ts",
       "default": "./dist/components/scroll-area/scroll-area.css"
     },
     "./scroll-area/examples": {
@@ -3739,6 +3856,7 @@
       "default": "./dist/components/search-field/search-field.variables.js"
     },
     "./search-field/styles": {
+      "types": "./dist/components/search-field/search-field.css.d.ts",
       "default": "./dist/components/search-field/search-field.css"
     },
     "./search-field/examples": {
@@ -3767,6 +3885,7 @@
       "default": "./dist/components/secret-value-field/secret-value-field.variables.js"
     },
     "./secret-value-field/styles": {
+      "types": "./dist/components/secret-value-field/secret-value-field.css.d.ts",
       "default": "./dist/components/secret-value-field/secret-value-field.css"
     },
     "./secret-value-field/examples": {
@@ -3795,6 +3914,7 @@
       "default": "./dist/components/section-heading/section-heading.variables.js"
     },
     "./section-heading/styles": {
+      "types": "./dist/components/section-heading/section-heading.css.d.ts",
       "default": "./dist/components/section-heading/section-heading.css"
     },
     "./section-heading/examples": {
@@ -3844,6 +3964,7 @@
       "default": "./dist/components/segmented-control/segmented-control.variables.js"
     },
     "./segmented-control/styles": {
+      "types": "./dist/components/segmented-control/segmented-control.css.d.ts",
       "default": "./dist/components/segmented-control/segmented-control.css"
     },
     "./segmented-control/examples": {
@@ -3872,6 +3993,7 @@
       "default": "./dist/components/select/select.variables.js"
     },
     "./select/styles": {
+      "types": "./dist/components/select/select.css.d.ts",
       "default": "./dist/components/select/select.css"
     },
     "./select/examples": {
@@ -3900,6 +4022,7 @@
       "default": "./dist/components/selection-popover/selection-popover.variables.js"
     },
     "./selection-popover/styles": {
+      "types": "./dist/components/selection-popover/selection-popover.css.d.ts",
       "default": "./dist/components/selection-popover/selection-popover.css"
     },
     "./selection-popover/examples": {
@@ -3928,6 +4051,7 @@
       "default": "./dist/components/share-card/share-card.variables.js"
     },
     "./share-card/styles": {
+      "types": "./dist/components/share-card/share-card.css.d.ts",
       "default": "./dist/components/share-card/share-card.css"
     },
     "./share-card/examples": {
@@ -3956,6 +4080,7 @@
       "default": "./dist/components/sheet/sheet.variables.js"
     },
     "./sheet/styles": {
+      "types": "./dist/components/sheet/sheet.css.d.ts",
       "default": "./dist/components/sheet/sheet.css"
     },
     "./sheet/examples": {
@@ -3984,6 +4109,7 @@
       "default": "./dist/components/shortcut-hint/shortcut-hint.variables.js"
     },
     "./shortcut-hint/styles": {
+      "types": "./dist/components/shortcut-hint/shortcut-hint.css.d.ts",
       "default": "./dist/components/shortcut-hint/shortcut-hint.css"
     },
     "./shortcut-hint/examples": {
@@ -4012,6 +4138,7 @@
       "default": "./dist/components/side-navigation/side-navigation.variables.js"
     },
     "./side-navigation/styles": {
+      "types": "./dist/components/side-navigation/side-navigation.css.d.ts",
       "default": "./dist/components/side-navigation/side-navigation.css"
     },
     "./side-navigation/examples": {
@@ -4040,6 +4167,7 @@
       "default": "./dist/components/side-navigation-group/side-navigation-group.variables.js"
     },
     "./side-navigation-group/styles": {
+      "types": "./dist/components/side-navigation-group/side-navigation-group.css.d.ts",
       "default": "./dist/components/side-navigation-group/side-navigation-group.css"
     },
     "./side-navigation-item": {
@@ -4085,6 +4213,7 @@
       "default": "./dist/components/sidebar/sidebar.variables.js"
     },
     "./sidebar/styles": {
+      "types": "./dist/components/sidebar/sidebar.css.d.ts",
       "default": "./dist/components/sidebar/sidebar.css"
     },
     "./sidebar/examples": {
@@ -4113,6 +4242,7 @@
       "default": "./dist/components/skeleton/skeleton.variables.js"
     },
     "./skeleton/styles": {
+      "types": "./dist/components/skeleton/skeleton.css.d.ts",
       "default": "./dist/components/skeleton/skeleton.css"
     },
     "./skeleton/examples": {
@@ -4166,6 +4296,7 @@
       "default": "./dist/components/slider/slider.variables.js"
     },
     "./slider/styles": {
+      "types": "./dist/components/slider/slider.css.d.ts",
       "default": "./dist/components/slider/slider.css"
     },
     "./slider/examples": {
@@ -4194,6 +4325,7 @@
       "default": "./dist/components/sortable-list/sortable-list.variables.js"
     },
     "./sortable-list/styles": {
+      "types": "./dist/components/sortable-list/sortable-list.css.d.ts",
       "default": "./dist/components/sortable-list/sortable-list.css"
     },
     "./sortable-list/examples": {
@@ -4222,6 +4354,7 @@
       "default": "./dist/components/spectrogram/spectrogram.variables.js"
     },
     "./spectrogram/styles": {
+      "types": "./dist/components/spectrogram/spectrogram.css.d.ts",
       "default": "./dist/components/spectrogram/spectrogram.css"
     },
     "./spectrogram/examples": {
@@ -4250,6 +4383,7 @@
       "default": "./dist/components/spectrum-chart/spectrum-chart.variables.js"
     },
     "./spectrum-chart/styles": {
+      "types": "./dist/components/spectrum-chart/spectrum-chart.css.d.ts",
       "default": "./dist/components/spectrum-chart/spectrum-chart.css"
     },
     "./spectrum-chart/examples": {
@@ -4278,6 +4412,7 @@
       "default": "./dist/components/speed-dial/speed-dial.variables.js"
     },
     "./speed-dial/styles": {
+      "types": "./dist/components/speed-dial/speed-dial.css.d.ts",
       "default": "./dist/components/speed-dial/speed-dial.css"
     },
     "./speed-dial/examples": {
@@ -4327,6 +4462,7 @@
       "default": "./dist/components/spinner/spinner.variables.js"
     },
     "./spinner/styles": {
+      "types": "./dist/components/spinner/spinner.css.d.ts",
       "default": "./dist/components/spinner/spinner.css"
     },
     "./spinner/examples": {
@@ -4355,6 +4491,7 @@
       "default": "./dist/components/stacked-list-item/stacked-list-item.variables.js"
     },
     "./stacked-list-item/styles": {
+      "types": "./dist/components/stacked-list-item/stacked-list-item.css.d.ts",
       "default": "./dist/components/stacked-list-item/stacked-list-item.css"
     },
     "./stacked-list-item/examples": {
@@ -4383,6 +4520,7 @@
       "default": "./dist/components/stat/stat.variables.js"
     },
     "./stat/styles": {
+      "types": "./dist/components/stat/stat.css.d.ts",
       "default": "./dist/components/stat/stat.css"
     },
     "./stat-group": {
@@ -4407,6 +4545,7 @@
       "default": "./dist/components/stat-group/stat-group.variables.js"
     },
     "./stat-group/styles": {
+      "types": "./dist/components/stat-group/stat-group.css.d.ts",
       "default": "./dist/components/stat-group/stat-group.css"
     },
     "./stat-group/examples": {
@@ -4435,6 +4574,7 @@
       "default": "./dist/components/stats-section/stats-section.variables.js"
     },
     "./stats-section/styles": {
+      "types": "./dist/components/stats-section/stats-section.css.d.ts",
       "default": "./dist/components/stats-section/stats-section.css"
     },
     "./stats-section/examples": {
@@ -4463,6 +4603,7 @@
       "default": "./dist/components/status-dot/status-dot.variables.js"
     },
     "./status-dot/styles": {
+      "types": "./dist/components/status-dot/status-dot.css.d.ts",
       "default": "./dist/components/status-dot/status-dot.css"
     },
     "./status-dot/examples": {
@@ -4491,6 +4632,7 @@
       "default": "./dist/components/steps/steps.variables.js"
     },
     "./steps/styles": {
+      "types": "./dist/components/steps/steps.css.d.ts",
       "default": "./dist/components/steps/steps.css"
     },
     "./steps/examples": {
@@ -4519,6 +4661,7 @@
       "default": "./dist/components/surface/surface.variables.js"
     },
     "./surface/styles": {
+      "types": "./dist/components/surface/surface.css.d.ts",
       "default": "./dist/components/surface/surface.css"
     },
     "./surface/examples": {
@@ -4547,6 +4690,7 @@
       "default": "./dist/components/tab/tab.variables.js"
     },
     "./tab/styles": {
+      "types": "./dist/components/tab/tab.css.d.ts",
       "default": "./dist/components/tab/tab.css"
     },
     "./tab-list": {
@@ -4571,6 +4715,7 @@
       "default": "./dist/components/tab-list/tab-list.variables.js"
     },
     "./tab-list/styles": {
+      "types": "./dist/components/tab-list/tab-list.css.d.ts",
       "default": "./dist/components/tab-list/tab-list.css"
     },
     "./tab-panel": {
@@ -4595,6 +4740,7 @@
       "default": "./dist/components/tab-panel/tab-panel.variables.js"
     },
     "./tab-panel/styles": {
+      "types": "./dist/components/tab-panel/tab-panel.css.d.ts",
       "default": "./dist/components/tab-panel/tab-panel.css"
     },
     "./table": {
@@ -4619,6 +4765,7 @@
       "default": "./dist/components/table/table.variables.js"
     },
     "./table/styles": {
+      "types": "./dist/components/table/table.css.d.ts",
       "default": "./dist/components/table/table.css"
     },
     "./table/examples": {
@@ -4647,6 +4794,7 @@
       "default": "./dist/components/table-body/table-body.variables.js"
     },
     "./table-body/styles": {
+      "types": "./dist/components/table-body/table-body.css.d.ts",
       "default": "./dist/components/table-body/table-body.css"
     },
     "./table-cell": {
@@ -4671,6 +4819,7 @@
       "default": "./dist/components/table-cell/table-cell.variables.js"
     },
     "./table-cell/styles": {
+      "types": "./dist/components/table-cell/table-cell.css.d.ts",
       "default": "./dist/components/table-cell/table-cell.css"
     },
     "./table-header": {
@@ -4695,6 +4844,7 @@
       "default": "./dist/components/table-header/table-header.variables.js"
     },
     "./table-header/styles": {
+      "types": "./dist/components/table-header/table-header.css.d.ts",
       "default": "./dist/components/table-header/table-header.css"
     },
     "./table-header-cell": {
@@ -4719,6 +4869,7 @@
       "default": "./dist/components/table-header-cell/table-header-cell.variables.js"
     },
     "./table-header-cell/styles": {
+      "types": "./dist/components/table-header-cell/table-header-cell.css.d.ts",
       "default": "./dist/components/table-header-cell/table-header-cell.css"
     },
     "./table-of-contents": {
@@ -4743,6 +4894,7 @@
       "default": "./dist/components/table-of-contents/table-of-contents.variables.js"
     },
     "./table-of-contents/styles": {
+      "types": "./dist/components/table-of-contents/table-of-contents.css.d.ts",
       "default": "./dist/components/table-of-contents/table-of-contents.css"
     },
     "./table-of-contents/examples": {
@@ -4771,6 +4923,7 @@
       "default": "./dist/components/table-row/table-row.variables.js"
     },
     "./table-row/styles": {
+      "types": "./dist/components/table-row/table-row.css.d.ts",
       "default": "./dist/components/table-row/table-row.css"
     },
     "./tabs": {
@@ -4795,6 +4948,7 @@
       "default": "./dist/components/tabs/tabs.variables.js"
     },
     "./tabs/styles": {
+      "types": "./dist/components/tabs/tabs.css.d.ts",
       "default": "./dist/components/tabs/tabs.css"
     },
     "./tabs/examples": {
@@ -4823,6 +4977,7 @@
       "default": "./dist/components/tag-input/tag-input.variables.js"
     },
     "./tag-input/styles": {
+      "types": "./dist/components/tag-input/tag-input.css.d.ts",
       "default": "./dist/components/tag-input/tag-input.css"
     },
     "./tag-input/examples": {
@@ -4851,6 +5006,7 @@
       "default": "./dist/components/team-section/team-section.variables.js"
     },
     "./team-section/styles": {
+      "types": "./dist/components/team-section/team-section.css.d.ts",
       "default": "./dist/components/team-section/team-section.css"
     },
     "./team-section/examples": {
@@ -4879,6 +5035,7 @@
       "default": "./dist/components/testimonial-section/testimonial-section.variables.js"
     },
     "./testimonial-section/styles": {
+      "types": "./dist/components/testimonial-section/testimonial-section.css.d.ts",
       "default": "./dist/components/testimonial-section/testimonial-section.css"
     },
     "./testimonial-section/examples": {
@@ -4907,6 +5064,7 @@
       "default": "./dist/components/textarea/textarea.variables.js"
     },
     "./textarea/styles": {
+      "types": "./dist/components/textarea/textarea.css.d.ts",
       "default": "./dist/components/textarea/textarea.css"
     },
     "./textarea/examples": {
@@ -4935,6 +5093,7 @@
       "default": "./dist/components/time-field/time-field.variables.js"
     },
     "./time-field/styles": {
+      "types": "./dist/components/time-field/time-field.css.d.ts",
       "default": "./dist/components/time-field/time-field.css"
     },
     "./time-field/examples": {
@@ -4963,6 +5122,7 @@
       "default": "./dist/components/timeline/timeline.variables.js"
     },
     "./timeline/styles": {
+      "types": "./dist/components/timeline/timeline.css.d.ts",
       "default": "./dist/components/timeline/timeline.css"
     },
     "./timeline/examples": {
@@ -4991,6 +5151,7 @@
       "default": "./dist/components/toast-region/toast-region.variables.js"
     },
     "./toast-region/styles": {
+      "types": "./dist/components/toast-region/toast-region.css.d.ts",
       "default": "./dist/components/toast-region/toast-region.css"
     },
     "./toast-region/examples": {
@@ -5019,6 +5180,7 @@
       "default": "./dist/components/toggle/toggle.variables.js"
     },
     "./toggle/styles": {
+      "types": "./dist/components/toggle/toggle.css.d.ts",
       "default": "./dist/components/toggle/toggle.css"
     },
     "./toggle/examples": {
@@ -5047,6 +5209,7 @@
       "default": "./dist/components/toolbar/toolbar.variables.js"
     },
     "./toolbar/styles": {
+      "types": "./dist/components/toolbar/toolbar.css.d.ts",
       "default": "./dist/components/toolbar/toolbar.css"
     },
     "./toolbar/examples": {
@@ -5075,6 +5238,7 @@
       "default": "./dist/components/tooltip/tooltip.variables.js"
     },
     "./tooltip/styles": {
+      "types": "./dist/components/tooltip/tooltip.css.d.ts",
       "default": "./dist/components/tooltip/tooltip.css"
     },
     "./tooltip/examples": {
@@ -5103,6 +5267,7 @@
       "default": "./dist/components/transfer-list/transfer-list.variables.js"
     },
     "./transfer-list/styles": {
+      "types": "./dist/components/transfer-list/transfer-list.css.d.ts",
       "default": "./dist/components/transfer-list/transfer-list.css"
     },
     "./transfer-list/examples": {
@@ -5131,6 +5296,7 @@
       "default": "./dist/components/tree/tree.variables.js"
     },
     "./tree/styles": {
+      "types": "./dist/components/tree/tree.css.d.ts",
       "default": "./dist/components/tree/tree.css"
     },
     "./tree/examples": {
@@ -5180,6 +5346,7 @@
       "default": "./dist/components/typography/typography.variables.js"
     },
     "./typography/styles": {
+      "types": "./dist/components/typography/typography.css.d.ts",
       "default": "./dist/components/typography/typography.css"
     },
     "./typography/examples": {
@@ -5208,6 +5375,7 @@
       "default": "./dist/components/virtual-list/virtual-list.variables.js"
     },
     "./virtual-list/styles": {
+      "types": "./dist/components/virtual-list/virtual-list.css.d.ts",
       "default": "./dist/components/virtual-list/virtual-list.css"
     },
     "./virtual-list/examples": {
@@ -5261,6 +5429,7 @@
       "default": "./dist/components/waveform/waveform.variables.js"
     },
     "./waveform/styles": {
+      "types": "./dist/components/waveform/waveform.css.d.ts",
       "default": "./dist/components/waveform/waveform.css"
     },
     "./waveform/examples": {
@@ -5499,6 +5668,7 @@
       "default": "./dist/components/json-viewer/json-viewer.variables.js"
     },
     "./experimental/json-viewer/styles": {
+      "types": "./dist/components/json-viewer/json-viewer.css.d.ts",
       "default": "./dist/components/json-viewer/json-viewer.css"
     },
     "./experimental/message": {
@@ -5523,6 +5693,7 @@
       "default": "./dist/components/message/message.variables.js"
     },
     "./experimental/message/styles": {
+      "types": "./dist/components/message/message.css.d.ts",
       "default": "./dist/components/message/message.css"
     }
   },

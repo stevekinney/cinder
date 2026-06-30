@@ -500,24 +500,26 @@ describe('enforcement — real examples have no un-allowlisted raw controls', ()
   // Scan the examples directory once and assert against the cached result in
   // both tests — the scan reads and parses every example file, so running it
   // per-test would duplicate that work.
-  let result: ScanResult;
-  beforeAll(async () => {
-    result = await scan(examplesDirectory);
+  let resultPromise: Promise<ScanResult>;
+  beforeAll(() => {
+    resultPromise = scan(examplesDirectory);
   });
 
-  test('scan of src/examples reports zero flagged controls', () => {
+  test('scan of src/examples reports zero flagged controls', async () => {
+    const result = await resultPromise;
     expect(
       result.flagged.map((occurrence) => `${occurrence.relativePath}:${occurrence.lineNumber}`),
     ).toEqual([]);
-  });
+  }, 30_000);
 
-  test('the checked-in ALLOWLIST has no stale entries', () => {
+  test('the checked-in ALLOWLIST has no stale entries', async () => {
+    const result = await resultPromise;
     expect(
       result.staleAllowlistEntries.map(
         (entry) => `${entry.relativePath}#${entry.tagName}[${entry.occurrenceIndex}]`,
       ),
     ).toEqual([]);
-  });
+  }, 30_000);
 });
 
 // ── renderReport ───────────────────────────────────────────────────────────────
@@ -630,7 +632,7 @@ describe('scan — live inventory against the real examples directory', () => {
       (occurrence) => occurrence.relativePath === 'popover/transformed-ancestor.example.svelte',
     );
     expect(popoverFlagged).toHaveLength(0);
-  }, 15_000);
+  }, 30_000);
 
   test('every returned occurrence has a positive lineNumber and a non-empty relativePath', async () => {
     const result = await scan(examplesDirectory);

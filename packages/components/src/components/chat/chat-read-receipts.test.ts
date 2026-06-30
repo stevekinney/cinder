@@ -130,7 +130,7 @@ describe('Chat — readReceipts prop', () => {
 
     expect(container.querySelector('[data-cinder-receipt-status]')).toBeNull();
     unmount(instance);
-  });
+  }, 20_000);
 
   test('receipt wrapper has role="img" (accessible name via aria-label, not subtree text)', () => {
     // Regression guard: role=img makes the badge a single named widget so

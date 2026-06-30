@@ -239,12 +239,14 @@ describe('computeExports', () => {
     });
   });
 
-  it('emits a default-only /styles sidecar export only when hasCss is true', () => {
+  it('emits a types+default /styles sidecar export only when hasCss is true', () => {
     const withCss = computeExports([{ name: 'button', isExperimental: false, hasCss: true }]);
-    // Per-component /styles subpaths remain default-only (CSS sidecar, no .d.ts companion).
+    // Per-component /styles subpaths carry a side-effect type stub companion.
     expect(withCss['./button/styles']).toEqual({
+      types: './dist/components/button/button.css.d.ts',
       default: './dist/components/button/button.css',
     });
+    expect(Object.keys(withCss['./button/styles']!)).toEqual(['types', 'default']);
 
     const withoutCss = computeExports([{ name: 'button', isExperimental: false, hasCss: false }]);
     expect(withoutCss['./button/styles']).toBeUndefined();
@@ -253,6 +255,7 @@ describe('computeExports', () => {
   it('routes experimental /styles sidecars through the experimental dist path', () => {
     const out = computeExports([{ name: 'lab', isExperimental: true, hasCss: true }]);
     expect(out['./experimental/lab/styles']).toEqual({
+      types: './dist/components/experimental/lab/lab.css.d.ts',
       default: './dist/components/experimental/lab/lab.css',
     });
   });

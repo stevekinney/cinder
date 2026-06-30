@@ -410,7 +410,7 @@ type TarballExpectations = {
 async function buildTarballExpectations(): Promise<TarballExpectations> {
   const components = await discoverComponents();
   const componentRequiredEntries: string[] = [];
-  for (const { name, isExperimental } of components) {
+  for (const { name, isExperimental, hasCss } of components) {
     const sourceDirectory = isExperimental
       ? `package/src/components/experimental/${name}`
       : `package/src/components/${name}`;
@@ -426,6 +426,12 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       `${distributionDirectory}/index.js`,
       `${distributionDirectory}/index.d.ts`,
     );
+    if (hasCss) {
+      componentRequiredEntries.push(
+        `${distributionDirectory}/${name}.css`,
+        `${distributionDirectory}/${name}.css.d.ts`,
+      );
+    }
   }
   return {
     required: [
@@ -549,7 +555,7 @@ async function inspectTarball(): Promise<void> {
   // whitelist that omits the path).
   const packageJsonPath = join(repositoryRoot, 'package.json');
   const packageJsonContent = parseJsonFile<{
-    exports?: Record<string, { default?: string }>;
+    exports?: Record<string, { types?: string; default?: string }>;
   }>(await Bun.file(packageJsonPath).text());
   const stylesExports = Object.entries(packageJsonContent.exports ?? {}).filter(
     ([key, entry]) =>
@@ -557,7 +563,18 @@ async function inspectTarball(): Promise<void> {
   );
   const tarballEntrySet = new Set(entries);
   const danglingStylesExports: string[] = [];
+  const missingStylesTypeTargets: string[] = [];
   for (const [key, entry] of stylesExports) {
+    if (typeof entry.types !== 'string') {
+      missingStylesTypeTargets.push(`${key} is missing a string "types" target`);
+      continue;
+    }
+    const tarballTypesEntry = `package/${entry.types.replace(/^\.\//, '')}`;
+    if (!tarballEntrySet.has(tarballTypesEntry)) {
+      missingStylesTypeTargets.push(
+        `${key} -> ${entry.types} (expected tarball entry ${tarballTypesEntry})`,
+      );
+    }
     // package.json `default` paths are package-relative (`./dist/...`); npm
     // pack rewrites tarball entries as `package/dist/...`.
     const tarballEntry = `package/${entry.default!.replace(/^\.\//, '')}`;
@@ -570,6 +587,11 @@ async function inspectTarball(): Promise<void> {
   if (danglingStylesExports.length > 0) {
     fail(
       `Tarball is missing CSS artifacts for published /styles exports:\n  ${danglingStylesExports.join('\n  ')}`,
+    );
+  }
+  if (missingStylesTypeTargets.length > 0) {
+    fail(
+      `Tarball is missing style type declaration artifacts for published /styles exports:\n  ${missingStylesTypeTargets.join('\n  ')}`,
     );
   }
 }
@@ -904,7 +926,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       await waitForUrl(`http://127.0.0.1:${httpPort}/`, 10_000, fixtureServer);
 
       // Barrel page
-      const response = await fetch(`http://127.0.0.1:${httpPort}/`);
+      const response = await fetchWithTimeout(
+        `http://127.0.0.1:${httpPort}/`,
+        10_000,
+        'sveltekit-consumer / SSR',
+      );
       if (response.status !== 200) fail(`fixture / returned ${response.status}, want 200`);
       const body = await response.text();
       for (const cls of ALWAYS_RENDERED_CLASSES) {
@@ -929,9 +955,18 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       if (!body.includes('cinder-share-card')) {
         fail(`fixture HTML (/) does not contain class "cinder-share-card" (ShareCard did not SSR)`);
       }
+      if (!body.includes('data-fixture-nav-toggle="barrel"')) {
+        fail(
+          'fixture HTML (/) is missing the NavigationBar menuToggle trigger marker (barrel route SSR did not render the toggle snippet)',
+        );
+      }
 
       // Subpath page
-      const subpathResponse = await fetch(`http://127.0.0.1:${httpPort}/subpath`);
+      const subpathResponse = await fetchWithTimeout(
+        `http://127.0.0.1:${httpPort}/subpath`,
+        10_000,
+        'sveltekit-consumer /subpath SSR',
+      );
       if (subpathResponse.status !== 200)
         fail(`fixture /subpath returned ${subpathResponse.status}, want 200`);
       const subpathBody = await subpathResponse.text();
@@ -939,6 +974,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         if (!subpathBody.includes(cls)) {
           fail(`fixture HTML (/subpath) does not contain class "${cls}"`);
         }
+      }
+      if (!subpathBody.includes('data-fixture-nav-toggle="subpath"')) {
+        fail(
+          'fixture HTML (/subpath) is missing the NavigationBar menuToggle trigger marker (subpath route SSR did not render the toggle snippet)',
+        );
       }
 
       async function assertRenderedRouteServesButtonCss(
@@ -952,7 +992,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         // fragile on-disk path resolution (relative hrefs like
         // `../_app/immutable/...` would otherwise resolve outside the client
         // output directory and silently be skipped).
-        const routeResponse = await fetch(`http://127.0.0.1:${httpPort}${routePath}`);
+        const routeResponse = await fetchWithTimeout(
+          `http://127.0.0.1:${httpPort}${routePath}`,
+          10_000,
+          `sveltekit-consumer ${routePath} SSR`,
+        );
         if (routeResponse.status !== 200) {
           fail(`fixture ${routePath} returned ${routeResponse.status}, want 200`);
         }
@@ -978,7 +1022,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         let buttonCssServed = false;
         for (const href of stylesheetHrefs) {
           const stylesheetUrl = new URL(href, routeUrl).toString();
-          const stylesheetResponse = await fetch(stylesheetUrl);
+          const stylesheetResponse = await fetchWithTimeout(
+            stylesheetUrl,
+            10_000,
+            `${routePath} stylesheet fetch`,
+          );
           if (stylesheetResponse.status !== 200) {
             fail(
               `${routePath} references stylesheet ${href} (resolved to ${stylesheetUrl}) which returned ${stylesheetResponse.status} — cannot verify the ${contractLabel} styles contract`,
@@ -1186,6 +1234,19 @@ async function waitForUrl(
     await Bun.sleep(200);
   }
   fail(`timeout waiting for ${url}`);
+}
+
+async function fetchWithTimeout(
+  url: string,
+  timeoutMs: number,
+  description: string,
+): Promise<Response> {
+  try {
+    return await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail(`${description} failed or timed out after ${timeoutMs}ms: ${message}`);
+  }
 }
 
 async function runNodeFixture(): Promise<void> {

@@ -451,6 +451,7 @@ for (const component of components) {
   // it intact. No dist-side re-check is needed.
   const text = await Bun.file(source).text();
   await Bun.write(destination, text);
+  await Bun.write(`${destination}.d.ts`, 'export {};\n');
   copiedSidecars.push(destination);
 }
 
@@ -751,6 +752,7 @@ for (const component of components) {
   }
   if (existsSync(componentCssSource(component))) {
     expectedPaths.push(componentCssDestination(component));
+    expectedPaths.push(`${componentCssDestination(component)}.d.ts`);
   }
 }
 

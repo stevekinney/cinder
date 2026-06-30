@@ -29,6 +29,7 @@
     open = $bindable(false),
     ontoggle,
     disabled = false,
+    triggerAriaLabel,
     idBase,
     class: className,
     ...rest
@@ -43,7 +44,18 @@
   const autoId = $props.id();
   const baseId = $derived(idBase ?? autoId);
   const headerId = $derived(`${baseId}-header`);
+  const labelId = $derived(`${baseId}-label`);
   const panelId = $derived(`${baseId}-panel`);
+  const computedTriggerAriaLabelRaw = $derived.by(() =>
+    typeof triggerAriaLabel === 'function'
+      ? triggerAriaLabel({ open, disabled })
+      : triggerAriaLabel,
+  );
+  const computedTriggerAriaLabel = $derived(
+    typeof computedTriggerAriaLabelRaw === 'string' && computedTriggerAriaLabelRaw.trim().length > 0
+      ? computedTriggerAriaLabelRaw
+      : undefined,
+  );
 
   function handleClick(): void {
     if (disabled) return;
@@ -63,6 +75,7 @@
     type="button"
     id={headerId}
     class="cinder-collapsible__trigger"
+    aria-label={computedTriggerAriaLabel}
     aria-expanded={open}
     aria-controls={open ? panelId : undefined}
     {disabled}
@@ -70,9 +83,11 @@
   >
     <span class="cinder-collapsible__label">
       {#if typeof trigger === 'string'}
-        {trigger}
+        <span id={labelId}>{trigger}</span>
       {:else}
-        {@render trigger({ open, disabled })}
+        <span id={labelId}>
+          {@render trigger({ open, disabled })}
+        </span>
       {/if}
     </span>
     <svg
@@ -96,7 +111,7 @@
       transition:slide={{ duration: slideMs }}
       id={panelId}
       role="region"
-      aria-labelledby={headerId}
+      aria-labelledby={labelId}
       class="cinder-collapsible__panel"
     >
       <div class="cinder-collapsible__panel-inner">

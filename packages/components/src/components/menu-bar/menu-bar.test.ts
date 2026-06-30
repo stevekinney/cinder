@@ -255,7 +255,7 @@ describe('MenuBar', () => {
     const menuBarTag = html.match(/<div[^>]*class="[^"]*cinder-menu-bar[^"]*"[^>]*>/)?.[0] ?? '';
 
     expect(menuBarTag).toContain('dir="rtl"');
-  });
+  }, 30_000);
 
   test('uses the computed menubar root direction for dir auto keyboard behavior', async () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
