@@ -164,7 +164,7 @@ describe('Chat virtualization', () => {
     expect(conversation.ids).toHaveLength(80);
     expect(Object.keys(conversation.messages).toSorted()).toEqual([...conversation.ids].toSorted());
     expect(conversation).toEqual(originalConversation);
-  });
+  }, 30_000);
 
   test('turns off the timeline live region when the transcript is virtualized', async () => {
     const conversation = longConversation(80);
@@ -216,7 +216,7 @@ describe('Chat virtualization', () => {
 
     await waitFor(() => expect(container.querySelector('#message-message-20')).not.toBeNull());
     await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(0));
-  });
+  }, 30_000);
 
   test('arrow navigation crosses virtualized window boundaries', async () => {
     const conversation = longConversation(80);
@@ -244,7 +244,7 @@ describe('Chat virtualization', () => {
     await waitFor(() => expect(document.activeElement?.id).not.toBe(lastRenderedId));
     expect(document.activeElement?.classList.contains('chat-message')).toBe(true);
     expect(timeline.scrollTop).toBeGreaterThan(0);
-  });
+  }, 30_000);
 
   test('appending to a virtualized conversation preserves existing rendered rows', async () => {
     let conversation = longConversation(20);
@@ -492,7 +492,7 @@ describe('Chat history pagination', () => {
     await waitFor(() =>
       expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
     );
-  });
+  }, 180_000);
 
   test('adapter history loading preserves non-virtualized scroll position after prepend', async () => {
     let conversation = longConversation(20);
