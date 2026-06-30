@@ -90,12 +90,16 @@
       return;
     }
 
-    const initialWidth = navigationBarElement.getBoundingClientRect().width;
-    updateMobileLayout(initialWidth);
-
     if (typeof ResizeObserver === 'undefined') {
+      // Fallback: use border-box width if ResizeObserver unavailable
+      const initialWidth = navigationBarElement.getBoundingClientRect().width;
+      updateMobileLayout(initialWidth);
       return;
     }
+
+    // Use ResizeObserver to track content-box width, which aligns with CSS container queries.
+    // Don't read initial width synchronously; let observer fire immediately on observe().
+    let hasInitialMeasurement = false;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -103,9 +107,30 @@
         return;
       }
       updateMobileLayout(entry.contentRect.width);
+      hasInitialMeasurement = true;
     });
 
     observer.observe(navigationBarElement);
+
+    // If observer doesn't fire synchronously (edge case), set a fallback after a microtask.
+    // In modern browsers, observe() triggers callback synchronously on the same tick.
+    if (!hasInitialMeasurement) {
+      Promise.resolve().then(() => {
+        if (!hasInitialMeasurement) {
+          // Fallback: measure once more using contentRect-like calculation
+          const rect = navigationBarElement?.getBoundingClientRect();
+          const styles = navigationBarElement ? getComputedStyle(navigationBarElement) : null;
+          if (rect && styles) {
+            const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0;
+            const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
+            const contentWidth = rect.width - paddingLeft - paddingRight;
+            updateMobileLayout(contentWidth);
+            hasInitialMeasurement = true;
+          }
+        }
+      });
+    }
+
     return () => {
       observer.disconnect();
     };

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "sessions": {
+    "3271dec4-a642-49e5-923a-a44ed99f3609": {
+      "updatedAt": 1782787195499,
+      "files": {
+        "/Users/stevekinney/Developer/copilot-worktrees/cinder/issue-550-navigationbar-applies-inert-to-items-con-d8c2da/packages/components/src/components/navigation-bar/navigation-bar.svelte": {
+          "editCount": 1,
+          "findings": []
+        }
+      }
+    }
+  }
+}
