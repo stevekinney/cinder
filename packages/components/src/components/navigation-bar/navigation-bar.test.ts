@@ -296,9 +296,9 @@ describe('NavigationBar', () => {
       menuToggle: toggleSnippet(),
     });
 
-    expect(container.querySelector('.cinder-navigation-bar__items')?.hasAttribute('inert')).toBe(
-      false,
-    );
+    const itemsRegion = container.querySelector('.cinder-navigation-bar__items');
+    expect(itemsRegion).not.toBeNull();
+    expect(itemsRegion?.hasAttribute('inert')).toBe(false);
   });
 
   // ── menuToggle snippet and ARIA ──────────────────────────────────────────
@@ -342,12 +342,12 @@ describe('NavigationBar', () => {
     });
     const toggle = container.querySelector('#toggle-btn') as HTMLElement;
     await fireEvent.click(toggle);
+    const itemsRegion = container.querySelector('.cinder-navigation-bar__items');
     expect(
-      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+      itemsRegion?.getAttribute('data-open'),
     ).toBe('true');
-    expect(container.querySelector('.cinder-navigation-bar__items')?.hasAttribute('inert')).toBe(
-      false,
-    );
+    expect(itemsRegion).not.toBeNull();
+    expect(itemsRegion?.hasAttribute('inert')).toBe(false);
   });
 
   test('clicking the toggle a second time closes the menu', async () => {
