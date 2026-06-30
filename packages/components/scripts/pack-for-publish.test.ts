@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
-import { buildPublishedManifest, type SourceManifest } from './pack-for-publish.ts';
+import {
+  buildPublishedManifest,
+  stripDanglingSourceMapUrlComments,
+  type SourceManifest,
+} from './pack-for-publish.ts';
 
 describe('buildPublishedManifest', () => {
   it('keeps Svelte test-harness exclusions after broad Svelte includes', () => {
@@ -60,6 +64,19 @@ describe('buildPublishedManifest', () => {
     const files = published.files ?? [];
 
     expect(files).toContain('src/styles/base-guard.ts');
+  });
+
+  it('keeps dist .js.map files excluded from the published tarball', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+
+    expect(files).toContain('!dist/**/*.js.map');
   });
 
   it('rewrites source-backed runtime exports to built browser artifacts in the published manifest', () => {
@@ -200,5 +217,19 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('src/components/**/*.examples.json');
     expect(files).toContain('src/components/**/*.constraints.json');
     expect(files).not.toContain('src/components/**/*.json');
+  });
+
+  it('strips dangling sourceMappingURL comments when corresponding .map files are absent', () => {
+    const input = 'export const value = 1;\n//# sourceMappingURL=index.js.map\n';
+    const stripped = stripDanglingSourceMapUrlComments(input, () => false);
+    expect(stripped.strippedCount).toBe(1);
+    expect(stripped.text).toBe('export const value = 1;\n');
+  });
+
+  it('keeps sourceMappingURL comments when the corresponding .map file exists', () => {
+    const input = 'export const value = 1;\n//# sourceMappingURL=index.js.map\n';
+    const stripped = stripDanglingSourceMapUrlComments(input, () => true);
+    expect(stripped.strippedCount).toBe(0);
+    expect(stripped.text).toBe(input);
   });
 });
