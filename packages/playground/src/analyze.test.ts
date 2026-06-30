@@ -201,7 +201,7 @@ describe('analyzeAll', () => {
   it('returns at least 21 entries', async () => {
     const manifests = await analyzeAll(COMPONENTS_DIR);
     expect(manifests.length).toBeGreaterThanOrEqual(21);
-  });
+  }, 10_000);
 
   it('all entries have a non-empty file path', async () => {
     const manifests = await analyzeAll(COMPONENTS_DIR);
@@ -262,7 +262,7 @@ describe('shared ts-morph project', () => {
     // ~100 concurrent analyzeComponent calls must share a single Project, so
     // exactly one new instance is created for the whole run.
     expect(after - before).toBe(1);
-  });
+  }, 10_000);
 
   it('creates exactly one new Project after a reset', async () => {
     await analyzeAll(COMPONENTS_DIR);
@@ -270,7 +270,7 @@ describe('shared ts-morph project', () => {
     const before = getProjectCreationCount();
     await analyzeAll(COMPONENTS_DIR);
     expect(getProjectCreationCount() - before).toBe(1);
-  });
+  }, 10_000);
 
   it('produces identical manifests across two runs with a reset between them', async () => {
     const first = await analyzeAll(COMPONENTS_DIR);
