@@ -6,6 +6,7 @@ import {
   formatCoverageSummary,
   parseCoverageThresholds,
   parseLcovRecords,
+  parseSvelteLcovRecords,
 } from './check-coverage-ratchet.ts';
 
 const lcovFixture = `TN:
@@ -54,6 +55,28 @@ describe('coverage ratchet check', () => {
     });
   });
 
+  test('parses optional Svelte source thresholds', () => {
+    expect(
+      parseCoverageThresholds(
+        JSON.stringify({
+          lines: 1,
+          functions: 1,
+          svelte: {
+            lines: 0.32,
+            functions: 0.81,
+          },
+        }),
+      ),
+    ).toEqual({
+      lines: 1,
+      functions: 1,
+      svelte: {
+        lines: 0.32,
+        functions: 0.81,
+      },
+    });
+  });
+
   test('rejects missing threshold properties', () => {
     expect(() => parseCoverageThresholds(JSON.stringify({ lines: 0.65 }))).toThrow(
       'coverage-ratchet.json must define numeric lines and functions thresholds.',
@@ -63,6 +86,22 @@ describe('coverage ratchet check', () => {
   test('rejects non-object threshold data', () => {
     expect(() => parseCoverageThresholds('null')).toThrow(
       'coverage-ratchet.json must define numeric lines and functions thresholds.',
+    );
+  });
+
+  test('rejects invalid Svelte threshold data', () => {
+    expect(() =>
+      parseCoverageThresholds(
+        JSON.stringify({
+          lines: 1,
+          functions: 1,
+          svelte: {
+            lines: 0.32,
+          },
+        }),
+      ),
+    ).toThrow(
+      'coverage-ratchet.json svelte thresholds must define numeric lines and functions thresholds.',
     );
   });
 
@@ -299,7 +338,7 @@ end_of_record
     expect(computeCoverageAverages(records).functions).toBe(75);
   });
 
-  test('keeps package source in the ratchet denominator while excluding test harnesses', () => {
+  test('keeps runtime package source in the 100% denominator while excluding separately gated sources', () => {
     const scopedFixture = `${lcovFixture}TN:
 SF:scripts/build.ts
 FNF:10
@@ -349,6 +388,58 @@ end_of_record
       'covered.ts',
       'partial.ts',
       'src/components/button/button.ts',
+    ]);
+  });
+
+  test('keeps Svelte component modules in their own measured denominator', () => {
+    const scopedFixture = `${lcovFixture}TN:
+SF:scripts/build.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/button/button.svelte
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/json-schema-editor/json-schema-editor-state.svelte.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/button/button.test.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/test/hydrate.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/button/button.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseSvelteLcovRecords(scopedFixture);
+    expect(records.map((record) => record.file)).toEqual([
+      'src/components/button/button.svelte',
+      'src/components/json-schema-editor/json-schema-editor-state.svelte.ts',
     ]);
   });
 

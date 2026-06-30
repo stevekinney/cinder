@@ -6,6 +6,10 @@ export type CoverageThresholds = {
   lines: number;
 };
 
+export type CoverageThresholdConfiguration = CoverageThresholds & {
+  svelte?: CoverageThresholds;
+};
+
 export type CoverageRecord = {
   file: string;
   functionsFound: number;
@@ -24,12 +28,14 @@ export type CoverageAverages = {
   linesHit: number;
 };
 
+type CoverageScope = 'runtime' | 'svelte';
+
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptDirectory, '..');
 const defaultThresholdsPath = resolve(packageRoot, 'coverage-ratchet.json');
 const defaultCoveragePath = resolve(packageRoot, 'coverage/lcov.info');
 
-export function parseCoverageThresholds(source: string): CoverageThresholds {
+export function parseCoverageThresholds(source: string): CoverageThresholdConfiguration {
   const parsed: unknown = JSON.parse(source);
 
   if (
@@ -47,7 +53,36 @@ export function parseCoverageThresholds(source: string): CoverageThresholds {
     throw new Error('Coverage thresholds must be decimals between 0 and 1.');
   }
 
-  return { lines: parsed.lines, functions: parsed.functions };
+  const thresholds: CoverageThresholdConfiguration = {
+    lines: parsed.lines,
+    functions: parsed.functions,
+  };
+
+  if ('svelte' in parsed && parsed.svelte !== undefined) {
+    if (
+      typeof parsed.svelte !== 'object' ||
+      parsed.svelte === null ||
+      !('lines' in parsed.svelte) ||
+      typeof parsed.svelte.lines !== 'number' ||
+      !('functions' in parsed.svelte) ||
+      typeof parsed.svelte.functions !== 'number'
+    ) {
+      throw new Error(
+        'coverage-ratchet.json svelte thresholds must define numeric lines and functions thresholds.',
+      );
+    }
+
+    if (!isRatchetThreshold(parsed.svelte.lines) || !isRatchetThreshold(parsed.svelte.functions)) {
+      throw new Error('Coverage thresholds must be decimals between 0 and 1.');
+    }
+
+    thresholds.svelte = {
+      lines: parsed.svelte.lines,
+      functions: parsed.svelte.functions,
+    };
+  }
+
+  return thresholds;
 }
 
 function isRatchetThreshold(value: number): boolean {
@@ -109,23 +144,47 @@ function isOutsidePackageRootSourceMap(file: string): boolean {
 }
 
 /**
- * Keep the ratchet focused on package runtime TypeScript that Bun can measure
- * deterministically. Svelte component modules and `.svelte.ts` rune modules
- * are covered by DOM/SSR behavioral tests, but Bun's LCOV source maps report
- * them as large mostly-unhit generated functions. Test harnesses and package
- * scripts are validated by their own direct tests and gates, not by the public
- * runtime-source ratchet.
+ * Keep the default ratchet focused on package runtime TypeScript that Bun can
+ * measure deterministically. Svelte component modules and `.svelte.ts` rune
+ * modules are checked by a separate measured gate because Bun's generated
+ * source maps report them as large mostly-unhit generated functions. Test
+ * harnesses and package scripts are validated by their own direct tests and
+ * gates, not by the public runtime-source ratchet.
  */
-function isOutsideCoverageScope(file: string): boolean {
+function isOutsideCoverageScope(file: string, scope: CoverageScope): boolean {
   const normalizedFile = file.replaceAll('\\', '/');
   if (normalizedFile.startsWith('scripts/')) return true;
-  if (normalizedFile.endsWith('.svelte') || normalizedFile.endsWith('.svelte.ts')) return true;
   if (normalizedFile.endsWith('.test.ts') || normalizedFile.endsWith('.spec.ts')) return true;
   if (normalizedFile.startsWith('src/test/')) return true;
-  return false;
+  const isSvelteSource =
+    normalizedFile.endsWith('.svelte') || normalizedFile.endsWith('.svelte.ts');
+  if (scope === 'runtime') return isSvelteSource;
+  return !isSvelteSource;
 }
 
-export function parseLcovRecords(source: string): CoverageRecord[] {
+export function parseRuntimeLcovRecords(source: string): CoverageRecord[] {
+  return parseLcovRecords(source, 'runtime');
+}
+
+export function parseSvelteLcovRecords(source: string): CoverageRecord[] {
+  return parseLcovRecords(source, 'svelte');
+}
+
+export function parseLcovRecords(source: string): CoverageRecord[];
+export function parseLcovRecords(source: string, scope: CoverageScope): CoverageRecord[];
+export function parseLcovRecords(
+  source: string,
+  scope: CoverageScope = 'runtime',
+): CoverageRecord[] {
+  return parseAllLcovRecords(source).filter(
+    (record) =>
+      !isTransientTestArtifact(record.file) &&
+      !isOutsidePackageRootSourceMap(record.file) &&
+      !isOutsideCoverageScope(record.file, scope),
+  );
+}
+
+function parseAllLcovRecords(source: string): CoverageRecord[] {
   return source
     .split('end_of_record')
     .map((record) => record.trim())
@@ -140,13 +199,7 @@ export function parseLcovRecords(source: string): CoverageRecord[] {
         linesFound: readNumberField(lines, 'LF'),
         linesHit: readNumberField(lines, 'LH'),
       };
-    })
-    .filter(
-      (record) =>
-        !isTransientTestArtifact(record.file) &&
-        !isOutsidePackageRootSourceMap(record.file) &&
-        !isOutsideCoverageScope(record.file),
-    );
+    });
 }
 
 function readStringField(lines: string[], key: string): string {
@@ -214,9 +267,10 @@ export function coverageFailures(
 export function formatCoverageSummary(
   averages: CoverageAverages,
   thresholds: CoverageThresholds,
+  label = 'Coverage ratchet',
 ): string {
   return [
-    `Coverage ratchet (${averages.files} files):`,
+    `${label} (${averages.files} files):`,
     `functions ${formatPercentage(averages.functions)} >= ${formatThreshold(thresholds.functions)}`,
     `lines ${formatPercentage(averages.lines)} >= ${formatThreshold(thresholds.lines)}`,
   ].join(' ');
@@ -232,17 +286,27 @@ function formatThreshold(value: number): string {
 
 export async function main(): Promise<void> {
   const thresholds = parseCoverageThresholds(await Bun.file(defaultThresholdsPath).text());
-  const averages = computeCoverageAverages(
-    parseLcovRecords(await Bun.file(defaultCoveragePath).text()),
-  );
-  const failures = coverageFailures(averages, thresholds);
+  const coverageSource = await Bun.file(defaultCoveragePath).text();
+  const averages = computeCoverageAverages(parseRuntimeLcovRecords(coverageSource));
+  const summaries = [formatCoverageSummary(averages, thresholds)];
+  const failures = coverageFailures(averages, thresholds).map((failure) => `runtime ${failure}`);
+
+  if (thresholds.svelte) {
+    const svelteAverages = computeCoverageAverages(parseSvelteLcovRecords(coverageSource));
+    summaries.push(
+      formatCoverageSummary(svelteAverages, thresholds.svelte, 'Svelte coverage ratchet'),
+    );
+    failures.push(
+      ...coverageFailures(svelteAverages, thresholds.svelte).map((failure) => `svelte ${failure}`),
+    );
+  }
 
   if (failures.length > 0) {
-    console.error(`${formatCoverageSummary(averages, thresholds)} Failed: ${failures.join(', ')}.`);
+    console.error(`${summaries.join('\n')} Failed: ${failures.join(', ')}.`);
     process.exit(1);
   }
 
-  console.log(formatCoverageSummary(averages, thresholds));
+  console.log(summaries.join('\n'));
 }
 
 if (import.meta.main) await main();
