@@ -11,7 +11,7 @@ import {
   appendMessages as appendConversationalistMessages,
   appendUserMessage as appendConversationalistUserMessage,
   createConversationHistory,
-} from 'conversationalist/conversation';
+} from 'conversationalist';
 
 import type { ConversationHistory, MessageInput } from './conversation-model.ts';
 

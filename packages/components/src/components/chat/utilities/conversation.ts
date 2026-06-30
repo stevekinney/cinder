@@ -6,7 +6,7 @@
  * incidental tool-shaped field on a non-tool message never renders as a pair.
  */
 
-import { getMessages } from 'conversationalist/conversation';
+import { getMessages } from 'conversationalist';
 import { pairToolCallsWithResults as pairConversationalistToolCallsWithResults } from 'conversationalist/utilities';
 
 import type { Message, ToolCallPair } from '../conversation-model.ts';
