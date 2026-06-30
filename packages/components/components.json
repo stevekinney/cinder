@@ -552,6 +552,96 @@
       }
     },
     {
+      "name": "BentoCell",
+      "id": "bento-cell",
+      "import": "@lostgradient/cinder/bento-cell",
+      "exportName": "BentoCell",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Optional placement child for BentoGrid that controls row and column spans or explicit track placement.",
+      "tags": ["layout", "grid", "bento"],
+      "useWhen": [
+        "A tile in BentoGrid needs to span multiple tracks or start at a specific track."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Every tile can use default auto-placement inside BentoGrid.",
+          "alternative": "bento-grid"
+        }
+      ],
+      "related": ["bento-grid", "grid-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/bento-cell/schema",
+        "variables": "@lostgradient/cinder/bento-cell/variables"
+      }
+    },
+    {
+      "name": "BentoGrid",
+      "id": "bento-grid",
+      "import": "@lostgradient/cinder/bento-grid",
+      "exportName": "BentoGrid",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "CSS grid container for deliberate asymmetric bento mosaics with optional single-column collapse at narrow widths.",
+      "tags": ["layout", "grid", "bento"],
+      "useWhen": [
+        "Building feature mosaics where highlight tiles span rows or columns in a controlled layout.",
+        "Keeping bento placement declarative by pairing BentoGrid with BentoGrid.Cell or BentoCell children."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Packing variable-height content automatically - use masonry instead.",
+          "alternative": "masonry"
+        },
+        {
+          "reason": "You only need uniform tracks without feature-tile spans - use grid instead.",
+          "alternative": "grid"
+        }
+      ],
+      "related": ["bento-cell", "grid", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/bento-grid/schema",
+        "variables": "@lostgradient/cinder/bento-grid/variables",
+        "examples": "@lostgradient/cinder/bento-grid/examples"
+      }
+    },
+    {
+      "name": "BlogSection",
+      "id": "blog-section",
+      "import": "@lostgradient/cinder/blog-section",
+      "exportName": "BlogSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Blog/article listing section that renders post cards with metadata, excerpt text, and author attribution.",
+      "tags": ["marketing", "blog", "content"],
+      "useWhen": [
+        "Showing recent posts or resources on a landing page.",
+        "Building a featured-articles grid with author and publish metadata."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering partner logos or brand marks only.",
+          "alternative": "logo-cloud"
+        },
+        {
+          "reason": "Presenting customer testimonials in quote format.",
+          "alternative": "testimonial-section"
+        }
+      ],
+      "related": ["logo-cloud", "testimonial-section", "card", "avatar", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/blog-section/schema",
+        "variables": "@lostgradient/cinder/blog-section/variables",
+        "examples": "@lostgradient/cinder/blog-section/examples"
+      }
+    },
+    {
       "name": "Breadcrumbs",
       "id": "breadcrumbs",
       "import": "@lostgradient/cinder/breadcrumbs",
@@ -643,6 +733,33 @@
       }
     },
     {
+      "name": "Calendar",
+      "id": "calendar",
+      "import": "@lostgradient/cinder/calendar",
+      "exportName": "Calendar",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Keyboard-navigable month grid for choosing a calendar date with full styling control and min/max constraints.",
+      "tags": ["form", "date", "calendar"],
+      "useWhen": [
+        "Rendering a custom date-grid picker inside an input popover.",
+        "Requiring consistent cross-browser calendar behavior that native date controls cannot provide."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A plain browser-managed date input is sufficient and custom keyboard semantics are not required."
+        }
+      ],
+      "related": ["date-picker", "date-range-field"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/calendar/schema",
+        "variables": "@lostgradient/cinder/calendar/variables",
+        "examples": "@lostgradient/cinder/calendar/examples"
+      }
+    },
+    {
       "name": "Callout",
       "id": "callout",
       "import": "@lostgradient/cinder/callout",
@@ -730,6 +847,47 @@
         "schema": "@lostgradient/cinder/card/schema",
         "variables": "@lostgradient/cinder/card/variables",
         "examples": "@lostgradient/cinder/card/examples"
+      }
+    },
+    {
+      "name": "Carousel",
+      "id": "carousel",
+      "import": "@lostgradient/cinder/carousel",
+      "exportName": "Carousel",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Rotating content viewport with previous/next controls, picker dots, and optional autoplay.",
+      "tags": ["navigation", "carousel", "media"],
+      "useWhen": [
+        "Presenting a finite set of visual highlights with sequential browsing controls.",
+        "Cycling between promotional or tutorial panels inside a single region."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Content should remain simultaneously visible and scannable.",
+          "alternative": "grid"
+        },
+        {
+          "reason": "You only need one static hero panel with no sequence controls."
+        }
+      ],
+      "related": ["image", "aspect-ratio", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/carousel/schema",
+        "variables": "@lostgradient/cinder/carousel/variables",
+        "examples": "@lostgradient/cinder/carousel/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Carousel",
+        "keyboard": [
+          {
+            "keys": "ArrowLeft / ArrowRight / Home / End",
+            "action": "Moves between slides."
+          }
+        ],
+        "notes": ["Auto-advance pauses on hover and focus, and is disabled under reduced motion."]
       }
     },
     {
@@ -1395,6 +1553,38 @@
       }
     },
     {
+      "name": "CtaSection",
+      "id": "cta-section",
+      "import": "@lostgradient/cinder/cta-section",
+      "exportName": "CtaSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Focused conversion band with a short headline, supporting copy, and primary/secondary action buttons.",
+      "tags": ["marketing", "cta", "conversion"],
+      "useWhen": [
+        "Inserting a repeated “ready to get started?” conversion section between page segments.",
+        "Prompting sign-up or demo actions after readers consume feature or testimonial content."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Building a full top-of-page hero with complex media and long-form messaging.",
+          "alternative": "hero-section"
+        },
+        {
+          "reason": "Capturing an email address inline with form fields.",
+          "alternative": "newsletter-section"
+        }
+      ],
+      "related": ["hero-section", "newsletter-section", "button", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/cta-section/schema",
+        "variables": "@lostgradient/cinder/cta-section/variables",
+        "examples": "@lostgradient/cinder/cta-section/examples"
+      }
+    },
+    {
       "name": "DataGrid",
       "id": "data-grid",
       "import": "@lostgradient/cinder/data-grid",
@@ -1490,6 +1680,33 @@
         "schema": "@lostgradient/cinder/data-table/schema",
         "variables": "@lostgradient/cinder/data-table/variables",
         "examples": "@lostgradient/cinder/data-table/examples"
+      }
+    },
+    {
+      "name": "DatePicker",
+      "id": "date-picker",
+      "import": "@lostgradient/cinder/date-picker",
+      "exportName": "DatePicker",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Controlled date picker that combines a text trigger, floating calendar grid, and optional time controls.",
+      "tags": ["form", "date", "calendar"],
+      "useWhen": [
+        "Collecting a date with consistent cross-browser UI and keyboard support.",
+        "Collecting local datetime values while keeping ISO strings as the controlled model."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Browser-native date controls are acceptable and custom styling is unnecessary."
+        }
+      ],
+      "related": ["calendar", "date-range-field", "popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/date-picker/schema",
+        "variables": "@lostgradient/cinder/date-picker/variables",
+        "examples": "@lostgradient/cinder/date-picker/examples"
       }
     },
     {
@@ -1979,6 +2196,38 @@
       }
     },
     {
+      "name": "FeatureSection",
+      "id": "feature-section",
+      "import": "@lostgradient/cinder/feature-section",
+      "exportName": "FeatureSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Marketing section for highlighting product capabilities as a structured feature grid with optional side media.",
+      "tags": ["marketing", "features", "layout"],
+      "useWhen": [
+        "Showing a list of core benefits with concise title + description content.",
+        "Pairing a feature list with a screenshot or product demo in a two-column split."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering customer quotes authored by people with avatars.",
+          "alternative": "testimonial-section"
+        },
+        {
+          "reason": "Presenting team-member profiles and social links.",
+          "alternative": "team-section"
+        }
+      ],
+      "related": ["hero-section", "testimonial-section", "team-section", "card", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/feature-section/schema",
+        "variables": "@lostgradient/cinder/feature-section/variables",
+        "examples": "@lostgradient/cinder/feature-section/examples"
+      }
+    },
+    {
       "name": "Feed",
       "id": "feed",
       "import": "@lostgradient/cinder/feed",
@@ -2110,6 +2359,37 @@
         "schema": "@lostgradient/cinder/focus-trap/schema",
         "variables": "@lostgradient/cinder/focus-trap/variables",
         "examples": "@lostgradient/cinder/focus-trap/examples"
+      }
+    },
+    {
+      "name": "Footer",
+      "id": "footer",
+      "import": "@lostgradient/cinder/footer",
+      "exportName": "Footer",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Footer composition primitive with brand copy, grouped links, and legal row content.",
+      "tags": ["layout", "navigation", "footer"],
+      "useWhen": [
+        "Building page-level footer chrome with grouped resource links and legal text.",
+        "Keeping lower-page wayfinding and compliance links in one responsive region."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You need top-level route switching with active state handling.",
+          "alternative": "navigation-bar"
+        },
+        {
+          "reason": "You need dense in-content navigation rather than page chrome."
+        }
+      ],
+      "related": ["navigation-bar", "side-navigation", "container", "grid"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/footer/schema",
+        "variables": "@lostgradient/cinder/footer/variables",
+        "examples": "@lostgradient/cinder/footer/examples"
       }
     },
     {
@@ -2279,6 +2559,38 @@
       }
     },
     {
+      "name": "HeroSection",
+      "id": "hero-section",
+      "import": "@lostgradient/cinder/hero-section",
+      "exportName": "HeroSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Landing-page hero scaffold with eyebrow, heading, supporting copy, CTA row, and optional media panel.",
+      "tags": ["marketing", "hero", "layout"],
+      "useWhen": [
+        "Building the first section of a marketing page where a primary message and call-to-action must stand out.",
+        "Pairing conversion copy with a visual demo, screenshot, or illustration in a split layout."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Presenting only a compact call-to-action strip between content sections.",
+          "alternative": "cta-section"
+        },
+        {
+          "reason": "Listing repeatable product benefits or cards — use a dedicated features grid instead.",
+          "alternative": "feature-section"
+        }
+      ],
+      "related": ["cta-section", "feature-section", "section-heading", "container", "button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/hero-section/schema",
+        "variables": "@lostgradient/cinder/hero-section/variables",
+        "examples": "@lostgradient/cinder/hero-section/examples"
+      }
+    },
+    {
       "name": "HoverCard",
       "id": "hover-card",
       "import": "@lostgradient/cinder/hover-card",
@@ -2336,6 +2648,36 @@
         "schema": "@lostgradient/cinder/image/schema",
         "variables": "@lostgradient/cinder/image/variables",
         "examples": "@lostgradient/cinder/image/examples"
+      }
+    },
+    {
+      "name": "InlineLoading",
+      "id": "inline-loading",
+      "import": "@lostgradient/cinder/inline-loading",
+      "exportName": "InlineLoading",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Inline async-action status indicator that transitions from loading to success or error with accessible announcements.",
+      "tags": ["async", "feedback", "loading", "status"],
+      "useWhen": [
+        "Showing a compact Submit -> loading -> success/error lifecycle beside a button or form row.",
+        "Communicating short-lived async state transitions without reserving large layout space."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing indeterminate work without success/error transitions — use spinner."
+        },
+        {
+          "reason": "Reporting static non-loading status in dense lists — use status-dot."
+        }
+      ],
+      "related": ["spinner", "status-dot"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/inline-loading/schema",
+        "variables": "@lostgradient/cinder/inline-loading/variables",
+        "examples": "@lostgradient/cinder/inline-loading/examples"
       }
     },
     {
@@ -2669,6 +3011,38 @@
       }
     },
     {
+      "name": "LogoCloud",
+      "id": "logo-cloud",
+      "import": "@lostgradient/cinder/logo-cloud",
+      "exportName": "LogoCloud",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Responsive logo grid for “trusted by” sections that display partner/customer brand marks.",
+      "tags": ["marketing", "logos", "social-proof"],
+      "useWhen": [
+        "Displaying customer or partner logos near pricing, hero, or testimonial content.",
+        "Creating a compact proof strip that links out to partner pages or case studies."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Presenting individual people with names and roles.",
+          "alternative": "team-section"
+        },
+        {
+          "reason": "Listing article content with headlines and excerpts.",
+          "alternative": "blog-section"
+        }
+      ],
+      "related": ["team-section", "testimonial-section", "blog-section", "container", "image"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/logo-cloud/schema",
+        "variables": "@lostgradient/cinder/logo-cloud/variables",
+        "examples": "@lostgradient/cinder/logo-cloud/examples"
+      }
+    },
+    {
       "name": "MarkdownEditor",
       "id": "markdown-editor",
       "import": "@lostgradient/cinder/markdown-editor",
@@ -2696,6 +3070,37 @@
         "schema": "@lostgradient/cinder/markdown-editor/schema",
         "variables": "@lostgradient/cinder/markdown-editor/variables",
         "examples": "@lostgradient/cinder/markdown-editor/examples"
+      }
+    },
+    {
+      "name": "Marquee",
+      "id": "marquee",
+      "import": "@lostgradient/cinder/marquee",
+      "exportName": "Marquee",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Auto-scrolling horizontal or vertical ticker that loops content continuously with reduced-motion-safe behavior.",
+      "tags": ["marquee", "ticker"],
+      "useWhen": [
+        "Showing repeating announcements, partner logos, or status strips in a constrained space.",
+        "You need CSS-driven, seamless loop motion that can pause on hover/focus."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Users need to manually scroll and inspect static overflow content.",
+          "alternative": "scroll-area"
+        },
+        {
+          "reason": "Information should remain fixed in place without motion emphasis."
+        }
+      ],
+      "related": ["scroll-area", "banner"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/marquee/schema",
+        "variables": "@lostgradient/cinder/marquee/variables",
+        "examples": "@lostgradient/cinder/marquee/examples"
       }
     },
     {
@@ -2790,6 +3195,50 @@
       }
     },
     {
+      "name": "MegaMenu",
+      "id": "mega-menu",
+      "import": "@lostgradient/cinder/mega-menu",
+      "exportName": "MegaMenu",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Wide primary navigation menu with trigger/content panels, shared viewport, active indicator, and nested submenu support.",
+      "tags": ["navigation", "mega-menu", "menu"],
+      "useWhen": [
+        "Building site-level navigation where top-level categories reveal rich multi-column content.",
+        "You need optional hover-open behavior with keyboard-first trigger traversal."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A simple single-trigger flyout is sufficient.",
+          "alternative": "dropdown"
+        },
+        {
+          "reason": "You need command-style application menus with item-by-item keyboard semantics.",
+          "alternative": "menu-bar"
+        }
+      ],
+      "related": ["navigation-bar", "menu-bar", "dropdown"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/mega-menu/schema",
+        "variables": "@lostgradient/cinder/mega-menu/variables",
+        "examples": "@lostgradient/cinder/mega-menu/examples"
+      },
+      "a11y": {
+        "pattern": "Navigation landmark + disclosure buttons",
+        "keyboard": [
+          {
+            "keys": "ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape",
+            "action": "Traverses triggers and opens/closes panels."
+          }
+        ],
+        "notes": [
+          "Trigger focus remains in the tab order; Escape closes and returns focus to the active trigger."
+        ]
+      }
+    },
+    {
       "name": "MenuBar",
       "id": "menu-bar",
       "import": "@lostgradient/cinder/menu-bar",
@@ -2850,6 +3299,37 @@
       }
     },
     {
+      "name": "Meter",
+      "id": "meter",
+      "import": "@lostgradient/cinder/meter",
+      "exportName": "Meter",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Bounded measurement gauge with meter semantics for readings like battery, quota, CPU, and memory utilization.",
+      "tags": ["feedback", "measurement", "gauge"],
+      "useWhen": [
+        "Showing a fluctuating value within a known minimum and maximum range.",
+        "Communicating low/optimal/high regions of a bounded measurement."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Reporting task completion over time such as uploads/imports.",
+          "alternative": "progress"
+        }
+      ],
+      "related": ["progress", "stat", "slider"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/meter/schema",
+        "variables": "@lostgradient/cinder/meter/variables",
+        "examples": "@lostgradient/cinder/meter/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Meter"
+      }
+    },
+    {
       "name": "Modal",
       "id": "modal",
       "import": "@lostgradient/cinder/modal",
@@ -2884,6 +3364,36 @@
         "variables": "@lostgradient/cinder/modal/variables",
         "examples": "@lostgradient/cinder/modal/examples",
         "constraints": "@lostgradient/cinder/modal/constraints"
+      }
+    },
+    {
+      "name": "MultiSelect",
+      "id": "multi-select",
+      "import": "@lostgradient/cinder/multi-select",
+      "exportName": "MultiSelect",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Multi-value dropdown with checkbox options, optional filtering, and count-summary trigger text.",
+      "tags": ["form", "selection", "multiselect"],
+      "useWhen": [
+        "Selecting multiple values from a fixed option list while preserving compact form layout.",
+        "Showing many options in an anchored picker instead of a permanently-expanded checkbox group."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Selecting a single value from a short fixed list — use select instead."
+        },
+        {
+          "reason": "Moving items between available/selected panes — use transfer-list instead."
+        }
+      ],
+      "related": ["select", "combobox", "checkbox-group", "transfer-list"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/multi-select/schema",
+        "variables": "@lostgradient/cinder/multi-select/variables",
+        "examples": "@lostgradient/cinder/multi-select/examples"
       }
     },
     {
@@ -2943,6 +3453,38 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/navigation-item/schema",
         "variables": "@lostgradient/cinder/navigation-item/variables"
+      }
+    },
+    {
+      "name": "NewsletterSection",
+      "id": "newsletter-section",
+      "import": "@lostgradient/cinder/newsletter-section",
+      "exportName": "NewsletterSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Email capture section with heading copy, inline email field, and submit action for newsletter signups.",
+      "tags": ["marketing", "newsletter", "form"],
+      "useWhen": [
+        "Collecting subscriber email addresses in a dedicated marketing section.",
+        "Adding a lightweight signup form beneath blog or CTA content."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing a generic call-to-action with buttons only and no data entry.",
+          "alternative": "cta-section"
+        },
+        {
+          "reason": "Collecting multi-field account or billing details.",
+          "alternative": "form-section"
+        }
+      ],
+      "related": ["cta-section", "form-section", "input", "button", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/newsletter-section/schema",
+        "variables": "@lostgradient/cinder/newsletter-section/variables",
+        "examples": "@lostgradient/cinder/newsletter-section/examples"
       }
     },
     {
@@ -3213,6 +3755,38 @@
       }
     },
     {
+      "name": "PricingSection",
+      "id": "pricing-section",
+      "import": "@lostgradient/cinder/pricing-section",
+      "exportName": "PricingSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Pricing comparison section that lays out multiple plans using the existing PricingCard primitive.",
+      "tags": ["marketing", "pricing", "plans"],
+      "useWhen": [
+        "Presenting tiered subscription plans with features and action buttons.",
+        "Highlighting a recommended plan while still allowing side-by-side comparison."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing generic metrics without plan selection controls.",
+          "alternative": "stats-section"
+        },
+        {
+          "reason": "Rendering a single standalone plan card outside of a section context.",
+          "alternative": "pricing-card"
+        }
+      ],
+      "related": ["pricing-card", "stats-section", "cta-section", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/pricing-section/schema",
+        "variables": "@lostgradient/cinder/pricing-section/variables",
+        "examples": "@lostgradient/cinder/pricing-section/examples"
+      }
+    },
+    {
       "name": "Progress",
       "id": "progress",
       "import": "@lostgradient/cinder/progress",
@@ -3227,19 +3801,54 @@
       ],
       "avoidWhen": [
         {
+          "reason": "Showing a bounded measurement gauge (battery, CPU, quota) that is not task completion.",
+          "alternative": "meter"
+        },
+        {
           "reason": "Showing a small inline busy state next to a control — use spinner."
         },
         {
           "reason": "Reserving placeholder space for incoming content — use skeleton."
         }
       ],
-      "related": ["spinner", "skeleton"],
+      "related": ["meter", "spinner", "skeleton"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/progress/schema",
         "variables": "@lostgradient/cinder/progress/variables",
         "examples": "@lostgradient/cinder/progress/examples"
+      }
+    },
+    {
+      "name": "QrCode",
+      "id": "qr-code",
+      "import": "@lostgradient/cinder/qr-code",
+      "exportName": "QrCode",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Encodes a string payload as an inline SVG QR code with an explicit accessible label.",
+      "tags": ["qr-code", "sharing"],
+      "useWhen": [
+        "Presenting a scannable URL, token, or Wi-Fi credential that users can scan from another device.",
+        "You need a theme-aware QR graphic that stays crisp at any scale."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You only need to expose a copyable short text value without camera scanning affordance.",
+          "alternative": "copy-button"
+        },
+        {
+          "reason": "The payload is sensitive and should never be displayed as machine-readable visual data."
+        }
+      ],
+      "related": ["copy-button", "share-card"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/qr-code/schema",
+        "variables": "@lostgradient/cinder/qr-code/variables",
+        "examples": "@lostgradient/cinder/qr-code/examples"
       }
     },
     {
@@ -4233,6 +4842,38 @@
       }
     },
     {
+      "name": "StatsSection",
+      "id": "stats-section",
+      "import": "@lostgradient/cinder/stats-section",
+      "exportName": "StatsSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Marketing metrics section that wraps StatGroup/Stat to present headline numbers with optional trend indicators.",
+      "tags": ["marketing", "metrics", "stats"],
+      "useWhen": [
+        "Showing key outcomes such as uptime, customers, revenue, or latency in landing-page copy.",
+        "Presenting a short metrics band between hero/features and pricing sections."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Comparing plan pricing and feature lists across tiers.",
+          "alternative": "pricing-section"
+        },
+        {
+          "reason": "Rendering freeform cards that are not structured numeric metrics.",
+          "alternative": "feature-section"
+        }
+      ],
+      "related": ["stat", "stat-group", "pricing-section", "feature-section", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/stats-section/schema",
+        "variables": "@lostgradient/cinder/stats-section/variables",
+        "examples": "@lostgradient/cinder/stats-section/examples"
+      }
+    },
+    {
       "name": "StatusDot",
       "id": "status-dot",
       "import": "@lostgradient/cinder/status-dot",
@@ -4540,6 +5181,39 @@
       }
     },
     {
+      "name": "TableOfContents",
+      "id": "table-of-contents",
+      "import": "@lostgradient/cinder/table-of-contents",
+      "exportName": "TableOfContents",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "On-page heading outline that renders nested anchor links and highlights the active section while scrolling.",
+      "tags": ["navigation", "docs", "toc"],
+      "useWhen": [
+        "Adding an \"On this page\" rail for long-form docs or settings screens.",
+        "Letting users jump between headings while keeping context via active-section highlighting."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Navigating between routes or top-level app areas — use navigation-bar or side-navigation."
+        },
+        {
+          "reason": "The page has too few headings to justify a secondary navigation rail."
+        }
+      ],
+      "related": ["side-navigation", "breadcrumbs", "section-heading"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/table-of-contents/schema",
+        "variables": "@lostgradient/cinder/table-of-contents/variables",
+        "examples": "@lostgradient/cinder/table-of-contents/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Navigation Landmark"
+      }
+    },
+    {
       "name": "TableRow",
       "id": "table-row",
       "import": "@lostgradient/cinder/table-row",
@@ -4623,6 +5297,77 @@
         "schema": "@lostgradient/cinder/tag-input/schema",
         "variables": "@lostgradient/cinder/tag-input/variables",
         "examples": "@lostgradient/cinder/tag-input/examples"
+      }
+    },
+    {
+      "name": "TeamSection",
+      "id": "team-section",
+      "import": "@lostgradient/cinder/team-section",
+      "exportName": "TeamSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Marketing team roster section that renders profile cards with avatars, roles, and optional profile links.",
+      "tags": ["marketing", "team", "profile"],
+      "useWhen": [
+        "Introducing company teammates with names, titles, and short bios.",
+        "Showing a small \"meet the team\" grid in landing and about pages."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing customer quotes and outcomes rather than internal team members.",
+          "alternative": "testimonial-section"
+        },
+        {
+          "reason": "Rendering brand/customer logos without person profiles.",
+          "alternative": "logo-cloud"
+        }
+      ],
+      "related": [
+        "testimonial-section",
+        "logo-cloud",
+        "avatar",
+        "avatar-group",
+        "card",
+        "container"
+      ],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/team-section/schema",
+        "variables": "@lostgradient/cinder/team-section/variables",
+        "examples": "@lostgradient/cinder/team-section/examples"
+      }
+    },
+    {
+      "name": "TestimonialSection",
+      "id": "testimonial-section",
+      "import": "@lostgradient/cinder/testimonial-section",
+      "exportName": "TestimonialSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Customer quote section that renders one or more testimonials with author identity and optional role/company context.",
+      "tags": ["marketing", "testimonial", "social-proof"],
+      "useWhen": [
+        "Building a social-proof block with customer quotes and attributed people.",
+        "Displaying one featured quote or a compact testimonial grid on landing pages."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Listing product capabilities with icon + title + description rows.",
+          "alternative": "feature-section"
+        },
+        {
+          "reason": "Showing team roster information for your own company.",
+          "alternative": "team-section"
+        }
+      ],
+      "related": ["feature-section", "team-section", "avatar", "card", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/testimonial-section/schema",
+        "variables": "@lostgradient/cinder/testimonial-section/variables",
+        "examples": "@lostgradient/cinder/testimonial-section/examples"
       }
     },
     {

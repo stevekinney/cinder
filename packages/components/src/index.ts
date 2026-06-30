@@ -97,6 +97,19 @@ export type {
   ChartXValue,
 } from './components/chart.types.ts';
 
+export { default as BentoCell } from './components/bento-cell/index.ts';
+export type { BentoCellProps } from './components/bento-cell/index.ts';
+
+export { default as BentoGrid } from './components/bento-grid/index.ts';
+export type {
+  BentoCellProps as BentoGridCellProps,
+  BentoGridColumns,
+  BentoGridProps,
+} from './components/bento-grid/index.ts';
+
+export { default as BlogSection } from './components/blog-section/index.ts';
+export type { BlogSectionPost, BlogSectionProps } from './components/blog-section/index.ts';
+
 export { default as Breadcrumbs } from './components/breadcrumbs/index.ts';
 export type { BreadcrumbItem, BreadcrumbsProps } from './components/breadcrumbs/index.ts';
 
@@ -109,8 +122,19 @@ export type { ButtonGroupOrientation, ButtonGroupProps } from './components/butt
 export { default as Callout } from './components/callout/index.ts';
 export type { CalloutProps, CalloutVariant } from './components/callout/index.ts';
 
+export { default as Calendar } from './components/calendar/index.ts';
+export type { CalendarProps } from './components/calendar/index.ts';
+
 export { default as Card } from './components/card/index.ts';
 export type { CardPadding, CardProps, CardTone, CardVariant } from './components/card/index.ts';
+
+export { default as Carousel } from './components/carousel/index.ts';
+export type {
+  CarouselControlLabel,
+  CarouselProps,
+  CarouselSlide,
+  CarouselSlideContent,
+} from './components/carousel/index.ts';
 
 export { default as Chat } from './components/chat/index.ts';
 export type { ChatProps } from './components/chat/index.ts';
@@ -216,6 +240,9 @@ export type { ContextMenuTriggerProps } from './components/context-menu-trigger/
 export { default as CopyButton } from './components/copy-button/index.ts';
 export type { CopyButtonProps } from './components/copy-button/index.ts';
 
+export { default as CtaSection } from './components/cta-section/index.ts';
+export type { CtaSectionAlign, CtaSectionProps, CtaSectionTone } from './components/cta-section/index.ts';
+
 export { copyToClipboard } from './utilities/clipboard.ts';
 
 export { default as DataList } from './components/data-list/index.ts';
@@ -239,6 +266,9 @@ export type {
   DataTableRow,
   DataTableSelectionMode,
 } from './components/data-table/index.ts';
+
+export { default as DatePicker } from './components/date-picker/index.ts';
+export type { DatePickerGranularity, DatePickerProps } from './components/date-picker/index.ts';
 
 export { default as DateRangeField } from './components/date-range-field/index.ts';
 export type {
@@ -332,6 +362,14 @@ export type {
   SelectFacet,
 } from './components/faceted-filter-bar/index.ts';
 
+export { default as FeatureSection } from './components/feature-section/index.ts';
+export type {
+  FeatureSectionItem,
+  FeatureSectionLayout,
+  FeatureSectionMediaPosition,
+  FeatureSectionProps,
+} from './components/feature-section/index.ts';
+
 export { default as FeedEvent } from './components/feed-event/index.ts';
 export type { FeedEventProps, FeedEventVariant } from './components/feed-event/index.ts';
 
@@ -366,6 +404,9 @@ export type { FormSectionHeadingLevel, FormSectionProps } from './components/for
 
 export type { FormFieldContext } from './_internal/form-field-context.ts';
 
+export { default as Footer } from './components/footer/index.ts';
+export type { FooterGroup, FooterLink, FooterProps } from './components/footer/index.ts';
+
 export { default as Grid } from './components/grid/index.ts';
 export type { GridColumns, GridProps } from './components/grid/index.ts';
 
@@ -381,11 +422,17 @@ export type { GridListItemProps } from './components/grid-list-item/index.ts';
 export { default as HoverCard } from './components/hover-card/index.ts';
 export type { HoverCardPlacement, HoverCardProps } from './components/hover-card/index.ts';
 
+export { default as HeroSection } from './components/hero-section/index.ts';
+export type { HeroSectionAlign, HeroSectionMediaPosition, HeroSectionProps } from './components/hero-section/index.ts';
+
 export { default as Image } from './components/image/index.ts';
 export type { ImageProps } from './components/image/index.ts';
 
 export { default as Input } from './components/input/index.ts';
 export type { InputProps, InputType } from './components/input/index.ts';
+
+export { default as InlineLoading } from './components/inline-loading/index.ts';
+export type { InlineLoadingProps, InlineLoadingStatus } from './components/inline-loading/index.ts';
 
 export { default as JsonSchemaEditor } from './components/json-schema-editor/index.ts';
 export type {
@@ -457,11 +504,25 @@ export type { LineChartProps, LineChartSchemaProps } from './components/line-cha
 export { default as LocaleProvider } from './components/locale-provider/index.ts';
 export type { LocaleProviderProps, TextDirection } from './components/locale-provider/index.ts';
 
+export { default as LogoCloud } from './components/logo-cloud/index.ts';
+export type { LogoCloudItem, LogoCloudProps } from './components/logo-cloud/index.ts';
+
 export { default as LoadMore } from './components/load-more/index.ts';
 export type { LoadMoreProps } from './components/load-more/index.ts';
 
+export { default as Marquee } from './components/marquee/index.ts';
+export type { MarqueeDirection, MarqueeProps } from './components/marquee/index.ts';
+
 export { default as MediaControls } from './components/media-controls/index.ts';
 export type { MediaControlsLayout, MediaControlsProps } from './components/media-controls/index.ts';
+
+export { default as MegaMenu } from './components/mega-menu/index.ts';
+export type {
+  MegaMenuItem,
+  MegaMenuLink,
+  MegaMenuProps,
+  MegaMenuSection,
+} from './components/mega-menu/index.ts';
 
 export { default as MarkdownEditor } from './components/markdown-editor/index.ts';
 export type {
@@ -487,6 +548,9 @@ export type {
 export { default as Message } from './components/message/index.ts';
 export type { MessageProps, MessageRole } from './components/message/index.ts';
 
+export { default as Meter } from './components/meter/index.ts';
+export type { MeterProps, MeterSize, MeterState } from './components/meter/index.ts';
+
 export { default as MatrixChart } from './components/matrix-chart/index.ts';
 export type { MatrixChartProps, MatrixChartSchemaProps } from './components/matrix-chart/index.ts';
 export type { MatrixColorScale } from './components/matrix-chart/matrix-chart.types.ts';
@@ -496,6 +560,14 @@ export type { MasonryProps } from './components/masonry/index.ts';
 
 export { default as Modal } from './components/modal/index.ts';
 export type { ModalProps } from './components/modal/index.ts';
+
+export { default as MultiSelect } from './components/multi-select/index.ts';
+export type {
+  MultiSelectDirection,
+  MultiSelectItem,
+  MultiSelectProps,
+  MultiSelectSelectionFeedback,
+} from './components/multi-select/index.ts';
 
 export { default as NavigationBar } from './components/navigation-bar/index.ts';
 export type {
@@ -509,8 +581,14 @@ export type {
 export { default as Portal, createPortalAttachment } from './components/portal/index.ts';
 export type { PortalAttachmentOptions, PortalProps } from './components/portal/index.ts';
 
+export { default as PricingSection } from './components/pricing-section/index.ts';
+export type { PricingSectionPlan, PricingSectionProps } from './components/pricing-section/index.ts';
+
 export { default as NavigationItem } from './components/navigation-item/index.ts';
 export type { NavigationItemProps } from './components/navigation-item/index.ts';
+
+export { default as NewsletterSection } from './components/newsletter-section/index.ts';
+export type { NewsletterSectionProps } from './components/newsletter-section/index.ts';
 
 export { default as NumberInput } from './components/number-input/index.ts';
 export type { NumberInputProps } from './components/number-input/index.ts';
@@ -554,6 +632,9 @@ export type { PricingCardProps } from './components/pricing-card/index.ts';
 
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
+
+export { default as QrCode } from './components/qr-code/index.ts';
+export type { QrCodeErrorCorrectionLevel, QrCodeProps } from './components/qr-code/index.ts';
 
 export { default as RadioGroup } from './components/radio-group/index.ts';
 // RadioProps is re-exported here (from radio-group) so root-barrel consumers keep
@@ -744,6 +825,9 @@ export type {
   StatGroupVariant,
 } from './components/stat-group/index.ts';
 
+export { default as StatsSection } from './components/stats-section/index.ts';
+export type { StatsSectionItem, StatsSectionProps } from './components/stats-section/index.ts';
+
 export { default as StatusDot } from './components/status-dot/index.ts';
 export type {
   StatusDotConnectionState,
@@ -784,6 +868,9 @@ export type { TableCellProps } from './components/table-cell/index.ts';
 export { default as TagInput } from './components/tag-input/index.ts';
 export type { TagInputProps } from './components/tag-input/index.ts';
 
+export { default as TeamSection } from './components/team-section/index.ts';
+export type { TeamSectionMember, TeamSectionProps } from './components/team-section/index.ts';
+
 export { default as TableHeader } from './components/table-header/index.ts';
 export type { TableHeaderProps } from './components/table-header/index.ts';
 
@@ -792,6 +879,12 @@ export type { TableHeaderCellProps } from './components/table-header-cell/index.
 
 export { default as TableRow } from './components/table-row/index.ts';
 export type { TableRowProps, TableRowSelectionProps } from './components/table-row/index.ts';
+
+export { default as TableOfContents } from './components/table-of-contents/index.ts';
+export type {
+  TableOfContentsItem,
+  TableOfContentsProps,
+} from './components/table-of-contents/index.ts';
 
 export { default as Tabs } from './components/tabs/index.ts';
 export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs/index.ts';
@@ -805,6 +898,13 @@ export type {
   TimeFieldGranularity,
   TimeFieldProps,
 } from './components/time-field/index.ts';
+
+export { default as TestimonialSection } from './components/testimonial-section/index.ts';
+export type {
+  TestimonialSectionItem,
+  TestimonialSectionLayout,
+  TestimonialSectionProps,
+} from './components/testimonial-section/index.ts';
 
 export { default as ToastRegion } from './components/toast-region/index.ts';
 export type {

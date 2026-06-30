@@ -1,9 +1,3 @@
-import type {
-  IntersectionAttachment,
-  IntersectionCallback,
-  UseIntersectionOptions,
-} from './use-intersection.types.ts';
-
 /**
  * Creates an attachment that observes the element with IntersectionObserver.
  *
@@ -12,9 +6,9 @@ import type {
  * instance so a new observer is created.
  */
 export function useIntersection(
-  onIntersect: IntersectionCallback,
-  options: UseIntersectionOptions = {},
-): IntersectionAttachment {
+  onIntersect: import('./use-intersection.types.ts').IntersectionCallback,
+  options: import('./use-intersection.types.ts').UseIntersectionOptions = {},
+): import('./use-intersection.types.ts').IntersectionAttachment {
   const { root = null, rootMargin = '0px', threshold = 0, enabled = () => true } = options;
 
   return (node: HTMLElement) => {

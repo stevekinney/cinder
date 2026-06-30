@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "logo-cloud",
+  "import": "@lostgradient/cinder/logo-cloud",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "LogoCloud",
+      "description": "LogoCloud rendering a trusted-by strip with linked and unlinked logos.",
+      "code": "<script lang=\"ts\">\n  import { LogoCloud } from '@lostgradient/cinder/logo-cloud';\n\n  const logos = [\n    { name: 'Acme', src: 'https://placehold.co/180x64?text=Acme', href: '#' },\n    { name: 'Orbit', src: 'https://placehold.co/180x64?text=Orbit', href: '#' },\n    { name: 'Northline', src: 'https://placehold.co/180x64?text=Northline' },\n    { name: 'Wave', src: 'https://placehold.co/180x64?text=Wave', href: '#' },\n    { name: 'Summit', src: 'https://placehold.co/180x64?text=Summit' },\n  ];\n</script>\n\n<LogoCloud title=\"Trusted by modern product teams\" {logos} columns={5} />\n"
+    }
+  ]
+}

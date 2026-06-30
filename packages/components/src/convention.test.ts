@@ -40,6 +40,7 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'kanban-board',
   'line-chart',
   'modal',
+  'multi-select',
   'navigation-item',
   'pagination',
   'phone-input',

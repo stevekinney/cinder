@@ -47,6 +47,7 @@
 
 import type { Highlighter } from '../../utilities/highlighter.ts';
 import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache.ts';
+import { stripRootPreTabIndex } from './strip-root-pre-tab-index.ts';
 
 /**
  * Re-exported for backwards compatibility on the public
@@ -106,15 +107,6 @@ function escapeHtml(value: string): string {
 /** Render the escaped-plaintext fallback as a full `<pre><code>` block. */
 function plaintextBlock(code: string): string {
   return `<pre class="shiki shiki-plaintext"><code>${escapeHtml(code)}</code></pre>`;
-}
-
-function stripRootPreTabIndex(html: string): string {
-  const openingPre = /^<pre\b[^>]*>/i.exec(html);
-  if (openingPre === null) return html;
-  return (
-    openingPre[0].replace(/\s+tabindex=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, '') +
-    html.slice(openingPre[0].length)
-  );
 }
 
 type CodeToHtmlFunction = typeof import('shiki').codeToHtml;

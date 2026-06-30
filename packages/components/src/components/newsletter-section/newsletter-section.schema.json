@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "as": {
+      "enum": ["section", "div"],
+      "description": "Wrapper element tag.",
+      "default": "section"
+    },
+    "title": {
+      "type": "string",
+      "description": "Main section headline."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional supporting copy."
+    },
+    "emailLabel": {
+      "type": "string",
+      "description": "Input label text.",
+      "default": "Email address"
+    },
+    "emailPlaceholder": {
+      "type": "string",
+      "description": "Placeholder shown in email input field."
+    },
+    "submitLabel": {
+      "type": "string",
+      "description": "Submit button label.",
+      "default": "Subscribe"
+    },
+    "consentText": {
+      "type": "string",
+      "description": "Optional helper/caveat text rendered under the form controls."
+    },
+    "maxWidth": {
+      "enum": ["prose", "narrow", "wide", "full"],
+      "description": "Max width token forwarded to Container.",
+      "default": "wide"
+    },
+    "class": {
+      "type": "string",
+      "description": "Custom class merged with `.cinder-newsletter-section`."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["title"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet",
+        "description": "Optional supplemental content below helper text."
+      },
+      {
+        "name": "onSubmit",
+        "reason": "function-or-snippet",
+        "description": "Callback fired after form submission with current email value."
+      }
+    ]
+  }
+}

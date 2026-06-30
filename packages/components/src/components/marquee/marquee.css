@@ -1,0 +1,97 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-marquee {
+    --cinder-marquee-duration: 24s;
+    --cinder-marquee-gap: 1.5rem;
+    --cinder-marquee-play-state: running;
+    display: block;
+  }
+
+  .cinder-marquee__viewport {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cinder-marquee__viewport:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-marquee__viewport:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
+    }
+  }
+
+  .cinder-marquee__track {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-marquee-gap);
+    inline-size: max-content;
+    animation: cinder-marquee-horizontal var(--cinder-marquee-duration) linear infinite;
+    animation-play-state: var(--cinder-marquee-play-state);
+    will-change: transform;
+  }
+
+  .cinder-marquee[data-cinder-ready='false'] .cinder-marquee__track {
+    animation-play-state: paused;
+  }
+
+  .cinder-marquee__item {
+    flex: 0 0 auto;
+  }
+
+  .cinder-marquee[data-cinder-direction='vertical'] .cinder-marquee__track {
+    flex-direction: column;
+    animation-name: cinder-marquee-vertical;
+  }
+
+  .cinder-marquee[data-cinder-direction='vertical'] .cinder-marquee__viewport {
+    block-size: 8rem;
+  }
+
+  .cinder-marquee[data-cinder-direction='vertical'] .cinder-marquee__item {
+    inline-size: 100%;
+  }
+
+  @keyframes cinder-marquee-horizontal {
+    to {
+      transform: translateX(calc(-50% - (var(--cinder-marquee-gap) / 2)));
+    }
+  }
+
+  @keyframes cinder-marquee-vertical {
+    to {
+      transform: translateY(calc(-50% - (var(--cinder-marquee-gap) / 2)));
+    }
+  }
+
+  @media (hover: hover) {
+    .cinder-marquee[data-cinder-pause-hover='true']:hover .cinder-marquee__track {
+      --cinder-marquee-play-state: paused;
+    }
+  }
+
+  .cinder-marquee[data-cinder-pause-focus='true']:focus-within .cinder-marquee__track {
+    --cinder-marquee-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-marquee__viewport {
+      overflow: auto;
+    }
+
+    .cinder-marquee__track {
+      animation: none;
+      transform: none;
+    }
+
+    .cinder-marquee__item[aria-hidden='true'] {
+      display: none;
+    }
+  }
+}

@@ -71,10 +71,8 @@ afterEach(() => {
 
 const { default: Chat } = await import('./chat.svelte');
 
-// Local builders for the vendored ConversationHistory shape — Chat no longer
-// depends on a conversation-state library, so the test constructs the data it
-// renders directly. Mirrors the immutable-append pattern (each call returns a
-// new snapshot with the message appended in order).
+// Local test builders for focused fixtures. The types come from the published
+// Conversationalist bridge so the fixtures stay aligned with the package shape.
 type TestConversation = import('./conversation-model.ts').ConversationHistory;
 type TestMessage = import('./conversation-model.ts').Message;
 type TestRole = import('./conversation-model.ts').MessageRole;

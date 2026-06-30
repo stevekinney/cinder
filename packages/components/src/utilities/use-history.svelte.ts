@@ -14,13 +14,6 @@
  * and `equals` strategies.
  */
 
-import type {
-  UseHistory,
-  UseHistoryCommitOptions,
-  UseHistoryEntry,
-  UseHistoryOptions,
-} from './use-history.types.ts';
-
 function defaultClone<T>(value: T): T {
   // First unwrap any Svelte $state proxies via $state.snapshot, which yields
   // a plain object graph. Then run structuredClone to enforce our cloneable
@@ -59,7 +52,9 @@ function defaultEquals<T>(a: T, b: T): boolean {
   return stableSerialise(a) === stableSerialise(b);
 }
 
-export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
+export function useHistory<T>(
+  options: import('./use-history.types.ts').UseHistoryOptions<T>,
+): import('./use-history.types.ts').UseHistory<T> {
   const { initial, coalesceMs = 300, clone = defaultClone, equals = defaultEquals } = options;
 
   // Clamp maxDepth to at least 1 so the stack always has a committed entry.
@@ -98,7 +93,7 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
     }
   }
 
-  function snapshotEntry(entry: Entry): UseHistoryEntry<T> {
+  function snapshotEntry(entry: Entry): import('./use-history.types.ts').UseHistoryEntry<T> {
     // Clone on read so a caller mutating the returned value cannot corrupt
     // committed history.
     return { value: clone(entry.value), label: entry.label };
@@ -108,7 +103,7 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
     get current() {
       return current;
     },
-    get committedEntry(): UseHistoryEntry<T> {
+    get committedEntry(): import('./use-history.types.ts').UseHistoryEntry<T> {
       return snapshotEntry(entryAt(pointer));
     },
     get canUndo() {
@@ -128,7 +123,7 @@ export function useHistory<T>(options: UseHistoryOptions<T>): UseHistory<T> {
       current = next;
     },
 
-    commit(next: T, commitOptions?: UseHistoryCommitOptions) {
+    commit(next: T, commitOptions?: import('./use-history.types.ts').UseHistoryCommitOptions) {
       const top = entryAt(pointer);
 
       // Clone before any decision so cloneable contract is enforced even when

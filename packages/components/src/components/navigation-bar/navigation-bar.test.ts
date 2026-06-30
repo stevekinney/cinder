@@ -350,6 +350,17 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('items region does not receive inert when menuToggle is present and menu is closed', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+
+    const itemsRegion = container.querySelector('.cinder-navigation-bar__items');
+    expect(itemsRegion).not.toBeNull();
+    expect(itemsRegion?.hasAttribute('inert')).toBe(false);
+  });
+
   test('collapsible mobile layout applies inert while closed and removes it when opened', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
@@ -414,9 +425,12 @@ describe('NavigationBar', () => {
     });
     const toggle = container.querySelector('#toggle-btn') as HTMLElement;
     await fireEvent.click(toggle);
+    const itemsRegion = container.querySelector('.cinder-navigation-bar__items');
     expect(
-      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
+      itemsRegion?.getAttribute('data-open'),
     ).toBe('true');
+    expect(itemsRegion).not.toBeNull();
+    expect(itemsRegion?.hasAttribute('inert')).toBe(false);
   });
 
   test('clicking the toggle a second time closes the menu', async () => {

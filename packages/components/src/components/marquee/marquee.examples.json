@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "marquee",
+  "import": "@lostgradient/cinder/marquee",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Announcement ticker",
+      "description": "Continuously loop short announcements with pause on hover and focus.",
+      "code": "<script lang=\"ts\">\n  import { Marquee } from '@lostgradient/cinder/marquee';\n</script>\n\n<Marquee label=\"Announcements\">\n  {#snippet children()}\n    <span style=\"font-weight: 600;\">New dark theme tokens are live</span>\n    <span>•</span>\n    <span>v0.4.1 now available</span>\n    <span>•</span>\n    <span>Try the updated component decision aid</span>\n  {/snippet}\n</Marquee>\n"
+    },
+    {
+      "id": "vertical-status-strip",
+      "title": "Vertical status strip",
+      "description": "Loop status messages vertically and pause while focused.",
+      "code": "<script lang=\"ts\">\n  import { Marquee } from '@lostgradient/cinder/marquee';\n</script>\n\n<div style=\"max-inline-size: 24rem;\">\n  <Marquee direction=\"vertical\" duration=\"14s\" label=\"System status updates\">\n    {#snippet children()}\n      <div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n        <span>API latency is nominal.</span>\n        <span>Background jobs running in us-east-1.</span>\n        <span>Next maintenance window: Saturday 02:00 UTC.</span>\n      </div>\n    {/snippet}\n  </Marquee>\n</div>\n"
+    }
+  ]
+}

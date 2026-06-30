@@ -1,14 +1,9 @@
 import { createContext } from 'svelte';
 
-import type {
-  SortableAnnouncements,
-  SortableContextValue,
-  SortableReorderChange,
-} from './sortable-controller.types.ts';
+export const [getSortableContext, setSortableContext] =
+  createContext<import('./sortable-controller.types.ts').SortableContextValue>();
 
-export const [getSortableContext, setSortableContext] = createContext<SortableContextValue>();
-
-const defaultAnnouncements: SortableAnnouncements = {
+const defaultAnnouncements: import('./sortable-controller.types.ts').SortableAnnouncements = {
   lifted: (itemLabel, position, total) =>
     `${itemLabel}, lifted. Current position ${position} of ${total}. Use arrow keys to move. Space to drop, Escape to cancel.`,
   moved: (itemLabel, position, total) => `${itemLabel}, moved to position ${position} of ${total}.`,
@@ -32,11 +27,11 @@ export class SortableController<Item> {
   liftedTo = $state(0);
 
   readonly #announce: (message: string) => void;
-  readonly #announcements: SortableAnnouncements;
+  readonly #announcements: import('./sortable-controller.types.ts').SortableAnnouncements;
 
   constructor(options: {
     announce: (message: string) => void;
-    announcements?: Partial<SortableAnnouncements>;
+    announcements?: Partial<import('./sortable-controller.types.ts').SortableAnnouncements>;
   }) {
     this.#announce = options.announce;
     this.#announcements = { ...defaultAnnouncements, ...options.announcements };
@@ -77,7 +72,10 @@ export class SortableController<Item> {
   drop(
     items: Item[],
     itemLabel: string,
-  ): { nextItems: Item[]; change: SortableReorderChange } | null {
+  ): {
+    nextItems: Item[];
+    change: import('./sortable-controller.types.ts').SortableReorderChange;
+  } | null {
     if (this.phase !== 'lifted' || this.liftedKey === null) return null;
 
     const fromIndex = this.liftedFrom;

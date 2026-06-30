@@ -5,7 +5,7 @@
  * real-time contract around the existing `conversation` prop WITHOUT coupling
  * Chat to any transport. It is purely an event boundary — NOT a second
  * conversation model. Every method parameter and every push payload uses the
- * structural mirror types from `../conversation-model.ts`, so a consumer whose
+ * Conversationalist types from `../conversation-model.ts`, so a consumer whose
  * authoritative transcript lives in `conversationalist` can pass a plain
  * `ConversationHistory` snapshot to `<Chat>` and wire an adapter with zero
  * adaptation. This module is TYPE-ONLY — it ships no runtime code and imports

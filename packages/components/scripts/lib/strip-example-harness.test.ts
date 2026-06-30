@@ -95,6 +95,22 @@ describe('stripExampleHarness — fixtures', () => {
     expect(stripped).not.toContain('mainId');
   });
 
+  it('rewrites script object-literal id values (table-of-contents explicit-items shape)', () => {
+    const source = `<script lang="ts">
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let apiOverviewId = $derived(\`\${mountIdPrefix ?? uid}-api-overview\`);
+</script>
+
+<TableOfContents items={[{ id: apiOverviewId, label: 'Overview' }]} />
+<h2 id={apiOverviewId}>Overview</h2>
+`;
+    const stripped = stripExampleHarness(source, 'table-of-contents/explicit-items');
+    expect(stripped).toContain(`items={[{ id: 'api-overview', label: 'Overview' }]}`);
+    expect(stripped).toContain('<h2 id="api-overview">Overview</h2>');
+    expect(stripped).not.toContain('apiOverviewId');
+  });
+
   it('leaves a harness-free example untouched', () => {
     const source = `<script lang="ts">
   import { Button } from '@lostgradient/cinder/button';
@@ -133,10 +149,7 @@ describe('stripExampleHarness — fixtures', () => {
     expect(() => stripExampleHarness(source, 'thing/basic')).toThrow(/still referenced/);
   });
 
-  it('fails closed when an unrecognized derived shape leaves mountIdPrefix behind', () => {
-    // A `const` (not `let`) derived declaration is not matched by DERIVED_ID_LINE,
-    // so the prop/uid lines are removed but `mountIdPrefix ?? uid` survives. The
-    // residual-marker scan must catch this rather than serve half-stripped code.
+  it('strips a const derived id declaration', () => {
     const source = `<script lang="ts">
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
   const uid = $props.id();
@@ -145,6 +158,10 @@ describe('stripExampleHarness — fixtures', () => {
 
 <Input id={fieldId} />
 `;
-    expect(() => stripExampleHarness(source, 'input/basic')).toThrow(/harness marker/);
+    const stripped = stripExampleHarness(source, 'input/basic');
+    expect(stripped).toContain('<Input id="field" />');
+    expect(stripped).not.toContain('mountIdPrefix');
+    expect(stripped).not.toContain('$props.id()');
+    expect(stripped).not.toContain('fieldId');
   });
 });
