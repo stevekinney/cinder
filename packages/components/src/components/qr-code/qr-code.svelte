@@ -39,7 +39,7 @@
     typeof label === 'string' && label.trim().length > 0 ? label.trim() : 'QR code',
   );
 
-  function svgCommand(command: string, x: number, y?: number): string {
+  function svgCommand(command: string, x: number, y: number | undefined = undefined): string {
     return typeof y === 'number' ? `${command}${x} ${y}` : `${command}${x}`;
   }
 

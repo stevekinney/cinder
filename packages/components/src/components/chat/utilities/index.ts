@@ -2,7 +2,7 @@
  * Chat data model helpers.
  *
  * Conversation-reading helpers ({@link getMessages}, {@link pairToolCallsWithResults})
- * and content/markdown utilities, all built on the vendored conversation model.
+ * and content/markdown utilities, all built on the Conversationalist model.
  */
 
 export { getMessages, pairToolCallsWithResults } from './conversation';

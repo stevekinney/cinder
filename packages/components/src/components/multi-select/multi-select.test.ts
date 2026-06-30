@@ -187,7 +187,7 @@ describe('MultiSelect', () => {
     expect(proxy.checkValidity()).toBe(true);
   });
 
-  test('required validation focuses the trigger instead of the hidden proxy', () => {
+  test('required validation focuses the trigger instead of the hidden proxy', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
       required: true,
@@ -202,23 +202,26 @@ describe('MultiSelect', () => {
 
     expect(proxy.reportValidity()).toBe(false);
     expect(document.activeElement).toBe(trigger);
+    await waitFor(() => {
+      expect(trigger.getAttribute('aria-invalid')).toBe('true');
+      expect(trigger.getAttribute('data-cinder-invalid')).toBe('true');
+    });
   });
 
-  test('required invalid state uses root styling and trigger description without unsupported ARIA', () => {
+  test('error marks the focusable trigger invalid and describes the error', () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
-      error: 'Select at least one fruit',
+      error: 'Choose at least one fruit.',
       items,
     });
 
-    const root = container.querySelector<HTMLElement>('.cinder-multi-select');
     const trigger = container.querySelector<HTMLButtonElement>('#fruits');
-    if (!root || !trigger) throw new Error('multi-select controls not found');
+    if (!trigger) throw new Error('trigger not found');
 
-    expect(root.hasAttribute('aria-invalid')).toBe(false);
-    expect(root.hasAttribute('data-cinder-invalid')).toBe(true);
-    expect(trigger.hasAttribute('aria-invalid')).toBe(false);
+    expect(trigger.getAttribute('aria-invalid')).toBe('true');
+    expect(trigger.getAttribute('data-cinder-invalid')).toBe('true');
     expect(trigger.getAttribute('aria-describedby')).toContain('fruits-error');
+    expect(container.querySelector('#fruits-error')?.textContent).toContain('Choose');
   });
 
   test('filterable mode filters options by label', async () => {
@@ -256,6 +259,7 @@ describe('MultiSelect', () => {
     const empty = container.querySelector('.cinder-multi-select__empty');
     expect(empty?.getAttribute('role')).toBe('option');
     expect(empty?.getAttribute('aria-disabled')).toBe('true');
+    expect(empty?.getAttribute('aria-selected')).toBe('false');
   });
 
   test('filter input has an accessible name and space does not toggle selection', async () => {
@@ -271,6 +275,9 @@ describe('MultiSelect', () => {
 
     expect(filter.getAttribute('aria-label')).toBeNull();
     expect(filter.getAttribute('aria-labelledby')).toBe('fruits-filter-label-hint');
+    expect(container.querySelector('#fruits-filter-label-hint')?.textContent).toBe(
+      'Filter options',
+    );
     expect(filter.getAttribute('role')).toBe('combobox');
     expect(filter.getAttribute('aria-autocomplete')).toBe('list');
     expect(filter.getAttribute('aria-haspopup')).toBe('listbox');
@@ -418,16 +425,25 @@ describe('MultiSelect', () => {
     expect(container.querySelector('#fruits-warning')?.textContent).toContain('seasonal');
   });
 
-  test('listbox is labelled by the component label', async () => {
+  test('listbox and filter are labelled by the component label', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
       label: 'Fruits',
       items,
+      filterable: true,
     });
 
     await openMenu(container);
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox?.getAttribute('aria-labelledby')).toBe('fruits-label');
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    expect(filter.getAttribute('aria-label')).toBeNull();
+    expect(filter.getAttribute('aria-labelledby')).toBe('fruits-label fruits-filter-label-hint');
+    expect(container.querySelector('#fruits-label')?.textContent).toContain('Fruits');
+    expect(container.querySelector('#fruits-filter-label-hint')?.textContent).toBe(
+      'Filter options',
+    );
   });
 
   test('listbox uses FormField label id when component label is omitted', async () => {

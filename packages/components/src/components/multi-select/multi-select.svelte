@@ -105,7 +105,7 @@
   let validityProxyElement = $state<HTMLInputElement | null>(null);
   let nativeError = $state('');
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
-  const invalidState = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
+  const triggerAriaInvalid = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
   const triggerDescribedBy = $derived.by(() => {
     const ids = new Set((field.describedBy ?? '').split(/\s+/).filter(Boolean));
     if (nativeError) ids.add(field.ownErrorId ?? stableLocalErrorId);
@@ -393,10 +393,7 @@
   });
 </script>
 
-<div
-  class={classNames('cinder-multi-select', className)}
-  data-cinder-invalid={invalidState ? true : undefined}
->
+<div class={classNames('cinder-multi-select', className)}>
   {#if label}
     <label
       id={labelId}
@@ -412,16 +409,19 @@
   {/if}
 
   <div bind:this={controlElement} class="cinder-multi-select__control">
+    <!-- svelte-ignore a11y_role_supports_aria_props_implicit (the focusable picker trigger intentionally mirrors invalid state for assistive tech) -->
     <button
       bind:this={triggerElement}
       type="button"
       {id}
       class="cinder-_input-frame cinder-multi-select__trigger"
       disabled={field.disabled}
+      aria-invalid={triggerAriaInvalid}
       aria-describedby={triggerDescribedBy}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={listboxId}
+      data-cinder-invalid={triggerAriaInvalid ? 'true' : undefined}
       data-cinder-open={open || undefined}
       data-cinder-has-clear={(selectedCount > 0 && !field.disabled && !readonly) || undefined}
       data-cinder-readonly={readonly || undefined}
@@ -448,7 +448,6 @@
 
     {#if open}
       <div
-        bind:this={panelElement}
         id={`${id}-popover`}
         class="cinder-_floating-surface cinder-multi-select__panel"
         data-cinder-direction={direction}
@@ -534,10 +533,10 @@
   </div>
 
   {#if filterable}
-    <span id={filterLabelHintId} class="cinder-multi-select__sr-label">Filter options</span>
     <p class="cinder-multi-select__sr-status" role="status" aria-live="polite">
       {open && visibleItems.length === 0 ? emptyListMessage : ''}
     </p>
+    <span id={filterLabelHintId} class="cinder-multi-select__sr-status">Filter options</span>
   {/if}
 
   <input

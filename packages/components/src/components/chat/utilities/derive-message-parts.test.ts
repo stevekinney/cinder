@@ -1,5 +1,5 @@
 /**
- * Unit tests for `deriveMessageParts` — the pure bridge from the vendored
+ * Unit tests for `deriveMessageParts` — the pure bridge from the published
  * {@link Message} mirror to the cinder-owned {@link ChatMessagePart} render
  * layer. The bridge must mirror the historical role-branch rendering exactly:
  * tool-call / tool-result / markdown bodies, images as trailing parts, stable
@@ -68,6 +68,58 @@ describe('deriveMessageParts — markdown body', () => {
     const parts = deriveMessageParts(message({ role: 'user', content }));
     expect(parts).toHaveLength(1);
     expect(parts[0]).toMatchObject({ type: 'markdown', content: 'line one\nline two' });
+  });
+
+  it('renders published thinking content through the reasoning part', () => {
+    const content: MultiModalContent[] = [
+      { type: 'thinking', thinking: 'private reasoning', signature: 'sig-1' },
+      { type: 'text', text: 'final answer' },
+    ];
+    const parts = deriveMessageParts(message({ role: 'assistant', content }));
+    expect(parts.map((part) => part.type)).toEqual(['reasoning', 'markdown']);
+    expect(parts[0]).toMatchObject({ type: 'reasoning', content: 'private reasoning' });
+    expect(parts[1]).toMatchObject({ type: 'markdown', content: 'final answer' });
+  });
+
+  it('honors explicit reasoning suppression for published thinking content', () => {
+    const content: MultiModalContent[] = [
+      { type: 'thinking', thinking: 'private reasoning', signature: 'sig-1' },
+      { type: 'text', text: 'final answer' },
+    ];
+    const parts = deriveMessageParts(message({ role: 'assistant', content }), { reasoning: '' });
+    expect(parts.map((part) => part.type)).toEqual(['markdown']);
+    expect(parts[0]).toMatchObject({ type: 'markdown', content: 'final answer' });
+  });
+
+  it('renders redacted thinking as a non-secret reasoning placeholder', () => {
+    const content: MultiModalContent[] = [
+      { type: 'redacted_thinking', data: 'encrypted-payload' },
+      { type: 'text', text: 'final answer' },
+    ];
+    const parts = deriveMessageParts(message({ role: 'assistant', content }));
+    expect(parts.map((part) => part.type)).toEqual(['reasoning', 'markdown']);
+    expect(parts[0]).toMatchObject({
+      type: 'reasoning',
+      content: 'Redacted reasoning is preserved in this transcript but cannot be displayed.',
+    });
+    expect(parts[0]).not.toMatchObject({ content: 'encrypted-payload' });
+  });
+
+  it('renders published server tool content as markdown summaries', () => {
+    const content: MultiModalContent[] = [
+      { type: 'server_tool_use', id: 'tool-1', name: 'web_search', input: { query: 'cinder' } },
+      { type: 'web_search_tool_result', tool_use_id: 'tool-1', content: { title: 'Result' } },
+      { type: 'container_upload', file_id: 'file-1' },
+    ];
+    const parts = deriveMessageParts(message({ role: 'assistant', content }));
+    expect(parts).toHaveLength(1);
+    expect(parts[0]).toMatchObject({ type: 'markdown' });
+    const markdown = parts[0];
+    expect(markdown?.type).toBe('markdown');
+    if (markdown?.type !== 'markdown') throw new Error('expected markdown part');
+    expect(markdown.content).toContain('Server tool use: web_search');
+    expect(markdown.content).toContain('Web search result: tool-1');
+    expect(markdown.content).toContain('Container upload: file-1');
   });
 });
 

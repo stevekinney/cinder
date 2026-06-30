@@ -213,7 +213,12 @@
   style:--cinder-marquee-duration={duration}
   style:--cinder-marquee-gap={gap}
 >
-  <div class="cinder-marquee__viewport">
+  <div
+    class="cinder-marquee__viewport"
+    role="group"
+    aria-label={normalizedLabel ? `${normalizedLabel} scroll area` : 'Marquee content'}
+    tabindex="0"
+  >
     <button
       type="button"
       class="cinder-marquee__control"

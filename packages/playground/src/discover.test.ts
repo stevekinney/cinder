@@ -142,9 +142,10 @@ describe('discoverAll', () => {
     expect(names).toContain('modal');
   });
 
-  it('includes date-picker', async () => {
+  it('includes date-picker component metadata', async () => {
     const results = await discoverAll();
-    expect(results.map((entry) => entry.name)).toContain('date-picker');
+    const datePickerEntry = results.find((entry) => entry.name === 'date-picker');
+    expect(datePickerEntry?.exampleCount).toBe(2);
   });
 });
 
@@ -288,9 +289,11 @@ describe('discoverSidebarComponents', () => {
     // passes the `exampleCount > 0` sidebar filter, bringing the measured
     // ceiling to 144.
     // QrCode and Marquee each add their first standalone playground examples,
-    // bringing the measured sidebar ceiling to 147.
-    // DatePicker and the current section/example wave bring the measured
-    // sidebar ceiling to 160.
+    // bringing the measured sidebar ceiling to 147. DatePicker now ships with
+    // two standalone examples, raising the measured ceiling to 148. Chat adds
+    // two more standalone composition families, bringing this branch to 150.
+    // Marketing sections add 10 standalone families with examples, bringing the
+    // measured ceiling to 160.
     const sidebar = await discoverSidebarComponents();
     expect(sidebar.length).toBeLessThanOrEqual(160);
     // Positive anchor for the +1: stacked-list-item is the family the #394

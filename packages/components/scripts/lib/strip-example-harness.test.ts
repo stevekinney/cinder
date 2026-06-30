@@ -149,10 +149,7 @@ describe('stripExampleHarness — fixtures', () => {
     expect(() => stripExampleHarness(source, 'thing/basic')).toThrow(/still referenced/);
   });
 
-  it('fails closed when an unrecognized multiline derived shape leaves mountIdPrefix behind', () => {
-    // Multiline derived declarations are not matched by DERIVED_ID_LINE, so the
-    // prop/uid lines are removed but `mountIdPrefix ?? uid` survives. The
-    // residual-marker scan must catch this rather than serve half-stripped code.
+  it('strips a multiline derived id declaration', () => {
     const source = `<script lang="ts">
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
   const uid = $props.id();
@@ -163,6 +160,10 @@ describe('stripExampleHarness — fixtures', () => {
 
 <Input id={fieldId} />
 `;
-    expect(() => stripExampleHarness(source, 'input/basic')).toThrow(/harness marker/);
+    const stripped = stripExampleHarness(source, 'input/basic');
+    expect(stripped).toContain('<Input id="field" />');
+    expect(stripped).not.toContain('mountIdPrefix');
+    expect(stripped).not.toContain('$props.id()');
+    expect(stripped).not.toContain('fieldId');
   });
 });

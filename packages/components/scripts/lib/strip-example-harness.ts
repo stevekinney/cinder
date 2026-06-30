@@ -53,13 +53,15 @@ const UID_LINE = /^[^\n]*const\s+uid\s*=\s*\$props\.id\(\)\s*;?[^\n]*\n/m;
 
 /**
  * A derived-id declaration in the canonical suffix form:
- * `let <var> = $derived(`${mountIdPrefix ?? uid}-<suffix>`);`. The `<suffix>`
- * group is the literal shown to the reader. Bare-form (no suffix) declarations
- * are intentionally not matched — every featured example uses the suffix form so
- * the displayed literal is self-describing rather than read from a side table.
+ * `<declaration> <var> = $derived(`${mountIdPrefix ?? uid}-<suffix>`);`. The
+ * `<suffix>` group is the literal shown to the reader. The matcher also accepts
+ * Prettier's multiline `$derived(` shape with a trailing comma after the
+ * template. Bare-form (no suffix) declarations are intentionally not matched —
+ * every featured example uses the suffix form so the displayed literal is
+ * self-describing rather than read from a side table.
  */
 const DERIVED_ID_LINE =
-  /^[^\n]*(?:let|const)\s+(?<var>[A-Za-z_$][\w$]*)\s*=\s*\$derived\(\s*`\$\{mountIdPrefix\s*\?\?\s*uid\}-(?<suffix>[^`]*)`\s*\)\s*;?[^\n]*\n/m;
+  /^[^\n]*(?:let|const)\s+(?<var>[A-Za-z_$][\w$]*)\s*=\s*\$derived\(\s*`\$\{mountIdPrefix\s*\?\?\s*uid\}-(?<suffix>[^`]*)`\s*,?\s*\)\s*;?[^\n]*\n/m;
 
 /** Markers that prove the harness was only partially removed — none may survive. */
 const RESIDUAL_HARNESS_MARKERS: ReadonlyArray<readonly [string, RegExp]> = [
