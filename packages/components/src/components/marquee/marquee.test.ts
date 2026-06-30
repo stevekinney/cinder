@@ -104,7 +104,7 @@ describe('Marquee', () => {
     const { container } = render(Marquee, { children: textSnippet('content') });
     const viewport = container.querySelector<HTMLDivElement>('.cinder-marquee__viewport');
     expect(viewport?.tabIndex).toBe(0);
-    expect(viewport?.getAttribute('role')).toBe('region');
+    expect(viewport?.getAttribute('role')).toBe('group');
     expect(viewport?.getAttribute('aria-label')).toBe('Marquee content');
   });
 

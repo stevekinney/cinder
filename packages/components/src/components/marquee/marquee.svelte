@@ -215,7 +215,7 @@
 >
   <div
     class="cinder-marquee__viewport"
-    role="region"
+    role="group"
     aria-label={normalizedLabel ? `${normalizedLabel} scroll area` : 'Marquee content'}
     use:makeScrollableRegionFocusable
   >
