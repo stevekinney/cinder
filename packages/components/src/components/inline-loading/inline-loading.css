@@ -1,6 +1,6 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../spinner/spinner.css';
 
-@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-inline-loading {
     display: inline-flex;
@@ -36,7 +36,7 @@
     flex-shrink: 0;
   }
 
-  .cinder-inline-loading__indicator :global(.cinder-spinner) {
+  .cinder-inline-loading__indicator .cinder-spinner {
     inline-size: 0.875rem;
     block-size: 0.875rem;
     border-width: 1.5px;
