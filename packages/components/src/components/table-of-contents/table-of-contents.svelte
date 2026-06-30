@@ -219,6 +219,7 @@
 
   $effect(() => {
     if (items !== undefined) {
+      derivedHeadingItems = [];
       return;
     }
 

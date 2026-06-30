@@ -278,6 +278,44 @@ describe('TableOfContents', () => {
     expect(links[0]?.getAttribute('href')).toBe('#dynamic-new');
   });
 
+  test('does not reuse stale derived headings after switching back from explicit items', async () => {
+    const target = document.createElement('article');
+    target.id = 'mode-switch-target';
+    target.appendChild(createHeading('derived-old', 'Derived old', 'h2'));
+    document.body.appendChild(target);
+
+    const view = render(TableOfContents, {
+      props: {
+        target: '#mode-switch-target',
+      },
+    });
+    await Promise.resolve();
+    expect(
+      view.container.querySelector('a.cinder-table-of-contents__link')?.getAttribute('href'),
+    ).toBe('#derived-old');
+
+    await view.rerender({
+      items: [{ id: 'explicit-item', label: 'Explicit item' }],
+      target: '#mode-switch-target',
+    });
+    await Promise.resolve();
+
+    target.replaceChildren(createHeading('derived-new', 'Derived new', 'h2'));
+
+    const derivedModeProps = {
+      items: undefined,
+      target: '#mode-switch-target',
+    } as unknown as Parameters<typeof view.rerender>[0];
+
+    await view.rerender(derivedModeProps);
+
+    expect(view.container.querySelector('a[href="#derived-old"]')).toBeNull();
+
+    await waitFor(() => {
+      expect(view.container.querySelector('a[href="#derived-new"]')).not.toBeNull();
+    });
+  });
+
   test('clears derived items when an HTMLElement target is detached', async () => {
     const target = document.createElement('article');
     target.appendChild(createHeading('detached-heading', 'Detached heading', 'h2'));
