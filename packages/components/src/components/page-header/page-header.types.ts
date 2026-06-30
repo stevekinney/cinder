@@ -2,7 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 /** Props for the PageHeader component. */
-export type PageHeaderProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'children'> & {
+export type PageHeaderProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
   /** Page-level heading text. Rendered as `<h1>`. */
   title: string;
   /** Optional supporting metadata displayed beside the title. */

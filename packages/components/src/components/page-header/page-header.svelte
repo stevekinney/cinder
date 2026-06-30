@@ -23,7 +23,7 @@
   let { title, meta, class: className, children, ...rest }: PageHeaderProps = $props();
 </script>
 
-<header class={classNames('cinder-page-header', className)} {...rest}>
+<div class={classNames('cinder-page-header', className)} {...rest}>
   <div class="cinder-page-header__heading-group">
     <h1 class="cinder-page-header__title">{title}</h1>
     {#if meta}
@@ -36,4 +36,4 @@
       {@render children()}
     </div>
   {/if}
-</header>
+</div>

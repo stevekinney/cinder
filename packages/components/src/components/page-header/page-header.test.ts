@@ -60,14 +60,34 @@ describe('PageHeader', () => {
     expect(container.querySelector('.cinder-page-header__actions')).toBeNull();
   });
 
-  test('class prop merges onto root header element', () => {
+  test('class prop merges onto root div element', () => {
     const { container } = render(PageHeader, {
       props: { title: 'Memory', class: 'my-page-header' },
     });
 
     const root = container.querySelector('.cinder-page-header');
-    expect(root?.tagName).toBe('HEADER');
+    expect(root?.tagName).toBe('DIV');
     expect(root?.classList.contains('cinder-page-header')).toBe(true);
     expect(root?.classList.contains('my-page-header')).toBe(true);
+  });
+
+  test('rendering multiple page headers does not create banner landmarks', () => {
+    const firstTarget = document.createElement('div');
+    const secondTarget = document.createElement('div');
+    document.body.append(firstTarget, secondTarget);
+
+    render(PageHeader, {
+      target: firstTarget,
+      props: { title: 'Approvals' },
+    });
+    render(PageHeader, {
+      target: secondTarget,
+      props: { title: 'Schedules' },
+    });
+
+    expect(firstTarget.querySelectorAll('.cinder-page-header')).toHaveLength(1);
+    expect(secondTarget.querySelectorAll('.cinder-page-header')).toHaveLength(1);
+    expect(firstTarget.querySelectorAll('header')).toHaveLength(0);
+    expect(secondTarget.querySelectorAll('header')).toHaveLength(0);
   });
 });
