@@ -3188,6 +3188,34 @@
       "import": "./src/components/number-input/number-input.examples.json",
       "default": "./src/components/number-input/number-input.examples.json"
     },
+    "./page-header": {
+      "types": "./dist/components/page-header/index.d.ts",
+      "browser": "./src/components/page-header/index.ts",
+      "node": "./dist/server/components/page-header/index.js",
+      "svelte": "./src/components/page-header/index.ts",
+      "default": "./dist/components/page-header/index.js"
+    },
+    "./page-header/schema": {
+      "types": "./dist/components/page-header/page-header.schema.d.ts",
+      "browser": "./src/components/page-header/page-header.schema.ts",
+      "node": "./dist/server/components/page-header/page-header.schema.js",
+      "svelte": "./src/components/page-header/page-header.schema.ts",
+      "default": "./dist/components/page-header/page-header.schema.js"
+    },
+    "./page-header/variables": {
+      "types": "./dist/components/page-header/page-header.variables.d.ts",
+      "browser": "./src/components/page-header/page-header.variables.ts",
+      "node": "./dist/server/components/page-header/page-header.variables.js",
+      "svelte": "./src/components/page-header/page-header.variables.ts",
+      "default": "./dist/components/page-header/page-header.variables.js"
+    },
+    "./page-header/styles": {
+      "default": "./dist/components/page-header/page-header.css"
+    },
+    "./page-header/examples": {
+      "import": "./src/components/page-header/page-header.examples.json",
+      "default": "./src/components/page-header/page-header.examples.json"
+    },
     "./pagination": {
       "types": "./dist/components/pagination/index.d.ts",
       "browser": "./src/components/pagination/index.ts",

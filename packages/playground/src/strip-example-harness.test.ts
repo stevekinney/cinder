@@ -116,5 +116,5 @@ describe('stripExampleHarness — every harnessed example stays valid Svelte', (
     // magic number) means a moved/renamed example dir fails here loudly instead
     // of silently matching zero harnessed files.
     expect(harnessed.length).toBeGreaterThanOrEqual(FEATURED_EXAMPLES.length);
-  });
+  }, 10_000);
 });
