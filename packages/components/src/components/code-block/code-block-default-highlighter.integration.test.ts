@@ -38,15 +38,6 @@ function runSeamProbe(): { exitCode: number; stdout: string; stderr: string } {
 }
 
 describe('CodeBlock default-highlighter seam (real Shiki adapter)', () => {
-  test('loads and memoizes the default highlighter in the current process', async () => {
-    const { loadDefaultHighlighter } = await import('./code-block-default-highlighter.ts');
-    const first = await loadDefaultHighlighter();
-    const second = await loadDefaultHighlighter();
-
-    expect(first).toBe(second);
-    await expect(first('const x: number = 1;', 'typescript')).resolves.toContain('<pre');
-  }, 30_000);
-
   test('seam is wired to a real, memoized Shiki highlighter that escapes input', () => {
     const { exitCode, stdout, stderr } = runSeamProbe();
     expect(exitCode, stderr).toBe(0);
