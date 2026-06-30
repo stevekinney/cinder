@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 
 import {
   computeCoverageAverages,
@@ -8,6 +9,8 @@ import {
   parseLcovRecords,
   parseSvelteLcovRecords,
 } from './check-coverage-ratchet.ts';
+
+const packageRoot = join(import.meta.dir, '..');
 
 const lcovFixture = `TN:
 SF:covered.ts
@@ -391,6 +394,61 @@ end_of_record
     ]);
   });
 
+  test('applies runtime scope exclusions to absolute package-local LCOV paths', () => {
+    const absoluteScriptsPath = join(packageRoot, 'scripts', 'build.ts').replaceAll('\\', '/');
+    const absoluteTestPath = join(packageRoot, 'src', 'test', 'hydrate.ts').replaceAll('\\', '/');
+    const absoluteComponentTestPath = join(
+      packageRoot,
+      'src',
+      'components',
+      'button',
+      'button.test.ts',
+    ).replaceAll('\\', '/');
+    const absoluteRuntimePath = join(
+      packageRoot,
+      'src',
+      'components',
+      'button',
+      'button.ts',
+    ).replaceAll('\\', '/');
+    const scopedFixture = `${lcovFixture}TN:
+SF:${absoluteScriptsPath}
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:${absoluteTestPath}
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:${absoluteComponentTestPath}
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:${absoluteRuntimePath}
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(scopedFixture);
+    expect(records.map((record) => record.file)).toEqual([
+      'covered.ts',
+      'partial.ts',
+      absoluteRuntimePath,
+    ]);
+  });
+
   test('keeps Svelte component modules in their own measured denominator', () => {
     const scopedFixture = `${lcovFixture}TN:
 SF:scripts/build.ts
@@ -441,6 +499,63 @@ end_of_record
       'src/components/button/button.svelte',
       'src/components/json-schema-editor/json-schema-editor-state.svelte.ts',
     ]);
+  });
+
+  test('applies Svelte scope inclusions to absolute package-local LCOV paths', () => {
+    const absoluteScriptsPath = join(packageRoot, 'scripts', 'build.ts').replaceAll('\\', '/');
+    const absoluteSveltePath = join(
+      packageRoot,
+      'src',
+      'components',
+      'button',
+      'button.svelte',
+    ).replaceAll('\\', '/');
+    const absoluteRunePath = join(
+      packageRoot,
+      'src',
+      'components',
+      'json-schema-editor',
+      'json-schema-editor-state.svelte.ts',
+    ).replaceAll('\\', '/');
+    const absoluteRuntimePath = join(
+      packageRoot,
+      'src',
+      'components',
+      'button',
+      'button.ts',
+    ).replaceAll('\\', '/');
+    const scopedFixture = `${lcovFixture}TN:
+SF:${absoluteScriptsPath}
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:${absoluteSveltePath}
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:${absoluteRunePath}
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:${absoluteRuntimePath}
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseSvelteLcovRecords(scopedFixture);
+    expect(records.map((record) => record.file)).toEqual([absoluteSveltePath, absoluteRunePath]);
   });
 
   test('does not exclude real TypeScript source whose path merely mentions svelte', () => {

@@ -21,6 +21,8 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, test } from 'bun:test';
 
+import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
+
 const shareCardPath = new URL('./share-card.svelte', import.meta.url).pathname;
 
 describe('ShareCard build-flag hydration safety', () => {
@@ -28,11 +30,22 @@ describe('ShareCard build-flag hydration safety', () => {
     const source = readFileSync(shareCardPath, 'utf-8');
 
     expect(source).not.toMatch(/from\s+['"]esm-env['"]/);
-    expect(source).toContain('let hydrated = $state(false);');
-    expect(source).toContain('$effect(() => {\n    hydrated = true;\n  });');
+    expect(source).toMatch(/let\s+hydrated\s*=\s*\$state\(\s*false\s*\);/);
+    expect(source).toMatch(/\$effect\(\s*\(\)\s*=>\s*{\s*hydrated\s*=\s*true;\s*}\s*\);/);
     expect(source).toMatch(
       /const canNativeShare = \$derived\(\s*hydrated && typeof navigator !== 'undefined' && typeof navigator\.share === 'function',\s*\);/,
     );
     expect(source).toMatch(/{#if !actions && canNativeShare}\s*{@render shareButton/s);
+  });
+
+  test('real ShareCard SSR output stays invariant and omits the native-share affordance', async () => {
+    const result = await checkBuildFlagHydrationSafety(shareCardPath, {
+      value: 'https://example.com/share/abc',
+    });
+
+    expect(result.buildFlagInvariant).toBe(true);
+    expect(result.serverHtml).toBe(result.clientHtml);
+    expect(result.serverHtml).not.toContain('data-cinder-action="native-share"');
+    expect(result.clientHtml).not.toContain('data-cinder-action="native-share"');
   });
 });

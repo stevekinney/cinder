@@ -138,9 +138,13 @@ function isTransientTestArtifact(file: string): boolean {
  * @lostgradient/cinder package directory.
  */
 function isOutsidePackageRootSourceMap(file: string): boolean {
-  const absoluteFile = isAbsolute(file) ? file : resolve(packageRoot, file);
-  const relativeFile = relative(packageRoot, absoluteFile).replaceAll('\\', '/');
+  const relativeFile = toPackageRootRelativePath(file);
   return relativeFile === '..' || relativeFile.startsWith('../');
+}
+
+function toPackageRootRelativePath(file: string): string {
+  const absoluteFile = isAbsolute(file) ? file : resolve(packageRoot, file);
+  return relative(packageRoot, absoluteFile).replaceAll('\\', '/');
 }
 
 /**
@@ -152,7 +156,7 @@ function isOutsidePackageRootSourceMap(file: string): boolean {
  * gates, not by the public runtime-source ratchet.
  */
 function isOutsideCoverageScope(file: string, scope: CoverageScope): boolean {
-  const normalizedFile = file.replaceAll('\\', '/');
+  const normalizedFile = toPackageRootRelativePath(file);
   if (normalizedFile.startsWith('scripts/')) return true;
   if (normalizedFile.endsWith('.test.ts') || normalizedFile.endsWith('.spec.ts')) return true;
   if (normalizedFile.startsWith('src/test/')) return true;
