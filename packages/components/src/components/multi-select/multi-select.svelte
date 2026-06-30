@@ -412,11 +412,11 @@
       {id}
       class="cinder-_input-frame cinder-multi-select__trigger"
       disabled={field.disabled}
-      aria-invalid={triggerAriaInvalid}
       aria-describedby={triggerDescribedBy}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={listboxId}
+      data-cinder-invalid={triggerAriaInvalid ? 'true' : undefined}
       data-cinder-open={open || undefined}
       data-cinder-has-clear={(selectedCount > 0 && !field.disabled && !readonly) || undefined}
       data-cinder-readonly={readonly || undefined}
@@ -457,7 +457,6 @@
             role="combobox"
             placeholder="Filter options"
             value={query}
-            aria-label="Filter options"
             aria-labelledby={filterAriaLabelledBy}
             aria-autocomplete="list"
             aria-haspopup="listbox"
@@ -514,7 +513,12 @@
               </span>
             </li>
           {:else}
-            <li class="cinder-multi-select__empty" role="option" aria-disabled="true">
+            <li
+              class="cinder-multi-select__empty"
+              role="option"
+              aria-disabled="true"
+              aria-selected="false"
+            >
               {emptyListMessage}
             </li>
           {/each}

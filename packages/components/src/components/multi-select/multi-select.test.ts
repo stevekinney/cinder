@@ -9,9 +9,8 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: MultiSelect } = await import('./multi-select.svelte');
-const { default: FormFieldMultiSelectFixture } = await import(
-  '../../test/fixtures/form-field-multi-select-fixture.svelte'
-);
+const { default: FormFieldMultiSelectFixture } =
+  await import('../../test/fixtures/form-field-multi-select-fixture.svelte');
 
 const items = [
   { id: 'apple', label: 'Apple' },
@@ -240,6 +239,7 @@ describe('MultiSelect', () => {
     const empty = container.querySelector('.cinder-multi-select__empty');
     expect(empty?.getAttribute('role')).toBe('option');
     expect(empty?.getAttribute('aria-disabled')).toBe('true');
+    expect(empty?.getAttribute('aria-selected')).toBe('false');
   });
 
   test('filter input has an accessible name and space does not toggle selection', async () => {
@@ -253,7 +253,11 @@ describe('MultiSelect', () => {
     const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
     if (!filter) throw new Error('filter input not found');
 
-    expect(filter.getAttribute('aria-label')).toBe('Filter options');
+    expect(filter.getAttribute('aria-label')).toBeNull();
+    expect(filter.getAttribute('aria-labelledby')).toBe('fruits-filter-label-hint');
+    expect(container.querySelector('#fruits-filter-label-hint')?.textContent).toBe(
+      'Filter options',
+    );
     expect(filter.getAttribute('role')).toBe('combobox');
     expect(filter.getAttribute('aria-autocomplete')).toBe('list');
     expect(filter.getAttribute('aria-haspopup')).toBe('listbox');
@@ -398,16 +402,25 @@ describe('MultiSelect', () => {
     expect(container.querySelector('#fruits-warning')?.textContent).toContain('seasonal');
   });
 
-  test('listbox is labelled by the component label', async () => {
+  test('listbox and filter are labelled by the component label', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
       label: 'Fruits',
       items,
+      filterable: true,
     });
 
     await openMenu(container);
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox?.getAttribute('aria-labelledby')).toBe('fruits-label');
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    expect(filter.getAttribute('aria-label')).toBeNull();
+    expect(filter.getAttribute('aria-labelledby')).toBe('fruits-label fruits-filter-label-hint');
+    expect(container.querySelector('#fruits-label')?.textContent).toContain('Fruits');
+    expect(container.querySelector('#fruits-filter-label-hint')?.textContent).toBe(
+      'Filter options',
+    );
   });
 
   test('listbox uses FormField label id when component label is omitted', async () => {
