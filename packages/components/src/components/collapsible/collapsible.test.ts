@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { CollapsibleTriggerState } from './collapsible.types.ts';
 
 setupHappyDom();
 
@@ -20,6 +21,7 @@ const { default: Collapsible } = await import('./collapsible.svelte');
 const { default: BindableHarness } = await import('./collapsible-bindable-harness.svelte');
 const { default: SnippetTriggerHarness } =
   await import('./collapsible-snippet-trigger-harness.svelte');
+const { default: OpenPropHarness } = await import('./collapsible-open-prop-harness.svelte');
 const { createRawSnippet } = await import('svelte');
 
 function bodySnippet(text = 'panel body') {
@@ -34,6 +36,10 @@ function trigger(container: HTMLElement): HTMLButtonElement {
 
 function panel(container: HTMLElement): HTMLElement | null {
   return container.querySelector('.cinder-collapsible__panel');
+}
+
+function triggerLabel(container: HTMLElement): HTMLElement | null {
+  return container.querySelector('.cinder-collapsible__label > span[id]');
 }
 
 describe('Collapsible (uncontrolled)', () => {
@@ -63,7 +69,7 @@ describe('Collapsible (uncontrolled)', () => {
     expect(region).not.toBeNull();
     expect(region?.getAttribute('role')).toBe('region');
     expect(button.getAttribute('aria-controls')).toBe(region?.getAttribute('id') ?? null);
-    expect(region?.getAttribute('aria-labelledby')).toBe(button.getAttribute('id'));
+    expect(region?.getAttribute('aria-labelledby')).toBe(triggerLabel(container)?.getAttribute('id') ?? null);
   });
 
   test('omits aria-controls while closed so the reference never dangles', async () => {
@@ -155,6 +161,21 @@ describe('Collapsible (controlled)', () => {
     expect(getByTestId('open-readout').textContent).toBe('closed');
     expect(panel(container)).toBeNull();
   });
+
+  test('open prop updates from parent keep panel state in sync', async () => {
+    const { container, getByTestId } = render(OpenPropHarness);
+
+    expect(panel(container)).toBeNull();
+
+    await fireEvent.click(getByTestId('parent-open'));
+    expect(panel(container)).not.toBeNull();
+
+    await fireEvent.click(getByTestId('parent-close'));
+    expect(panel(container)).toBeNull();
+
+    await fireEvent.click(trigger(container));
+    expect(panel(container)).not.toBeNull();
+  });
 });
 
 describe('Collapsible disabled', () => {
@@ -208,6 +229,43 @@ describe('Collapsible trigger forms', () => {
 
     await fireEvent.click(trigger(container));
     expect(trigger(container).textContent).toContain('Hide');
+  });
+
+  test('forwards a static triggerAriaLabel to the trigger button', () => {
+    const { container } = render(Collapsible, {
+      trigger: 'Visible label',
+      triggerAriaLabel: 'Screen reader label',
+      children: bodySnippet(),
+    });
+
+    expect(trigger(container).getAttribute('aria-label')).toBe('Screen reader label');
+  });
+
+  test('triggerAriaLabel function re-renders reactively on toggle', async () => {
+    const { container } = render(Collapsible, {
+      trigger: 'Visible label',
+      triggerAriaLabel: ({ open }: CollapsibleTriggerState) =>
+        open ? 'Collapse details' : 'Expand details',
+      children: bodySnippet(),
+    });
+
+    expect(trigger(container).getAttribute('aria-label')).toBe('Expand details');
+
+    await fireEvent.click(trigger(container));
+    expect(trigger(container).getAttribute('aria-label')).toBe('Collapse details');
+  });
+
+  test('omits trigger aria-label when triggerAriaLabel resolves to whitespace', async () => {
+    const { container } = render(Collapsible, {
+      trigger: 'Visible label',
+      triggerAriaLabel: ({ open }: CollapsibleTriggerState) => (open ? ' ' : '   '),
+      children: bodySnippet(),
+    });
+
+    expect(trigger(container).hasAttribute('aria-label')).toBe(false);
+
+    await fireEvent.click(trigger(container));
+    expect(trigger(container).hasAttribute('aria-label')).toBe(false);
   });
 });
 

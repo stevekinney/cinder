@@ -65,6 +65,11 @@ type SourceManifest = {
   exports: ExportsMap;
 };
 
+type SourceMapStripResult = {
+  text: string;
+  strippedCount: number;
+};
+
 /**
  * Read the source manifest. Throws if the file is missing.
  */
@@ -296,6 +301,81 @@ function buildPublishedManifest(
   return published;
 }
 
+function isResolvableRelativeSourceMapReference(reference: string): boolean {
+  if (!reference.endsWith('.map')) return false;
+  if (reference.startsWith('data:')) return false;
+  if (reference.startsWith('file:')) return false;
+  return !/^[a-z]+:\/\//iu.test(reference);
+}
+
+export function stripDanglingSourceMapUrlComments(
+  text: string,
+  hasSourceMap: (reference: string) => boolean,
+): SourceMapStripResult {
+  let strippedCount = 0;
+  const outputLines: string[] = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const lineCommentMatch = line.match(/^\s*\/\/[#@]\s*sourceMappingURL=([^\s]+)\s*$/u);
+    if (lineCommentMatch) {
+      const reference = lineCommentMatch[1];
+      if (
+        reference &&
+        isResolvableRelativeSourceMapReference(reference) &&
+        !hasSourceMap(reference)
+      ) {
+        strippedCount += 1;
+        continue;
+      }
+    }
+
+    const blockCommentMatch = line.match(/^\s*\/\*#\s*sourceMappingURL=([^*\s]+)\s*\*\/\s*$/u);
+    if (blockCommentMatch) {
+      const reference = blockCommentMatch[1];
+      if (
+        reference &&
+        isResolvableRelativeSourceMapReference(reference) &&
+        !hasSourceMap(reference)
+      ) {
+        strippedCount += 1;
+        continue;
+      }
+    }
+
+    outputLines.push(line);
+  }
+
+  const outputText = outputLines.join('\n');
+  if (outputText.length === 0) {
+    return { text: outputText, strippedCount };
+  }
+  if (!text.endsWith('\n') && outputText.endsWith('\n')) {
+    return { text: outputText.slice(0, -1), strippedCount };
+  }
+  if (text.endsWith('\n') && !outputText.endsWith('\n')) {
+    return { text: `${outputText}\n`, strippedCount };
+  }
+  return { text: outputText, strippedCount };
+}
+
+async function stripDanglingSourceMapCommentsInStaging(): Promise<number> {
+  const scriptGlob = new Glob('dist/**/*.{js,mjs,cjs}');
+  let strippedCount = 0;
+  for await (const relative of scriptGlob.scan({ cwd: stagingRoot })) {
+    const filePath = join(stagingRoot, relative);
+    const original = await Bun.file(filePath).text();
+    if (!original.includes('sourceMappingURL=')) continue;
+    const fileDirectory = dirname(filePath);
+    const stripped = stripDanglingSourceMapUrlComments(original, (reference) =>
+      existsSync(join(fileDirectory, reference)),
+    );
+    if (stripped.strippedCount === 0) continue;
+    await Bun.write(filePath, stripped.text);
+    strippedCount += stripped.strippedCount;
+  }
+  return strippedCount;
+}
+
 /**
  * Copy a file relative to `packageRoot` into the same relative path under
  * `stagingRoot`. Creates intermediate directories as needed.
@@ -357,6 +437,12 @@ async function stageFiles(manifest: SourceManifest): Promise<void> {
       await rm(join(stagingRoot, relative), { force: true, recursive: true });
     }
   }
+
+  // `build.ts` emits `//# sourceMappingURL=*.map` comments for dist JS outputs,
+  // while the publish manifest intentionally excludes `dist/**/*.js.map`. Strip
+  // dangling source-map references from staged JS files so consumer bundlers
+  // do not warn about missing map files.
+  await stripDanglingSourceMapCommentsInStaging();
 
   // Always include README and LICENSE if present, regardless of `files`.
   for (const additional of ['README.md', 'LICENSE', 'LICENSE.md', 'CHANGELOG.md']) {

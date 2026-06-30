@@ -7,7 +7,8 @@ export type NavigationBarLabelVisibility = 'always' | 'active' | 'never';
 export type NavigationBarToggleAttributes = {
   'aria-expanded': 'true' | 'false';
   'aria-controls': string;
-  onclick: (event: MouseEvent) => void;
+  /** Client-only click handler. Omitted during SSR to avoid forwarding function props in server markup. */
+  onclick?: (event: MouseEvent) => void;
 };
 /** Context passed to the items snippet so items can adapt their layout. */
 export type NavigationBarItemsContext = {

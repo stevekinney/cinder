@@ -13,8 +13,9 @@ export type CollapsibleProps = Omit<
   /** Panel content shown when open. */
   children: Snippet;
   /**
-   * Bindable open state. Without `bind:open`, this is the initial value and the
-   * component manages subsequent toggles. With `bind:open`, the parent owns it.
+   * Bindable open state. Without `bind:open`, this seeds local state and can be
+   * updated by parent prop changes, while trigger clicks update local state.
+   * Use `bind:open` for full parent/trigger synchronization.
    * @default false
    */
   open?: boolean;
@@ -26,8 +27,15 @@ export type CollapsibleProps = Omit<
    */
   disabled?: boolean;
   /**
+   * Accessible name override for the internal trigger button. Accepts either a
+   * fixed string or a function receiving `{ open, disabled }` so labels can
+   * react without requiring `bind:open`.
+   */
+  triggerAriaLabel?: string | ((state: CollapsibleTriggerState) => string);
+  /**
    * Base used to derive the trigger and panel ARIA ids (`<base>-header`,
-   * `<base>-panel`). NOT the root element id. Auto-generated when omitted.
+   * `<base>-label`, `<base>-panel`). NOT the root element id. Auto-generated
+   * when omitted.
    */
   idBase?: string;
   /** Additional classes merged onto the root element. */
@@ -43,8 +51,9 @@ export interface CollapsibleSchemaProps {
   /** Trigger label text. (The snippet form is template-only; see the type above.) */
   trigger: string;
   /**
-   * Bindable open state. Without binding, the initial value the component then
-   * manages.
+   * Bindable open state. Without `bind:open`, this seeds local state and can be
+   * updated by parent prop changes. Use `bind:open` for full parent/trigger
+   * synchronization.
    * @default false
    */
   open?: boolean;
@@ -53,7 +62,13 @@ export interface CollapsibleSchemaProps {
    * @default false
    */
   disabled?: boolean;
-  /** Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted. */
+  /**
+   * Accessible name override for the trigger button. The runtime prop also
+   * accepts a state-aware function (`{ open, disabled } => string`), but JSON
+   * Schema can only model the string variant.
+   */
+  triggerAriaLabel?: string;
+  /** Base used to derive the trigger, label, and panel ARIA ids. Auto-generated when omitted. */
   idBase?: string;
   /** Additional classes merged onto the root element. */
   class?: string;

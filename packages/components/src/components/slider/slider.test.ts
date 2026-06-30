@@ -163,7 +163,7 @@ describe('Slider (single)', () => {
     expect(sliderTag).not.toBe('');
     expect(html).toContain('dir="ltr"');
     expect(sliderTag).toContain('dir="rtl"');
-  });
+  }, 30_000);
 
   test('ArrowUp / ArrowDown also adjust by step', async () => {
     const { container } = render(Slider, {

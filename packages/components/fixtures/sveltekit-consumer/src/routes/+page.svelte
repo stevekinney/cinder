@@ -36,6 +36,7 @@
   let modalOpen = $state(false);
   let dropdownOpen = $state(false);
   let expandedIds = $state<string[]>([]);
+  let mobileMenuOpen = $state(false);
   const useHistoryExportIsFunction = typeof useHistory === 'function';
 </script>
 
@@ -93,9 +94,20 @@
   </section>
 
   <section aria-label="NavigationBar">
-    <NavigationBar>
-      {#snippet items({ variant })}<NavigationItem {variant} href="/">Home</NavigationItem
-        >{/snippet}
+    <NavigationBar bind:mobileMenuOpen>
+      {#snippet menuToggle(attrs)}
+        <button
+          type="button"
+          data-fixture-nav-toggle="barrel"
+          {...attrs}
+          aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+        >
+          Menu
+        </button>
+      {/snippet}
+      {#snippet items({ variant })}
+        <NavigationItem {variant} href="/">Home</NavigationItem>
+      {/snippet}
     </NavigationBar>
   </section>
 
