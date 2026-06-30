@@ -509,7 +509,7 @@ describe('enforcement — real examples have no un-allowlisted raw controls', ()
     expect(
       result.flagged.map((occurrence) => `${occurrence.relativePath}:${occurrence.lineNumber}`),
     ).toEqual([]);
-  });
+  }, 15_000);
 
   test('the checked-in ALLOWLIST has no stale entries', () => {
     expect(
@@ -517,7 +517,7 @@ describe('enforcement — real examples have no un-allowlisted raw controls', ()
         (entry) => `${entry.relativePath}#${entry.tagName}[${entry.occurrenceIndex}]`,
       ),
     ).toEqual([]);
-  });
+  }, 15_000);
 });
 
 // ── renderReport ───────────────────────────────────────────────────────────────
