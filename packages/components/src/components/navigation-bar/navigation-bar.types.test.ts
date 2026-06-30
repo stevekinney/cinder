@@ -25,7 +25,6 @@ const _navigationBarItemsContext: NavigationBarItemsContext = {
 const _navigationBarToggleAttributes: NavigationBarToggleAttributes = {
   'aria-expanded': 'false',
   'aria-controls': 'menu-id',
-  onclick: () => {},
 };
 const _navigationVariant: NavigationVariant = 'horizontal';
 const _navigationPlacement: NavigationBarPlacement = 'bottom';

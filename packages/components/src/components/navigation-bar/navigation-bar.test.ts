@@ -44,7 +44,7 @@ function toggleSnippet(buttonId = 'toggle-btn') {
       {
         'aria-expanded': string;
         'aria-controls': string;
-        onclick: (event: MouseEvent) => void;
+        onclick?: (event: MouseEvent) => void;
       },
     ]
   >((getAttrs) => ({
@@ -53,7 +53,9 @@ function toggleSnippet(buttonId = 'toggle-btn') {
       const attrs = getAttrs();
       element.setAttribute('aria-expanded', attrs['aria-expanded']);
       element.setAttribute('aria-controls', attrs['aria-controls']);
-      element.addEventListener('click', attrs.onclick as EventListener);
+      if (attrs.onclick) {
+        element.addEventListener('click', attrs.onclick as EventListener);
+      }
     },
   }));
 }
@@ -64,7 +66,7 @@ function glyphToggleSnippet(buttonId = 'toggle-glyph-btn') {
       {
         'aria-expanded': string;
         'aria-controls': string;
-        onclick: (event: MouseEvent) => void;
+        onclick?: (event: MouseEvent) => void;
       },
     ]
   >((getAttrs) => ({
@@ -74,7 +76,9 @@ function glyphToggleSnippet(buttonId = 'toggle-glyph-btn') {
       const attrs = getAttrs();
       element.setAttribute('aria-expanded', attrs['aria-expanded']);
       element.setAttribute('aria-controls', attrs['aria-controls']);
-      element.addEventListener('click', attrs.onclick as EventListener);
+      if (attrs.onclick) {
+        element.addEventListener('click', attrs.onclick as EventListener);
+      }
     },
   }));
 }

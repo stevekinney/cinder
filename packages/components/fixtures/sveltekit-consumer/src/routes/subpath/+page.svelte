@@ -31,6 +31,7 @@
   let modalOpen = $state(false);
   let dropdownOpen = $state(false);
   let expandedIds = $state<string[]>([]);
+  let mobileMenuOpen = $state(false);
 </script>
 
 <main>
@@ -88,9 +89,20 @@
   </section>
 
   <section aria-label="NavigationBar">
-    <NavigationBar>
-      {#snippet items()}<NavigationItem href="/subpath" active={true}>Subpath</NavigationItem
-        >{/snippet}
+    <NavigationBar bind:mobileMenuOpen>
+      {#snippet menuToggle(attrs)}
+        <button
+          type="button"
+          data-fixture-nav-toggle="subpath"
+          {...attrs}
+          aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+        >
+          Menu
+        </button>
+      {/snippet}
+      {#snippet items({ variant })}
+        <NavigationItem {variant} href="/subpath" active={true}>Subpath</NavigationItem>
+      {/snippet}
     </NavigationBar>
   </section>
 
