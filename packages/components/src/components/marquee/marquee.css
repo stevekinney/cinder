@@ -105,7 +105,8 @@
   }
 
   @media (hover: hover) {
-    .cinder-marquee[data-cinder-pause-hover='true']:hover .cinder-marquee__track {
+    .cinder-marquee[data-cinder-pause-hover='true']:not([data-cinder-manual-resumed='true']):hover
+      .cinder-marquee__track {
       --cinder-marquee-play-state: paused;
     }
   }

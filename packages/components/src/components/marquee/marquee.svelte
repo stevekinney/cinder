@@ -172,6 +172,19 @@
     manualResumeRequested = false;
   }
 
+  function clearManualResumeRequestAfterFocusLeaves(event: FocusEvent): void {
+    const nextTarget = event.relatedTarget;
+    if (
+      event.currentTarget instanceof HTMLElement &&
+      nextTarget instanceof Node &&
+      event.currentTarget.contains(nextTarget)
+    ) {
+      return;
+    }
+
+    clearManualResumeRequest();
+  }
+
   $effect(() => {
     if (!primaryTrackItem || !duplicateTrackItem) return;
     duplicateReady = false;
@@ -212,6 +225,8 @@
   {role}
   style:--cinder-marquee-duration={duration}
   style:--cinder-marquee-gap={gap}
+  onfocusout={clearManualResumeRequestAfterFocusLeaves}
+  onpointerleave={clearManualResumeRequest}
 >
   <div
     class="cinder-marquee__viewport"
@@ -224,7 +239,6 @@
       class="cinder-marquee__control"
       aria-pressed={manuallyPaused}
       onclick={toggleManualPausedState}
-      onblur={clearManualResumeRequest}
     >
       {pauseControlLabel}
     </button>
