@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: TableOfContents } = await import('./table-of-contents.svelte');
 
 type ObserverRecord = {
@@ -66,6 +66,16 @@ function createEntry(
     target,
     time: Date.now(),
   };
+}
+
+async function waitForTableOfContentsLinks(container: Element, expectedCount: number) {
+  await waitFor(() => {
+    expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(
+      expectedCount,
+    );
+  });
+
+  return container.querySelectorAll('a.cinder-table-of-contents__link');
 }
 
 beforeEach(() => {
@@ -163,10 +173,8 @@ describe('TableOfContents', () => {
     article.id = 'late-target';
     article.appendChild(createHeading('late-one', 'Late one', 'h2'));
     document.body.appendChild(article);
-    await new Promise((resolve) => setTimeout(resolve, 80));
 
-    const links = container.querySelectorAll('a.cinder-table-of-contents__link');
-    expect(links.length).toBe(1);
+    const links = await waitForTableOfContentsLinks(container, 1);
     expect(links[0]?.getAttribute('href')).toBe('#late-one');
   });
 

@@ -47,13 +47,33 @@ describe('TypeaheadBuffer', () => {
     buffer.reset();
   });
 
-  test('resets itself after the idle timeout', async () => {
+  test('resets itself after the idle timeout', () => {
+    const originalSetTimeout = globalThis.setTimeout;
+    const originalClearTimeout = globalThis.clearTimeout;
+    let scheduledReset: TimerHandler | undefined;
+
+    globalThis.setTimeout = ((
+      handler: TimerHandler,
+      timeout?: number,
+    ): ReturnType<typeof setTimeout> => {
+      expect(timeout).toBe(500);
+      scheduledReset = handler;
+      return 1 as unknown as ReturnType<typeof setTimeout>;
+    }) as unknown as typeof setTimeout;
+    globalThis.clearTimeout = (() => {}) as typeof clearTimeout;
+
     const buffer = new TypeaheadBuffer();
 
-    expect(buffer.push('A')).toBe('a');
-    await new Promise((resolve) => setTimeout(resolve, 520));
-    expect(buffer.push('B')).toBe('b');
-    buffer.reset();
+    try {
+      expect(buffer.push('A')).toBe('a');
+      expect(scheduledReset).toBeTypeOf('function');
+      if (typeof scheduledReset === 'function') scheduledReset();
+      expect(buffer.push('B')).toBe('b');
+      buffer.reset();
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+    }
   });
 });
 
