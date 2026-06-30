@@ -34,7 +34,8 @@ export type CollapsibleProps = Omit<
   triggerAriaLabel?: string | ((state: CollapsibleTriggerState) => string);
   /**
    * Base used to derive the trigger and panel ARIA ids (`<base>-header`,
-   * `<base>-panel`). NOT the root element id. Auto-generated when omitted.
+   * `<base>-label`, `<base>-panel`). NOT the root element id. Auto-generated
+   * when omitted.
    */
   idBase?: string;
   /** Additional classes merged onto the root element. */
@@ -67,7 +68,7 @@ export interface CollapsibleSchemaProps {
    * Schema can only model the string variant.
    */
   triggerAriaLabel?: string;
-  /** Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted. */
+  /** Base used to derive the trigger, label, and panel ARIA ids. Auto-generated when omitted. */
   idBase?: string;
   /** Additional classes merged onto the root element. */
   class?: string;

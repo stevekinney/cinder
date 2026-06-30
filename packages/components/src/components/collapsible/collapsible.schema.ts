@@ -27,7 +27,7 @@ const schema = {
     idBase: {
       type: 'string',
       description:
-        'Base used to derive the trigger and panel ARIA ids. Auto-generated when omitted.',
+        'Base used to derive the trigger, label, and panel ARIA ids. Auto-generated when omitted.',
     },
     class: {
       type: 'string',
