@@ -27,7 +27,7 @@
  * stringify({ foo: 'bar' }); // '{\n  "foo": "bar"\n}'
  * stringify('hello');        // 'hello' (unchanged)
  * stringify(null);           // ''
- * stringify(circularRef);    // '[object Object]' (fallback)
+ * stringify(circularRef);    // '[Unserializable value]' (fallback)
  * ```
  */
 export function stringify(value: unknown, indent: number = 2): string {
