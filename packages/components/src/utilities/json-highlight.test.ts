@@ -93,6 +93,13 @@ describe('highlightJson — valid JSON', () => {
       '<code class="cinder-json"><span class="cinder-json-token cinder-json-token-null">null</span>&lt;</code>',
     );
   });
+
+  test('tokenizer fallback does not throw on unterminated strings', () => {
+    const html = jsonHighlightInternalsForTesting.tokenize('"oops');
+    expect(html).toBe(
+      '<code class="cinder-json"><span class="cinder-json-token cinder-json-token-string">"</span>oops</code>',
+    );
+  });
 });
 
 describe('highlightJson — fallback paths', () => {

@@ -43,7 +43,8 @@ function plainCode(raw: string): string {
 function readStringLiteral(source: string, startIndex: number): string {
   const stringPattern = /"(?:\\.|[^"\\])*"/y;
   stringPattern.lastIndex = startIndex;
-  return stringPattern.exec(source)![0];
+  const match = stringPattern.exec(source);
+  return match?.[0] ?? source[startIndex] ?? '';
 }
 
 /**

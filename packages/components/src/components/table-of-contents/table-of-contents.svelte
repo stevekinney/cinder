@@ -533,7 +533,7 @@
       for (const element of observedElements) {
         observer.observe(element);
       }
-      updateActiveId();
+      scheduleActiveIdUpdate();
     }
 
     window.addEventListener('scroll', scheduleActiveIdUpdate, { passive: true });

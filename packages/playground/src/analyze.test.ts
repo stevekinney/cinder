@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -568,6 +568,49 @@ describe('analyzeComponent — bare <script module> block', () => {
       kind: 'select',
       options: ['gamma', 'delta'],
     });
+  });
+
+  it('resolves primitive aliases imported from a package', async () => {
+    const packageDirectory = join(fixtureDir, 'node_modules', 'primitive-alias-package');
+    mkdirSync(packageDirectory, { recursive: true });
+    await Bun.write(join(packageDirectory, 'package.json'), `{"types":"index.d.ts"}\n`);
+    await Bun.write(
+      join(packageDirectory, 'index.d.ts'),
+      [
+        'export type ExternalFlag = boolean;',
+        'export type ExternalCount = number;',
+        'export type ExternalLabel = string;',
+        '',
+      ].join('\n'),
+    );
+
+    const componentFilePath = await writeFixture(
+      'primitive-widget',
+      `<script lang="ts" module>
+  import type {
+    ExternalCount,
+    ExternalFlag,
+    ExternalLabel,
+  } from 'primitive-alias-package';
+
+  export type PrimitiveWidgetProps = {
+    flag?: ExternalFlag;
+    count?: ExternalCount;
+    label?: ExternalLabel;
+  };
+</script>
+
+<script lang="ts">
+  let { flag = false, count = 0, label = '' }: PrimitiveWidgetProps = $props();
+</script>
+
+<div>{label}</div>`,
+    );
+
+    const manifest = await analyzeComponent(componentFilePath);
+    expect(manifest.props.find((p) => p.name === 'flag')?.control.kind).toBe('boolean');
+    expect(manifest.props.find((p) => p.name === 'count')?.control.kind).toBe('number');
+    expect(manifest.props.find((p) => p.name === 'label')?.control.kind).toBe('text');
   });
 });
 

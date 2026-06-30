@@ -104,6 +104,10 @@ function inferControlKindFromTypeNode(
 const importedLiteralUnionCache = new Map<string, ControlKind | null>();
 
 function inferControlKindFromResolvedType(type: Type): ControlKind | undefined {
+  if (type.isBoolean()) return { kind: 'boolean' };
+  if (type.isNumber()) return { kind: 'number' };
+  if (type.isString()) return { kind: 'text' };
+
   const stringLiterals: string[] = [];
   const unionTypes = type.isUnion() ? type.getUnionTypes() : [type];
 
