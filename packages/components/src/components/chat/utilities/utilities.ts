@@ -1,7 +1,7 @@
 /**
  * Utility functions for chat message operations.
  *
- * These helpers work with the vendored {@link Message} type to extract
+ * These helpers work with the published {@link Message} type to extract
  * content for copy/export operations.
  */
 
@@ -69,14 +69,16 @@ function runOverlayCallback<T>(
  * Resolves the reasoning overlay for a message. An explicit per-message callback
  * is consulted first; when it returns `undefined` (or throws) the resolution
  * falls back to `cinder:reasoning` namespaced metadata. An empty string from the
- * callback is authoritative and suppresses the overlay. Returns `undefined` when
- * no reasoning applies — a plain transcript renders the feature absent.
+ * callback is authoritative and suppresses the overlay. That suppression is
+ * returned as `''` so downstream part derivation can also skip transcript-native
+ * `thinking` content. Returns `undefined` when no reasoning source applies.
  */
 export function resolveMessageReasoning(
   message: Message,
   fromProp?: (message: Message) => string | undefined,
 ): string | undefined {
   const fromCallback = runOverlayCallback(message, fromProp);
+  if (fromCallback.handled && fromCallback.value === '') return '';
   const candidate: unknown = fromCallback.handled
     ? fromCallback.value
     : message.metadata[CINDER_REASONING_METADATA_KEY];
@@ -143,14 +145,29 @@ export function toMultiModalArray(
   return 'type' in input ? [input] : input;
 }
 
-/**
- * Type predicate for text content parts.
- */
-function isTextPart(part: MultiModalContent): part is TextPart {
-  return part.type === 'text';
+function formatJSONValue(value: unknown): string {
+  return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 }
 
-type TextPart = MultiModalContent & { type: 'text'; text: string };
+function getServerContentText(part: MultiModalContent): string | undefined {
+  switch (part.type) {
+    case 'text':
+      return part.text;
+    case 'server_tool_use':
+      return [`Server tool use: ${part.name}`, formatJSONValue(part.input)].join('\n');
+    case 'web_search_tool_result':
+      return [`Web search result: ${part.tool_use_id}`, formatJSONValue(part.content)].join('\n');
+    case 'code_execution_tool_result':
+    case 'bash_code_execution_tool_result':
+    case 'text_editor_code_execution_tool_result':
+    case 'web_fetch_tool_result':
+      return [`Server tool result: ${part.tool_use_id}`, formatJSONValue(part.content)].join('\n');
+    case 'container_upload':
+      return `Container upload: ${part.file_id}`;
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Extracts all content parts from a message as a multi-modal array.
@@ -185,8 +202,8 @@ export function getMessageParts(message: Message): ReadonlyArray<MultiModalConte
  */
 export function getMessageText(message: Message): string {
   return getMessageParts(message)
-    .filter(isTextPart)
-    .map((part) => part.text)
+    .map(getServerContentText)
+    .filter((text): text is string => typeof text === 'string' && text.length > 0)
     .join('\n');
 }
 
@@ -211,6 +228,33 @@ function deriveImageParts(message: Message): ImageMessagePart[] {
     }
   });
   return parts;
+}
+
+function deriveReasoningContent(
+  message: Message,
+  explicitReasoning: string | undefined,
+): string | undefined {
+  if (explicitReasoning === '') return undefined;
+  const reasoningSegments =
+    explicitReasoning && explicitReasoning.length > 0 ? [explicitReasoning] : [];
+  if (typeof message.content !== 'string') {
+    let hasRedactedThinking = false;
+    for (const segment of message.content) {
+      if (segment.type === 'thinking' && segment.thinking.length > 0) {
+        reasoningSegments.push(segment.thinking);
+      }
+      if (segment.type === 'redacted_thinking') {
+        hasRedactedThinking = true;
+      }
+    }
+    if (hasRedactedThinking) {
+      reasoningSegments.push(
+        'Redacted reasoning is preserved in this transcript but cannot be displayed.',
+      );
+    }
+  }
+
+  return reasoningSegments.length > 0 ? reasoningSegments.join('\n\n') : undefined;
 }
 
 /**
@@ -363,11 +407,12 @@ export function deriveMessageParts(
   }
 
   // C4: Reasoning part — emitted before the markdown body when present.
-  if (context.reasoning && context.reasoning.length > 0) {
+  const reasoningContent = deriveReasoningContent(message, context.reasoning);
+  if (reasoningContent) {
     bodyParts.push({
       type: 'reasoning',
       key: `${message.id}:reasoning`,
-      content: context.reasoning,
+      content: reasoningContent,
       streaming: context.streaming ?? false,
     });
   }

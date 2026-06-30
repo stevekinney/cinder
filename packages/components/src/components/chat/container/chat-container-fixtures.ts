@@ -1,10 +1,9 @@
 /**
  * Test fixtures for ChatContainer component.
  *
- * These fixtures build mock conversations as the vendored {@link ConversationHistory}
- * shape for use in Storybook stories and tests, using small local builders that
- * mimic the message structure (position, metadata, createdAt as ISO strings, etc.)
- * produced by conversation-state libraries.
+ * These fixtures build {@link ConversationHistory} snapshots for use in stories
+ * and tests, using small local builders that keep scenarios focused on
+ * container state rather than transcript construction.
  */
 
 import type { ConversationHistory, MessageRole } from '../conversation-model.ts';

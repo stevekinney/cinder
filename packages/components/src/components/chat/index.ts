@@ -33,10 +33,12 @@ export {
   createConversation,
 } from './builders.ts';
 
-// Conversation data model — the vendored shapes Chat renders. Public so consumers
-// can type the `conversation` prop and construct messages without depending on a
-// conversation-state library. Structurally compatible with `conversationalist`.
+// Conversation data model — published Conversationalist shapes Chat renders.
+// Public so consumers can type the `conversation` prop and construct messages
+// without Cinder maintaining a stale local mirror.
 export type {
+  AssistantMessage,
+  ContainerUploadContent,
   ConversationHistory,
   ConversationStatus,
   ExportOptions,
@@ -49,7 +51,12 @@ export type {
   MessageInput,
   MessageRole,
   MultiModalContent,
+  RedactedThinkingContent,
+  ServerToolResultContent,
+  ServerToolResultType,
+  ServerToolUseContent,
   TextContent,
+  ThinkingContent,
   ToMarkdownOptions,
   TokenUsage,
   ToolAction,
@@ -58,6 +65,7 @@ export type {
   ToolError,
   ToolErrorCategory,
   ToolResult,
+  WebSearchToolResultContent,
 } from './conversation-model.ts';
 
 // Utilities

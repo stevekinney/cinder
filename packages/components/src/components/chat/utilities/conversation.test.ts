@@ -140,4 +140,22 @@ describe('pairToolCallsWithResults', () => {
     ];
     expect(pairToolCallsWithResults(messages)).toHaveLength(0);
   });
+
+  it('ignores tool roles that do not carry the matching tool field', () => {
+    const messages = [
+      message({ id: 'missing-call', role: 'tool-call', content: 'orphan call body' }),
+      message({ id: 'missing-result', role: 'tool-result', content: 'orphan result body' }),
+      message({
+        id: 'call',
+        role: 'tool-call',
+        toolCall: { id: 'call-1', name: 'fn', arguments: {} },
+      }),
+      message({ id: 'result', role: 'tool-result', toolResult: success }),
+    ];
+
+    const pairs = pairToolCallsWithResults(messages);
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0]?.call.id).toBe('call-1');
+    expect(pairs[0]?.result).toBe(success);
+  });
 });

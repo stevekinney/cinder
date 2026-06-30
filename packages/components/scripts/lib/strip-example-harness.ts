@@ -53,7 +53,7 @@ const UID_LINE = /^[^\n]*const\s+uid\s*=\s*\$props\.id\(\)\s*;?[^\n]*\n/m;
 
 /**
  * A derived-id declaration in the canonical suffix form:
- * `let <var> = $derived(`${mountIdPrefix ?? uid}-<suffix>`);`. The `<suffix>`
+ * `<declaration> <var> = $derived(`${mountIdPrefix ?? uid}-<suffix>`);`. The `<suffix>`
  * group is the literal shown to the reader. Bare-form (no suffix) declarations
  * are intentionally not matched — every featured example uses the suffix form so
  * the displayed literal is self-describing rather than read from a side table.

@@ -19,7 +19,7 @@
   let densitySelectId = $derived(`${mountIdPrefix ?? uid}-density-select`);
   let variantSelectId = $derived(`${mountIdPrefix ?? uid}-variant-select`);
 
-  // Build a shared conversationalist-shaped transcript (no Cinder-only fields).
+  // Build a shared Conversationalist transcript.
   const baseConversation = appendAssistantMessage(
     appendUserMessage(
       appendAssistantMessage(

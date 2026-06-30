@@ -1,5 +1,5 @@
 /**
- * Chat data model types built on top of the vendored conversation model.
+ * Chat data model types built on top of the published Conversationalist model.
  *
  * Core types live in `../conversation-model.ts`; this module provides only
  * project-specific extensions, including the cinder-OWNED render-part layer
@@ -24,7 +24,7 @@ import type {
 export type DeliveryStatus = 'draft' | 'sending' | 'sent' | 'failed';
 
 /**
- * Options for exporting a chat transcript. Equivalent to the vendored
+ * Options for exporting a chat transcript. Equivalent to the published
  * {@link ToMarkdownOptions} (which already carries `includeHidden`,
  * `redactHiddenContent`, and the redaction controls); exposed under a
  * chat-specific name for the public `@lostgradient/cinder/chat` surface.
@@ -246,7 +246,9 @@ export type MessagePartDerivationContext = {
   deniedToolCallIds?: ReadonlySet<string> | undefined;
   /**
    * Pre-body extended thinking block. When present and non-empty, a
-   * `reasoning` part is emitted before the markdown body part.
+   * `reasoning` part is emitted before the markdown body part. An empty string
+   * is an explicit suppression sentinel and also blocks transcript-native
+   * `thinking` content from rendering as reasoning.
    *
    * Source: `message.metadata['cinder:reasoning']` (a JSONValue string) or the
    * explicit `messageReasoning` per-message prop on Chat. Never a required

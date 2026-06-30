@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: TableOfContents } = await import('./table-of-contents.svelte');
 
 type ObserverRecord = {
@@ -163,10 +163,12 @@ describe('TableOfContents', () => {
     article.id = 'late-target';
     article.appendChild(createHeading('late-one', 'Late one', 'h2'));
     document.body.appendChild(article);
-    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('a.cinder-table-of-contents__link').length).toBe(1);
+    });
 
     const links = container.querySelectorAll('a.cinder-table-of-contents__link');
-    expect(links.length).toBe(1);
     expect(links[0]?.getAttribute('href')).toBe('#late-one');
   });
 
@@ -320,10 +322,11 @@ describe('TableOfContents', () => {
     const lateHeading = createHeading('late-explicit', 'Late explicit', 'h2');
     lateHeading.getBoundingClientRect = () => ({ top: -12 }) as DOMRect;
     document.body.appendChild(lateHeading);
-    await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const current = container.querySelector('a[aria-current="location"]');
-    expect(current?.getAttribute('href')).toBe('#late-explicit');
+    await waitFor(() => {
+      const current = container.querySelector('a[aria-current="location"]');
+      expect(current?.getAttribute('href')).toBe('#late-explicit');
+    });
   });
 
   test('uses root margin bottom edge for active heading threshold', async () => {

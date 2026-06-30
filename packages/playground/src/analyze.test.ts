@@ -232,9 +232,9 @@ describe('analyzeAll', () => {
     expect(button?.name).toBe('Button');
   });
 
-  it('date-picker does not appear in the results', async () => {
+  it('date-picker appears in the results', async () => {
     const manifests = await analyzeAll(COMPONENTS_DIR);
-    expect(manifests.map((manifest) => manifest.kebabName)).not.toContain('date-picker');
+    expect(manifests.map((manifest) => manifest.kebabName)).toContain('date-picker');
   });
 
   it('excludes files from _internal/', async () => {
