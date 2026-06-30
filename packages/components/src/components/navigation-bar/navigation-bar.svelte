@@ -162,7 +162,6 @@
     id={regionId}
     class="cinder-navigation-bar__items"
     data-open={mobileMenuOpen ? 'true' : 'false'}
-    inert={isCollapsible && !mobileMenuOpen ? true : undefined}
   >
     {@render items({ variant, placement, showLabels })}
   </div>
