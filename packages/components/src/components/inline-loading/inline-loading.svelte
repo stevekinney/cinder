@@ -33,7 +33,12 @@
   };
 
   let {
-    status = 'inactive',
+    // $bindable so the component can write `status = 'inactive'` when the
+    // successDelay timer fires. Without this, if the parent re-assigns
+    // `status = 'finished'` while it is already 'finished' (after the
+    // visual auto-reset), Svelte does not re-run the effect because the
+    // value did not change, so the success indicator stays hidden.
+    status = $bindable<InlineLoadingStatus>('inactive'),
     description,
     iconDescription,
     successDelay = 1500,
@@ -95,12 +100,17 @@
 
     if (!Number.isFinite(delay) || delay <= 0) {
       visualStatus = 'inactive';
+      status = 'inactive';
       return;
     }
 
     visualStatus = 'finished';
     successTimer = setTimeout(() => {
       visualStatus = 'inactive';
+      // Reset the bindable prop so a subsequent `status = 'finished'` from the
+      // parent is a real value change ('inactive' -> 'finished'), allowing the
+      // effect to re-run and show the success indicator again.
+      status = 'inactive';
       successTimer = null;
     }, delay);
   });

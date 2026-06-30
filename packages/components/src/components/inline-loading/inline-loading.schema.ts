@@ -6,7 +6,8 @@ const schema = {
   properties: {
     status: {
       enum: ['inactive', 'active', 'finished', 'error'],
-      description: 'Lifecycle state for the inline async action indicator.',
+      description:
+        'Lifecycle state for the inline async action indicator. Bindable: the\ncomponent resets this to `"inactive"` after the `successDelay` timer fires\nso a subsequent `status = "finished"` from the parent is always a real\nvalue transition that re-shows the success indicator.',
       default: 'inactive',
     },
     description: {

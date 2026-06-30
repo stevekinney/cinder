@@ -4,6 +4,7 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { Button, InlineLoading } from '@lostgradient/cinder';
 
   let status = $state<'inactive' | 'active' | 'finished' | 'error'>('inactive');
@@ -16,6 +17,8 @@
       pendingTimeout = null;
     }
   }
+
+  onDestroy(cancelPending);
 
   function startSuccess(): void {
     cancelPending();
@@ -44,6 +47,6 @@
   <div class="example-preview-row" style="align-items: center; gap: 0.75rem;">
     <Button type="button" onclick={startSuccess}>Save (success)</Button>
     <Button type="button" variant="secondary" onclick={startError}>Save (error)</Button>
-    <InlineLoading {status} description={message} />
+    <InlineLoading bind:status description={message} />
   </div>
 </div>
