@@ -35,7 +35,7 @@
     ...rest
   }: AlertProps = $props();
 
-  const resolvedVariant = $derived(variant);
+  const resolvedVariant = $derived(variant === 'error' ? 'danger' : variant);
 
   let visible = $state(true);
   let rootElement: HTMLDivElement | undefined = $state();
