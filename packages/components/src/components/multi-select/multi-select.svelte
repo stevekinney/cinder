@@ -448,6 +448,7 @@
 
     {#if open}
       <div
+        bind:this={panelElement}
         id={`${id}-popover`}
         class="cinder-_floating-surface cinder-multi-select__panel"
         data-cinder-direction={direction}
