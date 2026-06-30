@@ -1,6 +1,5 @@
-@import '../calendar/calendar.css';
-
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../calendar/calendar.css';
 
 @layer cinder.components {
   .cinder-date-picker {

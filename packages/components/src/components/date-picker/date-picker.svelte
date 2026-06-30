@@ -205,7 +205,7 @@
       bind:this={triggerElement}
       type="button"
       class="cinder-date-picker__trigger"
-      aria-label="Open date picker"
+      aria-label={label ? `Open ${label} calendar` : 'Open date picker'}
       {disabled}
       onclick={() => {
         if (!disabled) open = true;
@@ -220,7 +220,7 @@
     triggerRef={triggerElement ?? inputElement}
     role="dialog"
     label={label ? `${label} calendar` : 'Date picker calendar'}
-    focusManagement="panel"
+    focusManagement="preserve"
     widthMode="content"
     class="cinder-date-picker__panel"
   >

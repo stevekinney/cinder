@@ -1,6 +1,5 @@
-@import '../date-picker/date-picker.css';
-
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../date-picker/date-picker.css';
 
 @layer cinder.components {
   /* ========================================

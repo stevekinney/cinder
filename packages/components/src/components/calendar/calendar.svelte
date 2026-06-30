@@ -27,6 +27,7 @@
     disabled: boolean;
     focused: boolean;
     selected: boolean;
+    ariaLabel: string;
   };
 
   const WEEKDAY_INDEXES = [0, 1, 2, 3, 4, 5, 6] as const;
@@ -142,6 +143,12 @@
     const gridStart = startOfWeek(first, firstDayOfWeek);
     const selectedIso = value;
     const focused = focusedIso;
+    const dayLabelFmt = new Intl.DateTimeFormat(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
     const next: CalendarCell[] = [];
     for (let index = 0; index < 42; index += 1) {
       const date = addDays(gridStart, index);
@@ -153,6 +160,7 @@
         disabled: disabled || isDateDisabled(iso),
         focused: iso === focused,
         selected: iso === selectedIso,
+        ariaLabel: dayLabelFmt.format(date),
       });
     }
     return next;
@@ -270,7 +278,7 @@
   }
 </script>
 
-<div {...rest} class={classNames('cinder-calendar', className)}>
+<div {...rest} aria-label={label} class={classNames('cinder-calendar', className)}>
   <div class="cinder-calendar__header">
     <button
       type="button"
@@ -307,8 +315,7 @@
     id={monthGridId}
     class="cinder-calendar__grid"
     role="grid"
-    aria-labelledby={label ? undefined : titleId}
-    aria-label={label}
+    aria-labelledby={titleId}
     onkeydown={handleKeydown}
   >
     {#each rows as row}
@@ -327,6 +334,7 @@
               data-selected={cell.selected ? '' : undefined}
               data-focused={cell.focused ? '' : undefined}
               aria-current={cell.iso === todayIso ? 'date' : undefined}
+              aria-label={cell.ariaLabel}
               aria-disabled={cell.disabled ? 'true' : undefined}
               disabled={cell.disabled}
               tabindex={cell.focused ? 0 : -1}
