@@ -1,0 +1,54 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    direction: {
+      enum: ['horizontal', 'vertical'],
+      description: 'Scroll direction for the looping track.',
+      default: 'horizontal',
+    },
+    duration: {
+      type: 'string',
+      description: 'Animation duration for one complete loop (valid CSS time).',
+      default: '24s',
+    },
+    gap: {
+      type: 'string',
+      description: 'Gap between repeated items (valid CSS length).',
+      default: '1.5rem',
+    },
+    label: {
+      type: 'string',
+      description: 'Accessible region label for the marquee container.',
+    },
+    pauseOnHover: {
+      type: 'boolean',
+      description: 'Pause animation while hovered (pointer-capable devices).',
+      default: true,
+    },
+    pauseOnFocus: {
+      type: 'boolean',
+      description: 'Pause animation while any child is focused.',
+      default: true,
+    },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-marquee`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Rendered marquee content.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

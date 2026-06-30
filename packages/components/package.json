@@ -2572,6 +2572,34 @@
       "import": "./src/components/markdown-editor/markdown-editor.examples.json",
       "default": "./src/components/markdown-editor/markdown-editor.examples.json"
     },
+    "./marquee": {
+      "types": "./dist/components/marquee/index.d.ts",
+      "browser": "./src/components/marquee/index.ts",
+      "node": "./dist/server/components/marquee/index.js",
+      "svelte": "./src/components/marquee/index.ts",
+      "default": "./dist/components/marquee/index.js"
+    },
+    "./marquee/schema": {
+      "types": "./dist/components/marquee/marquee.schema.d.ts",
+      "browser": "./src/components/marquee/marquee.schema.ts",
+      "node": "./dist/server/components/marquee/marquee.schema.js",
+      "svelte": "./src/components/marquee/marquee.schema.ts",
+      "default": "./dist/components/marquee/marquee.schema.js"
+    },
+    "./marquee/variables": {
+      "types": "./dist/components/marquee/marquee.variables.d.ts",
+      "browser": "./src/components/marquee/marquee.variables.ts",
+      "node": "./dist/server/components/marquee/marquee.variables.js",
+      "svelte": "./src/components/marquee/marquee.variables.ts",
+      "default": "./dist/components/marquee/marquee.variables.js"
+    },
+    "./marquee/styles": {
+      "default": "./dist/components/marquee/marquee.css"
+    },
+    "./marquee/examples": {
+      "import": "./src/components/marquee/marquee.examples.json",
+      "default": "./src/components/marquee/marquee.examples.json"
+    },
     "./masonry": {
       "types": "./dist/components/masonry/index.d.ts",
       "browser": "./src/components/masonry/index.ts",
@@ -3156,6 +3184,34 @@
     "./progress/examples": {
       "import": "./src/components/progress/progress.examples.json",
       "default": "./src/components/progress/progress.examples.json"
+    },
+    "./qr-code": {
+      "types": "./dist/components/qr-code/index.d.ts",
+      "browser": "./src/components/qr-code/index.ts",
+      "node": "./dist/server/components/qr-code/index.js",
+      "svelte": "./src/components/qr-code/index.ts",
+      "default": "./dist/components/qr-code/index.js"
+    },
+    "./qr-code/schema": {
+      "types": "./dist/components/qr-code/qr-code.schema.d.ts",
+      "browser": "./src/components/qr-code/qr-code.schema.ts",
+      "node": "./dist/server/components/qr-code/qr-code.schema.js",
+      "svelte": "./src/components/qr-code/qr-code.schema.ts",
+      "default": "./dist/components/qr-code/qr-code.schema.js"
+    },
+    "./qr-code/variables": {
+      "types": "./dist/components/qr-code/qr-code.variables.d.ts",
+      "browser": "./src/components/qr-code/qr-code.variables.ts",
+      "node": "./dist/server/components/qr-code/qr-code.variables.js",
+      "svelte": "./src/components/qr-code/qr-code.variables.ts",
+      "default": "./dist/components/qr-code/qr-code.variables.js"
+    },
+    "./qr-code/styles": {
+      "default": "./dist/components/qr-code/qr-code.css"
+    },
+    "./qr-code/examples": {
+      "import": "./src/components/qr-code/qr-code.examples.json",
+      "default": "./src/components/qr-code/qr-code.examples.json"
     },
     "./radio-group": {
       "types": "./dist/components/radio-group/index.d.ts",
@@ -5175,6 +5231,7 @@
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.41.3",
+    "qrcode": "^1.5.4",
     "rehype-katex": "^7.0.1",
     "rehype-sanitize": "^6.0.0",
     "rehype-stringify": "^10.0.1",
@@ -5199,6 +5256,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.2.7",
     "@types/bun": "^1.3.11",
+    "@types/qrcode": "^1.5.6",
     "chalk": "^5.6.2",
     "change-case": "^5.4.4",
     "happy-dom": "^15.11.7",

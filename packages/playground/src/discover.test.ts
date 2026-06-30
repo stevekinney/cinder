@@ -287,8 +287,10 @@ describe('discoverSidebarComponents', () => {
     // Issue #480 adds Carousel, Footer, and MegaMenu examples, each of which now
     // passes the `exampleCount > 0` sidebar filter, bringing the measured
     // ceiling to 144.
+    // QrCode and Marquee each add their first standalone playground examples,
+    // bringing the measured sidebar ceiling to 147.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(144);
+    expect(sidebar.length).toBeLessThanOrEqual(147);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -319,6 +321,8 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('approval-card');
     expect(sidebar).toContain('bento-grid');
     expect(sidebar).toContain('multi-select');
+    expect(sidebar).toContain('qr-code');
+    expect(sidebar).toContain('marquee');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {
