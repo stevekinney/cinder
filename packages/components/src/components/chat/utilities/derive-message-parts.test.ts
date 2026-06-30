@@ -81,6 +81,16 @@ describe('deriveMessageParts — markdown body', () => {
     expect(parts[1]).toMatchObject({ type: 'markdown', content: 'final answer' });
   });
 
+  it('honors explicit reasoning suppression for published thinking content', () => {
+    const content: MultiModalContent[] = [
+      { type: 'thinking', thinking: 'private reasoning', signature: 'sig-1' },
+      { type: 'text', text: 'final answer' },
+    ];
+    const parts = deriveMessageParts(message({ role: 'assistant', content }), { reasoning: '' });
+    expect(parts.map((part) => part.type)).toEqual(['markdown']);
+    expect(parts[0]).toMatchObject({ type: 'markdown', content: 'final answer' });
+  });
+
   it('renders redacted thinking as a non-secret reasoning placeholder', () => {
     const content: MultiModalContent[] = [
       { type: 'redacted_thinking', data: 'encrypted-payload' },

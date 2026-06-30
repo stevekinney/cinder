@@ -406,12 +406,14 @@
   {/if}
 
   <div bind:this={controlElement} class="cinder-multi-select__control">
+    <!-- svelte-ignore a11y_role_supports_aria_props_implicit (the focusable picker trigger intentionally mirrors invalid state for assistive tech) -->
     <button
       bind:this={triggerElement}
       type="button"
       {id}
       class="cinder-_input-frame cinder-multi-select__trigger"
       disabled={field.disabled}
+      aria-invalid={triggerAriaInvalid}
       aria-describedby={triggerDescribedBy}
       aria-haspopup="listbox"
       aria-expanded={open}

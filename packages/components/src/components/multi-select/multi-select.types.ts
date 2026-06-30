@@ -28,7 +28,7 @@ export type MultiSelectProps<T extends string = string> = {
   placeholder?: string;
   /** Helper text displayed below the trigger; wired via aria-describedby. */
   description?: string;
-  /** Validation error message; styles the trigger as invalid and wires aria-describedby. */
+  /** Validation error message; sets aria-invalid="true". */
   error?: string;
   /** Warning text rendered below the control and included in aria-describedby. */
   warning?: string;

@@ -26,8 +26,7 @@ const schema = {
     },
     error: {
       type: 'string',
-      description:
-        'Validation error message; styles the trigger as invalid and wires aria-describedby.',
+      description: 'Validation error message; sets aria-invalid="true".',
     },
     warning: {
       type: 'string',

@@ -69,14 +69,16 @@ function runOverlayCallback<T>(
  * Resolves the reasoning overlay for a message. An explicit per-message callback
  * is consulted first; when it returns `undefined` (or throws) the resolution
  * falls back to `cinder:reasoning` namespaced metadata. An empty string from the
- * callback is authoritative and suppresses the overlay. Returns `undefined` when
- * no reasoning applies — a plain transcript renders the feature absent.
+ * callback is authoritative and suppresses the overlay. That suppression is
+ * returned as `''` so downstream part derivation can also skip transcript-native
+ * `thinking` content. Returns `undefined` when no reasoning source applies.
  */
 export function resolveMessageReasoning(
   message: Message,
   fromProp?: (message: Message) => string | undefined,
 ): string | undefined {
   const fromCallback = runOverlayCallback(message, fromProp);
+  if (fromCallback.handled && fromCallback.value === '') return '';
   const candidate: unknown = fromCallback.handled
     ? fromCallback.value
     : message.metadata[CINDER_REASONING_METADATA_KEY];
@@ -232,6 +234,7 @@ function deriveReasoningContent(
   message: Message,
   explicitReasoning: string | undefined,
 ): string | undefined {
+  if (explicitReasoning === '') return undefined;
   const reasoningSegments =
     explicitReasoning && explicitReasoning.length > 0 ? [explicitReasoning] : [];
   if (typeof message.content !== 'string') {

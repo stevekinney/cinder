@@ -151,7 +151,7 @@ describe('resolveMessageReasoning', () => {
 
   it('a callback returning an empty string suppresses reasoning (does NOT fall back)', () => {
     const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
-    expect(resolveMessageReasoning(m, () => '')).toBeUndefined();
+    expect(resolveMessageReasoning(m, () => '')).toBe('');
   });
 });
 

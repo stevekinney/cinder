@@ -246,7 +246,9 @@ export type MessagePartDerivationContext = {
   deniedToolCallIds?: ReadonlySet<string> | undefined;
   /**
    * Pre-body extended thinking block. When present and non-empty, a
-   * `reasoning` part is emitted before the markdown body part.
+   * `reasoning` part is emitted before the markdown body part. An empty string
+   * is an explicit suppression sentinel and also blocks transcript-native
+   * `thinking` content from rendering as reasoning.
    *
    * Source: `message.metadata['cinder:reasoning']` (a JSONValue string) or the
    * explicit `messageReasoning` per-message prop on Chat. Never a required

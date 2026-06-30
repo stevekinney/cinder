@@ -187,7 +187,7 @@ describe('MultiSelect', () => {
     expect(proxy.checkValidity()).toBe(true);
   });
 
-  test('required validation focuses the trigger instead of the hidden proxy', () => {
+  test('required validation focuses the trigger instead of the hidden proxy', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
       required: true,
@@ -202,6 +202,26 @@ describe('MultiSelect', () => {
 
     expect(proxy.reportValidity()).toBe(false);
     expect(document.activeElement).toBe(trigger);
+    await waitFor(() => {
+      expect(trigger.getAttribute('aria-invalid')).toBe('true');
+      expect(trigger.getAttribute('data-cinder-invalid')).toBe('true');
+    });
+  });
+
+  test('error marks the focusable trigger invalid and describes the error', () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      error: 'Choose at least one fruit.',
+      items,
+    });
+
+    const trigger = container.querySelector<HTMLButtonElement>('#fruits');
+    if (!trigger) throw new Error('trigger not found');
+
+    expect(trigger.getAttribute('aria-invalid')).toBe('true');
+    expect(trigger.getAttribute('data-cinder-invalid')).toBe('true');
+    expect(trigger.getAttribute('aria-describedby')).toContain('fruits-error');
+    expect(container.querySelector('#fruits-error')?.textContent).toContain('Choose');
   });
 
   test('filterable mode filters options by label', async () => {
