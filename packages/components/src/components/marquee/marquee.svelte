@@ -140,11 +140,13 @@
       }
     }
 
-    root.querySelectorAll<HTMLElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-      'input, select, textarea, button, fieldset, output, option, optgroup, [name]',
-    ).forEach((element) => {
-      element.removeAttribute('name');
-    });
+    root
+      .querySelectorAll<
+        HTMLElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >('input, select, textarea, button, fieldset, output, option, optgroup, [name]')
+      .forEach((element) => {
+        element.removeAttribute('name');
+      });
   }
 
   function syncDuplicateTrack() {
@@ -153,6 +155,19 @@
     rewriteCloneIds(clone);
     duplicateTrackItem.replaceChildren(...clone.childNodes);
     duplicateReady = true;
+  }
+
+  function duplicateTrack(node: HTMLDivElement) {
+    duplicateTrackItem = node;
+    syncDuplicateTrack();
+
+    return {
+      destroy() {
+        if (duplicateTrackItem === node) {
+          duplicateTrackItem = undefined;
+        }
+      },
+    };
   }
 
   $effect(() => {
@@ -195,11 +210,13 @@
   style:--cinder-marquee-gap={gap}
 >
   <div class="cinder-marquee__viewport">
+    <button class="cinder-marquee__viewport-focus" type="button" aria-label="Marquee content"
+    ></button>
     <div class="cinder-marquee__track">
       <div class="cinder-marquee__item" bind:this={primaryTrackItem}>
         {@render children()}
       </div>
-      <div class="cinder-marquee__item" aria-hidden="true" inert bind:this={duplicateTrackItem}></div>
+      <div class="cinder-marquee__item" aria-hidden="true" inert use:duplicateTrack></div>
     </div>
   </div>
 </div>
