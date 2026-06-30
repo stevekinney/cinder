@@ -39,32 +39,40 @@ const ALLOWED_FILES = new Set<string>([]);
 /** Matches a `console.warn(` call (with optional whitespace). */
 const CONSOLE_WARN_PATTERN = /\bconsole\s*\.\s*warn\s*\(/;
 
-type Violation = { filePath: string; lineNumber: number; line: string };
+export type BareConsoleWarnViolation = { filePath: string; lineNumber: number; line: string };
 
-async function scan(): Promise<Violation[]> {
-  const violations: Violation[] = [];
+export async function scanBareConsoleWarn(): Promise<BareConsoleWarnViolation[]> {
   const glob = new Glob('**/*.{svelte,ts}');
+  const relativePaths: string[] = [];
   for await (const relativePath of glob.scan({ cwd: componentsRoot })) {
-    if (ALLOWED_FILES.has(relativePath)) continue;
-    const absolutePath = resolve(componentsRoot, relativePath);
-    const source = await Bun.file(absolutePath).text();
-    const lines = source.split('\n');
-    for (let index = 0; index < lines.length; index++) {
-      const line = lines[index]!;
-      if (CONSOLE_WARN_PATTERN.test(line)) {
-        violations.push({
-          filePath: relative(resolve(componentsRoot, '..', '..', '..'), absolutePath),
-          lineNumber: index + 1,
-          line: line.trim(),
-        });
-      }
-    }
+    if (!ALLOWED_FILES.has(relativePath)) relativePaths.push(relativePath);
   }
-  return violations;
+
+  const violationGroups = await Promise.all(
+    relativePaths.map(async (relativePath): Promise<BareConsoleWarnViolation[]> => {
+      const violations: BareConsoleWarnViolation[] = [];
+      const absolutePath = resolve(componentsRoot, relativePath);
+      const source = await Bun.file(absolutePath).text();
+      const lines = source.split('\n');
+      for (let index = 0; index < lines.length; index++) {
+        const line = lines[index]!;
+        if (CONSOLE_WARN_PATTERN.test(line)) {
+          violations.push({
+            filePath: relative(resolve(componentsRoot, '..', '..', '..'), absolutePath),
+            lineNumber: index + 1,
+            line: line.trim(),
+          });
+        }
+      }
+      return violations;
+    }),
+  );
+
+  return violationGroups.flat();
 }
 
 async function main(): Promise<void> {
-  const violations = await scan();
+  const violations = await scanBareConsoleWarn();
   if (violations.length === 0) {
     process.stdout.write('check-no-bare-console-warn — OK (component source uses devWarn).\n');
     return;

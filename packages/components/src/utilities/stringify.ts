@@ -16,11 +16,11 @@
  * - Strings are returned as-is (preserves formatting like file contents with newlines)
  * - null/undefined returns empty string
  * - Objects/arrays are JSON-stringified with indentation
- * - On serialization failure, falls back to String(value)
+ * - On serialization failure, falls back to a sentinel for non-primitive values
  *
  * @param value - The value to stringify
  * @param indent - Number of spaces for indentation (default: 2)
- * @returns The stringified value, or String(value) on failure
+ * @returns The stringified value, or a sentinel on failure for non-primitive values
  *
  * @example
  * ```ts
@@ -35,7 +35,12 @@ export function stringify(value: unknown, indent: number = 2): string {
   if (value === null || value === undefined) return '';
 
   try {
-    return JSON.stringify(value, null, indent);
+    const serializedValue = JSON.stringify(value, null, indent);
+    if (serializedValue !== undefined) return serializedValue;
+    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'symbol') {
+      return String(value);
+    }
+    return '[Unserializable value]';
   } catch {
     if (
       typeof value === 'number' ||
@@ -77,7 +82,7 @@ export function stringifyOrNull(value: unknown, indent: number = 2): string | nu
   if (typeof value === 'string') return value;
 
   try {
-    return JSON.stringify(value, null, indent);
+    return JSON.stringify(value, null, indent) ?? null;
   } catch {
     return null;
   }

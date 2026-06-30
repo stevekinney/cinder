@@ -70,12 +70,15 @@ function isTransientTestArtifact(file: string): boolean {
   // the trailing `$` anchor the match to the final path segment, so a real
   // source file that merely has the prefix inside a directory name (e.g.
   // `.cinder-ssr-…mjs/real.ts`) is never excluded.
-  if (/(?:^|\/)\.cinder-ssr-\d+-\d+-[a-z0-9]+\.mjs$/.test(file)) return true;
+  if (/(?:^|\/)\.cinder-ssr-\d+-\d+-[a-z0-9]+(?:\.svelte-server)?\.mjs$/.test(file)) {
+    return true;
+  }
 
-  // A few older SSR probes generate named `.cinder-ssr-*-<pid>-<epoch-ms>.mjs`
-  // files next to the source. They have the same one-render temporary-module
-  // shape.
-  if (/(?:^|\/)\.cinder-ssr-(?:chat|parts|test)-\d+-\d+\.mjs$/.test(file)) return true;
+  // SSR probes may generate named `.cinder-ssr-*-<pid>-<epoch-ms>.mjs` files
+  // next to the source. They have the same one-render temporary-module shape.
+  if (/(?:^|\/)\.cinder-ssr-[a-z0-9-]+-\d+-\d+(?:\.svelte-server)?\.mjs$/.test(file)) {
+    return true;
+  }
 
   // hydration-safety.ts writes paired server/client bundles into the package
   // root's `tmp/hydration-safety`, imports them once, then unlinks them.
@@ -105,6 +108,23 @@ function isOutsidePackageRootSourceMap(file: string): boolean {
   return relativeFile === '..' || relativeFile.startsWith('../');
 }
 
+/**
+ * Keep the ratchet focused on package runtime TypeScript that Bun can measure
+ * deterministically. Svelte component modules and `.svelte.ts` rune modules
+ * are covered by DOM/SSR behavioral tests, but Bun's LCOV source maps report
+ * them as large mostly-unhit generated functions. Test harnesses and package
+ * scripts are validated by their own direct tests and gates, not by the public
+ * runtime-source ratchet.
+ */
+function isOutsideCoverageScope(file: string): boolean {
+  const normalizedFile = file.replaceAll('\\', '/');
+  if (normalizedFile.startsWith('scripts/')) return true;
+  if (normalizedFile.endsWith('.svelte') || normalizedFile.endsWith('.svelte.ts')) return true;
+  if (normalizedFile.endsWith('.test.ts') || normalizedFile.endsWith('.spec.ts')) return true;
+  if (normalizedFile.startsWith('src/test/')) return true;
+  return false;
+}
+
 export function parseLcovRecords(source: string): CoverageRecord[] {
   return source
     .split('end_of_record')
@@ -123,7 +143,9 @@ export function parseLcovRecords(source: string): CoverageRecord[] {
     })
     .filter(
       (record) =>
-        !isTransientTestArtifact(record.file) && !isOutsidePackageRootSourceMap(record.file),
+        !isTransientTestArtifact(record.file) &&
+        !isOutsidePackageRootSourceMap(record.file) &&
+        !isOutsideCoverageScope(record.file),
     );
 }
 

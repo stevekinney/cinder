@@ -56,4 +56,14 @@ describe('restoreFocusTo', () => {
     expect(stranger.ownerDocument).toBe(otherDocument);
     expect(restoreFocusTo(stranger)).toBe(false);
   });
+
+  test('returns false when focus throws', () => {
+    const button = document.createElement('button');
+    document.body.append(button);
+    button.focus = () => {
+      throw new Error('cannot focus');
+    };
+
+    expect(restoreFocusTo(button)).toBe(false);
+  });
 });

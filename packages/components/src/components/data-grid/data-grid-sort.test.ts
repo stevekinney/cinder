@@ -57,6 +57,11 @@ describe('DataGrid sort model', () => {
     expect(compareDataGridValues(2, 10, 'descending')).toBeGreaterThan(0);
     expect(compareDataGridValues(new Date('2026-01-01'), new Date('2026-02-01'))).toBeLessThan(0);
     expect(compareDataGridValues('item 2', 'item 10')).toBeLessThan(0);
+    expect(compareDataGridValues(true, false)).toBeGreaterThan(0);
+    expect(compareDataGridValues(1n, 2n)).toBeLessThan(0);
+    expect(compareDataGridValues(Symbol('alpha'), Symbol('beta'))).toBeLessThan(0);
+    expect(compareDataGridValues({}, [])).toBeGreaterThan(0);
+    expect(compareDataGridValues(Number.NaN, 'value')).toBeLessThan(0);
     expect(compareDataGridValues(undefined, 'value')).toBeGreaterThan(0);
     expect(compareDataGridValues(undefined, 'value', 'descending')).toBeGreaterThan(0);
     expect(compareDataGridValues(new Date('invalid'), new Date('2026-01-01'))).toBeGreaterThan(0);
@@ -80,6 +85,12 @@ describe('DataGrid sort model', () => {
       { key: 'customer', direction: 'descending' },
       { key: 'total', direction: 'descending' },
     ]);
+    expect(getNextDataGridSortModel(toggledMulti, 'total', true)).toEqual([
+      { key: 'customer', direction: 'descending' },
+    ]);
+    expect(
+      getNextDataGridSortModel([{ key: 'customer', direction: 'descending' }], 'customer', false),
+    ).toEqual([]);
   });
 
   test('sorts row indices stably without mutating rows', () => {
@@ -151,6 +162,25 @@ describe('DataGrid sort model', () => {
     expect(
       getSortedDataGridRowIndices(nullableRows, nullableColumns, [
         { key: 'total', direction: 'descending' },
+      ]),
+    ).toEqual([2, 1, 0]);
+  });
+
+  test('falls through to the next sort item when both compared values are nullish', () => {
+    const nullableRows: Array<{ id: string; total: number | null; label: string }> = [
+      { id: 'a', total: null, label: 'Beta' },
+      { id: 'b', total: null, label: 'Alpha' },
+      { id: 'c', total: 10, label: 'Gamma' },
+    ];
+    const nullableColumns: DataGridColumnDef<(typeof nullableRows)[number]>[] = [
+      { key: 'total', header: 'Total', sortable: true },
+      { key: 'label', header: 'Label', sortable: true },
+    ];
+
+    expect(
+      getSortedDataGridRowIndices(nullableRows, nullableColumns, [
+        { key: 'total', direction: 'ascending' },
+        { key: 'label', direction: 'ascending' },
       ]),
     ).toEqual([2, 1, 0]);
   });

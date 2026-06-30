@@ -75,6 +75,11 @@ describe('parseColor', () => {
       expect(result?.a).toBe(1);
     });
 
+    test('rgba with percentage alpha', () => {
+      const result = parseColor('rgba(255, 0, 0, 50%)');
+      expect(result?.a).toBe(0.5);
+    });
+
     test('rgb with percentage channels', () => {
       const result = parseColor('rgb(100%, 0%, 0%)');
       expect(result?.r).toBeCloseTo(255, 0);
@@ -100,6 +105,14 @@ describe('parseColor', () => {
       expect(result?.g).toBe(0);
       expect(result?.b).toBe(0);
       expect(result?.a).toBe(1);
+    });
+
+    test('hsl hue sectors map to expected primary and secondary colors', () => {
+      expect(parseColor('hsl(60, 100%, 50%)')).toMatchObject({ r: 255, g: 255, b: 0 });
+      expect(parseColor('hsl(120, 100%, 50%)')).toMatchObject({ r: 0, g: 255, b: 0 });
+      expect(parseColor('hsl(180, 100%, 50%)')).toMatchObject({ r: 0, g: 255, b: 255 });
+      expect(parseColor('hsl(240, 100%, 50%)')).toMatchObject({ r: 0, g: 0, b: 255 });
+      expect(parseColor('hsl(300, 100%, 50%)')).toMatchObject({ r: 255, g: 0, b: 255 });
     });
 
     test('pure white hsl(0, 0%, 100%)', () => {

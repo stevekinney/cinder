@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   finiteNumbers,
+  heatmapCellFill,
   heatmapDomain,
   heatmapDomainOfRows,
   normalizeHeatmapValue,
@@ -104,5 +105,14 @@ describe('normalizeHeatmapValue — diverging (zero-centered)', () => {
   test('all-zero domain maps to neutral', () => {
     const domain = heatmapDomain([0, 0]);
     expect(normalizeHeatmapValue(0, domain, 'diverging')).toBe(0.5);
+  });
+});
+
+describe('heatmapCellFill', () => {
+  test('uses the cool side below the diverging midpoint', () => {
+    const fill = heatmapCellFill(-5, heatmapDomain([-10, 10]), 'diverging');
+
+    expect(fill).toContain('var(--cinder-chart-series-5)');
+    expect(fill).toContain('50%');
   });
 });

@@ -2,8 +2,11 @@ import { describe, expect, it } from 'bun:test';
 
 import type { Message, MultiModalContent } from '../conversation-model.ts';
 import {
+  formatMessageAsMarkdown,
   getMessageParts,
   getMessageRoleLabel,
+  getMessageText,
+  messagesToMarkdown,
   resolveMessageReasoning,
   resolveMessageSteps,
   resolveMessageSuggestions,
@@ -62,6 +65,34 @@ describe('getMessageParts', () => {
   });
 });
 
+describe('getMessageText', () => {
+  it('joins only text content parts with newlines', () => {
+    expect(
+      getMessageText(
+        message({
+          role: 'assistant',
+          content: [
+            { type: 'text', text: 'first' },
+            { type: 'image', url: 'https://example.test/image.png' },
+            { type: 'text', text: 'second' },
+          ],
+        }),
+      ),
+    ).toBe('first\nsecond');
+  });
+
+  it('returns an empty string when a message has no text parts', () => {
+    expect(
+      getMessageText(
+        message({
+          role: 'assistant',
+          content: [{ type: 'image', url: 'https://example.test/image.png' }],
+        }),
+      ),
+    ).toBe('');
+  });
+});
+
 describe('getMessageRoleLabel', () => {
   // Regression guard for the 'tool-use' → 'tool-call' role rename: the label
   // map must key off the real MessageRole value, or tool-call messages fall
@@ -76,6 +107,33 @@ describe('getMessageRoleLabel', () => {
     ['snapshot', 'Snapshot'],
   ] as const)('maps role %s to label %s', (role, label) => {
     expect(getMessageRoleLabel(message({ role }))).toBe(label);
+  });
+});
+
+describe('formatMessageAsMarkdown', () => {
+  it('returns the message text without adding role labels', () => {
+    expect(formatMessageAsMarkdown(message({ role: 'assistant', content: 'Hello' }))).toBe('Hello');
+  });
+});
+
+describe('messagesToMarkdown', () => {
+  it('formats visible transcript messages with role labels and separators', () => {
+    expect(
+      messagesToMarkdown([
+        message({ id: 'u', role: 'user', content: 'Hi' }),
+        message({ id: 'a', role: 'assistant', content: 'Hello' }),
+      ]),
+    ).toBe('**User:**\n\nHi\n\n---\n\n**Assistant:**\n\nHello');
+  });
+
+  it('omits system and developer messages from transcript export', () => {
+    expect(
+      messagesToMarkdown([
+        message({ id: 's', role: 'system', content: 'Rules' }),
+        message({ id: 'd', role: 'developer', content: 'Instructions' }),
+        message({ id: 'a', role: 'assistant', content: 'Visible' }),
+      ]),
+    ).toBe('**Assistant:**\n\nVisible');
   });
 });
 

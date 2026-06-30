@@ -137,6 +137,45 @@ describe('shikiHighlighter — happy path', () => {
     expect(stdout).toContain('<pre class="shiki" data-root="yes">');
     expect(stdout).not.toMatch(/<pre[^>]*\stabindex=/);
   });
+
+  test('falls back when loading Shiki rejects', async () => {
+    const { warnings, restore } = captureWarnings();
+    try {
+      const highlight = shikiHighlighter({}, async () => {
+        throw new Error('load failed');
+      });
+      const html = await highlight('const x = 1;', 'javascript');
+
+      expect(html).toBe('<pre class="shiki shiki-plaintext"><code>const x = 1;</code></pre>');
+      expect(warnings.some((warning) => warning.includes('failed to load shiki'))).toBe(true);
+    } finally {
+      restore();
+    }
+  });
+
+  test('falls back once when Shiki highlighting rejects for a loaded language', async () => {
+    const { warnings, restore } = captureWarnings();
+    try {
+      const highlight = shikiHighlighter(
+        {},
+        async () =>
+          ({
+            bundledLanguages: { javascript: {} },
+            codeToHtml: async () => {
+              throw new Error('highlight failed');
+            },
+          }) as unknown as Awaited<ReturnType<NonNullable<Parameters<typeof shikiHighlighter>[1]>>>,
+      );
+      const first = await highlight('const x = 1;', 'javascript');
+      const second = await highlight('const y = 2;', 'javascript');
+
+      expect(first).toContain('<pre class="shiki shiki-plaintext">');
+      expect(second).toContain('<pre class="shiki shiki-plaintext">');
+      expect(warnings.filter((warning) => warning.includes('failed to highlight')).length).toBe(1);
+    } finally {
+      restore();
+    }
+  });
 });
 
 describe('shikiHighlighter — fallback contract', () => {

@@ -130,6 +130,20 @@ describe('createMultiSelection', () => {
     expect(m.isSelected('b')).toBe(false);
   });
 
+  test('values getter returns the latest source array', () => {
+    let arr: string[] = ['a'];
+    const m = createMultiSelection<string>(
+      () => arr,
+      (next) => {
+        arr = next;
+      },
+    );
+
+    expect(m.values).toEqual(['a']);
+    arr = ['b'];
+    expect(m.values).toEqual(['b']);
+  });
+
   test('setter receives a fresh array, not a mutated original', () => {
     const initial: string[] = ['a'];
     let received: string[] = initial;

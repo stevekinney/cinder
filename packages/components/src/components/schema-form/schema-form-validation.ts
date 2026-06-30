@@ -44,13 +44,12 @@ async function validateJsonSchemaValue(
     const result = validate(value) as unknown;
     valid = isPromiseLike(result) ? (await result, true) : result;
   } catch (error) {
-    if (isAjvValidationError(error)) {
+    if (isAjvValidationError(error))
       return {
         valid: false,
         value,
         issues: ajvIssues(error.errors),
       };
-    }
 
     return validationFailure(value, readableSchemaError(error));
   }

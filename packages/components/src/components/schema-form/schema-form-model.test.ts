@@ -180,11 +180,14 @@ describe('schema-form model', () => {
   test('reads, writes, prunes, and lists values by schema paths', () => {
     const value = { nested: { owner: 'Ada' }, tags: ['one'], missing: undefined };
     expect(getValueAtPath(value, ['nested', 'owner'])).toBe('Ada');
+    expect(getValueAtPath(value, ['tags', '0'])).toBe('one');
+    expect(getValueAtPath('not an object', ['nested'])).toBeUndefined();
     expect(setValueAtPath(value, ['nested', 'owner'], 'Grace')).toEqual({
       nested: { owner: 'Grace' },
       tags: ['one'],
       missing: undefined,
     });
+    expect(setValueAtPath(value.tags, ['0'], 'two')).toEqual(['two']);
     expect(arrayValueAtPath(value, ['tags'])).toEqual(['one']);
     expect(arrayValueAtPath(value, ['nested'])).toEqual([]);
     expect(pruneUndefined(value)).toEqual({ nested: { owner: 'Ada' }, tags: ['one'] });

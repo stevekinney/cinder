@@ -25,6 +25,12 @@ describe('highlightJson — valid JSON', () => {
     expect(html).toContain('cinder-json-token-null">null');
   });
 
+  test('top-level null tokenizes as a null value', () => {
+    expect(highlightJson('null')).toBe(
+      '<code class="cinder-json"><span class="cinder-json-token cinder-json-token-null">null</span></code>',
+    );
+  });
+
   test('numbers including exponents tokenize as a single number', () => {
     const html = highlightJson('1.5e-10');
     expect(html).toContain('cinder-json-token-number">1.5e-10');

@@ -97,9 +97,8 @@ export function parseYamlFieldValue(raw: string): ParsedYamlValue {
   return { valid: true, value: parsed.data?.['value'] };
 }
 
-export function documentPositionToBodyPosition(position: number, bodyOffset: number): number {
-  return Math.max(0, position - bodyOffset);
-}
+export const documentPositionToBodyPosition = (position: number, bodyOffset: number): number =>
+  Math.max(0, position - bodyOffset);
 
 export function bodyPositionToDocumentPosition(position: number, bodyOffset: number): number {
   return position + bodyOffset;

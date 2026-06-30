@@ -12,6 +12,7 @@ import {
   getPaneLayoutSignature,
   hasLayoutPixelChanges,
   rebaseLayoutState,
+  resolveKeyboardStep,
   resolveSizeToPixels,
   setLeadingPanePixels,
   toggleCollapseForHandle,
@@ -49,6 +50,18 @@ describe('resizable-panels sizing', () => {
       { id: 'dup', label: 'Two' },
     ]);
     expect(issues).toHaveLength(1);
+  });
+
+  test('validates pane ids and collapse configuration', () => {
+    const issues = validatePanes([
+      { id: ' ', label: 'Missing' },
+      { id: 'closed', label: 'Closed', defaultCollapsed: true },
+    ]);
+
+    expect(issues).toEqual([
+      'Every pane needs a non-empty id.',
+      'Pane "closed" cannot default to collapsed unless collapsible is true.',
+    ]);
   });
 
   test('resolves percent sizes to pixels', () => {
@@ -113,6 +126,28 @@ describe('resizable-panels sizing', () => {
     expect(snapped.panels[0]!.sizePixels).toBeCloseTo(200, 1);
   });
 
+  test('applies trailing pane snap points against the adjacent pair total', () => {
+    const trailingSnapPanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 50, unit: 'percent' },
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        defaultSize: { value: 50, unit: 'percent' },
+        snapPoints: [{ value: 30, unit: 'percent' }],
+      },
+    ];
+    const state = createInitialLayoutState(trailingSnapPanes, 1000, 'horizontal');
+    const resized = applyPairDelta(state, trailingSnapPanes, 0, 185);
+    const snapped = applyPairSnap(resized, trailingSnapPanes, 0, { value: 20, unit: 'px' });
+
+    expect(snapped.panels[0]!.sizePixels).toBeCloseTo(700, 1);
+    expect(snapped.panels[1]!.sizePixels).toBeCloseTo(300, 1);
+  });
+
   test('collapses and restores the chosen pane', () => {
     const state = createInitialLayoutState(panes, 1000, 'horizontal');
     const collapsed = toggleCollapseForHandle(state, panes, 0, 'leading');
@@ -133,6 +168,10 @@ describe('resizable-panels sizing', () => {
     expect(formatSizeFromPixels(48, 'percent', 0)).toEqual({ value: 0, unit: 'percent' });
   });
 
+  test('formats pixel sizes without converting units', () => {
+    expect(formatSizeFromPixels(48.1234, 'px', 1000)).toEqual({ value: 48.123, unit: 'px' });
+  });
+
   test('returns separator aria values for the leading adjacent pane pair', () => {
     const state = createInitialLayoutState(panes, 1000, 'horizontal');
     const aria = getHandleAriaState(state, panes, 0);
@@ -145,6 +184,16 @@ describe('resizable-panels sizing', () => {
     const aria = getHandleAriaState(state, panes, 1);
     expect(aria.valueNow).toBe(67);
     expect(aria.valueText).toContain('500px');
+  });
+
+  test('returns unmeasured separator aria values for a zero pixel budget', () => {
+    const state = createInitialLayoutState(panes, 0, 'horizontal');
+    expect(getHandleAriaState(state, panes, 0)).toEqual({
+      valueNow: 0,
+      valueMin: 0,
+      valueMax: 100,
+      valueText: '0px (0%)',
+    });
   });
 
   test('scales impossible minimum totals back into the available budget', () => {
@@ -208,6 +257,18 @@ describe('resizable-panels sizing', () => {
     expect(dragged.state.panels[1]!.sizePixels).toBeCloseTo(130, 3);
   });
 
+  test('keeps the pointer axis and layout unchanged for zero delta drags', () => {
+    const state = createInitialLayoutState(panes, 1000, 'horizontal');
+    const dragged = applyPointerDragDelta(state, panes, 0, 200, 200);
+
+    expect(dragged).toEqual({ axis: 200, changed: false, state });
+  });
+
+  test('resolves keyboard steps from custom and default sizes', () => {
+    expect(resolveKeyboardStep({ value: 5, unit: 'percent' }, 800, 2)).toBe(80);
+    expect(resolveKeyboardStep(undefined, 800, 3)).toBe(30);
+  });
+
   test('respects maxSize while resizing an adjacent pair', () => {
     const maxConstrainedPanes: ResizablePanelDefinition[] = [
       {
@@ -255,6 +316,33 @@ describe('resizable-panels sizing', () => {
     expect(state.panels[1]!.sizePixels).toBeCloseTo(300, 3);
   });
 
+  test('rebases finite max constraints across the full available budget', () => {
+    const maxConstrainedPanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 80, unit: 'px' },
+        maxSize: { value: 120, unit: 'px' },
+      },
+      {
+        id: 'center',
+        label: 'Center',
+        defaultSize: { value: 80, unit: 'px' },
+        maxSize: { value: 120, unit: 'px' },
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        defaultSize: { value: 80, unit: 'px' },
+        maxSize: { value: 120, unit: 'px' },
+      },
+    ];
+
+    const state = createInitialLayoutState(maxConstrainedPanes, 900, 'horizontal');
+
+    expect(state.panels.map((panel) => panel.sizePixels)).toEqual([300, 300, 300]);
+  });
+
   test('respects the opposite pane maxSize while collapsing', () => {
     const maxConstrainedPanes: ResizablePanelDefinition[] = [
       {
@@ -280,6 +368,59 @@ describe('resizable-panels sizing', () => {
     expect(collapsed.state.panels[0]!.sizePixels).toBe(380);
     expect(collapsed.state.panels[0]!.collapsed).toBe(false);
     expect(collapsed.state.panels[1]!.sizePixels).toBe(220);
+  });
+
+  test('collapses the trailing pane when requested from a handle', () => {
+    const trailingCollapsiblePanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 50, unit: 'percent' },
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        defaultSize: { value: 50, unit: 'percent' },
+        minSize: { value: 0, unit: 'px' },
+        collapsible: true,
+      },
+    ];
+
+    const state = createInitialLayoutState(trailingCollapsiblePanes, 600, 'horizontal');
+    const collapsed = toggleCollapseForHandle(state, trailingCollapsiblePanes, 0, 'trailing');
+
+    expect(collapsed.changed).toBe(true);
+    expect(collapsed.state.panels[0]!.sizePixels).toBe(600);
+    expect(collapsed.state.panels[1]!.sizePixels).toBe(0);
+    expect(collapsed.state.panels[1]!.collapsed).toBe(true);
+  });
+
+  test('uses the trailing pane as the automatic collapse target when leading is not collapsible', () => {
+    const trailingCollapsiblePanes: ResizablePanelDefinition[] = [
+      {
+        id: 'left',
+        label: 'Left',
+        defaultSize: { value: 50, unit: 'percent' },
+      },
+      {
+        id: 'right',
+        label: 'Right',
+        defaultSize: { value: 50, unit: 'percent' },
+        minSize: { value: 0, unit: 'px' },
+        collapsible: true,
+      },
+    ];
+
+    const state = createInitialLayoutState(trailingCollapsiblePanes, 600, 'horizontal');
+    const collapsed = toggleCollapseForHandle(
+      state,
+      trailingCollapsiblePanes,
+      0,
+      'nearest-collapsible',
+    );
+
+    expect(collapsed.changed).toBe(true);
+    expect(collapsed.state.panels[1]!.collapsed).toBe(true);
   });
 
   test('reports no pointer change when constraints keep the layout fixed', () => {

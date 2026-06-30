@@ -265,23 +265,20 @@ function findJsonIncompatibility(value: unknown, path: string, seen: Set<unknown
     return null;
   }
 
-  if (isObject(value)) {
-    const proto = Object.getPrototypeOf(value);
-    if (proto !== null && proto !== Object.prototype) {
-      const constructorName: string =
-        typeof proto.constructor?.name === 'string' ? proto.constructor.name : 'unknown';
-      return `non-plain object (${constructorName}) at ${path || 'root'}`;
-    }
-    for (const key of Object.keys(value)) {
-      const child = value[key];
-      const error = findJsonIncompatibility(child, `${path}.${key}`, seen);
-      if (error) return error;
-    }
-    seen.delete(value);
-    return null;
-  }
+  if (!isObject(value)) return null;
 
-  return `unsupported value at ${path || 'root'}`;
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== null && proto !== Object.prototype) {
+    const constructorName: string =
+      typeof proto.constructor?.name === 'string' ? proto.constructor.name : 'unknown';
+    return `non-plain object (${constructorName}) at ${path || 'root'}`;
+  }
+  for (const [key, child] of Object.entries(value)) {
+    const error = findJsonIncompatibility(child, `${path}.${key}`, seen);
+    if (error) return error;
+  }
+  seen.delete(value);
+  return null;
 }
 
 const PRETTY_INDENT = 2;

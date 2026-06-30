@@ -93,38 +93,50 @@ function formatSizeSignature(size: ResizablePanelSize | undefined): string {
 }
 
 export function getPaneLayoutSignature(panes: ResizablePanelDefinition[]): string {
-  return panes
-    .map((pane) =>
+  const paneSignatures: string[] = [];
+  for (const pane of panes) {
+    const snapPointSignatures: string[] = [];
+    for (const size of pane.snapPoints ?? []) {
+      snapPointSignatures.push(formatSizeSignature(size));
+    }
+    paneSignatures.push(
       [
         pane.id,
         formatSizeSignature(pane.defaultSize),
         formatSizeSignature(pane.minSize),
         formatSizeSignature(pane.maxSize),
-        (pane.snapPoints ?? []).map((size) => formatSizeSignature(size)).join(','),
+        snapPointSignatures.join(','),
         pane.collapsible ? '1' : '0',
         pane.defaultCollapsed ? '1' : '0',
       ].join('|'),
-    )
-    .join('||');
+    );
+  }
+  return paneSignatures.join('||');
 }
 
 export function getPaneDefaultSizeSignature(panes: ResizablePanelDefinition[]): string {
-  return panes.map((pane) => [pane.id, formatSizeSignature(pane.defaultSize)].join('|')).join('||');
+  const paneSignatures: string[] = [];
+  for (const pane of panes) {
+    paneSignatures.push([pane.id, formatSizeSignature(pane.defaultSize)].join('|'));
+  }
+  return paneSignatures.join('||');
 }
 
 function getPanelConstraints(
   panes: ResizablePanelDefinition[],
   availablePanePixels: number,
 ): PanelConstraints[] {
-  return panes.map((pane) => {
+  const constraints: PanelConstraints[] = [];
+  for (const pane of panes) {
     const minimum = resolveSizeToPixels(pane.minSize, availablePanePixels) ?? 0;
     const maximum =
       resolveSizeToPixels(pane.maxSize, availablePanePixels) ?? Number.POSITIVE_INFINITY;
-    return {
+    constraints.push({
       minPixels: Math.max(0, minimum),
       maxPixels: Math.max(Math.max(0, minimum), maximum),
-    };
-  });
+    });
+  }
+  return constraints;
 }
 
 function distributeDelta(
@@ -134,7 +146,11 @@ function distributeDelta(
   direction: 'grow' | 'shrink',
 ): number[] {
   const nextSizes = [...sizes];
-  let remaining = targetTotal - nextSizes.reduce((sum, value) => sum + value, 0);
+  let currentTotal = 0;
+  for (const value of nextSizes) {
+    currentTotal += value;
+  }
+  let remaining = targetTotal - currentTotal;
 
   if (Math.abs(remaining) < 0.001) return nextSizes;
 
@@ -143,13 +159,18 @@ function distributeDelta(
 
   while (Math.abs(remaining) > 0.001 && guard < 1000) {
     guard += 1;
-    const availableIndexes = capacities
-      .map((capacity, index) => ({ capacity, index }))
-      .filter(({ capacity }) => capacity > 0.001);
+    const availableIndexes: Array<{ capacity: number; index: number }> = [];
+    for (let index = 0; index < capacities.length; index++) {
+      const capacity = capacities[index] ?? 0;
+      if (capacity > 0.001) availableIndexes.push({ capacity, index });
+    }
 
     if (availableIndexes.length === 0) break;
 
-    const totalCapacity = availableIndexes.reduce((sum, item) => sum + item.capacity, 0);
+    let totalCapacity = 0;
+    for (const item of availableIndexes) {
+      totalCapacity += item.capacity;
+    }
     let consumedThisPass = 0;
 
     for (const { capacity, index } of availableIndexes) {
@@ -169,25 +190,37 @@ function distributeDelta(
 }
 
 function scaleSizesToTotal(sizes: number[], targetTotal: number): number[] {
-  if (targetTotal <= 0) return sizes.map(() => 0);
-
-  const currentTotal = sizes.reduce((sum, value) => sum + value, 0);
-  if (currentTotal <= 0) {
-    const equalShare = sizes.length > 0 ? targetTotal / sizes.length : 0;
-    return sizes.map(() => equalShare);
+  if (targetTotal <= 0) {
+    const zeroSizes: number[] = [];
+    for (let index = 0; index < sizes.length; index++) {
+      zeroSizes.push(0);
+    }
+    return zeroSizes;
   }
 
+  let total = 0;
+  for (const value of sizes) {
+    total += value;
+  }
+  const currentTotal = Math.max(1, total);
   const scale = targetTotal / currentTotal;
-  return sizes.map((size) => size * scale);
+  const scaledSizes: number[] = [];
+  for (const size of sizes) {
+    scaledSizes.push(size * scale);
+  }
+  return scaledSizes;
 }
 
 function applyCollapsedConstraints(
   constraints: PanelConstraints[],
   collapsedFlags: boolean[],
 ): PanelConstraints[] {
-  return constraints.map((constraint, index) =>
-    collapsedFlags[index] ? { minPixels: 0, maxPixels: 0 } : constraint,
-  );
+  const nextConstraints: PanelConstraints[] = [];
+  for (let index = 0; index < constraints.length; index++) {
+    const constraint = constraints[index]!;
+    nextConstraints.push(collapsedFlags[index] ? { minPixels: 0, maxPixels: 0 } : constraint);
+  }
+  return nextConstraints;
 }
 
 function normalizeToAvailable(
@@ -197,50 +230,61 @@ function normalizeToAvailable(
   collapsedFlags: boolean[] = [],
 ): number[] {
   const effectiveConstraints = applyCollapsedConstraints(constraints, collapsedFlags);
-  const clampedSizes = desiredSizes.map((size, index) =>
-    clamp(size, effectiveConstraints[index]!.minPixels, effectiveConstraints[index]!.maxPixels),
-  );
-
-  const minimumTotal = effectiveConstraints.reduce(
-    (sum, constraint) => sum + constraint.minPixels,
-    0,
-  );
-  if (minimumTotal > availablePanePixels) {
-    return scaleSizesToTotal(
-      effectiveConstraints.map((constraint) => constraint.minPixels),
-      availablePanePixels,
+  const clampedSizes: number[] = [];
+  for (let index = 0; index < desiredSizes.length; index++) {
+    const size = desiredSizes[index] ?? 0;
+    clampedSizes.push(
+      clamp(size, effectiveConstraints[index]!.minPixels, effectiveConstraints[index]!.maxPixels),
     );
   }
 
-  const finiteMaximums = effectiveConstraints.map((constraint) => constraint.maxPixels);
-  if (finiteMaximums.every(Number.isFinite)) {
-    const maximumTotal = finiteMaximums.reduce((sum, value) => sum + value, 0);
-    if (maximumTotal > 0 && maximumTotal < availablePanePixels) {
-      return scaleSizesToTotal(finiteMaximums, availablePanePixels);
+  let minimumTotal = 0;
+  for (const constraint of effectiveConstraints) {
+    minimumTotal += constraint.minPixels;
+  }
+  if (minimumTotal > availablePanePixels) {
+    const minimumSizes: number[] = [];
+    for (const constraint of effectiveConstraints) {
+      minimumSizes.push(constraint.minPixels);
+    }
+    return scaleSizesToTotal(minimumSizes, availablePanePixels);
+  }
+
+  const finiteMaximums: number[] = [];
+  let maximumTotal = 0;
+  for (const constraint of effectiveConstraints) {
+    finiteMaximums.push(constraint.maxPixels);
+    if (Number.isFinite(constraint.maxPixels)) {
+      maximumTotal += constraint.maxPixels;
+    } else {
+      maximumTotal = Number.POSITIVE_INFINITY;
     }
   }
+  if (maximumTotal > 0 && maximumTotal < availablePanePixels)
+    return scaleSizesToTotal(finiteMaximums, availablePanePixels);
 
-  const currentTotal = clampedSizes.reduce((sum, value) => sum + value, 0);
+  let currentTotal = 0;
+  for (const value of clampedSizes) {
+    currentTotal += value;
+  }
   if (currentTotal < availablePanePixels) {
-    return distributeDelta(
-      clampedSizes,
-      availablePanePixels,
-      effectiveConstraints.map((constraint, index) =>
-        Math.max(0, constraint.maxPixels - clampedSizes[index]!),
-      ),
-      'grow',
-    );
+    const growCapacities: number[] = [];
+    for (let index = 0; index < effectiveConstraints.length; index++) {
+      growCapacities.push(
+        Math.max(0, effectiveConstraints[index]!.maxPixels - clampedSizes[index]!),
+      );
+    }
+    return distributeDelta(clampedSizes, availablePanePixels, growCapacities, 'grow');
   }
 
   if (currentTotal > availablePanePixels) {
-    return distributeDelta(
-      clampedSizes,
-      availablePanePixels,
-      effectiveConstraints.map((constraint, index) =>
-        Math.max(0, clampedSizes[index]! - constraint.minPixels),
-      ),
-      'shrink',
-    );
+    const shrinkCapacities: number[] = [];
+    for (let index = 0; index < effectiveConstraints.length; index++) {
+      shrinkCapacities.push(
+        Math.max(0, clampedSizes[index]! - effectiveConstraints[index]!.minPixels),
+      );
+    }
+    return distributeDelta(clampedSizes, availablePanePixels, shrinkCapacities, 'shrink');
   }
 
   return clampedSizes;

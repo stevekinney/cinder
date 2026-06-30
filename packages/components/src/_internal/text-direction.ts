@@ -156,9 +156,8 @@ function isConditionalRuleActive(rule: CSSRule): boolean {
     return matchMedia(conditionText).matches;
   }
 
-  if (isSupportsRule(rule) && typeof CSS !== 'undefined' && typeof CSS.supports === 'function') {
+  if (isSupportsRule(rule) && typeof CSS !== 'undefined' && typeof CSS.supports === 'function')
     return CSS.supports(conditionText);
-  }
 
   return true;
 }

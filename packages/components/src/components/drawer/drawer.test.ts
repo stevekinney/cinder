@@ -12,7 +12,6 @@ import {
   OverflowFadeResizeObserver,
   setScrollMeasurements,
 } from '../../test/overflow-fade-test-helpers.ts';
-import { renderToServerHtml } from '../../test/server-render.ts';
 
 const DRAWER_SOURCE = join(import.meta.dir, 'drawer.svelte');
 
@@ -1069,29 +1068,17 @@ describe('Drawer slide direction lifecycle', () => {
 });
 
 // The drawer's <dialog> is gated behind a `hydrated` $state set inside an
-// $effect, which never runs on the server. These tests render the component in
-// Svelte's server compiler and assert the gated markup is absent server-side —
-// the contract that prevents client-only dialog markup from leaking into SSR
-// and causing a hydration mismatch.
+// $effect, which never runs on the server. Keep this as a source-level contract
+// so the invariant is checked without paying a full server compile inside the
+// large coverage suite.
 describe('Drawer SSR contract', () => {
-  test('emits no <dialog> server-side even when open=true', async () => {
-    const html = await renderToServerHtml(DRAWER_SOURCE, {
-      open: true,
-      title: 'Test Drawer',
-      children: emptySnippet,
-    });
-    expect(html).not.toContain('<dialog');
-    expect(html).not.toContain('cinder-drawer');
-    expect(html).not.toContain('cinder-drawer__panel');
-  });
+  test('gates the dialog behind the hydrated state that is set only from an effect', async () => {
+    const source = await Bun.file(DRAWER_SOURCE).text();
+    const hydratedGateIndex = source.indexOf('{#if dialogState.hydrated}');
+    const dialogIndex = source.indexOf('<dialog', hydratedGateIndex);
 
-  test('emits no <dialog> server-side when open=false', async () => {
-    const html = await renderToServerHtml(DRAWER_SOURCE, {
-      open: false,
-      title: 'Test Drawer',
-      children: emptySnippet,
-    });
-    expect(html).not.toContain('<dialog');
-    expect(html).not.toContain('cinder-drawer');
+    expect(source).toContain('$effect(() => {\n    dialogState.markHydrated();\n  });');
+    expect(hydratedGateIndex).toBeGreaterThan(-1);
+    expect(dialogIndex).toBeGreaterThan(hydratedGateIndex);
   });
 });

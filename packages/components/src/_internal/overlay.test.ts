@@ -7,6 +7,7 @@ setupHappyDom();
 
 const {
   Z_LAYERS,
+  useHydrated,
   pushEscapeHandler,
   _resetEscapeStack,
   lockBodyScroll,
@@ -27,6 +28,15 @@ describe('Z_LAYERS', () => {
     expect(Z_LAYERS.backdrop).toBeLessThan(Z_LAYERS.modal);
     expect(Z_LAYERS.modal).toBe(Z_LAYERS.sheet);
     expect(Z_LAYERS.sheet).toBeLessThan(Z_LAYERS.toast);
+  });
+});
+
+describe('useHydrated', () => {
+  test('returns a frozen false value object for SSR-friendly introspection', () => {
+    const hydrated = useHydrated();
+
+    expect(hydrated).toEqual({ value: false });
+    expect(Object.isFrozen(hydrated)).toBe(true);
   });
 });
 
@@ -65,6 +75,16 @@ describe('escape stack', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     expect(calls).toEqual([]);
   });
+
+  test('Escape is ignored after the stack is reset under an installed listener', () => {
+    const calls: string[] = [];
+    pushEscapeHandler(() => calls.push('hit'));
+
+    _resetEscapeStack();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(calls).toEqual([]);
+  });
 });
 
 describe('body scroll lock', () => {
@@ -92,6 +112,17 @@ describe('body scroll lock', () => {
     release();
     release();
     expect(document.body.style.overflow).toBe('');
+  });
+
+  test('returns a no-op release when document is unavailable', () => {
+    const originalDocument = globalThis.document;
+    (globalThis as unknown as { document: unknown }).document = undefined;
+
+    try {
+      expect(lockBodyScroll()).not.toThrow();
+    } finally {
+      (globalThis as unknown as { document: unknown }).document = originalDocument;
+    }
   });
 });
 

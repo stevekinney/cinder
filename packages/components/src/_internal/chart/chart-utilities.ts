@@ -601,6 +601,20 @@ export function createBarModel(options: {
       ? createStackedBarDomainValues(datumByKey, sortedCategories, visibleSeries)
       : visibleValues,
   );
+  if (sortedCategories.length === 0) {
+    const tickAxis = orientation === 'vertical' ? yAxis : xAxis;
+    return {
+      geometry,
+      categories: [],
+      yTicks: createTicks(valueDomain, tickAxis?.tickCount ?? 5),
+      categoryTicks: [],
+      bars: [],
+      tableRows: [],
+      targets: [],
+      empty: true,
+      valueDomain,
+    };
+  }
   const valueScale = createLinearScale(
     valueDomain,
     orientation === 'vertical' ? [geometry.plotHeight, 0] : [0, geometry.plotWidth],
@@ -786,25 +800,18 @@ export function nearestTarget(
 
   addBucket(low);
   if (low > 0) {
-    let previous = low - 1;
-    const lowTarget = targets[low];
-    const lowKey = lowTarget ? (axis === 'x' ? lowTarget.x : lowTarget.y) : undefined;
-    while (previous > 0) {
-      const previousTarget = targets[previous];
-      if (!previousTarget) break;
-      const previousKey = axis === 'x' ? previousTarget.x : previousTarget.y;
-      if (previousKey !== lowKey) break;
-      previous--;
-    }
-    addBucket(previous);
+    addBucket(low - 1);
   }
 
-  return candidates.reduce<ChartTarget | undefined>((nearest, target) => {
-    if (!nearest) return target;
+  let nearest: ChartTarget | undefined;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const target of candidates) {
     const targetDistance = Math.hypot(target.x - x, target.y - y);
-    const nearestDistance = Math.hypot(nearest.x - x, nearest.y - y);
-    return targetDistance < nearestDistance ? target : nearest;
-  }, undefined);
+    if (targetDistance >= nearestDistance) continue;
+    nearest = target;
+    nearestDistance = targetDistance;
+  }
+  return nearest;
 }
 
 export function legendVisible(legendPosition: ChartLegendPosition, seriesCount: number): boolean {
@@ -895,7 +902,6 @@ function createPointScale(
   padding: number,
 ): BandlikeScale {
   const positions = new Map<string, number>();
-  if (domain.length === 0) return () => undefined;
 
   const [rangeMinimum, rangeMaximum] = range;
   if (domain.length === 1) {

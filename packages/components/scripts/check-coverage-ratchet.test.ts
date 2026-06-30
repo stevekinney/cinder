@@ -114,6 +114,13 @@ FNH:0
 LF:10
 LH:0
 end_of_record
+TN:
+SF:src/components/portal/.cinder-ssr-12345-1780000000000-abc123.svelte-server.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
 `;
     const records = parseLcovRecords(withArtifact);
     expect(records.map((record) => record.file)).toEqual(['covered.ts', 'partial.ts']);
@@ -166,6 +173,27 @@ LH:0
 end_of_record
 TN:
 SF:src/components/chat/message/.cinder-ssr-parts-12345-1780000000000.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/chat/message/parts/.cinder-ssr-tool-approval-12345-1780000000000.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/chat/message/parts/.cinder-ssr-reasoning-12345-1780000000000.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/chat/message/parts/.cinder-ssr-reasoning-12345-1780000000000.svelte-server.mjs
 FNF:10
 FNH:0
 LF:10
@@ -269,6 +297,75 @@ end_of_record
     const records = parseLcovRecords(withSiblingWorkspaces);
     expect(records.map((record) => record.file)).toEqual(['covered.ts', 'partial.ts']);
     expect(computeCoverageAverages(records).functions).toBe(75);
+  });
+
+  test('excludes non-runtime coverage scope from the ratchet denominator', () => {
+    const scopedFixture = `${lcovFixture}TN:
+SF:scripts/build.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/button/button.svelte
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/json-schema-editor/json-schema-editor-state.svelte.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/button/button.test.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/test/hydrate.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:src/components/button/button.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(scopedFixture);
+    expect(records.map((record) => record.file)).toEqual([
+      'covered.ts',
+      'partial.ts',
+      'src/components/button/button.ts',
+    ]);
+  });
+
+  test('does not exclude real TypeScript source whose path merely mentions svelte', () => {
+    const lookalike = `${lcovFixture}TN:
+SF:src/components/svelte-adapter/runtime.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+`;
+
+    const records = parseLcovRecords(lookalike);
+    expect(records.map((record) => record.file)).toContain(
+      'src/components/svelte-adapter/runtime.ts',
+    );
   });
 
   test('does not exclude package-local source paths that normalize inside the package root', () => {
