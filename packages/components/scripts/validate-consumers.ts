@@ -744,6 +744,8 @@ function ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory: string): vo
 
 const SVELTEKIT_DEV_SSR_MARKERS = [
   'data-dev-ssr-card-body',
+  'data-dev-ssr-sidebar-brand',
+  'data-dev-ssr-sidebar-navigation',
   'data-dev-ssr-tabs-namespace-trigger',
   'data-dev-ssr-tabs-namespace-panel',
   'data-dev-ssr-tabs-direct-trigger',

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Card from '@lostgradient/cinder/card';
+  import Sidebar from '@lostgradient/cinder/sidebar';
   import Tab from '@lostgradient/cinder/tab';
   import TabList from '@lostgradient/cinder/tab-list';
   import TabPanel from '@lostgradient/cinder/tab-panel';
@@ -13,6 +14,15 @@
   <Card title="Place a food order" headingLevel={2}>
     <p data-dev-ssr-card-body>Spicy noodles</p>
   </Card>
+
+  <Sidebar label="Project navigation">
+    {#snippet brand()}
+      <strong data-dev-ssr-sidebar-brand>Cinder workspace</strong>
+    {/snippet}
+    {#snippet navigation()}
+      <a href="/dev-ssr" data-dev-ssr-sidebar-navigation>Dev SSR route</a>
+    {/snippet}
+  </Sidebar>
 
   <Tabs bind:value={namespaceTab}>
     <Tabs.List label="Editor files">
