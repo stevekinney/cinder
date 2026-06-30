@@ -12,6 +12,7 @@ import {
   OverflowFadeResizeObserver,
   setScrollMeasurements,
 } from '../../test/overflow-fade-test-helpers.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 const DRAWER_SOURCE = join(import.meta.dir, 'drawer.svelte');
 
@@ -1080,5 +1081,12 @@ describe('Drawer SSR contract', () => {
     expect(source).toMatch(/\$effect\(\(\) => \{\s*dialogState\.markHydrated\(\);\s*\}\);/);
     expect(hydratedGateIndex).toBeGreaterThan(-1);
     expect(dialogIndex).toBeGreaterThan(hydratedGateIndex);
+  });
+
+  test('server output omits the dialog before hydration even when open', async () => {
+    const html = await renderToServerHtml(DRAWER_SOURCE, { open: true, title: 'Server Drawer' });
+
+    expect(html).not.toContain('<dialog');
+    expect(html).not.toContain('Server Drawer');
   });
 });

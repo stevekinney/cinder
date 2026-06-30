@@ -360,6 +360,41 @@ describe('TableOfContents', () => {
     });
   });
 
+  test('scroll updates do not rescan observed heading ids', async () => {
+    const first = createHeading('first-scroll', 'First');
+    first.getBoundingClientRect = () => ({ top: -100 }) as DOMRect;
+    const second = createHeading('second-scroll', 'Second');
+    second.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
+    document.body.appendChild(first);
+    document.body.appendChild(second);
+
+    render(TableOfContents, {
+      props: {
+        items: [
+          { id: 'first-scroll', label: 'First' },
+          { id: 'second-scroll', label: 'Second' },
+        ],
+      },
+    });
+    await Promise.resolve();
+
+    const originalGetElementById = document.getElementById.bind(document);
+    let getElementByIdCalls = 0;
+    document.getElementById = ((id: string) => {
+      getElementByIdCalls += 1;
+      return originalGetElementById(id);
+    }) as typeof document.getElementById;
+
+    try {
+      window.dispatchEvent(new Event('scroll'));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      document.getElementById = originalGetElementById;
+    }
+
+    expect(getElementByIdCalls).toBe(0);
+  });
+
   test('clicking a link scrolls to the heading and updates location hash', async () => {
     const section = createHeading('usage', 'Usage');
     let lastBehavior: ScrollBehavior | undefined;

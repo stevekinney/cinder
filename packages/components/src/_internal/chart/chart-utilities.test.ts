@@ -243,6 +243,17 @@ describe('nearestTarget', () => {
     expect(nearestTarget(targets, 100, 190)?.id).toBe('t-1');
   });
 
+  test('compares the previous distinct x bucket when duplicate targets straddle the boundary', () => {
+    const targets = buildTargets([
+      { x: 0, y: 10 },
+      { x: 100, y: 500 },
+      { x: 100, y: 600 },
+      { x: 200, y: 10 },
+    ]);
+
+    expect(nearestTarget(targets, 150, 10)?.id).toBe('t-3');
+  });
+
   test('supports searching on the y axis for horizontal layouts', () => {
     const targets = buildTargets([
       { x: 50, y: 0 },

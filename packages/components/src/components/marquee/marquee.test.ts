@@ -137,6 +137,25 @@ describe('Marquee', () => {
     );
   });
 
+  test('manual resume override clears after the control loses focus', async () => {
+    const { container, getByRole } = render(Marquee, {
+      props: { children: textSnippet('content') },
+    });
+    const element = container.querySelector('.cinder-marquee');
+    const control = getByRole('button', { name: 'Pause marquee animation' });
+
+    control.click();
+    control.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
+
+    control.dispatchEvent(new FocusEvent('blur', { bubbles: false }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('false');
+  });
+
   test('forwards label as aria-label and applies region role', () => {
     const { container } = render(Marquee, {
       props: {

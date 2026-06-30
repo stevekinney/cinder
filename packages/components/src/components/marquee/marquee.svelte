@@ -168,6 +168,10 @@
     manualResumeRequested = !nextPaused;
   }
 
+  function clearManualResumeRequest(): void {
+    manualResumeRequested = false;
+  }
+
   $effect(() => {
     if (!primaryTrackItem || !duplicateTrackItem) return;
     duplicateReady = false;
@@ -215,6 +219,7 @@
       class="cinder-marquee__control"
       aria-pressed={manuallyPaused}
       onclick={toggleManualPausedState}
+      onblur={clearManualResumeRequest}
     >
       {pauseControlLabel}
     </button>

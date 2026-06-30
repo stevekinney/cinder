@@ -105,7 +105,7 @@
   let validityProxyElement = $state<HTMLInputElement | null>(null);
   let nativeError = $state('');
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
-  const triggerAriaInvalid = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
+  const invalidState = $derived(field.ariaInvalid ?? (nativeError ? true : undefined));
   const triggerDescribedBy = $derived.by(() => {
     const ids = new Set((field.describedBy ?? '').split(/\s+/).filter(Boolean));
     if (nativeError) ids.add(field.ownErrorId ?? stableLocalErrorId);
@@ -395,7 +395,7 @@
 
 <div
   class={classNames('cinder-multi-select', className)}
-  data-cinder-invalid={triggerAriaInvalid ? true : undefined}
+  data-cinder-invalid={invalidState ? true : undefined}
 >
   {#if label}
     <label
@@ -418,9 +418,7 @@
       {id}
       class="cinder-_input-frame cinder-multi-select__trigger"
       disabled={field.disabled}
-      role="combobox"
       aria-describedby={triggerDescribedBy}
-      aria-invalid={triggerAriaInvalid}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={listboxId}

@@ -204,7 +204,7 @@ describe('MultiSelect', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  test('required invalid state is announced only by the trigger', () => {
+  test('required invalid state uses root styling and trigger description without unsupported ARIA', () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
       error: 'Select at least one fruit',
@@ -217,7 +217,8 @@ describe('MultiSelect', () => {
 
     expect(root.hasAttribute('aria-invalid')).toBe(false);
     expect(root.hasAttribute('data-cinder-invalid')).toBe(true);
-    expect(trigger.getAttribute('aria-invalid')).toBe('true');
+    expect(trigger.hasAttribute('aria-invalid')).toBe(false);
+    expect(trigger.getAttribute('aria-describedby')).toContain('fruits-error');
   });
 
   test('filterable mode filters options by label', async () => {
@@ -341,6 +342,9 @@ describe('MultiSelect', () => {
     const { container } = render(MultiSelect, { id: 'fruits', items });
     const trigger = container.querySelector<HTMLButtonElement>('#fruits');
     if (!trigger) throw new Error('trigger not found');
+
+    expect(trigger.getAttribute('role')).toBeNull();
+    expect(trigger.getAttribute('aria-haspopup')).toBe('listbox');
 
     trigger.focus();
     await fireEvent.keyDown(trigger, { key: 'ArrowDown' });

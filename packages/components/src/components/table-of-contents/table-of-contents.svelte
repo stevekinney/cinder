@@ -464,8 +464,6 @@
     let pendingAnimationFrame: number | null = null;
 
     const updateActiveId = () => {
-      syncObservedElements();
-
       if (observedElements.length === 0) {
         activeId = null;
         return;
@@ -534,7 +532,7 @@
       for (const element of observedElements) {
         observer.observe(element);
       }
-      scheduleActiveIdUpdate();
+      updateActiveId();
     }
 
     window.addEventListener('scroll', scheduleActiveIdUpdate, { passive: true });
@@ -543,7 +541,7 @@
     let domObserver: MutationObserver | null = null;
     if (typeof MutationObserver !== 'undefined' && document.body !== null) {
       domObserver = new MutationObserver(() => {
-        updateActiveId();
+        syncObservedElements();
       });
       domObserver.observe(document.body, {
         childList: true,
