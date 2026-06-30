@@ -68,7 +68,7 @@ describe('Calendar', () => {
     const disabledDays = Array.from(
       container.querySelectorAll<HTMLButtonElement>('.cinder-calendar__day'),
     )
-      .filter((button) => button.disabled)
+      .filter((button) => button.getAttribute('aria-disabled') === 'true')
       .map((button) => button.textContent?.trim());
 
     expect(disabledDays.includes('1')).toBe(true);

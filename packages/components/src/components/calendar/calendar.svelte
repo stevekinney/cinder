@@ -343,7 +343,6 @@
               aria-current={cell.iso === todayIso ? 'date' : undefined}
               aria-label={cell.ariaLabel}
               aria-disabled={cell.disabled ? 'true' : undefined}
-              disabled={cell.disabled}
               tabindex={cell.focused ? 0 : -1}
               onclick={() => {
                 commitDate(cell.iso);
