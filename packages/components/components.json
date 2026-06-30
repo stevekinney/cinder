@@ -552,6 +552,64 @@
       }
     },
     {
+      "name": "BentoCell",
+      "id": "bento-cell",
+      "import": "@lostgradient/cinder/bento-cell",
+      "exportName": "BentoCell",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Optional placement child for BentoGrid that controls row and column spans or explicit track placement.",
+      "tags": ["layout", "grid", "bento"],
+      "useWhen": [
+        "A tile in BentoGrid needs to span multiple tracks or start at a specific track."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Every tile can use default auto-placement inside BentoGrid.",
+          "alternative": "bento-grid"
+        }
+      ],
+      "related": ["bento-grid", "grid-item"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/bento-cell/schema",
+        "variables": "@lostgradient/cinder/bento-cell/variables"
+      }
+    },
+    {
+      "name": "BentoGrid",
+      "id": "bento-grid",
+      "import": "@lostgradient/cinder/bento-grid",
+      "exportName": "BentoGrid",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "CSS grid container for deliberate asymmetric bento mosaics with optional single-column collapse at narrow widths.",
+      "tags": ["layout", "grid", "bento"],
+      "useWhen": [
+        "Building feature mosaics where highlight tiles span rows or columns in a controlled layout.",
+        "Keeping bento placement declarative by pairing BentoGrid with BentoGrid.Cell or BentoCell children."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Packing variable-height content automatically - use masonry instead.",
+          "alternative": "masonry"
+        },
+        {
+          "reason": "You only need uniform tracks without feature-tile spans - use grid instead.",
+          "alternative": "grid"
+        }
+      ],
+      "related": ["bento-cell", "grid", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/bento-grid/schema",
+        "variables": "@lostgradient/cinder/bento-grid/variables",
+        "examples": "@lostgradient/cinder/bento-grid/examples"
+      }
+    },
+    {
       "name": "Breadcrumbs",
       "id": "breadcrumbs",
       "import": "@lostgradient/cinder/breadcrumbs",
@@ -730,6 +788,47 @@
         "schema": "@lostgradient/cinder/card/schema",
         "variables": "@lostgradient/cinder/card/variables",
         "examples": "@lostgradient/cinder/card/examples"
+      }
+    },
+    {
+      "name": "Carousel",
+      "id": "carousel",
+      "import": "@lostgradient/cinder/carousel",
+      "exportName": "Carousel",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Rotating content viewport with previous/next controls, picker dots, and optional autoplay.",
+      "tags": ["navigation", "carousel", "media"],
+      "useWhen": [
+        "Presenting a finite set of visual highlights with sequential browsing controls.",
+        "Cycling between promotional or tutorial panels inside a single region."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Content should remain simultaneously visible and scannable.",
+          "alternative": "grid"
+        },
+        {
+          "reason": "You only need one static hero panel with no sequence controls."
+        }
+      ],
+      "related": ["image", "aspect-ratio", "masonry"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/carousel/schema",
+        "variables": "@lostgradient/cinder/carousel/variables",
+        "examples": "@lostgradient/cinder/carousel/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Carousel",
+        "keyboard": [
+          {
+            "keys": "ArrowLeft / ArrowRight / Home / End",
+            "action": "Moves between slides."
+          }
+        ],
+        "notes": ["Auto-advance pauses on hover and focus, and is disabled under reduced motion."]
       }
     },
     {
@@ -2113,6 +2212,37 @@
       }
     },
     {
+      "name": "Footer",
+      "id": "footer",
+      "import": "@lostgradient/cinder/footer",
+      "exportName": "Footer",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Footer composition primitive with brand copy, grouped links, and legal row content.",
+      "tags": ["layout", "navigation", "footer"],
+      "useWhen": [
+        "Building page-level footer chrome with grouped resource links and legal text.",
+        "Keeping lower-page wayfinding and compliance links in one responsive region."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You need top-level route switching with active state handling.",
+          "alternative": "navigation-bar"
+        },
+        {
+          "reason": "You need dense in-content navigation rather than page chrome."
+        }
+      ],
+      "related": ["navigation-bar", "side-navigation", "container", "grid"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/footer/schema",
+        "variables": "@lostgradient/cinder/footer/variables",
+        "examples": "@lostgradient/cinder/footer/examples"
+      }
+    },
+    {
       "name": "FormField",
       "id": "form-field",
       "import": "@lostgradient/cinder/form-field",
@@ -2821,6 +2951,50 @@
       }
     },
     {
+      "name": "MegaMenu",
+      "id": "mega-menu",
+      "import": "@lostgradient/cinder/mega-menu",
+      "exportName": "MegaMenu",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Wide primary navigation menu with trigger/content panels, shared viewport, active indicator, and nested submenu support.",
+      "tags": ["navigation", "mega-menu", "menu"],
+      "useWhen": [
+        "Building site-level navigation where top-level categories reveal rich multi-column content.",
+        "You need optional hover-open behavior with keyboard-first trigger traversal."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A simple single-trigger flyout is sufficient.",
+          "alternative": "dropdown"
+        },
+        {
+          "reason": "You need command-style application menus with item-by-item keyboard semantics.",
+          "alternative": "menu-bar"
+        }
+      ],
+      "related": ["navigation-bar", "menu-bar", "dropdown"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/mega-menu/schema",
+        "variables": "@lostgradient/cinder/mega-menu/variables",
+        "examples": "@lostgradient/cinder/mega-menu/examples"
+      },
+      "a11y": {
+        "pattern": "Navigation landmark + disclosure buttons",
+        "keyboard": [
+          {
+            "keys": "ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape",
+            "action": "Traverses triggers and opens/closes panels."
+          }
+        ],
+        "notes": [
+          "Trigger focus remains in the tab order; Escape closes and returns focus to the active trigger."
+        ]
+      }
+    },
+    {
       "name": "MenuBar",
       "id": "menu-bar",
       "import": "@lostgradient/cinder/menu-bar",
@@ -2946,6 +3120,36 @@
         "variables": "@lostgradient/cinder/modal/variables",
         "examples": "@lostgradient/cinder/modal/examples",
         "constraints": "@lostgradient/cinder/modal/constraints"
+      }
+    },
+    {
+      "name": "MultiSelect",
+      "id": "multi-select",
+      "import": "@lostgradient/cinder/multi-select",
+      "exportName": "MultiSelect",
+      "category": "form",
+      "status": "alpha",
+      "purpose": "Multi-value dropdown with checkbox options, optional filtering, and count-summary trigger text.",
+      "tags": ["form", "selection", "multiselect"],
+      "useWhen": [
+        "Selecting multiple values from a fixed option list while preserving compact form layout.",
+        "Showing many options in an anchored picker instead of a permanently-expanded checkbox group."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Selecting a single value from a short fixed list — use select instead."
+        },
+        {
+          "reason": "Moving items between available/selected panes — use transfer-list instead."
+        }
+      ],
+      "related": ["select", "combobox", "checkbox-group", "transfer-list"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/multi-select/schema",
+        "variables": "@lostgradient/cinder/multi-select/variables",
+        "examples": "@lostgradient/cinder/multi-select/examples"
       }
     },
     {
@@ -4634,6 +4838,39 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/table-header-cell/schema",
         "variables": "@lostgradient/cinder/table-header-cell/variables"
+      }
+    },
+    {
+      "name": "TableOfContents",
+      "id": "table-of-contents",
+      "import": "@lostgradient/cinder/table-of-contents",
+      "exportName": "TableOfContents",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "On-page heading outline that renders nested anchor links and highlights the active section while scrolling.",
+      "tags": ["navigation", "docs", "toc"],
+      "useWhen": [
+        "Adding an \"On this page\" rail for long-form docs or settings screens.",
+        "Letting users jump between headings while keeping context via active-section highlighting."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Navigating between routes or top-level app areas — use navigation-bar or side-navigation."
+        },
+        {
+          "reason": "The page has too few headings to justify a secondary navigation rail."
+        }
+      ],
+      "related": ["side-navigation", "breadcrumbs", "section-heading"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/table-of-contents/schema",
+        "variables": "@lostgradient/cinder/table-of-contents/variables",
+        "examples": "@lostgradient/cinder/table-of-contents/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Navigation Landmark"
       }
     },
     {

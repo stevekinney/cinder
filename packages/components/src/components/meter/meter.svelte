@@ -106,12 +106,8 @@
   const lowSegmentTone = $derived<MeterState>(
     optimumDirection === 'low' ? 'optimum' : optimumDirection === 'high' ? 'high' : 'low',
   );
-  const optimumSegmentTone = $derived<MeterState>(
-    optimumDirection === 'mid' ? 'optimum' : 'low',
-  );
-  const highSegmentTone = $derived<MeterState>(
-    optimumDirection === 'high' ? 'optimum' : 'high',
-  );
+  const optimumSegmentTone = $derived<MeterState>(optimumDirection === 'mid' ? 'optimum' : 'low');
+  const highSegmentTone = $derived<MeterState>(optimumDirection === 'high' ? 'optimum' : 'high');
 
   const lowPercent = $derived(((segmentLow - effectiveMin) / range) * 100);
   const optimumPercent = $derived(((segmentHigh - segmentLow) / range) * 100);

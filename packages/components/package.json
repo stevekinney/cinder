@@ -488,6 +488,58 @@
       "import": "./src/components/bar-chart/bar-chart.examples.json",
       "default": "./src/components/bar-chart/bar-chart.examples.json"
     },
+    "./bento-cell": {
+      "types": "./dist/components/bento-cell/index.d.ts",
+      "browser": "./src/components/bento-cell/index.ts",
+      "node": "./dist/server/components/bento-cell/index.js",
+      "svelte": "./src/components/bento-cell/index.ts",
+      "default": "./dist/components/bento-cell/index.js"
+    },
+    "./bento-cell/schema": {
+      "types": "./dist/components/bento-cell/bento-cell.schema.d.ts",
+      "browser": "./src/components/bento-cell/bento-cell.schema.ts",
+      "node": "./dist/server/components/bento-cell/bento-cell.schema.js",
+      "svelte": "./src/components/bento-cell/bento-cell.schema.ts",
+      "default": "./dist/components/bento-cell/bento-cell.schema.js"
+    },
+    "./bento-cell/variables": {
+      "types": "./dist/components/bento-cell/bento-cell.variables.d.ts",
+      "browser": "./src/components/bento-cell/bento-cell.variables.ts",
+      "node": "./dist/server/components/bento-cell/bento-cell.variables.js",
+      "svelte": "./src/components/bento-cell/bento-cell.variables.ts",
+      "default": "./dist/components/bento-cell/bento-cell.variables.js"
+    },
+    "./bento-cell/styles": {
+      "default": "./dist/components/bento-cell/bento-cell.css"
+    },
+    "./bento-grid": {
+      "types": "./dist/components/bento-grid/index.d.ts",
+      "browser": "./src/components/bento-grid/index.ts",
+      "node": "./dist/server/components/bento-grid/index.js",
+      "svelte": "./src/components/bento-grid/index.ts",
+      "default": "./dist/components/bento-grid/index.js"
+    },
+    "./bento-grid/schema": {
+      "types": "./dist/components/bento-grid/bento-grid.schema.d.ts",
+      "browser": "./src/components/bento-grid/bento-grid.schema.ts",
+      "node": "./dist/server/components/bento-grid/bento-grid.schema.js",
+      "svelte": "./src/components/bento-grid/bento-grid.schema.ts",
+      "default": "./dist/components/bento-grid/bento-grid.schema.js"
+    },
+    "./bento-grid/variables": {
+      "types": "./dist/components/bento-grid/bento-grid.variables.d.ts",
+      "browser": "./src/components/bento-grid/bento-grid.variables.ts",
+      "node": "./dist/server/components/bento-grid/bento-grid.variables.js",
+      "svelte": "./src/components/bento-grid/bento-grid.variables.ts",
+      "default": "./dist/components/bento-grid/bento-grid.variables.js"
+    },
+    "./bento-grid/styles": {
+      "default": "./dist/components/bento-grid/bento-grid.css"
+    },
+    "./bento-grid/examples": {
+      "import": "./src/components/bento-grid/bento-grid.examples.json",
+      "default": "./src/components/bento-grid/bento-grid.examples.json"
+    },
     "./breadcrumbs": {
       "types": "./dist/components/breadcrumbs/index.d.ts",
       "browser": "./src/components/breadcrumbs/index.ts",
@@ -659,6 +711,34 @@
     "./card/examples": {
       "import": "./src/components/card/card.examples.json",
       "default": "./src/components/card/card.examples.json"
+    },
+    "./carousel": {
+      "types": "./dist/components/carousel/index.d.ts",
+      "browser": "./src/components/carousel/index.ts",
+      "node": "./dist/server/components/carousel/index.js",
+      "svelte": "./src/components/carousel/index.ts",
+      "default": "./dist/components/carousel/index.js"
+    },
+    "./carousel/schema": {
+      "types": "./dist/components/carousel/carousel.schema.d.ts",
+      "browser": "./src/components/carousel/carousel.schema.ts",
+      "node": "./dist/server/components/carousel/carousel.schema.js",
+      "svelte": "./src/components/carousel/carousel.schema.ts",
+      "default": "./dist/components/carousel/carousel.schema.js"
+    },
+    "./carousel/variables": {
+      "types": "./dist/components/carousel/carousel.variables.d.ts",
+      "browser": "./src/components/carousel/carousel.variables.ts",
+      "node": "./dist/server/components/carousel/carousel.variables.js",
+      "svelte": "./src/components/carousel/carousel.variables.ts",
+      "default": "./dist/components/carousel/carousel.variables.js"
+    },
+    "./carousel/styles": {
+      "default": "./dist/components/carousel/carousel.css"
+    },
+    "./carousel/examples": {
+      "import": "./src/components/carousel/carousel.examples.json",
+      "default": "./src/components/carousel/carousel.examples.json"
     },
     "./chat": {
       "types": "./dist/components/chat/index.d.ts",
@@ -1900,6 +1980,34 @@
       "import": "./src/components/focus-trap/focus-trap.examples.json",
       "default": "./src/components/focus-trap/focus-trap.examples.json"
     },
+    "./footer": {
+      "types": "./dist/components/footer/index.d.ts",
+      "browser": "./src/components/footer/index.ts",
+      "node": "./dist/server/components/footer/index.js",
+      "svelte": "./src/components/footer/index.ts",
+      "default": "./dist/components/footer/index.js"
+    },
+    "./footer/schema": {
+      "types": "./dist/components/footer/footer.schema.d.ts",
+      "browser": "./src/components/footer/footer.schema.ts",
+      "node": "./dist/server/components/footer/footer.schema.js",
+      "svelte": "./src/components/footer/footer.schema.ts",
+      "default": "./dist/components/footer/footer.schema.js"
+    },
+    "./footer/variables": {
+      "types": "./dist/components/footer/footer.variables.d.ts",
+      "browser": "./src/components/footer/footer.variables.ts",
+      "node": "./dist/server/components/footer/footer.variables.js",
+      "svelte": "./src/components/footer/footer.variables.ts",
+      "default": "./dist/components/footer/footer.variables.js"
+    },
+    "./footer/styles": {
+      "default": "./dist/components/footer/footer.css"
+    },
+    "./footer/examples": {
+      "import": "./src/components/footer/footer.examples.json",
+      "default": "./src/components/footer/footer.examples.json"
+    },
     "./form-field": {
       "types": "./dist/components/form-field/index.d.ts",
       "browser": "./src/components/form-field/index.ts",
@@ -2576,6 +2684,34 @@
       "import": "./src/components/media-controls/media-controls.examples.json",
       "default": "./src/components/media-controls/media-controls.examples.json"
     },
+    "./mega-menu": {
+      "types": "./dist/components/mega-menu/index.d.ts",
+      "browser": "./src/components/mega-menu/index.ts",
+      "node": "./dist/server/components/mega-menu/index.js",
+      "svelte": "./src/components/mega-menu/index.ts",
+      "default": "./dist/components/mega-menu/index.js"
+    },
+    "./mega-menu/schema": {
+      "types": "./dist/components/mega-menu/mega-menu.schema.d.ts",
+      "browser": "./src/components/mega-menu/mega-menu.schema.ts",
+      "node": "./dist/server/components/mega-menu/mega-menu.schema.js",
+      "svelte": "./src/components/mega-menu/mega-menu.schema.ts",
+      "default": "./dist/components/mega-menu/mega-menu.schema.js"
+    },
+    "./mega-menu/variables": {
+      "types": "./dist/components/mega-menu/mega-menu.variables.d.ts",
+      "browser": "./src/components/mega-menu/mega-menu.variables.ts",
+      "node": "./dist/server/components/mega-menu/mega-menu.variables.js",
+      "svelte": "./src/components/mega-menu/mega-menu.variables.ts",
+      "default": "./dist/components/mega-menu/mega-menu.variables.js"
+    },
+    "./mega-menu/styles": {
+      "default": "./dist/components/mega-menu/mega-menu.css"
+    },
+    "./mega-menu/examples": {
+      "import": "./src/components/mega-menu/mega-menu.examples.json",
+      "default": "./src/components/mega-menu/mega-menu.examples.json"
+    },
     "./menu-bar": {
       "types": "./dist/components/menu-bar/index.d.ts",
       "browser": "./src/components/menu-bar/index.ts",
@@ -2691,6 +2827,34 @@
     "./modal/constraints": {
       "import": "./src/components/modal/modal.constraints.json",
       "default": "./src/components/modal/modal.constraints.json"
+    },
+    "./multi-select": {
+      "types": "./dist/components/multi-select/index.d.ts",
+      "browser": "./src/components/multi-select/index.ts",
+      "node": "./dist/server/components/multi-select/index.js",
+      "svelte": "./src/components/multi-select/index.ts",
+      "default": "./dist/components/multi-select/index.js"
+    },
+    "./multi-select/schema": {
+      "types": "./dist/components/multi-select/multi-select.schema.d.ts",
+      "browser": "./src/components/multi-select/multi-select.schema.ts",
+      "node": "./dist/server/components/multi-select/multi-select.schema.js",
+      "svelte": "./src/components/multi-select/multi-select.schema.ts",
+      "default": "./dist/components/multi-select/multi-select.schema.js"
+    },
+    "./multi-select/variables": {
+      "types": "./dist/components/multi-select/multi-select.variables.d.ts",
+      "browser": "./src/components/multi-select/multi-select.variables.ts",
+      "node": "./dist/server/components/multi-select/multi-select.variables.js",
+      "svelte": "./src/components/multi-select/multi-select.variables.ts",
+      "default": "./dist/components/multi-select/multi-select.variables.js"
+    },
+    "./multi-select/styles": {
+      "default": "./dist/components/multi-select/multi-select.css"
+    },
+    "./multi-select/examples": {
+      "import": "./src/components/multi-select/multi-select.examples.json",
+      "default": "./src/components/multi-select/multi-select.examples.json"
     },
     "./navigation-bar": {
       "types": "./dist/components/navigation-bar/index.d.ts",
@@ -4220,6 +4384,34 @@
     },
     "./table-header-cell/styles": {
       "default": "./dist/components/table-header-cell/table-header-cell.css"
+    },
+    "./table-of-contents": {
+      "types": "./dist/components/table-of-contents/index.d.ts",
+      "browser": "./src/components/table-of-contents/index.ts",
+      "node": "./dist/server/components/table-of-contents/index.js",
+      "svelte": "./src/components/table-of-contents/index.ts",
+      "default": "./dist/components/table-of-contents/index.js"
+    },
+    "./table-of-contents/schema": {
+      "types": "./dist/components/table-of-contents/table-of-contents.schema.d.ts",
+      "browser": "./src/components/table-of-contents/table-of-contents.schema.ts",
+      "node": "./dist/server/components/table-of-contents/table-of-contents.schema.js",
+      "svelte": "./src/components/table-of-contents/table-of-contents.schema.ts",
+      "default": "./dist/components/table-of-contents/table-of-contents.schema.js"
+    },
+    "./table-of-contents/variables": {
+      "types": "./dist/components/table-of-contents/table-of-contents.variables.d.ts",
+      "browser": "./src/components/table-of-contents/table-of-contents.variables.ts",
+      "node": "./dist/server/components/table-of-contents/table-of-contents.variables.js",
+      "svelte": "./src/components/table-of-contents/table-of-contents.variables.ts",
+      "default": "./dist/components/table-of-contents/table-of-contents.variables.js"
+    },
+    "./table-of-contents/styles": {
+      "default": "./dist/components/table-of-contents/table-of-contents.css"
+    },
+    "./table-of-contents/examples": {
+      "import": "./src/components/table-of-contents/table-of-contents.examples.json",
+      "default": "./src/components/table-of-contents/table-of-contents.examples.json"
     },
     "./table-row": {
       "types": "./dist/components/table-row/index.d.ts",

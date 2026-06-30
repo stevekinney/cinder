@@ -5,8 +5,8 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--cinder-radius-md);
-    color: #000;
-    background: #fff;
+    color: #000; /* cinder-allow-raw-color: structural-pattern — QR requires fixed dark-on-light polarity for scanner reliability across all themes */
+    background: #fff; /* cinder-allow-raw-color: structural-pattern — QR requires fixed dark-on-light polarity for scanner reliability across all themes */
     overflow: hidden;
   }
 

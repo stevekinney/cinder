@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "carousel",
+  "import": "@lostgradient/cinder/carousel",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic carousel",
+      "description": "Prev/next navigation with indicator dots and autoplay support.",
+      "code": "<script lang=\"ts\">\n  import { Carousel } from '@lostgradient/cinder/carousel';\n\n  const autoplayEnabled =\n    typeof window === 'undefined'\n      ? true\n      : new URLSearchParams(window.location.search).get('snapshot') !== '1';\n\n  const slides = [\n    {\n      id: 'intro',\n      label: 'Introduction',\n      title: 'Welcome to cinder',\n      description: 'Start with the core primitives, then compose richer experiences.',\n      imageSrc:\n        'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',\n      imageAlt: 'Laptop on a desk',\n    },\n    {\n      id: 'patterns',\n      label: 'Patterns',\n      title: 'Reusable patterns',\n      description: 'Build consistent navigation, forms, and data views across your product.',\n      imageSrc:\n        'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=1200&q=80',\n      imageAlt: 'Code editor on a monitor',\n    },\n    {\n      id: 'shipping',\n      label: 'Shipping',\n      title: 'Ship faster',\n      description: 'Use robust defaults and only customize what your product needs.',\n      imageSrc:\n        'https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=1200&q=80',\n      imageAlt: 'Design board with color swatches',\n    },\n  ];\n</script>\n\n<Carousel {slides} autoplay={autoplayEnabled} autoplayInterval={4500} />\n"
+    }
+  ]
+}

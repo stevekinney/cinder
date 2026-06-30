@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "footer",
+  "import": "@lostgradient/cinder/footer",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Footer layout",
+      "description": "Brand copy, grouped links, and legal row composition.",
+      "code": "<script lang=\"ts\">\n  import { Footer } from '@lostgradient/cinder/footer';\n\n  const groups = [\n    {\n      id: 'product',\n      title: 'Product',\n      links: [\n        { id: 'features', label: 'Features', href: '/features' },\n        { id: 'pricing', label: 'Pricing', href: '/pricing' },\n      ],\n    },\n    {\n      id: 'company',\n      title: 'Company',\n      links: [\n        { id: 'about', label: 'About', href: '/about' },\n        { id: 'careers', label: 'Careers', href: '/careers' },\n      ],\n    },\n  ];\n\n  const legalLinks = [\n    { id: 'privacy', label: 'Privacy', href: '/privacy' },\n    { id: 'terms', label: 'Terms', href: '/terms' },\n  ];\n</script>\n\n<Footer\n  brand=\"Acme\"\n  description=\"Design and engineering tools for modern teams.\"\n  {groups}\n  {legalLinks}\n  copyright=\"© 2026 Acme Inc.\"\n/>\n"
+    }
+  ]
+}
