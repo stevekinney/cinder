@@ -290,6 +290,17 @@ describe('NavigationBar', () => {
     ).toBe('false');
   });
 
+  test('items region does not receive inert when menuToggle is present and menu is closed', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+
+    expect(container.querySelector('.cinder-navigation-bar__items')?.hasAttribute('inert')).toBe(
+      false,
+    );
+  });
+
   // ── menuToggle snippet and ARIA ──────────────────────────────────────────
 
   test('with menuToggle, toggle button receives aria-expanded="false" initially', () => {
@@ -334,6 +345,9 @@ describe('NavigationBar', () => {
     expect(
       container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
     ).toBe('true');
+    expect(container.querySelector('.cinder-navigation-bar__items')?.hasAttribute('inert')).toBe(
+      false,
+    );
   });
 
   test('clicking the toggle a second time closes the menu', async () => {
