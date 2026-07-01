@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
-import { dirname, join, resolve as resolvePath } from 'node:path';
+import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parse } from 'postcss';
@@ -342,8 +342,8 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
   // implementation. The previous inline ladder skipped any line starting
   // with `/*` even when `*/` closed on the same line, letting
   // `/* x */ import from '@cinder/markdown'` slip through.
-  for await (const relative of glob.scan({ cwd: packageRoot })) {
-    const filePath = join(packageRoot, relative);
+  for await (const scriptPath of glob.scan({ cwd: packageRoot })) {
+    const filePath = join(packageRoot, scriptPath);
     const content = await Bun.file(filePath).text();
     if (!content.includes('@cinder/')) continue;
     const scanState: CommentScanState = { inBlockComment: false };
@@ -355,7 +355,7 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
       }
     }
     if (offenderLine !== undefined) {
-      offenders.push(`${relative}  ←  ${offenderLine.slice(0, 120)}`);
+      offenders.push(`${scriptPath}  ←  ${offenderLine.slice(0, 120)}`);
     }
   }
   if (offenders.length > 0) {
@@ -386,6 +386,59 @@ async function assertUpstreamReexportsResolveInTarball(extractedRoot: string): P
   }
   if (missing.length > 0) {
     fail(`tarball missing upstream re-export artifacts:\n  ${missing.join('\n  ')}`);
+  }
+}
+
+type SourceMapReference = {
+  line: number;
+  reference: string;
+};
+
+function isResolvableRelativeSourceMapReference(reference: string): boolean {
+  if (!reference.endsWith('.map')) return false;
+  if (reference.startsWith('data:')) return false;
+  if (reference.startsWith('file:')) return false;
+  return !/^[a-z]+:\/\//iu.test(reference);
+}
+
+function getSourceMapReferences(content: string): SourceMapReference[] {
+  const references: SourceMapReference[] = [];
+  const lines = content.split('\n');
+  for (const [index, line] of lines.entries()) {
+    const lineCommentMatch = line.match(/^\s*\/\/[#@]\s*sourceMappingURL=([^\s]+)\s*$/u);
+    if (lineCommentMatch?.[1] && isResolvableRelativeSourceMapReference(lineCommentMatch[1])) {
+      references.push({ line: index + 1, reference: lineCommentMatch[1] });
+      continue;
+    }
+
+    const blockCommentMatch = line.match(/^\s*\/\*#\s*sourceMappingURL=([^*\s]+)\s*\*\/\s*$/u);
+    if (blockCommentMatch?.[1] && isResolvableRelativeSourceMapReference(blockCommentMatch[1])) {
+      references.push({ line: index + 1, reference: blockCommentMatch[1] });
+    }
+  }
+  return references;
+}
+
+async function assertNoDanglingSourceMapComments(extractedRoot: string): Promise<void> {
+  const packageRoot = join(extractedRoot, 'package');
+  const glob = new Glob('dist/**/*.{js,mjs,cjs}');
+  const offenders: string[] = [];
+  for await (const scriptPath of glob.scan({ cwd: packageRoot })) {
+    const filePath = join(packageRoot, scriptPath);
+    const content = await Bun.file(filePath).text();
+    if (!content.includes('sourceMappingURL=')) continue;
+    for (const reference of getSourceMapReferences(content)) {
+      const resolvedReferencePath = resolvePath(dirname(filePath), reference.reference);
+      const pathFromPackageRoot = relative(packageRoot, resolvedReferencePath);
+      const resolvesInsidePackageRoot =
+        pathFromPackageRoot === '' ||
+        (!pathFromPackageRoot.startsWith('..') && !pathFromPackageRoot.startsWith('/'));
+      if (resolvesInsidePackageRoot && existsSync(resolvedReferencePath)) continue;
+      offenders.push(`${scriptPath}:${reference.line} -> ${reference.reference}`);
+    }
+  }
+  if (offenders.length > 0) {
+    fail(`tarball contains dangling sourceMappingURL comments:\n  ${offenders.join('\n  ')}`);
   }
 }
 
@@ -1655,6 +1708,7 @@ try {
     await assertPackedManifestInvariants(tarballInspectionDirectory);
     await assertNoQuotedCinderReferences(tarballInspectionDirectory);
     await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
+    await assertNoDanglingSourceMapComments(tarballInspectionDirectory);
     process.stdout.write('[validate-consumers] publish-path invariants OK.\n');
   } finally {
     // Both directories carry hundreds of MB of extracted/staged artifacts;
