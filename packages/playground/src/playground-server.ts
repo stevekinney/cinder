@@ -143,6 +143,22 @@ let shellBuildPromise: Promise<string | null> | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
 /**
+ * True when the shell bundle's cached entry may be out of date. Set by
+ * `invalidateCachesForChange` for `components`/`shell`-scope changes;
+ * cleared by `buildShellBundle` only after a compile that succeeds AND isn't
+ * itself racing a newer invalidation.
+ *
+ * Deliberately NOT the same treatment as `pageEntryByName`/`pageArtifactByPath`
+ * (which get cleared outright): the shell is critical infrastructure — losing
+ * it blanks the entire playground, not just one component's doc page — so
+ * `buildShellBundle` attempts a fresh compile while this is true but falls
+ * back to serving the last-good cached shell if that attempt fails, instead
+ * of 404ing. This matches the pre-redesign rebuild path's behavior, which
+ * only swapped the shell bundle on a successful compile.
+ */
+let shellStale = false;
+
+/**
  * Family identifier used by `findArtifactForFamily` to constrain which
  * artifacts a given route may serve. Each family corresponds to one of the
  * three artifact maps.
@@ -372,20 +388,31 @@ function invalidateCachesForChange(scope: ChangeScope): void {
     return;
   }
 
-  // `components` and `shell` both clear every page bundle — see the
-  // `ChangeScope` doc comment for why a narrower scope isn't safe here.
+  // `components` and `shell` have an IDENTICAL clearing footprint — both
+  // clear every page bundle (see the `ChangeScope` doc comment for why a
+  // narrower page scope isn't safe) AND mark the shell stale. The shell
+  // isn't `components`-scope-exempt: `shell-app/sidebar.svelte`,
+  // `top-bar.svelte`, and `landing-page.svelte` all import the full
+  // component barrel (`../../../components/src/index.ts`), so a
+  // components-package change can affect the shell's own compiled output,
+  // not just page bundles. The only difference between the two scopes is
+  // which SSE event to emit: `shell-reload` forces a live browser reload
+  // (needed when shell-app sources themselves changed); `reload` doesn't
+  // (a components-only change still leaves the shell CACHE fresh for
+  // whenever a real reload next happens, without disrupting the current
+  // session on every component edit).
   pageEntryByName.clear();
   pageArtifactByPath.clear();
   pageBuildPromiseByKey.clear();
 
-  if (scope.kind === 'shell') {
-    shellEntryByName.clear();
-    shellArtifactByPath.clear();
-    shellBuildPromise = null;
-    triggerReload('shell-reload');
-  } else {
-    triggerReload('reload');
-  }
+  // See `shellStale`'s doc comment for why this marks staleness rather than
+  // clearing `shellEntryByName`/`shellArtifactByPath` outright. Still clear
+  // the in-flight dedup slot for the same reason as `scenarioBuildPromiseByKey`
+  // above — a post-invalidation request must not join a pre-edit build.
+  shellStale = true;
+  shellBuildPromise = null;
+
+  triggerReload(scope.kind === 'shell' ? 'shell-reload' : 'reload');
 }
 
 /** Set of active SSE stream controllers. */
@@ -631,6 +658,11 @@ async function buildBundleUncached(
   const exists = await file.exists();
   if (!exists) return null;
 
+  // Captured before the (potentially slow) compile so we can tell, after it
+  // resolves, whether an invalidation raced past us — see the publish guard
+  // below.
+  const generationAtStart = rebuildGeneration;
+
   // Bun's `naming` template uses the entrypoint basename for `[name]`. To
   // emit the entry as `bundle-<name>-<scenario>.js` (disjoint from the
   // page-bundle family's `page-<name>.js`) we write a tiny re-export shim
@@ -666,8 +698,16 @@ async function buildBundleUncached(
       return null;
     }
 
+    // Chunk filenames are content-hashed, so publishing them is always safe
+    // even if a newer invalidation raced past us — the bytes are identical.
     for (const [path, code] of entry.artifacts) scenarioArtifactByPath.set(path, code);
-    bundleEntryByKey.set(cacheKey, entry.entryPath);
+    // Only publish the entry pointer when we're not racing a newer
+    // invalidation. Without this guard, a build that straddles an
+    // invalidation would resurrect a stale `bundleEntryByKey` entry right
+    // after `invalidateCachesForChange` cleared it.
+    if (generationAtStart === rebuildGeneration) {
+      bundleEntryByKey.set(cacheKey, entry.entryPath);
+    }
     return entry.entryCode;
   } finally {
     // Recursive remove handles intermediate files Bun might emit and is
@@ -1036,24 +1076,41 @@ async function compileShellBundleArtifacts(): Promise<{
 /**
  * Lazy-build wrapper: compile the shell bundle and publish into shared
  * caches. Used by `/shell-bundle/shell.js` as a fallback when the shell
- * bundle isn't already cached. Same race-discipline as `buildPageBundle`
- * (see the doc-comment there): skip the entry-name publish if an
- * invalidation landed during the compile. De-dupes concurrent callers via
- * `shellBuildPromise` (a single slot — there's only ever one shell bundle).
+ * bundle isn't already cached, or when `shellStale` is set. Same
+ * race-discipline as `buildPageBundle` (see the doc-comment there): skip the
+ * entry-name publish if an invalidation landed during the compile. De-dupes
+ * concurrent callers via `shellBuildPromise` (a single slot — there's only
+ * ever one shell bundle).
+ *
+ * Unlike `buildPageBundle`, a failed compile does NOT surface as a miss: it
+ * falls back to the last-good cached shell (if any) instead — see
+ * `shellStale`'s doc comment for why the shell specifically needs this.
  */
 async function buildShellBundle(): Promise<string | null> {
   const cachedEntryPath = shellEntryByName.get('shell');
-  if (cachedEntryPath) {
-    const cached = shellArtifactByPath.get(cachedEntryPath);
-    if (cached !== undefined) return cached;
-  }
+  const cachedCode =
+    cachedEntryPath !== undefined ? shellArtifactByPath.get(cachedEntryPath) : undefined;
+  if (cachedCode !== undefined && !shellStale) return cachedCode;
 
   if (shellBuildPromise !== null) return shellBuildPromise;
 
   const buildPromise: Promise<string | null> = (async () => {
     const generationAtStart = rebuildGeneration;
-    const entry = await compileShellBundleArtifacts();
-    if (entry === null) return null;
+    // A Svelte syntax error makes the underlying `Bun.build()` call THROW
+    // rather than resolve with `{ success: false }` — `.catch()` converts
+    // that into the same graceful-failure path as a build that resolves
+    // unsuccessfully, so the fallback below actually runs instead of
+    // rejecting past this function into an uncaught-exception 500.
+    const entry = await compileShellBundleArtifacts().catch((error: unknown) => {
+      console.error('[playground] shell rebuild threw:', error);
+      return null;
+    });
+    if (entry === null) {
+      console.error(
+        '[playground] shell rebuild failed — serving last-good shell (if cached); will retry on next request',
+      );
+      return cachedCode ?? null;
+    }
 
     // Always publish chunks (see buildPageBundle's comment for the
     // rationale — the entry we're returning has static imports to
@@ -1061,6 +1118,7 @@ async function buildShellBundle(): Promise<string | null> {
     for (const [path, code] of entry.artifacts) shellArtifactByPath.set(path, code);
     if (generationAtStart === rebuildGeneration) {
       shellEntryByName.set('shell', entry.entryPath);
+      shellStale = false;
     }
     return entry.entryCode;
   })();
