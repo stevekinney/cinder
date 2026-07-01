@@ -456,7 +456,8 @@ function startWatcher(): FSWatcher[] {
     // Components tree: source or shared-utility changes can affect any page
     // bundle (see the `ChangeScope` doc comment for the verified
     // cross-component-import / shared-utility fan-out), so this always uses
-    // the 'components' scope. Does NOT touch shell caches.
+    // the 'components' scope — which ALSO marks the shell stale (shell-app
+    // UI imports the full component barrel; see `ChangeScope`'s doc comment).
     const srcPath = join(COMPONENTS_ROOT, 'src');
     created.push(
       watch(srcPath, { recursive: true }, (_event, filename) => {
@@ -1006,19 +1007,33 @@ async function buildFixtureBundle(
     );
     if (entry === null) return null;
 
+    // Always publish the artifacts (matches buildPageBundle's rationale —
+    // chunk filenames are content-hashed, so publishing is safe regardless
+    // of a racing invalidation) and always return the entry path to the
+    // caller that requested this compile: it genuinely succeeded, and the
+    // route that serves `/fixture-bundle/:filename.js` resolves by the
+    // SPECIFIC hashed path this response embeds, not through
+    // `fixtureEntryByKey` — so the fixture page still renders correctly
+    // even when the cache pointer below isn't updated.
+    for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
+    // Only update the "latest" entry-key pointer when we're not racing a
+    // newer invalidation, so a FUTURE lookup by `entryKey` doesn't resolve
+    // to this now-superseded build.
     if (generationAtStart === rebuildGeneration) {
-      for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
       fixtureEntryByKey.set(entryKey, entry.entryPath);
-      return entry.entryPath;
     }
-    return null;
+    return entry.entryPath;
   })();
 
   fixtureBuildPromiseByKey.set(cacheKey, buildPromise);
   try {
     return await buildPromise;
   } finally {
-    fixtureBuildPromiseByKey.delete(cacheKey);
+    // Only remove OUR OWN entry — see buildPageBundle's identical guard for
+    // why an unconditional delete would risk clobbering a newer build.
+    if (fixtureBuildPromiseByKey.get(cacheKey) === buildPromise) {
+      fixtureBuildPromiseByKey.delete(cacheKey);
+    }
   }
 }
 
