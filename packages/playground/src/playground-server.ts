@@ -128,6 +128,18 @@ const shellArtifactByPath = new Map<string, string>();
 const scenarioArtifactByPath = new Map<string, string>();
 const fixtureEntryByKey = new Map<string, string>();
 const fixtureArtifactByPath = new Map<string, string>();
+
+/**
+ * In-flight lazy-build promises, keyed per family so two near-simultaneous
+ * requests for the same not-yet-cached artifact (e.g. two browser tabs
+ * hitting the same freshly invalidated page right after a save) share one
+ * `Bun.build()` call instead of racing two. `pageBuildPromiseByKey` is keyed
+ * by component name, `scenarioBuildPromiseByKey` by `<name>/<scenario>`, and
+ * `shellBuildPromise` is a single slot (there's only ever one shell bundle).
+ */
+const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
+const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
+let shellBuildPromise: Promise<string | null> | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
 /**
@@ -221,219 +233,145 @@ let manifestCache: ComponentManifest[] | null = null;
 let manifestPromise: Promise<ComponentManifest[]> | null = null;
 
 /**
- * Watcher cache state machine.
- *
- * `rebuildGeneration` increments at the start of every rebuild. A rebuild's
- * publish step only mutates module-level caches if its generation is still
- * the current one — older rebuilds that finish after a newer one started
- * discard their results.
- *
- * `currentRebuild` is `null` when the caches are warm; non-null while a
- * rebuild is in flight. Route handlers `await currentRebuild.promise` before
- * serving so a request that lands mid-rebuild blocks on the newest in-flight
- * publish rather than observing a half-cleared cache.
+ * Invalidation generation. Bumped synchronously by `invalidateCachesForChange`
+ * every time the watcher invalidates caches (never by an async rebuild — there
+ * is no rebuild). The lazy per-artifact builders (`buildPageBundle`,
+ * `buildShellBundle`, `buildFixtureBundle`) capture this value before
+ * compiling and skip publishing their entry-name pointer if the generation
+ * moved on while they were mid-build, so a build that started just before an
+ * edit can't finish just after the cache clear and republish a stale pointer.
  */
 let rebuildGeneration = 0;
-let currentRebuild: { generation: number; promise: Promise<void> } | null = null;
-
-/**
- * Wait for any in-flight rebuild to finish publishing. Route handlers call
- * this before reading from the cache maps to guarantee cache coherence.
- *
- * Cheap when warm (synchronous null check); blocks just on the current
- * rebuild Promise when not warm.
- */
-async function awaitWarmCache(): Promise<void> {
-  if (currentRebuild !== null) await currentRebuild.promise;
-}
 
 /** Debounce timer for the watcher. */
 let rebuildDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 /** Whether any change in the current debounce window touched shell sources. */
-let pendingShellSourceChanged = false;
+let pendingShellChanged = false;
+/** Whether any change in the current debounce window touched components-package source. */
+let pendingComponentsChanged = false;
+/** Example component names (kebab) touched in the current debounce window. */
+const pendingExampleNames = new Set<string>();
 
 /**
- * Schedule a debounced rebuild. Coalesces save bursts: multiple calls within
- * the debounce window collapse into one rebuild that fires after the window
- * elapses with no further calls.
+ * The blast radius of a watched change, computed once per debounce window.
+ * Three tiers, widest wins:
  *
- * Per-call `shellSourceChanged` is OR-ed across the window so the publish
- * step knows whether to emit `shell-reload` after a successful shell rebuild.
+ * - `shell`: `shell-app/**` or `render-shell.ts` changed. Clears the shell
+ *   bundle plus every page bundle (every page bundle's generated entry mounts
+ *   `component-page.svelte`, and the "everything else under playground src"
+ *   fallback below also routes through here — see `startWatcher`).
+ * - `components`: a file under the components package's `src/` changed.
+ *   Clears every page bundle. This is conservative on purpose — components
+ *   cross-import each other directly (e.g. `newsletter-section.svelte`
+ *   imports `Button`/`Container`/`Input`) and share `utilities/*.ts` helpers
+ *   used almost everywhere, so a precise per-file reverse-dependency scope
+ *   isn't cheaply computable. Clearing is an O(1) Map operation, not a
+ *   rebuild — only the page(s) actually requested next pay a compile cost.
+ * - `examples`: only `.example.svelte` files changed. An example file
+ *   belongs to exactly one component, so this scope is precise.
  */
-function scheduleRebuild(shellSourceChanged: boolean): void {
-  pendingShellSourceChanged ||= shellSourceChanged;
+type ChangeScope =
+  | { kind: 'shell' }
+  | { kind: 'components' }
+  | { kind: 'examples'; names: ReadonlySet<string> };
+
+/**
+ * Schedule a debounced cache invalidation. Coalesces save bursts: multiple
+ * calls within the debounce window accumulate into one invalidation that
+ * fires after the window elapses with no further calls. Scopes accumulate
+ * (OR the booleans, union the example names) so the final invalidation
+ * reflects everything touched during the window, not just the last call.
+ */
+function scheduleRebuild(scope: ChangeScope): void {
+  if (scope.kind === 'shell') pendingShellChanged = true;
+  else if (scope.kind === 'components') pendingComponentsChanged = true;
+  else for (const name of scope.names) pendingExampleNames.add(name);
+
   if (rebuildDebounceTimer !== null) clearTimeout(rebuildDebounceTimer);
   rebuildDebounceTimer = setTimeout(() => {
     rebuildDebounceTimer = null;
-    const shellChanged = pendingShellSourceChanged;
-    pendingShellSourceChanged = false;
-    startRebuild(shellChanged);
+    const shellChanged = pendingShellChanged;
+    const componentsChanged = pendingComponentsChanged;
+    const exampleNames = new Set(pendingExampleNames);
+    pendingShellChanged = false;
+    pendingComponentsChanged = false;
+    pendingExampleNames.clear();
+
+    if (shellChanged) invalidateCachesForChange({ kind: 'shell' });
+    else if (componentsChanged) invalidateCachesForChange({ kind: 'components' });
+    else if (exampleNames.size > 0) {
+      invalidateCachesForChange({ kind: 'examples', names: exampleNames });
+    }
   }, 100);
 }
 
 /**
- * Begin a rebuild. Increments the generation, stores `currentRebuild`, and
- * wires a finally hook to clear `currentRebuild` ONLY when this generation
- * remains the active one. Older generations whose promises resolve after
- * a newer rebuild started must not clobber state.
+ * Invalidate the cache entries affected by a change, sized to `scope`. This
+ * is deliberately NOT a rebuild: the previous implementation eagerly
+ * recompiled every sidebar component's page bundle (plus the shell) on every
+ * single watched change, which meant one saved file could trigger ~161
+ * concurrent `Bun.build()` calls — the actual cause of multi-gigabyte RSS
+ * spikes and Bun segfaults during local dev.
+ *
+ * Clearing a cache Map is O(1); the actual compile is deferred entirely to
+ * the existing per-route lazy build-and-cache fallback (`buildPageBundle`,
+ * `buildShellBundle`, `buildBundle`) the next time a request actually needs
+ * that artifact — the same mechanism already used today when a brand-new
+ * component is added after server start, or an eager pre-build failed.
+ *
+ * Runs fully synchronously (no `await` between steps) so no request can ever
+ * observe a half-invalidated cache — this is what makes it safe for route
+ * handlers to read the cache maps directly with no additional coordination.
  */
-function startRebuild(shellSourceChanged: boolean): void {
-  const generation = ++rebuildGeneration;
-  // A rebuild means component files may have been added, renamed, or removed,
-  // so the cached discovery scans (component list + example counts) are now
-  // potentially stale. Drop them in lockstep with the generation bump so the
-  // next `/`, `/c/:name`, or `/page/:name` request re-scans the filesystem.
+function invalidateCachesForChange(scope: ChangeScope): void {
+  // Bump first: a lazy build already in flight captured the OLD generation
+  // and will skip publishing its entry-name pointer once it notices the
+  // generation moved on (see `buildPageBundle` et al.), so it can't
+  // republish a stale pointer after the clears below.
+  rebuildGeneration += 1;
+
+  // Component files may have been added, renamed, or removed — re-scan on
+  // next request.
   invalidateDiscoveryCache();
-  // The caught chain — NOT the raw rebuild promise — is what route handlers
-  // await via `awaitWarmCache`. If we stored the raw promise and it rejected,
-  // every blocked route handler would see the rejection re-thrown into its
-  // own `await`. Attaching `.catch()` to a forked branch doesn't prevent
-  // that — only the chain that owns the catch swallows the error. So we
-  // store the chained version where the catch lives.
-  const settled = repopulateBundleCaches(generation, shellSourceChanged)
-    .catch((error: unknown) => {
-      // repopulateBundleCaches() already handles its own errors and logs them;
-      // an unexpected throw past those handlers gets logged here.
-      console.error('[playground] rebuild promise rejected unexpectedly:', error);
-    })
-    .finally(() => {
-      if (currentRebuild?.generation === generation) currentRebuild = null;
-    });
-  currentRebuild = { generation, promise: settled };
-}
-
-/**
- * Atomic rebuild: compile every bundle into local maps, then publish to the
- * shared module-level maps if (and only if) this rebuild's generation is
- * still the active one. See `startRebuild()` for ownership semantics and the
- * implementation plan for the full state-machine contract.
- *
- * Failure modes:
- * - Per-component page-bundle failure: logged; that component is absent from
- *   the published `pageEntryByName` map; the route's lazy-build fallback
- *   handles user requests for it.
- * - Shell-bundle failure: shell entries/artifacts NOT swapped; the previously
- *   published shell stays fully coherent; no `shell-reload` is emitted.
- * - Fatal error: nothing is published. Old artifacts continue serving.
- *
- * Emits exactly one SSE event per successful publish: `shell-reload` when
- * shell sources changed AND the shell build succeeded; `reload` otherwise.
- */
-async function repopulateBundleCaches(
-  generation: number,
-  shellSourceChanged: boolean,
-): Promise<void> {
-  const localPageEntries = new Map<string, string>();
-  const localShellEntries = new Map<string, string>();
-  const localPageArtifacts = new Map<string, string>();
-  const localShellArtifacts = new Map<string, string>();
-  let shellBuildSucceeded = false;
-  let fatalRebuildFailed = false;
-  const failedPages: string[] = [];
-
-  const rebuildStartedAt = Date.now();
-  console.log('[playground] rebuilding…');
-
-  try {
-    // Shell bundle.
-    try {
-      const shell = await compileShellBundleArtifacts();
-      if (shell !== null) {
-        localShellEntries.set('shell', shell.entryPath);
-        for (const [path, code] of shell.artifacts) localShellArtifacts.set(path, code);
-        shellBuildSucceeded = true;
-      }
-    } catch (error) {
-      console.error('[playground] shell rebuild failed:', error);
-    }
-
-    // Page bundles with per-component failure isolation. Sidebar components
-    // are a subset of all components, so we can pass the same set as the
-    // validation list — saves N redundant filesystem scans from
-    // compilePageBundleArtifacts re-discovering on each call.
-    const components = await discoverSidebarComponents();
-    const knownComponents = new Set(components);
-    const results = await Promise.allSettled(
-      components.map((name) => compilePageBundleArtifacts(name, knownComponents)),
-    );
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i]!;
-      const name = components[i]!;
-      if (result.status === 'fulfilled' && result.value !== null) {
-        localPageEntries.set(name, result.value.entryPath);
-        for (const [path, code] of result.value.artifacts) localPageArtifacts.set(path, code);
-      } else {
-        failedPages.push(name);
-      }
-    }
-  } catch (error) {
-    console.error('[playground] rebuild fatal error:', error);
-    fatalRebuildFailed = true;
-  }
-
-  // Publish guard: only the newest generation may publish. Stale rebuilds
-  // discard their work silently.
-  if (generation !== rebuildGeneration) return;
-  // Fatal error: do NOT touch caches at all.
-  if (fatalRebuildFailed) return;
-
-  // Manifest cache invalidation is part of the publish step — a stale
-  // rebuild that lost the generation race must NOT clear it, since a newer
-  // rebuild may already have populated a fresh manifest.
   manifestCache = null;
   manifestPromise = null;
-  // Dispose the shared ts-morph project so the next analyzeAll() rebuilds from
-  // fresh compiler state rather than reusing sources from before this rebuild.
+  // Dispose the shared ts-morph project so the next analyzeAll() rebuilds
+  // from fresh compiler state rather than reusing sources from before this
+  // change.
   resetProject();
 
-  // Atomic per-family swap. We .clear() then re-populate the existing Map
-  // instances so any reference captured by a route handler stays valid.
-  pageEntryByName.clear();
-  for (const [k, v] of localPageEntries) pageEntryByName.set(k, v);
-  pageArtifactByPath.clear();
-  for (const [k, v] of localPageArtifacts) pageArtifactByPath.set(k, v);
-  // Scenario builds are lazy (per-example), not part of the watcher rebuild.
-  // Clear them so stale per-scenario artifacts don't accumulate; they'll be
-  // rebuilt on next view-source toggle.
+  // Scenario and fixture builds are lazy (per-example / per-fixture) and were
+  // never part of the eager sweep. Clear them unconditionally on every
+  // invalidation tier — rebuilding one example or fixture on next request is
+  // cheap regardless of what changed.
   bundleEntryByKey.clear();
   scenarioArtifactByPath.clear();
   fixtureEntryByKey.clear();
   fixtureArtifactByPath.clear();
   fixtureBuildPromiseByKey.clear();
 
-  if (shellBuildSucceeded) {
+  if (scope.kind === 'examples') {
+    for (const name of scope.names) {
+      const entryPath = pageEntryByName.get(name);
+      pageEntryByName.delete(name);
+      if (entryPath !== undefined) pageArtifactByPath.delete(entryPath);
+    }
+    triggerReload('reload');
+    return;
+  }
+
+  // `components` and `shell` both clear every page bundle — see the
+  // `ChangeScope` doc comment for why a narrower scope isn't safe here.
+  pageEntryByName.clear();
+  pageArtifactByPath.clear();
+
+  if (scope.kind === 'shell') {
     shellEntryByName.clear();
-    for (const [k, v] of localShellEntries) shellEntryByName.set(k, v);
     shellArtifactByPath.clear();
-    for (const [k, v] of localShellArtifacts) shellArtifactByPath.set(k, v);
+    triggerReload('shell-reload');
+  } else {
+    triggerReload('reload');
   }
-  // If the shell build failed, BOTH shellEntryByName and shellArtifactByPath
-  // are untouched — the old, still-coherent shell stays intact.
-
-  if (failedPages.length > 0) {
-    console.error(`[playground] rebuild: failed components: ${failedPages.join(', ')}`);
-  }
-  if (shellSourceChanged && !shellBuildSucceeded) {
-    // The user edited a shell-app source but the rebuild produced no new
-    // shell bundle. Surface a prominent warning so it's clear from the
-    // terminal why the browser didn't pick up their change.
-    console.error(
-      '[playground] shell source changed but shell rebuild failed — running shell preserved; no shell-reload emitted',
-    );
-  }
-
-  // Completion log — only the publishing generation reaches this point (stale
-  // and fatal rebuilds returned early above), so this never reports timing for
-  // a superseded run. N counts the page bundles that landed in the cache, plus
-  // the shell bundle when its build succeeded this run.
-  const bundleCount = localPageEntries.size + (shellBuildSucceeded ? localShellEntries.size : 0);
-  const elapsedSeconds = ((Date.now() - rebuildStartedAt) / 1000).toFixed(2);
-  console.log(`[playground] rebuilt ${bundleCount} bundles in ${elapsedSeconds}s`);
-
-  // Emit exactly one event per publish. `shell-reload` only fires when shell
-  // sources actually changed AND the new shell bundle is in the cache.
-  if (shellSourceChanged && shellBuildSucceeded) triggerReload('shell-reload');
-  else triggerReload('reload');
 }
 
 /** Set of active SSE stream controllers. */
@@ -474,32 +412,40 @@ function startWatcher(): FSWatcher[] {
   const created: FSWatcher[] = [];
 
   try {
-    // Components tree: every change invalidates every page bundle (each
-    // example imports from the cinder workspace package which re-exports
-    // every component), but does NOT touch shell sources.
+    // Components tree: source or shared-utility changes can affect any page
+    // bundle (see the `ChangeScope` doc comment for the verified
+    // cross-component-import / shared-utility fan-out), so this always uses
+    // the 'components' scope. Does NOT touch shell caches.
     const srcPath = join(COMPONENTS_ROOT, 'src');
     created.push(
       watch(srcPath, { recursive: true }, (_event, filename) => {
-        if (filename) scheduleRebuild(false);
+        if (filename) scheduleRebuild({ kind: 'components' });
       }),
     );
 
-    // Examples directory: edits to `.example.svelte` files invalidate the
-    // corresponding component's page bundle. We don't try to be precise about
-    // which bundles to rebuild — `repopulateBundleCaches` rebuilds all sidebar
-    // components in parallel, which is fast and avoids stale-entry hazards.
+    // Examples directory: an edit to `<name>/<scenario>.example.svelte` can
+    // only ever affect that one component's page bundle, so the scope is
+    // precisely the touched component name (the first path segment).
     const examplesPath = join(PLAYGROUND_ROOT, 'src', 'examples');
     created.push(
       watch(examplesPath, { recursive: true }, (_event, filename) => {
-        if (filename) scheduleRebuild(false);
+        if (!filename) return;
+        const name = filename.replaceAll('\\', '/').split('/')[0];
+        if (name) scheduleRebuild({ kind: 'examples', names: new Set([name]) });
       }),
     );
 
     // Playground src tree: component-page.svelte, render-shell.ts, the
     // shell-app/ directory, analyze.ts, etc. Shell-source changes (paths
-    // under `shell-app/` or to `render-shell.ts`) flip the shellSourceChanged
-    // flag so the rebuild's publish step emits `shell-reload` instead of
-    // `reload`.
+    // under `shell-app/` or to `render-shell.ts`) use the 'shell' scope so
+    // the SSE event is `shell-reload` instead of `reload`. Everything else
+    // under playground src (component-page.svelte, and genuine server-logic
+    // files like discover.ts/analyze.ts) uses the 'components' scope: for
+    // component-page.svelte that's the correct footprint (it's embedded in
+    // every page bundle's generated entry, same as a components-package
+    // change); for server-logic files it's redundant with `bun --watch`
+    // restarting the whole process (see the `dev` script) but harmless,
+    // since invalidation is now an O(1) Map-clear rather than a rebuild.
     const playgroundSrcPath = join(PLAYGROUND_ROOT, 'src');
     created.push(
       watch(playgroundSrcPath, { recursive: true }, (_event, filename) => {
@@ -512,7 +458,7 @@ function startWatcher(): FSWatcher[] {
           const normalizedFilename = filename.replaceAll('\\', '/');
           const isShellChange =
             normalizedFilename.startsWith('shell-app/') || normalizedFilename === 'render-shell.ts';
-          scheduleRebuild(isShellChange);
+          scheduleRebuild(isShellChange ? { kind: 'shell' } : { kind: 'components' });
         }
       }),
     );
@@ -636,6 +582,26 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
     if (cached !== undefined) return cached;
   }
 
+  // De-dupe concurrent requests for the same not-yet-cached scenario bundle
+  // (e.g. two browser tabs hitting the same freshly invalidated example)
+  // into a single Bun.build() call.
+  const existing = scenarioBuildPromiseByKey.get(cacheKey);
+  if (existing !== undefined) return existing;
+
+  const buildPromise = buildBundleUncached(componentName, scenario, cacheKey);
+  scenarioBuildPromiseByKey.set(cacheKey, buildPromise);
+  try {
+    return await buildPromise;
+  } finally {
+    scenarioBuildPromiseByKey.delete(cacheKey);
+  }
+}
+
+async function buildBundleUncached(
+  componentName: string,
+  scenario: string,
+  cacheKey: string,
+): Promise<string | null> {
   const examplePath = join(
     PLAYGROUND_ROOT,
     'src',
@@ -815,11 +781,13 @@ mount(ComponentPage, { target, props: { bareComponentModule: BareComponentModule
  * whose pre-build failed, or a brand-new component added after server start).
  *
  * Concurrency: captures `rebuildGeneration` before the build starts and
- * skips publishing if the watcher rebuilt during the compile (the watcher's
- * atomic publish is newer and shouldn't be overwritten by our older result).
- * The compiled artifacts are still returned to the caller, so the request
- * that triggered the lazy build is served correctly; only the shared cache
- * is left alone in the race-loss case.
+ * skips publishing the entry-name pointer if an invalidation landed during
+ * the compile (see `invalidateCachesForChange` — a newer invalidation means
+ * this result may already be stale). The compiled artifacts are still
+ * returned to the caller, so the request that triggered the lazy build is
+ * served correctly; only the shared entry-name cache is left alone in the
+ * race-loss case. De-dupes concurrent callers for the same component via
+ * `pageBuildPromiseByKey` so two near-simultaneous requests share one build.
  */
 async function buildPageBundle(
   componentName: string,
@@ -831,23 +799,36 @@ async function buildPageBundle(
     if (cached !== undefined) return cached;
   }
 
-  const generationAtStart = rebuildGeneration;
-  const entry = await compilePageBundleArtifacts(componentName, knownComponents);
-  if (entry === null) return null;
+  const existing = pageBuildPromiseByKey.get(componentName);
+  if (existing !== undefined) return existing;
 
-  // We always publish the artifacts: the entry code we're about to return
-  // statically imports content-hashed chunk URLs, and if those chunks aren't
-  // in the cache, the browser's chunk requests will 404. Chunk filenames are
-  // content-hashed, so writing them is safe even if a newer watcher rebuild
-  // already wrote the same chunks — the bytes are identical.
-  for (const [path, code] of entry.artifacts) pageArtifactByPath.set(path, code);
-  // Only update the entry-by-name mapping when we're not racing a newer
-  // rebuild. Stale generations skip this so the watcher's atomic publish
-  // remains authoritative for the entry-name → hashed-entry mapping.
-  if (generationAtStart === rebuildGeneration && currentRebuild === null) {
-    pageEntryByName.set(componentName, entry.entryPath);
+  const buildPromise = (async () => {
+    const generationAtStart = rebuildGeneration;
+    const entry = await compilePageBundleArtifacts(componentName, knownComponents);
+    if (entry === null) return null;
+
+    // We always publish the artifacts: the entry code we're about to return
+    // statically imports content-hashed chunk URLs, and if those chunks
+    // aren't in the cache, the browser's chunk requests will 404. Chunk
+    // filenames are content-hashed, so writing them is safe even if a newer
+    // invalidation already cleared and re-populated the same chunks — the
+    // bytes are identical.
+    for (const [path, code] of entry.artifacts) pageArtifactByPath.set(path, code);
+    // Only update the entry-by-name mapping when we're not racing a newer
+    // invalidation. A stale generation skips this so it can't republish a
+    // pointer to now-invalidated content.
+    if (generationAtStart === rebuildGeneration) {
+      pageEntryByName.set(componentName, entry.entryPath);
+    }
+    return entry.entryCode;
+  })();
+
+  pageBuildPromiseByKey.set(componentName, buildPromise);
+  try {
+    return await buildPromise;
+  } finally {
+    pageBuildPromiseByKey.delete(componentName);
   }
-  return entry.entryCode;
 }
 
 function relativeImportSpecifier(fromDirectory: string, targetPath: string): string {
@@ -960,7 +941,7 @@ async function buildFixtureBundle(
     );
     if (entry === null) return null;
 
-    if (generationAtStart === rebuildGeneration && currentRebuild === null) {
+    if (generationAtStart === rebuildGeneration) {
       for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
       fixtureEntryByKey.set(entryKey, entry.entryPath);
       return entry.entryPath;
@@ -1031,8 +1012,9 @@ async function compileShellBundleArtifacts(): Promise<{
  * Lazy-build wrapper: compile the shell bundle and publish into shared
  * caches. Used by `/shell-bundle/shell.js` as a fallback when the shell
  * bundle isn't already cached. Same race-discipline as `buildPageBundle`
- * (see the doc-comment there): skip the shared-cache publish if the
- * watcher rebuilt during the compile.
+ * (see the doc-comment there): skip the entry-name publish if an
+ * invalidation landed during the compile. De-dupes concurrent callers via
+ * `shellBuildPromise` (a single slot — there's only ever one shell bundle).
  */
 async function buildShellBundle(): Promise<string | null> {
   const cachedEntryPath = shellEntryByName.get('shell');
@@ -1041,18 +1023,28 @@ async function buildShellBundle(): Promise<string | null> {
     if (cached !== undefined) return cached;
   }
 
-  const generationAtStart = rebuildGeneration;
-  const entry = await compileShellBundleArtifacts();
-  if (entry === null) return null;
+  if (shellBuildPromise !== null) return shellBuildPromise;
 
-  // Always publish chunks (see buildPageBundle's comment for the rationale —
-  // the entry we're returning has static imports to content-hashed chunks
-  // that must be servable).
-  for (const [path, code] of entry.artifacts) shellArtifactByPath.set(path, code);
-  if (generationAtStart === rebuildGeneration && currentRebuild === null) {
-    shellEntryByName.set('shell', entry.entryPath);
+  shellBuildPromise = (async () => {
+    const generationAtStart = rebuildGeneration;
+    const entry = await compileShellBundleArtifacts();
+    if (entry === null) return null;
+
+    // Always publish chunks (see buildPageBundle's comment for the
+    // rationale — the entry we're returning has static imports to
+    // content-hashed chunks that must be servable).
+    for (const [path, code] of entry.artifacts) shellArtifactByPath.set(path, code);
+    if (generationAtStart === rebuildGeneration) {
+      shellEntryByName.set('shell', entry.entryPath);
+    }
+    return entry.entryCode;
+  })();
+
+  try {
+    return await shellBuildPromise;
+  } finally {
+    shellBuildPromise = null;
   }
-  return entry.entryCode;
 }
 
 /**
@@ -1333,7 +1325,6 @@ async function renderFixturePageResponse(
   const fixtureFilePath = resolveFixtureFilePath(componentName, fixturesRoot);
   let fixtureFile;
   try {
-    await awaitWarmCache();
     fixtureFile = await loadFixtureFile(fixtureFilePath);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1452,7 +1443,6 @@ export async function handleRequest(request: Request): Promise<Response> {
 
   // GET /ready
   if (pathname === '/ready') {
-    await awaitWarmCache();
     return new Response('ready', { headers: { 'Content-Type': 'text/plain' } });
   }
 
@@ -1529,7 +1519,6 @@ export async function handleRequest(request: Request): Promise<Response> {
   // GET /bundle/:name/:scenario.js
   const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\/([^/]+)\.js$/);
   if (bundleMatch) {
-    await awaitWarmCache();
     const componentName = bundleMatch[1]!;
     const scenario = bundleMatch[2]!;
     if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
@@ -1557,13 +1546,11 @@ export async function handleRequest(request: Request): Promise<Response> {
   //      findArtifact to walk every family.
   //
   // Resolution order: family-map lookup first (cheap, no build), then
-  // entry-name lookup with a build fallback. The state-machine guard above
-  // ensured caches are coherent before we got here.
+  // entry-name lookup with a build fallback. Cache invalidation is fully
+  // synchronous (see `invalidateCachesForChange`), so there's no in-flight
+  // rebuild window to guard against here.
   const pageBundleMatch = pathname.match(/^\/page-bundle\/([A-Za-z0-9_-]+)\.js$/);
   if (pageBundleMatch) {
-    // Block on any in-flight watcher rebuild so we never observe a
-    // half-cleared cache. Cheap (sync null check) when warm.
-    await awaitWarmCache();
     const filename = pageBundleMatch[1]!;
     const directHit = findArtifactForFamily('page', `${filename}.js`);
     if (directHit !== undefined) {
@@ -1592,7 +1579,6 @@ export async function handleRequest(request: Request): Promise<Response> {
   // GET /fixture-bundle/<filename>.js — fixture-page entry and chunks.
   const fixtureBundleMatch = pathname.match(/^\/fixture-bundle\/([A-Za-z0-9_-]+)\.js$/);
   if (fixtureBundleMatch) {
-    await awaitWarmCache();
     const filename = fixtureBundleMatch[1]!;
     const directHit = findArtifactForFamily('fixture', `${filename}.js`);
     if (directHit !== undefined) {
@@ -1616,7 +1602,6 @@ export async function handleRequest(request: Request): Promise<Response> {
   //      live in any family map.
   const shellBundleMatch = pathname.match(/^\/shell-bundle\/([A-Za-z0-9_-]+)\.js$/);
   if (shellBundleMatch) {
-    await awaitWarmCache();
     const filename = shellBundleMatch[1]!;
     const directHit = findArtifactForFamily('shell', `${filename}.js`);
     if (directHit !== undefined) {
@@ -1649,7 +1634,6 @@ export async function handleRequest(request: Request): Promise<Response> {
   // leaves are covered through their parent examples instead of standalone
   // pages that would render "No examples found".
   if (pathname === '/api/manifest') {
-    await awaitWarmCache();
     const manifests =
       url.searchParams.get('standalone') === '1'
         ? await getStandaloneManifests()
@@ -1664,7 +1648,6 @@ export async function handleRequest(request: Request): Promise<Response> {
   if (apiManifestMatch) {
     const componentName = apiManifestMatch[1]!;
     if (!isSafeSegment(componentName)) return notFound();
-    await awaitWarmCache();
     const manifests = await getManifests();
     const manifest = manifests.find((m) => m.kebabName === componentName);
     if (manifest === undefined) return notFound(`Manifest for "${componentName}" not found`);
@@ -1678,7 +1661,6 @@ export async function handleRequest(request: Request): Promise<Response> {
   if (apiDocumentationMatch) {
     const componentName = apiDocumentationMatch[1]!;
     if (!isSafeSegment(componentName)) return notFound();
-    await awaitWarmCache();
     const manifests = await getManifests();
     const manifest = manifests.find((m) => m.kebabName === componentName);
     if (manifest === undefined) {
@@ -1829,6 +1811,49 @@ export function createHttpServerOnAvailablePort(
 }
 
 /**
+ * Maximum concurrent `Bun.build()` calls during the eager pre-build sweep
+ * (initial startup, or a `bun --watch` restart triggered by editing a
+ * server-logic file — see `startWatcher`'s doc comment). Unbounded
+ * concurrency across ~161 sidebar components is the same failure shape as
+ * the watcher's old eager rebuild-everything bug (multi-gigabyte RSS spikes,
+ * Bun segfaults) — this bounds the one remaining place that can still
+ * happen, without slowing down the common case (a save that only needs a
+ * cheap cache invalidation, handled entirely by `invalidateCachesForChange`).
+ */
+const EAGER_PREBUILD_CONCURRENCY = 6;
+
+/**
+ * Run `task` once per item with at most `limit` concurrent calls in flight.
+ * Returns one `PromiseSettledResult` per item, in input order — same shape
+ * as `Promise.allSettled`, but without ever holding more than `limit`
+ * `Bun.build()` calls live at once.
+ */
+async function mapWithConcurrencyLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  task: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = Array.from({ length: items.length });
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      try {
+        results[index] = { status: 'fulfilled', value: await task(items[index]!) };
+      } catch (error) {
+        results[index] = { status: 'rejected', reason: error };
+      }
+    }
+  }
+
+  const workerCount = Math.min(limit, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+/**
  * Pre-build every sidebar component's page bundle + the shell bundle.
  *
  * Per-component page failures are logged but do NOT abort startup — the
@@ -1854,8 +1879,8 @@ async function eagerPrebuildAll(): Promise<{
   // bundle target. Passing the set avoids N redundant glob scans during the
   // eager pre-build.
   const knownComponents = new Set(components);
-  const pagePromise = Promise.allSettled(
-    components.map((name) => buildPageBundle(name, knownComponents)),
+  const pagePromise = mapWithConcurrencyLimit(components, EAGER_PREBUILD_CONCURRENCY, (name) =>
+    buildPageBundle(name, knownComponents),
   );
 
   const [shellCode, pageResults] = await Promise.all([shellPromise, pagePromise]);
