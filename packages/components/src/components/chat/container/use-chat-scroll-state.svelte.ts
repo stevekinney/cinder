@@ -270,10 +270,50 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   }
 
   /**
+   * Forces every row to lay out at its real height before a programmatic
+   * scroll-to-bottom, then restores the content-visibility optimization once
+   * the scroll settles.
+   *
+   * Off-screen `.chat-message` rows use `content-visibility: auto` with a
+   * 180px estimate (`contain-intrinsic-size`) until they're painted. Calling
+   * `scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })` captures a
+   * target computed from those estimates; as the animation scrolls estimated
+   * rows into view, they resize to their real height, which shifts content
+   * under the fixed pixel target mid-flight — visible as a jerk right as the
+   * scroll finishes. Forcing layout up front (`data-cinder-force-visible`)
+   * makes the target accurate from the start.
+   *
+   * The `scrollend` listener restores the optimization as soon as the
+   * animation actually finishes; the timeout is a backstop for environments
+   * without `scrollend` support and for a zero-distance scroll (already at
+   * the bottom), where `scrollend` never fires at all.
+   */
+  function withForcedLayout(viewport: HTMLElement, scroll: () => void): void {
+    viewport.setAttribute('data-cinder-force-visible', '');
+    // Force a synchronous layout so scrollHeight (read inside `scroll`)
+    // reflects every row's real height, not the content-visibility estimate.
+    void viewport.offsetHeight;
+    scroll();
+
+    let settled = false;
+    const restore = () => {
+      if (settled) return;
+      settled = true;
+      viewport.removeEventListener('scrollend', restore);
+      viewport.removeAttribute('data-cinder-force-visible');
+    };
+    viewport.addEventListener('scrollend', restore, { once: true });
+    setTimeout(restore, reducedMotion.current ? 50 : 500);
+  }
+
+  /**
    * Scroll to the bottom of the viewport.
    */
   function scrollToBottom(viewport: HTMLElement | null): void {
-    viewport?.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
+    if (!viewport) return;
+    withForcedLayout(viewport, () => {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
+    });
   }
 
   /**
@@ -292,8 +332,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     // Prevent auto-scroll from interrupting the smooth scroll animation
     isUserScrolling = true;
 
-    const behavior = getScrollBehavior();
-    viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+    withForcedLayout(viewport, () => {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
+    });
     onReachBottom?.();
     onComplete?.();
 

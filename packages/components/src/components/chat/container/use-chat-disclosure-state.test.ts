@@ -1,10 +1,10 @@
 /**
- * Tests for use-chat-reasoning-state.svelte.ts (C4).
+ * Tests for use-chat-disclosure-state.svelte.ts.
  *
  * Covers:
- *   1. All reasoning blocks are collapsed by default.
- *   2. toggle() expands a collapsed reasoning block.
- *   3. toggle() collapses an expanded reasoning block.
+ *   1. All disclosures are collapsed by default.
+ *   2. toggle() expands a collapsed disclosure.
+ *   3. toggle() collapses an expanded disclosure.
  *   4. Expanding one block does not expand others.
  *   5. onRemeasureRow callback fires on toggle (with the toggled message id).
  *   6. onRemeasureRow fires both on expand and collapse.
@@ -21,39 +21,39 @@ setupHappyDom();
 // The module uses runes ($state) — it MUST be imported in the test harness so
 // the rune transform runs. The `setupHappyDom` call above ensures the happy-dom
 // environment is active before import.
-const { useChatReasoningState } = await import('./use-chat-reasoning-state.svelte.ts');
+const { useChatDisclosureState } = await import('./use-chat-disclosure-state.svelte.ts');
 
-describe('useChatReasoningState — initial state', () => {
+describe('useChatDisclosureState — initial state', () => {
   test('all message ids start collapsed', () => {
-    const state = useChatReasoningState({});
+    const state = useChatDisclosureState({});
     expect(state.isExpanded('msg-1')).toBe(false);
     expect(state.isExpanded('msg-2')).toBe(false);
   });
 });
 
-describe('useChatReasoningState — toggle', () => {
-  test('toggle() expands a collapsed reasoning block', () => {
-    const state = useChatReasoningState({});
+describe('useChatDisclosureState — toggle', () => {
+  test('toggle() expands a collapsed disclosure', () => {
+    const state = useChatDisclosureState({});
     state.toggle('msg-1');
     expect(state.isExpanded('msg-1')).toBe(true);
   });
 
-  test('toggle() collapses an expanded reasoning block', () => {
-    const state = useChatReasoningState({});
+  test('toggle() collapses an expanded disclosure', () => {
+    const state = useChatDisclosureState({});
     state.toggle('msg-1');
     state.toggle('msg-1');
     expect(state.isExpanded('msg-1')).toBe(false);
   });
 
   test('expanding one block does not expand another', () => {
-    const state = useChatReasoningState({});
+    const state = useChatDisclosureState({});
     state.toggle('msg-1');
     expect(state.isExpanded('msg-1')).toBe(true);
     expect(state.isExpanded('msg-2')).toBe(false);
   });
 
   test('multiple independent blocks can be expanded simultaneously', () => {
-    const state = useChatReasoningState({});
+    const state = useChatDisclosureState({});
     state.toggle('msg-1');
     state.toggle('msg-2');
     expect(state.isExpanded('msg-1')).toBe(true);
@@ -61,9 +61,9 @@ describe('useChatReasoningState — toggle', () => {
   });
 });
 
-describe('useChatReasoningState — reset', () => {
-  test('reset() collapses all expanded reasoning blocks', () => {
-    const state = useChatReasoningState({});
+describe('useChatDisclosureState — reset', () => {
+  test('reset() collapses all expanded disclosures', () => {
+    const state = useChatDisclosureState({});
     state.toggle('msg-1');
     state.toggle('msg-2');
     expect(state.isExpanded('msg-1')).toBe(true);
@@ -76,7 +76,7 @@ describe('useChatReasoningState — reset', () => {
   });
 
   test('toggle works normally after reset', () => {
-    const state = useChatReasoningState({});
+    const state = useChatDisclosureState({});
     state.toggle('msg-1');
     state.reset();
     state.toggle('msg-1');
@@ -84,10 +84,10 @@ describe('useChatReasoningState — reset', () => {
   });
 });
 
-describe('useChatReasoningState — remeasure callback', () => {
+describe('useChatDisclosureState — remeasure callback', () => {
   test('onRemeasureRow is called with the message id on expand', () => {
     const onRemeasureRow = mock((id: string) => id);
-    const state = useChatReasoningState({ onRemeasureRow });
+    const state = useChatDisclosureState({ onRemeasureRow });
     state.toggle('msg-a');
     expect(onRemeasureRow).toHaveBeenCalledTimes(1);
     expect(onRemeasureRow).toHaveBeenCalledWith('msg-a');
@@ -95,7 +95,7 @@ describe('useChatReasoningState — remeasure callback', () => {
 
   test('onRemeasureRow is called with the message id on collapse', () => {
     const onRemeasureRow = mock((id: string) => id);
-    const state = useChatReasoningState({ onRemeasureRow });
+    const state = useChatDisclosureState({ onRemeasureRow });
     state.toggle('msg-a'); // expand
     state.toggle('msg-a'); // collapse
     expect(onRemeasureRow).toHaveBeenCalledTimes(2);
@@ -104,7 +104,7 @@ describe('useChatReasoningState — remeasure callback', () => {
   });
 
   test('no error when onRemeasureRow is not provided', () => {
-    const state = useChatReasoningState({});
+    const state = useChatDisclosureState({});
     // Should not throw
     expect(() => state.toggle('msg-b')).not.toThrow();
   });

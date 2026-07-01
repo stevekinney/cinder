@@ -228,9 +228,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-block-size: var(--cinder-touch-target-min, 44px);
-    padding-block: var(--cinder-space-2);
-    padding-inline: var(--cinder-space-4);
+    /* Match the cinder Button component's default (md) size scale, rather
+       than the AAA 44px touch target — the latter made these buttons look
+       like oversized outliers next to every other control in the system. */
+    min-block-size: var(--cinder-button-height-md);
+    padding-block: var(--cinder-button-padding-y-md);
+    padding-inline: var(--cinder-button-padding-x-md);
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-md);
     font-size: var(--cinder-text-sm);

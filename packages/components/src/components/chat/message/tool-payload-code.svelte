@@ -63,4 +63,14 @@
   .tool-payload-code :global(.cinder-code-block) {
     inline-size: 100%;
   }
+
+  /* Cap tall payloads so a large arguments/result blob scrolls in place instead
+   * of dominating the transcript. The viewport already owns overflow-x and is
+   * focusable (tabindex=0), so adding a block-axis cap here keeps it keyboard-
+   * scrollable on both axes without nesting scroll containers. Matches the
+   * reasoning block's scroll region cap. */
+  .tool-payload-code :global(.cinder-code-block__viewport) {
+    max-block-size: 16rem;
+    overflow-y: auto;
+  }
 </style>

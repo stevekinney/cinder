@@ -407,11 +407,18 @@
   );
 </script>
 
-<div style="display: grid; grid-template-columns: 22rem 1fr; gap: 1rem; align-items: start;">
+<!--
+  flex-wrap (not a media-query grid) so this collapses to a single stacked
+  column on narrow viewports without a breakpoint: controls and chat both
+  carry a flex-basis, and once their combined basis exceeds the container
+  width the chat pane wraps below the controls instead of squeezing into a
+  sliver next to a fixed-width column.
+-->
+<div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start;">
   <!-- Control panel -->
   <div
     data-testid="harness-controls"
-    style="display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface-inset);"
+    style="flex: 1 1 20rem; max-height: min(80vh, 44rem); overflow-y: auto; display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface-inset);"
   >
     <section style="display: grid; gap: 0.5rem;">
       <strong>Reply as the other side</strong>
@@ -446,7 +453,9 @@
       <Button data-testid="send-reply" onclick={() => sendReply(replyText)}>Send reply</Button>
     </section>
 
-    <section style="display: grid; gap: 0.5rem;">
+    <section
+      style="display: grid; gap: 0.5rem; border-block-start: 1px solid var(--cinder-border-muted); padding-block-start: 1rem;"
+    >
       <strong>Inject tool call</strong>
       <Input
         id="harness-tool-name"
@@ -484,41 +493,53 @@
       </Button>
     </section>
 
-    <section style="display: grid; gap: 0.4rem;">
+    <section
+      style="display: grid; gap: 0.5rem; border-block-start: 1px solid var(--cinder-border-muted); padding-block-start: 1rem;"
+    >
       <strong>Features</strong>
-      <Toggle id="t-attachments" label="attachments" bind:checked={attachments} />
-      <Toggle id="t-search" label="search" bind:checked={search} />
-      <Toggle id="t-copy" label="copy" bind:checked={copy} />
-      <Toggle id="t-editing" label="editing" bind:checked={editing} />
-      <Toggle id="t-retry" label="retry" bind:checked={retry} />
-      <Toggle id="t-surface" label="transparent surface" bind:checked={transparentSurface} />
-      <Toggle id="t-prompts" label="emptyPrompts" bind:checked={withEmptyPrompts} />
-      <Toggle id="t-autoreply" label="auto-reply on submit" bind:checked={autoReply} />
-      <Toggle id="t-virtualized" label="virtualized transcript" bind:checked={virtualized} />
-      <Toggle id="t-history" label="history pagination" bind:checked={historyEnabled} />
+      <div
+        style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 0.75rem;"
+      >
+        <Toggle id="t-attachments" label="Attachments" bind:checked={attachments} />
+        <Toggle id="t-search" label="Search" bind:checked={search} />
+        <Toggle id="t-copy" label="Copy" bind:checked={copy} />
+        <Toggle id="t-editing" label="Editing" bind:checked={editing} />
+        <Toggle id="t-retry" label="Retry" bind:checked={retry} />
+        <Toggle id="t-surface" label="Transparent surface" bind:checked={transparentSurface} />
+        <Toggle id="t-prompts" label="Empty prompts" bind:checked={withEmptyPrompts} />
+        <Toggle id="t-autoreply" label="Auto-reply on submit" bind:checked={autoReply} />
+        <Toggle id="t-virtualized" label="Virtualized transcript" bind:checked={virtualized} />
+        <Toggle id="t-history" label="History pagination" bind:checked={historyEnabled} />
+      </div>
     </section>
 
-    <section style="display: grid; gap: 0.4rem;">
+    <section
+      style="display: grid; gap: 0.5rem; border-block-start: 1px solid var(--cinder-border-muted); padding-block-start: 1rem;"
+    >
       <strong>State</strong>
-      <Button data-testid="seed-thread" variant="secondary" onclick={seedThread}
-        >Seed sample thread</Button
-      >
-      <Button data-testid="seed-failed" variant="secondary" onclick={seedFailedMessage}
-        >Seed failed message</Button
-      >
-      <Button data-testid="clear" variant="secondary" onclick={clearConversation}>Clear</Button>
-      <Button data-testid="scroll-top" variant="ghost" onclick={() => chat?.scrollToTop()}
-        >Scroll to top</Button
-      >
-      <Button data-testid="scroll-bottom" variant="ghost" onclick={() => chat?.scrollToBottom()}
-        >Scroll to bottom</Button
-      >
-      <Button data-testid="focus-input" variant="ghost" onclick={() => chat?.focusInput()}
-        >Focus composer</Button
-      >
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem;">
+        <Button data-testid="seed-thread" variant="secondary" onclick={seedThread}
+          >Seed sample thread</Button
+        >
+        <Button data-testid="seed-failed" variant="secondary" onclick={seedFailedMessage}
+          >Seed failed message</Button
+        >
+        <Button data-testid="clear" variant="secondary" onclick={clearConversation}>Clear</Button>
+        <Button data-testid="scroll-top" variant="ghost" onclick={() => chat?.scrollToTop()}
+          >Scroll to top</Button
+        >
+        <Button data-testid="scroll-bottom" variant="ghost" onclick={() => chat?.scrollToBottom()}
+          >Scroll to bottom</Button
+        >
+        <Button data-testid="focus-input" variant="ghost" onclick={() => chat?.focusInput()}
+          >Focus composer</Button
+        >
+      </div>
     </section>
 
-    <section style="display: grid; gap: 0.25rem;">
+    <section
+      style="display: grid; gap: 0.5rem; border-block-start: 1px solid var(--cinder-border-muted); padding-block-start: 1rem;"
+    >
       <strong>Event log</strong>
       <!-- tabindex=0 gives the scrollable region keyboard access (axe
            scrollable-region-focusable). A group label names it without a `log`
@@ -542,8 +563,11 @@
     </section>
   </div>
 
-  <!-- The Chat under test, in a fixed-height box so the thread overflows. -->
-  <div style="height: 34rem;">
+  <!-- The Chat under test. flex-grow 3 (vs the controls' 1) means it claims
+       most of any extra width once both fit on one line; the basis + generous
+       viewport-relative height keep it usable even when wrapped below the
+       controls on a narrow viewport. -->
+  <div style="flex: 3 1 24rem; min-width: 0; height: min(70vh, 42rem); min-height: 26rem;">
     <Chat
       bind:this={chat}
       id="harness-chat"
