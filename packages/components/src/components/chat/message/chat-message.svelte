@@ -75,6 +75,15 @@
     /** Called when the reasoning disclosure toggle is activated. */
     onreasoning?: (() => void) | undefined;
     /**
+     * Whether the tool-call card disclosure is expanded. Collapsed by default and
+     * owned by the container's tool-call disclosure state — kept separate from
+     * `expanded` (which drives markdown "Show more/less"), since a tool-call
+     * message never carries a markdown body.
+     */
+    toolCallExpanded?: boolean | undefined;
+    /** Called when the tool-call card disclosure toggle is activated. */
+    ontoolcalltoggle?: (() => void) | undefined;
+    /**
      * Suggestion labels to surface as clickable chips after the body.
      * Each entry maps to one `suggestion` part in the derived parts.
      */
@@ -116,6 +125,8 @@
     suggestions,
     reasoningExpanded = false,
     onreasoning,
+    toolCallExpanded = false,
+    ontoolcalltoggle,
     onsuggestionselect,
     tabindex,
     ...rest
@@ -285,8 +296,8 @@
         <ChatMessagePartsRenderer
           parts={bodyParts}
           {messagePart}
-          {expanded}
-          ontoggle={toggleExpanded}
+          expanded={toolCallExpanded}
+          ontoggle={ontoolcalltoggle}
           {onapprove}
           {ondeny}
           {reasoningExpanded}
@@ -381,6 +392,17 @@
      * Once scrolled into view, actual heights are cached and metrics become accurate. */
     content-visibility: auto;
     contain-intrinsic-size: auto 180px;
+  }
+
+  /* Escape hatch for a deliberate programmatic scroll-to-bottom
+     (use-chat-scroll-state.svelte.ts): while `.chat-timeline` carries
+     `data-cinder-force-visible`, every row lays out at its real height up
+     front instead of the 180px estimate above. Without this, off-screen rows
+     resize as they cross into view DURING an animated scrollTo(), which
+     shifts content under a fixed pixel target and reads as a jerk right as
+     the scroll finishes. */
+  :global(.chat-timeline[data-cinder-force-visible]) .chat-message {
+    content-visibility: visible;
   }
 
   /* Focus visible style for keyboard navigation */
@@ -574,7 +596,15 @@
   }
 
   /* Body */
+  /* Flex column so stacked body parts (e.g. a tool-call card followed by a
+     tool-approval prompt, or a step list + reasoning block + final markdown
+     answer) get visible breathing room between them via `gap`. Without this,
+     parts are plain block children with zero margin and sit flush against
+     each other. */
   .chat-message-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
     font-size: var(--cinder-text-base);
     line-height: 1.6;
   }
@@ -583,10 +613,13 @@
      markup (the parts spine now owns that body shape). */
 
   .chat-message-expand {
+    /* .chat-message-body is a flex column now (for inter-part gap); without
+       this, the default flex align-items:stretch would balloon this button to
+       the container's full width instead of shrinking to its label. */
+    align-self: flex-start;
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-0-5);
-    margin-top: var(--cinder-space-1);
     padding: var(--cinder-space-0-5) var(--cinder-space-1);
     min-height: var(--cinder-touch-target-min);
     font-size: var(--cinder-text-xs);
