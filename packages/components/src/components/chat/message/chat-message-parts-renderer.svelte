@@ -144,9 +144,10 @@
   }
 
   .chat-suggestions {
+    /* No padding-block-start: the parent .chat-message-body flex column now
+       supplies inter-part gap, so an own top padding here would double it. */
     display: flex;
     flex-wrap: wrap;
     gap: var(--cinder-space-2);
-    padding-block-start: var(--cinder-space-2);
   }
 </style>

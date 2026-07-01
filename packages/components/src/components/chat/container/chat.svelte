@@ -49,7 +49,7 @@
     type ChatRenderRow,
   } from './use-chat-message-groups.svelte.ts';
   import { ChatVirtualizer } from './use-chat-virtualizer.svelte.ts';
-  import { useChatReasoningState } from './use-chat-reasoning-state.svelte.ts';
+  import { useChatDisclosureState } from './use-chat-disclosure-state.svelte.ts';
   import type { VirtualItem } from '../../../_internal/virtual-item.ts';
   import { useChatTypingIndicator } from './use-chat-typing-indicator.svelte.ts';
   import { useChatReadReceipts } from './use-chat-read-receipts.svelte.ts';
@@ -167,23 +167,26 @@
   let approvedToolCallIds = $state(new Set<string>());
   let deniedToolCallIds = $state(new Set<string>());
 
-  // C4 — reasoning expansion state. UI-only; not written to the transcript.
-  // Collapsed by default; toggling triggers a virtualizer remeasure when wired.
-  const reasoningState = useChatReasoningState({
-    onRemeasureRow: (messageId) => {
-      if (!isVirtualized || !viewport) return;
-      // Find the message row DOM node via the stable id and re-measure it so
-      // the virtualizer updates the row's height after the disclosure transitions.
-      const rowNode = viewport.querySelector<HTMLElement>(`#message-${CSS.escape(messageId)}`);
-      if (rowNode) {
-        chatVirtualizer.measureElementNode(rowNode);
-      }
-    },
-  });
+  // Per-message disclosure state (reasoning blocks + tool-call cards). UI-only;
+  // never written to the transcript. Both are collapsed by default; toggling
+  // triggers a virtualizer remeasure so the row's height tracks the expanded
+  // content. Kept as separate instances so a message carrying both a reasoning
+  // block and a tool-call card discloses each independently.
+  function remeasureRow(messageId: string): void {
+    if (!isVirtualized || !viewport) return;
+    // Find the message row DOM node via the stable id and re-measure it so
+    // the virtualizer updates the row's height after the disclosure transitions.
+    const rowNode = viewport.querySelector<HTMLElement>(`#message-${CSS.escape(messageId)}`);
+    if (rowNode) {
+      chatVirtualizer.measureElementNode(rowNode);
+    }
+  }
+  const reasoningState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
+  const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
 
-  // Reset UI-only approval/reasoning/typing/receipt state on conversation change
-  // so stale approved/denied sets, expanded reasoning blocks, adapter-derived
-  // typing state, and accumulated read receipts from the previous conversation
+  // Reset UI-only approval/disclosure/typing/receipt state on conversation change
+  // so stale approved/denied sets, expanded reasoning/tool-call disclosures,
+  // adapter-derived typing state, and accumulated read receipts from the previous conversation
   // are cleared (their message ids can collide). The void reference to
   // `conversationId` at the start of the effect body is the Svelte 5 pattern for
   // declaring a reactive dependency on a derived without reading its value.
@@ -192,6 +195,7 @@
     approvedToolCallIds = new Set();
     deniedToolCallIds = new Set();
     reasoningState.reset();
+    toolCallState.reset();
     typingIndicatorState.reset();
     readReceiptsState.reset();
   });
@@ -1552,6 +1556,8 @@
         suggestions={derivedSuggestions}
         reasoningExpanded={reasoningState.isExpanded(message.id)}
         onreasoning={() => reasoningState.toggle(message.id)}
+        toolCallExpanded={toolCallState.isExpanded(message.id)}
+        ontoolcalltoggle={() => toolCallState.toggle(message.id)}
         onsuggestionselect={handleSuggestionSelect}
       >
         {#snippet actions()}

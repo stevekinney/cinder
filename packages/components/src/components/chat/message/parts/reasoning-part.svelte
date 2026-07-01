@@ -4,7 +4,7 @@
   export type ReasoningPartProps = {
     /** The reasoning render part to display. */
     part: ReasoningMessagePart;
-    /** Whether this reasoning block is expanded. Controlled by the parent (use-chat-reasoning-state). */
+    /** Whether this reasoning block is expanded. Controlled by the parent (use-chat-disclosure-state). */
     expanded?: boolean;
     /** Called when the disclosure toggle is activated. */
     ontoggle?: (() => void) | undefined;
