@@ -349,12 +349,24 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   fixtureEntryByKey.clear();
   fixtureArtifactByPath.clear();
   fixtureBuildPromiseByKey.clear();
+  // Also clear the in-flight dedup slot, not just the resolved-artifact
+  // caches above. A build already in flight when this invalidation fires
+  // keeps running (it'll skip publishing its entry pointer once it notices
+  // the generation moved on — see `buildPageBundle` et al.), but if we left
+  // its dedup entry in place, a request that arrives AFTER this invalidation
+  // (e.g. the browser's reload in response to the SSE event below) would
+  // find that stale in-flight promise and join it, serving pre-edit content
+  // as if it were fresh. Clearing the slot here — before `triggerReload`
+  // fires the event that causes the browser to re-request — guarantees any
+  // post-invalidation request starts a genuinely new build instead.
+  scenarioBuildPromiseByKey.clear();
 
   if (scope.kind === 'examples') {
     for (const name of scope.names) {
       const entryPath = pageEntryByName.get(name);
       pageEntryByName.delete(name);
       if (entryPath !== undefined) pageArtifactByPath.delete(entryPath);
+      pageBuildPromiseByKey.delete(name);
     }
     triggerReload('reload');
     return;
@@ -364,10 +376,12 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   // `ChangeScope` doc comment for why a narrower scope isn't safe here.
   pageEntryByName.clear();
   pageArtifactByPath.clear();
+  pageBuildPromiseByKey.clear();
 
   if (scope.kind === 'shell') {
     shellEntryByName.clear();
     shellArtifactByPath.clear();
+    shellBuildPromise = null;
     triggerReload('shell-reload');
   } else {
     triggerReload('reload');
@@ -593,7 +607,11 @@ async function buildBundle(componentName: string, scenario: string): Promise<str
   try {
     return await buildPromise;
   } finally {
-    scenarioBuildPromiseByKey.delete(cacheKey);
+    // Only remove OUR OWN entry — see buildPageBundle's identical guard for
+    // why an unconditional delete would risk clobbering a newer build.
+    if (scenarioBuildPromiseByKey.get(cacheKey) === buildPromise) {
+      scenarioBuildPromiseByKey.delete(cacheKey);
+    }
   }
 }
 
@@ -827,7 +845,14 @@ async function buildPageBundle(
   try {
     return await buildPromise;
   } finally {
-    pageBuildPromiseByKey.delete(componentName);
+    // Only remove OUR OWN entry. `invalidateCachesForChange` may have
+    // already deleted it (to stop a post-invalidation request from joining
+    // this now-stale build — see its doc comment), and a newer build may
+    // have since claimed the key; an unconditional delete here would
+    // clobber that newer build's still-in-flight entry.
+    if (pageBuildPromiseByKey.get(componentName) === buildPromise) {
+      pageBuildPromiseByKey.delete(componentName);
+    }
   }
 }
 
@@ -1025,7 +1050,7 @@ async function buildShellBundle(): Promise<string | null> {
 
   if (shellBuildPromise !== null) return shellBuildPromise;
 
-  shellBuildPromise = (async () => {
+  const buildPromise: Promise<string | null> = (async () => {
     const generationAtStart = rebuildGeneration;
     const entry = await compileShellBundleArtifacts();
     if (entry === null) return null;
@@ -1039,11 +1064,14 @@ async function buildShellBundle(): Promise<string | null> {
     }
     return entry.entryCode;
   })();
+  shellBuildPromise = buildPromise;
 
   try {
-    return await shellBuildPromise;
+    return await buildPromise;
   } finally {
-    shellBuildPromise = null;
+    // Only clear OUR OWN slot — see buildPageBundle's identical guard for
+    // why an unconditional null-out would risk clobbering a newer build.
+    if (shellBuildPromise === buildPromise) shellBuildPromise = null;
   }
 }
 
