@@ -1139,13 +1139,27 @@ async function buildShellBundle(): Promise<string | null> {
  */
 async function getManifests(): Promise<ComponentManifest[]> {
   if (manifestCache !== null) return manifestCache;
+  // Captured before awaiting so we can tell, once the analysis resolves,
+  // whether an invalidation raced past us — see the publish guard below.
+  const generationAtStart = rebuildGeneration;
   // Reuse the in-flight promise so concurrent callers don't each start analyzeAll().
   manifestPromise ??= analyzeAll(join(COMPONENTS_ROOT, 'src', 'components'));
+  const inFlight = manifestPromise;
   try {
-    manifestCache = await manifestPromise;
-    return manifestCache;
+    const manifests = await inFlight;
+    // Only publish if we're not racing a newer invalidation. Without this
+    // guard, an analysis that straddles an invalidation would resurrect
+    // stale prop metadata into `manifestCache` right after
+    // `invalidateCachesForChange` cleared it.
+    if (generationAtStart === rebuildGeneration) {
+      manifestCache = manifests;
+    }
+    return manifests;
   } finally {
-    manifestPromise = null;
+    // Only clear OUR OWN in-flight reference — see buildPageBundle's
+    // identical guard for why an unconditional null-out would risk
+    // clobbering a newer call's in-flight promise.
+    if (manifestPromise === inFlight) manifestPromise = null;
   }
 }
 
