@@ -467,13 +467,23 @@ function startWatcher(): FSWatcher[] {
 
     // Examples directory: an edit to `<name>/<scenario>.example.svelte` can
     // only ever affect that one component's page bundle, so the scope is
-    // precisely the touched component name (the first path segment).
+    // precisely the touched component name (the first path segment). Other
+    // files can also live directly under `examples/` (e.g.
+    // `featured-examples.ts`, a shared test-data registry) — those aren't
+    // scoped to one component, so they fall back to 'components' scope
+    // rather than being silently treated as a bogus per-component name.
     const examplesPath = join(PLAYGROUND_ROOT, 'src', 'examples');
     created.push(
       watch(examplesPath, { recursive: true }, (_event, filename) => {
         if (!filename) return;
-        const name = filename.replaceAll('\\', '/').split('/')[0];
-        if (name) scheduleRebuild({ kind: 'examples', names: new Set([name]) });
+        const normalizedFilename = filename.replaceAll('\\', '/');
+        if (normalizedFilename.endsWith('.test.ts') || normalizedFilename.startsWith('.')) return;
+        if (normalizedFilename.endsWith('.example.svelte')) {
+          const name = normalizedFilename.split('/')[0];
+          if (name) scheduleRebuild({ kind: 'examples', names: new Set([name]) });
+          return;
+        }
+        scheduleRebuild({ kind: 'components' });
       }),
     );
 
@@ -1149,8 +1159,9 @@ async function buildShellBundle(): Promise<string | null> {
 }
 
 /**
- * Return the full manifest array, using the module-level cache.
- * Cleared whenever bundleCache.clear() is called (i.e., on any src/ change).
+ * Return the full manifest array, using the module-level cache. Cleared by
+ * `invalidateCachesForChange` (which nulls `manifestCache`/`manifestPromise`
+ * and resets the shared ts-morph project) on every invalidation tier.
  */
 async function getManifests(): Promise<ComponentManifest[]> {
   if (manifestCache !== null) return manifestCache;
