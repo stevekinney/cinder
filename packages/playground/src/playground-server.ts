@@ -479,7 +479,19 @@ function startWatcher(): FSWatcher[] {
         const normalizedFilename = filename.replaceAll('\\', '/');
         if (normalizedFilename.endsWith('.test.ts') || normalizedFilename.startsWith('.')) return;
         if (normalizedFilename.endsWith('.example.svelte')) {
-          const name = normalizedFilename.split('/')[0];
+          const segments = normalizedFilename.split('/');
+          // Recursive `fs.watch` can report a nested edit as a bare basename
+          // with no directory segment on some platforms (observed on Linux
+          // with certain Bun versions) — in that case we can't tell which
+          // component owns it, so fall back to 'components' scope rather
+          // than treating the whole filename as a bogus per-component name
+          // (which would invalidate nothing real and leave the actual
+          // component's stale cache entry untouched).
+          if (segments.length < 2) {
+            scheduleRebuild({ kind: 'components' });
+            return;
+          }
+          const name = segments[0];
           if (name) scheduleRebuild({ kind: 'examples', names: new Set([name]) });
           return;
         }
