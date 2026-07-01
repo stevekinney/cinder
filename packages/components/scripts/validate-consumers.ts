@@ -389,6 +389,54 @@ async function assertUpstreamReexportsResolveInTarball(extractedRoot: string): P
   }
 }
 
+type SourceMapReference = {
+  line: number;
+  reference: string;
+};
+
+function isResolvableRelativeSourceMapReference(reference: string): boolean {
+  if (!reference.endsWith('.map')) return false;
+  if (reference.startsWith('data:')) return false;
+  if (reference.startsWith('file:')) return false;
+  return !/^[a-z]+:\/\//iu.test(reference);
+}
+
+function getSourceMapReferences(content: string): SourceMapReference[] {
+  const references: SourceMapReference[] = [];
+  const lines = content.split('\n');
+  for (const [index, line] of lines.entries()) {
+    const lineCommentMatch = line.match(/^\s*\/\/[#@]\s*sourceMappingURL=([^\s]+)\s*$/u);
+    if (lineCommentMatch?.[1] && isResolvableRelativeSourceMapReference(lineCommentMatch[1])) {
+      references.push({ line: index + 1, reference: lineCommentMatch[1] });
+      continue;
+    }
+
+    const blockCommentMatch = line.match(/^\s*\/\*#\s*sourceMappingURL=([^*\s]+)\s*\*\/\s*$/u);
+    if (blockCommentMatch?.[1] && isResolvableRelativeSourceMapReference(blockCommentMatch[1])) {
+      references.push({ line: index + 1, reference: blockCommentMatch[1] });
+    }
+  }
+  return references;
+}
+
+async function assertNoDanglingSourceMapComments(extractedRoot: string): Promise<void> {
+  const packageRoot = join(extractedRoot, 'package');
+  const glob = new Glob('dist/**/*.{js,mjs,cjs}');
+  const offenders: string[] = [];
+  for await (const relative of glob.scan({ cwd: packageRoot })) {
+    const filePath = join(packageRoot, relative);
+    const content = await Bun.file(filePath).text();
+    if (!content.includes('sourceMappingURL=')) continue;
+    for (const reference of getSourceMapReferences(content)) {
+      if (existsSync(join(dirname(filePath), reference.reference))) continue;
+      offenders.push(`${relative}:${reference.line} -> ${reference.reference}`);
+    }
+  }
+  if (offenders.length > 0) {
+    fail(`tarball contains dangling sourceMappingURL comments:\n  ${offenders.join('\n  ')}`);
+  }
+}
+
 type TarballExpectations = {
   required: string[];
   forbiddenPatterns: RegExp[];
@@ -1596,6 +1644,7 @@ try {
     await assertPackedManifestInvariants(tarballInspectionDirectory);
     await assertNoQuotedCinderReferences(tarballInspectionDirectory);
     await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
+    await assertNoDanglingSourceMapComments(tarballInspectionDirectory);
     process.stdout.write('[validate-consumers] publish-path invariants OK.\n');
   } finally {
     // Both directories carry hundreds of MB of extracted/staged artifacts;

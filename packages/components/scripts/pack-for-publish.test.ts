@@ -239,4 +239,28 @@ describe('buildPublishedManifest', () => {
     expect(stripped.strippedCount).toBe(1);
     expect(stripped.text).toBe('export const value = 1;\n');
   });
+
+  it('strips missing editor source-map comments while preserving existing references', () => {
+    const input =
+      [
+        'export const runtime = true;',
+        '//# sourceMappingURL=component-runtime.js.map',
+        '//# sourceMappingURL=attach.js.map',
+        '//# sourceMappingURL=editor.js.map',
+        '//# sourceMappingURL=types.js.map',
+        '//# sourceMappingURL=keymap-plugin.js.map',
+        '//# sourceMappingURL=commands.js.map',
+      ].join('\n') + '\n';
+    const stripped = stripDanglingSourceMapUrlComments(
+      input,
+      (reference) => reference === 'attach.js.map',
+    );
+    expect(stripped.strippedCount).toBe(5);
+    expect(stripped.text).toContain('//# sourceMappingURL=attach.js.map');
+    expect(stripped.text).not.toContain('component-runtime.js.map');
+    expect(stripped.text).not.toContain('editor.js.map');
+    expect(stripped.text).not.toContain('types.js.map');
+    expect(stripped.text).not.toContain('keymap-plugin.js.map');
+    expect(stripped.text).not.toContain('commands.js.map');
+  });
 });
