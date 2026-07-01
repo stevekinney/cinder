@@ -868,6 +868,7 @@ const SVELTEKIT_DEV_SSR_MARKERS = [
   'data-dev-ssr-card-body',
   'data-dev-ssr-sidebar-brand',
   'data-dev-ssr-sidebar-navigation',
+  'data-dev-ssr-side-navigation-item',
   'data-dev-ssr-tabs-namespace-trigger',
   'data-dev-ssr-tabs-namespace-panel',
   'data-dev-ssr-tabs-direct-trigger',
@@ -878,8 +879,21 @@ function formatHtmlExcerpt(body: string): string {
   return body.replace(/\s+/g, ' ').trim().slice(0, 1_000);
 }
 
+function extractCinderSourceMapWarnings(logOutput: string): string[] {
+  const warningLines = logOutput
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.includes('@lostgradient/cinder/dist/'))
+    .filter((line) => /(sourcemap|source map|\.js\.map)/i.test(line))
+    .filter((line) =>
+      /(missing|not found|can't resolve|could not read|enoent|points to missing)/i.test(line),
+    );
+  return [...new Set(warningLines)];
+}
+
 async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: string): Promise<void> {
   const httpPort = await pickEphemeralPort();
+  let devSsrAssertionsPassed = false;
   const devServer = Bun.spawn(
     ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(httpPort), '--strictPort'],
     {
@@ -893,6 +907,12 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       },
     },
   );
+  const devServerStdout = devServer.stdout
+    ? new Response(devServer.stdout).text()
+    : Promise.resolve('');
+  const devServerStderr = devServer.stderr
+    ? new Response(devServer.stderr).text()
+    : Promise.resolve('');
 
   try {
     await waitForUrl(`http://127.0.0.1:${httpPort}/`, 15_000, devServer);
@@ -915,9 +935,24 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
         `sveltekit-consumer ${label} /dev-ssr dev SSR missing marker(s): ${missingMarkers.join(', ')}\n${formatHtmlExcerpt(body)}`,
       );
     }
+
+    devSsrAssertionsPassed = true;
   } finally {
     devServer.kill();
     await devServer.exited;
+    const devServerOutput = `${await devServerStdout}\n${await devServerStderr}`;
+    const sourceMapWarnings = extractCinderSourceMapWarnings(devServerOutput);
+    if (sourceMapWarnings.length > 0) {
+      const warningMessage =
+        `sveltekit-consumer ${label} dev SSR emitted source-map warnings for published cinder dist artifacts:\n` +
+        sourceMapWarnings.map((warning) => `  ${warning}`).join('\n');
+      // Preserve the primary SSR failure if one occurred in the try block.
+      if (!devSsrAssertionsPassed) {
+        process.stderr.write(`[validate-consumers] ${warningMessage}\n`);
+      } else {
+        fail(warningMessage);
+      }
+    }
   }
 }
 

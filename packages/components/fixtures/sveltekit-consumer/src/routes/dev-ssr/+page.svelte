@@ -1,6 +1,6 @@
 <script lang="ts">
+  import { SideNavigation, SideNavigationItem, Sidebar } from '@lostgradient/cinder';
   import Card from '@lostgradient/cinder/card';
-  import Sidebar from '@lostgradient/cinder/sidebar';
   import Tab from '@lostgradient/cinder/tab';
   import TabList from '@lostgradient/cinder/tab-list';
   import TabPanel from '@lostgradient/cinder/tab-panel';
@@ -20,7 +20,11 @@
       <strong data-dev-ssr-sidebar-brand>Cinder workspace</strong>
     {/snippet}
     {#snippet navigation()}
-      <a href="/dev-ssr" data-dev-ssr-sidebar-navigation>Dev SSR route</a>
+      <SideNavigation ariaLabel="Workflow selection" data-dev-ssr-sidebar-navigation>
+        <SideNavigationItem href="/dev-ssr" active={true}>
+          <span data-dev-ssr-side-navigation-item>basicOrderWorkflow</span>
+        </SideNavigationItem>
+      </SideNavigation>
     {/snippet}
   </Sidebar>
 
