@@ -1812,7 +1812,7 @@
     color: var(--cinder-text-subtle);
   }
   .dx-stage__canvas {
-    padding: clamp(1.5rem, 4vw, 3rem);
+    padding: clamp(1rem, 2.5vw, 1.75rem);
   }
   .dx-stage__note {
     margin: 0;
@@ -1847,6 +1847,17 @@
   .example-preview {
     display: block;
     min-height: 2rem;
+  }
+  /* Frame chat examples so they read as a bounded chat surface — the way a
+     consumer would drop the Chat into a card in a real app. Docs-only: the
+     component itself stays unbordered so consumers control their own framing.
+     Scoped to the live `.dx-stage__canvas` (NOT `.snapshot-examples`) so the
+     visual-regression / axe snapshots keep capturing the bare component.
+     `.chat-container` only appears on the Chat page. */
+  .dx-stage__canvas .example-preview :global(.chat-container) {
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+    overflow: hidden;
   }
   .example-preview :global(.example-preview-row) {
     display: flex;

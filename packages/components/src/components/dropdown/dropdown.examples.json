@@ -12,8 +12,8 @@
     {
       "id": "placement",
       "title": "Placement",
-      "description": "Use top or bottom placements to keep the menu aligned with the trigger edge that makes sense for the surrounding layout.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n</script>\n\n<div style=\"display: grid; gap: 1rem; justify-items: start; align-items: start; min-height: 14rem; padding-block-start: 4rem;\">\n  <Dropdown id=\"dropdown-placement-top-end\" placement=\"top-end\">\n    <Dropdown.Trigger>Top-end</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item>Profile</Dropdown.Item>\n      <Dropdown.Item>Billing</Dropdown.Item>\n      <Dropdown.Item>Sign out</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n\n  <Dropdown id=\"dropdown-placement-bottom-start\" placement=\"bottom-start\">\n    <Dropdown.Trigger>Bottom-start</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item>Duplicate</Dropdown.Item>\n      <Dropdown.Item>Rename</Dropdown.Item>\n      <Dropdown.Item variant=\"danger\">Archive</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n</div>\n"
+      "description": "Use bottom-start or bottom-end placement to align the menu with whichever trigger edge fits the surrounding layout.",
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n</script>\n\n<div class=\"example-preview-row\">\n  <Dropdown id=\"dropdown-placement-bottom-start\" placement=\"bottom-start\">\n    <Dropdown.Trigger>Bottom-start</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item>Aligned to the left edge</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n\n  <Dropdown id=\"dropdown-placement-bottom-end\" placement=\"bottom-end\">\n    <Dropdown.Trigger>Bottom-end</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item>Aligned to the right edge</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n</div>\n"
     },
     {
       "id": "with-items",
