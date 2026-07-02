@@ -12,8 +12,8 @@
     {
       "id": "placement",
       "title": "Placement",
-      "description": "Use top or bottom placements to keep the menu aligned with the trigger edge that makes sense for the surrounding layout.",
-      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n</script>\n\n<div style=\"display: grid; gap: 1rem; justify-items: start; align-items: start; min-height: 14rem; padding-block-start: 4rem;\">\n  <Dropdown id=\"dropdown-placement-top-end\" placement=\"top-end\">\n    <Dropdown.Trigger>Top-end</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item>Profile</Dropdown.Item>\n      <Dropdown.Item>Billing</Dropdown.Item>\n      <Dropdown.Item>Sign out</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n\n  <Dropdown id=\"dropdown-placement-bottom-start\" placement=\"bottom-start\">\n    <Dropdown.Trigger>Bottom-start</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item>Duplicate</Dropdown.Item>\n      <Dropdown.Item>Rename</Dropdown.Item>\n      <Dropdown.Item variant=\"danger\">Archive</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n</div>\n"
+      "description": "bottom-start and bottom-end placement options.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n  let openStart = $state(false);\n  let openEnd = $state(false);\n</script>\n\n<div class=\"example-preview-row\">\n  <Dropdown bind:open={openStart} placement=\"bottom-start\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-start</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to left edge</div>\n  </Dropdown>\n\n  <Dropdown bind:open={openEnd} placement=\"bottom-end\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-end</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to right edge</div>\n  </Dropdown>\n</div>\n"
     },
     {
       "id": "with-items",
