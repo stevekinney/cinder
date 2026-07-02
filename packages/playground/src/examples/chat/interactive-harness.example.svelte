@@ -415,9 +415,17 @@
   sliver next to a fixed-width column.
 -->
 <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start;">
-  <!-- Control panel -->
-  <div
+  <!-- Control panel. tabindex=0 gives the scrollable region keyboard access
+       (axe scrollable-region-focusable) in addition to its normal focusable
+       descendants (inputs, buttons) — mirrors the Event log pattern below.
+       svelte:element keeps the rendered DOM as a div while avoiding the
+       static a11y warning for this focusable scroll-region pattern. -->
+  <svelte:element
+    this={'div'}
     data-testid="harness-controls"
+    role="group"
+    aria-label="Harness controls"
+    tabindex={0}
     style="flex: 1 1 20rem; min-width: 0; max-height: min(80vh, 44rem); overflow-y: auto; display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface-inset);"
   >
     <section style="display: grid; gap: 0.5rem;">
@@ -561,7 +569,7 @@
         {/each}
       </svelte:element>
     </section>
-  </div>
+  </svelte:element>
 
   <!-- The Chat under test. flex-grow 3 (vs the controls' 1) means it claims
        most of any extra width once both fit on one line; the basis + generous

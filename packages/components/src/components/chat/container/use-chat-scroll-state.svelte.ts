@@ -173,6 +173,10 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   // Non-reactive bookkeeping
   let scrollTicking = false;
   let isUserScrolling = false; // Prevents auto-scroll from interrupting user-initiated smooth scroll
+  // Cancel function for the in-flight withForcedLayout session, if any. A new
+  // session cancels the previous one's listeners/timer before starting its
+  // own — see withForcedLayout below for why this matters.
+  let activeForcedLayoutCancel: (() => void) | null = null;
 
   /**
    * Set atBottom state directly.
@@ -293,8 +297,18 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * optimization restored out from under it mid-flight, which would let
    * off-screen rows resize again before the scroll settles — the exact jerk
    * this exists to prevent.
+   *
+   * A second call before the first session settles (e.g. a double-click on
+   * jump-to-latest, or auto-scroll firing while a prior scroll is still in
+   * flight) cancels the earlier session's listeners/timer first. Without
+   * this, the OLDER session's own scrollend/backstop could still fire and
+   * strip the attribute while the NEWER scroll animation is still running —
+   * the same jerk this whole mechanism exists to prevent, just reintroduced
+   * by an overlapping call instead of a single long one.
    */
   function withForcedLayout(viewport: HTMLElement, scroll: () => void): void {
+    activeForcedLayoutCancel?.();
+
     viewport.setAttribute('data-cinder-force-visible', '');
     // Force a synchronous layout so scrollHeight (read inside `scroll`)
     // reflects every row's real height, not the content-visibility estimate.
@@ -304,12 +318,18 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     let backstop: ReturnType<typeof setTimeout>;
     const backstopDuration = reducedMotion.current ? 50 : 500;
 
-    const restore = () => {
+    function cancel() {
       if (settled) return;
       settled = true;
       clearTimeout(backstop);
       viewport.removeEventListener('scrollend', restore);
       viewport.removeEventListener('scroll', armBackstop);
+    }
+
+    const restore = () => {
+      if (settled) return;
+      cancel();
+      activeForcedLayoutCancel = null;
       viewport.removeAttribute('data-cinder-force-visible');
     };
 
@@ -318,6 +338,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       backstop = setTimeout(restore, backstopDuration);
     }
 
+    activeForcedLayoutCancel = cancel;
     viewport.addEventListener('scrollend', restore, { once: true });
     viewport.addEventListener('scroll', armBackstop, { passive: true });
     // Covers the zero-distance case (already at bottom): no scroll/scrollend
