@@ -244,6 +244,28 @@ describe('Dropdown', () => {
     expect(root?.getAttribute('data-cinder-placement')).toBe('bottom-start');
   });
 
+  test('compound dropdown reflects an explicit placement prop on the root element', () => {
+    const { container } = render(DropdownCompoundFixture, {
+      props: { placement: 'top-end' },
+    });
+
+    const root = container.querySelector('.cinder-dropdown');
+    expect(root?.getAttribute('data-cinder-placement')).toBe('top-end');
+  });
+
+  test('compound menu carries placement metadata used by the menu surface', async () => {
+    const { container } = render(DropdownCompoundFixture, {
+      props: { placement: 'top-end' },
+    });
+
+    const trigger = container.querySelector('.trigger');
+    expect(trigger).not.toBeNull();
+    await fireEvent.click(trigger as Element);
+
+    const menu = document.body.querySelector('.cinder-dropdown-menu');
+    expect(menu?.getAttribute('data-cinder-placement')).toBe('top-end');
+  });
+
   test('menu children content is rendered when open', () => {
     const { container } = render(Dropdown, {
       props: {
@@ -267,6 +289,32 @@ describe('Dropdown', () => {
     const triggerWrapper = container.querySelector('.cinder-dropdown__trigger');
     expect(triggerWrapper).not.toBeNull();
     expect(triggerWrapper?.textContent).toContain('Open Menu');
+  });
+
+  test('dropdown CSS defines explicit top placement rules for both compound and legacy popover surfaces', async () => {
+    const dropdownCss = await Bun.file(new URL('./dropdown.css', import.meta.url)).text();
+
+    expect(dropdownCss).toContain(
+      ".cinder-dropdown-menu[popover][data-cinder-placement='top-start']",
+    );
+    expect(dropdownCss).toContain(
+      ".cinder-dropdown-menu[popover][data-cinder-placement='top-end']",
+    );
+    expect(dropdownCss).toContain(
+      ".cinder-dropdown[data-cinder-placement='top-start'] .cinder-dropdown__menu[popover]",
+    );
+    expect(dropdownCss).toContain(
+      ".cinder-dropdown-menu[popover][data-cinder-placement='bottom-start']",
+    );
+    expect(dropdownCss).toContain(
+      ".cinder-dropdown[data-cinder-placement='top-end'] .cinder-dropdown__menu[popover]",
+    );
+    expect(dropdownCss).toContain(
+      ".cinder-dropdown[data-cinder-placement='top-start'] .cinder-dropdown__menu:not([popover])",
+    );
+    expect(dropdownCss).toContain(
+      ".cinder-dropdown[data-cinder-placement='top-end'] .cinder-dropdown__menu:not([popover])",
+    );
   });
 
   test('compound trigger wires menu ARIA to the button', () => {
@@ -651,10 +699,19 @@ describe('Dropdown', () => {
     );
   });
 
-  test('popover dropdown menu mirrors anchor edge in right-to-left direction', async () => {
+  test('popover dropdown menu preserves start/end anchoring in RTL', async () => {
     const css = await readDropdownCss();
     expect(css).toMatch(
-      /\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\s*\{[^}]*right:\s*auto;[^}]*left:\s*anchor\(left\);/,
+      /\.cinder-dropdown-menu\[popover\]\s*\{[^}]*inset-inline-end:\s*anchor\(right\);[^}]*inset-inline-start:\s*auto;/,
+    );
+    expect(css).toMatch(
+      /\.cinder-dropdown-menu\[popover\]\[data-cinder-placement='bottom-start'\]\s*\{[^}]*inset-inline-start:\s*anchor\(left\);[^}]*inset-inline-end:\s*auto;/,
+    );
+    expect(css).toMatch(
+      /\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='bottom-start'\],\s*\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='top-start'\]\s*\{[^}]*inset-inline-end:\s*anchor\(right\);[^}]*inset-inline-start:\s*auto;/,
+    );
+    expect(css).toMatch(
+      /\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='bottom-end'\],\s*\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='top-end'\]\s*\{[^}]*inset-inline-start:\s*anchor\(left\);[^}]*inset-inline-end:\s*auto;/,
     );
   });
 });

@@ -2,7 +2,7 @@ import type { Placement } from '@floating-ui/dom';
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 import type { AnchoredOverlayWidthMode } from '../../_internal/anchored-overlay.svelte.ts';
-export type DropdownPlacement = 'bottom-start' | 'bottom-end';
+export type DropdownPlacement = 'top-start' | 'top-end' | 'bottom-start' | 'bottom-end';
 export type DropdownContext = {
   get menuId(): string;
   get isOpen(): boolean;
@@ -26,7 +26,10 @@ type DropdownBaseProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
 type LegacyDropdownProps = DropdownBaseProps & {
   /** Controls the open state of the dropdown menu; bindable for controlled usage. */
   open?: boolean;
-  /** Preferred side of the trigger on which the menu opens. Default `bottom-start`. */
+  /**
+   * Preferred menu placement relative to the trigger. Default `bottom-start`.
+   * The rendered menu may still flip to stay within the viewport.
+   */
   placement?: DropdownPlacement;
   trigger: Snippet;
   children: Snippet;
@@ -36,6 +39,10 @@ type CompoundDropdownProps = DropdownBaseProps & {
   children?: Snippet;
   trigger?: never;
   open?: never;
-  placement?: never;
+  /**
+   * Preferred menu placement relative to the trigger. Default `bottom-start`.
+   * The rendered menu may still flip to stay within the viewport.
+   */
+  placement?: DropdownPlacement;
 };
 export type DropdownProps = LegacyDropdownProps | CompoundDropdownProps;

@@ -99,7 +99,7 @@
       return compoundTriggerElement;
     },
     get fallbackPlacement() {
-      return 'bottom-end' as const;
+      return placement;
     },
     get widthMode() {
       return 'menu' as const;
