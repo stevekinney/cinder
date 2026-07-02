@@ -1,27 +1,25 @@
 <script lang="ts" module>
   export const title = 'Placement';
-  export const description = 'bottom-start and bottom-end placement options.';
+  export const description =
+    'Use bottom-start or bottom-end placement to align the menu with whichever trigger edge fits the surrounding layout.';
 </script>
 
 <script lang="ts">
-  import { Button } from '@lostgradient/cinder/button';
   import { Dropdown } from '@lostgradient/cinder/dropdown';
-  let openStart = $state(false);
-  let openEnd = $state(false);
 </script>
 
 <div class="example-preview-row">
-  <Dropdown bind:open={openStart} placement="bottom-start">
-    {#snippet trigger()}
-      <Button variant="secondary">Bottom-start</Button>
-    {/snippet}
-    <div style="padding: 0.5rem 1rem; min-width: 140px;">Aligned to left edge</div>
+  <Dropdown id="dropdown-placement-bottom-start" placement="bottom-start">
+    <Dropdown.Trigger>Bottom-start</Dropdown.Trigger>
+    <Dropdown.Menu>
+      <Dropdown.Item>Aligned to the left edge</Dropdown.Item>
+    </Dropdown.Menu>
   </Dropdown>
 
-  <Dropdown bind:open={openEnd} placement="bottom-end">
-    {#snippet trigger()}
-      <Button variant="secondary">Bottom-end</Button>
-    {/snippet}
-    <div style="padding: 0.5rem 1rem; min-width: 140px;">Aligned to right edge</div>
+  <Dropdown id="dropdown-placement-bottom-end" placement="bottom-end">
+    <Dropdown.Trigger>Bottom-end</Dropdown.Trigger>
+    <Dropdown.Menu>
+      <Dropdown.Item>Aligned to the right edge</Dropdown.Item>
+    </Dropdown.Menu>
   </Dropdown>
 </div>
