@@ -418,7 +418,7 @@
   <!-- Control panel -->
   <div
     data-testid="harness-controls"
-    style="flex: 1 1 20rem; max-height: min(80vh, 44rem); overflow-y: auto; display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface-inset);"
+    style="flex: 1 1 20rem; min-width: 0; max-height: min(80vh, 44rem); overflow-y: auto; display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface-inset);"
   >
     <section style="display: grid; gap: 0.5rem;">
       <strong>Reply as the other side</strong>

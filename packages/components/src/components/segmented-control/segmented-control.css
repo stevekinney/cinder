@@ -20,7 +20,11 @@
 
   .cinder-segmented-control-container:has([data-cinder-full-width]) {
     display: flex;
-    width: 100%;
+    /* Logical, not physical `width` — mixing the two for the same axis on one
+       element is ambiguous. Using inline-size throughout means this cleanly
+       overrides the base rule's inline-size:fit-content via normal cascade
+       (higher specificity), with no physical/logical conflict. */
+    inline-size: 100%;
   }
 
   .cinder-segmented-control-label {

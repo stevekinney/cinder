@@ -75,10 +75,13 @@
     /** Called when the reasoning disclosure toggle is activated. */
     onreasoning?: (() => void) | undefined;
     /**
-     * Whether the tool-call card disclosure is expanded. Collapsed by default and
-     * owned by the container's tool-call disclosure state — kept separate from
-     * `expanded` (which drives markdown "Show more/less"), since a tool-call
-     * message never carries a markdown body.
+     * Whether the tool-call card disclosure is expanded. Collapsed by default —
+     * kept separate from `expanded` (which drives markdown "Show more/less"),
+     * since a tool-call message never carries a markdown body. Bindable, like
+     * `expanded`: the `Chat` container drives it from its own per-message
+     * disclosure state (one-way, via `ontoolcalltoggle`), but a standalone
+     * `ChatMessage` used outside `Chat` still gets working, self-contained
+     * disclosure with no wiring required.
      */
     toolCallExpanded?: boolean | undefined;
     /** Called when the tool-call card disclosure toggle is activated. */
@@ -125,7 +128,7 @@
     suggestions,
     reasoningExpanded = false,
     onreasoning,
-    toolCallExpanded = false,
+    toolCallExpanded = $bindable(false),
     ontoolcalltoggle,
     onsuggestionselect,
     tabindex,
@@ -235,6 +238,21 @@
     expanded = !expanded;
     onexpandedchange?.(expanded);
   }
+
+  // Local fallback so a standalone <ChatMessage> (used outside <Chat>, with no
+  // ontoolcalltoggle wired up) still has a working disclosure — mirrors
+  // toggleExpanded above. When Chat DOES own this message's disclosure, it
+  // passes toolCallExpanded down one-way (not bind:) and reads/writes its own
+  // state via ontoolcalltoggle; this local flip is then a harmless echo that
+  // gets overwritten by the container's next render. onexpandedchange also
+  // fires here (not just ontoolcalltoggle) to preserve the pre-split contract,
+  // where a single expanded/onexpandedchange pair covered every disclosure on
+  // the message, including tool-call cards.
+  function toggleToolCallExpanded() {
+    toolCallExpanded = !toolCallExpanded;
+    ontoolcalltoggle?.();
+    onexpandedchange?.(toolCallExpanded);
+  }
 </script>
 
 <div
@@ -297,7 +315,7 @@
           parts={bodyParts}
           {messagePart}
           expanded={toolCallExpanded}
-          ontoggle={ontoolcalltoggle}
+          ontoggle={toggleToolCallExpanded}
           {onapprove}
           {ondeny}
           {reasoningExpanded}

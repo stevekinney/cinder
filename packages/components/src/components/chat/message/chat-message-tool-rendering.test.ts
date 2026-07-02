@@ -15,7 +15,7 @@ import type { Message } from '../conversation-model.ts';
 
 setupHappyDom();
 
-const { render, cleanup } = await import('@testing-library/svelte');
+const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: ChatMessage } = await import('./chat-message.svelte');
 
 afterEach(() => {
@@ -92,6 +92,44 @@ describe('ChatMessage — tool-call rendering', () => {
     // "Show more" — markdown truncation was untouched by the tool-call change.
     const control = container.querySelector('.chat-message-expand');
     expect(control?.textContent?.trim()).toBe('Show less');
+  });
+
+  test('a standalone ChatMessage (no ontoolcalltoggle) can still expand its tool-call card', async () => {
+    // ChatMessage is exported and usable outside <Chat>. Before this fix,
+    // toolCallExpanded/ontoolcalltoggle had no internal fallback, so a
+    // standalone consumer's click on the header called a no-op and the card
+    // could never be opened — regression guard for that.
+    const message = toolCallMessage();
+    const { container } = render(ChatMessage, {
+      props: {
+        message,
+        toolCallPairs: [{ call: message.toolCall! }],
+      },
+    });
+    const header = container.querySelector<HTMLButtonElement>('.tool-call-header');
+    expect(header?.getAttribute('aria-expanded')).toBe('false');
+    await fireEvent.click(header!);
+    expect(header?.getAttribute('aria-expanded')).toBe('true');
+    expect(container.querySelector('.tool-call-details')).not.toBeNull();
+  });
+
+  test('toggling a tool-call card fires onexpandedchange, matching the pre-split contract', async () => {
+    // Before tool-call disclosure was split out from the unified `expanded`
+    // state, toggling ANY disclosure on the message fired onexpandedchange.
+    // Regression guard: that contract must hold for tool-call cards too, not
+    // just markdown truncation.
+    const message = toolCallMessage();
+    const changes: boolean[] = [];
+    const { container } = render(ChatMessage, {
+      props: {
+        message,
+        toolCallPairs: [{ call: message.toolCall! }],
+        onexpandedchange: (expanded: boolean) => changes.push(expanded),
+      },
+    });
+    const header = container.querySelector<HTMLButtonElement>('.tool-call-header');
+    await fireEvent.click(header!);
+    expect(changes).toEqual([true]);
   });
 
   test('falls through to the text body when no pair is supplied (regression guard)', () => {

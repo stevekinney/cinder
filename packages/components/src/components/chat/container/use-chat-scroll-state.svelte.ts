@@ -284,26 +284,47 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * makes the target accurate from the start.
    *
    * The `scrollend` listener restores the optimization as soon as the
-   * animation actually finishes; the timeout is a backstop for environments
+   * animation actually finishes. The timeout is a backstop for environments
    * without `scrollend` support and for a zero-distance scroll (already at
-   * the bottom), where `scrollend` never fires at all.
+   * the bottom), where neither `scroll` nor `scrollend` ever fires — but it
+   * re-arms on every `scroll` tick rather than firing once on a fixed clock,
+   * so a scroll animation that legitimately runs longer than the backstop
+   * duration (a long transcript, a slower device) can never have the
+   * optimization restored out from under it mid-flight, which would let
+   * off-screen rows resize again before the scroll settles — the exact jerk
+   * this exists to prevent.
    */
   function withForcedLayout(viewport: HTMLElement, scroll: () => void): void {
     viewport.setAttribute('data-cinder-force-visible', '');
     // Force a synchronous layout so scrollHeight (read inside `scroll`)
     // reflects every row's real height, not the content-visibility estimate.
     void viewport.offsetHeight;
-    scroll();
 
     let settled = false;
+    let backstop: ReturnType<typeof setTimeout>;
+    const backstopDuration = reducedMotion.current ? 50 : 500;
+
     const restore = () => {
       if (settled) return;
       settled = true;
+      clearTimeout(backstop);
       viewport.removeEventListener('scrollend', restore);
+      viewport.removeEventListener('scroll', armBackstop);
       viewport.removeAttribute('data-cinder-force-visible');
     };
+
+    function armBackstop() {
+      clearTimeout(backstop);
+      backstop = setTimeout(restore, backstopDuration);
+    }
+
     viewport.addEventListener('scrollend', restore, { once: true });
-    setTimeout(restore, reducedMotion.current ? 50 : 500);
+    viewport.addEventListener('scroll', armBackstop, { passive: true });
+    // Covers the zero-distance case (already at bottom): no scroll/scrollend
+    // event will ever fire, so this is the only thing that restores it.
+    armBackstop();
+
+    scroll();
   }
 
   /**
