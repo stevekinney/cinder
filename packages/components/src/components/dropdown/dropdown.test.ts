@@ -699,13 +699,19 @@ describe('Dropdown', () => {
     );
   });
 
-  test('popover dropdown menu uses logical inline anchors for direction-aware mirroring', async () => {
+  test('popover dropdown menu preserves start/end anchoring in RTL', async () => {
     const css = await readDropdownCss();
     expect(css).toMatch(
       /\.cinder-dropdown-menu\[popover\]\s*\{[^}]*inset-inline-end:\s*anchor\(right\);[^}]*inset-inline-start:\s*auto;/,
     );
     expect(css).toMatch(
       /\.cinder-dropdown-menu\[popover\]\[data-cinder-placement='bottom-start'\]\s*\{[^}]*inset-inline-start:\s*anchor\(left\);[^}]*inset-inline-end:\s*auto;/,
+    );
+    expect(css).toMatch(
+      /\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='bottom-start'\],\s*\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='top-start'\]\s*\{[^}]*inset-inline-end:\s*anchor\(right\);[^}]*inset-inline-start:\s*auto;/,
+    );
+    expect(css).toMatch(
+      /\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='bottom-end'\],\s*\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='top-end'\]\s*\{[^}]*inset-inline-start:\s*anchor\(left\);[^}]*inset-inline-end:\s*auto;/,
     );
   });
 });

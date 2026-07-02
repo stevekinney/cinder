@@ -286,6 +286,18 @@
       inset-inline-end: auto;
     }
 
+    .cinder-dropdown-menu[popover][dir='rtl'][data-cinder-placement='bottom-start'],
+    .cinder-dropdown-menu[popover][dir='rtl'][data-cinder-placement='top-start'] {
+      inset-inline-end: anchor(right);
+      inset-inline-start: auto;
+    }
+
+    .cinder-dropdown-menu[popover][dir='rtl'][data-cinder-placement='bottom-end'],
+    .cinder-dropdown-menu[popover][dir='rtl'][data-cinder-placement='top-end'] {
+      inset-inline-start: anchor(left);
+      inset-inline-end: auto;
+    }
+
     .cinder-dropdown__menu[popover] {
       position: fixed;
       margin: 0;
