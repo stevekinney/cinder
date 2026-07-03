@@ -837,8 +837,8 @@ async function runTypescriptCompatibilityFixture(
       );
     }
     assertNoPeerDependencyWarnings(installResult, label);
-    await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
     await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
+    await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
     process.stdout.write(
       `[validate-consumers] typescript compatibility OK (${label}: ${typescriptVersion}).\n`,
     );

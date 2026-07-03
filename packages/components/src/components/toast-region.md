@@ -9,7 +9,7 @@ Mount one `<ToastRegion />` near the root of the app — `+layout.svelte` for Sv
 ```svelte
 <!-- +layout.svelte -->
 <script lang="ts">
-  import { ToastRegion } from '@lostgradient/cinder';
+  import { ToastRegion } from '@lostgradient/cinder/toast-region';
   let { children } = $props();
 </script>
 
@@ -34,11 +34,11 @@ The `ToastRegionProps` type is re-exported from the package root for wrapper com
 
 ## `useToast()`
 
-Import the hook from the package root — there is no `@lostgradient/cinder/use-toast` subpath. Call `useToast()` from anywhere inside the region's subtree: a descendant component's `<script>`, or a `{@const}` binding inside a `{#snippet children()}` of the region. Both resolve the same context.
+Import the hook from the toast-region subpath. Call `useToast()` from anywhere inside the region's subtree: a descendant component's `<script>`, or a `{@const}` binding inside a `{#snippet children()}` of the region. Both resolve the same context.
 
 ```svelte
 <script lang="ts">
-  import { useToast } from '@lostgradient/cinder';
+  import { useToast } from '@lostgradient/cinder/toast-region';
   const toast = useToast();
 </script>
 
