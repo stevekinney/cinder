@@ -42,6 +42,19 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('src/styles/**/*.css.d.ts');
   });
 
+  it('includes source component CSS partials used by styles/all', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+
+    expect(files).toContain('src/components/**/*.css');
+  });
+
   it('does not ship src/styles/base-guard.ts because the published export points at dist', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
@@ -167,6 +180,19 @@ describe('buildPublishedManifest', () => {
     });
     expect(files).not.toContain('src/components/**/*.ts');
     expect(files).not.toContain('src/components/**/*.svelte');
+  });
+
+  it('rewrites the package-level svelte field to the built root entry', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      svelte: './src/index.ts',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+
+    expect(published.svelte).toBe('./dist/index.js');
   });
 
   it('preserves component condition order so Node SSR wins over browser/svelte builds', () => {

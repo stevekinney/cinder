@@ -258,6 +258,7 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
 
   const packedManifest = parseJsonFile<{
     bin?: Record<string, string>;
+    svelte?: string;
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
     peerDependencies?: Record<string, string>;
@@ -270,6 +271,13 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
       `packed manifest bin.cinder is ${JSON.stringify(
         packedManifest.bin?.['cinder'],
       )}, expected "./dist/cli/index.js"`,
+    );
+  }
+  if (packedManifest.svelte !== './dist/index.js') {
+    fail(
+      `packed manifest svelte is ${JSON.stringify(
+        packedManifest.svelte,
+      )}, expected "./dist/index.js"`,
     );
   }
 
@@ -494,6 +502,7 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
     }
     if (hasCss) {
       componentRequiredEntries.push(
+        `${sourceDirectory}/${name}.css`,
         `${distributionDirectory}/${name}.css`,
         `${distributionDirectory}/${name}.css.d.ts`,
       );
@@ -529,15 +538,16 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       ...componentRequiredEntries,
     ],
     // Runtime source stays out of the tarball; published conditions resolve
-    // through `dist/`. The remaining `src/**` entries are global CSS assets and
-    // generated component JSON sidecars.
+    // through `dist/`. The remaining `src/**` entries are global CSS assets,
+    // component CSS partials imported by `styles/all`, and generated component
+    // JSON sidecars.
     forbiddenPatterns: [
       /\.(test|spec)\.[cm]?[jt]s$/,
       /\.type-test\./,
       /(^|\/)[^/]*-fixtures\./,
       /(^|\/)[^/]*fixtures\./,
       /(^|\/)_.*-test-harness\./,
-      /^package\/src\/components\/.*\.(?:ts|svelte|css|md)$/u,
+      /^package\/src\/components\/.*\.(?:ts|svelte|md)$/u,
       /\.js\.map$/,
       /\.a11y\.md$/,
     ],

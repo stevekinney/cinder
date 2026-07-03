@@ -55,6 +55,7 @@ type SourceManifest = {
   name: string;
   version: string;
   bin?: Record<string, string>;
+  svelte?: string;
   files?: string[];
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -208,11 +209,16 @@ function buildPublishedManifest(
   // Husky / dev-only fields.
   delete published.husky;
   delete published['lint-staged'];
+  if (published.svelte?.startsWith('./src/')) {
+    published.svelte = './dist/index.js';
+  }
   // The published tarball ships:
   //   - `dist/` — built artifacts (per-component JS + types, the vendored
   //     `_upstream/` declarations, server bundles).
   //   - `src/styles/**/*.css` — global style targets for
   //     `@lostgradient/cinder/styles*` exports.
+  //   - `src/components/**/*.css` — source component partials imported by
+  //     `src/styles/components.css` for `@lostgradient/cinder/styles/all`.
   //   - `src/components/**/*.{schema,variables,examples,constraints}.json`
   //     — generated JSON sidecars for CLI discovery plus exported examples
   //     and constraints resources.
@@ -233,6 +239,7 @@ function buildPublishedManifest(
     'src/components/**/*.variables.json',
     'src/components/**/*.examples.json',
     'src/components/**/*.constraints.json',
+    'src/components/**/*.css',
     'src/styles/**/*.css',
     // Type stubs for the reserved `./styles*` subpaths. The `types` condition
     // in each export entry points at `./src/styles/<name>.css.d.ts`; without
