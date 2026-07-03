@@ -37,10 +37,12 @@
     Number.isFinite(value) ? Math.max(0, Math.min(effectiveMax, value)) : 0,
   );
   const percent = $derived(Math.round((clampedValue / effectiveMax) * 100));
-  const accessibleName = $derived(ariaLabel ?? `${label}, ${percent}%`);
+  const normalizedAriaLabel = $derived(ariaLabel?.trim() || undefined);
+  const accessibleName = $derived(normalizedAriaLabel ?? `${label}, ${percent}%`);
 </script>
 
 <div
+  {...rest}
   class={classNames('cinder-sparkbar', customClassName)}
   role="meter"
   aria-label={accessibleName}
@@ -50,7 +52,6 @@
   aria-valuetext={`${percent}%`}
   data-cinder-size={size}
   data-cinder-variant={variant}
-  {...rest}
 >
   <div class="cinder-sparkbar__row">
     <span class="cinder-sparkbar__label">{label}</span>

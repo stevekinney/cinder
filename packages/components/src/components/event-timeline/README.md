@@ -25,16 +25,16 @@ Horizontal time-axis strip for scheduled events with proportional dots, a now ma
 
 <!-- generated:props:start -->
 
-| Prop        | Type             | Required | Default | Description                                                                                                                            |
-| ----------- | ---------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `ariaLabel` | `string`         | no       | —       | Accessible name override. Defaults to `label` or `Event timeline`.                                                                     |
-| `label`     | `string`         | no       | —       | Visible heading for the timeline.                                                                                                      |
-| `size`      | `"sm"` \| `"md"` | no       | —       | Timeline density. Default `md`.                                                                                                        |
-| `class`     | `(opaque)`       | no       | —       | Custom class merged with `.cinder-event-timeline`. Not expressible in JSON Schema; see the component types for the signature.          |
-| `end`       | `(opaque)`       | yes      | —       | Inclusive end of the displayed time range. Not expressible in JSON Schema; see the component types for the signature.                  |
-| `items`     | `(opaque)`       | yes      | —       | Events positioned proportionally between `start` and `end`. Not expressible in JSON Schema; see the component types for the signature. |
-| `now`       | `(opaque)`       | no       | —       | Optional current time marker. Not expressible in JSON Schema; see the component types for the signature.                               |
-| `start`     | `(opaque)`       | yes      | —       | Inclusive start of the displayed time range. Not expressible in JSON Schema; see the component types for the signature.                |
+| Prop        | Type                                                                                                                                  | Required | Default | Description                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------ |
+| `ariaLabel` | `string`                                                                                                                              | no       | —       | Accessible name override. Defaults to `label` or `Event timeline`. |
+| `class`     | `string`                                                                                                                              | no       | —       | Custom class merged with `.cinder-event-timeline`.                 |
+| `end`       | `string` \| `number`                                                                                                                  | yes      | —       | Inclusive end of the displayed time range.                         |
+| `items`     | ({ at: `string` \| `number`; id?: `string`; label: `string`; state?: `"done"` \| `"upcoming"` \| `"failed"`; sublabel?: `string` })[] | yes      | —       | Events positioned proportionally between `start` and `end`.        |
+| `label`     | `string`                                                                                                                              | no       | —       | Visible heading for the timeline.                                  |
+| `now`       | `string` \| `number`                                                                                                                  | no       | —       | Optional current time marker.                                      |
+| `size`      | `"sm"` \| `"md"`                                                                                                                      | no       | —       | Timeline density. Default `md`.                                    |
+| `start`     | `string` \| `number`                                                                                                                  | yes      | —       | Inclusive start of the displayed time range.                       |
 
 <!-- generated:props:end -->
 

@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -128,5 +129,11 @@ describe('BentoGrid', () => {
     const module = await import('./index.ts');
     expect(typeof module.default).toBe('function');
     expect(typeof module.default.Cell).toBe('function');
+  });
+
+  test('collapse CSS does not rely on a self-container query', () => {
+    const css = readFileSync(new URL('./bento-grid.css', import.meta.url), 'utf8');
+    expect(css).toContain('@media (max-width: 48rem)');
+    expect(css).not.toContain('@container (max-width: 48rem)');
   });
 });

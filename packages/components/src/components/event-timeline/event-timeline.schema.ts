@@ -4,6 +4,77 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    start: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description: 'Inclusive start of the displayed time range.',
+    },
+    end: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description: 'Inclusive end of the displayed time range.',
+    },
+    now: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description: 'Optional current time marker.',
+    },
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable key for repeated items.',
+          },
+          at: {
+            anyOf: [
+              {
+                type: 'string',
+              },
+              {
+                type: 'number',
+              },
+            ],
+            description: 'Event timestamp, accepted by the JavaScript Date constructor.',
+          },
+          label: {
+            type: 'string',
+            description: 'Primary visible label.',
+          },
+          sublabel: {
+            type: 'string',
+            description: 'Optional secondary timestamp label.',
+          },
+          state: {
+            enum: ['done', 'upcoming', 'failed'],
+            description: 'Visual event state. Defaults to `upcoming`.',
+          },
+        },
+        additionalProperties: false,
+        required: ['at', 'label'],
+      },
+      description: 'Events positioned proportionally between `start` and `end`.',
+    },
     label: {
       type: 'string',
       description: 'Visible heading for the timeline.',
@@ -16,40 +87,13 @@ const schema = {
       enum: ['sm', 'md'],
       description: 'Timeline density. Default `md`.',
     },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-event-timeline`.',
+    },
   },
   additionalProperties: false,
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Custom class merged with `.cinder-event-timeline`.',
-      },
-      {
-        name: 'end',
-        reason: 'unknown-shape',
-        required: true,
-        description: 'Inclusive end of the displayed time range.',
-      },
-      {
-        name: 'items',
-        reason: 'unknown-shape',
-        required: true,
-        description: 'Events positioned proportionally between `start` and `end`.',
-      },
-      {
-        name: 'now',
-        reason: 'unknown-shape',
-        description: 'Optional current time marker.',
-      },
-      {
-        name: 'start',
-        reason: 'unknown-shape',
-        required: true,
-        description: 'Inclusive start of the displayed time range.',
-      },
-    ],
-  },
+  required: ['end', 'items', 'start'],
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

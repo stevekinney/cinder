@@ -10,7 +10,7 @@
     column-gap: var(--cinder-bento-grid-column-gap, var(--cinder-space-4));
   }
 
-  @container (max-width: 48rem) {
+  @media (max-width: 48rem) {
     .cinder-bento-grid[data-cinder-collapse='true'] {
       grid-template-columns: 1fr;
     }

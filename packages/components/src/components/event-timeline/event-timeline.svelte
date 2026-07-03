@@ -60,8 +60,8 @@
     return Math.max(0, Math.min(100, value));
   }
 
-  function keyForItem(item: EventTimelineItem): string {
-    return item.id ?? `${item.label}-${String(item.at)}`;
+  function keyForItem(item: EventTimelineItem, index: number): string {
+    return item.id ?? `${item.label}-${String(item.at)}-${index}`;
   }
 
   const range = $derived.by(() => {
@@ -83,19 +83,20 @@
     const lanePositions = [-Infinity, -Infinity, -Infinity];
 
     return items
-      .map((item) => {
+      .map((item, index) => {
         const timestamp = toTimestamp(item.at);
         if (timestamp === undefined) return undefined;
 
         return {
           item,
+          index,
           timestamp,
           position: clampPercent(((timestamp - range.startTimestamp) / range.duration) * 100),
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .sort((a, b) => a.position - b.position)
-      .map(({ item, timestamp, position }) => {
+      .map(({ item, index, timestamp, position }) => {
         const availableLane = lanePositions.findIndex(
           (lastPosition) => position - lastPosition >= 12,
         );
@@ -104,7 +105,7 @@
 
         return {
           ...item,
-          key: keyForItem(item),
+          key: keyForItem(item, index),
           lane,
           position,
           isoDatetime: new Date(timestamp).toISOString(),
@@ -119,17 +120,13 @@
     return clampPercent(((timestamp - range.startTimestamp) / range.duration) * 100);
   });
 
-  const accessibleName = $derived(ariaLabel ?? label ?? 'Event timeline');
+  const normalizedLabel = $derived(label?.trim() || undefined);
+  const normalizedAriaLabel = $derived(ariaLabel?.trim() || undefined);
+  const accessibleName = $derived(normalizedAriaLabel ?? normalizedLabel ?? 'Event timeline');
 </script>
 
-<div
-  class={classNames('cinder-event-timeline', customClassName)}
-  role="list"
-  aria-label={accessibleName}
-  data-cinder-size={size}
-  {...rest}
->
-  {#if label}
+<div {...rest} class={classNames('cinder-event-timeline', customClassName)} data-cinder-size={size}>
+  {#if normalizedLabel}
     <div class="cinder-event-timeline__label">{label}</div>
   {/if}
   <div class="cinder-event-timeline__axis" aria-hidden="true">
@@ -137,7 +134,7 @@
       <div class="cinder-event-timeline__now" style:left="{nowPosition}%"></div>
     {/if}
   </div>
-  <div class="cinder-event-timeline__items">
+  <div class="cinder-event-timeline__items" role="list" aria-label={accessibleName}>
     {#each positionedItems as item (item.key)}
       <div
         class="cinder-event-timeline__item"
@@ -149,11 +146,11 @@
       >
         <span class="cinder-event-timeline__dot" aria-hidden="true"></span>
         <span class="cinder-event-timeline__content">
-          <time class="cinder-event-timeline__item-label" datetime={item.isoDatetime}
-            >{item.label}</time
-          >
+          <span class="cinder-event-timeline__item-label">{item.label}</span>
           {#if item.sublabel}
-            <span class="cinder-event-timeline__item-sublabel">{item.sublabel}</span>
+            <time class="cinder-event-timeline__item-sublabel" datetime={item.isoDatetime}
+              >{item.sublabel}</time
+            >
           {/if}
         </span>
       </div>

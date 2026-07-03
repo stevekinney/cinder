@@ -57,4 +57,21 @@ describe('Sparkbar', () => {
     expect(el?.getAttribute('data-cinder-variant')).toBe('warning');
     expect(el?.getAttribute('aria-label')).toBe('Session cost usage');
   });
+
+  test('keeps computed meter semantics authoritative', () => {
+    const { container } = render(Sparkbar, {
+      value: 3,
+      max: 10,
+      label: 'Usage',
+      ariaLabel: '   ',
+      role: 'presentation',
+      'aria-valuenow': 99,
+      'aria-valuemax': 99,
+    });
+
+    const el = container.querySelector('[role="meter"]');
+    expect(el?.getAttribute('aria-label')).toBe('Usage, 30%');
+    expect(el?.getAttribute('aria-valuenow')).toBe('3');
+    expect(el?.getAttribute('aria-valuemax')).toBe('10');
+  });
 });
