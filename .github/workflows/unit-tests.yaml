@@ -173,7 +173,7 @@ jobs:
             bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
 
       - name: Verify Bun cache restore
-        if: steps.bun-cache-restore.outputs.cache-matched-key == '' && steps.bun-cache-restore-retry.outputs.cache-matched-key == ''
+        if: steps.bun-cache-restore.outputs.cache-matched-key == '' && steps.bun-cache-restore-retry.outputs.cache-matched-key == '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         env:
           GH_TOKEN: ${{ github.token }}
           BUN_CACHE_KEY_PREFIX: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-

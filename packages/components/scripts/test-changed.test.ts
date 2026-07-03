@@ -61,6 +61,10 @@ describe('fullSuiteTestPathGroups', () => {
     expect(groups[0]).toContain('scripts');
     expect(groups[0]).toContain('src/test');
     expect(groups[0]).toContain('src/exports-drift.test.ts');
+    expect(groups[0]).toContain('src/root-type-exports.test.ts');
+    expect(groups[0]).toContain('src/components/svg-data-uri-color-literals.test.ts');
+    expect(groups[0]).toContain('src/components/_radio/radio.test.ts');
+    expect(groups[0]).toContain('src/components/icons/index.test.ts');
   });
 
   it('splits component directories into deterministic chunks', () => {

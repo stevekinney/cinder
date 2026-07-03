@@ -83,7 +83,18 @@ const ALWAYS_RUN_ROOT_TESTS = [
   'src/exports-drift.test.ts',
   'src/index.test.ts',
   'src/manifest.test.ts',
+  'src/root-type-exports.test.ts',
   'src/tree-shake.test.ts',
+] as const;
+
+/**
+ * Test files under `src/components/` that are not owned by public component
+ * slugs returned from `loadKnownSlugs()`. They still belong to the full suite.
+ */
+const FULL_SUITE_PRIVATE_COMPONENT_TESTS = [
+  'src/components/_radio/radio.test.ts',
+  'src/components/icons/index.test.ts',
+  'src/components/svg-data-uri-color-literals.test.ts',
 ] as const;
 
 /** The `bun test` flags the components package uses (browser+svelte conditions). */
@@ -101,6 +112,7 @@ const FULL_SUITE_NON_COMPONENT_PATHS = [
   'scripts',
   ...ALWAYS_RUN_PATHS,
   ...ALWAYS_RUN_ROOT_TESTS,
+  ...FULL_SUITE_PRIVATE_COMPONENT_TESTS,
 ] as const;
 
 /**
