@@ -163,38 +163,52 @@ async function fixtureContentHash(componentName: string): Promise<string> {
   return fixtureFile.contentHash;
 }
 
+/** Run `fn` with `Bun.env.PORT` set to `value` (or deleted, for `undefined`), restoring the original value afterward. */
+function withPortEnv<T>(value: string | undefined, fn: () => T): T {
+  const original = Bun.env['PORT'];
+  if (value === undefined) delete Bun.env['PORT'];
+  else Bun.env['PORT'] = value;
+  try {
+    return fn();
+  } finally {
+    if (original === undefined) delete Bun.env['PORT'];
+    else Bun.env['PORT'] = original;
+  }
+}
+
 describe('port selection', () => {
   it('defaults to port 5555 when PORT is unset', () => {
-    const original = Bun.env['PORT'];
-    delete Bun.env['PORT'];
-    try {
-      expect(resolvePreferredPort()).toBe(5555);
-    } finally {
-      if (original === undefined) delete Bun.env['PORT'];
-      else Bun.env['PORT'] = original;
-    }
+    withPortEnv(undefined, () => expect(resolvePreferredPort()).toBe(5555));
+  });
+
+  it('defaults to port 5555 when PORT is blank', () => {
+    withPortEnv('   ', () => expect(resolvePreferredPort()).toBe(5555));
   });
 
   it('uses PORT from the environment when set', () => {
-    const original = Bun.env['PORT'];
-    Bun.env['PORT'] = '4321';
-    try {
-      expect(resolvePreferredPort()).toBe(4321);
-    } finally {
-      if (original === undefined) delete Bun.env['PORT'];
-      else Bun.env['PORT'] = original;
-    }
+    withPortEnv('4321', () => expect(resolvePreferredPort()).toBe(4321));
+  });
+
+  it('trims surrounding whitespace from PORT', () => {
+    withPortEnv('  4321  ', () => expect(resolvePreferredPort()).toBe(4321));
   });
 
   it('falls back to 5555 when PORT is not a valid number', () => {
-    const original = Bun.env['PORT'];
-    Bun.env['PORT'] = 'not-a-port';
-    try {
-      expect(resolvePreferredPort()).toBe(5555);
-    } finally {
-      if (original === undefined) delete Bun.env['PORT'];
-      else Bun.env['PORT'] = original;
-    }
+    withPortEnv('not-a-port', () => expect(resolvePreferredPort()).toBe(5555));
+  });
+
+  it('falls back to 5555 when PORT has trailing non-numeric characters', () => {
+    withPortEnv('5555abc', () => expect(resolvePreferredPort()).toBe(5555));
+  });
+
+  it('falls back to 5555 when PORT is outside the valid TCP port range', () => {
+    // PORT=0 specifically: Bun.serve({ port: 0 }) binds an ephemeral free
+    // port rather than failing, but createHttpServerOnAvailablePort logs and
+    // returns the REQUESTED port, not the bound one — accepting 0 verbatim
+    // would report the wrong address to preview/CI launchers. Rejecting it
+    // here (rather than special-casing 0 downstream) keeps that contract simple.
+    withPortEnv('0', () => expect(resolvePreferredPort()).toBe(5555));
+    withPortEnv('70000', () => expect(resolvePreferredPort()).toBe(5555));
   });
 
   it('uses the next available port when the preferred port is taken', async () => {

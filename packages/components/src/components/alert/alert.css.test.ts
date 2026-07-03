@@ -1,23 +1,27 @@
 /**
- * P7 acceptance pins for Alert's chrome reduction, asserted against the CSS
- * source with `postcss` (parser-based, mirroring
- * `src/test/focus-ring-recipe.test.ts`; happy-dom does not compute styles from
- * stylesheets).
+ * Acceptance pins for Alert's border chrome, asserted against the CSS source
+ * with `postcss` (parser-based, mirroring `src/test/focus-ring-recipe.test.ts`;
+ * happy-dom does not compute styles from stylesheets).
  *
- * Chosen outcome (see the task plan): border-equals-base. Every Alert variant
- * sheds its colored border so the effective border-color resolves to the base
- * `var(--cinder-border)` in both schemes, while the soft variant background
- * tint and variant text color are retained. Alert stays stripe-free; the
- * directional color cue belongs exclusively to Callout.
+ * Post-P7 reversal: Alert now composes the shared soft-border recipe
+ * (`.cinder-_status-surface-border`, see `_status-surface.css`), matching
+ * Banner's per-variant colored border instead of the pre-P7 neutral one — see
+ * `alert.css`'s "post-P7 reversal" comment for the accessibility rationale
+ * (the shared recipe is contrast-checked; the original saturated border that
+ * P7 removed was not).
  *
- * The "no stripe / border-equals-base" guarantee is enforced by asserting the
- * variant rules contain ZERO border-affecting declarations — blocking every
- * shorthand escape hatch (`border`, `border-left`, `border-inline`,
- * `border-width`, logical/physical longhands), not just the inline-start
- * longhands. With no variant border declaration, the base rule's
- * `border: 1px solid var(--cinder-border)` is what every side resolves to, so
- * inline-start width is not greater than inline-end (both 1px) and the
- * border-color equals the base border color.
+ * `alert.css`'s own variant rules still carry ZERO border-affecting
+ * declarations — blocking every shorthand escape hatch (`border`,
+ * `border-left`, `border-inline`, `border-width`, logical/physical
+ * longhands) so no future edit reintroduces a hardcoded per-variant border
+ * here that could conflict with the composed recipe. The base `.cinder-alert`
+ * rule's `border: 1px solid var(--cinder-border)` is the FALLBACK only —
+ * it's what resolves when the border-surface class is absent (e.g. a
+ * consumer overriding `class`); with the class composed, the shared
+ * partial's higher-specificity (0,2,0) rule wins and paints the per-variant
+ * color instead. inline-start width still equals inline-end width (both
+ * 1px) because both the fallback and the composed rule set `border-color`/
+ * `border` uniformly, never a single edge.
  */
 
 import { readFileSync } from 'node:fs';
@@ -35,13 +39,14 @@ function loadCss(relativePath: string): string {
 const alertCss = loadCss('./alert.css');
 const root = parse(alertCss);
 
-// The variant-tinted background + foreground algebra now lives in the shared
-// `_status-surface.css` partial; Alert composes `.cinder-_status-surface` (and
-// does NOT compose the border/stripe classes — P7 keeps the border neutral).
-// Variant rules set the partial's `--_cinder-status-base` tint input. So the
-// "still tinted, not flattened to surface" criterion is pinned in two places:
-// the variant rule sets a status-derived base here, and the partial synthesizes
-// the tint from it.
+// The variant-tinted background + foreground + border algebra lives in the
+// shared `_status-surface.css` partial; Alert composes `.cinder-_status-surface`
+// and `.cinder-_status-surface-border` (NOT `-stripe` — the directional stripe
+// stays exclusive to Callout). Variant rules set the partial's
+// `--_cinder-status-base` tint input. So the "still tinted, not flattened to
+// surface" criterion is pinned in two places: the variant rule sets a
+// status-derived base here, and the partial synthesizes the tint (and border
+// color) from it.
 const statusSurfaceCss = loadCss('../../styles/components/_status-surface.css');
 const statusSurfaceRoot = parse(statusSurfaceCss);
 
@@ -146,14 +151,14 @@ function findRule(selector: string): Rule {
 
 const VARIANTS = ['info', 'success', 'warning', 'danger'];
 
-describe('alert chrome reduction — border-equals-base', () => {
+describe('alert chrome — composed status-surface border', () => {
   test('inline-start width EQUALS inline-end width (no stripe — relationship, not magic number)', () => {
-    // P6-C2 acceptance: Alert must NOT have a dominant start edge — start width
-    // must equal end width. Prove it structurally: walk the base rules for
-    // .cinder-alert and assert the only border-affecting declaration is the
-    // `border` shorthand (which sets every edge to the same value). Any future
-    // edit that adds a width longhand would appear here and fail. Uses the
-    // existing BORDER_AFFECTING set — no separate subset needed.
+    // Alert must NOT have a dominant start edge — start width must equal end
+    // width. Prove it structurally: walk the base rules for .cinder-alert and
+    // assert the only border-affecting declaration is the `border` shorthand
+    // (which sets every edge to the same value). Any future edit that adds a
+    // width longhand would appear here and fail. Uses the existing
+    // BORDER_AFFECTING set — no separate subset needed.
     const widthDeclarations: string[] = [];
     for (const rule of findRules('.cinder-alert')) {
       rule.walkDecls((decl) => {
@@ -165,10 +170,13 @@ describe('alert chrome reduction — border-equals-base', () => {
     expect(widthDeclarations).toEqual(['border']);
   });
 
-  test('base rule declares exactly border: 1px solid var(--cinder-border)', () => {
+  test('base rule declares the neutral FALLBACK border: 1px solid var(--cinder-border)', () => {
     // The base selector appears in two rules (one declares the scoped
     // --cinder-alert-info token, the other the box). Exactly one of them must
-    // declare `border`, and it must be the neutral base border.
+    // declare `border`. This is the fallback that resolves only when the
+    // composed `.cinder-_status-surface-border` class is absent — with it
+    // composed (see alert.svelte), the shared partial's higher-specificity
+    // (0,2,0) rule wins and paints the per-variant color instead.
     let border: string | undefined;
     let count = 0;
     for (const rule of findRules('.cinder-alert')) {
@@ -185,7 +193,11 @@ describe('alert chrome reduction — border-equals-base', () => {
     describe(`variant: ${variant}`, () => {
       const rule = findRule(`.cinder-alert[data-cinder-variant='${variant}']`);
 
-      test('contains zero border-affecting declarations (no stripe, no colored frame)', () => {
+      test('contains zero border-affecting declarations directly (no hardcoded per-variant border here)', () => {
+        // The per-variant border color comes from the composed shared partial
+        // (see the "composed status-surface border" test below), not from a
+        // declaration on this rule. A future edit adding one here would
+        // conflict with or shadow the partial's (0,2,0) rule.
         const borderProps = rule.nodes
           .filter((node): node is Declaration => node.type === 'decl')
           .map((decl) => decl.prop)
@@ -221,5 +233,33 @@ describe('alert chrome reduction — border-equals-base', () => {
     expect(background).toBeDefined();
     expect(background).toMatch(/^light-dark\(/);
     expect(background).toMatch(/oklch\(\s*from\s+var\(--_cinder-status-base\)/);
+  });
+
+  test('alert.svelte composes the shared border-surface class', () => {
+    // The border-color assertion above (partial synthesizes a variant-derived
+    // border-color) only proves the RECIPE exists — it doesn't prove Alert
+    // actually uses it. Pin that alert.svelte's root classNames() call
+    // includes 'cinder-_status-surface-border' so a future edit can't silently
+    // drop the composition and regress to the pre-reversal neutral border.
+    const alertSvelte = loadCss('./alert.svelte');
+    expect(alertSvelte).toMatch(/['"]cinder-_status-surface-border['"]/);
+  });
+
+  test('the composed border-surface partial synthesizes a variant-tinted light-dark(oklch(...)) border-color', () => {
+    // The actual per-variant border color lives in the partial Alert composes
+    // (.cinder-_status-surface-border); confirm it derives from the same
+    // --_cinder-status-base input as the background, so no future edit
+    // flattens Alert back to a hardcoded neutral border.
+    // Selector is self-doubled (.x.x) for (0,2,0) specificity over the component base.
+    const borderRule = findRuleInPartial(
+      '.cinder-_status-surface-border.cinder-_status-surface-border',
+    );
+    let borderColor: string | undefined;
+    borderRule.walkDecls('border-color', (decl) => {
+      borderColor = decl.value;
+    });
+    expect(borderColor).toBeDefined();
+    expect(borderColor).toMatch(/^light-dark\(/);
+    expect(borderColor).toMatch(/oklch\(\s*from\s+var\(--_cinder-status-base\)/);
   });
 });
