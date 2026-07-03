@@ -164,7 +164,7 @@ jobs:
       # memory-sensitive test suite.
       - name: Retry Bun install cache restore
         id: bun-cache-restore-retry
-        if: steps.bun-cache-restore.outputs.cache-hit == ''
+        if: steps.bun-cache-restore.outputs.cache-matched-key == ''
         uses: actions/cache/restore@v4
         with:
           path: ~/.bun/install/cache
@@ -173,7 +173,7 @@ jobs:
             bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
 
       - name: Verify Bun cache restore
-        if: steps.bun-cache-restore.outputs.cache-hit == '' && steps.bun-cache-restore-retry.outputs.cache-hit == ''
+        if: steps.bun-cache-restore.outputs.cache-matched-key == '' && steps.bun-cache-restore-retry.outputs.cache-matched-key == ''
         env:
           GH_TOKEN: ${{ github.token }}
           BUN_CACHE_KEY_PREFIX: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
