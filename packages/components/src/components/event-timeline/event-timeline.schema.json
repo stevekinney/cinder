@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "description": "Visible heading for the timeline."
+    },
+    "ariaLabel": {
+      "type": "string",
+      "description": "Accessible name override. Defaults to `label` or `Event timeline`."
+    },
+    "size": {
+      "enum": ["sm", "md"],
+      "description": "Timeline density. Default `md`."
+    }
+  },
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "class",
+        "reason": "unknown-shape",
+        "description": "Custom class merged with `.cinder-event-timeline`."
+      },
+      {
+        "name": "end",
+        "reason": "unknown-shape",
+        "required": true,
+        "description": "Inclusive end of the displayed time range."
+      },
+      {
+        "name": "items",
+        "reason": "unknown-shape",
+        "required": true,
+        "description": "Events positioned proportionally between `start` and `end`."
+      },
+      {
+        "name": "now",
+        "reason": "unknown-shape",
+        "description": "Optional current time marker."
+      },
+      {
+        "name": "start",
+        "reason": "unknown-shape",
+        "required": true,
+        "description": "Inclusive start of the displayed time range."
+      }
+    ]
+  }
+}

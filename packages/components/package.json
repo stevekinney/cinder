@@ -1993,6 +1993,35 @@
       "import": "./src/components/event-stream-viewer/event-stream-viewer.examples.json",
       "default": "./src/components/event-stream-viewer/event-stream-viewer.examples.json"
     },
+    "./event-timeline": {
+      "types": "./dist/components/event-timeline/index.d.ts",
+      "browser": "./src/components/event-timeline/index.ts",
+      "node": "./dist/server/components/event-timeline/index.js",
+      "svelte": "./src/components/event-timeline/index.ts",
+      "default": "./dist/components/event-timeline/index.js"
+    },
+    "./event-timeline/schema": {
+      "types": "./dist/components/event-timeline/event-timeline.schema.d.ts",
+      "browser": "./src/components/event-timeline/event-timeline.schema.ts",
+      "node": "./dist/server/components/event-timeline/event-timeline.schema.js",
+      "svelte": "./src/components/event-timeline/event-timeline.schema.ts",
+      "default": "./dist/components/event-timeline/event-timeline.schema.js"
+    },
+    "./event-timeline/variables": {
+      "types": "./dist/components/event-timeline/event-timeline.variables.d.ts",
+      "browser": "./src/components/event-timeline/event-timeline.variables.ts",
+      "node": "./dist/server/components/event-timeline/event-timeline.variables.js",
+      "svelte": "./src/components/event-timeline/event-timeline.variables.ts",
+      "default": "./dist/components/event-timeline/event-timeline.variables.js"
+    },
+    "./event-timeline/styles": {
+      "types": "./dist/components/event-timeline/event-timeline.css.d.ts",
+      "default": "./dist/components/event-timeline/event-timeline.css"
+    },
+    "./event-timeline/examples": {
+      "import": "./src/components/event-timeline/event-timeline.examples.json",
+      "default": "./src/components/event-timeline/event-timeline.examples.json"
+    },
     "./faceted-filter-bar": {
       "types": "./dist/components/faceted-filter-bar/index.d.ts",
       "browser": "./src/components/faceted-filter-bar/index.ts",
@@ -4331,6 +4360,35 @@
     "./sortable-list/examples": {
       "import": "./src/components/sortable-list/sortable-list.examples.json",
       "default": "./src/components/sortable-list/sortable-list.examples.json"
+    },
+    "./sparkbar": {
+      "types": "./dist/components/sparkbar/index.d.ts",
+      "browser": "./src/components/sparkbar/index.ts",
+      "node": "./dist/server/components/sparkbar/index.js",
+      "svelte": "./src/components/sparkbar/index.ts",
+      "default": "./dist/components/sparkbar/index.js"
+    },
+    "./sparkbar/schema": {
+      "types": "./dist/components/sparkbar/sparkbar.schema.d.ts",
+      "browser": "./src/components/sparkbar/sparkbar.schema.ts",
+      "node": "./dist/server/components/sparkbar/sparkbar.schema.js",
+      "svelte": "./src/components/sparkbar/sparkbar.schema.ts",
+      "default": "./dist/components/sparkbar/sparkbar.schema.js"
+    },
+    "./sparkbar/variables": {
+      "types": "./dist/components/sparkbar/sparkbar.variables.d.ts",
+      "browser": "./src/components/sparkbar/sparkbar.variables.ts",
+      "node": "./dist/server/components/sparkbar/sparkbar.variables.js",
+      "svelte": "./src/components/sparkbar/sparkbar.variables.ts",
+      "default": "./dist/components/sparkbar/sparkbar.variables.js"
+    },
+    "./sparkbar/styles": {
+      "types": "./dist/components/sparkbar/sparkbar.css.d.ts",
+      "default": "./dist/components/sparkbar/sparkbar.css"
+    },
+    "./sparkbar/examples": {
+      "import": "./src/components/sparkbar/sparkbar.examples.json",
+      "default": "./src/components/sparkbar/sparkbar.examples.json"
     },
     "./spectrogram": {
       "types": "./dist/components/spectrogram/index.d.ts",

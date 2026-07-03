@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "sparkbar",
+  "import": "@lostgradient/cinder/sparkbar",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic sparkbars",
+      "description": "Compact bounded meters for inline spend and usage rows.",
+      "code": "<script lang=\"ts\">\n  import { Sparkbar } from '@lostgradient/cinder/sparkbar';\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; max-width: 28rem;\">\n  <Sparkbar value={0.31} label=\"Draft weekly changelog\" trailing=\"$0.31\" />\n  <Sparkbar value={0.64} label=\"Summarize review comments\" trailing=\"$0.64\" variant=\"success\" />\n  <Sparkbar value={0.88} label=\"Refresh screenshot gallery\" trailing=\"$0.88\" variant=\"warning\" />\n</div>\n"
+    },
+    {
+      "id": "custom-range",
+      "title": "Custom range",
+      "description": "Use a max value when the measurement is not fractional.",
+      "code": "<script lang=\"ts\">\n  import { Sparkbar } from '@lostgradient/cinder/sparkbar';\n</script>\n\n<div style=\"display: grid; gap: 0.75rem; max-width: 28rem;\">\n  <Sparkbar value={4200} max={8000} label=\"Prompt tokens\" trailing=\"4.2k / 8k\" />\n  <Sparkbar value={7100} max={8000} label=\"Completion tokens\" trailing=\"7.1k / 8k\" size=\"lg\" />\n</div>\n"
+    }
+  ]
+}

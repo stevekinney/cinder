@@ -162,6 +162,40 @@ describe('buildPublishedManifest', () => {
     });
     expect(files).toContain('!src/components/**/*.schema.ts');
     expect(files).toContain('!src/components/**/*.variables.ts');
+    expect(files).not.toContain('!dist/server/components/**/*.schema.js');
+    expect(files).not.toContain('!dist/server/components/**/*.variables.js');
+    expect(files).toContain('!dist/server/**/*.d.ts');
+  });
+
+  it('does not publish unexported server declaration files', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {
+        '.': {
+          types: './dist/index.d.ts',
+          browser: './src/index.ts',
+          node: './dist/server/index.js',
+          svelte: './src/index.ts',
+          default: './dist/index.js',
+        },
+        './button': {
+          types: './dist/components/button/index.d.ts',
+          browser: './src/components/button/index.ts',
+          node: './dist/server/components/button/index.js',
+          svelte: './src/components/button/index.ts',
+          default: './dist/components/button/index.js',
+        },
+      },
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+    const exportTargets = JSON.stringify(published.exports);
+
+    expect(files).toContain('!dist/server/**/*.d.ts');
+    expect(exportTargets).not.toContain('dist/server/index.d.ts');
+    expect(exportTargets).not.toContain('dist/server/components/button/index.d.ts');
   });
 
   it('preserves component condition order so Node SSR wins over browser/svelte builds', () => {
@@ -217,6 +251,20 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('src/components/**/*.examples.json');
     expect(files).toContain('src/components/**/*.constraints.json');
     expect(files).not.toContain('src/components/**/*.json');
+  });
+
+  it('keeps component README files out of the published tarball', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+
+    expect(files).not.toContain('src/components/**/*.md');
+    expect(files).not.toContain('!src/components/**/*.a11y.md');
   });
 
   it('strips dangling sourceMappingURL comments when corresponding .map files are absent', () => {

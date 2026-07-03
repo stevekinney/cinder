@@ -1,0 +1,49 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    value: {
+      type: 'number',
+      description: 'Current bounded value.',
+    },
+    max: {
+      type: 'number',
+      description: 'Upper bound for the range. Defaults to `1` for fractional values.',
+    },
+    label: {
+      type: 'string',
+      description: 'Visible label for the measured row.',
+    },
+    trailing: {
+      type: 'string',
+      description: 'Optional trailing value such as a cost, token count, or percentage.',
+    },
+    size: {
+      enum: ['sm', 'md', 'lg'],
+      description: 'Track thickness and text scale. Default `md`.',
+    },
+    variant: {
+      enum: ['accent', 'success', 'warning'],
+      description: 'Fill color intent. Default `accent`.',
+    },
+    ariaLabel: {
+      type: 'string',
+      description: 'Accessible name override. Defaults to `${label}, ${percentage}%`.',
+    },
+  },
+  additionalProperties: false,
+  required: ['label', 'value'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'class',
+        reason: 'unknown-shape',
+        description: 'Custom class merged with `.cinder-sparkbar`.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

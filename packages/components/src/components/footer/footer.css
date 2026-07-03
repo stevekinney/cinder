@@ -1,6 +1,7 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-footer {
+    container-type: inline-size;
     display: grid;
     gap: var(--cinder-space-6);
     padding: var(--cinder-space-6) var(--cinder-space-4);
@@ -98,7 +99,7 @@
     flex-wrap: wrap;
   }
 
-  @media (min-width: 48rem) {
+  @container (min-width: 48rem) {
     .cinder-footer__main {
       grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
       align-items: start;

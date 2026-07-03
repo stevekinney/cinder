@@ -1,6 +1,7 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-logo-cloud {
+    container-type: inline-size;
     padding-block: var(--cinder-space-8);
   }
 
@@ -79,7 +80,7 @@
     opacity: 1;
   }
 
-  @media (min-width: 48rem) {
+  @container (min-width: 48rem) {
     .cinder-logo-cloud[data-cinder-columns='3'] .cinder-logo-cloud__list {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -91,7 +92,7 @@
     }
   }
 
-  @media (min-width: 64rem) {
+  @container (min-width: 64rem) {
     .cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list {
       grid-template-columns: repeat(5, minmax(0, 1fr));
     }
