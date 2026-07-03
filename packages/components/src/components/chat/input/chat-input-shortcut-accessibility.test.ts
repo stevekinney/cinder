@@ -97,6 +97,12 @@ describe('MarkdownEditor — aria-describedby forwarding', () => {
     expect(markdownEditorSource).toMatch(/removeAttribute\s*\(\s*['"]aria-describedby['"]/);
   });
 
+  test('applies aria-label to ProseMirror view.dom in WYSIWYG mode', () => {
+    // Axe checks the actual contenteditable role=textbox node created by ProseMirror.
+    expect(markdownEditorSource).toMatch(/setAttribute\s*\(\s*['"]aria-label['"]/);
+    expect(markdownEditorSource).toMatch(/accessibleEditorLabel/);
+  });
+
   test('removes aria-describedby from view.dom when prop is undefined', () => {
     // Must call removeAttribute when ariaDescribedby is falsy
     expect(markdownEditorSource).toMatch(/removeAttribute\s*\(\s*['"]aria-describedby['"]\s*\)/);
