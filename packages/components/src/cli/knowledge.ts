@@ -132,6 +132,11 @@ function toSummary(
   component: ManifestComponent,
   overlapFamilies: Record<string, string[]>,
 ): ComponentSummary {
+  const componentOverlapFamilies = Object.entries(overlapFamilies)
+    .filter(([, members]) => members.includes(component.id))
+    .map(([family]) => family);
+  componentOverlapFamilies.sort();
+
   return {
     id: component.id,
     name: component.name,
@@ -144,10 +149,7 @@ function toSummary(
     useWhen: component.useWhen,
     avoidWhen: component.avoidWhen,
     related: component.related,
-    overlapFamilies: Object.entries(overlapFamilies)
-      .filter(([, members]) => members.includes(component.id))
-      .map(([family]) => family)
-      .toSorted(),
+    overlapFamilies: componentOverlapFamilies,
     hasExamples: component.hasExamples,
     hasConstraints: component.hasConstraints,
   };
@@ -183,12 +185,12 @@ export class CinderKnowledge {
     }
     this.validateFilters(options);
     const limit = options.limit ?? 10;
-    return this.manifest.components
+    const results = this.manifest.components
       .filter((component) => this.matchesFilters(component, options))
       .map((component) => this.scoreComponent(component, query, tokens))
-      .filter((result) => result.score > 0)
-      .toSorted((left, right) => right.score - left.score || left.id.localeCompare(right.id))
-      .slice(0, limit);
+      .filter((result) => result.score > 0);
+    results.sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
+    return results.slice(0, limit);
   }
 
   async show(idOrName: string): Promise<ComponentDetail> {
@@ -268,21 +270,19 @@ export class CinderKnowledge {
 
   suggestComponentIds(value: string, limit = 5): string[] {
     const normalized = normalize(value);
-    return this.manifest.components
-      .map((component) => ({
-        id: component.id,
-        distance: levenshtein(normalized, component.id),
-        substring:
-          component.id.includes(normalized) || normalize(component.name).includes(normalized),
-      }))
-      .toSorted(
-        (left, right) =>
-          Number(right.substring) - Number(left.substring) ||
-          left.distance - right.distance ||
-          left.id.localeCompare(right.id),
-      )
-      .slice(0, limit)
-      .map((component) => component.id);
+    const suggestions = this.manifest.components.map((component) => ({
+      id: component.id,
+      distance: levenshtein(normalized, component.id),
+      substring:
+        component.id.includes(normalized) || normalize(component.name).includes(normalized),
+    }));
+    suggestions.sort(
+      (left, right) =>
+        Number(right.substring) - Number(left.substring) ||
+        left.distance - right.distance ||
+        left.id.localeCompare(right.id),
+    );
+    return suggestions.slice(0, limit).map((component) => component.id);
   }
 
   private findComponent(idOrName: string): ManifestComponent {
@@ -303,17 +303,21 @@ export class CinderKnowledge {
 
   private validateFilters(options: ListOptions): void {
     if (options.category && !Object.hasOwn(this.manifest.categories, options.category)) {
+      const categorySuggestions = Object.keys(this.manifest.categories);
+      categorySuggestions.sort();
       throw new CinderKnowledgeError(
         'BAD_CATEGORY',
         `Unknown category "${options.category}".`,
-        Object.keys(this.manifest.categories).toSorted(),
+        categorySuggestions,
       );
     }
     if (options.status && !Object.hasOwn(this.manifest.statusLevels, options.status)) {
+      const statusSuggestions = Object.keys(this.manifest.statusLevels);
+      statusSuggestions.sort();
       throw new CinderKnowledgeError(
         'BAD_STATUS',
         `Unknown status "${options.status}".`,
-        Object.keys(this.manifest.statusLevels).toSorted(),
+        statusSuggestions,
       );
     }
   }
@@ -373,10 +377,13 @@ export class CinderKnowledge {
       }
     }
 
+    const matchedFields = unique(matched);
+    matchedFields.sort();
+
     return {
       ...toSummary(component, this.manifest.overlapFamilies),
       score,
-      matched: unique(matched).toSorted(),
+      matched: matchedFields,
     };
   }
 }

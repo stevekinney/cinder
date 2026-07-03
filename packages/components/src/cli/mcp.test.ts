@@ -40,7 +40,8 @@ describe('cinder MCP server', () => {
 
     try {
       const tools = await client.listTools();
-      const toolNames = tools.tools.map((tool) => tool.name).toSorted();
+      const toolNames = tools.tools.map((tool) => tool.name);
+      toolNames.sort();
       expect(toolNames).toEqual([
         'compare_components',
         'get_best_practices',
@@ -63,7 +64,8 @@ describe('cinder MCP server', () => {
       expect(templateUris).toContain('cinder://component/{id}/constraints');
 
       const prompts = await client.listPrompts();
-      const promptNames = prompts.prompts.map((prompt) => prompt.name).toSorted();
+      const promptNames = prompts.prompts.map((prompt) => prompt.name);
+      promptNames.sort();
       expect(promptNames).toEqual(['choose_cinder_component', 'review_cinder_usage']);
 
       const search = await client.callTool({
