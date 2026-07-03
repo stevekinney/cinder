@@ -95,6 +95,14 @@ const BUN_TEST_FLAGS = [
   '--parallel=1',
 ] as const;
 
+const FULL_SUITE_CHUNK_COUNT = 4;
+
+const FULL_SUITE_NON_COMPONENT_PATHS = [
+  'scripts',
+  ...ALWAYS_RUN_PATHS,
+  ...ALWAYS_RUN_ROOT_TESTS,
+] as const;
+
 /**
  * Map a scope decision to the positional path arguments for `bun test`.
  *
@@ -111,6 +119,19 @@ export function testPathsForScope(decision: ScopeDecision): string[] | null {
     paths.push(`src/components/${slug}`);
   }
   return paths;
+}
+
+export function fullSuiteTestPathGroups(componentSlugs: string[]): string[][] {
+  const groups = Array.from({ length: FULL_SUITE_CHUNK_COUNT }, () => [] as string[]);
+  groups[0]!.push(...FULL_SUITE_NON_COMPONENT_PATHS);
+
+  for (const [index, slug] of [...componentSlugs].toSorted().entries()) {
+    groups[index % FULL_SUITE_CHUNK_COUNT]!.push(`src/components/${slug}`);
+  }
+
+  return groups
+    .map((group) => group.filter((path) => existsSync(join(packageRoot, path))))
+    .filter((group) => group.length > 0);
 }
 
 /** Parse the `CINDER_TEST_COMPONENTS` env var into a slug list (empty = unset). */
@@ -195,6 +216,20 @@ async function main(): Promise<void> {
   if (paths === null) {
     const reason = decision.mode === 'full' ? decision.reason : 'no scoped slugs';
     process.stderr.write(`test-changed: full suite (${reason})\n`);
+    const componentSlugs = [...(await loadKnownSlugs())];
+    const groups = fullSuiteTestPathGroups(componentSlugs);
+
+    for (const [index, group] of groups.entries()) {
+      process.stderr.write(`test-changed: full suite chunk ${index + 1}/${groups.length}\n`);
+      const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...group], {
+        cwd: packageRoot,
+        stdio: ['inherit', 'inherit', 'inherit'],
+        env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+      });
+      const exitCode = await child.exited;
+      if (exitCode !== 0) process.exit(exitCode);
+    }
+    return;
   } else {
     process.stderr.write(
       `test-changed: ${decision.mode === 'filtered' ? decision.slugs.length : 0} component(s): ` +
@@ -202,8 +237,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const positional = paths ?? [];
-  const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...positional], {
+  const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...paths], {
     cwd: packageRoot,
     stdio: ['inherit', 'inherit', 'inherit'],
     env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
