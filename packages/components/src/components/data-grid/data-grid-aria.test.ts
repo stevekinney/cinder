@@ -31,6 +31,36 @@ const rows: Issue[] = [
 const getIssueId = (row: Issue) => row.id;
 const IssueDataGrid = DataGrid as Component<DataGridProps<Issue>>;
 
+type HydrationSnapshot = {
+  ssrHtml: string;
+  rowCount: string | null | undefined;
+  columnCount: string | null | undefined;
+};
+
+async function captureEmptyGridHydrationSnapshot(): Promise<HydrationSnapshot> {
+  const result = await renderThenHydrate(IssueDataGrid, sourcePath, {
+    rows: [],
+    columns,
+    getRowId: getIssueId,
+    'aria-label': 'Issues',
+  });
+
+  try {
+    const grid = result.container.querySelector('[role="grid"]');
+    return {
+      ssrHtml: result.ssrHtml,
+      rowCount: grid?.getAttribute('aria-rowcount'),
+      columnCount: grid?.getAttribute('aria-colcount'),
+    };
+  } finally {
+    result.cleanup();
+  }
+}
+
+// Keep the cold Svelte server compilation out of Bun's per-test timeout. The
+// named test below still owns the assertions for the captured SSR/hydration result.
+const emptyGridHydrationSnapshot = await captureEmptyGridHydrationSnapshot();
+
 describe('DataGrid ARIA', () => {
   test('reports row and column counts from props', () => {
     const { container } = render(IssueDataGrid, {
@@ -200,24 +230,11 @@ describe('DataGrid ARIA', () => {
     }
   });
 
-  test('keeps counts stable through server render and hydration', async () => {
-    const result = await renderThenHydrate(IssueDataGrid, sourcePath, {
-      rows: [],
-      columns,
-      getRowId: getIssueId,
-      'aria-label': 'Issues',
-    });
-
-    try {
-      expect(result.ssrHtml).toContain('role="grid"');
-      expect(result.ssrHtml).toContain('aria-rowcount="1"');
-      expect(result.ssrHtml).toContain('aria-colcount="2"');
-
-      const grid = result.container.querySelector('[role="grid"]');
-      expect(grid?.getAttribute('aria-rowcount')).toBe('1');
-      expect(grid?.getAttribute('aria-colcount')).toBe('2');
-    } finally {
-      result.cleanup();
-    }
+  test('keeps counts stable through server render and hydration', () => {
+    expect(emptyGridHydrationSnapshot.ssrHtml).toContain('role="grid"');
+    expect(emptyGridHydrationSnapshot.ssrHtml).toContain('aria-rowcount="1"');
+    expect(emptyGridHydrationSnapshot.ssrHtml).toContain('aria-colcount="2"');
+    expect(emptyGridHydrationSnapshot.rowCount).toBe('1');
+    expect(emptyGridHydrationSnapshot.columnCount).toBe('2');
   });
 });
