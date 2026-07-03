@@ -338,8 +338,14 @@ export function stripDanglingSourceMapUrlComments(
   let strippedCount = 0;
   const outputLines: string[] = [];
   const lines = text.split('\n');
-  for (const line of lines) {
-    const sourceMapReference = getSourceMapReferences(line)[0];
+  const sourceMapReferencesByLine = new Map(
+    getSourceMapReferences(text).map((sourceMapReference) => [
+      sourceMapReference.line,
+      sourceMapReference,
+    ]),
+  );
+  for (const [index, line] of lines.entries()) {
+    const sourceMapReference = sourceMapReferencesByLine.get(index + 1);
     if (sourceMapReference && !hasSourceMap(sourceMapReference.reference)) {
       strippedCount += 1;
       continue;
