@@ -74,7 +74,7 @@ export async function createEditor(
     placeholderDecoration,
   } = config;
   const resolvedAriaLabel =
-    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined;
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel.trim() : undefined;
 
   // Track if we're updating from external source to prevent loops
   let isExternalUpdate = false;

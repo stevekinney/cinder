@@ -109,7 +109,7 @@ describe('MarkdownEditor — aria-describedby forwarding', () => {
 
   test('falls back to the default label when the provided label is only whitespace', () => {
     expect(markdownEditorSource).toMatch(
-      /label\.trim\(\)\.length\s*>\s*0\s*\?\s*label\s*:\s*['"]Markdown editor['"]/,
+      /label\.trim\(\)\.length\s*>\s*0\s*\?\s*label\.trim\(\)\s*:\s*['"]Markdown editor['"]/,
     );
   });
 
