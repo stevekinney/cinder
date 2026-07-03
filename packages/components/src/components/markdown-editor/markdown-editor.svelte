@@ -434,7 +434,7 @@
     // Initialize Milkdown with canonical markdown for consistent parsing/serialization (DEP-35).
     getInitialValue: () => normalizeSafely(value),
     getReadonly: () => readonly,
-    getAriaLabel: () => label,
+    getAriaLabel: () => accessibleEditorLabel,
     debounceMs: DEFAULT_DEBOUNCE_MS,
     getPlugins: () => plugins,
     getPlaceholderCompletion: () => placeholderCompletion,

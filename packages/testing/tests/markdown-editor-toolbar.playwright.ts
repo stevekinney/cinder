@@ -106,3 +106,16 @@ for (const theme of THEMES) {
     });
   }
 }
+
+test('MarkdownEditor names its ProseMirror textbox before accessibility checks run', async ({
+  componentPage,
+}) => {
+  const page = await componentPage.open({
+    entry: markdownEditorEntry,
+    theme: 'light',
+    viewport: VIEWPORTS.find((viewport) => viewport.name === 'tablet')!,
+  });
+
+  const editorTextbox = page.locator('.markdown-editor .ProseMirror[role="textbox"]').first();
+  await expect(editorTextbox).toHaveAttribute('aria-label', 'Markdown editor');
+});

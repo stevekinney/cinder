@@ -30,7 +30,7 @@ export async function createEditor(
   }
 
   const [
-    { Editor, rootCtx, defaultValueCtx, editorViewCtx },
+    { Editor, rootCtx, defaultValueCtx, editorViewCtx, editorViewOptionsCtx },
     { commonmark },
     { gfm },
     { history },
@@ -85,6 +85,19 @@ export async function createEditor(
     .config((ctx) => {
       ctx.set(rootCtx, container);
       ctx.set(defaultValueCtx, initialContent);
+      if (ariaLabel) {
+        ctx.update(editorViewOptionsCtx, (previous) => {
+          const previousAttributes = previous.attributes;
+
+          return {
+            ...previous,
+            attributes:
+              typeof previousAttributes === 'function'
+                ? (state) => ({ ...previousAttributes(state), 'aria-label': ariaLabel })
+                : { ...previousAttributes, 'aria-label': ariaLabel },
+          };
+        });
+      }
     })
     .config((ctx) => {
       // Set up change listener
