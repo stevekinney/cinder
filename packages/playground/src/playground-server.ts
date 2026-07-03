@@ -82,7 +82,7 @@ import {
 } from './snapshot-mode.ts';
 import type { ComponentManifest } from './types.ts';
 
-function resolvePreferredPort(): number {
+export function resolvePreferredPort(): number {
   const fromEnv = Bun.env['PORT'];
   if (fromEnv === undefined) return 5555;
   const parsed = Number.parseInt(fromEnv, 10);

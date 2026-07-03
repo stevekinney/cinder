@@ -35,6 +35,7 @@ import {
   createHttpServerOnAvailablePort,
   createSharedDisposer,
   handleRequest,
+  resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
   triggerReload,
 } from './playground-server.ts';
@@ -163,8 +164,37 @@ async function fixtureContentHash(componentName: string): Promise<string> {
 }
 
 describe('port selection', () => {
-  it('defaults to port 5555', () => {
-    expect(PORT).toBe(5555);
+  it('defaults to port 5555 when PORT is unset', () => {
+    const original = Bun.env['PORT'];
+    delete Bun.env['PORT'];
+    try {
+      expect(resolvePreferredPort()).toBe(5555);
+    } finally {
+      if (original === undefined) delete Bun.env['PORT'];
+      else Bun.env['PORT'] = original;
+    }
+  });
+
+  it('uses PORT from the environment when set', () => {
+    const original = Bun.env['PORT'];
+    Bun.env['PORT'] = '4321';
+    try {
+      expect(resolvePreferredPort()).toBe(4321);
+    } finally {
+      if (original === undefined) delete Bun.env['PORT'];
+      else Bun.env['PORT'] = original;
+    }
+  });
+
+  it('falls back to 5555 when PORT is not a valid number', () => {
+    const original = Bun.env['PORT'];
+    Bun.env['PORT'] = 'not-a-port';
+    try {
+      expect(resolvePreferredPort()).toBe(5555);
+    } finally {
+      if (original === undefined) delete Bun.env['PORT'];
+      else Bun.env['PORT'] = original;
+    }
   });
 
   it('uses the next available port when the preferred port is taken', async () => {
