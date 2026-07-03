@@ -54,6 +54,7 @@ type ExportsMap = Record<string, ExportConditional | string>;
 type SourceManifest = {
   name: string;
   version: string;
+  bin?: Record<string, string>;
   files?: string[];
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -208,34 +209,17 @@ function buildPublishedManifest(
   delete published.husky;
   delete published['lint-staged'];
   // The published tarball ships:
-  //   - `dist/` — every component / upstream / server build target.
-  //   - `src/styles/**/*.css` — `@lostgradient/cinder/styles*` exports target these CSS
-  //     files directly (the build does not transform them).
-  //   - `src/components/**/*.examples.json` and
-  //     `src/components/**/*.constraints.json` — per-component sidecars
-  //     consumed by the `<id>/examples` and `<id>/constraints` exports.
-  //   - `components.json` — `@lostgradient/cinder/manifest`.
-  //
-  // Everything else under `src/**` (TS source, Svelte source, tests) stays
-  // out so `@cinder/*` import-statement noise never reaches the tarball.
-  // The published tarball ships:
   //   - `dist/` — built artifacts (per-component JS + types, the vendored
   //     `_upstream/` declarations, server bundles).
-  //   - `src/components/**` — Svelte/TS source for component sub-paths
-  //     because browser Svelte-aware tooling can still resolve the source
-  //     condition when `node` is not active.
-  //   - `src/index.ts` and `src/schema-types.ts` — root barrel source for
-  //     the `svelte` condition on `@lostgradient/cinder` itself.
-  //   - `src/utilities/**/*.ts` and `src/_internal/**/*.ts` — runtime
-  //     helpers and the constraints DSL the components import.
-  //   - `src/styles/**/*.css` and `src/components/**/*.css` — hand-authored
-  //     CSS targets for `@lostgradient/cinder/styles*` and `@lostgradient/cinder/<id>/styles`.
-  //   - `src/components/**/*.{examples,constraints}.json` — JSON sidecars
-  //     surfaced via `@lostgradient/cinder/<id>/{examples,constraints}`.
+  //   - `src/styles/**/*.css` — global style targets for
+  //     `@lostgradient/cinder/styles*` exports.
+  //   - `src/components/**/*.{schema,variables,examples,constraints}.json`
+  //     — generated JSON sidecars for CLI discovery plus exported examples
+  //     and constraints resources.
   //   - `components.json` — `@lostgradient/cinder/manifest`.
   //
-  // Test files are excluded via `!**/*.{test,spec}.ts` so the tarball never
-  // ships test infra.
+  // Published runtime exports are rewritten to `dist`, so component/runtime
+  // TypeScript and Svelte source stays out of the package.
   published.files = [
     'dist',
     '!dist/**/*.js.map',
@@ -245,39 +229,10 @@ function buildPublishedManifest(
     '!dist/**/*fixture*.svelte.d.ts',
     '!dist/**/_*-test-harness.*',
     '!dist/**/test/**',
-    'src/index.ts',
-    'src/schema-types.ts',
-    'src/components/**/*.ts',
-    '!src/components/**/*.test.ts',
-    '!src/components/**/*.spec.ts',
-    '!src/components/**/*.type-test.ts',
-    '!src/components/**/*.schema.ts',
-    '!src/components/**/*.variables.ts',
-    '!src/components/**/*-fixtures.ts',
-    '!src/components/**/*fixtures.ts',
-    'src/components/**/*.svelte',
-    '!src/components/**/*fixture*.svelte',
-    '!src/components/**/_*-test-harness.svelte',
-    '!src/components/**/*.type-test.svelte',
+    'src/components/**/*.schema.json',
+    'src/components/**/*.variables.json',
     'src/components/**/*.examples.json',
     'src/components/**/*.constraints.json',
-    'src/components/**/*.css',
-    'src/components/**/*.md',
-    '!src/components/**/*.a11y.md',
-    'src/_internal/**/*.ts',
-    '!src/_internal/**/*.test.ts',
-    'src/utilities/**/*.ts',
-    '!src/utilities/**/*.test.ts',
-    // Non-component static sub-paths whose exports map carries a `svelte`
-    // condition pointing at `./src/highlighters/<name>/index.ts` (the
-    // first-party Shiki adapter today; future siblings live here too).
-    // Without this glob, a Svelte-aware consumer resolving the source
-    // condition for `@lostgradient/cinder/highlighters/shiki` would hit a dangling path
-    // because the build only emits `dist/highlighters/**` — the source
-    // remains in `src/`.
-    'src/highlighters/**/*.ts',
-    '!src/highlighters/**/*.test.ts',
-    '!src/highlighters/**/*.spec.ts',
     'src/styles/**/*.css',
     // Type stubs for the reserved `./styles*` subpaths. The `types` condition
     // in each export entry points at `./src/styles/<name>.css.d.ts`; without
@@ -285,13 +240,6 @@ function buildPublishedManifest(
     // "Cannot find module or type declarations for side-effect import" under
     // moduleResolution: bundler.
     'src/styles/**/*.css.d.ts',
-    // The `./styles/guard` export carries a `svelte` condition pointing at
-    // `./src/styles/base-guard.ts` (the build only emits `dist/styles/base-guard.js`),
-    // so a Svelte-aware consumer resolving that source condition would hit a
-    // dangling path without this file. Listed explicitly rather than via a
-    // `src/styles/**/*.ts` glob to keep the publish surface narrow — this is the
-    // only `.ts` under `src/styles/` that needs to ship.
-    'src/styles/base-guard.ts',
     'components.json',
     'README.md',
     'LICENSE',
@@ -480,9 +428,7 @@ export async function packForPublish(): Promise<PackForPublishResult> {
   const reexports = await deriveUpstreamReexports();
   const publishedManifest = buildPublishedManifest(sourceManifest, reexports);
 
-  // Stage from the PUBLISHED manifest's `files` list, not the source's —
-  // the source ships `src/**` for in-repo Svelte tooling but the published
-  // tarball is dist-only.
+  // Stage from the PUBLISHED manifest's `files` list, not the source's.
   await stageFiles(publishedManifest);
   await Bun.write(
     join(stagingRoot, 'package.json'),

@@ -7,7 +7,7 @@ import {
 } from './pack-for-publish.ts';
 
 describe('buildPublishedManifest', () => {
-  it('keeps Svelte test-harness exclusions after broad Svelte includes', () => {
+  it('keeps component/runtime source out of the published file list', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -17,16 +17,11 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest, []);
     const files = published.files ?? [];
 
-    expect(files.indexOf('src/components/**/*.svelte')).toBeGreaterThanOrEqual(0);
-    expect(files.indexOf('!src/components/**/*fixture*.svelte')).toBeGreaterThan(
-      files.indexOf('src/components/**/*.svelte'),
-    );
-    expect(files.indexOf('!src/components/**/_*-test-harness.svelte')).toBeGreaterThan(
-      files.indexOf('src/components/**/*.svelte'),
-    );
-    expect(files.indexOf('!src/components/**/*.type-test.svelte')).toBeGreaterThan(
-      files.indexOf('src/components/**/*.svelte'),
-    );
+    expect(files).not.toContain('src/components/**/*.ts');
+    expect(files).not.toContain('src/components/**/*.svelte');
+    expect(files).not.toContain('src/_internal/**/*.ts');
+    expect(files).not.toContain('src/utilities/**/*.ts');
+    expect(files).not.toContain('src/highlighters/**/*.ts');
   });
 
   it('includes src/styles/**/*.css.d.ts so reserved styles type stubs are published', () => {
@@ -47,13 +42,7 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('src/styles/**/*.css.d.ts');
   });
 
-  it('includes src/styles/base-guard.ts so the `./styles/guard` svelte source ships', () => {
-    // Regression guard: the `./styles/guard` export's `svelte` condition points
-    // at `./src/styles/base-guard.ts`. The build emits only
-    // `dist/styles/base-guard.js`, so without this entry a Svelte-aware consumer
-    // resolving the source condition hits a dangling path. It is the only `.ts`
-    // under `src/styles/` that ships, so it is listed explicitly rather than via
-    // a `src/styles/**/*.ts` glob.
+  it('does not ship src/styles/base-guard.ts because the published export points at dist', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -63,7 +52,7 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest, []);
     const files = published.files ?? [];
 
-    expect(files).toContain('src/styles/base-guard.ts');
+    expect(files).not.toContain('src/styles/base-guard.ts');
   });
 
   it('keeps dist .js.map files excluded from the published tarball', () => {
@@ -77,6 +66,22 @@ describe('buildPublishedManifest', () => {
     const files = published.files ?? [];
 
     expect(files).toContain('!dist/**/*.js.map');
+  });
+
+  it('preserves the cinder binary declaration and includes dist in the tarball', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      bin: {
+        cinder: './dist/cli/index.js',
+      },
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+
+    expect(published.bin).toEqual({ cinder: './dist/cli/index.js' });
+    expect(published.files).toContain('dist');
   });
 
   it('rewrites source-backed runtime exports to built browser artifacts in the published manifest', () => {
@@ -160,8 +165,8 @@ describe('buildPublishedManifest', () => {
       svelte: './dist/styles/base-guard.js',
       default: './dist/styles/base-guard.js',
     });
-    expect(files).toContain('!src/components/**/*.schema.ts');
-    expect(files).toContain('!src/components/**/*.variables.ts');
+    expect(files).not.toContain('src/components/**/*.ts');
+    expect(files).not.toContain('src/components/**/*.svelte');
   });
 
   it('preserves component condition order so Node SSR wins over browser/svelte builds', () => {
@@ -204,7 +209,7 @@ describe('buildPublishedManifest', () => {
     ]);
   });
 
-  it('publishes only exported component JSON sidecars', () => {
+  it('publishes only generated component JSON sidecars used by public artifacts and the CLI', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -214,6 +219,8 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest, []);
     const files = published.files ?? [];
 
+    expect(files).toContain('src/components/**/*.schema.json');
+    expect(files).toContain('src/components/**/*.variables.json');
     expect(files).toContain('src/components/**/*.examples.json');
     expect(files).toContain('src/components/**/*.constraints.json');
     expect(files).not.toContain('src/components/**/*.json');

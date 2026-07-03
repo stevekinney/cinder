@@ -165,7 +165,22 @@ plaintext path.
 This is the part that matters. Every component ships machine-readable
 metadata. You do not need to read 100 READMEs.
 
-**1. Read the manifest.**
+**1. Ask the CLI or MCP server first.**
+
+```sh
+cinder search modal --json
+cinder show button --json
+cinder compare modal drawer --json
+cinder best-practices styles --json
+```
+
+For agent runtimes that support MCP, run `cinder mcp` as a read-only stdio MCP
+server and use `search_components`, `get_component`, `compare_components`, and
+`get_best_practices`. The server also exposes `cinder://manifest` plus
+`cinder://component/{id}` and its `/schema`, `/variables`, `/examples`, and
+`/constraints` resources.
+
+**2. Fall back to the manifest when the CLI/MCP path is unavailable.**
 
 ```ts
 import manifest from '@lostgradient/cinder/manifest' with { type: 'json' };
@@ -184,7 +199,7 @@ Each entry carries `purpose`, `useWhen[]`, `avoidWhen[]`, `related[]`,
 `hasConstraints`, `hasExamples`, and pointers under `artifacts` to the
 subpaths you fetch next.
 
-**2. Fetch the prop signature.**
+**3. Fetch the prop signature.**
 
 ```ts
 type ButtonSchema = typeof import('@lostgradient/cinder/button/schema').default;
@@ -229,10 +244,10 @@ alongside each module for tooling that prefers reading raw JSON off disk, but
 importing the subpath is the simpler path now that it carries a runtime
 `default` condition.
 
-The authoritative, machine-readable index for every component is `@lostgradient/cinder/manifest`
-(step 1) — prefer it whenever you can.
+The authoritative, machine-readable index for every component is the CLI/MCP
+knowledge service, backed by `@lostgradient/cinder/manifest` (step 2).
 
-**3. Fetch the cross-prop constraints — when `hasConstraints` is true.**
+**4. Fetch the cross-prop constraints — when `hasConstraints` is true.**
 
 ```ts
 import buttonConstraints from '@lostgradient/cinder/button/constraints' with { type: 'json' };
@@ -252,7 +267,7 @@ JSON Schema cannot cleanly express rules like _"exactly one of `label`,
 `children`, or `iconOnly`"_ or _"`iconOnly` requires an accessible name
 source"_ — those rules live in the constraints sidecar as a small DSL.
 
-**4. Fetch canonical examples — when `hasExamples` is true.**
+**5. Fetch canonical examples — when `hasExamples` is true.**
 
 ```ts
 import buttonExamples from '@lostgradient/cinder/button/examples' with { type: 'json' };
@@ -263,7 +278,7 @@ Like `/constraints`, the `/examples` subpath ships as JSON.
 Each example has a `title`, `description`, and a `code` string you can show
 the user or copy into their codebase verbatim.
 
-**5. Compose.** Use the kebab-case `id` from the manifest (`button-group`,
+**6. Compose.** Use the kebab-case `id` from the manifest (`button-group`,
 `copy-button`) when you cross-reference components in your own code — that
 matches the convention `@lostgradient/cinder` uses internally and in `related[]`.
 

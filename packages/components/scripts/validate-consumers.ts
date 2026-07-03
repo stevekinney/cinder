@@ -246,8 +246,8 @@ function assertPackedExportConditionOrder(
  *   - No `workspace:` substrings anywhere (the dep flip would otherwise
  *     leak through `bun pm pack`).
  *   - No `@cinder/*` in any dep field or exports condition.
- *   - No exports entry retains a `svelte` condition (every published
- *     condition must resolve to `dist/`, since `src/**` is not packed).
+ *   - Runtime exports resolve to `dist/`; only CSS and generated JSON artifact
+ *     exports may target `src/`.
  */
 async function assertPackedManifestInvariants(extractedRoot: string): Promise<void> {
   const packedManifestPath = join(extractedRoot, 'package', 'package.json');
@@ -257,12 +257,21 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
   }
 
   const packedManifest = parseJsonFile<{
+    bin?: Record<string, string>;
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
     peerDependencies?: Record<string, string>;
     optionalDependencies?: Record<string, string>;
     exports?: Record<string, unknown>;
   }>(rawPackedManifest);
+
+  if (packedManifest.bin?.['cinder'] !== './dist/cli/index.js') {
+    fail(
+      `packed manifest bin.cinder is ${JSON.stringify(
+        packedManifest.bin?.['cinder'],
+      )}, expected "./dist/cli/index.js"`,
+    );
+  }
 
   const depFields: Array<keyof typeof packedManifest> = [
     'dependencies',
@@ -289,18 +298,6 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
   for (const [key, value] of Object.entries(exportsMap)) {
     if (!isObjectRecord(value)) continue;
     const conditions = value;
-    // PR 1 contract: every upstream re-export sub-path MUST resolve to
-    // `dist/` only — no `svelte` condition, no `./src/` target. They are
-    // the surface PR 1 introduces and they ship without Svelte source.
-    //
-    // Component sub-paths (and other non-upstream exports) keep their
-    // `svelte` → `./src/components/<id>/index.ts` condition because the
-    // pre-bundled root barrel at `dist/index.js` is currently a re-export
-    // pass-through that does not emit `import` statements for the symbols
-    // it re-exports (a Bun.build artifact). Until that's fixed, Svelte-
-    // aware consumers must resolve component sub-paths through the source
-    // path. The published tarball ships `src/components/**`, `src/utilities/**`,
-    // `src/_internal/**`, and `src/index.ts` to make that resolvable.
     if (upstreamKeys.has(key)) {
       if ('svelte' in conditions) {
         fail(
@@ -313,6 +310,19 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
             `packed exports["${key}"]["${condition}"] points at "${target}" — upstream re-exports must resolve to \`./dist/\``,
           );
         }
+      }
+    }
+    for (const [condition, target] of Object.entries(conditions)) {
+      if (
+        typeof target === 'string' &&
+        target.startsWith('./src/') &&
+        !target.endsWith('.css') &&
+        !target.endsWith('.css.d.ts') &&
+        !target.endsWith('.json')
+      ) {
+        fail(
+          `packed exports["${key}"]["${condition}"] points at "${target}" — published runtime exports must resolve to \`./dist/\``,
+        );
       }
     }
   }
@@ -451,10 +461,9 @@ type TarballExpectations = {
 /**
  * Build the tarball expectations from the live filesystem.
  *
- * Every directory-shaped component contributes both its Svelte source
- * (`package/src/components/<name>/<name>.svelte`) and its compiled
- * declaration (`package/dist/components/<name>/<name>.svelte.d.ts`).
- * Experimental components contribute the same paths under `experimental/`.
+ * Every directory-shaped component contributes its generated JSON sidecars and
+ * built runtime/types artifacts. Experimental components contribute the same
+ * paths under `experimental/`.
  *
  * This replaces the previous hand-maintained `PUBLIC_COMPONENTS` allowlist —
  * `discoverComponents()` is the same walk the exports generator uses, so the
@@ -464,21 +473,25 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
   const components = await discoverComponents();
   const componentRequiredEntries: string[] = [];
   for (const { name, isExperimental, hasCss } of components) {
-    const sourceDirectory = isExperimental
-      ? `package/src/components/experimental/${name}`
-      : `package/src/components/${name}`;
+    const sourceRelativeDirectory = isExperimental
+      ? `src/components/experimental/${name}`
+      : `src/components/${name}`;
+    const sourceDirectory = `package/${sourceRelativeDirectory}`;
     const distributionDirectory = isExperimental
       ? `package/dist/components/experimental/${name}`
       : `package/dist/components/${name}`;
-    // Each component sub-path ships both the Svelte source (resolved via
-    // the `svelte` condition) and the built JS + types (resolved via
-    // `default`/`types`/`node`). See `assertPackedManifestInvariants` for
-    // the reason both are required today.
     componentRequiredEntries.push(
-      `${sourceDirectory}/${name}.svelte`,
+      `${sourceDirectory}/${name}.schema.json`,
+      `${sourceDirectory}/${name}.variables.json`,
       `${distributionDirectory}/index.js`,
       `${distributionDirectory}/index.d.ts`,
     );
+    for (const artifact of ['examples', 'constraints'] as const) {
+      const artifactPath = `${sourceRelativeDirectory}/${name}.${artifact}.json`;
+      if (existsSync(join(repositoryRoot, artifactPath))) {
+        componentRequiredEntries.push(`${sourceDirectory}/${name}.${artifact}.json`);
+      }
+    }
     if (hasCss) {
       componentRequiredEntries.push(
         `${distributionDirectory}/${name}.css`,
@@ -489,7 +502,6 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
   return {
     required: [
       'package/package.json',
-      'package/src/index.ts',
       'package/src/styles/index.css',
       'package/src/styles/all.css',
       'package/src/styles/tokens.css',
@@ -506,33 +518,26 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/src/styles/tokens.css.d.ts',
       'package/src/styles/foundation.css.d.ts',
       'package/src/styles/utilities.css.d.ts',
-      // The `./styles/guard` export's `svelte` condition points at
-      // `./src/styles/base-guard.ts`; ship the source so Svelte-aware
-      // consumers don't resolve a dangling path (build emits only
-      // `dist/styles/base-guard.js`).
-      'package/src/styles/base-guard.ts',
       'package/dist/index.d.ts',
       'package/dist/index.js',
       'package/dist/server/index.js',
-      // First-party Shiki adapter: ship both source (for the `svelte`
-      // condition) and built JS + types (for `default`/`node`).
-      'package/src/highlighters/shiki/index.ts',
+      'package/dist/cli/index.js',
+      'package/dist/styles/base-guard.js',
+      'package/dist/styles/base-guard.d.ts',
       'package/dist/highlighters/shiki/index.js',
       'package/dist/highlighters/shiki/index.d.ts',
       ...componentRequiredEntries,
     ],
-    // PR 1: `src/markdown/**`, `src/editor/**`, `src/commentary/**`, and
-    // `src/diff/**` (the generated re-export shells) stay out of the
-    // tarball — upstream sub-paths resolve through `dist/` only. The rest
-    // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
-    // styles, JSON sidecars) ships because the published `svelte`
-    // condition on component sub-paths targets it.
+    // Runtime source stays out of the tarball; published conditions resolve
+    // through `dist/`. The remaining `src/**` entries are global CSS assets and
+    // generated component JSON sidecars.
     forbiddenPatterns: [
       /\.(test|spec)\.[cm]?[jt]s$/,
       /\.type-test\./,
       /(^|\/)[^/]*-fixtures\./,
       /(^|\/)[^/]*fixtures\./,
       /(^|\/)_.*-test-harness\./,
+      /^package\/src\/components\/.*\.(?:ts|svelte|css|md)$/u,
       /\.js\.map$/,
       /\.a11y\.md$/,
     ],
@@ -542,9 +547,12 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/client/',
       'package/dist/test/',
       'package/scripts/',
-      // Upstream re-export shells (`src/markdown/`, `src/editor/`,
-      // `src/commentary/`, `src/diff/`) resolve via `dist/_upstream/`; the
-      // shell sources are build-only inputs.
+      'package/src/index.ts',
+      'package/src/schema-types.ts',
+      'package/src/styles/base-guard.ts',
+      'package/src/_internal/',
+      'package/src/utilities/',
+      'package/src/highlighters/',
       'package/src/markdown/',
       'package/src/editor/',
       'package/src/commentary/',
@@ -729,15 +737,7 @@ async function runTypescriptConsumerSvelteGate(
   fixtureDirectory: string,
   label: string,
 ): Promise<void> {
-  const generateResult = Bun.spawnSync([nodeBinaryPath, 'generate-probe.mjs'], {
-    cwd: fixtureDirectory,
-    env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
-  });
-  if (generateResult.exitCode !== 0) {
-    fail(
-      `typescript-consumer ${label} generate-probe.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
-    );
-  }
+  generateTypescriptConsumerProbe(fixtureDirectory, label);
 
   const tscResult = await $`bunx tsc --noEmit -p tsconfig.svelte.json`
     .cwd(fixtureDirectory)
@@ -754,6 +754,18 @@ async function runTypescriptConsumerSvelteGate(
   if (checkResult.exitCode !== 0) {
     fail(
       `typescript-consumer ${label} svelte-check failed:\n${checkResult.stdout.toString()}\n${checkResult.stderr.toString()}`,
+    );
+  }
+}
+
+function generateTypescriptConsumerProbe(fixtureDirectory: string, label: string): void {
+  const result = Bun.spawnSync([nodeBinaryPath, 'generate-probe.mjs'], {
+    cwd: fixtureDirectory,
+    env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+  });
+  if (result.exitCode !== 0) {
+    fail(
+      `typescript-consumer ${label} generate-probe.mjs failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
     );
   }
 }
@@ -837,6 +849,7 @@ async function runTypescriptCompatibilityFixture(
       );
     }
     assertNoPeerDependencyWarnings(installResult, label);
+    generateTypescriptConsumerProbe(fixtureDirectory, label);
     await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
     await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
     process.stdout.write(

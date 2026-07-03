@@ -1,6 +1,6 @@
 import { $, Glob } from 'bun';
 import { existsSync } from 'node:fs';
-import { mkdir, rm } from 'node:fs/promises';
+import { chmod, mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
@@ -122,6 +122,8 @@ const upstreamReexportEntrypoints = upstreamReexports.map(
  * runtime dependencies for optional component behavior.
  */
 const runtimeDependencyExternals = [
+  '@modelcontextprotocol/sdk',
+  '@modelcontextprotocol/sdk/*',
   '@shikijs/rehype',
   '@milkdown/kit',
   '@milkdown/prose',
@@ -150,6 +152,8 @@ const runtimeDependencyExternals = [
   'unified',
   'unist-util-remove',
   'unist-util-visit',
+  'zod',
+  'zod/*',
 ];
 
 // Pre-emit sidecar lint: every component CSS that exists must conform to the
@@ -230,6 +234,8 @@ const staticSubpathEntrypoints = [
   `${sourceRoot}/highlighters/shiki/index.ts`,
   `${sourceRoot}/styles/base-guard.ts`,
 ];
+
+const cliEntrypoint = `${sourceRoot}/cli/index.ts`;
 
 const serverCssNoopPlugin = {
   name: 'server-css-noop',
@@ -489,6 +495,43 @@ if (existsSync(temporaryServerRootMapOutput)) {
 
 await rm(temporaryServerRootOutput, { force: true });
 await rm(temporaryServerRootMapOutput, { force: true });
+
+// -----------------------------------------------------------------------------
+// 3. CLI build. The published `bin.cinder` target is Node-only and must not
+//    participate in browser/component export builds. It shares the runtime
+//    dependency external list so MCP SDK and zod stay install-time dependencies
+//    instead of being vendored into the generated binary.
+// -----------------------------------------------------------------------------
+
+const cliBuildResult = await Bun.build({
+  entrypoints: [cliEntrypoint],
+  outdir: distributionDirectory,
+  root: sourceRoot,
+  target: 'node',
+  format: 'esm',
+  splitting: false,
+  external: [...runtimeDependencyExternals],
+  naming: {
+    entry: '[dir]/[name].[ext]',
+    chunk: '[name]-[hash].[ext]',
+    asset: '[name]-[hash].[ext]',
+  },
+  sourcemap: 'external',
+  minify: false,
+});
+
+if (!cliBuildResult.success) {
+  const messages = ['CLI build failed:', ...cliBuildResult.logs.map(String)].join('\n');
+  process.stderr.write(`${messages}\n`);
+  process.exit(1);
+}
+
+const cliOutput = `${distributionDirectory}/cli/index.js`;
+const cliOutputText = await Bun.file(cliOutput).text();
+if (!cliOutputText.startsWith('#!/usr/bin/env node')) {
+  await Bun.write(cliOutput, `#!/usr/bin/env node\n${cliOutputText}`);
+}
+await chmod(cliOutput, 0o755);
 
 // -----------------------------------------------------------------------------
 // 4. Copy per-component CSS sidecars verbatim. The browser entry's injected

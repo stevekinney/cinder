@@ -5700,6 +5700,9 @@
   "main": "./dist/server/index.js",
   "svelte": "./src/index.ts",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "cinder": "./dist/cli/index.js"
+  },
   "files": [
     "dist",
     "src/index.ts",
@@ -5780,6 +5783,7 @@
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@shikijs/rehype": "^3.21.0",
     "@tanstack/virtual-core": "^3.17.1",
     "ajv": "^8",

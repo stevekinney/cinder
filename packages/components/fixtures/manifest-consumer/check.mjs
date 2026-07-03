@@ -33,9 +33,10 @@
  */
 
 import { strict as assert } from 'node:assert';
+import { spawnSync } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, normalize } from 'node:path';
+import { dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
@@ -126,6 +127,109 @@ assert.ok(manifest.components.length > 0, 'manifest.components must be non-empty
 const packageJson = require('@lostgradient/cinder/package.json');
 const exportsMap = packageJson.exports ?? {};
 const exportKeys = new Set(Object.keys(exportsMap));
+
+// ---------------------------------------------------------------------------
+// 1a. CLI contract. The packed package must expose a working `cinder` binary.
+// ---------------------------------------------------------------------------
+
+if (packageJson.bin?.cinder !== './dist/cli/index.js') {
+  record(
+    `package.json bin.cinder is ${JSON.stringify(
+      packageJson.bin?.cinder,
+    )}, expected "./dist/cli/index.js"`,
+  );
+} else {
+  assertResolvedTargetUsable(
+    '@lostgradient/cinder bin.cinder target',
+    packageRelativeToAbsolute(packageJson.bin.cinder),
+  );
+}
+
+const nodeModulesRoot = resolve(cinderPackageRoot, '..', '..');
+const installedCinderBin = join(
+  nodeModulesRoot,
+  '.bin',
+  process.platform === 'win32' ? 'cinder.cmd' : 'cinder',
+);
+
+function runCommand(command, args) {
+  return spawnSync(command, args, {
+    cwd: nodeModulesRoot,
+    encoding: 'utf8',
+    env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+  });
+}
+
+function assertCliHelpWorks() {
+  if (!existsSync(installedCinderBin)) {
+    record(`node_modules/.bin/cinder does not exist at ${installedCinderBin}`);
+    return;
+  }
+  const result = runCommand(installedCinderBin, ['--help']);
+  if (result.status !== 0) {
+    record(
+      `cinder --help exited ${result.status}:\nstdout: ${result.stdout}\nstderr: ${result.stderr}`,
+    );
+    return;
+  }
+  if (result.stderr.trim().length > 0) {
+    record(`cinder --help wrote to stderr:\n${result.stderr}`);
+  }
+  if (!result.stdout.includes('cinder mcp')) {
+    record('cinder --help output does not mention `cinder mcp`');
+  }
+}
+
+function assertCliJson(label, args, check) {
+  const cinderEntrypoint = packageRelativeToAbsolute('./dist/cli/index.js');
+  const result = runCommand(process.execPath, [cinderEntrypoint, ...args]);
+  if (result.status !== 0) {
+    record(`${label} exited ${result.status}:\nstdout: ${result.stdout}\nstderr: ${result.stderr}`);
+    return;
+  }
+  if (result.stderr.trim().length > 0) {
+    record(`${label} wrote to stderr:\n${result.stderr}`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(result.stdout);
+  } catch (error) {
+    record(`${label} did not print valid JSON: ${error.message}\n${result.stdout}`);
+    return;
+  }
+  try {
+    check(parsed);
+  } catch (error) {
+    record(`${label} JSON assertion failed: ${error.message}`);
+  }
+}
+
+assertCliHelpWorks();
+assertCliJson('cinder search modal --json', ['search', 'modal', '--json'], (payload) => {
+  assert.equal(payload.package.name, '@lostgradient/cinder');
+  assert.equal(payload.command, 'search');
+  assert.ok(
+    payload.data.some((component) => component.id === 'modal'),
+    'expected search results to include modal',
+  );
+});
+assertCliJson('cinder show button --json', ['show', 'button', '--json'], (payload) => {
+  assert.equal(payload.command, 'show');
+  assert.equal(payload.data.component.id, 'button');
+  assert.ok(payload.data.schema, 'expected button schema');
+  assert.ok(payload.data.variables, 'expected button variables');
+});
+assertCliJson(
+  'cinder best-practices styles --json',
+  ['best-practices', 'styles', '--json'],
+  (payload) => {
+    assert.equal(payload.command, 'best-practices');
+    assert.ok(
+      payload.data.some((entry) => entry.topic === 'styles'),
+      'expected styles best-practice entry',
+    );
+  },
+);
 
 // ---------------------------------------------------------------------------
 // 2. Per-component contract. Treat manifest `import` + `artifacts.*` as THE

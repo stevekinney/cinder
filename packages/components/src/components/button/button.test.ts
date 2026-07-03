@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -278,10 +279,13 @@ describe('Button sizes — xl', () => {
   });
 });
 
-// NOTE: leadingIcon/trailingIcon snippet rendering (DOM order, aria-hidden wrapper) cannot be
-// tested with @testing-library/svelte in happy-dom because the test harness cannot pass Svelte
-// snippet props. Those paths are covered by manual playground inspection and tracked for a
-// future Playwright test once the playground has browser test coverage.
+const leadingIconSnippet = createRawSnippet(() => ({
+  render: () => '<svg data-testid="leading-icon" aria-hidden="true"></svg>',
+}));
+
+const trailingIconSnippet = createRawSnippet(() => ({
+  render: () => '<svg data-testid="trailing-icon" aria-hidden="true"></svg>',
+}));
 
 describe('Button iconOnly', () => {
   test('iconOnly=true applies data-cinder-icon-only=""', () => {
@@ -294,6 +298,25 @@ describe('Button iconOnly', () => {
   test('iconOnly=false does not apply data-cinder-icon-only', () => {
     const { container } = render(Button, { props: { label: 'Save', iconOnly: false } });
     expect(container.querySelector('button')?.hasAttribute('data-cinder-icon-only')).toBe(false);
+  });
+});
+
+describe('Button icon snippets', () => {
+  test('leadingIcon and trailingIcon render in aria-hidden icon wrappers around label text', () => {
+    const { container, getByText } = render(Button, {
+      props: {
+        label: 'Save',
+        leadingIcon: leadingIconSnippet,
+        trailingIcon: trailingIconSnippet,
+      },
+    });
+
+    const wrappers = Array.from(container.querySelectorAll('.cinder-button__icon'));
+    expect(wrappers).toHaveLength(2);
+    expect(wrappers.every((wrapper) => wrapper.getAttribute('aria-hidden') === 'true')).toBe(true);
+    expect(wrappers[0]?.querySelector('[data-testid="leading-icon"]')).not.toBeNull();
+    expect(wrappers[1]?.querySelector('[data-testid="trailing-icon"]')).not.toBeNull();
+    expect(getByText('Save')).not.toBeNull();
   });
 });
 

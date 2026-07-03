@@ -210,6 +210,20 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
       'danger',
     );
   });
+
+  test('live=true exposes status text through a hidden live label without connection preset text', () => {
+    const { container } = render(StatusDot, {
+      props: { status: 'pending', live: true },
+    });
+    const root = container.querySelector('.cinder-status-dot');
+
+    expect(root?.getAttribute('role')).toBe('status');
+    expect(root?.getAttribute('aria-label')).toBeNull();
+    expect(root?.getAttribute('data-cinder-status')).toBe('pending');
+    expect(root?.hasAttribute('data-cinder-state')).toBe(false);
+    expect(container.querySelector('.cinder-status-dot__label')).toBeNull();
+    expect(container.querySelector('.cinder-sr-only')?.textContent).toBe('pending');
+  });
 });
 
 describe('StatusDot connection preset', () => {

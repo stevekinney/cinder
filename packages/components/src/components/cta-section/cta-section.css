@@ -11,7 +11,7 @@
 
   .cinder-cta-section__inner {
     border: 1px solid var(--cinder-border-muted);
-    border-radius: var(--cinder-radius-xl);
+    border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
     padding: var(--cinder-space-7);
     display: grid;

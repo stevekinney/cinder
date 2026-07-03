@@ -3,13 +3,15 @@
 
 @layer cinder.components {
   .cinder-bento-grid {
+    container-type: inline-size;
+    container-name: cinder-bento-grid;
     display: grid;
     grid-template-columns: var(--cinder-bento-grid-columns, repeat(4, minmax(0, 1fr)));
     row-gap: var(--cinder-bento-grid-row-gap, var(--cinder-space-4));
     column-gap: var(--cinder-bento-grid-column-gap, var(--cinder-space-4));
   }
 
-  @media (max-width: 48rem) {
+  @container cinder-bento-grid (max-width: 48rem) {
     .cinder-bento-grid[data-cinder-collapse='true'] {
       grid-template-columns: 1fr;
     }
