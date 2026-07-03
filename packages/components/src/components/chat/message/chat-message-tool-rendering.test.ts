@@ -9,6 +9,7 @@
 
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 import type { Message } from '../conversation-model.ts';
@@ -34,6 +35,11 @@ function toolCallMessage(): Message {
     hidden: false,
     toolCall: { id: 'call-1', name: 'lookup', arguments: {} },
   };
+}
+
+async function clickAndFlush(element: HTMLElement): Promise<void> {
+  element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  await tick();
 }
 
 describe('ChatMessage — tool-call rendering', () => {
@@ -108,7 +114,7 @@ describe('ChatMessage — tool-call rendering', () => {
     });
     const header = container.querySelector<HTMLButtonElement>('.tool-call-header');
     expect(header?.getAttribute('aria-expanded')).toBe('false');
-    await fireEvent.click(header!);
+    await clickAndFlush(header!);
     expect(header?.getAttribute('aria-expanded')).toBe('true');
     expect(container.querySelector('.tool-call-details')).not.toBeNull();
   });
