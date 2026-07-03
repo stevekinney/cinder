@@ -7,13 +7,13 @@
       "id": "basic",
       "title": "Event timeline",
       "description": "A proportional schedule strip with fired and upcoming events.",
-      "code": "<script lang=\"ts\">\n  import { EventTimeline } from '@lostgradient/cinder/event-timeline';\n</script>\n\n<EventTimeline\n  label=\"Next 24 hours\"\n  start=\"2026-07-03T00:00:00.000Z\"\n  end=\"2026-07-04T00:00:00.000Z\"\n  now=\"2026-07-03T10:30:00.000Z\"\n  items={[\n    { at: '2026-07-03T02:00:00.000Z', label: 'Digest', sublabel: '02:00', state: 'done' },\n    { at: '2026-07-03T10:00:00.000Z', label: 'Retry', sublabel: '10:00', state: 'failed' },\n    { at: '2026-07-03T16:00:00.000Z', label: 'Deploy', sublabel: '16:00' },\n    { at: '2026-07-03T22:00:00.000Z', label: 'Archive', sublabel: '22:00' },\n  ]} />\n"
+      "code": "<script lang=\"ts\">\n  import { EventTimeline } from '@lostgradient/cinder/event-timeline';\n</script>\n\n<EventTimeline\n  label=\"Next 24 hours\"\n  start=\"2026-07-03T00:00:00.000Z\"\n  end=\"2026-07-04T00:00:00.000Z\"\n  now=\"2026-07-03T10:30:00.000Z\"\n  items={[\n    { at: '2026-07-03T02:00:00.000Z', label: 'Digest', sublabel: '02:00', state: 'done' },\n    { at: '2026-07-03T10:00:00.000Z', label: 'Retry', sublabel: '10:00', state: 'failed' },\n    { at: '2026-07-03T16:00:00.000Z', label: 'Deploy', sublabel: '16:00' },\n    { at: '2026-07-03T22:00:00.000Z', label: 'Archive', sublabel: '22:00' },\n  ]}\n/>\n"
     },
     {
       "id": "overlap",
       "title": "Overlapping labels",
       "description": "Nearby events are nudged into separate label lanes.",
-      "code": "<script lang=\"ts\">\n  import { EventTimeline } from '@lostgradient/cinder/event-timeline';\n</script>\n\n<EventTimeline\n  ariaLabel=\"Clustered deployment timeline\"\n  start=\"2026-07-03T12:00:00.000Z\"\n  end=\"2026-07-03T18:00:00.000Z\"\n  items={[\n    { at: '2026-07-03T13:00:00.000Z', label: 'Queued', sublabel: '13:00', state: 'done' },\n    { at: '2026-07-03T13:20:00.000Z', label: 'Started', sublabel: '13:20', state: 'done' },\n    { at: '2026-07-03T13:40:00.000Z', label: 'Checked', sublabel: '13:40' },\n    { at: '2026-07-03T16:30:00.000Z', label: 'Promote', sublabel: '16:30' },\n  ]} />\n"
+      "code": "<script lang=\"ts\">\n  import { EventTimeline } from '@lostgradient/cinder/event-timeline';\n</script>\n\n<EventTimeline\n  ariaLabel=\"Clustered deployment timeline\"\n  start=\"2026-07-03T12:00:00.000Z\"\n  end=\"2026-07-03T18:00:00.000Z\"\n  items={[\n    { at: '2026-07-03T13:00:00.000Z', label: 'Queued', sublabel: '13:00', state: 'done' },\n    { at: '2026-07-03T13:20:00.000Z', label: 'Started', sublabel: '13:20', state: 'done' },\n    { at: '2026-07-03T13:40:00.000Z', label: 'Checked', sublabel: '13:40' },\n    { at: '2026-07-03T16:30:00.000Z', label: 'Promote', sublabel: '16:30' },\n  ]}\n/>\n"
     }
   ]
 }
