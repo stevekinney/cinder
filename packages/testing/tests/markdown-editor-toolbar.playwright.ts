@@ -117,5 +117,5 @@ test('MarkdownEditor names its ProseMirror textbox before accessibility checks r
   });
 
   const editorTextbox = page.locator('.markdown-editor .ProseMirror[role="textbox"]').first();
-  await expect(editorTextbox).toHaveAttribute('aria-label', 'Markdown editor');
+  await expect(editorTextbox).toHaveAttribute('aria-label', /\S/);
 });

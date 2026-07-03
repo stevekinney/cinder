@@ -114,7 +114,7 @@
 
   // Escape single quotes in placeholder for CSS content property
   const escapedPlaceholder = $derived(placeholder.replace(/'/g, "\\'"));
-  const accessibleEditorLabel = $derived(label || 'Markdown editor');
+  const accessibleEditorLabel = $derived(label.trim().length > 0 ? label : 'Markdown editor');
 
   // Internal state
   let editorState = $state<EditorState | null>(null);

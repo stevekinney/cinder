@@ -38,7 +38,7 @@ function toolCallMessage(): Message {
 }
 
 async function clickAndFlush(element: HTMLElement): Promise<void> {
-  element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  element.click();
   await tick();
 }
 

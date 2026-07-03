@@ -15,6 +15,10 @@ const markdownEditorSource = await Bun.file(
   new URL('../../markdown-editor/markdown-editor.svelte', import.meta.url).pathname,
 ).text();
 
+const editorRuntimeSource = await Bun.file(
+  new URL('../../../../../editor/src/editor.ts', import.meta.url).pathname,
+).text();
+
 describe('ChatInput — shortcut accessibility', () => {
   test('derives a shortcut description id separate from the visible hint id', () => {
     // Must have both hintId and shortcutDescriptionId derived
@@ -103,8 +107,21 @@ describe('MarkdownEditor — aria-describedby forwarding', () => {
     expect(markdownEditorSource).toMatch(/accessibleEditorLabel/);
   });
 
+  test('falls back to the default label when the provided label is only whitespace', () => {
+    expect(markdownEditorSource).toMatch(
+      /label\.trim\(\)\.length\s*>\s*0\s*\?\s*label\s*:\s*['"]Markdown editor['"]/,
+    );
+  });
+
   test('removes aria-describedby from view.dom when prop is undefined', () => {
     // Must call removeAttribute when ariaDescribedby is falsy
     expect(markdownEditorSource).toMatch(/removeAttribute\s*\(\s*['"]aria-describedby['"]\s*\)/);
+  });
+});
+
+describe('Editor runtime — aria-label forwarding', () => {
+  test('does not apply whitespace-only aria labels to the initial ProseMirror view', () => {
+    expect(editorRuntimeSource).toMatch(/ariaLabel\.trim\(\)\.length\s*>\s*0/);
+    expect(editorRuntimeSource).toMatch(/resolvedAriaLabel/);
   });
 });
