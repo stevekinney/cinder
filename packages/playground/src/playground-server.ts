@@ -82,7 +82,24 @@ import {
 } from './snapshot-mode.ts';
 import type { ComponentManifest } from './types.ts';
 
-export const PORT = 5555;
+const DEFAULT_PORT = 5555;
+
+/**
+ * Resolve the preferred port from `PORT`, falling back to {@link DEFAULT_PORT}
+ * for an unset/blank value, a non-integer string (e.g. "5555abc" — `/^\d+$/`
+ * rejects trailing garbage that `Number.parseInt` would silently accept), or
+ * a value outside the valid TCP port range (1-65535, which would otherwise
+ * reach `Bun.serve()` and throw a non-`EADDRINUSE` error that aborts startup).
+ */
+export function resolvePreferredPort(): number {
+  const fromEnv = Bun.env['PORT']?.trim();
+  if (fromEnv === undefined || fromEnv === '') return DEFAULT_PORT;
+  if (!/^\d+$/.test(fromEnv)) return DEFAULT_PORT;
+  const parsed = Number.parseInt(fromEnv, 10);
+  return parsed >= 1 && parsed <= 65535 ? parsed : DEFAULT_PORT;
+}
+
+export const PORT = resolvePreferredPort();
 const MAX_PORT_SCAN_ATTEMPTS = 100;
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/

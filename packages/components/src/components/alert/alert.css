@@ -104,28 +104,24 @@
   /* ----------------------------------------
  * Status variants
  *
- * The soft-surface background + foreground algebra lives in the shared
- * `_status-surface.css` partial, consumed via `.cinder-_status-surface` on the
- * root (see alert.svelte). Each variant sets the partial's inputs (base color +
- * per-variant foreground chroma) plus the alert-local focus-ring color.
+ * The soft-surface background + foreground + border algebra lives in the
+ * shared `_status-surface.css` partial, consumed via `.cinder-_status-surface`
+ * and `.cinder-_status-surface-border` on the root (see alert.svelte), the
+ * same composition Banner uses. Each variant sets the partial's inputs (base
+ * color + per-variant foreground chroma) plus the alert-local focus-ring color.
  *
  * NOTE (CSS audit, Batch D): the soft surface is synthesized rather than read
  * from the `--cinder-color-{status}-{bg,fg,border}` triples because the
  * dark-theme triple background sits ~8 oklch-L points lighter (28% vs 20% L),
  * exceeding the 0.02 ΔL threshold. See docs/css-audit/status-triple-equivalence.md.
  *
- * NOTE (P7): Alert composes ONLY `.cinder-_status-surface` (background + text),
- * NOT `.cinder-_status-surface-border` or `-stripe`. Every variant inherits the
- * base `border: 1px solid var(--cinder-border)`; P7 sheds Alert's persistent
- * status-colored frame, leaving the directional color cue (the stripe)
- * exclusively to Callout. Do not add a border/stripe surface class or any
- * border-affecting declaration here.
- *
- * Accessibility (WCAG 1.4.1): with the border neutral, the variant tint + text
- * color are hue-only signals; the non-color status channel is the alert's own
- * message text plus `role="alert"` and the optional `icon` slot. The pre-P7
- * colored border was itself sub-3:1 against the tint (Batch-D audit), so it was
- * never a reliable non-color cue; its absence does not regress 1.4.1.
+ * NOTE (post-P7 reversal): P7 previously shed Alert's status-colored frame,
+ * because the pre-P7 border was a hand-tuned saturated color sub-3:1 against
+ * the tint (Batch-D audit) — not a reliable non-color cue. Alert now composes
+ * `.cinder-_status-surface-border`, the SAME accessibility-checked soft-border
+ * recipe Banner uses, rather than reviving that saturated color. Do not
+ * hand-roll a border color here; if the soft border's contrast is ever found
+ * insufficient, fix it once in `_status-surface.css` for both consumers.
  * ---------------------------------------- */
 
   .cinder-alert[data-cinder-variant='info'] {

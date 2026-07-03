@@ -17,13 +17,11 @@
  * with the triples is separate, screenshot-gated visual work.
  *
  * COMPOSITION — decomposed by emitted responsibility so each component opts into
- * only what it needs (Alert keeps a neutral border by design; only Callout draws
- * the stripe):
+ * only what it needs (only Callout draws the directional stripe):
  *   - `.cinder-_status-surface`        → background-color + color (bg + fg)
  *   - `.cinder-_status-surface-border` → border-color (soft border)
  *   - `.cinder-_status-surface-stripe` → border-inline-start-color (saturated)
- * Alert composes surface only; Banner composes surface + border; Callout composes
- * all three.
+ * Alert and Banner both compose surface + border; Callout composes all three.
  *
  * INPUTS — each composing element sets these per variant, on the SAME element as
  * the class (so they resolve with no inheritance distance):

@@ -115,7 +115,12 @@
   <div
     bind:this={rootElement}
     {...restWithoutForbidden}
-    class={classNames('cinder-alert', 'cinder-_status-surface', className)}
+    class={classNames(
+      'cinder-alert',
+      'cinder-_status-surface',
+      'cinder-_status-surface-border',
+      className,
+    )}
     data-cinder-variant={resolvedVariant}
     role="alert"
   >
