@@ -173,6 +173,10 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   // Non-reactive bookkeeping
   let scrollTicking = false;
   let isUserScrolling = false; // Prevents auto-scroll from interrupting user-initiated smooth scroll
+  // Cancel function for the in-flight withForcedLayout session, if any. A new
+  // session cancels the previous one's listeners/timer before starting its
+  // own — see withForcedLayout below for why this matters.
+  let activeForcedLayoutCancel: (() => void) | null = null;
 
   /**
    * Set atBottom state directly.
@@ -270,10 +274,88 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   }
 
   /**
+   * Forces every row to lay out at its real height before a programmatic
+   * scroll-to-bottom, then restores the content-visibility optimization once
+   * the scroll settles.
+   *
+   * Off-screen `.chat-message` rows use `content-visibility: auto` with a
+   * 180px estimate (`contain-intrinsic-size`) until they're painted. Calling
+   * `scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })` captures a
+   * target computed from those estimates; as the animation scrolls estimated
+   * rows into view, they resize to their real height, which shifts content
+   * under the fixed pixel target mid-flight — visible as a jerk right as the
+   * scroll finishes. Forcing layout up front (`data-cinder-force-visible`)
+   * makes the target accurate from the start.
+   *
+   * The `scrollend` listener restores the optimization as soon as the
+   * animation actually finishes. The timeout is a backstop for environments
+   * without `scrollend` support and for a zero-distance scroll (already at
+   * the bottom), where neither `scroll` nor `scrollend` ever fires — but it
+   * re-arms on every `scroll` tick rather than firing once on a fixed clock,
+   * so a scroll animation that legitimately runs longer than the backstop
+   * duration (a long transcript, a slower device) can never have the
+   * optimization restored out from under it mid-flight, which would let
+   * off-screen rows resize again before the scroll settles — the exact jerk
+   * this exists to prevent.
+   *
+   * A second call before the first session settles (e.g. a double-click on
+   * jump-to-latest, or auto-scroll firing while a prior scroll is still in
+   * flight) cancels the earlier session's listeners/timer first. Without
+   * this, the OLDER session's own scrollend/backstop could still fire and
+   * strip the attribute while the NEWER scroll animation is still running —
+   * the same jerk this whole mechanism exists to prevent, just reintroduced
+   * by an overlapping call instead of a single long one.
+   */
+  function withForcedLayout(viewport: HTMLElement, scroll: () => void): void {
+    activeForcedLayoutCancel?.();
+
+    viewport.setAttribute('data-cinder-force-visible', '');
+    // Force a synchronous layout so scrollHeight (read inside `scroll`)
+    // reflects every row's real height, not the content-visibility estimate.
+    void viewport.offsetHeight;
+
+    let settled = false;
+    let backstop: ReturnType<typeof setTimeout>;
+    const backstopDuration = reducedMotion.current ? 50 : 500;
+
+    function cancel() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(backstop);
+      viewport.removeEventListener('scrollend', restore);
+      viewport.removeEventListener('scroll', armBackstop);
+    }
+
+    const restore = () => {
+      if (settled) return;
+      cancel();
+      activeForcedLayoutCancel = null;
+      viewport.removeAttribute('data-cinder-force-visible');
+    };
+
+    function armBackstop() {
+      clearTimeout(backstop);
+      backstop = setTimeout(restore, backstopDuration);
+    }
+
+    activeForcedLayoutCancel = cancel;
+    viewport.addEventListener('scrollend', restore, { once: true });
+    viewport.addEventListener('scroll', armBackstop, { passive: true });
+    // Covers the zero-distance case (already at bottom): no scroll/scrollend
+    // event will ever fire, so this is the only thing that restores it.
+    armBackstop();
+
+    scroll();
+  }
+
+  /**
    * Scroll to the bottom of the viewport.
    */
   function scrollToBottom(viewport: HTMLElement | null): void {
-    viewport?.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
+    if (!viewport) return;
+    withForcedLayout(viewport, () => {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
+    });
   }
 
   /**
@@ -292,8 +374,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     // Prevent auto-scroll from interrupting the smooth scroll animation
     isUserScrolling = true;
 
-    const behavior = getScrollBehavior();
-    viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+    withForcedLayout(viewport, () => {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
+    });
     onReachBottom?.();
     onComplete?.();
 

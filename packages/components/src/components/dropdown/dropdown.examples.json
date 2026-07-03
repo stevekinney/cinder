@@ -12,8 +12,8 @@
     {
       "id": "placement",
       "title": "Placement",
-      "description": "bottom-start and bottom-end placement options.",
-      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n  let openStart = $state(false);\n  let openEnd = $state(false);\n</script>\n\n<div class=\"example-preview-row\">\n  <Dropdown bind:open={openStart} placement=\"bottom-start\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-start</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to left edge</div>\n  </Dropdown>\n\n  <Dropdown bind:open={openEnd} placement=\"bottom-end\">\n    {#snippet trigger()}\n      <Button variant=\"secondary\">Bottom-end</Button>\n    {/snippet}\n    <div style=\"padding: 0.5rem 1rem; min-width: 140px;\">Aligned to right edge</div>\n  </Dropdown>\n</div>\n"
+      "description": "Use bottom-start or bottom-end placement to align the menu with whichever trigger edge fits the surrounding layout.",
+      "code": "<script lang=\"ts\">\n  import { Dropdown } from '@lostgradient/cinder/dropdown';\n</script>\n\n<div class=\"example-preview-row\">\n  <Dropdown id=\"dropdown-placement-bottom-start\" placement=\"bottom-start\">\n    <Dropdown.Trigger>Bottom-start</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item>Aligned to the left edge</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n\n  <Dropdown id=\"dropdown-placement-bottom-end\" placement=\"bottom-end\">\n    <Dropdown.Trigger>Bottom-end</Dropdown.Trigger>\n    <Dropdown.Menu>\n      <Dropdown.Item>Aligned to the right edge</Dropdown.Item>\n    </Dropdown.Menu>\n  </Dropdown>\n</div>\n"
     },
     {
       "id": "with-items",

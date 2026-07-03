@@ -15,8 +15,8 @@
       "description": "Controls the open state of the dropdown menu; bindable for controlled usage."
     },
     "placement": {
-      "enum": ["bottom-start", "bottom-end"],
-      "description": "Preferred side of the trigger on which the menu opens. Default `bottom-start`."
+      "enum": ["top-start", "top-end", "bottom-start", "bottom-end"],
+      "description": "Preferred menu placement relative to the trigger. Default `bottom-start`.\nThe rendered menu may still flip to stay within the viewport."
     }
   },
   "additionalProperties": false,

@@ -75,6 +75,18 @@
     /** Called when the reasoning disclosure toggle is activated. */
     onreasoning?: (() => void) | undefined;
     /**
+     * Whether the tool-call card disclosure is expanded. Collapsed by default —
+     * kept separate from `expanded` (which drives markdown "Show more/less"),
+     * since a tool-call message never carries a markdown body. Bindable, like
+     * `expanded`: the `Chat` container drives it from its own per-message
+     * disclosure state (one-way, via `ontoolcalltoggle`), but a standalone
+     * `ChatMessage` used outside `Chat` still gets working, self-contained
+     * disclosure with no wiring required.
+     */
+    toolCallExpanded?: boolean | undefined;
+    /** Called when the tool-call card disclosure toggle is activated. */
+    ontoolcalltoggle?: (() => void) | undefined;
+    /**
      * Suggestion labels to surface as clickable chips after the body.
      * Each entry maps to one `suggestion` part in the derived parts.
      */
@@ -116,6 +128,8 @@
     suggestions,
     reasoningExpanded = false,
     onreasoning,
+    toolCallExpanded = $bindable(false),
+    ontoolcalltoggle,
     onsuggestionselect,
     tabindex,
     ...rest
@@ -224,6 +238,21 @@
     expanded = !expanded;
     onexpandedchange?.(expanded);
   }
+
+  // Local fallback so a standalone <ChatMessage> (used outside <Chat>, with no
+  // ontoolcalltoggle wired up) still has a working disclosure — mirrors
+  // toggleExpanded above. When Chat DOES own this message's disclosure, it
+  // passes toolCallExpanded down one-way (not bind:) and reads/writes its own
+  // state via ontoolcalltoggle; this local flip is then a harmless echo that
+  // gets overwritten by the container's next render. onexpandedchange also
+  // fires here (not just ontoolcalltoggle) to preserve the pre-split contract,
+  // where a single expanded/onexpandedchange pair covered every disclosure on
+  // the message, including tool-call cards.
+  function toggleToolCallExpanded() {
+    toolCallExpanded = !toolCallExpanded;
+    ontoolcalltoggle?.();
+    onexpandedchange?.(toolCallExpanded);
+  }
 </script>
 
 <div
@@ -285,8 +314,8 @@
         <ChatMessagePartsRenderer
           parts={bodyParts}
           {messagePart}
-          {expanded}
-          ontoggle={toggleExpanded}
+          expanded={toolCallExpanded}
+          ontoggle={toggleToolCallExpanded}
           {onapprove}
           {ondeny}
           {reasoningExpanded}
@@ -381,6 +410,17 @@
      * Once scrolled into view, actual heights are cached and metrics become accurate. */
     content-visibility: auto;
     contain-intrinsic-size: auto 180px;
+  }
+
+  /* Escape hatch for a deliberate programmatic scroll-to-bottom
+     (use-chat-scroll-state.svelte.ts): while `.chat-timeline` carries
+     `data-cinder-force-visible`, every row lays out at its real height up
+     front instead of the 180px estimate above. Without this, off-screen rows
+     resize as they cross into view DURING an animated scrollTo(), which
+     shifts content under a fixed pixel target and reads as a jerk right as
+     the scroll finishes. */
+  :global(.chat-timeline[data-cinder-force-visible]) .chat-message {
+    content-visibility: visible;
   }
 
   /* Focus visible style for keyboard navigation */
@@ -574,7 +614,15 @@
   }
 
   /* Body */
+  /* Flex column so stacked body parts (e.g. a tool-call card followed by a
+     tool-approval prompt, or a step list + reasoning block + final markdown
+     answer) get visible breathing room between them via `gap`. Without this,
+     parts are plain block children with zero margin and sit flush against
+     each other. */
   .chat-message-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
     font-size: var(--cinder-text-base);
     line-height: 1.6;
   }
@@ -583,10 +631,13 @@
      markup (the parts spine now owns that body shape). */
 
   .chat-message-expand {
+    /* .chat-message-body is a flex column now (for inter-part gap); without
+       this, the default flex align-items:stretch would balloon this button to
+       the container's full width instead of shrinking to its label. */
+    align-self: flex-start;
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-0-5);
-    margin-top: var(--cinder-space-1);
     padding: var(--cinder-space-0-5) var(--cinder-space-1);
     min-height: var(--cinder-touch-target-min);
     font-size: var(--cinder-text-xs);

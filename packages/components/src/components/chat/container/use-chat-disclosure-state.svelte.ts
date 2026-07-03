@@ -1,25 +1,28 @@
 /**
- * Runes helper for tracking which reasoning blocks are expanded.
+ * Runes helper for tracking which per-message disclosures are expanded.
  *
- * Owns the expanded-reasoning-ids Set and provides a toggle function. When a
- * virtualizer remeasure callback is registered (optional), toggling fires it
- * so the virtualizer can remeasure the row after the disclosure opens/closes.
+ * Owns a set of expanded message ids and provides a toggle function. Used for
+ * any collapsed-by-default disclosure that is keyed by message id and lives in
+ * a virtualized transcript — reasoning blocks and tool-call cards both use one
+ * instance each. When a virtualizer remeasure callback is registered
+ * (optional), toggling fires it so the virtualizer can remeasure the row after
+ * the disclosure opens/closes.
  */
 
-/** Options for the reasoning state helper. */
-export type UseChatReasoningStateOptions = {
+/** Options for the disclosure state helper. */
+export type UseChatDisclosureStateOptions = {
   /**
    * Optional callback to trigger a virtualizer remeasure for a specific message
-   * row after the reasoning disclosure state changes. If the virtualizer is not
-   * wired (e.g. in non-virtualized mode), pass `undefined` or omit — the toggle
+   * row after the disclosure state changes. If the virtualizer is not wired
+   * (e.g. in non-virtualized mode), pass `undefined` or omit — the toggle
    * still works, no remeasure fires.
    */
   onRemeasureRow?: ((messageId: string) => void) | undefined;
 };
 
-/** Return type for the reasoning state helper. */
-export type UseChatReasoningStateReturn = {
-  /** Whether the reasoning block for the given message id is expanded. */
+/** Return type for the disclosure state helper. */
+export type UseChatDisclosureStateReturn = {
+  /** Whether the disclosure for the given message id is expanded. */
   isExpanded: (messageId: string) => boolean;
   /**
    * Toggle the expanded state for the given message id. Also fires the
@@ -28,13 +31,13 @@ export type UseChatReasoningStateReturn = {
   toggle: (messageId: string) => void;
   /**
    * Reset all expanded state to empty. Called on conversation change so stale
-   * expanded reasoning blocks from the previous conversation are cleared.
+   * expanded disclosures from the previous conversation are cleared.
    */
   reset: () => void;
 };
 
 /**
- * Creates reactive state for reasoning block expansion.
+ * Creates reactive state for per-message disclosure expansion.
  *
  * The returned `isExpanded` and `toggle` are stable references — safe to pass
  * as props without triggering extra re-renders.
@@ -42,9 +45,9 @@ export type UseChatReasoningStateReturn = {
  * @example
  * ```svelte
  * <script lang="ts">
- *   import { useChatReasoningState } from './use-chat-reasoning-state.svelte';
+ *   import { useChatDisclosureState } from './use-chat-disclosure-state.svelte';
  *
- *   const reasoningState = useChatReasoningState({});
+ *   const reasoningState = useChatDisclosureState({});
  * </script>
  *
  * <!-- in template: -->
@@ -55,13 +58,13 @@ export type UseChatReasoningStateReturn = {
  * />
  * ```
  */
-export function useChatReasoningState(
-  options: UseChatReasoningStateOptions,
-): UseChatReasoningStateReturn {
+export function useChatDisclosureState(
+  options: UseChatDisclosureStateOptions,
+): UseChatDisclosureStateReturn {
   const { onRemeasureRow } = options;
 
-  // Set of message ids whose reasoning blocks are currently expanded.
-  // Collapsed by default (reasoning starts closed).
+  // Set of message ids whose disclosures are currently expanded.
+  // Collapsed by default (disclosures start closed).
   let expandedIds = $state(new Set<string>());
 
   function isExpanded(messageId: string): boolean {

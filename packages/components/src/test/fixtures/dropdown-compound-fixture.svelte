@@ -6,12 +6,15 @@
   import DropdownMenu from '../../components/dropdown-menu/dropdown-menu.svelte';
   import DropdownSeparator from '../../components/dropdown-separator/dropdown-separator.svelte';
   import DropdownTrigger from '../../components/dropdown-trigger/dropdown-trigger.svelte';
+  import type { DropdownPlacement } from '../../components/dropdown/dropdown.types.ts';
+
+  let { placement = 'bottom-start' }: { placement?: DropdownPlacement } = $props();
 
   let selected = $state('');
 </script>
 
 <div>
-  <Dropdown id="actions-menu">
+  <Dropdown id="actions-menu" {placement}>
     <DropdownTrigger class="trigger">Actions</DropdownTrigger>
     <DropdownMenu>
       <DropdownGroup labelledBy="actions-menu-document-label">

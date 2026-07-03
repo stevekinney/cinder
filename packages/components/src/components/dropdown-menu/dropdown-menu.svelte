@@ -58,11 +58,12 @@
   let menuElement = $state<HTMLDivElement | null>(null);
   let focusedFallbackOpen = false;
   const typeaheadBuffer = new TypeaheadBuffer();
+  const preferredPlacement = $derived(context.fallbackPlacement ?? 'bottom-start');
   const anchoredFallback = createAnchoredOverlay({
     open: () => context.isOpen && !context.supportsPopover && Boolean(fallbackAnchorElement),
     anchor: () => fallbackAnchorElement,
     panel: () => menuElement,
-    placement: () => context.fallbackPlacement ?? 'bottom-end',
+    placement: () => preferredPlacement,
     offset: () => 4,
     widthMode: () => context.widthMode ?? 'menu',
   });
@@ -208,6 +209,9 @@
       : fallbackPositionStyle}
     role="menu"
     aria-orientation="vertical"
+    data-cinder-placement={context.supportsPopover
+      ? preferredPlacement
+      : anchoredFallback.resolvedPlacement}
     data-cinder-position-ready={!context.supportsPopover && fallbackPositionReady !== undefined
       ? fallbackPositionReady
       : undefined}
