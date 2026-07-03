@@ -92,7 +92,12 @@ const ALWAYS_RUN_ROOT_TESTS = [
  * slugs returned from `loadKnownSlugs()`. They still belong to the full suite.
  */
 const FULL_SUITE_PRIVATE_COMPONENT_TESTS = [
+  'src/components/_internal/create-sliding-dialog-state.test.ts',
   'src/components/_radio/radio.test.ts',
+  'src/components/_timeline-item/timeline-item.test.ts',
+  'src/components/_timeline-item/timeline-item.types.test.ts',
+  'src/components/_tree-select-all/tree-select-all.test.ts',
+  'src/components/_visually-hidden-live-region.test.ts',
   'src/components/icons/index.test.ts',
   'src/components/svg-data-uri-color-literals.test.ts',
 ] as const;
@@ -115,6 +120,10 @@ const FULL_SUITE_NON_COMPONENT_PATHS = [
   ...FULL_SUITE_PRIVATE_COMPONENT_TESTS,
 ] as const;
 
+function componentTestPath(slug: string): string {
+  return `src/components/${slug}/`;
+}
+
 /**
  * Map a scope decision to the positional path arguments for `bun test`.
  *
@@ -128,7 +137,7 @@ export function testPathsForScope(decision: ScopeDecision): string[] | null {
 
   const paths: string[] = [...ALWAYS_RUN_PATHS, ...ALWAYS_RUN_ROOT_TESTS];
   for (const slug of decision.slugs) {
-    paths.push(`src/components/${slug}`);
+    paths.push(componentTestPath(slug));
   }
   return paths;
 }
@@ -138,7 +147,7 @@ export function fullSuiteTestPathGroups(componentSlugs: string[]): string[][] {
   groups[0]!.push(...FULL_SUITE_NON_COMPONENT_PATHS);
 
   for (const [index, slug] of [...componentSlugs].toSorted().entries()) {
-    groups[index % FULL_SUITE_CHUNK_COUNT]!.push(`src/components/${slug}`);
+    groups[index % FULL_SUITE_CHUNK_COUNT]!.push(componentTestPath(slug));
   }
 
   return groups
