@@ -17,7 +17,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
 import { compile } from 'svelte/compiler';
 
 import { setupHappyDom } from '../../../../test/happy-dom.ts';
@@ -27,6 +27,10 @@ setupHappyDom();
 
 const serverProbeTempDirectory = resolve(import.meta.dir, '../../../../..', 'tmp', 'ssr-probe');
 let serverProbeModuleCounter = 0;
+
+afterAll(async () => {
+  await rm(serverProbeTempDirectory, { force: true, recursive: true });
+});
 
 function rewriteRelativeImports(code: string, sourceDirectory: string): string {
   return code.replaceAll(

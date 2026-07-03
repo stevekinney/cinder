@@ -1,6 +1,11 @@
+/// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
+import { setupHappyDom } from '../../test/happy-dom.ts';
+
 import { createCommandListState } from './create-command-list-state.svelte.ts';
+
+setupHappyDom();
 
 function createButton(label: string): HTMLButtonElement {
   const button = document.createElement('button');
