@@ -10,14 +10,18 @@
  */
 
 /// <reference lib="dom" />
-import { waitFor } from '@testing-library/svelte';
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, jest, test } from 'bun:test';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { useChatScrollState } = await import('./use-chat-scroll-state.svelte.ts');
+
+afterEach(() => {
+  jest.useRealTimers();
+  document.body.replaceChildren();
+});
 
 function createViewport(): HTMLElement {
   const viewport = document.createElement('div');
@@ -37,6 +41,7 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     const viewport = createViewport();
     state.scrollToBottom(viewport);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    viewport.dispatchEvent(new Event('scrollend'));
     viewport.remove();
   });
 
@@ -49,7 +54,8 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     viewport.remove();
   });
 
-  test('repeated scroll ticks past the backstop duration keep it set (no premature restore mid-animation)', async () => {
+  test('repeated scroll ticks past the backstop duration keep it set (no premature restore mid-animation)', () => {
+    jest.useFakeTimers();
     const state = useChatScrollState();
     const viewport = createViewport();
     state.scrollToBottom(viewport);
@@ -59,14 +65,16 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     // 700ms. Each tick re-arms the backstop, so it must never fire while
     // ticks keep arriving.
     for (let i = 0; i < 7; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      jest.advanceTimersByTime(100);
       viewport.dispatchEvent(new Event('scroll'));
       expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
     }
+    viewport.dispatchEvent(new Event('scrollend'));
     viewport.remove();
   });
 
-  test('once scroll ticks stop arriving, the backstop eventually restores it', async () => {
+  test('once scroll ticks stop arriving, the backstop eventually restores it', () => {
+    jest.useFakeTimers();
     const state = useChatScrollState();
     const viewport = createViewport();
     state.scrollToBottom(viewport);
@@ -74,24 +82,26 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
 
     // No further ticks — the backstop (500ms, non-reduced-motion) should fire.
-    await waitFor(() => expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false), {
-      timeout: 2000,
-    });
+    jest.advanceTimersByTime(499);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    jest.advanceTimersByTime(1);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
     viewport.remove();
   });
 
-  test('a zero-distance scroll (already at bottom, no scroll/scrollend events) still restores via the backstop', async () => {
+  test('a zero-distance scroll (already at bottom, no scroll/scrollend events) still restores via the backstop', () => {
+    jest.useFakeTimers();
     const state = useChatScrollState();
     const viewport = createViewport();
     state.scrollToBottom(viewport);
     // No events dispatched at all — only the initial backstop arm can save us.
-    await waitFor(() => expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false), {
-      timeout: 2000,
-    });
+    jest.advanceTimersByTime(500);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
     viewport.remove();
   });
 
-  test('a second scrollToBottom before the first settles cancels the first session (no premature restore from the stale backstop)', async () => {
+  test('a second scrollToBottom before the first settles cancels the first session (no premature restore from the stale backstop)', () => {
+    jest.useFakeTimers();
     // Regression guard: overlapping calls (e.g. a double-click on jump-to-
     // latest, or auto-scroll firing mid-animation) used to leave the OLDER
     // session's listeners/backstop live. When the OLDER session's backstop
@@ -108,19 +118,18 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     const viewport = createViewport();
 
     state.scrollToBottom(viewport); // session A: backstop armed for ~500ms from t=0
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    jest.advanceTimersByTime(50);
     state.scrollToBottom(viewport); // session B: backstop armed for ~500ms from t=50
 
     // At t≈520ms: session A's original (500ms) deadline has passed, but
     // session B's (550ms) has not. The attribute must still be present —
     // proving session A's backstop was actually cancelled, not just racing.
-    await new Promise((resolve) => setTimeout(resolve, 470));
+    jest.advanceTimersByTime(470);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
 
     // Session B's own backstop eventually fires and restores it.
-    await waitFor(() => expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false), {
-      timeout: 2000,
-    });
+    jest.advanceTimersByTime(30);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
     viewport.remove();
   });
 });
