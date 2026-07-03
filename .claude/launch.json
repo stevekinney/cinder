@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "playground",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--filter=@cinder/playground", "dev"],
+      "port": 5555,
+      "autoPort": true
+    }
+  ]
+}

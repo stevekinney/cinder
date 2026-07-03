@@ -82,7 +82,14 @@ import {
 } from './snapshot-mode.ts';
 import type { ComponentManifest } from './types.ts';
 
-export const PORT = 5555;
+function resolvePreferredPort(): number {
+  const fromEnv = Bun.env['PORT'];
+  if (fromEnv === undefined) return 5555;
+  const parsed = Number.parseInt(fromEnv, 10);
+  return Number.isNaN(parsed) ? 5555 : parsed;
+}
+
+export const PORT = resolvePreferredPort();
 const MAX_PORT_SCAN_ATTEMPTS = 100;
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
