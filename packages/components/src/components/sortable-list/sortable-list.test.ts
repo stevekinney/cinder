@@ -1,7 +1,7 @@
 // @ts-nocheck — test file; noUncheckedIndexedAccess and bun:test types disabled per project convention
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { SortableController, reorder } from '../../utilities/sortable-controller.svelte.ts';
@@ -569,6 +569,15 @@ async function waitForAnimationFrame(): Promise<void> {
   await new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
+async function dispatchPointerEvent(
+  element: HTMLElement,
+  type: string,
+  init: PointerEventInit,
+): Promise<void> {
+  element.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...init }));
+  await tick();
+}
+
 describe('SortableList pointer drag preview', () => {
   afterEach(() => {
     // Clean up any orphaned portals that a failing test left behind.
@@ -580,7 +589,7 @@ describe('SortableList pointer drag preview', () => {
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
     installPointerCaptureOnHandle(handle);
 
-    await fireEvent.pointerDown(handle, {
+    await dispatchPointerEvent(handle, 'pointerdown', {
       button: 0,
       clientX: 50,
       clientY: 100,
@@ -595,7 +604,7 @@ describe('SortableList pointer drag preview', () => {
     expect(container.contains(preview)).toBe(false);
 
     // Cleanup.
-    await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
+    await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
   });
 
   test('preview has aria-hidden=true so it does not duplicate AT content', async () => {

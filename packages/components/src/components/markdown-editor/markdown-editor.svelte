@@ -114,6 +114,9 @@
 
   // Escape single quotes in placeholder for CSS content property
   const escapedPlaceholder = $derived(placeholder.replace(/'/g, "\\'"));
+  const accessibleEditorLabel = $derived(
+    label.trim().length > 0 ? label.trim() : 'Markdown editor',
+  );
 
   // Internal state
   let editorState = $state<EditorState | null>(null);
@@ -433,7 +436,7 @@
     // Initialize Milkdown with canonical markdown for consistent parsing/serialization (DEP-35).
     getInitialValue: () => normalizeSafely(value),
     getReadonly: () => readonly,
-    getAriaLabel: () => label,
+    getAriaLabel: () => accessibleEditorLabel,
     debounceMs: DEFAULT_DEBOUNCE_MS,
     getPlugins: () => plugins,
     getPlaceholderCompletion: () => placeholderCompletion,
@@ -568,11 +571,13 @@
     }
   });
 
-  // Forward aria-describedby to the ProseMirror view.dom when in WYSIWYG mode.
+  // Forward naming and description attributes to the actual ProseMirror textbox.
   // The textarea binding handles the source mode surface via the template.
   $effect(() => {
     const viewDom = editorState?.view?.dom;
     if (!viewDom) return;
+
+    viewDom.setAttribute('aria-label', accessibleEditorLabel);
 
     if (ariaDescribedby) {
       viewDom.setAttribute('aria-describedby', ariaDescribedby);
@@ -701,7 +706,7 @@
         data-readonly={readonly || undefined}
         style:--editor-placeholder="'{escapedPlaceholder}'"
         role="application"
-        aria-label={label || 'Markdown editor'}
+        aria-label={accessibleEditorLabel}
         tabindex="0"
         {@attach editorAttachment}
       ></div>
@@ -713,7 +718,7 @@
         oninput={(e) => onchange?.(e.currentTarget.value)}
         {placeholder}
         readonly={readonly || undefined}
-        aria-label={label}
+        aria-label={accessibleEditorLabel}
         aria-describedby={ariaDescribedby}
         aria-multiline="true"
       ></textarea>
