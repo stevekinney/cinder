@@ -786,7 +786,7 @@ async function runTypescriptConsumerNodenextGate(
     .nothrow();
   if (result.exitCode !== 0) {
     fail(
-      `typescript-consumer ${label} gate 1 - nodenext (no svelte condition) failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
+      `typescript-consumer ${label} NodeNext without Svelte condition failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
     );
   }
 }
