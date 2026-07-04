@@ -29,6 +29,7 @@
     value = $bindable(''),
     onValueChange,
     orientation = 'horizontal',
+    fill = false,
     activateOnFocus,
     class: className,
     children,
@@ -227,6 +228,10 @@
   });
 </script>
 
-<div class={classNames('cinder-tabs', className)} data-cinder-orientation={orientation}>
+<div
+  class={classNames('cinder-tabs', className)}
+  data-cinder-orientation={orientation}
+  data-cinder-fill={fill ? '' : undefined}
+>
   {@render children()}
 </div>

@@ -80,6 +80,20 @@ describe('Tabs responsive CSS', () => {
       /@container cinder-tabs \(max-width: 30rem\)[\s\S]*?\.cinder-tabs\[data-cinder-orientation='vertical'\][\s\S]*?flex-direction:\s*column;/,
     );
   });
+
+  test('fill mode exposes the flex contract needed for bounded pane layouts', () => {
+    const { container } = render(Wrapper, { value: 'a', fill: true, items });
+    const root = container.querySelector('.cinder-tabs');
+    const panel = container.querySelector('[role="tabpanel"]');
+
+    expect(root?.hasAttribute('data-cinder-fill')).toBe(true);
+    expect(panel).not.toBeNull();
+    expect(tabsCss).toMatch(
+      /\.cinder-tabs\[data-cinder-fill\]\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-block-size:\s*0;/,
+    );
+    expect(tabsCss).toMatch(/\.cinder-tab-panel\s*\{[^}]*flex:\s*1 1 auto;/);
+    expect(tabsCss).toMatch(/\.cinder-tab-panel\s*\{[^}]*min-block-size:\s*0;/);
+  });
 });
 
 describe('Tabs font-weight layout stability (regression #402)', () => {

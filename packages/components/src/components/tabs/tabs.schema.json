@@ -10,6 +10,10 @@
       "enum": ["horizontal", "vertical"],
       "description": "Layout orientation. Affects which arrow keys move between tabs."
     },
+    "fill": {
+      "type": "boolean",
+      "description": "Fill the available space when Tabs is placed inside a bounded flex parent,\nletting the active TabPanel occupy the remaining height."
+    },
     "activateOnFocus": {
       "type": "boolean",
       "description": "When true (default for horizontal), focusing a tab also activates it\n(the panel updates immediately). Vertical defaults to manual activation\n— the user moves focus with arrows, then presses Enter or Space."
