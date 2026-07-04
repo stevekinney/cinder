@@ -49,9 +49,9 @@
     <div class="chat-attachment-preview-file">
       <div class="chat-attachment-preview-icon">
         {#if attachment.kind === 'code'}
-          <FileCode class="icon-sm" />
+          <FileCode class="cinder-icon-sm" />
         {:else}
-          <FileText class="icon-sm" />
+          <FileText class="cinder-icon-sm" />
         {/if}
       </div>
       <div class="chat-attachment-preview-info">

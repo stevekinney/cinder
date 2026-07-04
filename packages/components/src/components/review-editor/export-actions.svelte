@@ -88,7 +88,7 @@
 
   <Dropdown {id}>
     <DropdownTrigger class="export-trigger" aria-label="Copy to clipboard" showCaret={false}>
-      <Copy class="icon-sm" />
+      <Copy class="cinder-icon-sm" />
       <span class="cinder-sr-only">Copy</span>
     </DropdownTrigger>
     <DropdownMenu>
@@ -96,9 +96,9 @@
       {#if onexportcontent}
         <DropdownItem onclick={() => handleCopy('content')}>
           {#if copyState.copiedKey === 'content'}
-            <Check class="icon-sm export-icon-success" />
+            <Check class="cinder-icon-sm export-icon-success" />
           {:else}
-            <FileText class="icon-sm" />
+            <FileText class="cinder-icon-sm" />
           {/if}
           <span>{formatLabels.content}</span>
           {#if copyState.copiedKey === 'content'}
@@ -110,9 +110,9 @@
       <!-- LLM-optimized summary -->
       <DropdownItem onclick={() => handleCopy('summary')}>
         {#if copyState.copiedKey === 'summary'}
-          <Check class="icon-sm export-icon-success" />
+          <Check class="cinder-icon-sm export-icon-success" />
         {:else}
-          <FileText class="icon-sm" />
+          <FileText class="cinder-icon-sm" />
         {/if}
         <span>{formatLabels.summary}</span>
         {#if copyState.copiedKey === 'summary'}
@@ -123,9 +123,9 @@
       <!-- Git diff -->
       <DropdownItem onclick={() => handleCopy('diff')}>
         {#if copyState.copiedKey === 'diff'}
-          <Check class="icon-sm export-icon-success" />
+          <Check class="cinder-icon-sm export-icon-success" />
         {:else}
-          <GitBranch class="icon-sm" />
+          <GitBranch class="cinder-icon-sm" />
         {/if}
         <span>{formatLabels.diff}</span>
         {#if copyState.copiedKey === 'diff'}
@@ -137,9 +137,9 @@
       {#if onexportcomments}
         <DropdownItem onclick={() => handleCopy('comments')}>
           {#if copyState.copiedKey === 'comments'}
-            <Check class="icon-sm export-icon-success" />
+            <Check class="cinder-icon-sm export-icon-success" />
           {:else}
-            <MessageSquare class="icon-sm" />
+            <MessageSquare class="cinder-icon-sm" />
           {/if}
           <span>{formatLabels.comments}</span>
           {#if copyState.copiedKey === 'comments'}
@@ -151,9 +151,9 @@
       <!-- JSON (full state) -->
       <DropdownItem onclick={() => handleCopy('json')}>
         {#if copyState.copiedKey === 'json'}
-          <Check class="icon-sm export-icon-success" />
+          <Check class="cinder-icon-sm export-icon-success" />
         {:else}
-          <FileCode class="icon-sm" />
+          <FileCode class="cinder-icon-sm" />
         {/if}
         <span>{formatLabels.json}</span>
         {#if copyState.copiedKey === 'json'}

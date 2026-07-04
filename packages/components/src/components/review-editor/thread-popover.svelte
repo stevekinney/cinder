@@ -140,7 +140,7 @@
       <h2 id="{id}-title" class="thread-popover-title">
         {#if isDocumentComment}
           <span class="thread-popover-document-label">
-            <FileText class="icon-xs" />
+            <FileText class="cinder-icon-xs" />
             Document comment
           </span>
         {:else}
@@ -158,11 +158,11 @@
             disabled={!currentUserId}
             aria-label="Delete thread"
           >
-            <Trash2 class="icon-sm" />
+            <Trash2 class="cinder-icon-sm" />
           </Button>
         {/if}
         <button type="button" class="thread-popover-close" onclick={onclose} aria-label="Close">
-          <X class="icon-sm" />
+          <X class="cinder-icon-sm" />
         </button>
       </div>
     </div>

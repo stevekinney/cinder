@@ -117,7 +117,7 @@
 
 <aside {id} class={classNames('comment-sidebar', className)} aria-label="Comment threads">
   <div class="sidebar-header">
-    <MessageSquare class="icon-sm" />
+    <MessageSquare class="cinder-icon-sm" />
     <h2 class="sidebar-title">Comments</h2>
     <span class="thread-count">{visibleThreads.length}</span>
 
@@ -134,9 +134,9 @@
           : handleStartDocumentComment}
       >
         {#if composingDocumentComment}
-          <X class="icon-sm" />
+          <X class="cinder-icon-sm" />
         {:else}
-          <Plus class="icon-sm" />
+          <Plus class="cinder-icon-sm" />
         {/if}
       </Button>
     {/if}
@@ -144,11 +144,11 @@
     {#if !readonly && visibleThreads.length > 0}
       <Dropdown id="{id}-actions">
         <DropdownTrigger class="actions-trigger" aria-label="Comment actions" showCaret={false}>
-          <MoreHorizontal class="icon-sm" />
+          <MoreHorizontal class="cinder-icon-sm" />
         </DropdownTrigger>
         <DropdownMenu>
           <DropdownItem variant="danger" onclick={handleClearAllClick}>
-            <Trash2 class="icon-sm" />
+            <Trash2 class="cinder-icon-sm" />
             Clear all comments
           </DropdownItem>
         </DropdownMenu>
@@ -173,7 +173,7 @@
   {#if composingDocumentComment}
     <div class="document-comment-composer">
       <div class="document-comment-header">
-        <FileText class="icon-xs" />
+        <FileText class="cinder-icon-xs" />
         <span>Document comment</span>
       </div>
       <CommentComposer
@@ -203,7 +203,7 @@
           aria-current={activeThreadId === thread.id ? 'true' : undefined}
         >
           <div class="thread-document-label">
-            <FileText class="icon-xs" />
+            <FileText class="cinder-icon-xs" />
             <span>Document comment</span>
           </div>
           <p class="thread-preview">{getPreview(thread)}</p>

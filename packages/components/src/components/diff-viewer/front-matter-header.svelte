@@ -80,12 +80,12 @@
 >
   <span class="front-matter-icon">
     {#if expanded}
-      <ChevronDown class="icon-sm" />
+      <ChevronDown class="cinder-icon-sm" />
     {:else}
-      <ChevronRight class="icon-sm" />
+      <ChevronRight class="cinder-icon-sm" />
     {/if}
   </span>
-  <FileText class="icon-sm" />
+  <FileText class="cinder-icon-sm" />
   <span class="front-matter-label">{label}</span>
   {#if showBadge}
     <Badge variant={badgeVariant} size={badgeSize}>{badgeLabel ?? ''}</Badge>

@@ -56,7 +56,7 @@
     aria-label={`Block type: ${currentOption?.label ?? 'Paragraph'}`}
   >
     {#if currentOption}
-      <currentOption.icon class="icon-sm" />
+      <currentOption.icon class="cinder-icon-sm" />
     {/if}
     <span class="toolbar-dropdown-label">{currentOption?.label ?? 'Paragraph'}</span>
   </DropdownTrigger>
@@ -69,10 +69,10 @@
         itemRole="menuitemradio"
         checked={isActive}
       >
-        <option.icon class="icon-sm" />
+        <option.icon class="cinder-icon-sm" />
         <span class="dropdown-item-label">{option.label}</span>
         {#if isActive}
-          <Check class="icon-sm dropdown-item-check" />
+          <Check class="cinder-icon-sm dropdown-item-check" />
         {/if}
       </DropdownItem>
     {/each}

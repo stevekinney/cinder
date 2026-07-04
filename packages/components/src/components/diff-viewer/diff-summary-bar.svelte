@@ -50,7 +50,7 @@
 
 <div class={classNames('diff-summary-bar', className)} {...rest}>
   <div class="summary-content">
-    <FileText class="icon-sm text-muted" aria-hidden="true" />
+    <FileText class="cinder-icon-sm text-muted" aria-hidden="true" />
     <Badge variant="neutral">{changeCount} {changeLabel}</Badge>
     <span class="stats-text">
       {#if stats.added > 0}
@@ -67,9 +67,9 @@
   <Button variant="ghost" size="sm" onclick={() => (expanded = !expanded)}>
     {expanded ? 'Hide' : 'Review'}
     {#if expanded}
-      <ChevronUp class="icon-sm" />
+      <ChevronUp class="cinder-icon-sm" />
     {:else}
-      <ChevronDown class="icon-sm" />
+      <ChevronDown class="cinder-icon-sm" />
     {/if}
   </Button>
 </div>

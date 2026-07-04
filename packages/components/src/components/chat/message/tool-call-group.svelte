@@ -79,13 +79,13 @@
   >
     <span class="tool-call-icon" aria-hidden="true">
       {#if isError}
-        <X class="icon-xs" />
+        <X class="cinder-icon-xs" />
       {:else if isSuccess}
-        <Check class="icon-xs" />
+        <Check class="cinder-icon-xs" />
       {:else if isActionRequired}
-        <CircleAlert class="icon-xs" />
+        <CircleAlert class="cinder-icon-xs" />
       {:else}
-        <MoreHorizontal class="icon-xs" />
+        <MoreHorizontal class="cinder-icon-xs" />
       {/if}
     </span>
     <span class="tool-call-name">{pair.call.name}</span>
@@ -101,7 +101,7 @@
       {/if}
     </span>
     <span class="tool-call-chevron" aria-hidden="true" data-expanded={expanded}>
-      <ChevronDown class="icon-xs" />
+      <ChevronDown class="cinder-icon-xs" />
     </span>
   </button>
 
