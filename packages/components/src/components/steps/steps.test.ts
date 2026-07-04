@@ -7,6 +7,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Steps } = await import('./steps.svelte');
+const { default: ExportedSteps } = await import('@lostgradient/cinder/steps');
 
 // Read once at module load — `describe` callbacks are synchronous, so the
 // CSS-contract tests below reference this constant instead of awaiting inside them.
@@ -20,6 +21,32 @@ const defaultSteps = [
 ];
 
 describe('Steps', () => {
+  test('browser/Svelte export renders completed, current, and upcoming items without SVG initialization errors', () => {
+    const { container } = render(ExportedSteps, {
+      steps: [
+        { id: 'completed', label: 'Read the brief' },
+        { id: 'current', label: 'Configure the project' },
+        { id: 'upcoming', label: 'Invite teammates' },
+      ],
+      currentStep: 1,
+      label: 'Setup progress',
+    });
+
+    const items = Array.from(container.querySelectorAll('.cinder-steps__item'));
+    expect(items.length).toBe(3);
+    expect(items.map((item) => item.getAttribute('data-cinder-state'))).toEqual([
+      'complete',
+      'current',
+      'upcoming',
+    ]);
+    expect(items[0]?.querySelector('svg.cinder-steps__check')).not.toBeNull();
+    expect(items[1]?.querySelector('.cinder-steps__index')?.textContent).toBe('2');
+    expect(items[2]?.querySelector('.cinder-steps__index')?.textContent).toBe('3');
+    expect(container.querySelector('[aria-current="step"]')?.textContent).toContain(
+      'Configure the project',
+    );
+  });
+
   test('renders the supplied step labels and descriptions', () => {
     const { container } = render(Steps, { steps: defaultSteps, currentStep: 1 });
     for (const step of defaultSteps) {
