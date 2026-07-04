@@ -7,7 +7,7 @@ export type PaginationProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   totalPages?: number;
   /** Whether a previous page is available when totalPages is unknown. Defaults to currentPage > 1. */
   hasPreviousPage?: boolean;
-  /** Whether a next page is available when totalPages is unknown. Defaults to false. */
+  /** Whether a next page is available when totalPages is unknown. Defaults to false. @default false */
   hasNextPage?: boolean;
   /** Optional total record count; formatted with formatNumber when provided. */
   totalCount?: number;

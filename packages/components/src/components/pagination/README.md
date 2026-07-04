@@ -18,11 +18,14 @@ When the total page count is unknown, omit `totalPages` and pass the direction
 availability you know:
 
 ```svelte
-<Pagination
-  bind:currentPage
-  hasPreviousPage={currentPage > 1}
-  hasNextPage={links.next !== undefined}
-/>
+<script lang="ts">
+  import Pagination from '@lostgradient/cinder/pagination';
+
+  let currentPage = $state(1);
+  let hasNextPage = $state(false);
+</script>
+
+<Pagination bind:currentPage hasPreviousPage={currentPage > 1} {hasNextPage} />
 ```
 
 This renders the current page and previous/next controls without implying a
@@ -70,7 +73,7 @@ fake final page.
 | ----------------- | --------- | -------- | ------- | --------------------------------------------------------------------------------------------- |
 | `class`           | `string`  | no       | —       | Custom class merged with `.cinder-pagination`.                                                |
 | `currentPage`     | `number`  | yes      | —       | Current page number (1-indexed). Bindable.                                                    |
-| `hasNextPage`     | `boolean` | no       | —       | Whether a next page is available when totalPages is unknown. Defaults to false.               |
+| `hasNextPage`     | `boolean` | no       | `false` | Whether a next page is available when totalPages is unknown. Defaults to false.               |
 | `hasPreviousPage` | `boolean` | no       | —       | Whether a previous page is available when totalPages is unknown. Defaults to currentPage > 1. |
 | `totalCount`      | `number`  | no       | —       | Optional total record count; formatted with formatNumber when provided.                       |
 | `totalPages`      | `number`  | no       | —       | Total number of pages. Omit when only previous/next availability is known.                    |

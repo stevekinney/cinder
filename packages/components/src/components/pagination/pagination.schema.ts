@@ -21,6 +21,7 @@ const schema = {
       type: 'boolean',
       description:
         'Whether a next page is available when totalPages is unknown. Defaults to false.',
+      default: false,
     },
     totalCount: {
       type: 'number',

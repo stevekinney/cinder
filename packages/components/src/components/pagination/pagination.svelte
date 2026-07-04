@@ -24,7 +24,7 @@
     currentPage = $bindable(1),
     totalPages,
     hasPreviousPage,
-    hasNextPage,
+    hasNextPage = false,
     totalCount,
     class: customClassName,
     ...rest
@@ -35,9 +35,7 @@
   const canGoPrevious = $derived(
     totalPages === undefined ? (hasPreviousPage ?? currentPage > 1) : currentPage > 1,
   );
-  const canGoNext = $derived(
-    totalPages === undefined ? (hasNextPage ?? false) : currentPage < totalPages,
-  );
+  const canGoNext = $derived(totalPages === undefined ? hasNextPage : currentPage < totalPages);
 
   /**
    * Build the list of page items to render.
