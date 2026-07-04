@@ -4,6 +4,11 @@ import { CinderKnowledgeError, loadCinderKnowledge, type CinderKnowledge } from 
 import type { BestPracticeTopic } from './types.ts';
 
 type McpServerModule = typeof import('@modelcontextprotocol/sdk/server/mcp.js');
+type McpTypesModule = typeof import('@modelcontextprotocol/sdk/types.js');
+type McpErrorDependencies = {
+  ErrorCode: McpTypesModule['ErrorCode'];
+  McpError: McpTypesModule['McpError'];
+};
 
 function textResult(text: string, structuredContent?: Record<string, unknown>) {
   return {
@@ -16,15 +21,30 @@ function jsonText(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function errorPayload(error: unknown) {
+  return {
+    code: error instanceof CinderKnowledgeError ? error.code : 'UNEXPECTED_ERROR',
+    message: error instanceof Error ? error.message : String(error),
+    suggestions: error instanceof CinderKnowledgeError ? error.suggestions : [],
+  };
+}
+
 function toolError(error: unknown) {
-  const code = error instanceof CinderKnowledgeError ? error.code : 'UNEXPECTED_ERROR';
-  const message = error instanceof Error ? error.message : String(error);
-  const suggestions = error instanceof CinderKnowledgeError ? error.suggestions : [];
+  const payload = errorPayload(error);
   return {
     isError: true,
-    content: [{ type: 'text' as const, text: message }],
-    structuredContent: { error: { code, message, suggestions } },
+    content: [{ type: 'text' as const, text: payload.message }],
+    structuredContent: { error: payload },
   };
+}
+
+function resourceError(error: unknown, dependencies: McpErrorDependencies): never {
+  const payload = errorPayload(error);
+  const protocolCode =
+    error instanceof CinderKnowledgeError
+      ? dependencies.ErrorCode.InvalidParams
+      : dependencies.ErrorCode.InternalError;
+  throw new dependencies.McpError(protocolCode, payload.message, { error: payload });
 }
 
 function firstVariable(value: string | string[] | undefined): string {
@@ -42,6 +62,18 @@ function jsonResource(uri: string, value: unknown) {
       },
     ],
   };
+}
+
+async function readJsonResource(
+  uri: URL,
+  read: () => Promise<unknown>,
+  dependencies: McpErrorDependencies,
+) {
+  try {
+    return jsonResource(uri.href, await read());
+  } catch (error: unknown) {
+    resourceError(error, dependencies);
+  }
 }
 
 function componentResourceList(knowledge: CinderKnowledge, suffix = '') {
@@ -171,6 +203,7 @@ function registerResources(
   server: InstanceType<McpServerModule['McpServer']>,
   knowledge: CinderKnowledge,
   ResourceTemplate: McpServerModule['ResourceTemplate'],
+  dependencies: McpErrorDependencies,
 ): void {
   server.registerResource(
     'manifest',
@@ -203,7 +236,7 @@ function registerResources(
       mimeType: 'application/json',
     },
     async (uri, variables) =>
-      jsonResource(uri.href, await knowledge.show(firstVariable(variables['id']))),
+      readJsonResource(uri, () => knowledge.show(firstVariable(variables['id'])), dependencies),
   );
 
   for (const artifact of ['schema', 'variables', 'examples', 'constraints'] as const) {
@@ -219,7 +252,11 @@ function registerResources(
         mimeType: 'application/json',
       },
       async (uri, variables) =>
-        jsonResource(uri.href, await knowledge.artifact(firstVariable(variables['id']), artifact)),
+        readJsonResource(
+          uri,
+          () => knowledge.artifact(firstVariable(variables['id']), artifact),
+          dependencies,
+        ),
     );
   }
 }
@@ -286,8 +323,9 @@ function registerPrompts(server: InstanceType<McpServerModule['McpServer']>): vo
 }
 
 export async function createMcpServer() {
-  const [{ McpServer, ResourceTemplate }, knowledge] = await Promise.all([
+  const [{ McpServer, ResourceTemplate }, { ErrorCode, McpError }, knowledge] = await Promise.all([
     import('@modelcontextprotocol/sdk/server/mcp.js'),
+    import('@modelcontextprotocol/sdk/types.js'),
     loadCinderKnowledge(),
   ]);
   const server = new McpServer({
@@ -295,7 +333,7 @@ export async function createMcpServer() {
     version: knowledge.package.version,
   });
   registerTools(server, knowledge);
-  registerResources(server, knowledge, ResourceTemplate);
+  registerResources(server, knowledge, ResourceTemplate, { ErrorCode, McpError });
   registerPrompts(server);
   return server;
 }

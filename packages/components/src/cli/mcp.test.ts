@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { describe, expect, it } from 'bun:test';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +20,24 @@ function textContent(result: unknown): string {
       isRecord(entry) && entry['type'] === 'text' && typeof entry['text'] === 'string',
   );
   return item?.text ?? '';
+}
+
+async function readResourceError(client: Client, uri: string): Promise<McpError> {
+  try {
+    await client.readResource({ uri });
+  } catch (error: unknown) {
+    if (error instanceof McpError) return error;
+    throw error;
+  }
+  throw new Error(`Expected ${uri} to fail.`);
+}
+
+function errorData(error: McpError): Record<string, unknown> {
+  const { data } = error;
+  if (!isRecord(data) || !isRecord(data['error'])) {
+    throw new Error('Expected MCP error data to contain an error payload.');
+  }
+  return data['error'];
 }
 
 describe('cinder MCP server', () => {
@@ -79,6 +98,25 @@ describe('cinder MCP server', () => {
       expect(firstComponent && 'text' in firstComponent ? firstComponent.text : '').toContain(
         '"id": "button"',
       );
+
+      const missingComponent = await readResourceError(client, 'cinder://component/buton');
+      expect(missingComponent.code).toBe(ErrorCode.InvalidParams);
+      const missingComponentData = errorData(missingComponent);
+      expect(missingComponentData['code']).toBe('COMPONENT_NOT_FOUND');
+      expect(missingComponentData['message']).toBe('Unknown Cinder component "buton".');
+      expect(missingComponentData['suggestions']).toContain('button');
+
+      const missingArtifact = await readResourceError(
+        client,
+        'cinder://component/access-gate/constraints',
+      );
+      expect(missingArtifact.code).toBe(ErrorCode.InvalidParams);
+      const missingArtifactData = errorData(missingArtifact);
+      expect(missingArtifactData['code']).toBe('ARTIFACT_NOT_FOUND');
+      expect(missingArtifactData['message']).toBe(
+        'access-gate does not ship a constraints artifact.',
+      );
+      expect(missingArtifactData['suggestions']).toContain('access-gate');
     } finally {
       await client.close();
     }

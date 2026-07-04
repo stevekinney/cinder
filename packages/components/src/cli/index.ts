@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { loadCinderKnowledge } from './knowledge.ts';
@@ -195,7 +197,19 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
   }
 }
 
-if (import.meta.main) {
+export function isCliEntrypoint(
+  entrypointPath = process.argv[1],
+  moduleUrl = import.meta.url,
+): boolean {
+  if (!entrypointPath) return false;
+  try {
+    return realpathSync(entrypointPath) === realpathSync(fileURLToPath(moduleUrl));
+  } catch {
+    return false;
+  }
+}
+
+if (isCliEntrypoint()) {
   const exitCode = await runCli();
   process.exit(exitCode);
 }
