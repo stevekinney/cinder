@@ -26,6 +26,7 @@
   import CircleAlert from 'lucide-svelte/icons/circle-alert';
 
   import type { CardProps } from './card.types.ts';
+  import { composeDescribedBy } from '../../_internal/field-control.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   const generatedId = $props.id();
@@ -61,15 +62,16 @@
   const descriptionId = $derived(
     hasGeneratedHeader && description ? `${generatedId}-description` : undefined,
   );
-  const externalDescriptionId = $derived(rest['aria-describedby']);
-  const describedBy = $derived(
-    [descriptionId, externalDescriptionId].filter(Boolean).join(' ') || undefined,
+  const hasExternalRole = $derived(typeof rest.role === 'string' && rest.role.trim().length > 0);
+  const hasExternalLabel = $derived(
+    typeof rest['aria-labelledby'] === 'string' && rest['aria-labelledby'].trim().length > 0,
   );
+  const describedBy = $derived(composeDescribedBy(descriptionId, rest['aria-describedby']));
   const labelAttributes = $derived(
     hasGeneratedHeader
       ? {
-          role: 'group',
-          'aria-labelledby': titleId,
+          ...(!hasExternalRole ? { role: 'group' } : {}),
+          ...(!hasExternalLabel ? { 'aria-labelledby': titleId } : {}),
           ...(describedBy ? { 'aria-describedby': describedBy } : {}),
         }
       : {},

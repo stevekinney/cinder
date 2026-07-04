@@ -180,9 +180,8 @@ describe('Card', () => {
     const description = getByText('Stops new review dispatch globally.');
 
     expect(root?.getAttribute('data-cinder-tone')).toBe('danger');
-    expect(root?.getAttribute('role')).toBe('group');
-    expect(root?.getAttribute('aria-labelledby')).toBe(heading.getAttribute('id'));
-    expect(root?.getAttribute('aria-labelledby')).not.toBe('consumer-heading');
+    expect(root?.getAttribute('role')).toBe('region');
+    expect(root?.getAttribute('aria-labelledby')).toBe('consumer-heading');
     expect(root?.getAttribute('aria-describedby')).toBe(
       `${description.getAttribute('id')} external-warning`,
     );
@@ -190,6 +189,25 @@ describe('Card', () => {
     expect(description).not.toBeNull();
     expect(root?.querySelector('.cinder-card__risk-icon')?.getAttribute('aria-hidden')).toBe(
       'true',
+    );
+  });
+
+  test('generated descriptions normalize caller aria-describedby tokens', () => {
+    const { container, getByText } = render(Card, {
+      props: {
+        title: 'Risk setting',
+        description: 'Review this before continuing.',
+        'aria-describedby': '  external-warning   external-warning  ',
+        children: emptySnippet,
+      } as any,
+    });
+
+    const root = container.querySelector('.cinder-card');
+    const description = getByText('Review this before continuing.');
+
+    expect(root?.getAttribute('role')).toBe('group');
+    expect(root?.getAttribute('aria-describedby')).toBe(
+      `${description.getAttribute('id')} external-warning`,
     );
   });
 

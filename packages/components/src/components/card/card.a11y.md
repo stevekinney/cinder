@@ -26,7 +26,7 @@ Keep focus indicators visible. If you wrap or restyle Card, verify the focused e
 
 Use the public props and documented examples to provide accessible names, descriptions, current state, disabled state, selection state, or value text. Do not rely on color, icon shape, placeholder text, or layout position as the only way to communicate meaning.
 
-Cards with a generated `title` are labelled by that heading. If `description` is present, the root is also described by that text. `tone="danger"` adds a visible icon next to the generated title as a non-color risk signal; the icon is hidden from assistive technology because the danger meaning must be communicated in the title, description, and action labels.
+Cards with a generated `title` default to `role="group"` and are labelled by that heading. Caller-supplied `role` and `aria-labelledby` values are preserved. If `description` is present, the root is described by that text and any caller-supplied `aria-describedby` ids. `tone="danger"` adds a visible icon next to the generated title as a non-color risk signal; the icon is hidden from assistive technology because the danger meaning must be communicated in the title, description, and action labels.
 
 Use `tone="danger"` for high-risk settings and destructive actions where the container itself needs to communicate risk. Keep the actual control semantics inside the card native: use `Toggle` for immediate on/off settings, `Button` for commands, and `ConfirmDialog` for irreversible or broad-scope confirmation flows.
 
