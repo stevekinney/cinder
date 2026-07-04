@@ -793,7 +793,7 @@
   }
 
   .chat-input-editor-container :global(.ProseMirror) {
-    padding: var(--cinder-space-1) 0;
+    padding: var(--cinder-space-1) var(--cinder-space-3);
     min-height: 2.5rem;
   }
 
