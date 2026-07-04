@@ -199,6 +199,7 @@ describe('Sidebar (desktop / inline aside)', () => {
 
 describe('Sidebar SSR responsive fallback', () => {
   test('falls back to the desktop aside without matchMedia', () => {
+    const hadMatchMedia = 'matchMedia' in window;
     const originalMatchMedia = window.matchMedia;
     delete (window as { matchMedia?: typeof window.matchMedia }).matchMedia;
     try {
@@ -206,16 +207,22 @@ describe('Sidebar SSR responsive fallback', () => {
         props: { label: 'Workspace', navigation: listSnippet('items') },
       });
       expect(container.querySelector('aside.cinder-sidebar')).not.toBeNull();
-      expect(container.querySelector('.cinder-sidebar--mobile')).toBeNull();
+      const fallback = container.querySelector('.cinder-sidebar--ssr-mobile');
+      expect(fallback).not.toBeNull();
+      expect(fallback?.hasAttribute('data-cinder-hydrated')).toBe(true);
     } finally {
-      window.matchMedia = originalMatchMedia;
+      if (hadMatchMedia) {
+        window.matchMedia = originalMatchMedia;
+      } else {
+        delete (window as { matchMedia?: typeof window.matchMedia }).matchMedia;
+      }
     }
   });
 
   test('component CSS hides the desktop fallback on mobile first paint', async () => {
     const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
     expect(css).toMatch(
-      /@media\s*\(\s*max-width:\s*47\.99rem\s*\)\s*{\s*\.cinder-sidebar:not\(\.cinder-sidebar--mobile\)\s*{\s*display:\s*none;\s*}\s*}/,
+      /@media\s*\(\s*max-width:\s*47\.99rem\s*\)[\s\S]*?\.cinder-sidebar--desktop\s*{\s*display:\s*none;\s*}[\s\S]*?\.cinder-sidebar--ssr-mobile:not\(\[data-cinder-hydrated\]\)\s*{\s*display:\s*flex;\s*}/,
     );
   });
 });

@@ -31,8 +31,20 @@
     border-inline-end: none;
   }
 
+  .cinder-sidebar--ssr-mobile {
+    display: none;
+  }
+
   @media (max-width: 47.99rem) {
-    .cinder-sidebar:not(.cinder-sidebar--mobile) {
+    .cinder-sidebar--desktop {
+      display: none;
+    }
+
+    .cinder-sidebar--ssr-mobile:not([data-cinder-hydrated]) {
+      display: flex;
+    }
+
+    .cinder-sidebar--ssr-mobile[data-cinder-hydrated] {
       display: none;
     }
   }

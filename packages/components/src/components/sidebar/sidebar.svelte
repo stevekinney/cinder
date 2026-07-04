@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import type { SidebarProps } from './sidebar.types.ts';
+  import { onMount } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
 
   import { setSidebarContext, type SidebarContextValue } from '../../_internal/sidebar-context.ts';
@@ -64,6 +65,11 @@
       ? { current: false }
       : new MediaQuery('(max-width: 47.99rem)', false);
 
+  let hydrated = $state(false);
+  onMount(() => {
+    hydrated = true;
+  });
+
   const context: SidebarContextValue = {
     get collapsed() {
       return collapsed;
@@ -71,6 +77,30 @@
   };
   setSidebarContext(context);
 </script>
+
+{#snippet sidebarContents(isMobile: boolean)}
+  {#if brandSnippet}
+    <div class="cinder-sidebar__brand">
+      {@render brandSnippet()}
+    </div>
+  {/if}
+
+  {#if navigationSnippet}
+    <!-- Guard the entire <nav> landmark, not just its contents. An empty <nav>
+         is an accessibility problem (screen readers announce a navigation landmark
+         with no destinations). navigation is optional so a sidebar can be used as
+         app chrome without a nav list. -->
+    <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
+      {@render navigationSnippet()}
+    </nav>
+  {/if}
+
+  {#if footerSnippet}
+    <div class={classNames('cinder-sidebar__footer', isMobile && 'cinder-sidebar__footer--mobile')}>
+      {@render footerSnippet()}
+    </div>
+  {/if}
+{/snippet}
 
 {#if mobile.current}
   <Drawer
@@ -87,55 +117,30 @@
     id={sidebarId}
   >
     <div class={classNames('cinder-sidebar', 'cinder-sidebar--mobile', className)}>
-      {#if brandSnippet}
-        <div class="cinder-sidebar__brand">
-          {@render brandSnippet()}
-        </div>
-      {/if}
-
-      {#if navigationSnippet}
-        <!-- Guard the entire <nav> landmark, not just its contents. An empty <nav>
-             is an accessibility problem (screen readers announce a navigation landmark
-             with no destinations). navigation is optional so a sidebar can be used as
-             app chrome without a nav list. -->
-        <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
-          {@render navigationSnippet()}
-        </nav>
-      {/if}
-
-      {#if footerSnippet}
-        <div class="cinder-sidebar__footer cinder-sidebar__footer--mobile">
-          {@render footerSnippet()}
-        </div>
-      {/if}
+      {@render sidebarContents(true)}
     </div>
   </Drawer>
 {:else}
   <aside
     id={sidebarId}
     {...rest}
-    class={classNames('cinder-sidebar', className)}
+    class={classNames('cinder-sidebar', 'cinder-sidebar--desktop', className)}
     aria-label={validatedLabel}
     data-cinder-collapsed={collapsed ? '' : undefined}
   >
-    {#if brandSnippet}
-      <div class="cinder-sidebar__brand">
-        {@render brandSnippet()}
-      </div>
-    {/if}
+    {@render sidebarContents(false)}
+  </aside>
 
-    {#if navigationSnippet}
-      <!-- Same guard: keep the <nav> landmark out of the DOM when navigation is absent
-           so screen readers don't announce an empty navigation region. -->
-      <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
-        {@render navigationSnippet()}
-      </nav>
-    {/if}
-
-    {#if footerSnippet}
-      <div class="cinder-sidebar__footer">
-        {@render footerSnippet()}
-      </div>
-    {/if}
+  <aside
+    class={classNames(
+      'cinder-sidebar',
+      'cinder-sidebar--mobile',
+      'cinder-sidebar--ssr-mobile',
+      className,
+    )}
+    aria-label={validatedLabel}
+    data-cinder-hydrated={hydrated ? '' : undefined}
+  >
+    {@render sidebarContents(true)}
   </aside>
 {/if}
