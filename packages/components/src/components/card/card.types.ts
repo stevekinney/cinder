@@ -2,6 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 export type CardVariant = 'card' | 'well';
 export type CardTone = 'default' | 'muted';
+export type CardSurfaceTone = 'default' | 'danger';
 /** Controls body padding. `none` removes all padding for flush/full-bleed content. Future values like `compact` may be added. */
 export type CardPadding = 'default' | 'none';
 /** Heading level for the generated card title, so the document outline stays correct. */
@@ -10,6 +11,8 @@ type CardBase = HTMLAttributes<HTMLDivElement> & {
   class?: string;
   /** Visual container style. `card` is raised; `well` is flatter and inset. */
   variant?: CardVariant;
+  /** Container risk treatment. `danger` renders a danger-zone surface for high-risk settings or destructive actions. */
+  tone?: CardSurfaceTone;
   /** Body surface treatment. `muted` renders a grey/inset body region. */
   bodyTone?: CardTone;
   /** Footer surface treatment. `muted` renders a grey/inset footer region. */

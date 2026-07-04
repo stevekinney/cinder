@@ -16,14 +16,19 @@
     CardHeadingLevel,
     CardPadding,
     CardProps,
+    CardSurfaceTone,
     CardTone,
     CardVariant,
   } from './card.types.ts';
 </script>
 
 <script lang="ts">
+  import CircleAlert from 'lucide-svelte/icons/circle-alert';
+
   import type { CardProps } from './card.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
+
+  const generatedId = $props.id();
 
   let {
     class: className,
@@ -34,6 +39,7 @@
     description,
     footer,
     variant = 'card',
+    tone = 'default',
     bodyTone = 'default',
     footerTone = 'default',
     edgeToEdgeOnMobile = false,
@@ -50,11 +56,24 @@
       : 3,
   );
   const titleTag = $derived(`h${resolvedHeadingLevel}` as const);
+  const titleId = $derived(title ? `${generatedId}-title` : undefined);
+  const descriptionId = $derived(description ? `${generatedId}-description` : undefined);
+  const labelAttributes = $derived(
+    title
+      ? {
+          role: 'group',
+          'aria-labelledby': titleId,
+          ...(descriptionId ? { 'aria-describedby': descriptionId } : {}),
+        }
+      : {},
+  );
 </script>
 
 <div
+  {...labelAttributes}
   class={classNames('cinder-card', className)}
   data-cinder-variant={variant}
+  data-cinder-tone={tone}
   data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
   {...rest}
 >
@@ -64,9 +83,18 @@
     </div>
   {:else if title}
     <div class="cinder-card__header">
-      <svelte:element this={titleTag} class="cinder-card__title">{title}</svelte:element>
+      <div class="cinder-card__title-row">
+        {#if tone === 'danger'}
+          <span class="cinder-card__risk-icon" aria-hidden="true">
+            <CircleAlert size={18} strokeWidth={2.25} />
+          </span>
+        {/if}
+        <svelte:element this={titleTag} id={titleId} class="cinder-card__title"
+          >{title}</svelte:element
+        >
+      </div>
       {#if description}
-        <p class="cinder-card__description">{description}</p>
+        <p id={descriptionId} class="cinder-card__description">{description}</p>
       {/if}
     </div>
   {/if}

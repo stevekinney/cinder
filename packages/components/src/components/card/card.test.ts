@@ -162,6 +162,43 @@ describe('Card', () => {
     );
   });
 
+  test('danger tone is reflected on the container and adds a non-color title cue', () => {
+    const { container, getByRole, getByText } = render(Card, {
+      props: {
+        tone: 'danger',
+        title: 'Pause reviews',
+        description: 'Stops new review dispatch globally.',
+        children: textSnippet('Existing runs continue.'),
+      } as any,
+    });
+
+    const root = container.querySelector('.cinder-card');
+    expect(root?.getAttribute('data-cinder-tone')).toBe('danger');
+    expect(getByRole('heading', { name: 'Pause reviews' })).not.toBeNull();
+    expect(getByText('Stops new review dispatch globally.')).not.toBeNull();
+    expect(root?.querySelector('.cinder-card__risk-icon')?.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+  });
+
+  test('danger tone preserves custom header ownership', () => {
+    const { container } = render(Card, {
+      props: {
+        tone: 'danger',
+        header: textSnippet('custom-danger-header'),
+        children: emptySnippet,
+      } as any,
+    });
+
+    expect(container.querySelector('.cinder-card')?.getAttribute('data-cinder-tone')).toBe(
+      'danger',
+    );
+    expect(container.querySelector('.cinder-card__risk-icon')).toBeNull();
+    expect(container.querySelector('.cinder-card__header')?.textContent).toContain(
+      'custom-danger-header',
+    );
+  });
+
   test('bodyTone and footerTone props are reflected on their regions', () => {
     const { container } = render(Card, {
       props: {
@@ -222,5 +259,17 @@ describe('Card CSS contract', () => {
     const titleBlock = css.match(/\.cinder-card__title\s*\{[^}]*\}/)?.[0] ?? '';
     expect(titleBlock).toContain('color: var(--cinder-text)');
     expect(titleBlock).not.toContain('color: var(--cinder-text-muted)');
+  });
+
+  test('danger tone paints the container surface, border, and icon', async () => {
+    const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
+    const dangerBlock =
+      css.match(/\.cinder-card\[data-cinder-tone='danger'\]\s*\{[^}]*\}/)?.[0] ?? '';
+    const iconBlock = css.match(/\.cinder-card__risk-icon\s*\{[^}]*\}/)?.[0] ?? '';
+
+    expect(dangerBlock).toContain('background');
+    expect(dangerBlock).toContain('border-color');
+    expect(dangerBlock).toContain('var(--cinder-danger)');
+    expect(iconBlock).toContain('var(--cinder-danger)');
   });
 });

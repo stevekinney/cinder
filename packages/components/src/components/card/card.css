@@ -19,6 +19,25 @@
     box-shadow: none;
   }
 
+  .cinder-card[data-cinder-tone='danger'] {
+    background: light-dark(
+      oklch(from var(--cinder-danger) 97% 0.012 h),
+      oklch(from var(--cinder-danger) 19% 0.028 h)
+    );
+    border-color: light-dark(
+      oklch(from var(--cinder-danger) 82% 0.055 h),
+      oklch(from var(--cinder-danger) 38% 0.08 h)
+    );
+    box-shadow: none;
+  }
+
+  .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well'] {
+    background: light-dark(
+      oklch(from var(--cinder-danger) 96% 0.015 h),
+      oklch(from var(--cinder-danger) 18% 0.03 h)
+    );
+  }
+
   /* ----------------------------------------
  * Header
  * ---------------------------------------- */
@@ -31,15 +50,42 @@
     border-bottom: 1px solid var(--cinder-border-muted);
   }
 
+  .cinder-card[data-cinder-tone='danger'] .cinder-card__header {
+    border-bottom-color: light-dark(
+      oklch(from var(--cinder-danger) 84% 0.05 h),
+      oklch(from var(--cinder-danger) 34% 0.08 h)
+    );
+  }
+
   /* ----------------------------------------
  * Title & description (title arm)
  * ---------------------------------------- */
+
+  .cinder-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    min-inline-size: 0;
+  }
+
+  .cinder-card__risk-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--cinder-danger);
+  }
 
   .cinder-card__title {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text);
     margin: 0;
+  }
+
+  .cinder-card[data-cinder-tone='danger'] .cinder-card__title {
+    color: light-dark(
+      oklch(from var(--cinder-danger) 35% 0.16 h),
+      oklch(from var(--cinder-danger) 88% 0.14 h)
+    );
   }
 
   .cinder-card__description {
@@ -81,8 +127,32 @@
     border-top: 1px solid var(--cinder-border-muted);
   }
 
+  .cinder-card[data-cinder-tone='danger'] .cinder-card__footer {
+    border-top-color: light-dark(
+      oklch(from var(--cinder-danger) 84% 0.05 h),
+      oklch(from var(--cinder-danger) 34% 0.08 h)
+    );
+  }
+
   .cinder-card__footer[data-cinder-tone='muted'] {
     background: var(--cinder-surface-inset);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-card[data-cinder-tone='danger'] {
+      background: Canvas;
+      border-color: CanvasText;
+    }
+
+    .cinder-card[data-cinder-tone='danger'] .cinder-card__header,
+    .cinder-card[data-cinder-tone='danger'] .cinder-card__footer {
+      border-color: CanvasText;
+    }
+
+    .cinder-card[data-cinder-tone='danger'] .cinder-card__title,
+    .cinder-card__risk-icon {
+      color: CanvasText;
+    }
   }
 
   @media (width < 640px) {
