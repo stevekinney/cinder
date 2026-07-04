@@ -21,6 +21,8 @@
     ApprovalCardSchemaProps,
     ApprovalOperation,
     ApprovalOperationKind,
+    ApprovalResolution,
+    ApprovalResolutionDecision,
     ApprovalSandbox,
     ApprovalState,
     ApprovalTool,
@@ -46,6 +48,8 @@
   import type {
     ApprovalCardProps,
     ApprovalOperationKind,
+    ApprovalResolution,
+    ApprovalResolutionDecision,
     ApprovalState,
     ApprovalToolRisk,
   } from './approval-card.types.ts';
@@ -65,6 +69,7 @@
     expiresAt,
     state: approvalState,
     editableArgs = false,
+    onresolve,
     onapprove,
     onapprovewithedits,
     ondeny,
@@ -78,10 +83,13 @@
   const rootId = $derived(id ?? generatedId);
   const titleId = $derived(`${rootId}-title`);
   const descriptionId = $derived(`${rootId}-description`);
+  const resolutionDescriptionId = $derived(`${rootId}-resolution-description`);
   const editDescriptionId = $derived(`${rootId}-edit-description`);
   const editErrorId = $derived(`${rootId}-edit-error`);
 
   let currentTime = $state<number | undefined>();
+  let resolutionReason = $state('');
+  let rememberResolution = $state(false);
   let editingArgumentsSeedKey = $state<string | null>(null);
   let editedArgumentsDrafts = $state<Record<string, string>>({});
   let expirationTimer: ReturnType<typeof setTimeout> | undefined;
@@ -133,7 +141,21 @@
   );
   const editParseResult = $derived(parseJsonText(editedArgumentsText));
   const canConfirmEditedApproval = $derived(
-    canEditArguments && editParseResult.ok && typeof onapprovewithedits === 'function',
+    canEditArguments &&
+      editParseResult.ok &&
+      (typeof onapprovewithedits === 'function' || typeof onresolve === 'function'),
+  );
+  const canResolveApproval = $derived(
+    typeof onapprove === 'function' || typeof onresolve === 'function',
+  );
+  const canResolveEditedApproval = $derived(
+    typeof onapprovewithedits === 'function' || typeof onresolve === 'function',
+  );
+  const canResolveDenial = $derived(
+    typeof ondeny === 'function' || typeof onresolve === 'function',
+  );
+  const canResolveCancellation = $derived(
+    typeof oncancel === 'function' || typeof onresolve === 'function',
   );
 
   $effect(() => {
@@ -351,9 +373,35 @@
     };
   }
 
+  function handleReasonInput(event: Event): void {
+    resolutionReason = (event.currentTarget as HTMLTextAreaElement).value;
+  }
+
+  function handleRememberInput(event: Event): void {
+    rememberResolution = (event.currentTarget as HTMLInputElement).checked;
+  }
+
+  function emitResolution(decision: ApprovalResolutionDecision, editedArgs?: unknown): void {
+    const trimmedReason = resolutionReason.trim();
+    const resolution: ApprovalResolution = {
+      decision,
+      remember: rememberResolution,
+    };
+
+    if (decision === 'approve_with_edits') {
+      resolution.editedArgs = editedArgs;
+    }
+    if (trimmedReason) {
+      resolution.reason = trimmedReason;
+    }
+
+    onresolve?.(resolution);
+  }
+
   function handleApprove(): void {
     if (!currentApprovalIsActionable()) return;
     onapprove?.();
+    emitResolution('approve');
   }
 
   function handleApproveWithEdits(): void {
@@ -361,11 +409,13 @@
     if (!canEditArguments) return;
     if (!editParseResult.ok) return;
     onapprovewithedits?.(editParseResult.value);
+    emitResolution('approve_with_edits', editParseResult.value);
   }
 
   function handleDeny(): void {
     if (!currentApprovalIsActionable()) return;
     ondeny?.();
+    emitResolution('deny');
   }
 
   function handleRemember(): void {
@@ -376,6 +426,7 @@
   function handleCancel(): void {
     if (!currentApprovalIsActionable()) return;
     oncancel?.();
+    emitResolution('cancel');
   }
 </script>
 
@@ -510,8 +561,34 @@
 
       {#if isActionable}
         <section class="cinder-approval-card__section cinder-approval-card__actions-section">
+          <div class="cinder-approval-card__resolution-controls">
+            <label class="cinder-approval-card__editor-label" for={`${rootId}-resolution-reason`}>
+              Resolution reason
+            </label>
+            <p id={resolutionDescriptionId} class="cinder-approval-card__muted">
+              Optional context included with the host resolution payload.
+            </p>
+            <textarea
+              id={`${rootId}-resolution-reason`}
+              class="cinder-approval-card__textarea cinder-approval-card__textarea--reason"
+              value={resolutionReason}
+              oninput={handleReasonInput}
+              rows="3"
+              aria-describedby={resolutionDescriptionId}
+            ></textarea>
+            <label class="cinder-approval-card__remember-control">
+              <input type="checkbox" checked={rememberResolution} onchange={handleRememberInput} />
+              <span>Remember this approval boundary</span>
+            </label>
+          </div>
+
           <ButtonGroup label="Approval actions">
-            <Button type="button" variant="primary" onclick={handleApprove} disabled={!onapprove}>
+            <Button
+              type="button"
+              variant="primary"
+              onclick={handleApprove}
+              disabled={!canResolveApproval}
+            >
               Approve
             </Button>
             {#if canEditArguments}
@@ -519,18 +596,28 @@
                 type="button"
                 variant="secondary"
                 onclick={beginEditingArguments}
-                disabled={!onapprovewithedits}
+                disabled={!canResolveEditedApproval}
               >
                 Approve with edits
               </Button>
             {/if}
-            <Button type="button" variant="soft-danger" onclick={handleDeny} disabled={!ondeny}>
+            <Button
+              type="button"
+              variant="soft-danger"
+              onclick={handleDeny}
+              disabled={!canResolveDenial}
+            >
               Deny
             </Button>
             <Button type="button" variant="soft" onclick={handleRemember} disabled={!onremember}>
               Remember
             </Button>
-            <Button type="button" variant="ghost" onclick={handleCancel} disabled={!oncancel}>
+            <Button
+              type="button"
+              variant="ghost"
+              onclick={handleCancel}
+              disabled={!canResolveCancellation}
+            >
               Cancel
             </Button>
           </ButtonGroup>

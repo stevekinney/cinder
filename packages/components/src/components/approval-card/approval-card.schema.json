@@ -200,6 +200,11 @@
         "name": "onremember",
         "reason": "function-or-snippet",
         "description": "Called when the approver asks the host application to remember the decision."
+      },
+      {
+        "name": "onresolve",
+        "reason": "function-or-snippet",
+        "description": "Called for approve, approve-with-edits, deny, and cancel with the complete resolution payload."
       }
     ]
   }

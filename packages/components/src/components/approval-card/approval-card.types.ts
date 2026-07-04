@@ -98,7 +98,27 @@ export type ApprovalState =
   | 'expired'
   | 'cancelled';
 
+export type ApprovalResolutionDecision = 'approve' | 'approve_with_edits' | 'deny' | 'cancel';
+
+/** @schemaObject */
+export type ApprovalResolution = {
+  /** Decision selected by the approver. */
+  decision: ApprovalResolutionDecision;
+  /**
+   * Parsed JSON arguments when the approver accepts edited arguments.
+   *
+   * @schemaPermissive
+   */
+  editedArgs?: unknown;
+  /** Optional human-readable reason supplied by the approver. */
+  reason?: string;
+  /** Whether the approver asked the host to remember this approval boundary. */
+  remember: boolean;
+};
+
 export type ApprovalCardCallbacks = {
+  /** Called for approve, approve-with-edits, deny, and cancel with the complete resolution payload. */
+  onresolve?: (resolution: ApprovalResolution) => void;
   /** Called when the approver accepts the operation as presented. */
   onapprove?: () => void;
   /** Called with parsed JSON arguments when the approver accepts edited arguments. */
@@ -167,6 +187,8 @@ export type ApprovalCardSchemaProps = {
   editableArgs?: boolean;
   /** Called when the approver accepts the operation as presented. */
   onapprove?: () => void;
+  /** Called for approve, approve-with-edits, deny, and cancel with the complete resolution payload. */
+  onresolve?: (resolution: ApprovalResolution) => void;
   /** Called with parsed JSON arguments when the approver accepts edited arguments. */
   onapprovewithedits?: (editedArgs: unknown) => void;
   /** Called when the approver denies the operation. */

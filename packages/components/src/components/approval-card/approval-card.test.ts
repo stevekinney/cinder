@@ -268,6 +268,72 @@ describe('ApprovalCard', () => {
     expect(ondeny).toHaveBeenCalledTimes(1);
   });
 
+  test('emits a complete approval resolution when approving as presented', async () => {
+    const onresolve = mock();
+
+    const { getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({ editableArgs: false, onresolve }),
+    });
+
+    const rememberCheckbox = getByRole('checkbox', {
+      name: 'Remember this approval boundary',
+    }) as HTMLInputElement;
+
+    await fireEvent.click(rememberCheckbox);
+    await fireEvent.click(getByRole('button', { name: 'Approve' }));
+
+    expect(onresolve).toHaveBeenCalledWith({
+      decision: 'approve',
+      remember: true,
+    });
+  });
+
+  test('emits edited arguments through the complete approval resolution', async () => {
+    const onresolve = mock();
+
+    const { getByLabelText, getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({ editableArgs: true, onresolve }),
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Approve with edits' }));
+    await fireEvent.input(getByLabelText('Edited arguments JSON'), {
+      target: {
+        value: JSON.stringify({ dryRun: true, retries: 2 }, null, 2),
+      },
+    });
+    await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
+
+    expect(onresolve).toHaveBeenCalledWith({
+      decision: 'approve_with_edits',
+      editedArgs: { dryRun: true, retries: 2 },
+      remember: false,
+    });
+  });
+
+  test('emits reason text and remember state when denying', async () => {
+    const onresolve = mock();
+
+    const { getByLabelText, getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({ editableArgs: false, onresolve }),
+    });
+
+    await fireEvent.input(getByLabelText('Resolution reason'), {
+      target: { value: 'Outside the deployment window.' },
+    });
+    await fireEvent.click(
+      getByRole('checkbox', {
+        name: 'Remember this approval boundary',
+      }),
+    );
+    await fireEvent.click(getByRole('button', { name: 'Deny' }));
+
+    expect(onresolve).toHaveBeenCalledWith({
+      decision: 'deny',
+      reason: 'Outside the deployment window.',
+      remember: true,
+    });
+  });
+
   test('renders five pending actions when editable arguments are enabled', () => {
     const { getByRole } = render(ApprovalCard, {
       ...approvalCardProps({

@@ -33,9 +33,5 @@
   {expiresAt}
   state="pending"
   editableArgs={true}
-  onapprove={() => undefined}
-  onapprovewithedits={() => undefined}
-  ondeny={() => undefined}
-  onremember={() => undefined}
-  oncancel={() => undefined}
+  onresolve={() => undefined}
 />
