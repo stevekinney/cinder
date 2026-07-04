@@ -1,5 +1,10 @@
 [
   {
+    "filePath": "src/components/bento-grid/bento-grid.css",
+    "query": "@media (max-width: 48rem)",
+    "allowedCount": 1
+  },
+  {
     "filePath": "src/components/card/card.css",
     "query": "@media (width < 640px)",
     "allowedCount": 1

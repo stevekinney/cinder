@@ -2,6 +2,7 @@
 @layer cinder.components {
   .cinder-footer {
     container-type: inline-size;
+    container-name: cinder-footer;
     display: grid;
     gap: var(--cinder-space-6);
     padding: var(--cinder-space-6) var(--cinder-space-4);
@@ -99,7 +100,7 @@
     flex-wrap: wrap;
   }
 
-  @container (min-width: 48rem) {
+  @container cinder-footer (min-width: 48rem) {
     .cinder-footer__main {
       grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
       align-items: start;

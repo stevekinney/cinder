@@ -2,6 +2,7 @@
 @layer cinder.components {
   .cinder-newsletter-section {
     container-type: inline-size;
+    container-name: cinder-newsletter-section;
     padding-block: var(--cinder-space-10);
   }
 
@@ -45,7 +46,7 @@
     color: var(--cinder-text-subtle);
   }
 
-  @container (min-width: 48rem) {
+  @container cinder-newsletter-section (min-width: 48rem) {
     .cinder-newsletter-section__form {
       grid-template-columns: minmax(0, 1fr) auto;
     }

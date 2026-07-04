@@ -81,10 +81,14 @@ function parseJavaScript(source: string, fileName: string): ts.SourceFile {
   return ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
 }
 
+const COMPONENT_BOUNDARY_TOKEN = /\.\s*component\s*\(/;
+
 export function findOneArgumentServerComponentBoundaries(
   source: string,
   fileName = 'component.js',
 ): ServerComponentBoundary[] {
+  if (!COMPONENT_BOUNDARY_TOKEN.test(source)) return [];
+
   const sourceFile = parseJavaScript(source, fileName);
   const boundaries: ServerComponentBoundary[] = [];
 

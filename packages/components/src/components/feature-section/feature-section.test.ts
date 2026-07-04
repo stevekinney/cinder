@@ -11,11 +11,16 @@ setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: FeatureSection } = await import('./feature-section.svelte');
 const { createRawSnippet } = await import('svelte');
-const runtimePatchSnippet = createRawSnippet(() => ({
-  render: () => '<span></span>',
+
+const extraSnippet = createRawSnippet(() => ({
+  render: () => '<a href="/features">View all features</a>',
   setup: () => {},
 }));
-void runtimePatchSnippet;
+
+const mediaSnippet = createRawSnippet(() => ({
+  render: () => '<img src="/product.png" alt="Product dashboard" />',
+  setup: () => {},
+}));
 
 const items = [
   { title: 'Fast setup', description: 'Get started in minutes.', icon: '⚡' },
@@ -55,6 +60,26 @@ describe('FeatureSection', () => {
     const root = container.querySelector('.cinder-feature-section');
     expect(root?.getAttribute('data-cinder-layout')).toBe('split');
     expect(root?.getAttribute('data-cinder-media-position')).toBe('start');
+  });
+
+  test('renders optional header extra content and media snippets', () => {
+    const { container } = render(FeatureSection, {
+      props: {
+        title: 'Features with media',
+        items,
+        children: extraSnippet,
+        media: mediaSnippet,
+      },
+    });
+
+    const root = container.querySelector('.cinder-feature-section');
+    expect(root?.getAttribute('data-cinder-has-media')).toBe('');
+    expect(container.querySelector('.cinder-feature-section__extra a')?.textContent).toBe(
+      'View all features',
+    );
+    expect(container.querySelector('.cinder-feature-section__media img')?.getAttribute('alt')).toBe(
+      'Product dashboard',
+    );
   });
 
   test('merges custom class with root class', () => {

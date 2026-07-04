@@ -43,6 +43,7 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     const viewport = createViewport();
     state.scrollToBottom(viewport);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    viewport.dispatchEvent(new Event('scrollend'));
     viewport.remove();
   });
 

@@ -54,6 +54,8 @@ type ExportsMap = Record<string, ExportConditional | string>;
 type SourceManifest = {
   name: string;
   version: string;
+  bin?: Record<string, string>;
+  svelte?: string;
   files?: string[];
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -212,20 +214,11 @@ function buildPublishedManifest(
   // Husky / dev-only fields.
   delete published.husky;
   delete published['lint-staged'];
+  if (published.svelte?.startsWith('./src/')) {
+    published.svelte = './dist/index.js';
+  }
   // The published tarball ships:
-  //   - `dist/` — every component / upstream / server build target.
-  //   - `src/styles/**/*.css` — `@lostgradient/cinder/styles*` exports target these CSS
-  //     files directly (the build does not transform them).
-  //   - `src/components/**/*.examples.json` and
-  //     `src/components/**/*.constraints.json` — per-component sidecars
-  //     consumed by the `<id>/examples` and `<id>/constraints` exports.
-  //   - `components.json` — `@lostgradient/cinder/manifest`.
-  //
-  // Everything else under `src/**` (TS source, Svelte source, tests) stays
-  // out so `@cinder/*` import-statement noise never reaches the tarball.
-  // The published tarball ships:
-  //   - `dist/` — built artifacts (per-component JS + types, the vendored
-  //     `_upstream/` declarations, server bundles).
+  //   - `dist/` — every component / upstream / server build target plus the CLI.
   //   - `src/components/**` — Svelte/TS source for component sub-paths
   //     because browser Svelte-aware tooling can still resolve the source
   //     condition when `node` is not active.
@@ -265,6 +258,8 @@ function buildPublishedManifest(
     '!src/components/**/*fixture*.svelte',
     '!src/components/**/_*-test-harness.svelte',
     '!src/components/**/*.type-test.svelte',
+    'src/components/**/*.schema.json',
+    'src/components/**/*.variables.json',
     'src/components/**/*.examples.json',
     'src/components/**/*.constraints.json',
     'src/components/**/*.css',
@@ -488,9 +483,7 @@ export async function packForPublish(): Promise<PackForPublishResult> {
   const reexports = await deriveUpstreamReexports();
   const publishedManifest = buildPublishedManifest(sourceManifest, reexports);
 
-  // Stage from the PUBLISHED manifest's `files` list, not the source's —
-  // the source ships `src/**` for in-repo Svelte tooling but the published
-  // tarball is dist-only.
+  // Stage from the PUBLISHED manifest's `files` list, not the source's.
   await stageFiles(publishedManifest);
   await Bun.write(
     join(stagingRoot, 'package.json'),

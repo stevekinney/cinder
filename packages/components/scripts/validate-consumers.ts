@@ -246,8 +246,8 @@ function assertPackedExportConditionOrder(
  *   - No `workspace:` substrings anywhere (the dep flip would otherwise
  *     leak through `bun pm pack`).
  *   - No `@cinder/*` in any dep field or exports condition.
- *   - No exports entry retains a `svelte` condition (every published
- *     condition must resolve to `dist/`, since `src/**` is not packed).
+ *   - Runtime exports resolve to `dist/`; only CSS and generated JSON artifact
+ *     exports may target `src/`.
  */
 async function assertPackedManifestInvariants(extractedRoot: string): Promise<void> {
   const packedManifestPath = join(extractedRoot, 'package', 'package.json');
@@ -257,12 +257,29 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
   }
 
   const packedManifest = parseJsonFile<{
+    bin?: Record<string, string>;
+    svelte?: string;
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
     peerDependencies?: Record<string, string>;
     optionalDependencies?: Record<string, string>;
     exports?: Record<string, unknown>;
   }>(rawPackedManifest);
+
+  if (packedManifest.bin?.['cinder'] !== './dist/cli/index.js') {
+    fail(
+      `packed manifest bin.cinder is ${JSON.stringify(
+        packedManifest.bin?.['cinder'],
+      )}, expected "./dist/cli/index.js"`,
+    );
+  }
+  if (packedManifest.svelte !== './dist/index.js') {
+    fail(
+      `packed manifest svelte is ${JSON.stringify(
+        packedManifest.svelte,
+      )}, expected "./dist/index.js"`,
+    );
+  }
 
   const depFields: Array<keyof typeof packedManifest> = [
     'dependencies',
@@ -289,18 +306,6 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
   for (const [key, value] of Object.entries(exportsMap)) {
     if (!isObjectRecord(value)) continue;
     const conditions = value;
-    // PR 1 contract: every upstream re-export sub-path MUST resolve to
-    // `dist/` only — no `svelte` condition, no `./src/` target. They are
-    // the surface PR 1 introduces and they ship without Svelte source.
-    //
-    // Component sub-paths (and other non-upstream exports) keep their
-    // `svelte` → `./src/components/<id>/index.ts` condition because the
-    // pre-bundled root barrel at `dist/index.js` is currently a re-export
-    // pass-through that does not emit `import` statements for the symbols
-    // it re-exports (a Bun.build artifact). Until that's fixed, Svelte-
-    // aware consumers must resolve component sub-paths through the source
-    // path. The published tarball ships `src/components/**`, `src/utilities/**`,
-    // `src/_internal/**`, and `src/index.ts` to make that resolvable.
     if (upstreamKeys.has(key)) {
       if ('svelte' in conditions) {
         fail(
@@ -313,6 +318,19 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
             `packed exports["${key}"]["${condition}"] points at "${target}" — upstream re-exports must resolve to \`./dist/\``,
           );
         }
+      }
+    }
+    for (const [condition, target] of Object.entries(conditions)) {
+      if (
+        typeof target === 'string' &&
+        target.startsWith('./src/') &&
+        !target.endsWith('.css') &&
+        !target.endsWith('.css.d.ts') &&
+        !target.endsWith('.json')
+      ) {
+        fail(
+          `packed exports["${key}"]["${condition}"] points at "${target}" — published runtime exports must resolve to \`./dist/\``,
+        );
       }
     }
   }
@@ -421,10 +439,9 @@ type TarballExpectations = {
 /**
  * Build the tarball expectations from the live filesystem.
  *
- * Every directory-shaped component contributes both its Svelte source
- * (`package/src/components/<name>/<name>.svelte`) and its compiled
- * declaration (`package/dist/components/<name>/<name>.svelte.d.ts`).
- * Experimental components contribute the same paths under `experimental/`.
+ * Every directory-shaped component contributes its generated JSON sidecars and
+ * built runtime/types artifacts. Experimental components contribute the same
+ * paths under `experimental/`.
  *
  * This replaces the previous hand-maintained `PUBLIC_COMPONENTS` allowlist —
  * `discoverComponents()` is the same walk the exports generator uses, so the
@@ -484,6 +501,7 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/index.d.ts',
       'package/dist/index.js',
       'package/dist/server/index.js',
+      'package/dist/cli/index.js',
       // First-party Shiki adapter: ship both source (for the `svelte`
       // condition) and built JS + types (for `default`/`node`).
       'package/src/highlighters/shiki/index.ts',

@@ -2,6 +2,7 @@
 @layer cinder.components {
   .cinder-testimonial-section {
     container-type: inline-size;
+    container-name: cinder-testimonial-section;
     padding-block: var(--cinder-space-10);
   }
 
@@ -77,7 +78,7 @@
     color: var(--cinder-text-muted);
   }
 
-  @container (max-width: 56rem) {
+  @container cinder-testimonial-section (max-width: 56rem) {
     .cinder-testimonial-section__list {
       grid-template-columns: 1fr !important;
     }

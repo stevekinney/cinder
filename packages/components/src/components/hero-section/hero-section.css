@@ -2,6 +2,7 @@
 @layer cinder.components {
   .cinder-hero-section {
     container-type: inline-size;
+    container-name: cinder-hero-section;
     padding-block: var(--cinder-space-10);
   }
 
@@ -63,7 +64,7 @@
     padding: var(--cinder-space-4);
   }
 
-  @container (min-width: 64rem) {
+  @container cinder-hero-section (min-width: 64rem) {
     .cinder-hero-section[data-cinder-has-media] .cinder-hero-section__inner {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }

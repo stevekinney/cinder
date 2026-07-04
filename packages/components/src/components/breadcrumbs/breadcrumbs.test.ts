@@ -7,6 +7,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
+const { createRawSnippet } = await import('svelte');
 const { default: Breadcrumbs } = await import('./breadcrumbs.svelte');
 
 const breadcrumbsCss = readFileSync(new URL('./breadcrumbs.css', import.meta.url), 'utf8');
@@ -57,6 +58,18 @@ describe('Breadcrumbs', () => {
     const { container } = render(Breadcrumbs, { items, separator: '›' });
     const seps = container.querySelectorAll('.cinder-breadcrumbs__separator');
     expect(seps[0]?.textContent?.trim()).toBe('›');
+  });
+
+  test('custom snippet separator is applied', () => {
+    const separator = createRawSnippet(() => ({
+      render: () => '<span data-testid="custom-separator">to</span>',
+    }));
+    const { container } = render(Breadcrumbs, { items, separator });
+    const seps = container.querySelectorAll('.cinder-breadcrumbs__separator');
+
+    expect(seps.length).toBe(2);
+    expect(container.querySelectorAll('[data-testid="custom-separator"]').length).toBe(2);
+    expect(seps[0]?.textContent?.trim()).toBe('to');
   });
 
   test('custom label overrides aria-label', () => {

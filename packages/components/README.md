@@ -80,7 +80,21 @@ import { Button, Modal } from '@lostgradient/cinder';
 
 ## Finding the Right Component
 
-Cinder ships a machine-readable manifest:
+For agents and local tooling, prefer the published `cinder` command:
+
+```sh
+cinder search modal
+cinder show button --json
+cinder compare modal drawer --json
+cinder best-practices styles
+```
+
+Use `cinder mcp` to start the read-only stdio MCP server. It exposes the same
+component search, detail, comparison, best-practice guidance, and generated
+artifact resources without requiring agents to parse package files directly.
+
+Cinder also ships a machine-readable manifest for environments where the CLI or
+MCP server is unavailable:
 
 ```ts
 import manifest from '@lostgradient/cinder/manifest' with { type: 'json' };

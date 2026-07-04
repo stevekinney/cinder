@@ -2,6 +2,7 @@
 @layer cinder.components {
   .cinder-blog-section {
     container-type: inline-size;
+    container-name: cinder-blog-section;
     padding-block: var(--cinder-space-10);
   }
 
@@ -90,7 +91,7 @@
     gap: var(--cinder-space-1);
   }
 
-  @container (max-width: 56rem) {
+  @container cinder-blog-section (max-width: 56rem) {
     .cinder-blog-section__list {
       grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
     }
