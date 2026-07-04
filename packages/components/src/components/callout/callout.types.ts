@@ -10,6 +10,15 @@ import type { HTMLAttributes } from 'svelte/elements';
  */
 export type CalloutVariant = 'info' | 'success' | 'warning' | 'danger';
 /**
+ * Root semantics for {@link Callout}.
+ *
+ * - `'aside'` keeps the historical `<aside>` behavior and may expose a
+ *   `complementary` landmark depending on where the callout is placed.
+ * - `'note'` renders a static `<div role="note">` for explanatory notes that
+ *   should not appear in landmark navigation.
+ */
+export type CalloutSemantic = 'aside' | 'note';
+/**
  * Props for the {@link Callout} component — an inline admonition block
  * for documentation and long-form content. See `callout.a11y.md` for
  * the full accessibility model.
@@ -24,20 +33,21 @@ export type CalloutVariant = 'info' | 'success' | 'warning' | 'danger';
  *
  * Callout is intentionally **not** a live region. It is static content
  * rendered as part of the document, analogous to Markdown admonitions
- * (note / tip / warning / danger). The type omits `role`, `aria-live`,
- * `aria-atomic`, `aria-relevant`, and `aria-busy` from the underlying
- * `HTMLAttributes` so a consumer cannot silently turn a callout into a
- * live region. The runtime also scrubs those attributes from rest
- * props for defense in depth — see banner.svelte for the analogous
- * pattern.
+ * (note / tip / warning / danger). Use `semantic="note"` when the visual
+ * surface should expose `role="note"` instead of an `<aside>`. The type omits
+ * `role`, `aria-live`, `aria-atomic`, `aria-relevant`, and `aria-busy` from
+ * the underlying `HTMLAttributes` so a consumer cannot silently turn a
+ * callout into an alert/status live region or arbitrary landmark. The runtime
+ * also scrubs those attributes from rest props for defense in depth — see
+ * banner.svelte for the analogous pattern.
  *
- * The root is `<aside>`. When placed directly inside `<body>`,
+ * The default root is `<aside>`. When placed directly inside `<body>`,
  * `<main>`, or another sectioning landmark, `<aside>` is exposed as a
- * `complementary` landmark; inside `<article>` or `<section>` the
- * landmark role is suppressed and the element behaves as generic
- * sectioning content. When the callout lands at landmark level, supply
- * `title` (used as the accessible name) or pass `aria-label` /
- * `aria-labelledby` so the landmark has a meaningful name.
+ * `complementary` landmark; inside `<article>` or `<section>` the landmark
+ * role is suppressed and the element behaves as generic sectioning content.
+ * When the callout lands at landmark level, supply `title` (used as the
+ * accessible name) or pass `aria-label` / `aria-labelledby` so the landmark
+ * has a meaningful name.
  */
 export type CalloutProps = Omit<
   HTMLAttributes<HTMLElement>,
@@ -45,6 +55,8 @@ export type CalloutProps = Omit<
 > & {
   /** Visual + semantic variant. Default `'info'`. */
   variant?: CalloutVariant;
+  /** Root semantics. Default `'aside'`; use `'note'` for static note semantics without a complementary landmark. */
+  semantic?: CalloutSemantic;
   /**
    * Optional title rendered as a `<p class="cinder-callout__title">`.
    *
@@ -56,7 +68,7 @@ export type CalloutProps = Omit<
    *
    * When supplied and no `aria-label` or `aria-labelledby` is passed
    * on rest props, the title also becomes the `aria-label` of the
-   * root `<aside>` so the landmark has an accessible name.
+   * root element so the landmark or note has an accessible name.
    */
   title?: string;
   /**

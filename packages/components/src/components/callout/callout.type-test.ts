@@ -38,6 +38,12 @@ const _ariaLabelAccepted: CalloutProps = { children: noopChildren, 'aria-label':
 // aria-labelledby is similarly allowed and takes precedence over title.
 const _ariaLabelledByAccepted: CalloutProps = { children: noopChildren, 'aria-labelledby': 'external-heading' };
 
+// Static note semantics are supported without reopening arbitrary role overrides.
+const _semanticNoteAccepted: CalloutProps = { children: noopChildren, semantic: 'note' };
+
+// @ts-expect-error - only the supported semantic modes are accepted
+const _invalidSemanticRejected: CalloutProps = { children: noopChildren, semantic: 'alert' };
+
 void _roleRejected;
 void _ariaLiveRejected;
 void _ariaAtomicRejected;
@@ -45,3 +51,5 @@ void _ariaRelevantRejected;
 void _ariaBusyRejected;
 void _ariaLabelAccepted;
 void _ariaLabelledByAccepted;
+void _semanticNoteAccepted;
+void _invalidSemanticRejected;

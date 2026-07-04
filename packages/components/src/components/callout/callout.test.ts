@@ -37,6 +37,31 @@ describe('Callout rendering', () => {
     expect(root?.tagName).toBe('ASIDE');
   });
 
+  test('semantic note mode renders a named static note without live-region attributes', () => {
+    const { getByRole } = render(Callout, {
+      props: {
+        semantic: 'note',
+        title: 'Temporal concept: Activity',
+        children: textSnippet(
+          'An Activity is durable work that runs outside the workflow isolate.',
+        ),
+        role: 'alert',
+        'aria-live': 'assertive',
+        'aria-atomic': 'true',
+        'aria-relevant': 'additions',
+        'aria-busy': 'true',
+      } as never,
+    });
+
+    const note = getByRole('note', { name: 'Temporal concept: Activity' });
+    expect(note.tagName).toBe('DIV');
+    expect(note.classList.contains('cinder-callout')).toBe(true);
+    expect(note.hasAttribute('aria-live')).toBe(false);
+    expect(note.hasAttribute('aria-atomic')).toBe(false);
+    expect(note.hasAttribute('aria-relevant')).toBe(false);
+    expect(note.hasAttribute('aria-busy')).toBe(false);
+  });
+
   test('applies custom class prop while preserving cinder-callout', () => {
     const { container } = render(Callout, {
       props: { class: 'my-custom-class', children: emptySnippet },
