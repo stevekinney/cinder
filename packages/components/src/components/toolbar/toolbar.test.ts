@@ -465,7 +465,7 @@ describe('Toolbar responsive CSS', () => {
     );
     expect(toolbarCss).toMatch(/\.cinder-toolbar__group\s*\{[\s\S]*?flex-wrap:\s*nowrap;/);
     expect(toolbarCss).toMatch(
-      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\][\s\S]*?> \.cinder-toolbar__spacer[\s\S]*?\+ \.cinder-toolbar__group[\s\S]*?margin-inline-start:\s*auto;/,
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\][\s\S]*?> \.cinder-toolbar__spacer[\s\S]*?~ \.cinder-toolbar__group[\s\S]*?margin-inline-start:\s*auto;/,
     );
     expect(toolbarCss).toContain('@container cinder-toolbar (max-width: 30rem)');
     expect(toolbarCss).not.toContain('@media (max-width: 30rem)');
