@@ -7,11 +7,16 @@ const schema = {
     title: {
       type: 'string',
       description:
-        'Optional title rendered as a `<p class="cinder-callout__title">`.\n\nRendered as a paragraph rather than a heading element so the\ncallout does not inject an entry into the document outline. If a\ncallout genuinely participates in the outline (e.g. it titles a\nstandalone section), wrap it in a `<section>` with its own heading\nrather than promoting this prop to `<h*>`.\n\nWhen supplied and no `aria-label` or `aria-labelledby` is passed\non rest props, the title also becomes the `aria-label` of the\nroot `<aside>` so the landmark has an accessible name.',
+        'Optional title rendered as a `<p class="cinder-callout__title">`.\n\nRendered as a paragraph rather than a heading element so the\ncallout does not inject an entry into the document outline. If a\ncallout genuinely participates in the outline (e.g. it titles a\nstandalone section), wrap it in a `<section>` with its own heading\nrather than promoting this prop to `<h*>`.\n\nWhen supplied and no `aria-label` or `aria-labelledby` is passed\non rest props, the title also becomes the `aria-label` of the\nroot element so the landmark or note has an accessible name.',
     },
     variant: {
       enum: ['info', 'success', 'warning', 'danger'],
       description: "Visual + semantic variant. Default `'info'`.",
+    },
+    semantic: {
+      enum: ['aside', 'note'],
+      description:
+        "Root semantics. Default `'aside'`; use `'note'` for static note semantics without a complementary landmark.",
     },
     class: {
       type: 'string',

@@ -9,9 +9,10 @@ outline.
 
 ## Role + semantics
 
-The root element is `<aside>` with `data-cinder-variant` driving the
-variant color treatment. The component does not set an explicit `role` —
-`<aside>` carries the appropriate semantics on its own:
+The root element defaults to `<aside>` with `data-cinder-variant` driving the
+variant color treatment. In the default `semantic="aside"` mode, the component
+does not set an explicit `role` — `<aside>` carries the appropriate semantics
+on its own:
 
 - Directly inside `<body>`, `<main>`, or another sectioning-content
   parent, `<aside>` is exposed as a `complementary` landmark.
@@ -27,12 +28,24 @@ This context-sensitivity is **by design**: the same component composes
 correctly both as a top-level landmark (e.g. a documentation page
 warning above the article) and as embedded prose content.
 
+Set `semantic="note"` when the visual treatment should expose a static note
+instead of a complementary landmark. Note mode renders the same Cinder surface
+as `<div role="note">`. It is useful for explanatory annotations inside dense
+product surfaces where a callout should be discoverable as a note but should
+not appear in landmark navigation.
+
+Consumers cannot supply arbitrary roles. The component owns the root semantics:
+`semantic="aside"` and `semantic="note"` are the supported modes, and runtime
+prop scrubbing still removes consumer-supplied `role` values such as
+`alert`, `status`, or `region`.
+
 ## Accessible-name precedence
 
-Because `<aside>` can become a landmark depending on placement, an
-unlabeled callout at landmark level would surface as a nameless
-`complementary` region in screen-reader navigation. The component
-derives `aria-label` in three tiers, mirroring `banner.svelte`:
+Because `<aside>` can become a landmark depending on placement, an unlabeled
+callout at landmark level would surface as a nameless `complementary` region in
+screen-reader navigation. Note mode also benefits from a useful accessible name
+when the visible title identifies the note. The component derives `aria-label`
+in three tiers, mirroring `banner.svelte`:
 
 1. If the consumer passes `aria-labelledby`, the root emits
    `aria-labelledby` alone — the derived `aria-label` is suppressed so
@@ -41,11 +54,11 @@ derives `aria-label` in three tiers, mirroring `banner.svelte`:
 3. Else if the `title` prop is supplied, the title text is promoted to
    `aria-label`.
 
-When none of the three is supplied, the landmark is unnamed. That is
-intentional: a callout nested inside `<article>` or `<section>` has no
-landmark role to name anyway, and a titleless top-level callout is
-expected to be rare. Consumers placing callouts at landmark level should
-supply `title` or `aria-label`.
+When none of the three is supplied, the root is unnamed. That is intentional:
+a callout nested inside `<article>` or `<section>` has no landmark role to name
+anyway, and a titleless top-level callout is expected to be rare. Consumers
+placing callouts at landmark level or rendering named notes should supply
+`title` or `aria-label`.
 
 ## Why no `role="alert"` and no `aria-live`?
 
@@ -57,12 +70,11 @@ it — that is what `alert.svelte` is for. Announcing a static admonition
 on every page load would be noisy and incorrect.
 
 The type-level `Omit` removes `role`, `aria-live`, `aria-atomic`,
-`aria-relevant`, and `aria-busy` from `CalloutProps`. The runtime also
-scrubs all five from rest-props before they reach the DOM, so consumers
-who escape the type system (`as never`, spread from an `unknown`
-source) cannot accidentally turn a callout into a live region or
-override the implicit `<aside>` role. This defense-in-depth pattern
-mirrors `banner.svelte`.
+`aria-relevant`, and `aria-busy` from `CalloutProps`. The runtime also scrubs
+all five from rest-props before they reach the DOM, so consumers who escape the
+type system (`as never`, spread from an `unknown` source) cannot accidentally
+turn a callout into a live region or override the supported root semantics.
+This defense-in-depth pattern mirrors `banner.svelte`.
 
 Note: `banner.svelte` deliberately does **not** strip `aria-busy`
 because `aria-busy` is valid on `role="region"` to signal that

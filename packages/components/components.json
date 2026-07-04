@@ -766,7 +766,7 @@
       "exportName": "Callout",
       "category": "feedback",
       "status": "stable",
-      "purpose": "Inline aside that highlights supporting commentary alongside body content without claiming live-region urgency.",
+      "purpose": "Inline static note or aside that highlights supporting commentary alongside body content without claiming live-region urgency.",
       "tags": ["feedback", "notice"],
       "useWhen": [
         "Drawing attention to tangential information nested inside prose, documentation, or article content.",
