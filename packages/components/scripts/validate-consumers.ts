@@ -2,6 +2,7 @@ import { $, Glob } from 'bun';
 import {
   existsSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   statSync,
   symlinkSync,
@@ -67,6 +68,95 @@ const workspaceDependencyPackages = ['diff', 'markdown', 'editor', 'commentary']
     };
   },
 );
+
+const RICH_FEATURE_DEPENDENCY_NAMES = [
+  '@milkdown/ctx',
+  '@milkdown/kit',
+  '@milkdown/prose',
+  '@shikijs/engine-oniguruma',
+  '@shikijs/langs',
+  '@shikijs/rehype',
+  '@shikijs/types',
+  '@types/hast',
+  '@types/mdast',
+  '@types/unist',
+  'comlink',
+  'hast-util-sanitize',
+  'js-yaml',
+  'prosemirror-inputrules',
+  'prosemirror-model',
+  'prosemirror-state',
+  'prosemirror-view',
+  'rehype-katex',
+  'rehype-sanitize',
+  'rehype-stringify',
+  'remark-gfm',
+  'remark-html',
+  'remark-math',
+  'remark-parse',
+  'remark-rehype',
+  'remark-stringify',
+  'shiki',
+  'unified',
+  'unist-util-remove',
+  'unist-util-visit',
+] as const;
+
+const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
+  // `conversationalist` depends on `gray-matter`, which depends on `js-yaml`.
+  // The styles fixture cannot use its presence as proof that the rich markdown
+  // or editor dependency tree leaked onto the base install path.
+  'js-yaml',
+]);
+
+const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
+  (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
+);
+
+function collectInstalledPackageNamesFromNodeModulesTree(
+  nodeModulesDirectory: string,
+): Set<string> {
+  const installedPackageNames = new Set<string>();
+  if (!existsSync(nodeModulesDirectory)) return installedPackageNames;
+
+  const pendingNodeModulesDirectories = [nodeModulesDirectory];
+
+  while (pendingNodeModulesDirectories.length > 0) {
+    const currentNodeModulesDirectory = pendingNodeModulesDirectories.pop();
+    if (currentNodeModulesDirectory === undefined) continue;
+
+    for (const entry of readdirSync(currentNodeModulesDirectory, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === '.bin') continue;
+
+      const entryPath = join(currentNodeModulesDirectory, entry.name);
+      if (entry.name.startsWith('@')) {
+        for (const scopedEntry of readdirSync(entryPath, { withFileTypes: true })) {
+          if (!scopedEntry.isDirectory()) continue;
+          installedPackageNames.add(`${entry.name}/${scopedEntry.name}`);
+
+          const scopedNestedNodeModulesDirectory = join(
+            entryPath,
+            scopedEntry.name,
+            'node_modules',
+          );
+          if (existsSync(scopedNestedNodeModulesDirectory)) {
+            pendingNodeModulesDirectories.push(scopedNestedNodeModulesDirectory);
+          }
+        }
+        continue;
+      }
+
+      installedPackageNames.add(entry.name);
+
+      const nestedNodeModulesDirectory = join(entryPath, 'node_modules');
+      if (existsSync(nestedNodeModulesDirectory)) {
+        pendingNodeModulesDirectories.push(nestedNodeModulesDirectory);
+      }
+    }
+  }
+
+  return installedPackageNames;
+}
 
 class ValidationError extends Error {
   constructor(message: string) {
@@ -262,6 +352,7 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
     peerDependencies?: Record<string, string>;
+    peerDependenciesMeta?: Record<string, { optional?: boolean }>;
     optionalDependencies?: Record<string, string>;
     exports?: Record<string, unknown>;
   }>(rawPackedManifest);
@@ -294,6 +385,19 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
       if (key.startsWith('@cinder/')) {
         fail(`packed manifest ${String(field)}["${key}"] references a private workspace package`);
       }
+    }
+  }
+  for (const dependencyName of RICH_FEATURE_DEPENDENCY_NAMES) {
+    if (packedManifest.dependencies?.[dependencyName] !== undefined) {
+      fail(
+        `packed manifest dependencies["${dependencyName}"] keeps a rich editor/markdown package on the base install path`,
+      );
+    }
+    if (packedManifest.peerDependencies?.[dependencyName] === undefined) {
+      fail(`packed manifest is missing optional peer dependency "${dependencyName}"`);
+    }
+    if (packedManifest.peerDependenciesMeta?.[dependencyName]?.optional !== true) {
+      fail(`packed manifest peerDependenciesMeta["${dependencyName}"].optional must be true`);
     }
   }
 
@@ -451,18 +555,12 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
   const components = await discoverComponents();
   const componentRequiredEntries: string[] = [];
   for (const { name, isExperimental, hasCss } of components) {
-    const sourceDirectory = isExperimental
-      ? `package/src/components/experimental/${name}`
-      : `package/src/components/${name}`;
     const distributionDirectory = isExperimental
       ? `package/dist/components/experimental/${name}`
       : `package/dist/components/${name}`;
-    // Each component sub-path ships both the Svelte source (resolved via
-    // the `svelte` condition) and the built JS + types (resolved via
-    // `default`/`types`/`node`). See `assertPackedManifestInvariants` for
-    // the reason both are required today.
+    // Published component sub-paths resolve through `dist/`; source CSS and
+    // JSON sidecars still ship because style and sidecar exports target them.
     componentRequiredEntries.push(
-      `${sourceDirectory}/${name}.svelte`,
       `${distributionDirectory}/index.js`,
       `${distributionDirectory}/index.d.ts`,
     );
@@ -670,7 +768,12 @@ async function pickEphemeralPort(): Promise<number> {
  */
 function injectTarballIntoFixture(
   fixtureDirectory: string,
-  options: { svelteVersion?: string; typescriptVersion?: string } = {},
+  options: {
+    svelteVersion?: string;
+    typescriptVersion?: string;
+    includeRichFeatureDependencies?: boolean;
+    includeWorkspaceDependencyPackages?: boolean;
+  } = {},
 ): () => void {
   const manifestPath = join(fixtureDirectory, 'package.json');
   const originalContent = readFileSync(manifestPath, 'utf8');
@@ -688,6 +791,9 @@ function injectTarballIntoFixture(
   }
   const overrides: Record<string, unknown> = rawOverrides ?? {};
   parsed['overrides'] = overrides;
+  const rawPeerDependencies = parseJsonFile<{
+    peerDependencies?: Record<string, string>;
+  }>(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')).peerDependencies;
 
   dependencies['@lostgradient/cinder'] = `file:${tarballFilePath}`;
   if (options.svelteVersion !== undefined || options.typescriptVersion !== undefined) {
@@ -704,13 +810,68 @@ function injectTarballIntoFixture(
       rawDevDependencies['typescript'] = options.typescriptVersion;
     }
   }
-  for (const dependencyPackage of workspaceDependencyPackages) {
-    const fileSpecifier = `file:${dependencyPackage.tarballFilePath}`;
-    dependencies[dependencyPackage.name] = fileSpecifier;
-    overrides[dependencyPackage.name] = fileSpecifier;
+  if (options.includeRichFeatureDependencies !== false) {
+    for (const dependencyName of RICH_FEATURE_DEPENDENCY_NAMES) {
+      const version = rawPeerDependencies?.[dependencyName];
+      if (version === undefined) {
+        fail(`@lostgradient/cinder/package.json is missing peer dependency "${dependencyName}"`);
+      }
+      dependencies[dependencyName] = version;
+    }
+  }
+  if (options.includeWorkspaceDependencyPackages !== false) {
+    for (const dependencyPackage of workspaceDependencyPackages) {
+      const fileSpecifier = `file:${dependencyPackage.tarballFilePath}`;
+      dependencies[dependencyPackage.name] = fileSpecifier;
+      overrides[dependencyPackage.name] = fileSpecifier;
+    }
   }
   writeFileSync(manifestPath, JSON.stringify(parsed, null, 2) + '\n');
   return () => writeFileSync(manifestPath, originalContent);
+}
+
+async function runStylesConsumerFixture(): Promise<void> {
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/styles-consumer');
+  process.stdout.write('[validate-consumers] step: styles-consumer (base install shape)…\n');
+
+  const restoreManifest = injectTarballIntoFixture(fixtureDirectory, {
+    includeRichFeatureDependencies: false,
+    includeWorkspaceDependencyPackages: false,
+  });
+
+  try {
+    await $`rm -rf node_modules dist`.cwd(fixtureDirectory);
+    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    if (installResult.exitCode !== 0) {
+      fail(
+        `styles-consumer bun install failed:\n${installResult.stdout.toString()}\n${installResult.stderr.toString()}`,
+      );
+    }
+
+    const fixtureNodeModulesDirectory = join(fixtureDirectory, 'node_modules');
+    const installedPackageNames = collectInstalledPackageNamesFromNodeModulesTree(
+      fixtureNodeModulesDirectory,
+    );
+    const leakedPackages = RICH_FEATURE_LEAK_CHECK_NAMES.filter((dependencyName) =>
+      installedPackageNames.has(dependencyName),
+    );
+    if (leakedPackages.length > 0) {
+      fail(
+        `styles-consumer installed rich editor/markdown packages on a styles-only path:\n  ${leakedPackages.join('\n  ')}`,
+      );
+    }
+
+    const buildResult = await $`bun run build`.cwd(fixtureDirectory).nothrow();
+    if (buildResult.exitCode !== 0) {
+      fail(
+        `styles-consumer build failed:\n${buildResult.stdout.toString()}\n${buildResult.stderr.toString()}`,
+      );
+    }
+
+    process.stdout.write('[validate-consumers] styles-consumer OK.\n');
+  } finally {
+    restoreManifest();
+  }
 }
 
 function generateTypescriptConsumerProbe(fixtureDirectory: string, label: string): void {
@@ -1797,6 +1958,7 @@ try {
   // → node-consumer (tsc + SSR render) → typescript-consumer (tsc + svelte-check)
   // → sveltekit-consumer (full Vite build) → examples-consumer (SvelteKit build +
   // SSR over every example, slowest).
+  await runStylesConsumerFixture();
   await runManifestConsumerFixture();
   await runNodeFixture();
   await runTypescriptConsumerFixture();

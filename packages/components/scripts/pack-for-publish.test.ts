@@ -7,7 +7,7 @@ import {
 } from './pack-for-publish.ts';
 
 describe('buildPublishedManifest', () => {
-  it('keeps Svelte test-harness exclusions after broad Svelte includes', () => {
+  it('does not publish source component Svelte or TypeScript runtime files', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -17,16 +17,8 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest, []);
     const files = published.files ?? [];
 
-    expect(files.indexOf('src/components/**/*.svelte')).toBeGreaterThanOrEqual(0);
-    expect(files.indexOf('!src/components/**/*fixture*.svelte')).toBeGreaterThan(
-      files.indexOf('src/components/**/*.svelte'),
-    );
-    expect(files.indexOf('!src/components/**/_*-test-harness.svelte')).toBeGreaterThan(
-      files.indexOf('src/components/**/*.svelte'),
-    );
-    expect(files.indexOf('!src/components/**/*.type-test.svelte')).toBeGreaterThan(
-      files.indexOf('src/components/**/*.svelte'),
-    );
+    expect(files).not.toContain('src/components/**/*.ts');
+    expect(files).not.toContain('src/components/**/*.svelte');
   });
 
   it('includes src/styles/**/*.css.d.ts so reserved styles type stubs are published', () => {
@@ -210,8 +202,8 @@ describe('buildPublishedManifest', () => {
       svelte: './dist/styles/base-guard.js',
       default: './dist/styles/base-guard.js',
     });
-    expect(files).toContain('!src/components/**/*.schema.ts');
-    expect(files).toContain('!src/components/**/*.variables.ts');
+    expect(files).not.toContain('src/components/**/*.ts');
+    expect(files).not.toContain('src/components/**/*.svelte');
     expect(files).not.toContain('!dist/server/components/**/*.schema.js');
     expect(files).not.toContain('!dist/server/components/**/*.variables.js');
     expect(files).toContain('!dist/server/**/*.d.ts');

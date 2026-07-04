@@ -38,7 +38,7 @@ describe('review-editor original bindable regression', () => {
 });
 
 describe('review-editor public entrypoint', () => {
-  test('exports the component from the package subpath and root barrel', async () => {
+  test('exports the component from the package subpath', async () => {
     const packageJson = await Bun.file(`${import.meta.dir}/../../../package.json`).json();
     const [{ default: ReviewEditor }, reviewEditorModule] = await Promise.all([
       import('./review-editor.svelte'),

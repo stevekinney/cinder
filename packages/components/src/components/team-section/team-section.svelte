@@ -90,8 +90,10 @@
                 <a
                   class="cinder-team-section__link"
                   href={member.href}
-                  aria-label={`View ${member.name}'s profile`}>View profile</a
+                  aria-label={`View ${member.name}'s profile`}
                 >
+                  View profile
+                </a>
               {/if}
             </Card>
           </li>
