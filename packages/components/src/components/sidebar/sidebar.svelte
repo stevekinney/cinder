@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { SidebarProps } from './sidebar.types.ts';
-  import { onMount } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
 
   import { setSidebarContext, type SidebarContextValue } from '../../_internal/sidebar-context.ts';
@@ -64,11 +63,6 @@
     typeof window === 'undefined' || typeof window.matchMedia !== 'function'
       ? { current: false }
       : new MediaQuery('(max-width: 47.99rem)', false);
-
-  let hydrated = $state(false);
-  onMount(() => {
-    hydrated = true;
-  });
 
   const context: SidebarContextValue = {
     get collapsed() {
@@ -129,18 +123,5 @@
     data-cinder-collapsed={collapsed ? '' : undefined}
   >
     {@render sidebarContents(false)}
-  </aside>
-
-  <aside
-    class={classNames(
-      'cinder-sidebar',
-      'cinder-sidebar--mobile',
-      'cinder-sidebar--ssr-mobile',
-      className,
-    )}
-    aria-label={validatedLabel}
-    data-cinder-hydrated={hydrated ? '' : undefined}
-  >
-    {@render sidebarContents(true)}
   </aside>
 {/if}
