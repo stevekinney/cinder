@@ -96,7 +96,7 @@
   });
 
   const positionedItems = $derived.by<PositionedEventTimelineItem[]>(() => {
-    const lanePositions = [-Infinity, -Infinity, -Infinity];
+    const lanePositions: number[] = [];
 
     return items
       .map((item, index) => {
@@ -116,7 +116,7 @@
         const availableLane = lanePositions.findIndex(
           (lastPosition) => position - lastPosition >= 12,
         );
-        const lane = availableLane === -1 ? 2 : availableLane;
+        const lane = availableLane === -1 ? lanePositions.length : availableLane;
         lanePositions[lane] = position;
 
         const isoDatetime = new Date(timestamp).toISOString();
@@ -140,6 +140,8 @@
       });
   });
 
+  const laneCount = $derived(Math.max(3, ...positionedItems.map((item) => item.lane + 1), 0));
+
   const nowPosition = $derived.by(() => {
     const timestamp = toTimestamp(now);
     if (timestamp === undefined) return undefined;
@@ -162,7 +164,12 @@
       <div class="cinder-event-timeline__now" style:left="{nowPosition}%"></div>
     {/if}
   </div>
-  <div class="cinder-event-timeline__items" role="list" aria-label={accessibleName}>
+  <div
+    class="cinder-event-timeline__items"
+    role="list"
+    aria-label={accessibleName}
+    style:--_cinder-event-timeline-lane-count={laneCount}
+  >
     {#each positionedItems as item (item.key)}
       <div
         class="cinder-event-timeline__item"

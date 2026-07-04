@@ -43,7 +43,7 @@
   }
 
   .cinder-event-timeline__items {
-    block-size: 6rem;
+    block-size: max(6rem, calc(var(--_cinder-event-timeline-lane-count, 3) * 1.45rem + 1.5rem));
   }
 
   .cinder-event-timeline__item {
@@ -117,7 +117,7 @@
   }
 
   .cinder-event-timeline[data-cinder-size='sm'] .cinder-event-timeline__items {
-    block-size: 5.25rem;
+    block-size: max(5.25rem, calc(var(--_cinder-event-timeline-lane-count, 3) * 1.45rem + 1.25rem));
   }
 
   .cinder-event-timeline[data-cinder-size='sm'] .cinder-event-timeline__item {

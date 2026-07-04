@@ -65,6 +65,30 @@ describe('EventTimeline', () => {
     expect(items[2]?.getAttribute('data-cinder-state')).toBe('failed');
   });
 
+  test('allocates additional lanes for dense clusters without reusing the final lane', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T06:00:00.000Z', label: 'A' },
+        { at: '2026-07-03T06:15:00.000Z', label: 'B' },
+        { at: '2026-07-03T06:30:00.000Z', label: 'C' },
+        { at: '2026-07-03T06:45:00.000Z', label: 'D' },
+      ],
+    });
+
+    const items = [...container.querySelectorAll('[role="listitem"]')];
+    expect(items.map((item) => item.getAttribute('data-cinder-lane'))).toEqual([
+      '0',
+      '1',
+      '2',
+      '3',
+    ]);
+    expect(
+      container.querySelector('.cinder-event-timeline__items')?.getAttribute('style'),
+    ).toContain('--_cinder-event-timeline-lane-count: 4');
+  });
+
   test('clamps out-of-range events to the displayed range', () => {
     const { container } = render(EventTimeline, {
       start,
@@ -193,11 +217,13 @@ describe('EventTimeline', () => {
   });
 
   test('CSS reserves lane height and keeps edge items inside bounds', () => {
-    expect(EVENT_TIMELINE_CSS).toContain('block-size: 6rem;');
+    expect(EVENT_TIMELINE_CSS).toContain('block-size: max(');
+    expect(EVENT_TIMELINE_CSS).toContain('6rem,');
+    expect(EVENT_TIMELINE_CSS).toContain('--_cinder-event-timeline-lane-count');
     expect(EVENT_TIMELINE_CSS).toContain("data-cinder-edge='start'");
     expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(0);');
     expect(EVENT_TIMELINE_CSS).toContain("data-cinder-edge='end'");
     expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(-100%);');
-    expect(EVENT_TIMELINE_CSS).toContain('block-size: 5.25rem;');
+    expect(EVENT_TIMELINE_CSS).toContain('5.25rem,');
   });
 });
