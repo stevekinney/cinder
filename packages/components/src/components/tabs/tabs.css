@@ -22,6 +22,11 @@
     container-name: cinder-tabs;
   }
 
+  .cinder-tabs[data-cinder-fill] {
+    flex: 1 1 auto;
+    min-block-size: 0;
+  }
+
   .cinder-tabs[data-cinder-orientation='vertical'] {
     flex-direction: row;
   }
@@ -166,6 +171,7 @@
 
   .cinder-tab-panel {
     flex: 1 1 auto;
+    min-block-size: 0;
     padding: var(--cinder-space-2) 0;
     outline: none;
   }

@@ -63,6 +63,11 @@ export type TabsProps = {
   /** Layout orientation. Affects which arrow keys move between tabs. */
   orientation?: TabsOrientation;
   /**
+   * Fill the available space when Tabs is placed inside a bounded flex parent,
+   * letting the active TabPanel occupy the remaining height.
+   */
+  fill?: boolean;
+  /**
    * When true (default for horizontal), focusing a tab also activates it
    * (the panel updates immediately). Vertical defaults to manual activation
    * — the user moves focus with arrows, then presses Enter or Space.

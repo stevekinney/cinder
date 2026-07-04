@@ -3,6 +3,7 @@
   export type TabsFixtureProps = {
     value?: string;
     orientation?: 'horizontal' | 'vertical';
+    fill?: boolean;
     activateOnFocus?: boolean;
     items: Array<{ value: string; title: string; body: string; disabled?: boolean }>;
   };
@@ -17,12 +18,13 @@
   let {
     value = $bindable(''),
     orientation = 'horizontal',
+    fill = false,
     activateOnFocus,
     items,
   }: TabsFixtureProps = $props();
 </script>
 
-<Tabs bind:value {orientation} {...activateOnFocus !== undefined ? { activateOnFocus } : {}}>
+<Tabs bind:value {orientation} {fill} {...activateOnFocus !== undefined ? { activateOnFocus } : {}}>
   <TabList label="Test tabs">
     {#each items as item (item.value)}
       {#if item.disabled !== undefined}
