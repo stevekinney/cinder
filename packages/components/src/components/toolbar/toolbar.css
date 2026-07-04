@@ -5,7 +5,7 @@
     align-items: center;
     gap: var(--cinder-space-2);
     min-inline-size: 0;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     container-type: inline-size;
     container-name: cinder-toolbar;
   }
@@ -55,7 +55,6 @@
 
   @container cinder-toolbar (max-width: 30rem) {
     .cinder-toolbar[data-cinder-orientation='horizontal'] {
-      flex-wrap: wrap;
       align-items: stretch;
     }
 

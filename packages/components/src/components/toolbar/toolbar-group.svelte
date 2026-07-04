@@ -19,11 +19,17 @@
 
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { class: className, orientation, children, ...rest }: ToolbarGroupProps = $props();
+  let { class: className, orientation, children, role, ...rest }: ToolbarGroupProps = $props();
+
+  const hasAccessibleName = $derived(
+    (typeof rest['aria-label'] === 'string' && rest['aria-label'].trim().length > 0) ||
+      (typeof rest['aria-labelledby'] === 'string' && rest['aria-labelledby'].trim().length > 0),
+  );
 </script>
 
 <div
   {...rest}
+  role={role ?? (hasAccessibleName ? 'group' : undefined)}
   class={classNames('cinder-toolbar__group', className)}
   data-cinder-toolbar-group=""
   data-cinder-orientation={orientation}

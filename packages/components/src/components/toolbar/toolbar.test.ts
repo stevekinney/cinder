@@ -9,6 +9,7 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
 const { default: Toolbar } = await import('./index.ts');
+const { default: ToolbarGroup } = await import('./toolbar-group.svelte');
 const { default: ToolbarSpacer } = await import('./toolbar-spacer.svelte');
 const { default: ToolbarCompositionFixture } =
   await import('../../test/fixtures/toolbar-composition-fixture.svelte');
@@ -381,6 +382,17 @@ describe('Toolbar', () => {
     expect(document.activeElement).toBe(buttons[1]!);
   });
 
+  test('Toolbar.Group exposes role group when it has an accessible name', () => {
+    render(ToolbarGroup, {
+      props: {
+        'aria-label': 'Order states',
+        children: rawSnippet('<button type="button">Place order</button>'),
+      } as never,
+    });
+
+    expect(screen.getByRole('group', { name: 'Order states' })).toBeTruthy();
+  });
+
   test('Toolbar.Spacer warns on invalid flex and falls back to one', async () => {
     const warnSpy = mock(() => {});
     const original = console.warn;
@@ -423,12 +435,14 @@ describe('Toolbar', () => {
 });
 
 describe('Toolbar responsive CSS', () => {
-  test('horizontal toolbars wrap through a component container query', () => {
+  test('horizontal toolbars wrap groups before the narrow container query wraps group contents', () => {
     expect(toolbarCss).toContain('container-name: cinder-toolbar;');
+    expect(toolbarCss).toMatch(/\.cinder-toolbar\s*\{[\s\S]*?flex-wrap:\s*wrap;/);
+    expect(toolbarCss).toMatch(/\.cinder-toolbar__group\s*\{[\s\S]*?flex-wrap:\s*nowrap;/);
     expect(toolbarCss).toContain('@container cinder-toolbar (max-width: 30rem)');
     expect(toolbarCss).not.toContain('@media (max-width: 30rem)');
     expect(toolbarCss).toMatch(
-      /@container cinder-toolbar \(max-width: 30rem\)[\s\S]*?\.cinder-toolbar\[data-cinder-orientation='horizontal'\][\s\S]*?flex-wrap:\s*wrap;/,
+      /@container cinder-toolbar \(max-width: 30rem\)[\s\S]*?\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s+\.cinder-toolbar__group[\s\S]*?flex-wrap:\s*wrap;/,
     );
   });
 });

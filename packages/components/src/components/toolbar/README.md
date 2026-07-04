@@ -22,6 +22,12 @@ A named grouping of related controls that implements the WAI-ARIA toolbar patter
 </Toolbar>
 ```
 
+Horizontal toolbars wrap groups by default so constrained containers do not
+overlap controls. Each `Toolbar.Group` keeps its controls together until the
+toolbar's narrow container query wraps controls inside the group. A named
+`Toolbar.Group` gets `role="group"` by default; pass an explicit `role` when a
+different semantic grouping is required.
+
 ## Props
 
 <!-- generated:props:start -->
