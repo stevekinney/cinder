@@ -120,7 +120,7 @@ export { default as ButtonGroup } from './components/button-group/index.ts';
 export type { ButtonGroupOrientation, ButtonGroupProps } from './components/button-group/index.ts';
 
 export { default as Callout } from './components/callout/index.ts';
-export type { CalloutProps, CalloutVariant } from './components/callout/index.ts';
+export type { CalloutProps, CalloutSemantic, CalloutVariant } from './components/callout/index.ts';
 
 export { default as Calendar } from './components/calendar/index.ts';
 export type { CalendarProps } from './components/calendar/index.ts';
