@@ -17,5 +17,5 @@
 </script>
 
 <FormField id={fieldId} label={fieldLabel}>
-  <MultiSelect id={fieldId} {items} bind:selectedIds={selectedIds} />
+  <MultiSelect id={fieldId} {items} bind:selectedIds />
 </FormField>

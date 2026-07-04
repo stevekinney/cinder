@@ -57,7 +57,12 @@
   // navigation-bar.css and navigation-item.css. The fully-parenthesized form
   // is required — `window.matchMedia` rejects bare media feature expressions
   // on Firefox and Safari.
-  const mobile = new MediaQuery('(max-width: 47.99rem)', false);
+  // Keep the fallback explicit for SSR-contract test environments that resolve
+  // the client MediaQuery build while `window.matchMedia` is unavailable.
+  const mobile =
+    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
+      ? { current: false }
+      : new MediaQuery('(max-width: 47.99rem)', false);
 
   const context: SidebarContextValue = {
     get collapsed() {
@@ -66,6 +71,30 @@
   };
   setSidebarContext(context);
 </script>
+
+{#snippet sidebarContents(isMobile: boolean)}
+  {#if brandSnippet}
+    <div class="cinder-sidebar__brand">
+      {@render brandSnippet()}
+    </div>
+  {/if}
+
+  {#if navigationSnippet}
+    <!-- Guard the entire <nav> landmark, not just its contents. An empty <nav>
+         is an accessibility problem (screen readers announce a navigation landmark
+         with no destinations). navigation is optional so a sidebar can be used as
+         app chrome without a nav list. -->
+    <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
+      {@render navigationSnippet()}
+    </nav>
+  {/if}
+
+  {#if footerSnippet}
+    <div class={classNames('cinder-sidebar__footer', isMobile && 'cinder-sidebar__footer--mobile')}>
+      {@render footerSnippet()}
+    </div>
+  {/if}
+{/snippet}
 
 {#if mobile.current}
   <Drawer
@@ -82,55 +111,17 @@
     id={sidebarId}
   >
     <div class={classNames('cinder-sidebar', 'cinder-sidebar--mobile', className)}>
-      {#if brandSnippet}
-        <div class="cinder-sidebar__brand">
-          {@render brandSnippet()}
-        </div>
-      {/if}
-
-      {#if navigationSnippet}
-        <!-- Guard the entire <nav> landmark, not just its contents. An empty <nav>
-             is an accessibility problem (screen readers announce a navigation landmark
-             with no destinations). navigation is optional so a sidebar can be used as
-             app chrome without a nav list. -->
-        <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
-          {@render navigationSnippet()}
-        </nav>
-      {/if}
-
-      {#if footerSnippet}
-        <div class="cinder-sidebar__footer cinder-sidebar__footer--mobile">
-          {@render footerSnippet()}
-        </div>
-      {/if}
+      {@render sidebarContents(true)}
     </div>
   </Drawer>
 {:else}
   <aside
     id={sidebarId}
     {...rest}
-    class={classNames('cinder-sidebar', className)}
+    class={classNames('cinder-sidebar', 'cinder-sidebar--desktop', className)}
     aria-label={validatedLabel}
     data-cinder-collapsed={collapsed ? '' : undefined}
   >
-    {#if brandSnippet}
-      <div class="cinder-sidebar__brand">
-        {@render brandSnippet()}
-      </div>
-    {/if}
-
-    {#if navigationSnippet}
-      <!-- Same guard: keep the <nav> landmark out of the DOM when navigation is absent
-           so screen readers don't announce an empty navigation region. -->
-      <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
-        {@render navigationSnippet()}
-      </nav>
-    {/if}
-
-    {#if footerSnippet}
-      <div class="cinder-sidebar__footer">
-        {@render footerSnippet()}
-      </div>
-    {/if}
+    {@render sidebarContents(false)}
   </aside>
 {/if}

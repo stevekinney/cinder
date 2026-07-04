@@ -87,8 +87,10 @@
                 <p class="cinder-team-section__bio">{member.bio}</p>
               {/if}
               {#if member.href}
-                <a class="cinder-team-section__link" href={member.href} aria-label={`View ${member.name}'s profile`}
-                  >View profile</a
+                <a
+                  class="cinder-team-section__link"
+                  href={member.href}
+                  aria-label={`View ${member.name}'s profile`}>View profile</a
                 >
               {/if}
             </Card>
