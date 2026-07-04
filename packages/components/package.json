@@ -5885,7 +5885,10 @@
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
+    "@shikijs/engine-oniguruma": "^3.21.0",
+    "@shikijs/langs": "^3.21.0",
     "@shikijs/rehype": "^3.21.0",
+    "@shikijs/types": "^3.21.0",
     "comlink": "^4.4.2",
     "hast-util-sanitize": "^5.0.0",
     "js-yaml": "^4.1.0",
@@ -5919,7 +5922,16 @@
     "@milkdown/prose": {
       "optional": true
     },
+    "@shikijs/engine-oniguruma": {
+      "optional": true
+    },
+    "@shikijs/langs": {
+      "optional": true
+    },
     "@shikijs/rehype": {
+      "optional": true
+    },
+    "@shikijs/types": {
       "optional": true
     },
     "comlink": {
