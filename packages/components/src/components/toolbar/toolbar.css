@@ -49,7 +49,7 @@
 
   .cinder-toolbar[data-cinder-orientation='horizontal']
     > .cinder-toolbar__spacer
-    ~ .cinder-toolbar__group {
+    + .cinder-toolbar__group {
     margin-inline-start: auto;
   }
 
