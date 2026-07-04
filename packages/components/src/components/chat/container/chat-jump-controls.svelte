@@ -49,7 +49,7 @@
       ? `Jump to ${unreadCount} new message${unreadCount !== 1 ? 's' : ''}`
       : 'Jump to latest'}
   >
-    <ChevronDown class="icon-sm" />
+    <ChevronDown class="cinder-icon-sm" />
     {#if unreadCount > 0}
       <span class="chat-jump-badge" data-large={hasLargeCount || undefined}>
         {displayUnreadCount}
@@ -66,7 +66,7 @@
     onclick={handleJump}
     aria-label="Jump to {displayUnreadCount} new message{unreadCount !== 1 ? 's' : ''}"
   >
-    <ChevronDown class="icon-xs" />
+    <ChevronDown class="cinder-icon-xs" />
     <span aria-hidden="true">{displayUnreadCount} new message{unreadCount !== 1 ? 's' : ''}</span>
   </button>
 {/if}

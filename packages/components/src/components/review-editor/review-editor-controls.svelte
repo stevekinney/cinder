@@ -121,16 +121,16 @@
       onchange={handleViewChange}
     >
       <Segment value="editor" controls={viewPanelIds?.editor}>
-        {#snippet leading()}<Pencil class="icon-xs" />{/snippet}
+        {#snippet leading()}<Pencil class="cinder-icon-xs" />{/snippet}
         Editor
       </Segment>
       {#if showDiffTabs}
         <Segment value="diff" controls={viewPanelIds?.diff}>
-          {#snippet leading()}<GitBranch class="icon-xs" />{/snippet}
+          {#snippet leading()}<GitBranch class="cinder-icon-xs" />{/snippet}
           Diff
         </Segment>
         <Segment value="summary" controls={viewPanelIds?.summary}>
-          {#snippet leading()}<FileText class="icon-xs" />{/snippet}
+          {#snippet leading()}<FileText class="cinder-icon-xs" />{/snippet}
           Summary
         </Segment>
       {/if}
@@ -174,7 +174,7 @@
         aria-label="Revert all changes"
         title="Revert all changes"
       >
-        <RotateCcw class="icon-sm" />
+        <RotateCcw class="cinder-icon-sm" />
         <span class="cinder-sr-only">Revert All</span>
       </Button>
     {/if}
@@ -189,7 +189,7 @@
         aria-label={commentsToggleLabel}
         title={sidebarOpen ? 'Close comments sidebar' : 'Open comments sidebar'}
       >
-        <MessageSquare class="icon-sm" />
+        <MessageSquare class="cinder-icon-sm" />
         <Badge aria-hidden="true" size="sm" variant="neutral">{commentCount}</Badge>
       </Button>
     </div>

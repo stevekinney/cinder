@@ -119,15 +119,15 @@
 
   <Dropdown {id}>
     <DropdownTrigger class="export-trigger" aria-label="Export conversation" showCaret={false}>
-      <Copy class="icon-sm" />
+      <Copy class="cinder-icon-sm" />
     </DropdownTrigger>
     <DropdownMenu>
       <!-- Markdown export -->
       <DropdownItem onclick={handleExportMarkdown}>
         {#if copyState.copiedKey === 'markdown'}
-          <Check class="icon-sm export-icon-success" />
+          <Check class="cinder-icon-sm export-icon-success" />
         {:else}
-          <FileText class="icon-sm" />
+          <FileText class="cinder-icon-sm" />
         {/if}
         <span>Copy as {formatLabels.markdown}</span>
         {#if copyState.copiedKey === 'markdown'}
@@ -138,9 +138,9 @@
       <!-- JSON export -->
       <DropdownItem onclick={handleExportJSON}>
         {#if copyState.copiedKey === 'json'}
-          <Check class="icon-sm export-icon-success" />
+          <Check class="cinder-icon-sm export-icon-success" />
         {:else}
-          <FileCode class="icon-sm" />
+          <FileCode class="cinder-icon-sm" />
         {/if}
         <span>Copy as {formatLabels.json}</span>
         {#if copyState.copiedKey === 'json'}

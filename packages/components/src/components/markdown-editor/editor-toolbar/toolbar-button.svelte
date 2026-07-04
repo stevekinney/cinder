@@ -48,7 +48,7 @@
     {onclick}
     {...rest}
   >
-    <Icon class="icon-sm" />
+    <Icon class="cinder-icon-sm" />
   </button>
 </Tooltip>
 

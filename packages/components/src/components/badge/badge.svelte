@@ -93,7 +93,7 @@
   {#if subscriptionStateConfiguration}
     {#if resolvedSubscriptionIconPaths}
       <svg
-        class="icon-sm"
+        class="cinder-icon-sm"
         aria-hidden="true"
         viewBox="0 0 24 24"
         fill="none"

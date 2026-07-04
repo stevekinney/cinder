@@ -100,7 +100,7 @@
 
 <div class="chat-search-bar" role="search" aria-label="Search messages">
   <span class="chat-search-icon" aria-hidden="true">
-    <Search class="icon-sm" />
+    <Search class="cinder-icon-sm" />
   </span>
 
   <input
@@ -136,7 +136,7 @@
       aria-label="Previous match"
       title="Previous match (Shift+Enter)"
     >
-      <ChevronUp class="icon-sm" />
+      <ChevronUp class="cinder-icon-sm" />
     </button>
 
     <button
@@ -147,7 +147,7 @@
       aria-label="Next match"
       title="Next match (Enter)"
     >
-      <ChevronDown class="icon-sm" />
+      <ChevronDown class="cinder-icon-sm" />
     </button>
   </div>
 
@@ -158,7 +158,7 @@
     aria-label="Close search"
     title="Close search (Escape)"
   >
-    <X class="icon-sm" />
+    <X class="cinder-icon-sm" />
   </button>
 </div>
 

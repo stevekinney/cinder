@@ -399,7 +399,7 @@
             onclick={() => handleRevertHunk(hunkAtLine)}
             aria-label="Revert this change"
           >
-            <RotateCcw class="icon-xs" />
+            <RotateCcw class="cinder-icon-xs" />
             Revert
           </Button>
         </div>

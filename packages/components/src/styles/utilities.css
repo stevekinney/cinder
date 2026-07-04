@@ -42,59 +42,59 @@
   z-index: 9999;
 }
 
-/* Icon size utilities. lucide-svelte and most icon libraries default to a
- * 24px viewBox with no inline width/height. These classes force a consistent
- * size across the chat, markdown editor, code blocks, and any other component
- * that renders an icon glyph. Apply directly to the icon element (e.g.
- * `<Copy class="icon-sm" />`) — the rule cascades to nested <svg>. */
-.icon-xs,
-.icon-sm,
-.icon-md,
-.icon-lg {
+/* Namespaced icon size utilities. lucide-svelte and most icon libraries default
+ * to a 24px viewBox with no inline width/height. These classes force a
+ * consistent size across Cinder components without colliding with consumer app
+ * utilities. Apply directly to the icon element (e.g.
+ * `<Copy class="cinder-icon-sm" />`) — the rule cascades to nested <svg>. */
+.cinder-icon-xs,
+.cinder-icon-sm,
+.cinder-icon-md,
+.cinder-icon-lg {
   display: block;
   flex: 0 0 auto;
 }
 
-.icon-xs {
+.cinder-icon-xs {
   inline-size: 0.875rem;
   block-size: 0.875rem;
 }
 
-.icon-sm {
+.cinder-icon-sm {
   inline-size: 1rem;
   block-size: 1rem;
 }
 
-.icon-md {
+.cinder-icon-md {
   inline-size: 1.25rem;
   block-size: 1.25rem;
 }
 
-.icon-lg {
+.cinder-icon-lg {
   inline-size: 1.5rem;
   block-size: 1.5rem;
 }
 
-.icon-xs > svg,
-svg.icon-xs {
+.cinder-icon-xs > svg,
+svg.cinder-icon-xs {
   width: 0.875rem;
   height: 0.875rem;
 }
 
-.icon-sm > svg,
-svg.icon-sm {
+.cinder-icon-sm > svg,
+svg.cinder-icon-sm {
   width: 1rem;
   height: 1rem;
 }
 
-.icon-md > svg,
-svg.icon-md {
+.cinder-icon-md > svg,
+svg.cinder-icon-md {
   width: 1.25rem;
   height: 1.25rem;
 }
 
-.icon-lg > svg,
-svg.icon-lg {
+.cinder-icon-lg > svg,
+svg.cinder-icon-lg {
   width: 1.5rem;
   height: 1.5rem;
 }

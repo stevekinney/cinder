@@ -24,6 +24,7 @@ import { parse } from 'svelte/compiler';
 import { hasSubstantiveTest } from '../scripts/component-conventions.ts';
 
 const COMPONENTS_DIR = join(import.meta.dir, 'components');
+const UNPREFIXED_ICON_UTILITY_PATTERN = /(?<![\w-])icon-(?:xs|sm|md|lg)(?![\w-])/g;
 
 // Components that are interactive and must have a sibling .a11y.md file.
 // AccordionItem is excluded — its a11y docs live in accordion.a11y.md.
@@ -132,6 +133,15 @@ async function getSvelteFiles(): Promise<string[]> {
         // Directory without a matching .svelte (e.g. chat container) — skip.
       }
     }
+  }
+  return files.toSorted();
+}
+
+async function getAllComponentSvelteFiles(): Promise<string[]> {
+  const glob = new Bun.Glob('**/*.svelte');
+  const files: string[] = [];
+  for await (const file of glob.scan(COMPONENTS_DIR)) {
+    files.push(file);
   }
   return files.toSorted();
 }
@@ -411,6 +421,38 @@ describe('component conventions', () => {
     // Parses every public .svelte file; raise the timeout so CPU contention
     // (parallel CI / multi-worktree) does not flake this whole-tree scan.
   }, 60_000);
+});
+
+describe('component icon utility namespace', () => {
+  test('component internals do not use unprefixed icon utility classes', async () => {
+    const files = await getAllComponentSvelteFiles();
+    expect(files.length).toBeGreaterThan(0);
+
+    const offenders: string[] = [];
+    for (const file of files) {
+      const source = await readFile(join(COMPONENTS_DIR, file), 'utf-8');
+      const matches = [...source.matchAll(UNPREFIXED_ICON_UTILITY_PATTERN)];
+      if (matches.length === 0) continue;
+
+      const lineStarts = [0];
+      for (
+        let index = source.indexOf('\n');
+        index !== -1;
+        index = source.indexOf('\n', index + 1)
+      ) {
+        lineStarts.push(index + 1);
+      }
+
+      const locations = matches.map((match) => {
+        const offset = match.index ?? 0;
+        const lineIndex = lineStarts.findLastIndex((start) => start <= offset);
+        return `${file}:${lineIndex + 1}`;
+      });
+      offenders.push(...locations);
+    }
+
+    expect(offenders).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------

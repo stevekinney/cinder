@@ -341,7 +341,7 @@
       <div class="chat-message-failed-actions">
         <span class="chat-message-failed-label" role="alert">Failed to send</span>
         <button type="button" class="chat-message-retry" onclick={() => onretry(message.id)}>
-          <RotateCcw class="icon-xs" />
+          <RotateCcw class="cinder-icon-xs" />
           Retry
         </button>
       </div>
@@ -371,7 +371,7 @@
             onclick={startEditing}
             aria-label="Edit message"
           >
-            <Pencil class="icon-xs" />
+            <Pencil class="cinder-icon-xs" />
           </button>
         {/if}
       </div>
@@ -800,7 +800,7 @@
   }
 
   /* Shared base for the built-in copy and edit action buttons — small
-   * icon-only affordances. The icon size comes from the `icon-xs` class on the
+   * icon-only affordances. The icon size comes from the `cinder-icon-xs` class on the
    * SVG (defined in styles/utilities.css). A transparent border reserves layout
    * space so the touch-context border swap below does not shift the icon.
    *
@@ -859,7 +859,7 @@
     color: var(--cinder-success);
   }
 
-  /* CopyButton renders icon-sm (16px) icons by default. Override to icon-xs
+  /* CopyButton renders cinder-icon-sm (16px) icons by default. Override to cinder-icon-xs
    * (14px) to match the sibling edit/retry action buttons in the chat footer. */
   :global(.chat-message-copy svg) {
     width: 0.875rem;
