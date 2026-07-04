@@ -16,6 +16,8 @@
 
 ### Patch Changes
 
+- [#641](https://github.com/stevekinney/cinder/pull/641) [`ec89bc1`](https://github.com/stevekinney/cinder/commit/ec89bc11) Thanks [@stevekinney](https://github.com/stevekinney)! - **Breaking CSS utility rename:** the icon sizing helpers exported from `@lostgradient/cinder/styles` and `@lostgradient/cinder/styles/utilities` are now namespaced as `.cinder-icon-xs`, `.cinder-icon-sm`, `.cinder-icon-md`, and `.cinder-icon-lg`. Cinder components use the namespaced utilities internally so application-level `.icon-*` classes cannot change component icon sizing. Consumer markup that used `.icon-xs`, `.icon-sm`, `.icon-md`, or `.icon-lg` should rename those classes to the matching `.cinder-icon-*` class.
+
 - [#559](https://github.com/stevekinney/cinder/pull/559) [`9628078`](https://github.com/stevekinney/cinder/commit/96280780a150a69f74a3abfa60d9006fd2be3c6c) Thanks [@stevekinney](https://github.com/stevekinney)! - Align Chat's conversation model with the published `conversationalist` package instead of maintaining bespoke mirrored transcript types.
 
 - [#577](https://github.com/stevekinney/cinder/pull/577) [`f4a9386`](https://github.com/stevekinney/cinder/commit/f4a938605a20ff0fdfe401f43db32248930af0e5) Thanks [@stevekinney](https://github.com/stevekinney)! - Preserve server component identity in the published SSR bundle so SvelteKit development SSR can render Cinder snippet content without crashing. Fixes [#572](https://github.com/stevekinney/cinder/issues/572) and [#573](https://github.com/stevekinney/cinder/issues/573).
