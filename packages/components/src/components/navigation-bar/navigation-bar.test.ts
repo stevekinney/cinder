@@ -761,7 +761,10 @@ describe('NavigationBar responsive CSS', () => {
 
   test('collapsed menu toggle stays with trailing actions instead of centering between brand and actions', () => {
     expect(navigationBarCss).toMatch(
-      /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar\[data-collapsible='true'\] \.cinder-navigation-bar__menu-toggle\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?margin-inline-start:\s*auto;/,
+      /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar\[data-collapsible='true'\]\[data-cinder-menu-toggle-placement='after-brand'\][\s\S]*?\.cinder-navigation-bar__menu-toggle\s*\{[\s\S]*?margin-inline-start:\s*auto;/,
+    );
+    expect(navigationBarCss).not.toMatch(
+      /data-cinder-menu-toggle-placement='before-brand'[\s\S]*?margin-inline-start:\s*auto;/,
     );
   });
 
