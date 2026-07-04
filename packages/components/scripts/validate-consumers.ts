@@ -18,7 +18,7 @@ import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specif
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { parseJsonFile } from './lib/read-json-file.ts';
-import { packForPublish } from './pack-for-publish.ts';
+import { getSourceMapReferences, packForPublish } from './pack-for-publish.ts';
 import { sveltePeerContract } from './validate-svelte-peer-contract.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
@@ -387,36 +387,6 @@ async function assertUpstreamReexportsResolveInTarball(extractedRoot: string): P
   if (missing.length > 0) {
     fail(`tarball missing upstream re-export artifacts:\n  ${missing.join('\n  ')}`);
   }
-}
-
-type SourceMapReference = {
-  line: number;
-  reference: string;
-};
-
-function isResolvableRelativeSourceMapReference(reference: string): boolean {
-  if (!reference.endsWith('.map')) return false;
-  if (reference.startsWith('data:')) return false;
-  if (reference.startsWith('file:')) return false;
-  return !/^[a-z]+:\/\//iu.test(reference);
-}
-
-function getSourceMapReferences(content: string): SourceMapReference[] {
-  const references: SourceMapReference[] = [];
-  const lines = content.split('\n');
-  for (const [index, line] of lines.entries()) {
-    const lineCommentMatch = line.match(/^\s*\/\/[#@]\s*sourceMappingURL=([^\s]+)\s*$/u);
-    if (lineCommentMatch?.[1] && isResolvableRelativeSourceMapReference(lineCommentMatch[1])) {
-      references.push({ line: index + 1, reference: lineCommentMatch[1] });
-      continue;
-    }
-
-    const blockCommentMatch = line.match(/^\s*\/\*#\s*sourceMappingURL=([^*\s]+)\s*\*\/\s*$/u);
-    if (blockCommentMatch?.[1] && isResolvableRelativeSourceMapReference(blockCommentMatch[1])) {
-      references.push({ line: index + 1, reference: blockCommentMatch[1] });
-    }
-  }
-  return references;
 }
 
 async function assertNoDanglingSourceMapComments(extractedRoot: string): Promise<void> {
