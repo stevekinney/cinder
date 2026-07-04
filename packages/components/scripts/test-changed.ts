@@ -124,6 +124,16 @@ function componentTestPath(slug: string): string {
   return `src/components/${slug}/`;
 }
 
+function assertExistingTestPaths(paths: string[], context: string): string[] {
+  const missingPaths = paths.filter((path) => !existsSync(join(packageRoot, path)));
+  if (missingPaths.length > 0) {
+    throw new Error(
+      `${context} references missing test path(s): ${missingPaths.toSorted().join(', ')}`,
+    );
+  }
+  return paths;
+}
+
 /**
  * Map a scope decision to the positional path arguments for `bun test`.
  *
@@ -151,7 +161,7 @@ export function fullSuiteTestPathGroups(componentSlugs: string[]): string[][] {
   }
 
   return groups
-    .map((group) => group.filter((path) => existsSync(join(packageRoot, path))))
+    .map((group, index) => assertExistingTestPaths(group, `full-suite chunk ${index + 1}`))
     .filter((group) => group.length > 0);
 }
 

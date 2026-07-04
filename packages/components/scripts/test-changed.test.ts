@@ -92,4 +92,10 @@ describe('fullSuiteTestPathGroups', () => {
     expect(paths).toContain('src/components/accordion-item/');
     expect(paths).not.toContain('src/components/accordion');
   });
+
+  it('throws instead of dropping missing component directories', () => {
+    expect(() => fullSuiteTestPathGroups(['definitely-missing-component'])).toThrow(
+      'full-suite chunk 1 references missing test path(s): src/components/definitely-missing-component/',
+    );
+  });
 });
