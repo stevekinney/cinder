@@ -216,6 +216,29 @@ describe('Pagination', () => {
     expect(currentPage).toBe(2);
   });
 
+  test('unknown total keeps previous disabled at the lower page bound', async () => {
+    let currentPage = 1;
+    const { container } = render(Pagination, {
+      props: {
+        get currentPage() {
+          return currentPage;
+        },
+        set currentPage(value: number) {
+          currentPage = value;
+        },
+        hasPreviousPage: true,
+      },
+    });
+
+    const previousButton = container.querySelector(
+      'button[aria-label="Go to previous page"]',
+    ) as HTMLButtonElement;
+
+    expect(previousButton.hasAttribute('disabled')).toBe(true);
+    await fireEvent.click(previousButton);
+    expect(currentPage).toBe(1);
+  });
+
   test('unknown total middle page enables previous and next', async () => {
     let currentPage = 4;
     const { container } = render(Pagination, {

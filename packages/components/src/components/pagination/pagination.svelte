@@ -33,7 +33,7 @@
   const mergedClassName = $derived(classNames('cinder-pagination', customClassName));
 
   const canGoPrevious = $derived(
-    totalPages === undefined ? (hasPreviousPage ?? currentPage > 1) : currentPage > 1,
+    currentPage > 1 && (totalPages === undefined ? (hasPreviousPage ?? true) : true),
   );
   const canGoNext = $derived(totalPages === undefined ? hasNextPage : currentPage < totalPages);
 
