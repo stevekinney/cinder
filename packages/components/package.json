@@ -843,6 +843,10 @@
       "svelte": "./src/components/chat/chat.variables.ts",
       "default": "./dist/components/chat/chat.variables.js"
     },
+    "./chat/styles": {
+      "types": "./dist/components/chat/chat.css.d.ts",
+      "default": "./dist/components/chat/chat.css"
+    },
     "./chat/examples": {
       "import": "./src/components/chat/chat.examples.json",
       "default": "./src/components/chat/chat.examples.json"

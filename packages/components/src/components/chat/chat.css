@@ -1,0 +1,16 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-chat.chat-container {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .cinder-chat .chat-timeline {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}

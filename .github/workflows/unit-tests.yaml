@@ -72,6 +72,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -149,16 +150,60 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
-      - name: Cache Bun install
-        uses: actions/cache@v4
+      - name: Restore Bun install cache
+        id: bun-cache-restore
+        uses: actions/cache/restore@v4
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
 
+      # GitHub's cache service has intermittently returned 400s while letting
+      # this job continue cold. Retry an empty restore once before running the
+      # memory-sensitive test suite.
+      - name: Retry Bun install cache restore
+        id: bun-cache-restore-retry
+        if: steps.bun-cache-restore.outputs.cache-matched-key == ''
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
+
+      - name: Verify Bun cache restore
+        if: steps.bun-cache-restore.outputs.cache-matched-key == '' && steps.bun-cache-restore-retry.outputs.cache-matched-key == '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUN_CACHE_KEY_PREFIX: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
+        run: |
+          set -euo pipefail
+
+          cache_count=$(gh cache list \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref refs/heads/main \
+            --key "$BUN_CACHE_KEY_PREFIX" \
+            --limit 1 \
+            --json key \
+            --jq 'length')
+
+          if [ "$cache_count" != "0" ]; then
+            echo "::error::No Bun install cache was restored after two attempts, but a matching default-branch cache exists. Rerun this job instead of continuing with a cold dependency cache."
+            exit 1
+          fi
+
+          echo "::notice::No matching default-branch Bun install cache exists yet; continuing with a cold dependency install."
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Save Bun install cache
+        if: steps.bun-cache-restore.outputs.cache-hit != 'true' && steps.bun-cache-restore-retry.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
 
       # Unconditional whole-repo invariant: every component CSS partial must be
       # reachable from the aggregate styles/components.css @import chain, or the

@@ -287,6 +287,44 @@ describe('analyzeAll', () => {
 // ---------------------------------------------------------------------------
 
 describe('shared ts-morph project', () => {
+  let lightweightComponentsDir: string;
+
+  beforeAll(async () => {
+    lightweightComponentsDir = mkdtempSync(join(tmpdir(), 'cinder-analyze-all-'));
+    await Bun.write(
+      join(lightweightComponentsDir, 'alpha.svelte'),
+      `<script lang="ts" module>
+  export type AlphaProps = {
+    tone?: 'neutral' | 'accent';
+  };
+</script>
+
+<script lang="ts">
+  let { tone = 'neutral' }: AlphaProps = $props();
+</script>
+
+<p>{tone}</p>`,
+    );
+    await Bun.write(
+      join(lightweightComponentsDir, 'beta.svelte'),
+      `<script lang="ts" module>
+  export type BetaProps = {
+    disabled?: boolean;
+  };
+</script>
+
+<script lang="ts">
+  let { disabled = false }: BetaProps = $props();
+</script>
+
+<p>{disabled}</p>`,
+    );
+  });
+
+  afterAll(() => {
+    rmSync(lightweightComponentsDir, { recursive: true, force: true });
+  });
+
   it('exposes a callable resetProject()', () => {
     expect(() => resetProject()).not.toThrow();
   });
@@ -310,9 +348,9 @@ describe('shared ts-morph project', () => {
   }, 20_000);
 
   it('produces identical manifests across two runs with a reset between them', async () => {
-    const first = await analyzeAll(COMPONENTS_DIR);
+    const first = await analyzeAll(lightweightComponentsDir);
     resetProject();
-    const second = await analyzeAll(COMPONENTS_DIR);
+    const second = await analyzeAll(lightweightComponentsDir);
     // A reset between runs must not change the output: no stale source files
     // accumulate on the shared project, so the second run reproduces the first.
     expect(second).toEqual(first);

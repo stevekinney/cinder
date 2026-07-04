@@ -1453,7 +1453,7 @@
 <div
   bind:this={containerRef}
   {id}
-  class={classNames('chat-container', className)}
+  class={classNames('cinder-chat', 'chat-container', className)}
   data-surface-mode={surfaceMode}
   data-cinder-density={density}
   data-cinder-variant={variant}

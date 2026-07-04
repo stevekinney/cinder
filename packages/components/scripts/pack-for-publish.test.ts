@@ -97,6 +97,27 @@ describe('buildPublishedManifest', () => {
     expect(published.files).toContain('dist');
   });
 
+  it('removes sourceMappingURL references when the publish policy excludes maps', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const excludesDistributionSourceMaps = (published.files ?? []).includes('!dist/**/*.js.map');
+    const input = 'export const value = 1;\n//# sourceMappingURL=index.js.map\n';
+
+    const stripped = stripDanglingSourceMapUrlComments(
+      input,
+      () => !excludesDistributionSourceMaps,
+    );
+
+    expect(excludesDistributionSourceMaps).toBe(true);
+    expect(stripped.strippedCount).toBe(1);
+    expect(stripped.text).toBe('export const value = 1;\n');
+  });
+
   it('rewrites source-backed runtime exports to built browser artifacts in the published manifest', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',

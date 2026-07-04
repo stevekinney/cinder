@@ -83,7 +83,23 @@ const ALWAYS_RUN_ROOT_TESTS = [
   'src/exports-drift.test.ts',
   'src/index.test.ts',
   'src/manifest.test.ts',
+  'src/root-type-exports.test.ts',
   'src/tree-shake.test.ts',
+] as const;
+
+/**
+ * Test files under `src/components/` that are not owned by public component
+ * slugs returned from `loadKnownSlugs()`. They still belong to the full suite.
+ */
+const FULL_SUITE_PRIVATE_COMPONENT_TESTS = [
+  'src/components/_internal/create-sliding-dialog-state.test.ts',
+  'src/components/_radio/radio.test.ts',
+  'src/components/_timeline-item/timeline-item.test.ts',
+  'src/components/_timeline-item/timeline-item.types.test.ts',
+  'src/components/_tree-select-all/tree-select-all.test.ts',
+  'src/components/_visually-hidden-live-region.test.ts',
+  'src/components/icons/index.test.ts',
+  'src/components/svg-data-uri-color-literals.test.ts',
 ] as const;
 
 /** The `bun test` flags the components package uses (browser+svelte conditions). */
@@ -94,6 +110,29 @@ const BUN_TEST_FLAGS = [
   'svelte',
   '--parallel=1',
 ] as const;
+
+const FULL_SUITE_CHUNK_COUNT = 4;
+
+const FULL_SUITE_NON_COMPONENT_PATHS = [
+  'scripts',
+  ...ALWAYS_RUN_PATHS,
+  ...ALWAYS_RUN_ROOT_TESTS,
+  ...FULL_SUITE_PRIVATE_COMPONENT_TESTS,
+] as const;
+
+function componentTestPath(slug: string): string {
+  return `src/components/${slug}/`;
+}
+
+function assertExistingTestPaths(paths: string[], context: string): string[] {
+  const missingPaths = paths.filter((path) => !existsSync(join(packageRoot, path)));
+  if (missingPaths.length > 0) {
+    throw new Error(
+      `${context} references missing test path(s): ${missingPaths.toSorted().join(', ')}`,
+    );
+  }
+  return paths;
+}
 
 /**
  * Map a scope decision to the positional path arguments for `bun test`.
@@ -108,9 +147,22 @@ export function testPathsForScope(decision: ScopeDecision): string[] | null {
 
   const paths: string[] = [...ALWAYS_RUN_PATHS, ...ALWAYS_RUN_ROOT_TESTS];
   for (const slug of decision.slugs) {
-    paths.push(`src/components/${slug}`);
+    paths.push(componentTestPath(slug));
   }
   return paths;
+}
+
+export function fullSuiteTestPathGroups(componentSlugs: string[]): string[][] {
+  const groups = Array.from({ length: FULL_SUITE_CHUNK_COUNT }, () => [] as string[]);
+  groups[0]!.push(...FULL_SUITE_NON_COMPONENT_PATHS);
+
+  for (const [index, slug] of [...componentSlugs].toSorted().entries()) {
+    groups[index % FULL_SUITE_CHUNK_COUNT]!.push(componentTestPath(slug));
+  }
+
+  return groups
+    .map((group, index) => assertExistingTestPaths(group, `full-suite chunk ${index + 1}`))
+    .filter((group) => group.length > 0);
 }
 
 /** Parse the `CINDER_TEST_COMPONENTS` env var into a slug list (empty = unset). */
@@ -195,6 +247,20 @@ async function main(): Promise<void> {
   if (paths === null) {
     const reason = decision.mode === 'full' ? decision.reason : 'no scoped slugs';
     process.stderr.write(`test-changed: full suite (${reason})\n`);
+    const componentSlugs = [...(await loadKnownSlugs())];
+    const groups = fullSuiteTestPathGroups(componentSlugs);
+
+    for (const [index, group] of groups.entries()) {
+      process.stderr.write(`test-changed: full suite chunk ${index + 1}/${groups.length}\n`);
+      const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...group], {
+        cwd: packageRoot,
+        stdio: ['inherit', 'inherit', 'inherit'],
+        env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+      });
+      const exitCode = await child.exited;
+      if (exitCode !== 0) process.exit(exitCode);
+    }
+    return;
   } else {
     process.stderr.write(
       `test-changed: ${decision.mode === 'filtered' ? decision.slugs.length : 0} component(s): ` +
@@ -202,8 +268,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const positional = paths ?? [];
-  const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...positional], {
+  const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...paths], {
     cwd: packageRoot,
     stdio: ['inherit', 'inherit', 'inherit'],
     env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
