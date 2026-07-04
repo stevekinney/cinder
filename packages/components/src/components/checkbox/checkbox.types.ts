@@ -32,6 +32,8 @@ export type CheckboxProps = HTMLInputAttributes & {
   error?: string;
   /** Disables the checkbox. */
   disabled?: boolean;
+  /** Extra class names merged with the outer checkbox field wrapper. */
+  fieldClass?: string;
   /** Extra class names merged with `.cinder-checkbox`. */
   class?: string;
 };

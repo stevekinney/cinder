@@ -33,6 +33,7 @@
     error,
     disabled,
     required,
+    fieldClass,
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -122,7 +123,7 @@
   }
 </script>
 
-<div class="cinder-checkbox-field">
+<div class={classNames('cinder-checkbox-field', fieldClass)}>
   <div class="cinder-checkbox-row">
     <span class="cinder-checkbox-field__control">
       <input

@@ -16,6 +16,12 @@
       "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id=\"checkbox-disabled-off\" label=\"Disabled, unchecked\" disabled />\n  <Checkbox id=\"checkbox-disabled-on\" label=\"Disabled, checked\" disabled checked />\n</div>\n"
     },
     {
+      "id": "external-row-label",
+      "title": "External row label",
+      "description": "A control-only checkbox associated with a rich row label.",
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n\n  let selected = $state(false);\n</script>\n\n<div\n  style=\"display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 0.75rem; max-width: 26rem;\"\n>\n  <Checkbox id=\"repository-main\" fieldClass=\"repository-checkbox\" bind:checked={selected} />\n  <label\n    for=\"repository-main\"\n    style=\"display: flex; justify-content: space-between; gap: 1rem; cursor: pointer;\"\n  >\n    <span style=\"display: flex; flex-direction: column; gap: 0.125rem;\">\n      <strong>lostgradient/cinder</strong>\n      <span style=\"color: var(--cinder-text-muted);\">Component library</span>\n    </span>\n    <span\n      style=\"align-self: start; border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-sm); padding: 0.125rem 0.375rem; font-size: var(--cinder-text-xs);\"\n    >\n      Public\n    </span>\n  </label>\n</div>\n"
+    },
+    {
       "id": "indeterminate",
       "title": "Indeterminate checkbox",
       "description": "A parent checkbox driven by its children. Indeterminate clears once the user toggles checked.",
