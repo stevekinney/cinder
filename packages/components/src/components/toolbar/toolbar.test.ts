@@ -414,11 +414,14 @@ describe('Toolbar', () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
-  test('separator spacing relies on flex gap without horizontal separators or extra margins', async () => {
+  test('separator spacing preserves horizontal group dividers without leading wrapped-row separators', async () => {
     const styleSheet = await Bun.file(new URL('./toolbar.css', import.meta.url)).text();
 
     expect(styleSheet).not.toContain(
       ".cinder-toolbar[data-cinder-orientation='horizontal']\n    > .cinder-toolbar__group\n    + .cinder-toolbar__group::before",
+    );
+    expect(styleSheet).toContain(
+      ".cinder-toolbar[data-cinder-orientation='horizontal']\n    > .cinder-toolbar__group:has(+ .cinder-toolbar__group)::after",
     );
     expect(styleSheet).not.toContain('margin-inline-end: var(--cinder-space-2)');
     expect(styleSheet).not.toContain('margin-block-end: var(--cinder-space-2)');

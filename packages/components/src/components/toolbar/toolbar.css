@@ -42,6 +42,14 @@
     background: var(--cinder-border);
   }
 
+  .cinder-toolbar[data-cinder-orientation='horizontal']
+    > .cinder-toolbar__group:has(+ .cinder-toolbar__group)::after {
+    content: '';
+    inline-size: 1px;
+    align-self: stretch;
+    background: var(--cinder-border);
+  }
+
   .cinder-toolbar__spacer {
     flex: 1 1 auto;
     min-inline-size: var(--cinder-space-2);
