@@ -9,16 +9,14 @@
     column-gap: var(--cinder-bento-grid-column-gap, var(--cinder-space-4));
   }
 
-  @media (max-width: 48rem) {
-    .cinder-bento-grid[data-cinder-collapse='true'] {
-      grid-template-columns: 1fr;
-    }
+  .cinder-bento-grid[data-cinder-collapse][data-cinder-narrow] {
+    grid-template-columns: 1fr;
+  }
 
-    .cinder-bento-grid[data-cinder-collapse='true'] > .cinder-bento-cell {
-      grid-column-start: auto;
-      grid-column-end: auto;
-      grid-row-start: auto;
-      grid-row-end: auto;
-    }
+  .cinder-bento-grid[data-cinder-collapse][data-cinder-narrow] > .cinder-bento-cell {
+    grid-column-start: auto;
+    grid-column-end: auto;
+    grid-row-start: auto;
+    grid-row-end: auto;
   }
 }
