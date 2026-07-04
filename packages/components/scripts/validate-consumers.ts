@@ -2,6 +2,7 @@ import { $, Glob } from 'bun';
 import {
   existsSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   statSync,
   symlinkSync,
@@ -105,6 +106,43 @@ const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
 const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
   (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
 );
+
+function hasInstalledPackageInNodeModulesTree(
+  nodeModulesDirectory: string,
+  packageName: string,
+): boolean {
+  if (!existsSync(nodeModulesDirectory)) return false;
+
+  const packagePathSegments = packageName.split('/');
+  const pendingNodeModulesDirectories = [nodeModulesDirectory];
+
+  while (pendingNodeModulesDirectories.length > 0) {
+    const currentNodeModulesDirectory = pendingNodeModulesDirectories.pop();
+    if (currentNodeModulesDirectory === undefined) continue;
+    if (existsSync(join(currentNodeModulesDirectory, ...packagePathSegments))) return true;
+
+    for (const entry of readdirSync(currentNodeModulesDirectory, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === '.bin') continue;
+
+      const entryPath = join(currentNodeModulesDirectory, entry.name);
+      const nestedNodeModulesDirectory = join(entryPath, 'node_modules');
+      if (existsSync(nestedNodeModulesDirectory)) {
+        pendingNodeModulesDirectories.push(nestedNodeModulesDirectory);
+      }
+
+      if (!entry.name.startsWith('@')) continue;
+      for (const scopedEntry of readdirSync(entryPath, { withFileTypes: true })) {
+        if (!scopedEntry.isDirectory()) continue;
+        const scopedNestedNodeModulesDirectory = join(entryPath, scopedEntry.name, 'node_modules');
+        if (existsSync(scopedNestedNodeModulesDirectory)) {
+          pendingNodeModulesDirectories.push(scopedNestedNodeModulesDirectory);
+        }
+      }
+    }
+  }
+
+  return false;
+}
 
 class ValidationError extends Error {
   constructor(message: string) {
@@ -796,8 +834,9 @@ async function runStylesConsumerFixture(): Promise<void> {
       );
     }
 
+    const fixtureNodeModulesDirectory = join(fixtureDirectory, 'node_modules');
     const leakedPackages = RICH_FEATURE_LEAK_CHECK_NAMES.filter((dependencyName) =>
-      existsSync(join(fixtureDirectory, 'node_modules', dependencyName)),
+      hasInstalledPackageInNodeModulesTree(fixtureNodeModulesDirectory, dependencyName),
     );
     if (leakedPackages.length > 0) {
       fail(
