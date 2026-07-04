@@ -219,11 +219,8 @@ function buildPublishedManifest(
   }
   // The published tarball ships:
   //   - `dist/` — every component / upstream / server build target plus the CLI.
-  //   - `src/components/**` — Svelte/TS source for component sub-paths
-  //     because browser Svelte-aware tooling can still resolve the source
-  //     condition when `node` is not active.
-  //   - `src/index.ts` and `src/schema-types.ts` — root barrel source for
-  //     the `svelte` condition on `@lostgradient/cinder` itself.
+  //   - `src/index.ts` and `src/schema-types.ts` — retained source entry
+  //     points for package-level type tooling.
   //   - `src/utilities/**/*.ts` and `src/_internal/**/*.ts` — runtime
   //     helpers and the constraints DSL the components import.
   //   - `src/styles/**/*.css` and `src/components/**/*.css` — hand-authored
@@ -246,18 +243,6 @@ function buildPublishedManifest(
     '!dist/**/test/**',
     'src/index.ts',
     'src/schema-types.ts',
-    'src/components/**/*.ts',
-    '!src/components/**/*.test.ts',
-    '!src/components/**/*.spec.ts',
-    '!src/components/**/*.type-test.ts',
-    '!src/components/**/*.schema.ts',
-    '!src/components/**/*.variables.ts',
-    '!src/components/**/*-fixtures.ts',
-    '!src/components/**/*fixtures.ts',
-    'src/components/**/*.svelte',
-    '!src/components/**/*fixture*.svelte',
-    '!src/components/**/_*-test-harness.svelte',
-    '!src/components/**/*.type-test.svelte',
     'src/components/**/*.schema.json',
     'src/components/**/*.variables.json',
     'src/components/**/*.examples.json',

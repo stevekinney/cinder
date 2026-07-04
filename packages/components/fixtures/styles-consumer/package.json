@@ -1,0 +1,11 @@
+{
+  "name": "styles-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build ./src/styles-entry.ts --outdir ./dist --target browser"
+  },
+  "dependencies": {
+    "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz"
+  }
+}

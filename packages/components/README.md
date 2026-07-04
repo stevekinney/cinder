@@ -12,6 +12,12 @@ bun add @lostgradient/cinder svelte lucide-svelte
 
 `svelte` and `lucide-svelte` are peer dependencies. Cinder uses Lucide for its own component chrome, but it does not provide a general icon library for your application-specific icons.
 
+Rich editor, markdown rendering, and syntax-highlighting surfaces use optional peer dependencies. Install them only when your app imports `@lostgradient/cinder/markdown-editor`, `@lostgradient/cinder/review-editor`, `@lostgradient/cinder/markdown/*`, or `@lostgradient/cinder/highlighters/shiki`:
+
+```bash
+bun add @milkdown/ctx @milkdown/kit @milkdown/prose @shikijs/rehype comlink diff-match-patch hast-util-sanitize js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view rehype-katex rehype-sanitize rehype-stringify remark-gfm remark-html remark-math remark-parse remark-rehype remark-stringify shiki unified unist-util-remove unist-util-visit
+```
+
 ## Quickstart
 
 Load the base stylesheet once at your app entry:
