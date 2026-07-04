@@ -1,5 +1,32 @@
 # @lostgradient/cinder
 
+## 0.5.0
+
+### Minor Changes
+
+- [#547](https://github.com/stevekinney/cinder/pull/547) [`68a194d`](https://github.com/stevekinney/cinder/commit/68a194df6fcb7a588cb10ff61a06f3252a091df3) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a new `InlineLoading` component for inline async-action lifecycle feedback (`inactive | active | finished | error`), with `description`, `iconDescription`, and `successDelay` props, polite live-region announcements, and auto-reset from `finished` back to `inactive`.
+
+- [#546](https://github.com/stevekinney/cinder/pull/546) [`0f68943`](https://github.com/stevekinney/cinder/commit/0f6894361f609b99625d8217772f528c33a3f7d4) Thanks [@stevekinney](https://github.com/stevekinney)! - Add the new `TableOfContents` component export, styles, schema, and examples to `@lostgradient/cinder`.
+
+- [#545](https://github.com/stevekinney/cinder/pull/545) [`2c080cb`](https://github.com/stevekinney/cinder/commit/2c080cb77f7b6a6b3c9296adb553e335aa4f1b2b) Thanks [@stevekinney](https://github.com/stevekinney)! - Add new `QrCode` and `Marquee` components, including generated schemas/examples metadata and public exports.
+
+- [#541](https://github.com/stevekinney/cinder/pull/541) [`423f785`](https://github.com/stevekinney/cinder/commit/423f785027dc03d261b72107cd67a8f138c2e77d) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a new `Meter` component for bounded measurements with `role="meter"` semantics, threshold-aware state mapping, generated docs/schema artifacts, and playground examples.
+
+- [#543](https://github.com/stevekinney/cinder/pull/543) [`76516b8`](https://github.com/stevekinney/cinder/commit/76516b85660f084d5002c0f10a8c86800a47cd83) Thanks [@stevekinney](https://github.com/stevekinney)! - Add the new `BentoGrid` layout primitive with `BentoGrid.Cell`/`BentoCell` support for asymmetric span mosaics, plus generated docs/schema artifacts and playground examples.
+
+### Patch Changes
+
+- [#559](https://github.com/stevekinney/cinder/pull/559) [`9628078`](https://github.com/stevekinney/cinder/commit/96280780a150a69f74a3abfa60d9006fd2be3c6c) Thanks [@stevekinney](https://github.com/stevekinney)! - Align Chat's conversation model with the published `conversationalist` package instead of maintaining bespoke mirrored transcript types.
+
+- [#577](https://github.com/stevekinney/cinder/pull/577) [`f4a9386`](https://github.com/stevekinney/cinder/commit/f4a938605a20ff0fdfe401f43db32248930af0e5) Thanks [@stevekinney](https://github.com/stevekinney)! - Preserve server component identity in the published SSR bundle so SvelteKit development SSR can render Cinder snippet content without crashing. Fixes [#572](https://github.com/stevekinney/cinder/issues/572) and [#573](https://github.com/stevekinney/cinder/issues/573).
+
+- [#579](https://github.com/stevekinney/cinder/pull/579) [`a7be36a`](https://github.com/stevekinney/cinder/commit/a7be36ae001ffff5b81b7c134ccb2b01c177e526) Thanks [@stevekinney](https://github.com/stevekinney)! - Remove an unused transitive dependency that produced TypeScript 6 peer warnings, and strengthen consumer validation to assert TypeScript 6 install compatibility.
+
+- [#542](https://github.com/stevekinney/cinder/pull/542) [`3c0f267`](https://github.com/stevekinney/cinder/commit/3c0f267db9895a1797f761eb8b2cac83af23ecca) Thanks [@stevekinney](https://github.com/stevekinney)! - Add the new public `@lostgradient/cinder/multi-select` export with its docs/examples artifacts.
+
+- [#544](https://github.com/stevekinney/cinder/pull/544) [`a9ee834`](https://github.com/stevekinney/cinder/commit/a9ee834c882246414a2bb610886762e6a62311b4) Thanks [@stevekinney](https://github.com/stevekinney)! - Add Carousel, Footer, and MegaMenu as public components with generated exports,
+  styles, docs artifacts, and playground examples.
+
 ## 0.4.1
 
 ### Patch Changes
