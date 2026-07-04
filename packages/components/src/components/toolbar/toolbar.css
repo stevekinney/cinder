@@ -48,6 +48,7 @@
     inline-size: 1px;
     align-self: stretch;
     background: var(--cinder-border);
+    flex-shrink: 0;
   }
 
   .cinder-toolbar__spacer {

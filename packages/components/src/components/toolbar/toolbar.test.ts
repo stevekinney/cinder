@@ -393,6 +393,19 @@ describe('Toolbar', () => {
     expect(screen.getByRole('group', { name: 'Order states' })).toBeTruthy();
   });
 
+  test('Toolbar.Group omits empty accessible-name attributes', () => {
+    const { container } = render(ToolbarGroup, {
+      props: {
+        'aria-label': '',
+        children: rawSnippet('<button type="button">Place order</button>'),
+      } as never,
+    });
+
+    const group = container.querySelector('.cinder-toolbar__group');
+    expect(group?.hasAttribute('aria-label')).toBe(false);
+    expect(group?.hasAttribute('role')).toBe(false);
+  });
+
   test('Toolbar.Spacer warns on invalid flex and falls back to one', async () => {
     const warnSpy = mock(() => {});
     const original = console.warn;
@@ -417,11 +430,11 @@ describe('Toolbar', () => {
   test('separator spacing preserves horizontal group dividers without leading wrapped-row separators', async () => {
     const styleSheet = await Bun.file(new URL('./toolbar.css', import.meta.url)).text();
 
-    expect(styleSheet).not.toContain(
-      ".cinder-toolbar[data-cinder-orientation='horizontal']\n    > .cinder-toolbar__group\n    + .cinder-toolbar__group::before",
+    expect(styleSheet).not.toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*>\s*\.cinder-toolbar__group\s*\+\s*\.cinder-toolbar__group::before/,
     );
-    expect(styleSheet).toContain(
-      ".cinder-toolbar[data-cinder-orientation='horizontal']\n    > .cinder-toolbar__group:has(+ .cinder-toolbar__group)::after",
+    expect(styleSheet).toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*>\s*\.cinder-toolbar__group:has\(\+ \.cinder-toolbar__group\)::after\s*\{[\s\S]*?flex-shrink:\s*0;/,
     );
     expect(styleSheet).not.toContain('margin-inline-end: var(--cinder-space-2)');
     expect(styleSheet).not.toContain('margin-block-end: var(--cinder-space-2)');
