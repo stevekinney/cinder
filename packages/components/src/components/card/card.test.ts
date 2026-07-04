@@ -168,13 +168,20 @@ describe('Card', () => {
         tone: 'danger',
         title: 'Pause reviews',
         description: 'Stops new review dispatch globally.',
+        role: 'region',
+        'aria-labelledby': 'consumer-heading',
         children: textSnippet('Existing runs continue.'),
       } as any,
     });
 
     const root = container.querySelector('.cinder-card');
+    const heading = getByRole('heading', { name: 'Pause reviews' });
+
     expect(root?.getAttribute('data-cinder-tone')).toBe('danger');
-    expect(getByRole('heading', { name: 'Pause reviews' })).not.toBeNull();
+    expect(root?.getAttribute('role')).toBe('group');
+    expect(root?.getAttribute('aria-labelledby')).toBe(heading.getAttribute('id'));
+    expect(root?.getAttribute('aria-labelledby')).not.toBe('consumer-heading');
+    expect(heading).not.toBeNull();
     expect(getByText('Stops new review dispatch globally.')).not.toBeNull();
     expect(root?.querySelector('.cinder-card__risk-icon')?.getAttribute('aria-hidden')).toBe(
       'true',
@@ -185,15 +192,21 @@ describe('Card', () => {
     const { container } = render(Card, {
       props: {
         tone: 'danger',
+        title: 'Generated title should not render',
+        description: 'Generated description should not render.',
         header: textSnippet('custom-danger-header'),
+        role: 'region',
         children: emptySnippet,
       } as any,
     });
 
-    expect(container.querySelector('.cinder-card')?.getAttribute('data-cinder-tone')).toBe(
-      'danger',
-    );
+    const root = container.querySelector('.cinder-card');
+    expect(root?.getAttribute('data-cinder-tone')).toBe('danger');
+    expect(root?.getAttribute('role')).toBe('region');
+    expect(root?.hasAttribute('aria-labelledby')).toBe(false);
+    expect(root?.hasAttribute('aria-describedby')).toBe(false);
     expect(container.querySelector('.cinder-card__risk-icon')).toBeNull();
+    expect(container.querySelector('.cinder-card__title')).toBeNull();
     expect(container.querySelector('.cinder-card__header')?.textContent).toContain(
       'custom-danger-header',
     );
@@ -269,7 +282,8 @@ describe('Card CSS contract', () => {
 
     expect(dangerBlock).toContain('background');
     expect(dangerBlock).toContain('border-color');
-    expect(dangerBlock).toContain('var(--cinder-danger)');
+    expect(dangerBlock).toContain('var(--cinder-color-danger-bg)');
+    expect(dangerBlock).toContain('var(--cinder-color-danger-border)');
     expect(iconBlock).toContain('var(--cinder-danger)');
   });
 });

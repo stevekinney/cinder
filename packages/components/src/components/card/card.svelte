@@ -56,10 +56,13 @@
       : 3,
   );
   const titleTag = $derived(`h${resolvedHeadingLevel}` as const);
-  const titleId = $derived(title ? `${generatedId}-title` : undefined);
-  const descriptionId = $derived(description ? `${generatedId}-description` : undefined);
+  const hasGeneratedHeader = $derived(Boolean(title && !header));
+  const titleId = $derived(hasGeneratedHeader ? `${generatedId}-title` : undefined);
+  const descriptionId = $derived(
+    hasGeneratedHeader && description ? `${generatedId}-description` : undefined,
+  );
   const labelAttributes = $derived(
-    title
+    hasGeneratedHeader
       ? {
           role: 'group',
           'aria-labelledby': titleId,
@@ -70,12 +73,12 @@
 </script>
 
 <div
-  {...labelAttributes}
+  {...rest}
   class={classNames('cinder-card', className)}
   data-cinder-variant={variant}
   data-cinder-tone={tone}
   data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
-  {...rest}
+  {...labelAttributes}
 >
   {#if header}
     <div class="cinder-card__header">

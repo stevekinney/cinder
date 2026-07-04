@@ -20,22 +20,13 @@
   }
 
   .cinder-card[data-cinder-tone='danger'] {
-    background: light-dark(
-      oklch(from var(--cinder-danger) 97% 0.012 h),
-      oklch(from var(--cinder-danger) 19% 0.028 h)
-    );
-    border-color: light-dark(
-      oklch(from var(--cinder-danger) 82% 0.055 h),
-      oklch(from var(--cinder-danger) 38% 0.08 h)
-    );
+    background: var(--cinder-color-danger-bg);
+    border-color: var(--cinder-color-danger-border);
     box-shadow: none;
   }
 
   .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well'] {
-    background: light-dark(
-      oklch(from var(--cinder-danger) 96% 0.015 h),
-      oklch(from var(--cinder-danger) 18% 0.03 h)
-    );
+    background: var(--cinder-color-danger-bg);
   }
 
   /* ----------------------------------------
@@ -51,10 +42,7 @@
   }
 
   .cinder-card[data-cinder-tone='danger'] .cinder-card__header {
-    border-bottom-color: light-dark(
-      oklch(from var(--cinder-danger) 84% 0.05 h),
-      oklch(from var(--cinder-danger) 34% 0.08 h)
-    );
+    border-bottom-color: var(--cinder-color-danger-border);
   }
 
   /* ----------------------------------------
@@ -82,10 +70,7 @@
   }
 
   .cinder-card[data-cinder-tone='danger'] .cinder-card__title {
-    color: light-dark(
-      oklch(from var(--cinder-danger) 35% 0.16 h),
-      oklch(from var(--cinder-danger) 88% 0.14 h)
-    );
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-card__description {
@@ -128,10 +113,7 @@
   }
 
   .cinder-card[data-cinder-tone='danger'] .cinder-card__footer {
-    border-top-color: light-dark(
-      oklch(from var(--cinder-danger) 84% 0.05 h),
-      oklch(from var(--cinder-danger) 34% 0.08 h)
-    );
+    border-top-color: var(--cinder-color-danger-border);
   }
 
   .cinder-card__footer[data-cinder-tone='muted'] {

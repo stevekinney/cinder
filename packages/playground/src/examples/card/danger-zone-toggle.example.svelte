@@ -10,8 +10,12 @@
   import { ConfirmDialog } from '@lostgradient/cinder/confirm-dialog';
   import { Toggle } from '@lostgradient/cinder/toggle';
 
+  const uid = $props.id();
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+
   let paused = $state(false);
   let confirmOpen = $state(false);
+  let toggleId = $derived(`${mountIdPrefix ?? uid}-pause-reviews`);
 
   function requestPause(next: boolean): boolean {
     if (!next) return false;
@@ -27,7 +31,7 @@
 >
   <div style="display: grid; gap: var(--cinder-space-3);">
     <Toggle
-      id="pause-reviews"
+      id={toggleId}
       bind:checked={paused}
       label="Reviews paused"
       onValueChange={requestPause}
