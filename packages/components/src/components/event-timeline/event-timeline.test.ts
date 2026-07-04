@@ -153,8 +153,8 @@ describe('EventTimeline', () => {
       start,
       end,
       items: [
-        { at: '2026-07-03T06:00:00.000Z', label: 'Deploy', sublabel: '06:00' },
-        { at: '2026-07-03T06:00:00.000Z', label: 'Deploy', sublabel: '06:00' },
+        { id: 'deploy', at: '2026-07-03T06:00:00.000Z', label: 'Deploy', sublabel: '06:00' },
+        { id: 'deploy', at: '2026-07-03T06:00:00.000Z', label: 'Deploy', sublabel: '06:00' },
       ],
     });
 

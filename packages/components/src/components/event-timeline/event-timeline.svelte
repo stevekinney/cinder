@@ -71,7 +71,7 @@
   }
 
   function keyForItem(item: EventTimelineItem, index: number, timestamp: number): string {
-    return item.id ?? `${item.label}-${new Date(timestamp).toISOString()}-${index}`;
+    return `${item.id ?? `${item.label}-${new Date(timestamp).toISOString()}`}-${index}`;
   }
 
   function edgeForPosition(position: number): PositionedEventTimelineItem['edge'] {

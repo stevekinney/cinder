@@ -37,10 +37,10 @@ describe('Sparkbar', () => {
     const el = container.querySelector('[role="meter"]');
     expect(el?.getAttribute('aria-valuemax')).toBe('10');
     expect(el?.getAttribute('aria-valuenow')).toBe('10');
-    expect(el?.getAttribute('aria-valuetext')).toBe('100%');
+    expect(el?.getAttribute('aria-valuetext')).toBeNull();
   });
 
-  test('falls back to percentage value text for blank trailing values', () => {
+  test('omits value text for blank trailing values', () => {
     const { container } = render(Sparkbar, {
       value: 4,
       max: 8,
@@ -49,8 +49,21 @@ describe('Sparkbar', () => {
     });
 
     const el = container.querySelector('[role="meter"]');
-    expect(el?.getAttribute('aria-valuetext')).toBe('50%');
+    expect(el?.getAttribute('aria-valuetext')).toBeNull();
     expect(container.querySelector('.cinder-sparkbar__trailing')).toBeNull();
+  });
+
+  test('uses explicit accessible value text ahead of trailing text', () => {
+    const { container } = render(Sparkbar, {
+      value: 4,
+      max: 8,
+      label: 'Token budget',
+      trailing: '4k / 8k',
+      ariaValueText: '4,000 of 8,000 tokens',
+    });
+
+    const el = container.querySelector('[role="meter"]');
+    expect(el?.getAttribute('aria-valuetext')).toBe('4,000 of 8,000 tokens');
   });
 
   test('forwards size, variant, class, and accessible name override', () => {

@@ -32,18 +32,18 @@ const schema = {
       type: 'string',
       description: 'Accessible name override. Defaults to `${label}, ${percentage}%`.',
     },
+    ariaValueText: {
+      type: 'string',
+      description:
+        'Accessible value text override. Defaults to the trimmed trailing value when provided.',
+    },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-sparkbar`.',
+    },
   },
   additionalProperties: false,
   required: ['label', 'value'],
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-        description: 'Custom class merged with `.cinder-sparkbar`.',
-      },
-    ],
-  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

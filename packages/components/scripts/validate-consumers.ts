@@ -813,15 +813,6 @@ async function runTypescriptCompatibilityFixture(
       );
     }
     assertNoPeerDependencyWarnings(installResult, label);
-    const generateResult = Bun.spawnSync([nodeBinaryPath, 'generate-probe.mjs'], {
-      cwd: fixtureDirectory,
-      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
-    });
-    if (generateResult.exitCode !== 0) {
-      fail(
-        `typescript-consumer ${label} generate-probe.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
-      );
-    }
     await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
     await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
     process.stdout.write(

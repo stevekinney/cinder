@@ -28,6 +28,7 @@
     size = 'md',
     variant = 'accent',
     ariaLabel,
+    ariaValueText,
     class: customClassName,
     ...rest
   }: SparkbarProps = $props();
@@ -39,8 +40,9 @@
   const percent = $derived(Math.round((clampedValue / effectiveMax) * 100));
   const normalizedAriaLabel = $derived(ariaLabel?.trim() || undefined);
   const normalizedTrailing = $derived(trailing?.trim() || undefined);
+  const normalizedAriaValueText = $derived(ariaValueText?.trim() || undefined);
   const accessibleName = $derived(normalizedAriaLabel ?? `${label}, ${percent}%`);
-  const accessibleValueText = $derived(normalizedTrailing ?? `${percent}%`);
+  const accessibleValueText = $derived(normalizedAriaValueText ?? normalizedTrailing);
 </script>
 
 <div
