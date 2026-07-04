@@ -90,6 +90,7 @@
   let currentTime = $state<number | undefined>();
   let resolutionReason = $state('');
   let rememberResolution = $state(false);
+  let resolutionSeedKey = $state<string | null>(null);
   let editingArgumentsSeedKey = $state<string | null>(null);
   let editedArgumentsDrafts = $state<Record<string, string>>({});
   let expirationTimer: ReturnType<typeof setTimeout> | undefined;
@@ -132,6 +133,7 @@
   const currentEditedArgumentsSeedKey = $derived(
     `${idempotencyKey}\u0000${currentEditedArgumentsText}`,
   );
+  const currentResolutionSeedKey = $derived(`${idempotencyKey}\u0000${operation.kind}`);
   const canEditArguments = $derived(editableArgs && hasArgumentsPreview);
   const editingArguments = $derived(
     canEditArguments && editingArgumentsSeedKey === currentEditedArgumentsSeedKey,
@@ -145,18 +147,13 @@
       editParseResult.ok &&
       (typeof onapprovewithedits === 'function' || typeof onresolve === 'function'),
   );
-  const canResolveApproval = $derived(
-    typeof onapprove === 'function' || typeof onresolve === 'function',
-  );
+  const hasResolutionCallback = $derived(typeof onresolve === 'function');
+  const canResolveApproval = $derived(typeof onapprove === 'function' || hasResolutionCallback);
   const canResolveEditedApproval = $derived(
-    typeof onapprovewithedits === 'function' || typeof onresolve === 'function',
+    typeof onapprovewithedits === 'function' || hasResolutionCallback,
   );
-  const canResolveDenial = $derived(
-    typeof ondeny === 'function' || typeof onresolve === 'function',
-  );
-  const canResolveCancellation = $derived(
-    typeof oncancel === 'function' || typeof onresolve === 'function',
-  );
+  const canResolveDenial = $derived(typeof ondeny === 'function' || hasResolutionCallback);
+  const canResolveCancellation = $derived(typeof oncancel === 'function' || hasResolutionCallback);
 
   $effect(() => {
     clearExpirationTimer();
@@ -178,6 +175,14 @@
     }
 
     return clearExpirationTimer;
+  });
+
+  $effect(() => {
+    if (resolutionSeedKey !== currentResolutionSeedKey) {
+      resolutionSeedKey = currentResolutionSeedKey;
+      resolutionReason = '';
+      rememberResolution = false;
+    }
   });
 
   onDestroy(clearExpirationTimer);
@@ -561,26 +566,32 @@
 
       {#if isActionable}
         <section class="cinder-approval-card__section cinder-approval-card__actions-section">
-          <div class="cinder-approval-card__resolution-controls">
-            <label class="cinder-approval-card__editor-label" for={`${rootId}-resolution-reason`}>
-              Resolution reason
-            </label>
-            <p id={resolutionDescriptionId} class="cinder-approval-card__muted">
-              Optional context included with the host resolution payload.
-            </p>
-            <textarea
-              id={`${rootId}-resolution-reason`}
-              class="cinder-approval-card__textarea cinder-approval-card__textarea--reason"
-              value={resolutionReason}
-              oninput={handleReasonInput}
-              rows="3"
-              aria-describedby={resolutionDescriptionId}
-            ></textarea>
-            <label class="cinder-approval-card__remember-control">
-              <input type="checkbox" checked={rememberResolution} onchange={handleRememberInput} />
-              <span>Remember this approval boundary</span>
-            </label>
-          </div>
+          {#if hasResolutionCallback}
+            <div class="cinder-approval-card__resolution-controls">
+              <label class="cinder-approval-card__editor-label" for={`${rootId}-resolution-reason`}>
+                Resolution reason
+              </label>
+              <p id={resolutionDescriptionId} class="cinder-approval-card__muted">
+                Optional context included with the host resolution payload.
+              </p>
+              <textarea
+                id={`${rootId}-resolution-reason`}
+                class="cinder-approval-card__textarea cinder-approval-card__textarea--reason"
+                value={resolutionReason}
+                oninput={handleReasonInput}
+                rows="3"
+                aria-describedby={resolutionDescriptionId}
+              ></textarea>
+              <label class="cinder-approval-card__remember-control">
+                <input
+                  type="checkbox"
+                  checked={rememberResolution}
+                  onchange={handleRememberInput}
+                />
+                <span>Remember this approval boundary</span>
+              </label>
+            </div>
+          {/if}
 
           <ButtonGroup label="Approval actions">
             <Button
