@@ -414,9 +414,12 @@ describe('Toolbar', () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
-  test('separator spacing relies on flex gap without extra separator margins', async () => {
+  test('separator spacing relies on flex gap without horizontal separators or extra margins', async () => {
     const styleSheet = await Bun.file(new URL('./toolbar.css', import.meta.url)).text();
 
+    expect(styleSheet).not.toContain(
+      ".cinder-toolbar[data-cinder-orientation='horizontal']\n    > .cinder-toolbar__group\n    + .cinder-toolbar__group::before",
+    );
     expect(styleSheet).not.toContain('margin-inline-end: var(--cinder-space-2)');
     expect(styleSheet).not.toContain('margin-block-end: var(--cinder-space-2)');
   });
@@ -437,8 +440,14 @@ describe('Toolbar', () => {
 describe('Toolbar responsive CSS', () => {
   test('horizontal toolbars wrap groups before the narrow container query wraps group contents', () => {
     expect(toolbarCss).toContain('container-name: cinder-toolbar;');
-    expect(toolbarCss).toMatch(/\.cinder-toolbar\s*\{[\s\S]*?flex-wrap:\s*wrap;/);
+    expect(toolbarCss).toMatch(/\.cinder-toolbar\s*\{[\s\S]*?flex-wrap:\s*nowrap;/);
+    expect(toolbarCss).toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*\{[\s\S]*?flex-wrap:\s*wrap;/,
+    );
     expect(toolbarCss).toMatch(/\.cinder-toolbar__group\s*\{[\s\S]*?flex-wrap:\s*nowrap;/);
+    expect(toolbarCss).toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\][\s\S]*?> \.cinder-toolbar__spacer[\s\S]*?\+ \.cinder-toolbar__group[\s\S]*?margin-inline-start:\s*auto;/,
+    );
     expect(toolbarCss).toContain('@container cinder-toolbar (max-width: 30rem)');
     expect(toolbarCss).not.toContain('@media (max-width: 30rem)');
     expect(toolbarCss).toMatch(

@@ -5,9 +5,13 @@
     align-items: center;
     gap: var(--cinder-space-2);
     min-inline-size: 0;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     container-type: inline-size;
     container-name: cinder-toolbar;
+  }
+
+  .cinder-toolbar[data-cinder-orientation='horizontal'] {
+    flex-wrap: wrap;
   }
 
   .cinder-toolbar[data-cinder-orientation='vertical'] {
@@ -29,16 +33,6 @@
     align-items: stretch;
   }
 
-  .cinder-toolbar[data-cinder-orientation='horizontal']
-    > .cinder-toolbar__group
-    + .cinder-toolbar__group::before {
-    content: '';
-    inline-size: 1px;
-    block-size: 1.5rem;
-    background: var(--cinder-border);
-    flex-shrink: 0;
-  }
-
   .cinder-toolbar[data-cinder-orientation='vertical']
     > .cinder-toolbar__group
     + .cinder-toolbar__group::before {
@@ -51,6 +45,12 @@
   .cinder-toolbar__spacer {
     flex: 1 1 auto;
     min-inline-size: var(--cinder-space-2);
+  }
+
+  .cinder-toolbar[data-cinder-orientation='horizontal']
+    > .cinder-toolbar__spacer
+    + .cinder-toolbar__group {
+    margin-inline-start: auto;
   }
 
   @container cinder-toolbar (max-width: 30rem) {
