@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun build ./src/styles-entry.ts --outdir ./dist --target browser"
+    "build": "bun build ./src/styles-entry.ts ./src/root-entry.ts --outdir ./dist --target browser"
   },
   "dependencies": {
     "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz"

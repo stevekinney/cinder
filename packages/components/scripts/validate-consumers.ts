@@ -74,7 +74,6 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
   '@milkdown/prose',
   '@shikijs/rehype',
   'comlink',
-  'diff-match-patch',
   'hast-util-sanitize',
   'js-yaml',
   'prosemirror-inputrules',
@@ -96,29 +95,16 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
   'unist-util-visit',
 ] as const;
 
-const RICH_FEATURE_NODE_MODULE_PATHS = [
-  '@milkdown/ctx',
-  '@milkdown/kit',
-  '@milkdown/prose',
-  '@shikijs/rehype',
-  'prosemirror-inputrules',
-  'prosemirror-model',
-  'prosemirror-state',
-  'prosemirror-view',
-  'rehype-katex',
-  'rehype-sanitize',
-  'rehype-stringify',
-  'remark-gfm',
-  'remark-html',
-  'remark-math',
-  'remark-parse',
-  'remark-rehype',
-  'remark-stringify',
-  'shiki',
-  'unified',
-  'unist-util-remove',
-  'unist-util-visit',
-] as const;
+const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
+  // `conversationalist` depends on `gray-matter`, which depends on `js-yaml`.
+  // The styles fixture cannot use its presence as proof that the rich markdown
+  // or editor dependency tree leaked onto the base install path.
+  'js-yaml',
+]);
+
+const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
+  (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
+);
 
 class ValidationError extends Error {
   constructor(message: string) {
@@ -810,7 +796,7 @@ async function runStylesConsumerFixture(): Promise<void> {
       );
     }
 
-    const leakedPackages = RICH_FEATURE_NODE_MODULE_PATHS.filter((dependencyName) =>
+    const leakedPackages = RICH_FEATURE_LEAK_CHECK_NAMES.filter((dependencyName) =>
       existsSync(join(fixtureDirectory, 'node_modules', dependencyName)),
     );
     if (leakedPackages.length > 0) {

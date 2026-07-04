@@ -31,6 +31,7 @@ import { discoverComponents } from '../scripts/lib/discover-components.ts';
 
 const ROOT = join(import.meta.dir, '..');
 const COMPONENTS_ROOT = join(ROOT, 'src', 'components');
+const SUBPATH_ONLY_COMPONENTS = new Set(['markdown-editor', 'review-editor']);
 
 describe('exports drift', () => {
   test('package.json#exports matches src/components/*.svelte', async () => {
@@ -182,6 +183,7 @@ describe('exports drift', () => {
     // Migrated components are imported from `./components/<name>/index.ts`.
     const migrated = await discoverComponents();
     for (const component of migrated) {
+      if (SUBPATH_ONLY_COMPONENTS.has(component.name)) continue;
       const expectedImport = component.isExperimental
         ? `from './components/experimental/${component.name}/index.ts'`
         : `from './components/${component.name}/index.ts'`;
