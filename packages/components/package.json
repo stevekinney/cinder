@@ -4365,6 +4365,35 @@
       "import": "./src/components/sortable-list/sortable-list.examples.json",
       "default": "./src/components/sortable-list/sortable-list.examples.json"
     },
+    "./source-diff-viewer": {
+      "types": "./dist/components/source-diff-viewer/index.d.ts",
+      "browser": "./src/components/source-diff-viewer/index.ts",
+      "node": "./dist/server/components/source-diff-viewer/index.js",
+      "svelte": "./src/components/source-diff-viewer/index.ts",
+      "default": "./dist/components/source-diff-viewer/index.js"
+    },
+    "./source-diff-viewer/schema": {
+      "types": "./dist/components/source-diff-viewer/source-diff-viewer.schema.d.ts",
+      "browser": "./src/components/source-diff-viewer/source-diff-viewer.schema.ts",
+      "node": "./dist/server/components/source-diff-viewer/source-diff-viewer.schema.js",
+      "svelte": "./src/components/source-diff-viewer/source-diff-viewer.schema.ts",
+      "default": "./dist/components/source-diff-viewer/source-diff-viewer.schema.js"
+    },
+    "./source-diff-viewer/variables": {
+      "types": "./dist/components/source-diff-viewer/source-diff-viewer.variables.d.ts",
+      "browser": "./src/components/source-diff-viewer/source-diff-viewer.variables.ts",
+      "node": "./dist/server/components/source-diff-viewer/source-diff-viewer.variables.js",
+      "svelte": "./src/components/source-diff-viewer/source-diff-viewer.variables.ts",
+      "default": "./dist/components/source-diff-viewer/source-diff-viewer.variables.js"
+    },
+    "./source-diff-viewer/styles": {
+      "types": "./dist/components/source-diff-viewer/source-diff-viewer.css.d.ts",
+      "default": "./dist/components/source-diff-viewer/source-diff-viewer.css"
+    },
+    "./source-diff-viewer/examples": {
+      "import": "./src/components/source-diff-viewer/source-diff-viewer.examples.json",
+      "default": "./src/components/source-diff-viewer/source-diff-viewer.examples.json"
+    },
     "./sparkbar": {
       "types": "./dist/components/sparkbar/index.d.ts",
       "browser": "./src/components/sparkbar/index.ts",

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "patch": {
+      "type": "string",
+      "description": "Unified patch text to parse and render."
+    },
+    "ariaLabel": {
+      "type": "string",
+      "description": "Accessible label for the diff region."
+    },
+    "maxLines": {
+      "type": "number",
+      "description": "Maximum number of diff rows to render before truncating."
+    },
+    "lineNumbers": {
+      "type": "boolean",
+      "description": "Whether old and new line-number gutters are rendered."
+    },
+    "emptyMessage": {
+      "type": "string",
+      "description": "Message shown when the patch is empty or contains no diffable rows."
+    },
+    "class": {
+      "type": "string",
+      "description": "Additional CSS classes merged with `.cinder-source-diff-viewer`."
+    }
+  },
+  "additionalProperties": false,
+  "required": ["patch"]
+}

@@ -298,8 +298,10 @@ describe('discoverSidebarComponents', () => {
     // measured ceiling to 161.
     // Sparkbar and EventTimeline add two compact data-display families with
     // examples, bringing the measured ceiling to 163.
+    // SourceDiffViewer adds one standalone source-patch family with examples,
+    // bringing the measured ceiling to 164.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(163);
+    expect(sidebar.length).toBeLessThanOrEqual(164);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -336,6 +338,7 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('date-picker');
     expect(sidebar).toContain('sparkbar');
     expect(sidebar).toContain('event-timeline');
+    expect(sidebar).toContain('source-diff-viewer');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

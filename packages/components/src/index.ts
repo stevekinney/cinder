@@ -773,6 +773,21 @@ export type { SkipLinkProps, SkipLinkSchemaProps } from './components/skip-link/
 export { default as Slider } from './components/slider/index.ts';
 export type { SliderMode, SliderProps, SliderValue } from './components/slider/index.ts';
 
+export {
+  default as SourceDiffViewer,
+  getSourceDiffFileLabel,
+  getSourceDiffLineLabel,
+  parseUnifiedPatch,
+} from './components/source-diff-viewer/index.ts';
+export type {
+  SourceDiffFile,
+  SourceDiffHunk,
+  SourceDiffLine,
+  SourceDiffLineKind,
+  SourceDiffParseResult,
+  SourceDiffViewerProps,
+} from './components/source-diff-viewer/index.ts';
+
 export { default as StackedListItem } from './components/stacked-list-item/index.ts';
 export type {
   StackedListItemDensity,

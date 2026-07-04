@@ -146,6 +146,7 @@
 @import '../components/skeleton/skeleton.css';
 @import '../components/slider/slider.css';
 @import '../components/sortable-list/sortable-list.css';
+@import '../components/source-diff-viewer/source-diff-viewer.css';
 @import '../components/spinner/spinner.css';
 @import '../components/speed-dial/speed-dial.css';
 @import '../components/sparkbar/sparkbar.css';
