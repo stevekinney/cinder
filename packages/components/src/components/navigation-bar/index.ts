@@ -5,6 +5,7 @@ export default NavigationBar;
 export type {
   NavigationBarItemsContext,
   NavigationBarLabelVisibility,
+  NavigationBarMenuTogglePlacement,
   NavigationBarPlacement,
   NavigationBarProps,
   NavigationBarToggleAttributes,
