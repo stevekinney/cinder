@@ -12,6 +12,11 @@ const schema = {
       enum: ['card', 'well'],
       description: 'Visual container style. `card` is raised; `well` is flatter and inset.',
     },
+    tone: {
+      enum: ['default', 'danger'],
+      description:
+        'Container risk treatment. `danger` renders a danger-zone surface for high-risk settings or destructive actions.',
+    },
     bodyTone: {
       enum: ['default', 'muted'],
       description: 'Body surface treatment. `muted` renders a grey/inset body region.',

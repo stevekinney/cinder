@@ -19,6 +19,16 @@
     box-shadow: none;
   }
 
+  .cinder-card[data-cinder-tone='danger'] {
+    background: var(--cinder-color-danger-bg);
+    border-color: var(--cinder-color-danger-border);
+    box-shadow: none;
+  }
+
+  .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well'] {
+    background: var(--cinder-color-danger-bg);
+  }
+
   /* ----------------------------------------
  * Header
  * ---------------------------------------- */
@@ -31,15 +41,36 @@
     border-bottom: 1px solid var(--cinder-border-muted);
   }
 
+  .cinder-card[data-cinder-tone='danger'] > .cinder-card__header {
+    border-bottom-color: var(--cinder-color-danger-border);
+  }
+
   /* ----------------------------------------
  * Title & description (title arm)
  * ---------------------------------------- */
+
+  .cinder-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    min-inline-size: 0;
+  }
+
+  .cinder-card__risk-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--cinder-danger);
+  }
 
   .cinder-card__title {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text);
     margin: 0;
+  }
+
+  .cinder-card[data-cinder-tone='danger'] > .cinder-card__header .cinder-card__title {
+    color: var(--cinder-color-danger-fg);
   }
 
   .cinder-card__description {
@@ -64,7 +95,7 @@
     padding: 0;
   }
 
-  .cinder-card[data-cinder-variant='well'] .cinder-card__body {
+  .cinder-card[data-cinder-variant='well'] > .cinder-card__body {
     background: var(--cinder-surface-inset);
   }
 
@@ -81,8 +112,29 @@
     border-top: 1px solid var(--cinder-border-muted);
   }
 
+  .cinder-card[data-cinder-tone='danger'] > .cinder-card__footer {
+    border-top-color: var(--cinder-color-danger-border);
+  }
+
   .cinder-card__footer[data-cinder-tone='muted'] {
     background: var(--cinder-surface-inset);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-card[data-cinder-tone='danger'] {
+      background: Canvas;
+      border-color: CanvasText;
+    }
+
+    .cinder-card[data-cinder-tone='danger'] .cinder-card__header,
+    .cinder-card[data-cinder-tone='danger'] .cinder-card__footer {
+      border-color: CanvasText;
+    }
+
+    .cinder-card[data-cinder-tone='danger'] .cinder-card__title,
+    .cinder-card__risk-icon {
+      color: CanvasText;
+    }
   }
 
   @media (width < 640px) {

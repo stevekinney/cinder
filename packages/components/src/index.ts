@@ -128,7 +128,13 @@ export { default as Calendar } from './components/calendar/index.ts';
 export type { CalendarProps } from './components/calendar/index.ts';
 
 export { default as Card } from './components/card/index.ts';
-export type { CardPadding, CardProps, CardTone, CardVariant } from './components/card/index.ts';
+export type {
+  CardPadding,
+  CardProps,
+  CardSurfaceTone,
+  CardTone,
+  CardVariant,
+} from './components/card/index.ts';
 
 export { default as Carousel } from './components/carousel/index.ts';
 export type {

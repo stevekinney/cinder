@@ -16,14 +16,20 @@
     CardHeadingLevel,
     CardPadding,
     CardProps,
+    CardSurfaceTone,
     CardTone,
     CardVariant,
   } from './card.types.ts';
 </script>
 
 <script lang="ts">
+  import CircleAlert from 'lucide-svelte/icons/circle-alert';
+
   import type { CardProps } from './card.types.ts';
+  import { composeDescribedBy } from '../../_internal/field-control.ts';
   import { classNames } from '../../utilities/class-names.ts';
+
+  const generatedId = $props.id();
 
   let {
     class: className,
@@ -34,6 +40,7 @@
     description,
     footer,
     variant = 'card',
+    tone = 'default',
     bodyTone = 'default',
     footerTone = 'default',
     edgeToEdgeOnMobile = false,
@@ -50,13 +57,35 @@
       : 3,
   );
   const titleTag = $derived(`h${resolvedHeadingLevel}` as const);
+  const hasGeneratedHeader = $derived(Boolean(title && !header));
+  const titleId = $derived(hasGeneratedHeader ? `${generatedId}-title` : undefined);
+  const descriptionId = $derived(
+    hasGeneratedHeader && description ? `${generatedId}-description` : undefined,
+  );
+  const hasExternalRole = $derived(typeof rest.role === 'string' && rest.role.trim().length > 0);
+  const hasExternalLabel = $derived(
+    (typeof rest['aria-labelledby'] === 'string' && rest['aria-labelledby'].trim().length > 0) ||
+      (typeof rest['aria-label'] === 'string' && rest['aria-label'].trim().length > 0),
+  );
+  const describedBy = $derived(composeDescribedBy(descriptionId, rest['aria-describedby']));
+  const labelAttributes = $derived(
+    hasGeneratedHeader
+      ? {
+          ...(!hasExternalRole ? { role: 'group' } : {}),
+          ...(!hasExternalLabel ? { 'aria-labelledby': titleId } : {}),
+          ...(describedBy ? { 'aria-describedby': describedBy } : {}),
+        }
+      : {},
+  );
 </script>
 
 <div
+  {...rest}
   class={classNames('cinder-card', className)}
   data-cinder-variant={variant}
+  data-cinder-tone={tone}
   data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
-  {...rest}
+  {...labelAttributes}
 >
   {#if header}
     <div class="cinder-card__header">
@@ -64,9 +93,18 @@
     </div>
   {:else if title}
     <div class="cinder-card__header">
-      <svelte:element this={titleTag} class="cinder-card__title">{title}</svelte:element>
+      <div class="cinder-card__title-row">
+        {#if tone === 'danger'}
+          <span class="cinder-card__risk-icon" aria-hidden="true">
+            <CircleAlert size={18} strokeWidth={2.25} />
+          </span>
+        {/if}
+        <svelte:element this={titleTag} id={titleId} class="cinder-card__title"
+          >{title}</svelte:element
+        >
+      </div>
       {#if description}
-        <p class="cinder-card__description">{description}</p>
+        <p id={descriptionId} class="cinder-card__description">{description}</p>
       {/if}
     </div>
   {/if}
