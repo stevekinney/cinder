@@ -427,14 +427,17 @@ describe('Toolbar', () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
-  test('separator spacing preserves horizontal group dividers without leading wrapped-row separators', async () => {
+  test('separator spacing relies on flex gap without horizontal separators or extra margins', async () => {
     const styleSheet = await Bun.file(new URL('./toolbar.css', import.meta.url)).text();
 
     expect(styleSheet).not.toMatch(
       /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*>\s*\.cinder-toolbar__group\s*\+\s*\.cinder-toolbar__group::before/,
     );
+    expect(styleSheet).not.toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*>\s*\.cinder-toolbar__group:has\(\+ \.cinder-toolbar__group\)::after/,
+    );
     expect(styleSheet).toMatch(
-      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*>\s*\.cinder-toolbar__group:has\(\+ \.cinder-toolbar__group\)::after\s*\{[\s\S]*?flex-shrink:\s*0;/,
+      /\.cinder-toolbar\[data-cinder-orientation='vertical'\]\s*>\s*\.cinder-toolbar__group\s*\+\s*\.cinder-toolbar__group::before/,
     );
     expect(styleSheet).not.toContain('margin-inline-end: var(--cinder-space-2)');
     expect(styleSheet).not.toContain('margin-block-end: var(--cinder-space-2)');

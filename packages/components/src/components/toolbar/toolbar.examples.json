@@ -18,7 +18,7 @@
     {
       "id": "with-groups",
       "title": "Toolbar with groups",
-      "description": "Adjacent groups draw their own separators without manual dividers.",
+      "description": "Adjacent groups keep related controls together while the toolbar wraps.",
       "code": "<script lang=\"ts\">\n  import Toolbar from '@lostgradient/cinder/toolbar';\n  import { Button } from '@lostgradient/cinder/button';\n  import Segment from '@lostgradient/cinder/segment';\n  import SegmentedControl from '@lostgradient/cinder/segmented-control';\n</script>\n\n<Toolbar aria-label=\"Preview controls\">\n  <Toolbar.Group>\n    <SegmentedControl id=\"scale\" label=\"Scale\" hideLabel value=\"100\" onchange={() => {}}>\n      <Segment value=\"75\">75%</Segment>\n      <Segment value=\"100\">100%</Segment>\n      <Segment value=\"125\">125%</Segment>\n    </SegmentedControl>\n  </Toolbar.Group>\n\n  <Toolbar.Group>\n    <Button variant=\"ghost\" size=\"sm\">Fit</Button>\n    <Button variant=\"ghost\" size=\"sm\">Grid</Button>\n  </Toolbar.Group>\n</Toolbar>\n"
     },
     {

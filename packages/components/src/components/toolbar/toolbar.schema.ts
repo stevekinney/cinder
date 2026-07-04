@@ -6,7 +6,8 @@ const schema = {
   properties: {
     orientation: {
       enum: ['horizontal', 'vertical'],
-      description: 'Layout direction for keyboard ownership and separator placement.',
+      description:
+        'Layout direction for keyboard ownership and vertical group separator placement.',
       default: 'horizontal',
     },
     class: {

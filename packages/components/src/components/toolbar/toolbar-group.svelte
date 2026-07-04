@@ -3,11 +3,11 @@
    * @cinder
    * @category action
    * @status stable
-   * @purpose Compound child for Toolbar that groups related controls and owns the separator boundary between groups.
+   * @purpose Compound child for Toolbar that clusters related controls inside the roving tabindex boundary.
    * @tag action
    * @tag grouping
    * @useWhen Clustering related toolbar controls such as a viewport preset control plus its numeric width field.
-   * @useWhen Letting the toolbar itself draw separators between adjacent groups instead of hand-placing dividers.
+   * @useWhen Keeping related toolbar controls together as the toolbar wraps in constrained containers.
    * @avoidWhen Rendering a standalone action group outside a Toolbar — use button-group or plain layout primitives instead.
    * @related toolbar, button-group
    */
