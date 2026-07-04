@@ -131,6 +131,7 @@
   @container cinder-navigation-bar (max-width: 47.99rem) {
     .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__menu-toggle {
       display: inline-flex;
+      margin-inline-start: auto;
     }
 
     .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {

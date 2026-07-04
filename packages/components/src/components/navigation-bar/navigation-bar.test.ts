@@ -759,6 +759,12 @@ describe('NavigationBar responsive CSS', () => {
     );
   });
 
+  test('collapsed menu toggle stays with trailing actions instead of centering between brand and actions', () => {
+    expect(navigationBarCss).toMatch(
+      /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar\[data-collapsible='true'\] \.cinder-navigation-bar__menu-toggle\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?margin-inline-start:\s*auto;/,
+    );
+  });
+
   test('bottom placement owns tab-bar geometry and label visibility without a new component directory', () => {
     expect(navigationBarCss).toMatch(
       /\.cinder-navigation-bar\[data-cinder-placement='bottom'\][\s\S]*?border-top:\s*1px solid var\(--cinder-border-muted\)/,
