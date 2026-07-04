@@ -1,6 +1,7 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-team-section {
+    container-type: inline-size;
     padding-block: var(--cinder-space-10);
   }
 
@@ -85,7 +86,7 @@
     text-decoration: underline;
   }
 
-  @media (max-width: 56rem) {
+  @container (max-width: 56rem) {
     .cinder-team-section__list {
       grid-template-columns: 1fr !important;
     }

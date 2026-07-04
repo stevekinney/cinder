@@ -342,6 +342,15 @@ export type { DropdownTriggerProps } from './components/dropdown-trigger/index.t
 export { default as EmptyState } from './components/empty-state/index.ts';
 export type { EmptyStateProps } from './components/empty-state/index.ts';
 
+export { default as EventTimeline } from './components/event-timeline/index.ts';
+export type {
+  EventTimelineDate,
+  EventTimelineItem,
+  EventTimelineProps,
+  EventTimelineSize,
+  EventTimelineState,
+} from './components/event-timeline/index.ts';
+
 export { default as EventStreamViewer } from './components/event-stream-viewer/index.ts';
 export type {
   EventSeverity,
@@ -825,6 +834,9 @@ export type {
   SpeedDialActionLabelPlacement,
   SpeedDialActionProps,
 } from './components/speed-dial-action/index.ts';
+
+export { default as Sparkbar } from './components/sparkbar/index.ts';
+export type { SparkbarProps, SparkbarSize, SparkbarVariant } from './components/sparkbar/index.ts';
 
 export { default as Steps } from './components/steps/index.ts';
 export type { StepItem, StepsOrientation, StepsProps } from './components/steps/index.ts';

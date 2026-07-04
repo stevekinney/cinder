@@ -244,6 +244,7 @@ function buildPublishedManifest(
   published.files = [
     'dist',
     '!dist/**/*.js.map',
+    '!dist/server/**/*.d.ts',
     '!dist/**/*.type-test.*',
     '!dist/**/*-fixtures.*',
     '!dist/**/*fixtures.*',
@@ -267,8 +268,6 @@ function buildPublishedManifest(
     'src/components/**/*.examples.json',
     'src/components/**/*.constraints.json',
     'src/components/**/*.css',
-    'src/components/**/*.md',
-    '!src/components/**/*.a11y.md',
     'src/_internal/**/*.ts',
     '!src/_internal/**/*.test.ts',
     'src/utilities/**/*.ts',

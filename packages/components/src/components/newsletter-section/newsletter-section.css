@@ -1,13 +1,14 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-newsletter-section {
+    container-type: inline-size;
     padding-block: var(--cinder-space-10);
   }
 
   .cinder-newsletter-section__inner {
     border: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface-raised);
-    border-radius: var(--cinder-radius-xl);
+    border-radius: var(--cinder-radius-lg);
     padding: var(--cinder-space-6);
     display: grid;
     gap: var(--cinder-space-4);
@@ -44,7 +45,7 @@
     color: var(--cinder-text-subtle);
   }
 
-  @media (min-width: 48rem) {
+  @container (min-width: 48rem) {
     .cinder-newsletter-section__form {
       grid-template-columns: minmax(0, 1fr) auto;
     }

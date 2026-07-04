@@ -1,6 +1,7 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-pricing-section {
+    container-type: inline-size;
     padding-block: var(--cinder-space-10);
   }
 
@@ -45,7 +46,7 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  @media (max-width: 64rem) {
+  @container (max-width: 64rem) {
     .cinder-pricing-section__list {
       grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
     }

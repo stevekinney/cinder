@@ -1,6 +1,7 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-feature-section {
+    container-type: inline-size;
     padding-block: var(--cinder-space-10);
   }
 
@@ -85,13 +86,13 @@
     padding: var(--cinder-space-4);
   }
 
-  @media (max-width: 48rem) {
+  @container (max-width: 48rem) {
     .cinder-feature-section__list {
       grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
     }
   }
 
-  @media (min-width: 64rem) {
+  @container (min-width: 64rem) {
     .cinder-feature-section[data-cinder-layout='split'][data-cinder-has-media]
       .cinder-feature-section__body {
       grid-template-columns: repeat(2, minmax(0, 1fr));
