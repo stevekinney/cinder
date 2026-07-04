@@ -110,41 +110,49 @@ const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
   (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
 );
 
-function hasInstalledPackageInNodeModulesTree(
+function collectInstalledPackageNamesFromNodeModulesTree(
   nodeModulesDirectory: string,
-  packageName: string,
-): boolean {
-  if (!existsSync(nodeModulesDirectory)) return false;
+): Set<string> {
+  const installedPackageNames = new Set<string>();
+  if (!existsSync(nodeModulesDirectory)) return installedPackageNames;
 
-  const packagePathSegments = packageName.split('/');
   const pendingNodeModulesDirectories = [nodeModulesDirectory];
 
   while (pendingNodeModulesDirectories.length > 0) {
     const currentNodeModulesDirectory = pendingNodeModulesDirectories.pop();
     if (currentNodeModulesDirectory === undefined) continue;
-    if (existsSync(join(currentNodeModulesDirectory, ...packagePathSegments))) return true;
 
     for (const entry of readdirSync(currentNodeModulesDirectory, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name === '.bin') continue;
 
       const entryPath = join(currentNodeModulesDirectory, entry.name);
+      if (entry.name.startsWith('@')) {
+        for (const scopedEntry of readdirSync(entryPath, { withFileTypes: true })) {
+          if (!scopedEntry.isDirectory()) continue;
+          installedPackageNames.add(`${entry.name}/${scopedEntry.name}`);
+
+          const scopedNestedNodeModulesDirectory = join(
+            entryPath,
+            scopedEntry.name,
+            'node_modules',
+          );
+          if (existsSync(scopedNestedNodeModulesDirectory)) {
+            pendingNodeModulesDirectories.push(scopedNestedNodeModulesDirectory);
+          }
+        }
+        continue;
+      }
+
+      installedPackageNames.add(entry.name);
+
       const nestedNodeModulesDirectory = join(entryPath, 'node_modules');
       if (existsSync(nestedNodeModulesDirectory)) {
         pendingNodeModulesDirectories.push(nestedNodeModulesDirectory);
       }
-
-      if (!entry.name.startsWith('@')) continue;
-      for (const scopedEntry of readdirSync(entryPath, { withFileTypes: true })) {
-        if (!scopedEntry.isDirectory()) continue;
-        const scopedNestedNodeModulesDirectory = join(entryPath, scopedEntry.name, 'node_modules');
-        if (existsSync(scopedNestedNodeModulesDirectory)) {
-          pendingNodeModulesDirectories.push(scopedNestedNodeModulesDirectory);
-        }
-      }
     }
   }
 
-  return false;
+  return installedPackageNames;
 }
 
 class ValidationError extends Error {
@@ -838,8 +846,11 @@ async function runStylesConsumerFixture(): Promise<void> {
     }
 
     const fixtureNodeModulesDirectory = join(fixtureDirectory, 'node_modules');
+    const installedPackageNames = collectInstalledPackageNamesFromNodeModulesTree(
+      fixtureNodeModulesDirectory,
+    );
     const leakedPackages = RICH_FEATURE_LEAK_CHECK_NAMES.filter((dependencyName) =>
-      hasInstalledPackageInNodeModulesTree(fixtureNodeModulesDirectory, dependencyName),
+      installedPackageNames.has(dependencyName),
     );
     if (leakedPackages.length > 0) {
       fail(
