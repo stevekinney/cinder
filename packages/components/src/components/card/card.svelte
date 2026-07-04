@@ -61,12 +61,16 @@
   const descriptionId = $derived(
     hasGeneratedHeader && description ? `${generatedId}-description` : undefined,
   );
+  const externalDescriptionId = $derived(rest['aria-describedby']);
+  const describedBy = $derived(
+    [descriptionId, externalDescriptionId].filter(Boolean).join(' ') || undefined,
+  );
   const labelAttributes = $derived(
     hasGeneratedHeader
       ? {
           role: 'group',
           'aria-labelledby': titleId,
-          ...(descriptionId ? { 'aria-describedby': descriptionId } : {}),
+          ...(describedBy ? { 'aria-describedby': describedBy } : {}),
         }
       : {},
   );

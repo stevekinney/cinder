@@ -170,19 +170,24 @@ describe('Card', () => {
         description: 'Stops new review dispatch globally.',
         role: 'region',
         'aria-labelledby': 'consumer-heading',
+        'aria-describedby': 'external-warning',
         children: textSnippet('Existing runs continue.'),
       } as any,
     });
 
     const root = container.querySelector('.cinder-card');
     const heading = getByRole('heading', { name: 'Pause reviews' });
+    const description = getByText('Stops new review dispatch globally.');
 
     expect(root?.getAttribute('data-cinder-tone')).toBe('danger');
     expect(root?.getAttribute('role')).toBe('group');
     expect(root?.getAttribute('aria-labelledby')).toBe(heading.getAttribute('id'));
     expect(root?.getAttribute('aria-labelledby')).not.toBe('consumer-heading');
+    expect(root?.getAttribute('aria-describedby')).toBe(
+      `${description.getAttribute('id')} external-warning`,
+    );
     expect(heading).not.toBeNull();
-    expect(getByText('Stops new review dispatch globally.')).not.toBeNull();
+    expect(description).not.toBeNull();
     expect(root?.querySelector('.cinder-card__risk-icon')?.getAttribute('aria-hidden')).toBe(
       'true',
     );
