@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { isCliEntrypoint } from './index.ts';
 
 const cliDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(cliDirectory, '../..');
@@ -107,5 +111,20 @@ describe('cinder CLI', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toBe('');
     expect(isRecord(error) && error['code']).toBe('BAD_LIMIT');
+  });
+
+  it('detects direct and symlinked Node bin entrypoints without import.meta.main', () => {
+    const moduleUrl = pathToFileURL(cliEntrypoint).href;
+    const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cinder-cli-'));
+    const symlinkPath = join(temporaryDirectory, 'cinder');
+    symlinkSync(cliEntrypoint, symlinkPath);
+
+    try {
+      expect(isCliEntrypoint(cliEntrypoint, moduleUrl)).toBe(true);
+      expect(isCliEntrypoint(symlinkPath, moduleUrl)).toBe(true);
+      expect(isCliEntrypoint(join(temporaryDirectory, 'missing'), moduleUrl)).toBe(false);
+    } finally {
+      rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
   });
 });
