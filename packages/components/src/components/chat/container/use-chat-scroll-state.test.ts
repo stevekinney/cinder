@@ -19,8 +19,10 @@ setupHappyDom();
 const { useChatScrollState } = await import('./use-chat-scroll-state.svelte.ts');
 
 afterEach(() => {
-  jest.useRealTimers();
-  document.body.replaceChildren();
+  if (jest.isFakeTimers()) {
+    jest.useRealTimers();
+  }
+  document.body.innerHTML = '';
 });
 
 function createViewport(): HTMLElement {
@@ -61,16 +63,14 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     state.scrollToBottom(viewport);
 
     // Simulate an animation still actively progressing well past the 500ms
-    // non-reduced-motion backstop duration: a scroll tick every 100ms for
-    // 700ms. Each tick re-arms the backstop, so it must never fire while
-    // ticks keep arriving.
+    // non-reduced-motion backstop duration: a scroll tick every 90ms for
+    // 630ms. Each tick re-arms the backstop before the current arm can fire,
+    // so it must never restore the optimization while ticks keep arriving.
     for (let i = 0; i < 7; i++) {
-      jest.advanceTimersByTime(100);
+      jest.advanceTimersByTime(90);
       viewport.dispatchEvent(new Event('scroll'));
       expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
     }
-    viewport.dispatchEvent(new Event('scrollend'));
-    viewport.remove();
   });
 
   test('once scroll ticks stop arriving, the backstop eventually restores it', () => {
@@ -86,7 +86,6 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
     jest.advanceTimersByTime(1);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
-    viewport.remove();
   });
 
   test('a zero-distance scroll (already at bottom, no scroll/scrollend events) still restores via the backstop', () => {
@@ -95,9 +94,10 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     const viewport = createViewport();
     state.scrollToBottom(viewport);
     // No events dispatched at all — only the initial backstop arm can save us.
-    jest.advanceTimersByTime(500);
+    jest.advanceTimersByTime(499);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    jest.advanceTimersByTime(1);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
-    viewport.remove();
   });
 
   test('a second scrollToBottom before the first settles cancels the first session (no premature restore from the stale backstop)', () => {
@@ -128,8 +128,9 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
 
     // Session B's own backstop eventually fires and restores it.
-    jest.advanceTimersByTime(30);
+    jest.advanceTimersByTime(29);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+    jest.advanceTimersByTime(1);
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
-    viewport.remove();
   });
 });

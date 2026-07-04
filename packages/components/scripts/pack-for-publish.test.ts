@@ -7,7 +7,7 @@ import {
 } from './pack-for-publish.ts';
 
 describe('buildPublishedManifest', () => {
-  it('keeps component/runtime source out of the published file list', () => {
+  it('keeps Svelte test-harness exclusions after broad Svelte includes', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -17,11 +17,16 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest, []);
     const files = published.files ?? [];
 
-    expect(files).not.toContain('src/components/**/*.ts');
-    expect(files).not.toContain('src/components/**/*.svelte');
-    expect(files).not.toContain('src/_internal/**/*.ts');
-    expect(files).not.toContain('src/utilities/**/*.ts');
-    expect(files).not.toContain('src/highlighters/**/*.ts');
+    expect(files.indexOf('src/components/**/*.svelte')).toBeGreaterThanOrEqual(0);
+    expect(files.indexOf('!src/components/**/*fixture*.svelte')).toBeGreaterThan(
+      files.indexOf('src/components/**/*.svelte'),
+    );
+    expect(files.indexOf('!src/components/**/_*-test-harness.svelte')).toBeGreaterThan(
+      files.indexOf('src/components/**/*.svelte'),
+    );
+    expect(files.indexOf('!src/components/**/*.type-test.svelte')).toBeGreaterThan(
+      files.indexOf('src/components/**/*.svelte'),
+    );
   });
 
   it('includes src/styles/**/*.css.d.ts so reserved styles type stubs are published', () => {
@@ -55,7 +60,13 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('src/components/**/*.css');
   });
 
-  it('does not ship src/styles/base-guard.ts because the published export points at dist', () => {
+  it('includes src/styles/base-guard.ts so the `./styles/guard` svelte source ships', () => {
+    // Regression guard: the `./styles/guard` export's `svelte` condition points
+    // at `./src/styles/base-guard.ts`. The build emits only
+    // `dist/styles/base-guard.js`, so without this entry a Svelte-aware consumer
+    // resolving the source condition hits a dangling path. It is the only `.ts`
+    // under `src/styles/` that ships, so it is listed explicitly rather than via
+    // a `src/styles/**/*.ts` glob.
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -65,7 +76,7 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest, []);
     const files = published.files ?? [];
 
-    expect(files).not.toContain('src/styles/base-guard.ts');
+    expect(files).toContain('src/styles/base-guard.ts');
   });
 
   it('keeps dist .js.map files excluded from the published tarball', () => {
@@ -199,8 +210,11 @@ describe('buildPublishedManifest', () => {
       svelte: './dist/styles/base-guard.js',
       default: './dist/styles/base-guard.js',
     });
-    expect(files).not.toContain('src/components/**/*.ts');
-    expect(files).not.toContain('src/components/**/*.svelte');
+    expect(files).toContain('!src/components/**/*.schema.ts');
+    expect(files).toContain('!src/components/**/*.variables.ts');
+    expect(files).not.toContain('!dist/server/components/**/*.schema.js');
+    expect(files).not.toContain('!dist/server/components/**/*.variables.js');
+    expect(files).toContain('!dist/server/**/*.d.ts');
   });
 
   it('rewrites the package-level svelte field to the built root entry', () => {
@@ -214,6 +228,37 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest, []);
 
     expect(published.svelte).toBe('./dist/index.js');
+  });
+
+  it('does not publish unexported server declaration files', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {
+        '.': {
+          types: './dist/index.d.ts',
+          browser: './src/index.ts',
+          node: './dist/server/index.js',
+          svelte: './src/index.ts',
+          default: './dist/index.js',
+        },
+        './button': {
+          types: './dist/components/button/index.d.ts',
+          browser: './src/components/button/index.ts',
+          node: './dist/server/components/button/index.js',
+          svelte: './src/components/button/index.ts',
+          default: './dist/components/button/index.js',
+        },
+      },
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+    const exportTargets = JSON.stringify(published.exports);
+
+    expect(files).toContain('!dist/server/**/*.d.ts');
+    expect(exportTargets).not.toContain('dist/server/index.d.ts');
+    expect(exportTargets).not.toContain('dist/server/components/button/index.d.ts');
   });
 
   it('preserves component condition order so Node SSR wins over browser/svelte builds', () => {
@@ -271,6 +316,20 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('src/components/**/*.examples.json');
     expect(files).toContain('src/components/**/*.constraints.json');
     expect(files).not.toContain('src/components/**/*.json');
+  });
+
+  it('keeps component README files out of the published tarball', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+    };
+
+    const published = buildPublishedManifest(manifest, []);
+    const files = published.files ?? [];
+
+    expect(files).not.toContain('src/components/**/*.md');
+    expect(files).not.toContain('!src/components/**/*.a11y.md');
   });
 
   it('strips dangling sourceMappingURL comments when corresponding .map files are absent', () => {

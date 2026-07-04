@@ -451,28 +451,23 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
   const components = await discoverComponents();
   const componentRequiredEntries: string[] = [];
   for (const { name, isExperimental, hasCss } of components) {
-    const sourceRelativeDirectory = isExperimental
-      ? `src/components/experimental/${name}`
-      : `src/components/${name}`;
-    const sourceDirectory = `package/${sourceRelativeDirectory}`;
+    const sourceDirectory = isExperimental
+      ? `package/src/components/experimental/${name}`
+      : `package/src/components/${name}`;
     const distributionDirectory = isExperimental
       ? `package/dist/components/experimental/${name}`
       : `package/dist/components/${name}`;
+    // Each component sub-path ships both the Svelte source (resolved via
+    // the `svelte` condition) and the built JS + types (resolved via
+    // `default`/`types`/`node`). See `assertPackedManifestInvariants` for
+    // the reason both are required today.
     componentRequiredEntries.push(
-      `${sourceDirectory}/${name}.schema.json`,
-      `${sourceDirectory}/${name}.variables.json`,
+      `${sourceDirectory}/${name}.svelte`,
       `${distributionDirectory}/index.js`,
       `${distributionDirectory}/index.d.ts`,
     );
-    for (const artifact of ['examples', 'constraints'] as const) {
-      const artifactPath = `${sourceRelativeDirectory}/${name}.${artifact}.json`;
-      if (existsSync(join(repositoryRoot, artifactPath))) {
-        componentRequiredEntries.push(`${sourceDirectory}/${name}.${artifact}.json`);
-      }
-    }
     if (hasCss) {
       componentRequiredEntries.push(
-        `${sourceDirectory}/${name}.css`,
         `${distributionDirectory}/${name}.css`,
         `${distributionDirectory}/${name}.css.d.ts`,
       );
@@ -481,6 +476,7 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
   return {
     required: [
       'package/package.json',
+      'package/src/index.ts',
       'package/src/styles/index.css',
       'package/src/styles/all.css',
       'package/src/styles/tokens.css',
@@ -497,27 +493,34 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/src/styles/tokens.css.d.ts',
       'package/src/styles/foundation.css.d.ts',
       'package/src/styles/utilities.css.d.ts',
+      // The `./styles/guard` export's `svelte` condition points at
+      // `./src/styles/base-guard.ts`; ship the source so Svelte-aware
+      // consumers don't resolve a dangling path (build emits only
+      // `dist/styles/base-guard.js`).
+      'package/src/styles/base-guard.ts',
       'package/dist/index.d.ts',
       'package/dist/index.js',
       'package/dist/server/index.js',
       'package/dist/cli/index.js',
-      'package/dist/styles/base-guard.js',
-      'package/dist/styles/base-guard.d.ts',
+      // First-party Shiki adapter: ship both source (for the `svelte`
+      // condition) and built JS + types (for `default`/`node`).
+      'package/src/highlighters/shiki/index.ts',
       'package/dist/highlighters/shiki/index.js',
       'package/dist/highlighters/shiki/index.d.ts',
       ...componentRequiredEntries,
     ],
-    // Runtime source stays out of the tarball; published conditions resolve
-    // through `dist/`. The remaining `src/**` entries are global CSS assets,
-    // component CSS partials imported by `styles/all`, and generated component
-    // JSON sidecars.
+    // PR 1: `src/markdown/**`, `src/editor/**`, `src/commentary/**`, and
+    // `src/diff/**` (the generated re-export shells) stay out of the
+    // tarball — upstream sub-paths resolve through `dist/` only. The rest
+    // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
+    // styles, JSON sidecars) ships because the published `svelte`
+    // condition on component sub-paths targets it.
     forbiddenPatterns: [
       /\.(test|spec)\.[cm]?[jt]s$/,
       /\.type-test\./,
       /(^|\/)[^/]*-fixtures\./,
       /(^|\/)[^/]*fixtures\./,
       /(^|\/)_.*-test-harness\./,
-      /^package\/src\/components\/.*\.(?:ts|svelte|md)$/u,
       /\.js\.map$/,
       /\.a11y\.md$/,
     ],
@@ -527,12 +530,9 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/client/',
       'package/dist/test/',
       'package/scripts/',
-      'package/src/index.ts',
-      'package/src/schema-types.ts',
-      'package/src/styles/base-guard.ts',
-      'package/src/_internal/',
-      'package/src/utilities/',
-      'package/src/highlighters/',
+      // Upstream re-export shells (`src/markdown/`, `src/editor/`,
+      // `src/commentary/`, `src/diff/`) resolve via `dist/_upstream/`; the
+      // shell sources are build-only inputs.
       'package/src/markdown/',
       'package/src/editor/',
       'package/src/commentary/',

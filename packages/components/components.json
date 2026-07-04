@@ -3,7 +3,7 @@
   "manifestVersion": 1,
   "package": {
     "name": "@lostgradient/cinder",
-    "version": "0.4.1",
+    "version": "0.5.0",
     "framework": "svelte",
     "frameworkVersionRange": ">=5.55.0 <6",
     "classPrefix": "cinder-",
@@ -2163,6 +2163,37 @@
         "schema": "@lostgradient/cinder/event-stream-viewer/schema",
         "variables": "@lostgradient/cinder/event-stream-viewer/variables",
         "examples": "@lostgradient/cinder/event-stream-viewer/examples"
+      }
+    },
+    {
+      "name": "EventTimeline",
+      "id": "event-timeline",
+      "import": "@lostgradient/cinder/event-timeline",
+      "exportName": "EventTimeline",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Horizontal time-axis strip for scheduled events with proportional dots, a now marker, and collision-nudged labels.",
+      "tags": ["event-timeline", "schedule", "timeline"],
+      "useWhen": [
+        "Showing several fired and upcoming events across a bounded time window, such as a next-24-hour schedule strip."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing vertical process history or dense activity feeds.",
+          "alternative": "timeline"
+        },
+        {
+          "reason": "Showing step-by-step run execution state.",
+          "alternative": "run-step-timeline"
+        }
+      ],
+      "related": ["timeline", "run-step-timeline", "status-dot"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/event-timeline/schema",
+        "variables": "@lostgradient/cinder/event-timeline/variables",
+        "examples": "@lostgradient/cinder/event-timeline/examples"
       }
     },
     {
@@ -4629,6 +4660,37 @@
         "schema": "@lostgradient/cinder/sortable-list/schema",
         "variables": "@lostgradient/cinder/sortable-list/variables",
         "examples": "@lostgradient/cinder/sortable-list/examples"
+      }
+    },
+    {
+      "name": "Sparkbar",
+      "id": "sparkbar",
+      "import": "@lostgradient/cinder/sparkbar",
+      "exportName": "Sparkbar",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Compact labeled meter with a thin horizontal fill bar for inline cost, token, budget, or quota breakdowns.",
+      "tags": ["sparkbar", "meter", "cost"],
+      "useWhen": [
+        "Comparing several bounded values in dense rows, such as per-step spend, token usage, or budget consumption."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing task completion or loading progress.",
+          "alternative": "progress"
+        },
+        {
+          "reason": "Rendering a full cartesian chart with axes, scales, or multiple series.",
+          "alternative": "bar-chart"
+        }
+      ],
+      "related": ["meter", "progress", "bar-chart"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/sparkbar/schema",
+        "variables": "@lostgradient/cinder/sparkbar/variables",
+        "examples": "@lostgradient/cinder/sparkbar/examples"
       }
     },
     {

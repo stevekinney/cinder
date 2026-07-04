@@ -1,0 +1,99 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    start: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description: 'Inclusive start of the displayed time range.',
+    },
+    end: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description: 'Inclusive end of the displayed time range.',
+    },
+    now: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'number',
+        },
+      ],
+      description: 'Optional current time marker.',
+    },
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Stable key for repeated items. Pass an `id` when items can reorder.',
+          },
+          at: {
+            anyOf: [
+              {
+                type: 'string',
+              },
+              {
+                type: 'number',
+              },
+            ],
+            description: 'Event timestamp, accepted by the JavaScript Date constructor.',
+          },
+          label: {
+            type: 'string',
+            description: 'Primary visible label.',
+          },
+          sublabel: {
+            type: 'string',
+            description: 'Optional secondary timestamp label.',
+          },
+          state: {
+            enum: ['done', 'upcoming', 'failed'],
+            description: 'Visual event state. Defaults to `upcoming`.',
+          },
+        },
+        additionalProperties: false,
+        required: ['at', 'label'],
+      },
+      description: 'Events positioned proportionally between `start` and `end`.',
+    },
+    label: {
+      type: 'string',
+      description: 'Visible heading for the timeline.',
+    },
+    ariaLabel: {
+      type: 'string',
+      description: 'Accessible name override. Defaults to `label` or `Event timeline`.',
+    },
+    size: {
+      enum: ['sm', 'md'],
+      description: 'Timeline density. Default `md`.',
+    },
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-event-timeline`.',
+    },
+  },
+  additionalProperties: false,
+  required: ['end', 'items', 'start'],
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;
