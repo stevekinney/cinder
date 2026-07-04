@@ -105,7 +105,9 @@
   );
   const step = $derived(granularity === 'second' ? 1 : granularity === 'minute' ? 60 : 3600);
   const inputType = $derived(granularity === 'day' ? 'date' : 'datetime-local');
-  const invalid = $derived(error ? 'true' : ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined);
+  const invalid = $derived(
+    error ? 'true' : ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined,
+  );
   const describedById = $derived(
     [
       ariaDescribedBy,

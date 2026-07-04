@@ -57,7 +57,12 @@
   // navigation-bar.css and navigation-item.css. The fully-parenthesized form
   // is required — `window.matchMedia` rejects bare media feature expressions
   // on Firefox and Safari.
-  const mobile = new MediaQuery('(max-width: 47.99rem)', false);
+  // Keep the fallback explicit for SSR-contract test environments that resolve
+  // the client MediaQuery build while `window.matchMedia` is unavailable.
+  const mobile =
+    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
+      ? { current: false }
+      : new MediaQuery('(max-width: 47.99rem)', false);
 
   const context: SidebarContextValue = {
     get collapsed() {

@@ -197,6 +197,29 @@ describe('Sidebar (desktop / inline aside)', () => {
   });
 });
 
+describe('Sidebar SSR responsive fallback', () => {
+  test('falls back to the desktop aside without matchMedia', () => {
+    const originalMatchMedia = window.matchMedia;
+    delete (window as { matchMedia?: typeof window.matchMedia }).matchMedia;
+    try {
+      const { container } = render(Sidebar, {
+        props: { label: 'Workspace', navigation: listSnippet('items') },
+      });
+      expect(container.querySelector('aside.cinder-sidebar')).not.toBeNull();
+      expect(container.querySelector('.cinder-sidebar--mobile')).toBeNull();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test('component CSS hides the desktop fallback on mobile first paint', async () => {
+    const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /@media\s*\(\s*max-width:\s*47\.99rem\s*\)\s*{\s*\.cinder-sidebar:not\(\.cinder-sidebar--mobile\)\s*{\s*display:\s*none;\s*}\s*}/,
+    );
+  });
+});
+
 describe('Sidebar context', () => {
   test('publishes collapsed state to descendants (collapsed=false)', async () => {
     const { default: Fixture } = await import('../../test/fixtures/sidebar-context-fixture.svelte');

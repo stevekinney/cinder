@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Description list rich definitions';
-  export const description = 'Definitions can render rich snippet content when plain text is not enough.';
+  export const description =
+    'Definitions can render rich snippet content when plain text is not enough.';
 </script>
 
 <script lang="ts">

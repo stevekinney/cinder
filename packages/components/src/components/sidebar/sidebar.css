@@ -31,6 +31,12 @@
     border-inline-end: none;
   }
 
+  @media (max-width: 47.99rem) {
+    .cinder-sidebar:not(.cinder-sidebar--mobile) {
+      display: none;
+    }
+  }
+
   /* Collapsed (icon-only) mode applies to the inline <aside>. The mobile drawer
  * surface ignores `data-cinder-collapsed` for sizing because drawer-closed is
  * the collapsed state on mobile. */
