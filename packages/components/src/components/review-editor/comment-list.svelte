@@ -134,7 +134,7 @@
               aria-label="Edit comment"
               title="Edit comment"
             >
-              <Pencil class="icon-sm" />
+              <Pencil class="cinder-icon-sm" />
             </button>
           {/if}
           {#if canDeleteComment(comment)}
@@ -145,7 +145,7 @@
               aria-label="Delete comment"
               title="Delete comment"
             >
-              <Trash2 class="icon-sm" />
+              <Trash2 class="cinder-icon-sm" />
             </button>
           {/if}
         </div>

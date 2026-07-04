@@ -11,6 +11,8 @@ const { default: CheckboxIndeterminateFormResetFixture } =
   await import('../../test/fixtures/checkbox-indeterminate-form-reset-fixture.svelte');
 const { default: CheckboxFormResetFixture } =
   await import('../../test/fixtures/checkbox-form-reset-fixture.svelte');
+const { default: CheckboxExternalLabelFixture } =
+  await import('../../test/fixtures/checkbox-external-label-fixture.svelte');
 const { default: FormFieldCheckboxFixture } =
   await import('../../test/fixtures/form-field-checkbox-fixture.svelte');
 
@@ -194,6 +196,34 @@ describe('Checkbox', () => {
     const input = container.querySelector('#c') as HTMLInputElement;
     expect(input.classList.contains('cinder-checkbox')).toBe(true);
     expect(input.classList.contains('extra')).toBe(true);
+  });
+
+  test('fieldClass prop merges with the outer checkbox field wrapper', () => {
+    const { container } = render(Checkbox, {
+      id: 'c',
+      fieldClass: 'align-start',
+    });
+    const field = container.querySelector('.cinder-checkbox-field');
+    expect(field?.classList.contains('align-start')).toBe(true);
+  });
+
+  test('supports a control-only checkbox with an external rich label', async () => {
+    const { container, getByRole, queryByText } = render(CheckboxExternalLabelFixture);
+    const checkbox = getByRole('checkbox', {
+      name: 'lostgradient/cinder Component library',
+    }) as HTMLInputElement;
+
+    expect(queryByText('GH')).not.toBeNull();
+    expect(container.querySelector('.repository-row__checkbox')).not.toBeNull();
+    expect(container.querySelector('.cinder-checkbox-field__label')).toBeNull();
+    expect(checkbox.checked).toBe(false);
+
+    const externalLabel = container.querySelector(
+      'label[for="repository-main"]',
+    ) as HTMLLabelElement;
+    await fireEvent.click(externalLabel);
+
+    expect(checkbox.checked).toBe(true);
   });
 });
 

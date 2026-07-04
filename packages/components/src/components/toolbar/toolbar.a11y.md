@@ -19,8 +19,8 @@
 
 Toolbar does not require child registration APIs. It manages native focusable descendants in DOM order, which means existing controls such as `Button`, `SegmentedControl`, and `NumberInput` work without toolbar-specific props.
 
-## Groups and separators
+## Groups
 
-`Toolbar.Group` is layout-only. It clusters related controls and lets the toolbar own the separators between adjacent groups, which keeps the visual dividers out of the accessibility tree.
+`Toolbar.Group` is layout-only unless it has an accessible name or explicit `role`. It clusters related controls, keeps them together while horizontal toolbars wrap, and gets `role="group"` when named with `aria-label` or `aria-labelledby`.
 
 `Toolbar.Spacer` is `aria-hidden="true"` and never becomes a toolbar item.

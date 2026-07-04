@@ -486,7 +486,7 @@
             onclick={() => removeAttachment(attachment.id)}
             aria-label={`Remove ${attachment.file.name}`}
           >
-            <X class="icon-xs" />
+            <X class="cinder-icon-xs" />
           </button>
         </div>
       {/each}
@@ -532,7 +532,7 @@
           disabled={disabled || sending}
           aria-label="Attach file"
         >
-          <Paperclip class="icon-sm" />
+          <Paperclip class="cinder-icon-sm" />
         </Button>
       {/if}
 
@@ -566,7 +566,7 @@
           aria-label="Stop generating"
           aria-describedby={shortcutDescriptionId}
         >
-          <Square class="icon-sm" />
+          <Square class="cinder-icon-sm" />
         </button>
       {:else}
         <!-- Send button: shows spinner when sending (without onstop), otherwise arrow -->
@@ -600,7 +600,7 @@
               ></path>
             </svg>
           {:else}
-            <ArrowUp class="icon-sm" />
+            <ArrowUp class="cinder-icon-sm" />
           {/if}
         </button>
       {/if}

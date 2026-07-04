@@ -87,13 +87,13 @@
   {#if copied && confirmation}
     {@render confirmation()}
   {:else if copied && iconOnly}
-    <Check class="icon-sm" aria-hidden="true" />
+    <Check class="cinder-icon-sm" aria-hidden="true" />
   {:else if copied}
     Copied
   {:else if children}
     {@render children()}
   {:else if iconOnly}
-    <Copy class="icon-sm" aria-hidden="true" />
+    <Copy class="cinder-icon-sm" aria-hidden="true" />
   {:else}
     Copy
   {/if}

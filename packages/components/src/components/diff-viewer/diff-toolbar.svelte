@@ -118,7 +118,7 @@
     <!-- Revert All button -->
     {#if hasChanges && !readonly && onrevertall}
       <Button variant="secondary" size="xs" onclick={onrevertall}>
-        <RotateCcw class="icon-sm" />
+        <RotateCcw class="cinder-icon-sm" />
         Revert All
       </Button>
     {/if}
@@ -126,7 +126,7 @@
     <!-- Size-based gating controls (DEP-47) -->
     {#if tier === 'manual' && ontriggercompute}
       <Button variant="secondary" size="xs" onclick={ontriggercompute} disabled={isComputing}>
-        <RefreshCw class="icon-sm" />
+        <RefreshCw class="cinder-icon-sm" />
         Compute Diff
       </Button>
     {/if}
@@ -135,13 +135,13 @@
       {#if changeCount > 0}
         <div class="navigation">
           <Button variant="ghost" size="xs" onclick={onjumpprevious} aria-label="Previous change">
-            <ChevronLeft class="icon-sm" />
+            <ChevronLeft class="cinder-icon-sm" />
           </Button>
           <span class="change-counter">
             {currentChangeIndex >= 0 ? currentChangeIndex + 1 : '-'} / {changeCount}
           </span>
           <Button variant="ghost" size="xs" onclick={onjumpnext} aria-label="Next change">
-            <ChevronRight class="icon-sm" />
+            <ChevronRight class="cinder-icon-sm" />
           </Button>
         </div>
         <div class="shortcuts">

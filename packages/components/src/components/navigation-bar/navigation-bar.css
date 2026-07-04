@@ -173,6 +173,16 @@
       inline-size: 100%;
       justify-content: flex-start;
       padding-block: var(--cinder-space-3);
+      border-bottom: none;
+      border-inline-start: 2px solid transparent;
+      border-radius: var(--cinder-radius-sm);
+    }
+
+    .cinder-navigation-bar[data-collapsible='true']
+      .cinder-navigation-bar__items[data-open='true']
+      .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
+      border-inline-start-color: var(--cinder-accent);
+      background-color: var(--cinder-surface-inset);
     }
   }
 

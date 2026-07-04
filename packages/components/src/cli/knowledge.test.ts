@@ -10,11 +10,58 @@ import {
   loadCinderKnowledge,
   type CinderManifest,
 } from './knowledge.ts';
+import { validateManifest } from './manifest-validation.ts';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function manifestFixture(): CinderManifest {
+  return {
+    manifestVersion: 1,
+    package: {
+      name: '@lostgradient/cinder',
+      version: '0.0.0-test',
+      framework: 'svelte',
+      frameworkVersionRange: '>=5.55.0 <6',
+      stylesEntry: '@lostgradient/cinder/styles',
+      schemaDialect: 'https://json-schema.org/draft/2020-12/schema',
+    },
+    categories: {
+      navigation: { label: 'Navigation', description: 'Navigation components.' },
+    },
+    statusLevels: {
+      stable: 'Production-ready.',
+    },
+    overlapFamilies: {
+      navigation: ['navigation-bar'],
+    },
+    components: [
+      {
+        id: 'navigation-bar',
+        name: 'NavigationBar',
+        import: '@lostgradient/cinder/navigation-bar',
+        exportName: 'NavigationBar',
+        category: 'navigation',
+        status: 'stable',
+        purpose: 'Top-level navigation.',
+        tags: ['navigation'],
+        useWhen: ['Anchoring app navigation.'],
+        avoidWhen: [{ reason: 'Showing breadcrumbs.', alternative: 'breadcrumbs' }],
+        related: ['navigation-item'],
+        hasConstraints: false,
+        hasExamples: true,
+        artifacts: {
+          schema: '@lostgradient/cinder/navigation-bar/schema',
+          variables: '@lostgradient/cinder/navigation-bar/variables',
+          examples: '@lostgradient/cinder/navigation-bar/examples',
+          constraints: '@lostgradient/cinder/navigation-bar/constraints',
+        },
+      },
+    ],
+  };
 }
 
 describe('CinderKnowledge', () => {
@@ -185,5 +232,27 @@ describe('CinderKnowledge', () => {
       'overlap',
     ]);
     expect(() => knowledge.bestPractices('unknown' as never)).toThrow(CinderKnowledgeError);
+  });
+
+  it('validates manifest contracts and reports malformed sections at the boundary', () => {
+    const manifest = manifestFixture();
+
+    expect(validateManifest(manifest)).toEqual(manifest);
+    expect(() => validateManifest(null)).toThrow('components.json must be an object.');
+    expect(() => validateManifest({ ...manifest, manifestVersion: 2 })).toThrow(
+      'components.json must use manifestVersion 1.',
+    );
+    expect(() => validateManifest({ ...manifest, package: undefined })).toThrow(
+      'components.json is missing package metadata or components.',
+    );
+    expect(() => validateManifest({ ...manifest, categories: [] })).toThrow(
+      'components.json is missing category, status, or overlap metadata.',
+    );
+    expect(() =>
+      validateManifest({
+        ...manifest,
+        components: [{ ...manifest.components[0], artifacts: { schema: 1 } }],
+      }),
+    ).toThrow('Every manifest component must include the generated component contract fields.');
   });
 });

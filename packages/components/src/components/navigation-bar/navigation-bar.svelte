@@ -15,6 +15,7 @@
   export type {
     NavigationBarLabelVisibility,
     NavigationBarItemsContext,
+    NavigationBarMenuTogglePlacement,
     NavigationBarPlacement,
     NavigationBarProps,
     NavigationBarToggleAttributes,
@@ -35,6 +36,7 @@
     class: className,
     placement = 'top',
     showLabels = 'always',
+    menuTogglePlacement = 'after-brand',
     brand,
     items,
     actions,
@@ -46,6 +48,7 @@
     'data-collapsible': _dataCollapsible,
     'data-cinder-placement': _dataCinderPlacement,
     'data-cinder-label-visibility': _dataCinderLabelVisibility,
+    'data-cinder-menu-toggle-placement': _dataCinderMenuTogglePlacement,
     onkeydown: consumerOnKeyDown,
     ...rest
   }: NavigationBarProps = $props();
@@ -219,15 +222,26 @@
   data-collapsible={isCollapsible ? 'true' : 'false'}
   data-cinder-placement={placement}
   data-cinder-label-visibility={showLabels}
+  data-cinder-menu-toggle-placement={menuTogglePlacement}
   onkeydown={handleKeyDown}
 >
+  {#if isCollapsible && menuToggle && menuTogglePlacement === 'before-brand'}
+    <div class="cinder-navigation-bar__menu-toggle">
+      {@render menuToggle({
+        'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
+        'aria-controls': regionId,
+        ...(browser ? { onclick: handleToggle } : {}),
+      })}
+    </div>
+  {/if}
+
   {#if brand}
     <div class="cinder-navigation-bar__brand">
       {@render brand()}
     </div>
   {/if}
 
-  {#if isCollapsible && menuToggle}
+  {#if isCollapsible && menuToggle && menuTogglePlacement === 'after-brand'}
     <div class="cinder-navigation-bar__menu-toggle">
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',

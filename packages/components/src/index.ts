@@ -590,6 +590,7 @@ export { default as NavigationBar } from './components/navigation-bar/index.ts';
 export type {
   NavigationBarItemsContext,
   NavigationBarLabelVisibility,
+  NavigationBarMenuTogglePlacement,
   NavigationBarPlacement,
   NavigationBarProps,
   NavigationBarToggleAttributes,

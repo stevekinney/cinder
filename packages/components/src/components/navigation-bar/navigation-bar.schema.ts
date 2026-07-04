@@ -20,6 +20,12 @@ const schema = {
         'Label visibility for mobile bottom-tab compositions. Hidden labels remain in\nthe accessibility tree when wrapped in `[data-cinder-navigation-label]`.',
       default: 'always',
     },
+    menuTogglePlacement: {
+      enum: ['after-brand', 'before-brand'],
+      description:
+        'Placement for the collapsible mobile menu toggle in top navigation bars.\nIgnored for `placement="bottom"`.',
+      default: 'after-brand',
+    },
     mobileMenuOpen: {
       type: 'boolean',
       description: 'Two-way bindable open state of the mobile menu.',

@@ -39,7 +39,7 @@
       aria-label="Close artifact panel"
       {@attach focusOnMount}
     >
-      <X class="icon-sm" />
+      <X class="cinder-icon-sm" />
     </button>
   </div>
 

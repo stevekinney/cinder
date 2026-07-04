@@ -3,6 +3,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type NavigationVariant = 'horizontal' | 'mobile';
 export type NavigationBarPlacement = 'top' | 'bottom';
 export type NavigationBarLabelVisibility = 'always' | 'active' | 'never';
+export type NavigationBarMenuTogglePlacement = 'after-brand' | 'before-brand';
 /** Attributes injected into the consumer's toggle button via the menuToggle snippet parameter. */
 export type NavigationBarToggleAttributes = {
   'aria-expanded': 'true' | 'false';
@@ -33,6 +34,13 @@ export type NavigationBarProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
    * @default "always"
    */
   showLabels?: NavigationBarLabelVisibility;
+  /**
+   * Placement for the collapsible mobile menu toggle in top navigation bars.
+   * Ignored for `placement="bottom"`.
+   *
+   * @default "after-brand"
+   */
+  menuTogglePlacement?: NavigationBarMenuTogglePlacement;
   brand?: Snippet;
   /** Receives a context object with the current variant. */
   items: Snippet<[NavigationBarItemsContext]>;

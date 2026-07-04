@@ -33,6 +33,10 @@ const schema = {
       type: 'string',
       description: 'Validation error message; sets `aria-invalid="true"` and `aria-describedby`.',
     },
+    fieldClass: {
+      type: 'string',
+      description: 'Extra class names merged with the outer checkbox field wrapper.',
+    },
   },
   additionalProperties: false,
   metadata: {

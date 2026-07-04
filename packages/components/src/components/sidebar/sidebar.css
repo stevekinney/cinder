@@ -31,6 +31,20 @@
     border-inline-end: none;
   }
 
+  @media (max-width: 47.99rem) {
+    .cinder-sidebar--desktop {
+      display: flex;
+      inline-size: 100%;
+      block-size: 100%;
+      background: transparent;
+      border-inline-end: none;
+    }
+
+    .cinder-sidebar--desktop[data-cinder-collapsed] {
+      display: none;
+    }
+  }
+
   /* Collapsed (icon-only) mode applies to the inline <aside>. The mobile drawer
  * surface ignores `data-cinder-collapsed` for sizing because drawer-closed is
  * the collapsed state on mobile. */

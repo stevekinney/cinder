@@ -196,11 +196,11 @@
 >
   <header class="link-popover-header">
     <h2 id={`${id}-title`} class="link-popover-title">
-      <Link class="icon-sm" />
+      <Link class="cinder-icon-sm" />
       {mode === 'insert' ? 'Insert Link' : 'Edit Link'}
     </h2>
     <button type="button" class="link-popover-close" onclick={onclose} aria-label="Close">
-      <X class="icon-sm" />
+      <X class="cinder-icon-sm" />
     </button>
   </header>
 
@@ -230,7 +230,7 @@
     <div class="link-popover-actions">
       {#if mode === 'edit'}
         <Button variant="ghost" size="sm" onclick={handleRemove}>
-          <Unlink class="icon-sm" />
+          <Unlink class="cinder-icon-sm" />
           Remove
         </Button>
       {/if}

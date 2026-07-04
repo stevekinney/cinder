@@ -9,6 +9,7 @@ import { expect, test } from 'bun:test';
 import type {
   NavigationBarItemsContext,
   NavigationBarLabelVisibility,
+  NavigationBarMenuTogglePlacement,
   NavigationBarPlacement,
   NavigationBarProps,
   NavigationBarToggleAttributes,
@@ -29,6 +30,7 @@ const _navigationBarToggleAttributes: NavigationBarToggleAttributes = {
 const _navigationVariant: NavigationVariant = 'horizontal';
 const _navigationPlacement: NavigationBarPlacement = 'bottom';
 const _navigationLabelVisibility: NavigationBarLabelVisibility = 'active';
+const _navigationMenuTogglePlacement: NavigationBarMenuTogglePlacement = 'before-brand';
 
 // Verify the resolved class type is string (not ClassValue / any).
 type NavigationBarClass = NavigationBarProps['class'];
@@ -53,4 +55,5 @@ test('NavigationBarProps["class"] resolves to string | undefined, not ClassValue
   expect(_navigationVariant).toBe('horizontal');
   expect(_navigationPlacement).toBe('bottom');
   expect(_navigationLabelVisibility).toBe('active');
+  expect(_navigationMenuTogglePlacement).toBe('before-brand');
 });
