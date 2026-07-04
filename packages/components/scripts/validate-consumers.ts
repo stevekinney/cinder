@@ -808,7 +808,7 @@ async function runTypescriptConsumerNodenextGate(
     .nothrow();
   if (result.exitCode !== 0) {
     fail(
-      `typescript-consumer ${label} gate 1 - nodenext (no svelte condition) failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
+      `typescript-consumer ${label} NodeNext without Svelte condition failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
     );
   }
 }
@@ -859,9 +859,8 @@ async function runTypescriptCompatibilityFixture(
       );
     }
     assertNoPeerDependencyWarnings(installResult, label);
-    generateTypescriptConsumerProbe(fixtureDirectory, label);
-    await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
     await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
+    await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
     process.stdout.write(
       `[validate-consumers] typescript compatibility OK (${label}: ${typescriptVersion}).\n`,
     );
