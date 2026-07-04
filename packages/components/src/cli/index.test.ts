@@ -98,4 +98,14 @@ describe('cinder CLI', () => {
     expect(isRecord(error) && error['code']).toBe('COMPONENT_NOT_FOUND');
     expect(isRecord(error) && Array.isArray(error['suggestions'])).toBe(true);
   });
+
+  it('rejects non-numeric limit suffixes', () => {
+    const result = runCli(['search', 'button', '--limit', '10abc', '--json']);
+    const payload = parseJson(result.stdout);
+    const error = payload['error'];
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe('');
+    expect(isRecord(error) && error['code']).toBe('BAD_LIMIT');
+  });
 });

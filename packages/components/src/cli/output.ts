@@ -51,6 +51,10 @@ function formatAvoidWhen(component: ComponentSummary): string[] {
   ];
 }
 
+function formatImportStatement(component: Pick<ComponentSummary, 'exportName' | 'import'>): string {
+  return `import { ${component.exportName} } from '${component.import}';`;
+}
+
 export function formatList(components: ComponentSummary[]): string {
   if (components.length === 0) return 'No Cinder components matched.';
   return components
@@ -58,7 +62,7 @@ export function formatList(components: ComponentSummary[]): string {
       (component) =>
         `${component.id} (${component.category}, ${component.status})\n` +
         `  ${component.purpose}\n` +
-        `  import ${component.import}`,
+        `  ${formatImportStatement(component)}`,
     )
     .join('\n\n');
 }
@@ -84,7 +88,7 @@ export function formatDetail(detail: ComponentDetail): string {
     `${component.name} (${component.id})`,
     component.purpose,
     '',
-    `Import: ${component.import}`,
+    `Import: ${formatImportStatement(component)}`,
     `Category: ${component.category}`,
     `Status: ${component.status}`,
     `Tags: ${component.tags.join(', ') || 'none'}`,

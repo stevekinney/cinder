@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 
-import { formatDetail, formatHelp } from './output.ts';
+import { formatDetail, formatHelp, formatList } from './output.ts';
 import type { ComponentDetail, ManifestComponent } from './types.ts';
 
 const minimalComponent: ManifestComponent = {
   name: 'Empty Guidance',
   id: 'empty-guidance',
-  import: "import { EmptyGuidance } from '@lostgradient/cinder/empty-guidance';",
+  import: '@lostgradient/cinder/empty-guidance',
   exportName: 'EmptyGuidance',
   category: 'test',
   status: 'stable',
@@ -24,6 +24,12 @@ const minimalComponent: ManifestComponent = {
 };
 
 describe('CLI text formatting', () => {
+  it('renders copyable import statements in list output', () => {
+    expect(formatList([{ ...minimalComponent, overlapFamilies: [] }])).toContain(
+      "import { EmptyGuidance } from '@lostgradient/cinder/empty-guidance';",
+    );
+  });
+
   it('documents tag filtering on search usage', () => {
     expect(formatHelp()).toContain(
       'cinder search <query> [--category <id>] [--status <level>] [--tag <tag>] [--limit <n>] [--json]',

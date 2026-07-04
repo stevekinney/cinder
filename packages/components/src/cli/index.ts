@@ -37,7 +37,10 @@ function isBestPracticeTopic(value: string): value is BestPracticeTopic {
 
 function parseLimit(value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
-  const parsed = Number.parseInt(value, 10);
+  if (!/^\d+$/.test(value)) {
+    throw new CinderKnowledgeError('BAD_LIMIT', '--limit must be a positive integer.');
+  }
+  const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) {
     throw new CinderKnowledgeError('BAD_LIMIT', '--limit must be a positive integer.');
   }
