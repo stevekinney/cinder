@@ -19,6 +19,7 @@ function cssBlocks(source: string, selector: string): string[] {
       0,
     );
 
+    let closed = false;
     let depth = 0;
     for (let index = openingBraceIndex; index < source.length; index++) {
       const character = source[index];
@@ -27,8 +28,13 @@ function cssBlocks(source: string, selector: string): string[] {
       if (depth === 0) {
         blocks.push(source.slice(openingBraceIndex + 1, index));
         searchStart = index + 1;
+        closed = true;
         break;
       }
+    }
+
+    if (!closed) {
+      throw new Error(`Unclosed CSS block for selector: ${selector}`);
     }
   }
 
