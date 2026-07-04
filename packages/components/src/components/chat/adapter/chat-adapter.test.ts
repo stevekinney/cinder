@@ -596,25 +596,27 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
-  test('virtualized rendering windows the DOM without shrinking the compatible transcript', () => {
-    const transcript = manyMessages(80);
+  test('virtualized rendering windows the DOM without shrinking the compatible transcript', async () => {
+    const transcript = manyMessages(24);
     const conversation = conversationFromMessages('adapter-virtualized', transcript);
     const { container, instance } = mountChat({
       id: 'chat-adapter-virtualized',
       conversation,
       adapter: { sendMessage: async () => {} },
       virtualized: true,
-      virtualizationInitialHeight: 160,
-      virtualizationEstimatedRowHeight: 40,
-      virtualizationOverscan: 1,
+      virtualizationInitialHeight: 96,
+      virtualizationEstimatedRowHeight: 24,
+      virtualizationOverscan: 0,
     });
+    await tick();
+    flushSync();
 
     expect(container.querySelector('.chat-timeline')?.hasAttribute('data-cinder-virtualized')).toBe(
       true,
     );
     expect(container.querySelector('.chat-virtual-spacer')).not.toBeNull();
     expect(container.querySelectorAll('.chat-message').length).toBeLessThan(transcript.length);
-    expect(conversation.ids).toHaveLength(80);
+    expect(conversation.ids).toHaveLength(24);
 
     unmount(instance);
   });

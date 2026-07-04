@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { parseEnvSlugs, testPathsForScope } from './test-changed.ts';
+import { fullSuiteTestPathGroups, parseEnvSlugs, testPathsForScope } from './test-changed.ts';
 
 describe('parseEnvSlugs', () => {
   it('returns an empty list when unset', () => {
@@ -39,8 +39,8 @@ describe('testPathsForScope', () => {
     expect(paths).toContain('src/api-contract.test.ts');
     expect(paths).toContain('src/manifest.test.ts');
     // The scoped component dirs.
-    expect(paths).toContain('src/components/button');
-    expect(paths).toContain('src/components/badge');
+    expect(paths).toContain('src/components/button/');
+    expect(paths).toContain('src/components/badge/');
   });
 
   it('always includes shared dirs + root invariant tests but NOT scripts/', () => {
@@ -51,6 +51,51 @@ describe('testPathsForScope', () => {
     expect(paths).toContain('src/exports-drift.test.ts');
     // scripts/ tooling tests run only when scripts/ changes (which force-fulls).
     expect(paths).not.toContain('scripts');
-    expect(paths).toContain('src/components/accordion');
+    expect(paths).toContain('src/components/accordion/');
+  });
+});
+
+describe('fullSuiteTestPathGroups', () => {
+  it('keeps full-suite package tests in the first chunk', () => {
+    const groups = fullSuiteTestPathGroups([]);
+    expect(groups[0]).toContain('scripts');
+    expect(groups[0]).toContain('src/test');
+    expect(groups[0]).toContain('src/exports-drift.test.ts');
+    expect(groups[0]).toContain('src/root-type-exports.test.ts');
+    expect(groups[0]).toContain('src/components/svg-data-uri-color-literals.test.ts');
+    expect(groups[0]).toContain('src/components/_internal/create-sliding-dialog-state.test.ts');
+    expect(groups[0]).toContain('src/components/_radio/radio.test.ts');
+    expect(groups[0]).toContain('src/components/_timeline-item/timeline-item.test.ts');
+    expect(groups[0]).toContain('src/components/_timeline-item/timeline-item.types.test.ts');
+    expect(groups[0]).toContain('src/components/_tree-select-all/tree-select-all.test.ts');
+    expect(groups[0]).toContain('src/components/_visually-hidden-live-region.test.ts');
+    expect(groups[0]).toContain('src/components/icons/index.test.ts');
+  });
+
+  it('splits component directories into deterministic chunks', () => {
+    const groups = fullSuiteTestPathGroups(['checkbox', 'accordion', 'button', 'badge', 'alert']);
+    const paths = groups.flat();
+    expect(paths).toContain('src/components/accordion/');
+    expect(paths).toContain('src/components/alert/');
+    expect(paths).toContain('src/components/badge/');
+    expect(paths).toContain('src/components/button/');
+    expect(paths).toContain('src/components/checkbox/');
+    expect(groups[0]).toContain('src/components/accordion/');
+    expect(groups[1]).toContain('src/components/alert/');
+    expect(groups[2]).toContain('src/components/badge/');
+    expect(groups[3]).toContain('src/components/button/');
+  });
+
+  it('keeps prefix-neighbor component directories distinct', () => {
+    const paths = fullSuiteTestPathGroups(['accordion', 'accordion-item']).flat();
+    expect(paths).toContain('src/components/accordion/');
+    expect(paths).toContain('src/components/accordion-item/');
+    expect(paths).not.toContain('src/components/accordion');
+  });
+
+  it('throws instead of dropping missing component directories', () => {
+    expect(() => fullSuiteTestPathGroups(['definitely-missing-component'])).toThrow(
+      'full-suite chunk 1 references missing test path(s): src/components/definitely-missing-component/',
+    );
   });
 });

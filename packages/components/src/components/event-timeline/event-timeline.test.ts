@@ -1,4 +1,7 @@
 /// <reference lib="dom" />
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -7,6 +10,8 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: EventTimeline } = await import('./event-timeline.svelte');
+
+const EVENT_TIMELINE_CSS = readFileSync(join(import.meta.dir, 'event-timeline.css'), 'utf8');
 
 describe('EventTimeline', () => {
   const start = '2026-07-03T00:00:00.000Z';
@@ -36,6 +41,7 @@ describe('EventTimeline', () => {
     expect(items).toHaveLength(2);
     expect(items[0]?.getAttribute('style')).toContain('left: 25%');
     expect(items[0]?.getAttribute('data-cinder-state')).toBe('done');
+    expect(items[0]?.getAttribute('aria-label')).toBe('Morning, 06:00, Done');
     expect(items[1]?.getAttribute('style')).toContain('left: 75%');
     expect(items[1]?.getAttribute('data-cinder-state')).toBe('upcoming');
     expect(container.querySelector('.cinder-event-timeline__now')?.getAttribute('style')).toContain(
@@ -92,6 +98,32 @@ describe('EventTimeline', () => {
     expect(container.querySelector('.cinder-event-timeline__label')).toBeNull();
   });
 
+  test('renders trimmed visible labels consistently with the accessible name', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      label: '  Release window  ',
+      items: [{ at: '2026-07-03T06:00:00.000Z', label: 'Morning' }],
+    });
+
+    const el = container.querySelector('[role="list"]');
+    expect(el?.getAttribute('aria-label')).toBe('Release window');
+    expect(container.querySelector('.cinder-event-timeline__label')?.textContent).toBe(
+      'Release window',
+    );
+  });
+
+  test('hides now markers outside the displayed range', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      now: '2026-07-05T00:00:00.000Z',
+      items: [{ at: '2026-07-03T06:00:00.000Z', label: 'Morning' }],
+    });
+
+    expect(container.querySelector('.cinder-event-timeline__now')).toBeNull();
+  });
+
   test('uses time for timestamp text and stable keys for repeated events', () => {
     const { container } = render(EventTimeline, {
       start,
@@ -107,5 +139,44 @@ describe('EventTimeline', () => {
     expect(labels).toHaveLength(2);
     expect(timestamps).toHaveLength(2);
     expect(timestamps[0]?.getAttribute('datetime')).toBe('2026-07-03T06:00:00.000Z');
+  });
+
+  test('exposes fallback time and state text to assistive technology', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [{ at: '2026-07-03T06:00:00.000Z', label: 'Deploy', state: 'failed' }],
+    });
+
+    const item = container.querySelector('[role="listitem"]');
+    expect(item?.getAttribute('aria-label')).toBe('Deploy, 2026-07-03T06:00:00.000Z, Failed');
+    expect(container.querySelector('time.cinder-sr-only')?.getAttribute('datetime')).toBe(
+      '2026-07-03T06:00:00.000Z',
+    );
+    expect(container.querySelector('.cinder-sr-only:last-child')?.textContent).toBe('Failed');
+  });
+
+  test('marks edge events so CSS can align them inward', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: start, label: 'Start' },
+        { at: end, label: 'End' },
+      ],
+    });
+
+    const items = [...container.querySelectorAll('[role="listitem"]')];
+    expect(items[0]?.getAttribute('data-cinder-edge')).toBe('start');
+    expect(items[1]?.getAttribute('data-cinder-edge')).toBe('end');
+  });
+
+  test('CSS reserves lane height and keeps edge items inside bounds', () => {
+    expect(EVENT_TIMELINE_CSS).toContain('block-size: 6rem;');
+    expect(EVENT_TIMELINE_CSS).toContain("data-cinder-edge='start'");
+    expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(0);');
+    expect(EVENT_TIMELINE_CSS).toContain("data-cinder-edge='end'");
+    expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(-100%);');
+    expect(EVENT_TIMELINE_CSS).toContain('block-size: 5.25rem;');
   });
 });

@@ -70,6 +70,11 @@ type SourceMapStripResult = {
   strippedCount: number;
 };
 
+export type SourceMapReference = {
+  line: number;
+  reference: string;
+};
+
 /**
  * Read the source manifest. Throws if the file is missing.
  */
@@ -307,6 +312,24 @@ function isResolvableRelativeSourceMapReference(reference: string): boolean {
   return !/^[a-z]+:\/\//iu.test(reference);
 }
 
+export function getSourceMapReferences(content: string): SourceMapReference[] {
+  const references: SourceMapReference[] = [];
+  const lines = content.split('\n');
+  for (const [index, line] of lines.entries()) {
+    const lineCommentMatch = line.match(/^\s*\/\/[#@]\s*sourceMappingURL=([^\s]+)\s*$/u);
+    if (lineCommentMatch?.[1] && isResolvableRelativeSourceMapReference(lineCommentMatch[1])) {
+      references.push({ line: index + 1, reference: lineCommentMatch[1] });
+      continue;
+    }
+
+    const blockCommentMatch = line.match(/^\s*\/\*#\s*sourceMappingURL=([^*\s]+)\s*\*\/\s*$/u);
+    if (blockCommentMatch?.[1] && isResolvableRelativeSourceMapReference(blockCommentMatch[1])) {
+      references.push({ line: index + 1, reference: blockCommentMatch[1] });
+    }
+  }
+  return references;
+}
+
 export function stripDanglingSourceMapUrlComments(
   text: string,
   hasSourceMap: (reference: string) => boolean,
@@ -314,31 +337,17 @@ export function stripDanglingSourceMapUrlComments(
   let strippedCount = 0;
   const outputLines: string[] = [];
   const lines = text.split('\n');
-  for (const line of lines) {
-    const lineCommentMatch = line.match(/^\s*\/\/[#@]\s*sourceMappingURL=([^\s]+)\s*$/u);
-    if (lineCommentMatch) {
-      const reference = lineCommentMatch[1];
-      if (
-        reference &&
-        isResolvableRelativeSourceMapReference(reference) &&
-        !hasSourceMap(reference)
-      ) {
-        strippedCount += 1;
-        continue;
-      }
-    }
-
-    const blockCommentMatch = line.match(/^\s*\/\*#\s*sourceMappingURL=([^*\s]+)\s*\*\/\s*$/u);
-    if (blockCommentMatch) {
-      const reference = blockCommentMatch[1];
-      if (
-        reference &&
-        isResolvableRelativeSourceMapReference(reference) &&
-        !hasSourceMap(reference)
-      ) {
-        strippedCount += 1;
-        continue;
-      }
+  const sourceMapReferencesByLine = new Map(
+    getSourceMapReferences(text).map((sourceMapReference) => [
+      sourceMapReference.line,
+      sourceMapReference,
+    ]),
+  );
+  for (const [index, line] of lines.entries()) {
+    const sourceMapReference = sourceMapReferencesByLine.get(index + 1);
+    if (sourceMapReference && !hasSourceMap(sourceMapReference.reference)) {
+      strippedCount += 1;
+      continue;
     }
 
     outputLines.push(line);

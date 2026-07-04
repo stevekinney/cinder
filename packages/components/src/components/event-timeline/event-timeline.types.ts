@@ -6,7 +6,10 @@ export type EventTimelineSize = 'sm' | 'md';
 export type EventTimelineState = 'done' | 'upcoming' | 'failed';
 
 export type EventTimelineItem = {
-  /** Stable key for repeated items. Defaults to `${label}-${at}`. */
+  /**
+   * Stable key for repeated items. Defaults to `${label}-${atISOString}-${index}`;
+   * pass an `id` when items can reorder.
+   */
   id?: string;
   /** Event timestamp, accepted by the JavaScript Date constructor. */
   at: EventTimelineDate;
@@ -24,7 +27,7 @@ export type EventTimelineItem = {
  * @schemaObject
  */
 export type EventTimelineSchemaItem = {
-  /** Stable key for repeated items. */
+  /** Stable key for repeated items. Pass an `id` when items can reorder. */
   id?: string;
   /** Event timestamp, accepted by the JavaScript Date constructor. */
   at: EventTimelineSchemaDate;

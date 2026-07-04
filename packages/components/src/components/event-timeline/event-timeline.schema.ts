@@ -44,7 +44,7 @@ const schema = {
         properties: {
           id: {
             type: 'string',
-            description: 'Stable key for repeated items.',
+            description: 'Stable key for repeated items. Pass an `id` when items can reorder.',
           },
           at: {
             anyOf: [

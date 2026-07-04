@@ -18,7 +18,7 @@ import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specif
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { parseJsonFile } from './lib/read-json-file.ts';
-import { packForPublish } from './pack-for-publish.ts';
+import { getSourceMapReferences, packForPublish } from './pack-for-publish.ts';
 import { sveltePeerContract } from './validate-svelte-peer-contract.ts';
 import { isObjectRecord } from './validation-utilities.ts';
 
@@ -389,36 +389,6 @@ async function assertUpstreamReexportsResolveInTarball(extractedRoot: string): P
   }
 }
 
-type SourceMapReference = {
-  line: number;
-  reference: string;
-};
-
-function isResolvableRelativeSourceMapReference(reference: string): boolean {
-  if (!reference.endsWith('.map')) return false;
-  if (reference.startsWith('data:')) return false;
-  if (reference.startsWith('file:')) return false;
-  return !/^[a-z]+:\/\//iu.test(reference);
-}
-
-function getSourceMapReferences(content: string): SourceMapReference[] {
-  const references: SourceMapReference[] = [];
-  const lines = content.split('\n');
-  for (const [index, line] of lines.entries()) {
-    const lineCommentMatch = line.match(/^\s*\/\/[#@]\s*sourceMappingURL=([^\s]+)\s*$/u);
-    if (lineCommentMatch?.[1] && isResolvableRelativeSourceMapReference(lineCommentMatch[1])) {
-      references.push({ line: index + 1, reference: lineCommentMatch[1] });
-      continue;
-    }
-
-    const blockCommentMatch = line.match(/^\s*\/\*#\s*sourceMappingURL=([^*\s]+)\s*\*\/\s*$/u);
-    if (blockCommentMatch?.[1] && isResolvableRelativeSourceMapReference(blockCommentMatch[1])) {
-      references.push({ line: index + 1, reference: blockCommentMatch[1] });
-    }
-  }
-  return references;
-}
-
 async function assertNoDanglingSourceMapComments(extractedRoot: string): Promise<void> {
   const packageRoot = join(extractedRoot, 'package');
   const glob = new Glob('dist/**/*.{js,mjs,cjs}');
@@ -725,10 +695,7 @@ function injectTarballIntoFixture(
   return () => writeFileSync(manifestPath, originalContent);
 }
 
-async function runTypescriptConsumerSvelteGate(
-  fixtureDirectory: string,
-  label: string,
-): Promise<void> {
+function generateTypescriptConsumerProbe(fixtureDirectory: string, label: string): void {
   const generateResult = Bun.spawnSync([nodeBinaryPath, 'generate-probe.mjs'], {
     cwd: fixtureDirectory,
     env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
@@ -738,6 +705,13 @@ async function runTypescriptConsumerSvelteGate(
       `typescript-consumer ${label} generate-probe.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
     );
   }
+}
+
+async function runTypescriptConsumerSvelteGate(
+  fixtureDirectory: string,
+  label: string,
+): Promise<void> {
+  generateTypescriptConsumerProbe(fixtureDirectory, label);
 
   const tscResult = await $`bunx tsc --noEmit -p tsconfig.svelte.json`
     .cwd(fixtureDirectory)
@@ -781,12 +755,14 @@ async function runTypescriptConsumerNodenextGate(
   fixtureDirectory: string,
   label: string,
 ): Promise<void> {
+  generateTypescriptConsumerProbe(fixtureDirectory, label);
+
   const result = await $`bunx tsc --noEmit -p tsconfig.nodenext.json`
     .cwd(fixtureDirectory)
     .nothrow();
   if (result.exitCode !== 0) {
     fail(
-      `typescript-consumer ${label} gate 1 - nodenext (no svelte condition) failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
+      `typescript-consumer ${label} NodeNext without Svelte condition failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
     );
   }
 }
@@ -846,8 +822,8 @@ async function runTypescriptCompatibilityFixture(
         `typescript-consumer ${label} generate-probe.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
       );
     }
-    await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
     await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
+    await runTypescriptConsumerNodenextGate(fixtureDirectory, label);
     process.stdout.write(
       `[validate-consumers] typescript compatibility OK (${label}: ${typescriptVersion}).\n`,
     );
@@ -1085,6 +1061,27 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     // So the auto-CSS contract here is exactly "the component's own selectors
     // arrive", which is what proves the import pulled the sidecar.
 
+    const chatLayoutCss = await readRouteCssArtifacts(
+      fixtureDirectory,
+      'src/routes/chat-layout/+page.svelte',
+    );
+    const chatLayoutDeclarations: Array<[string, string, string]> = [
+      ['.chat-container', 'display', 'flex'],
+      ['.chat-container', 'flex-direction', 'column'],
+      ['.chat-container', 'height', '100%'],
+      ['.chat-container', 'min-height', '0'],
+      ['.chat-timeline', 'flex', '1'],
+      ['.chat-timeline', 'min-height', '0'],
+      ['.chat-timeline', 'overflow-y', 'auto'],
+    ];
+    for (const [selectorFragment, prop, value] of chatLayoutDeclarations) {
+      if (!hasDeclaration(chatLayoutCss, selectorFragment, prop, value)) {
+        fail(
+          `/chat-layout route CSS missing ${selectorFragment} { ${prop}: ${value} } — the exported Chat consumer build lost its internal scroll layout contract`,
+        );
+      }
+    }
+
     // Always-rendered components (not lazy-mount): their root class MUST appear in SSR HTML.
     // Modal, Dropdown, Tooltip are lazy-mount — they render only the trigger surface at open=false.
     const ALWAYS_RENDERED_CLASSES = [
@@ -1297,6 +1294,8 @@ type CssArtifact = {
   filePath: string;
   /** Selector strings encountered at the top level of the AST (or inside @layer). */
   selectors: string[];
+  /** Declarations grouped by selector. */
+  declarations: Array<{ selector: string; prop: string; value: string }>;
   /** Custom-property names declared anywhere in the file (e.g. `--cinder-button-bg`). */
   customProperties: string[];
 };
@@ -1374,14 +1373,20 @@ async function readRouteCssArtifacts(
     const source = await Bun.file(filePath).text();
     const root_ = parse(source, { from: filePath });
     const selectors: string[] = [];
+    const declarations: Array<{ selector: string; prop: string; value: string }> = [];
     const customProperties: string[] = [];
     root_.walkRules((rule) => {
       for (const selector of rule.selectors) selectors.push(selector);
+      rule.walkDecls((decl) => {
+        for (const selector of rule.selectors) {
+          declarations.push({ selector, prop: decl.prop, value: decl.value });
+        }
+      });
     });
     root_.walkDecls((decl) => {
       if (decl.prop.startsWith('--')) customProperties.push(decl.prop);
     });
-    artifacts.push({ filePath, selectors, customProperties });
+    artifacts.push({ filePath, selectors, declarations, customProperties });
   }
   return artifacts;
 }
@@ -1395,6 +1400,22 @@ function hasSelectorContaining(artifacts: CssArtifact[], fragment: string): bool
 function hasCustomPropertyStartingWith(artifacts: CssArtifact[], prefix: string): boolean {
   return artifacts.some((artifact) =>
     artifact.customProperties.some((property) => property.startsWith(prefix)),
+  );
+}
+
+function hasDeclaration(
+  artifacts: CssArtifact[],
+  selectorFragment: string,
+  prop: string,
+  value: string,
+): boolean {
+  return artifacts.some((artifact) =>
+    artifact.declarations.some(
+      (declaration) =>
+        declaration.selector.includes(selectorFragment) &&
+        declaration.prop === prop &&
+        declaration.value === value,
+    ),
   );
 }
 

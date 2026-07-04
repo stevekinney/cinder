@@ -31,11 +31,14 @@
   } from './event-timeline.types.ts';
 
   type PositionedEventTimelineItem = EventTimelineItem & {
+    accessibleLabel: string;
+    edge: 'end' | 'middle' | 'start';
     key: string;
     lane: number;
     position: number;
     isoDatetime: string;
     state: NonNullable<EventTimelineItem['state']>;
+    stateLabel: string;
   };
 
   let {
@@ -60,8 +63,20 @@
     return Math.max(0, Math.min(100, value));
   }
 
-  function keyForItem(item: EventTimelineItem, index: number): string {
-    return item.id ?? `${item.label}-${String(item.at)}-${index}`;
+  function stateLabelForItem(state: NonNullable<EventTimelineItem['state']>): string {
+    if (state === 'done') return 'Done';
+    if (state === 'failed') return 'Failed';
+    return 'Upcoming';
+  }
+
+  function keyForItem(item: EventTimelineItem, index: number, timestamp: number): string {
+    return item.id ?? `${item.label}-${new Date(timestamp).toISOString()}-${index}`;
+  }
+
+  function edgeForPosition(position: number): PositionedEventTimelineItem['edge'] {
+    if (position <= 0) return 'start';
+    if (position >= 100) return 'end';
+    return 'middle';
   }
 
   const range = $derived.by(() => {
@@ -103,13 +118,21 @@
         const lane = availableLane === -1 ? 2 : availableLane;
         lanePositions[lane] = position;
 
+        const isoDatetime = new Date(timestamp).toISOString();
+        const state = item.state ?? 'upcoming';
+        const stateLabel = stateLabelForItem(state);
+        const timeLabel = item.sublabel?.trim() || isoDatetime;
+
         return {
           ...item,
-          key: keyForItem(item, index),
+          accessibleLabel: `${item.label}, ${timeLabel}, ${stateLabel}`,
+          edge: edgeForPosition(position),
+          key: keyForItem(item, index, timestamp),
           lane,
           position,
-          isoDatetime: new Date(timestamp).toISOString(),
-          state: item.state ?? 'upcoming',
+          isoDatetime,
+          state,
+          stateLabel,
         };
       });
   });
@@ -117,7 +140,9 @@
   const nowPosition = $derived.by(() => {
     const timestamp = toTimestamp(now);
     if (timestamp === undefined) return undefined;
-    return clampPercent(((timestamp - range.startTimestamp) / range.duration) * 100);
+    const position = ((timestamp - range.startTimestamp) / range.duration) * 100;
+    if (position < 0 || position > 100) return undefined;
+    return position;
   });
 
   const normalizedLabel = $derived(label?.trim() || undefined);
@@ -127,7 +152,7 @@
 
 <div {...rest} class={classNames('cinder-event-timeline', customClassName)} data-cinder-size={size}>
   {#if normalizedLabel}
-    <div class="cinder-event-timeline__label">{label}</div>
+    <div class="cinder-event-timeline__label">{normalizedLabel}</div>
   {/if}
   <div class="cinder-event-timeline__axis" aria-hidden="true">
     {#if nowPosition !== undefined}
@@ -141,6 +166,8 @@
         role="listitem"
         data-cinder-state={item.state}
         data-cinder-lane={item.lane}
+        data-cinder-edge={item.edge}
+        aria-label={item.accessibleLabel}
         style:left="{item.position}%"
         style:--_cinder-event-timeline-lane={item.lane}
       >
@@ -151,7 +178,10 @@
             <time class="cinder-event-timeline__item-sublabel" datetime={item.isoDatetime}
               >{item.sublabel}</time
             >
+          {:else}
+            <time class="cinder-sr-only" datetime={item.isoDatetime}>{item.isoDatetime}</time>
           {/if}
+          <span class="cinder-sr-only">{item.stateLabel}</span>
         </span>
       </div>
     {/each}

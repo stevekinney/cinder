@@ -30,7 +30,7 @@ export async function createEditor(
   }
 
   const [
-    { Editor, rootCtx, defaultValueCtx, editorViewCtx },
+    { Editor, rootCtx, defaultValueCtx, editorViewCtx, editorViewOptionsCtx },
     { commonmark },
     { gfm },
     { history },
@@ -73,6 +73,8 @@ export async function createEditor(
     placeholderCompletion,
     placeholderDecoration,
   } = config;
+  const resolvedAriaLabel =
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel.trim() : undefined;
 
   // Track if we're updating from external source to prevent loops
   let isExternalUpdate = false;
@@ -85,6 +87,19 @@ export async function createEditor(
     .config((ctx) => {
       ctx.set(rootCtx, container);
       ctx.set(defaultValueCtx, initialContent);
+      if (resolvedAriaLabel) {
+        ctx.update(editorViewOptionsCtx, (previous) => {
+          const previousAttributes = previous.attributes;
+
+          return {
+            ...previous,
+            attributes:
+              typeof previousAttributes === 'function'
+                ? (state) => ({ ...previousAttributes(state), 'aria-label': resolvedAriaLabel })
+                : { ...previousAttributes, 'aria-label': resolvedAriaLabel },
+          };
+        });
+      }
     })
     .config((ctx) => {
       // Set up change listener
@@ -188,8 +203,8 @@ export async function createEditor(
   }
 
   // Apply aria-label to the ProseMirror DOM element (the element with role="textbox")
-  if (ariaLabel && view?.dom) {
-    view.dom.setAttribute('aria-label', ariaLabel);
+  if (resolvedAriaLabel && view?.dom) {
+    view.dom.setAttribute('aria-label', resolvedAriaLabel);
   }
 
   // Build the state object

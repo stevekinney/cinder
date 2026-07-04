@@ -9,6 +9,7 @@
 // Top-level Chat wrapper — the public component consumers import as
 // `@lostgradient/cinder/chat`. It composes the inner implementation in container/ with a
 // custom class-merge layer.
+import './chat.css';
 import Chat from './chat.svelte';
 
 export default Chat;

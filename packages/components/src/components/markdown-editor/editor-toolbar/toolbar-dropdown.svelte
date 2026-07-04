@@ -89,7 +89,7 @@
     border: none;
     border-radius: var(--cinder-radius-sm);
     background: transparent;
-    color: var(--cinder-text-muted);
+    color: var(--cinder-text);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     cursor: pointer;
