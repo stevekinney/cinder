@@ -12,7 +12,7 @@
   let mobileMenuOpen = $state(false);
 </script>
 
-<NavigationBar bind:mobileMenuOpen>
+<NavigationBar bind:mobileMenuOpen menuTogglePlacement="before-brand">
   {#snippet brand()}
     <strong>Acme</strong>
   {/snippet}

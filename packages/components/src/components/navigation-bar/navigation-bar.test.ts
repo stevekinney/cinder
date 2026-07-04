@@ -399,6 +399,48 @@ describe('NavigationBar', () => {
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
   });
 
+  test('menu toggle renders after the brand by default', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      brand: textSnippet('Acme'),
+      menuToggle: toggleSnippet(),
+    });
+    const nav = container.querySelector('nav');
+    const brand = container.querySelector('.cinder-navigation-bar__brand');
+    const toggle = container.querySelector('.cinder-navigation-bar__menu-toggle');
+
+    expect(nav?.getAttribute('data-cinder-menu-toggle-placement')).toBe('after-brand');
+    expect(brand?.nextElementSibling).toBe(toggle);
+  });
+
+  test('menu toggle can render before the brand', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      brand: textSnippet('Acme'),
+      menuToggle: toggleSnippet(),
+      menuTogglePlacement: 'before-brand',
+    });
+    const nav = container.querySelector('nav');
+    const brand = container.querySelector('.cinder-navigation-bar__brand');
+    const toggle = container.querySelector('.cinder-navigation-bar__menu-toggle');
+
+    expect(nav?.getAttribute('data-cinder-menu-toggle-placement')).toBe('before-brand');
+    expect(toggle?.nextElementSibling).toBe(brand);
+  });
+
+  test('menu toggle placement data attribute cannot be clobbered by rest props', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+      menuTogglePlacement: 'before-brand',
+      'data-cinder-menu-toggle-placement': 'after-brand',
+    } as any);
+
+    expect(container.querySelector('nav')?.getAttribute('data-cinder-menu-toggle-placement')).toBe(
+      'before-brand',
+    );
+  });
+
   test('menu toggle can hide a decorative glyph from assistive technology', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
@@ -727,5 +769,14 @@ describe('NavigationBar responsive CSS', () => {
     expect(navigationBarCss).toContain("[data-cinder-label-visibility='active']");
     expect(navigationBarCss).toContain('[data-cinder-navigation-label]');
     expect(existsSync(new URL('../bottom-navigation', import.meta.url))).toBe(false);
+  });
+
+  test('top-collapsible mobile active items use row selection instead of the horizontal underline', () => {
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar\[data-collapsible='true'\][\s\S]*?\.cinder-navigation-bar__items\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-bottom:\s*none;[\s\S]*?border-inline-start:\s*2px solid transparent;/,
+    );
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar\[data-collapsible='true'\][\s\S]*?\.cinder-navigation-bar__items\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\]\[data-active='true'\][\s\S]*?border-inline-start-color:\s*var\(--cinder-accent\);[\s\S]*?background-color:\s*var\(--cinder-surface-inset\);/,
+    );
   });
 });
