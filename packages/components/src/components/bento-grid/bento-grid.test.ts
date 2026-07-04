@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -11,7 +11,62 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: BentoGrid } = await import('./bento-grid.svelte');
-const { createRawSnippet } = await import('svelte');
+const { createRawSnippet, tick } = await import('svelte');
+
+class CapturingResizeObserver implements ResizeObserver {
+  static instances: CapturingResizeObserver[] = [];
+
+  readonly callback: ResizeObserverCallback;
+  observed: Element | undefined;
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+    CapturingResizeObserver.instances.push(this);
+  }
+
+  observe(target: Element, _options?: ResizeObserverOptions): void {
+    this.observed = target;
+  }
+
+  unobserve(_target: Element): void {}
+
+  disconnect(): void {}
+
+  trigger(width: number): void {
+    this.callback(
+      [
+        {
+          borderBoxSize: [{ inlineSize: width }],
+          contentRect: { width },
+          target: this.observed,
+        } as unknown as ResizeObserverEntry,
+      ],
+      this as unknown as ResizeObserver,
+    );
+  }
+}
+
+const originalResizeObserver = globalThis.ResizeObserver;
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: CapturingResizeObserver,
+    writable: true,
+  });
+});
+
+beforeEach(() => {
+  CapturingResizeObserver.instances = [];
+});
+
+afterAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: originalResizeObserver,
+    writable: true,
+  });
+});
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -47,6 +102,74 @@ describe('BentoGrid', () => {
     const root = container.querySelector('.cinder-bento-grid');
     expect(root?.classList.contains('custom-bento-grid')).toBe(true);
     expect(root?.getAttribute('data-testid')).toBe('bento-grid');
+  });
+
+  test('keeps the as element as the public grid element', () => {
+    const { container } = render(BentoGrid, {
+      props: {
+        as: 'ul',
+        style: 'align-items: start;',
+        children: createRawSnippet(() => ({
+          render: () => '<li class="cinder-bento-cell">Feature</li>',
+        })),
+      },
+    });
+
+    const root = container.querySelector('ul.cinder-bento-grid') as HTMLElement;
+    expect(root).not.toBeNull();
+    expect([...root.children].every((child) => child.tagName === 'LI')).toBe(true);
+    expect(root.style.alignItems).toBe('start');
+  });
+
+  test('marks narrow grids from the public grid element width', async () => {
+    const { container } = render(BentoGrid, {
+      props: { children: textSnippet('content') },
+    });
+    await tick();
+
+    const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
+    const observer = CapturingResizeObserver.instances[0];
+    expect(observer?.observed).toBe(root);
+    expect(root.hasAttribute('data-cinder-wide')).toBe(false);
+
+    observer?.trigger(640);
+    await tick();
+    expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
+    expect(root.hasAttribute('data-cinder-wide')).toBe(false);
+
+    observer?.trigger(1024);
+    await tick();
+    expect(root.hasAttribute('data-cinder-narrow')).toBe(false);
+    expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+  });
+
+  test('measures the public grid element before the first resize observer callback', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = () =>
+      ({
+        width: 640,
+        height: 0,
+        top: 0,
+        right: 640,
+        bottom: 0,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    try {
+      const { container } = render(BentoGrid, {
+        props: { children: textSnippet('content') },
+      });
+      await tick();
+
+      const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
+      expect(root.hasAttribute('data-cinder-wide')).toBe(false);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
   });
 
   test('omits inline custom properties when layout props are absent', () => {
@@ -131,10 +254,10 @@ describe('BentoGrid', () => {
     expect(typeof module.default.Cell).toBe('function');
   });
 
-  test('collapse CSS does not rely on a self-container query', () => {
+  test('collapse CSS uses measured narrow state without a viewport media query', () => {
     const css = readFileSync(new URL('./bento-grid.css', import.meta.url), 'utf8');
-    expect(css).toContain('@media (max-width: 48rem)');
-    expect(css).not.toContain('@container (max-width: 48rem)');
-    expect(css).not.toContain('container-type: inline-size');
+    expect(css).toContain('[data-cinder-collapse][data-cinder-narrow]');
+    expect(css).toContain('> .cinder-bento-cell');
+    expect(css).not.toMatch(/@media[^{]*(?:min-width|max-width)/);
   });
 });
