@@ -10,7 +10,7 @@ type ToolbarBaseProps = Omit<
 > & {
   /** Additional class merged with `.cinder-toolbar`. */
   class?: string;
-  /** Layout direction for roving-key ownership and separator placement. */
+  /** Layout direction for roving-key ownership and vertical group separator placement. */
   orientation?: ToolbarOrientation;
   /** Controls rendered inside the toolbar. */
   children: Snippet;
@@ -50,7 +50,7 @@ export type ToolbarSpacerProps = Omit<HTMLAttributes<HTMLDivElement>, 'aria-hidd
 /** Schema-facing Toolbar props. */
 export interface ToolbarSchemaProps {
   /**
-   * Layout direction for keyboard ownership and separator placement.
+   * Layout direction for keyboard ownership and vertical group separator placement.
    * @default "horizontal"
    */
   orientation?: ToolbarOrientation;

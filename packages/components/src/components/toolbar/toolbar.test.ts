@@ -9,6 +9,7 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
 const { default: Toolbar } = await import('./index.ts');
+const { default: ToolbarGroup } = await import('./toolbar-group.svelte');
 const { default: ToolbarSpacer } = await import('./toolbar-spacer.svelte');
 const { default: ToolbarCompositionFixture } =
   await import('../../test/fixtures/toolbar-composition-fixture.svelte');
@@ -381,6 +382,42 @@ describe('Toolbar', () => {
     expect(document.activeElement).toBe(buttons[1]!);
   });
 
+  test('Toolbar.Group exposes role group when it has an accessible name', () => {
+    render(ToolbarGroup, {
+      props: {
+        'aria-label': 'Order states',
+        children: rawSnippet('<button type="button">Place order</button>'),
+      } as never,
+    });
+
+    expect(screen.getByRole('group', { name: 'Order states' })).toBeTruthy();
+  });
+
+  test('Toolbar.Group omits empty accessible-name attributes', () => {
+    const { container } = render(ToolbarGroup, {
+      props: {
+        'aria-label': '',
+        children: rawSnippet('<button type="button">Place order</button>'),
+      } as never,
+    });
+
+    const group = container.querySelector('.cinder-toolbar__group');
+    expect(group?.hasAttribute('aria-label')).toBe(false);
+    expect(group?.hasAttribute('role')).toBe(false);
+  });
+
+  test('Toolbar.Group trims emitted accessible-name attributes', () => {
+    const { container } = render(ToolbarGroup, {
+      props: {
+        'aria-label': ' Order states ',
+        children: rawSnippet('<button type="button">Place order</button>'),
+      } as never,
+    });
+
+    const group = container.querySelector('.cinder-toolbar__group');
+    expect(group?.getAttribute('aria-label')).toBe('Order states');
+  });
+
   test('Toolbar.Spacer warns on invalid flex and falls back to one', async () => {
     const warnSpy = mock(() => {});
     const original = console.warn;
@@ -402,9 +439,18 @@ describe('Toolbar', () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
-  test('separator spacing relies on flex gap without extra separator margins', async () => {
+  test('separator spacing relies on flex gap without horizontal separators or extra margins', async () => {
     const styleSheet = await Bun.file(new URL('./toolbar.css', import.meta.url)).text();
 
+    expect(styleSheet).not.toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*>\s*\.cinder-toolbar__group\s*\+\s*\.cinder-toolbar__group::before/,
+    );
+    expect(styleSheet).not.toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*>\s*\.cinder-toolbar__group:has\(\+ \.cinder-toolbar__group\)::after/,
+    );
+    expect(styleSheet).toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='vertical'\]\s*>\s*\.cinder-toolbar__group\s*\+\s*\.cinder-toolbar__group::before/,
+    );
     expect(styleSheet).not.toContain('margin-inline-end: var(--cinder-space-2)');
     expect(styleSheet).not.toContain('margin-block-end: var(--cinder-space-2)');
   });
@@ -423,12 +469,20 @@ describe('Toolbar', () => {
 });
 
 describe('Toolbar responsive CSS', () => {
-  test('horizontal toolbars wrap through a component container query', () => {
+  test('horizontal toolbars wrap groups before the narrow container query wraps group contents', () => {
     expect(toolbarCss).toContain('container-name: cinder-toolbar;');
+    expect(toolbarCss).toMatch(/\.cinder-toolbar\s*\{[\s\S]*?flex-wrap:\s*nowrap;/);
+    expect(toolbarCss).toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s*\{[\s\S]*?flex-wrap:\s*wrap;/,
+    );
+    expect(toolbarCss).toMatch(/\.cinder-toolbar__group\s*\{[\s\S]*?flex-wrap:\s*nowrap;/);
+    expect(toolbarCss).toMatch(
+      /\.cinder-toolbar\[data-cinder-orientation='horizontal'\][\s\S]*?> \.cinder-toolbar__spacer[\s\S]*?\+ \.cinder-toolbar__group[\s\S]*?margin-inline-start:\s*auto;/,
+    );
     expect(toolbarCss).toContain('@container cinder-toolbar (max-width: 30rem)');
     expect(toolbarCss).not.toContain('@media (max-width: 30rem)');
     expect(toolbarCss).toMatch(
-      /@container cinder-toolbar \(max-width: 30rem\)[\s\S]*?\.cinder-toolbar\[data-cinder-orientation='horizontal'\][\s\S]*?flex-wrap:\s*wrap;/,
+      /@container cinder-toolbar \(max-width: 30rem\)[\s\S]*?\.cinder-toolbar\[data-cinder-orientation='horizontal'\]\s+\.cinder-toolbar__group[\s\S]*?flex-wrap:\s*wrap;/,
     );
   });
 });

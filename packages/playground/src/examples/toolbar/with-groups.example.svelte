@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export const title = 'Toolbar with groups';
-  export const description = 'Adjacent groups draw their own separators without manual dividers.';
+  export const description =
+    'Adjacent groups keep related controls together while the toolbar wraps.';
 </script>
 
 <script lang="ts">
