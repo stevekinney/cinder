@@ -217,7 +217,7 @@ describe('ApprovalCard', () => {
     const onremember = mock();
     const oncancel = mock();
 
-    const { container, getByRole, queryByRole } = render(ApprovalCard, {
+    const { container, getByRole, queryByLabelText, queryByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         editableArgs: false,
         onapprove,
@@ -233,6 +233,8 @@ describe('ApprovalCard', () => {
     expect(container.textContent).toContain('workspace-write');
     expect(container.textContent).toContain('policy-2026-06');
     expect(queryByRole('button', { name: 'Approve with edits' })).toBeNull();
+    expect(queryByLabelText('Resolution reason')).toBeNull();
+    expect(queryByRole('checkbox', { name: 'Remember this approval boundary' })).toBeNull();
 
     await fireEvent.click(getByRole('button', { name: 'Approve' }));
     await fireEvent.click(getByRole('button', { name: 'Deny' }));
@@ -266,6 +268,137 @@ describe('ApprovalCard', () => {
 
     expect(onapprove).toHaveBeenCalledTimes(1);
     expect(ondeny).toHaveBeenCalledTimes(1);
+  });
+
+  test('emits a complete approval resolution when approving as presented', async () => {
+    const onresolve = mock();
+
+    const { getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({ editableArgs: false, onresolve }),
+    });
+
+    const rememberCheckbox = getByRole('checkbox', {
+      name: 'Remember this approval boundary',
+    }) as HTMLInputElement;
+
+    await fireEvent.click(rememberCheckbox);
+    await fireEvent.click(getByRole('button', { name: 'Approve' }));
+
+    expect(onresolve).toHaveBeenCalledWith({
+      decision: 'approve',
+      remember: true,
+    });
+  });
+
+  test('emits edited arguments through the complete approval resolution', async () => {
+    const onresolve = mock();
+
+    const { getByLabelText, getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({ editableArgs: true, onresolve }),
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Approve with edits' }));
+    await fireEvent.input(getByLabelText('Edited arguments JSON'), {
+      target: {
+        value: JSON.stringify({ dryRun: true, retries: 2 }, null, 2),
+      },
+    });
+    await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
+
+    expect(onresolve).toHaveBeenCalledWith({
+      decision: 'approve_with_edits',
+      editedArgs: { dryRun: true, retries: 2 },
+      remember: false,
+    });
+  });
+
+  test('emits reason text and remember state when denying', async () => {
+    const onresolve = mock();
+
+    const { getByLabelText, getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({ editableArgs: false, onresolve }),
+    });
+
+    await fireEvent.input(getByLabelText('Resolution reason'), {
+      target: { value: 'Outside the deployment window.' },
+    });
+    await fireEvent.click(
+      getByRole('checkbox', {
+        name: 'Remember this approval boundary',
+      }),
+    );
+    await fireEvent.click(getByRole('button', { name: 'Deny' }));
+
+    expect(onresolve).toHaveBeenCalledWith({
+      decision: 'deny',
+      reason: 'Outside the deployment window.',
+      remember: true,
+    });
+  });
+
+  test('emits reason text and remember state when cancelling', async () => {
+    const onresolve = mock();
+
+    const { getByLabelText, getByRole } = render(ApprovalCard, {
+      ...approvalCardProps({ editableArgs: false, onresolve }),
+    });
+
+    await fireEvent.input(getByLabelText('Resolution reason'), {
+      target: { value: 'Need more context before deciding.' },
+    });
+    await fireEvent.click(
+      getByRole('checkbox', {
+        name: 'Remember this approval boundary',
+      }),
+    );
+    await fireEvent.click(getByRole('button', { name: 'Cancel' }));
+
+    expect(onresolve).toHaveBeenCalledWith({
+      decision: 'cancel',
+      reason: 'Need more context before deciding.',
+      remember: true,
+    });
+  });
+
+  test('resets resolution reason and remember state when the approval request changes', async () => {
+    const onresolve = mock();
+    const view = render(ApprovalCard, {
+      ...approvalCardProps({
+        onresolve,
+        idempotencyKey: 'approval-one',
+      }),
+    });
+
+    await fireEvent.input(view.getByLabelText('Resolution reason'), {
+      target: { value: 'Applies only to the first approval.' },
+    });
+    await fireEvent.click(
+      view.getByRole('checkbox', {
+        name: 'Remember this approval boundary',
+      }),
+    );
+
+    await view.rerender({
+      ...approvalCardProps({
+        onresolve,
+        idempotencyKey: 'approval-two',
+      }),
+    });
+
+    expect((view.getByLabelText('Resolution reason') as HTMLTextAreaElement).value).toBe('');
+    expect(
+      (
+        view.getByRole('checkbox', {
+          name: 'Remember this approval boundary',
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(false);
+
+    await fireEvent.click(view.getByRole('button', { name: 'Approve' }));
+    expect(onresolve).toHaveBeenCalledWith({
+      decision: 'approve',
+      remember: false,
+    });
   });
 
   test('renders five pending actions when editable arguments are enabled', () => {

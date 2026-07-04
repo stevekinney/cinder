@@ -171,6 +171,12 @@
     gap: var(--cinder-space-3);
   }
 
+  .cinder-approval-card__resolution-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+  }
+
   .cinder-approval-card__editor {
     display: flex;
     flex-direction: column;
@@ -199,7 +205,30 @@
     font-size: var(--cinder-text-sm);
   }
 
+  .cinder-approval-card__textarea--reason {
+    min-block-size: 5rem;
+    font-family: var(--cinder-font-sans);
+  }
+
   .cinder-approval-card__textarea:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .cinder-approval-card__remember-control {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .cinder-approval-card__remember-control input {
+    margin: 0;
+    accent-color: var(--cinder-accent);
+  }
+
+  .cinder-approval-card__remember-control input:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
@@ -231,7 +260,8 @@
   }
 
   @media (forced-colors: active) {
-    .cinder-approval-card__textarea:focus-visible {
+    .cinder-approval-card__textarea:focus-visible,
+    .cinder-approval-card__remember-control input:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
       box-shadow: none;
     }

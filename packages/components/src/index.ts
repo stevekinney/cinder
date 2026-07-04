@@ -20,6 +20,8 @@ export type {
   ApprovalCardSchemaProps,
   ApprovalOperation,
   ApprovalOperationKind,
+  ApprovalResolution,
+  ApprovalResolutionDecision,
   ApprovalSandbox,
   ApprovalState,
   ApprovalTool,
