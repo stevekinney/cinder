@@ -21,6 +21,6 @@ Toolbar does not require child registration APIs. It manages native focusable de
 
 ## Groups
 
-`Toolbar.Group` is layout-only unless it has an accessible name. It clusters related controls, keeps them together while horizontal toolbars wrap, and gets `role="group"` when named with `aria-label` or `aria-labelledby`.
+`Toolbar.Group` is layout-only unless it has an accessible name or explicit `role`. It clusters related controls, keeps them together while horizontal toolbars wrap, and gets `role="group"` when named with `aria-label` or `aria-labelledby`.
 
 `Toolbar.Spacer` is `aria-hidden="true"` and never becomes a toolbar item.

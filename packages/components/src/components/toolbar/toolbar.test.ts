@@ -406,6 +406,18 @@ describe('Toolbar', () => {
     expect(group?.hasAttribute('role')).toBe(false);
   });
 
+  test('Toolbar.Group trims emitted accessible-name attributes', () => {
+    const { container } = render(ToolbarGroup, {
+      props: {
+        'aria-label': ' Order states ',
+        children: rawSnippet('<button type="button">Place order</button>'),
+      } as never,
+    });
+
+    const group = container.querySelector('.cinder-toolbar__group');
+    expect(group?.getAttribute('aria-label')).toBe('Order states');
+  });
+
   test('Toolbar.Spacer warns on invalid flex and falls back to one', async () => {
     const warnSpy = mock(() => {});
     const original = console.warn;

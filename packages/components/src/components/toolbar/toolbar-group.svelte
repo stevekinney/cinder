@@ -23,12 +23,12 @@
 
   const normalizedAriaLabel = $derived(
     typeof rest['aria-label'] === 'string' && rest['aria-label'].trim().length > 0
-      ? rest['aria-label']
+      ? rest['aria-label'].trim()
       : undefined,
   );
   const normalizedAriaLabelledBy = $derived(
     typeof rest['aria-labelledby'] === 'string' && rest['aria-labelledby'].trim().length > 0
-      ? rest['aria-labelledby']
+      ? rest['aria-labelledby'].trim()
       : undefined,
   );
   const hasAccessibleName = $derived(Boolean(normalizedAriaLabel || normalizedAriaLabelledBy));
