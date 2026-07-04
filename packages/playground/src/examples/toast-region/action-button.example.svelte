@@ -5,9 +5,8 @@
 </script>
 
 <script lang="ts">
-  import { useToast } from '@lostgradient/cinder';
   import { Button } from '@lostgradient/cinder/button';
-  import { ToastRegion } from '@lostgradient/cinder/toast-region';
+  import { ToastRegion, useToast } from '@lostgradient/cinder/toast-region';
   let undoCount = $state(0);
   let pauseCount = $state(0);
 </script>
