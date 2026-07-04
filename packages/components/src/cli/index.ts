@@ -93,6 +93,10 @@ type CommandResult = {
 async function runParsedCommand(parsed: ParsedCommand): Promise<CommandResult> {
   if (parsed.help || parsed.command === 'help' || parsed.command === '--help') {
     const text = formatHelp();
+    if (parsed.json) {
+      const knowledge = await loadCinderKnowledge();
+      return { command: 'help', data: { usage: text }, text, package: knowledge.package };
+    }
     return { command: 'help', data: { usage: text }, text };
   }
 
@@ -162,12 +166,13 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
     if (result.text.length > 0) {
       let output = result.text;
       if (parsed.json) {
-        let packageSummary = result.package;
-        if (!packageSummary) {
-          const knowledge = await loadCinderKnowledge();
-          packageSummary = knowledge.package;
+        if (!result.package) {
+          throw new CinderKnowledgeError(
+            'PACKAGE_UNAVAILABLE',
+            'Package metadata was not available for JSON output.',
+          );
         }
-        output = jsonEnvelope(packageSummary, result.command, result.data);
+        output = jsonEnvelope(result.package, result.command, result.data);
       }
       process.stdout.write(`${output}\n`);
     }
