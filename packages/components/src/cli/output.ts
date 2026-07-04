@@ -78,6 +78,8 @@ export function formatSearch(results: SearchResult[]): string {
 
 export function formatDetail(detail: ComponentDetail): string {
   const { component, overlapFamilies } = detail;
+  const useWhen =
+    component.useWhen.length > 0 ? bulletList(component.useWhen) : ['  No guidance listed.'];
   const lines = [
     `${component.name} (${component.id})`,
     component.purpose,
@@ -89,7 +91,7 @@ export function formatDetail(detail: ComponentDetail): string {
     `Overlap families: ${overlapFamilies.join(', ') || 'none'}`,
     '',
     'Use when:',
-    ...bulletList(component.useWhen),
+    ...useWhen,
     ...formatAvoidWhen({
       ...component,
       overlapFamilies,
@@ -139,7 +141,7 @@ export function formatHelp(): string {
     '',
     'Usage:',
     '  cinder list [--category <id>] [--status <level>] [--tag <tag>] [--json]',
-    '  cinder search <query> [--category <id>] [--status <level>] [--limit <n>] [--json]',
+    '  cinder search <query> [--category <id>] [--status <level>] [--tag <tag>] [--limit <n>] [--json]',
     '  cinder show <component-id> [--json]',
     '  cinder compare <component-id>... [--json]',
     '  cinder best-practices [imports|styles|metadata|overlap|all] [--json]',

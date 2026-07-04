@@ -16,6 +16,7 @@ import {
   CinderKnowledgeError,
   type BestPracticeTopic,
   type ListOptions,
+  type PackageSummary,
   type SearchOptions,
 } from './types.ts';
 
@@ -82,11 +83,17 @@ export function parseCommand(argv: string[]): ParsedCommand {
   };
 }
 
-async function runParsedCommand(
-  parsed: ParsedCommand,
-): Promise<{ command: string; data: unknown; text: string }> {
+type CommandResult = {
+  command: string;
+  data: unknown;
+  text: string;
+  package?: PackageSummary;
+};
+
+async function runParsedCommand(parsed: ParsedCommand): Promise<CommandResult> {
   if (parsed.help || parsed.command === 'help' || parsed.command === '--help') {
-    return { command: 'help', data: { usage: formatHelp() }, text: formatHelp() };
+    const text = formatHelp();
+    return { command: 'help', data: { usage: text }, text };
   }
 
   if (parsed.command === 'mcp') {
@@ -99,22 +106,22 @@ async function runParsedCommand(
   switch (parsed.command) {
     case 'list': {
       const data = knowledge.list(parsed.listOptions);
-      return { command: 'list', data, text: formatList(data) };
+      return { command: 'list', data, text: formatList(data), package: knowledge.package };
     }
     case 'search': {
       const query = parsed.positionals.join(' ');
       const data = knowledge.search(query, parsed.searchOptions);
-      return { command: 'search', data, text: formatSearch(data) };
+      return { command: 'search', data, text: formatSearch(data), package: knowledge.package };
     }
     case 'show': {
       const id = parsed.positionals[0];
       if (!id) throw new CinderKnowledgeError('MISSING_COMPONENT', 'show requires a component id.');
       const data = await knowledge.show(id);
-      return { command: 'show', data, text: formatDetail(data) };
+      return { command: 'show', data, text: formatDetail(data), package: knowledge.package };
     }
     case 'compare': {
       const data = knowledge.compare(parsed.positionals);
-      return { command: 'compare', data, text: formatComparison(data) };
+      return { command: 'compare', data, text: formatComparison(data), package: knowledge.package };
     }
     case 'best-practices': {
       const topic = parsed.positionals[0] ?? 'all';
@@ -128,7 +135,12 @@ async function runParsedCommand(
         ]);
       }
       const data = knowledge.bestPractices(topic);
-      return { command: 'best-practices', data, text: formatBestPractices(data) };
+      return {
+        command: 'best-practices',
+        data,
+        text: formatBestPractices(data),
+        package: knowledge.package,
+      };
     }
     default:
       throw new CinderKnowledgeError('UNKNOWN_COMMAND', `Unknown command "${parsed.command}".`, [
@@ -150,8 +162,12 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
     if (result.text.length > 0) {
       let output = result.text;
       if (parsed.json) {
-        const knowledge = await loadCinderKnowledge();
-        output = jsonEnvelope(knowledge.package, result.command, result.data);
+        let packageSummary = result.package;
+        if (!packageSummary) {
+          const knowledge = await loadCinderKnowledge();
+          packageSummary = knowledge.package;
+        }
+        output = jsonEnvelope(packageSummary, result.command, result.data);
       }
       process.stdout.write(`${output}\n`);
     }
