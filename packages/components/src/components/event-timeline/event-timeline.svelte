@@ -30,7 +30,7 @@
     EventTimelineProps,
   } from './event-timeline.types.ts';
 
-  type PositionedEventTimelineItem = EventTimelineItem & {
+  type PositionedEventTimelineItem = Omit<EventTimelineItem, 'sublabel'> & {
     accessibleLabel: string;
     edge: 'end' | 'middle' | 'start';
     key: string;
@@ -39,6 +39,7 @@
     isoDatetime: string;
     state: NonNullable<EventTimelineItem['state']>;
     stateLabel: string;
+    sublabel: string | undefined;
   };
 
   let {
@@ -121,7 +122,8 @@
         const isoDatetime = new Date(timestamp).toISOString();
         const state = item.state ?? 'upcoming';
         const stateLabel = stateLabelForItem(state);
-        const timeLabel = item.sublabel?.trim() || isoDatetime;
+        const sublabel = item.sublabel?.trim() || undefined;
+        const timeLabel = sublabel ?? isoDatetime;
 
         return {
           ...item,
@@ -133,6 +135,7 @@
           isoDatetime,
           state,
           stateLabel,
+          sublabel,
         };
       });
   });

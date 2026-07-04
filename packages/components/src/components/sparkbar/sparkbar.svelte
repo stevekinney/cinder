@@ -38,7 +38,9 @@
   );
   const percent = $derived(Math.round((clampedValue / effectiveMax) * 100));
   const normalizedAriaLabel = $derived(ariaLabel?.trim() || undefined);
+  const normalizedTrailing = $derived(trailing?.trim() || undefined);
   const accessibleName = $derived(normalizedAriaLabel ?? `${label}, ${percent}%`);
+  const accessibleValueText = $derived(normalizedTrailing ?? `${percent}%`);
 </script>
 
 <div
@@ -49,14 +51,14 @@
   aria-valuemin={0}
   aria-valuemax={effectiveMax}
   aria-valuenow={clampedValue}
-  aria-valuetext={`${percent}%`}
+  aria-valuetext={accessibleValueText}
   data-cinder-size={size}
   data-cinder-variant={variant}
 >
   <div class="cinder-sparkbar__row">
     <span class="cinder-sparkbar__label">{label}</span>
-    {#if trailing}
-      <span class="cinder-sparkbar__trailing">{trailing}</span>
+    {#if normalizedTrailing}
+      <span class="cinder-sparkbar__trailing">{normalizedTrailing}</span>
     {/if}
   </div>
   <div class="cinder-sparkbar__track" aria-hidden="true">

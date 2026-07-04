@@ -3,7 +3,6 @@
 
 @layer cinder.components {
   .cinder-bento-grid {
-    container-type: inline-size;
     display: grid;
     grid-template-columns: var(--cinder-bento-grid-columns, repeat(4, minmax(0, 1fr)));
     row-gap: var(--cinder-bento-grid-row-gap, var(--cinder-space-4));

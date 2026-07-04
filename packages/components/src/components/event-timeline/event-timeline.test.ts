@@ -156,6 +156,27 @@ describe('EventTimeline', () => {
     expect(container.querySelector('.cinder-sr-only:last-child')?.textContent).toBe('Failed');
   });
 
+  test('trims sublabels before rendering visual time text', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T06:00:00.000Z', label: 'Deploy', sublabel: '  06:00  ' },
+        { at: '2026-07-03T07:00:00.000Z', label: 'Verify', sublabel: '   ' },
+      ],
+    });
+
+    const visibleTimes = [
+      ...container.querySelectorAll('time.cinder-event-timeline__item-sublabel'),
+    ];
+    expect(visibleTimes).toHaveLength(1);
+    expect(visibleTimes[0]?.textContent).toBe('06:00');
+    expect(container.querySelectorAll('time.cinder-sr-only')).toHaveLength(1);
+    expect(container.querySelectorAll('[role="listitem"]')[1]?.getAttribute('aria-label')).toBe(
+      'Verify, 2026-07-03T07:00:00.000Z, Upcoming',
+    );
+  });
+
   test('marks edge events so CSS can align them inward', () => {
     const { container } = render(EventTimeline, {
       start,

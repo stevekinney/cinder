@@ -135,5 +135,6 @@ describe('BentoGrid', () => {
     const css = readFileSync(new URL('./bento-grid.css', import.meta.url), 'utf8');
     expect(css).toContain('@media (max-width: 48rem)');
     expect(css).not.toContain('@container (max-width: 48rem)');
+    expect(css).not.toContain('container-type: inline-size');
   });
 });

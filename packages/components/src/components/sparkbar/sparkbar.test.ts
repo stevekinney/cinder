@@ -22,7 +22,7 @@ describe('Sparkbar', () => {
     expect(el?.getAttribute('aria-valuemin')).toBe('0');
     expect(el?.getAttribute('aria-valuemax')).toBe('1');
     expect(el?.getAttribute('aria-valuenow')).toBe('0.31');
-    expect(el?.getAttribute('aria-valuetext')).toBe('31%');
+    expect(el?.getAttribute('aria-valuetext')).toBe('$0.31');
     expect(el?.textContent).toContain('Draft weekly changelog');
     expect(el?.textContent).toContain('$0.31');
   });
@@ -38,6 +38,19 @@ describe('Sparkbar', () => {
     expect(el?.getAttribute('aria-valuemax')).toBe('10');
     expect(el?.getAttribute('aria-valuenow')).toBe('10');
     expect(el?.getAttribute('aria-valuetext')).toBe('100%');
+  });
+
+  test('falls back to percentage value text for blank trailing values', () => {
+    const { container } = render(Sparkbar, {
+      value: 4,
+      max: 8,
+      label: 'Token budget',
+      trailing: '   ',
+    });
+
+    const el = container.querySelector('[role="meter"]');
+    expect(el?.getAttribute('aria-valuetext')).toBe('50%');
+    expect(container.querySelector('.cinder-sparkbar__trailing')).toBeNull();
   });
 
   test('forwards size, variant, class, and accessible name override', () => {
