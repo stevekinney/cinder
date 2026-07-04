@@ -10,6 +10,18 @@
       "code": "<script lang=\"ts\">\n  import { Pagination } from '@lostgradient/cinder/pagination';\n  let currentPage = $state(1);\n</script>\n\n<Pagination bind:currentPage totalPages={10} />\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">Page {currentPage} of 10</p>\n"
     },
     {
+      "id": "cursor",
+      "title": "Cursor pagination",
+      "description": "Use page-local cursor metadata when an API exposes previous and next cursors instead of totals.",
+      "code": "<script lang=\"ts\">\n  import { Pagination } from '@lostgradient/cinder/pagination';\n\n  type CursorPage = {\n    page: number;\n    previousCursor?: string;\n    nextCursor?: string;\n  };\n\n  let currentPage = $state(1);\n\n  const pages: [CursorPage, ...CursorPage[]] = [\n    { page: 1, nextCursor: 'cursor-page-2' },\n    { page: 2, previousCursor: 'cursor-page-1', nextCursor: 'cursor-page-3' },\n    { page: 3, previousCursor: 'cursor-page-2' },\n  ];\n\n  const current = $derived(pages.find((page) => page.page === currentPage) ?? pages[0]);\n</script>\n\n<Pagination\n  bind:currentPage\n  hasPreviousPage={current.previousCursor !== undefined}\n  hasNextPage={current.nextCursor !== undefined}\n/>\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">\n  Page {current.page}\n</p>\n"
+    },
+    {
+      "id": "rest-link-header",
+      "title": "REST Link-header pagination",
+      "description": "Drive previous and next buttons from parsed REST Link headers without a total page count.",
+      "code": "<script lang=\"ts\">\n  import { Pagination } from '@lostgradient/cinder/pagination';\n\n  let currentPage = $state(1);\n\n  const linkHeaders: Record<number, string> = {\n    1: '<https://api.example.test/issues?page=2>; rel=\"next\"',\n    2: '<https://api.example.test/issues?page=1>; rel=\"prev\", <https://api.example.test/issues?page=3>; rel=\"next\"',\n    3: '<https://api.example.test/issues?page=2>; rel=\"prev\"',\n  };\n\n  const links = $derived(parseLinkHeader(linkHeaders[currentPage] ?? ''));\n\n  function parseLinkHeader(header: string): Record<string, string> {\n    return Object.fromEntries(\n      header\n        .split(',')\n        .map((entry) => entry.match(/<([^>]+)>;\\s*rel=\"([^\"]+)\"/))\n        .filter((match): match is RegExpMatchArray => match !== null)\n        .map((match) => [match[2], match[1]]),\n    );\n  }\n</script>\n\n<Pagination\n  bind:currentPage\n  hasPreviousPage={links['prev'] !== undefined}\n  hasNextPage={links['next'] !== undefined}\n/>\n<p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">\n  Page {currentPage}\n</p>\n"
+    },
+    {
       "id": "with-total",
       "title": "Pagination with total count",
       "description": "totalCount prop shows formatted record count.",

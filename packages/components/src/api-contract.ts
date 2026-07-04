@@ -414,7 +414,9 @@ export const CONTRACT: Record<string, ComponentContract> = {
     kind: 'literal',
     props: {
       currentPage: { optional: false, type_kind: 'TSNumberKeyword', default: B(1) },
-      totalPages: { optional: false, type_kind: 'TSNumberKeyword', default: REQUIRED },
+      totalPages: { optional: true, type_kind: 'TSNumberKeyword', default: NO_DEFAULT },
+      hasPreviousPage: { optional: true, type_kind: 'TSBooleanKeyword', default: NO_DEFAULT },
+      hasNextPage: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
       totalCount: { optional: true, type_kind: 'TSNumberKeyword', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
