@@ -23,6 +23,8 @@
   let {
     currentPage = $bindable(1),
     totalPages,
+    hasPreviousPage,
+    hasNextPage,
     totalCount,
     class: customClassName,
     ...rest
@@ -30,8 +32,12 @@
 
   const mergedClassName = $derived(classNames('cinder-pagination', customClassName));
 
-  const canGoPrevious = $derived(currentPage > 1);
-  const canGoNext = $derived(currentPage < totalPages);
+  const canGoPrevious = $derived(
+    totalPages === undefined ? (hasPreviousPage ?? currentPage > 1) : currentPage > 1,
+  );
+  const canGoNext = $derived(
+    totalPages === undefined ? (hasNextPage ?? false) : currentPage < totalPages,
+  );
 
   /**
    * Build the list of page items to render.
@@ -43,6 +49,7 @@
   type PageItem = number | 'ellipsis-start' | 'ellipsis-end';
 
   const pageItems = $derived.by((): PageItem[] => {
+    if (totalPages === undefined) return [currentPage];
     if (totalPages <= 1) return [];
 
     // For small ranges, show every page.
@@ -90,7 +97,7 @@
   });
 
   function goToPage(page: number): void {
-    if (page < 1 || page > totalPages || page === currentPage) return;
+    if (page < 1 || (totalPages !== undefined && page > totalPages) || page === currentPage) return;
     currentPage = page;
   }
 </script>

@@ -10,7 +10,17 @@ const schema = {
     },
     totalPages: {
       type: 'number',
-      description: 'Total number of pages.',
+      description: 'Total number of pages. Omit when only previous/next availability is known.',
+    },
+    hasPreviousPage: {
+      type: 'boolean',
+      description:
+        'Whether a previous page is available when totalPages is unknown. Defaults to currentPage > 1.',
+    },
+    hasNextPage: {
+      type: 'boolean',
+      description:
+        'Whether a next page is available when totalPages is unknown. Defaults to false.',
     },
     totalCount: {
       type: 'number',
@@ -22,7 +32,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['currentPage', 'totalPages'],
+  required: ['currentPage'],
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

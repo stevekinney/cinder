@@ -184,4 +184,126 @@ describe('Pagination', () => {
     const nav = container.querySelector('nav');
     expect(nav?.getAttribute('aria-label')).toBe('Search results pages');
   });
+
+  test('unknown total first page disables previous and enables next when provided', async () => {
+    let currentPage = 1;
+    const { container } = render(Pagination, {
+      props: {
+        get currentPage() {
+          return currentPage;
+        },
+        set currentPage(value: number) {
+          currentPage = value;
+        },
+        hasPreviousPage: false,
+        hasNextPage: true,
+      },
+    });
+
+    const previousButton = container.querySelector(
+      'button[aria-label="Go to previous page"]',
+    ) as HTMLButtonElement;
+    const nextButton = container.querySelector(
+      'button[aria-label="Go to next page"]',
+    ) as HTMLButtonElement;
+    const currentPageIndicator = container.querySelector('[aria-current="page"]');
+
+    expect(previousButton.hasAttribute('disabled')).toBe(true);
+    expect(nextButton.hasAttribute('disabled')).toBe(false);
+    expect(currentPageIndicator?.textContent?.trim()).toBe('1');
+
+    await fireEvent.click(nextButton);
+    expect(currentPage).toBe(2);
+  });
+
+  test('unknown total middle page enables previous and next', async () => {
+    let currentPage = 4;
+    const { container } = render(Pagination, {
+      props: {
+        get currentPage() {
+          return currentPage;
+        },
+        set currentPage(value: number) {
+          currentPage = value;
+        },
+        hasPreviousPage: true,
+        hasNextPage: true,
+      },
+    });
+
+    const previousButton = container.querySelector(
+      'button[aria-label="Go to previous page"]',
+    ) as HTMLButtonElement;
+    const nextButton = container.querySelector(
+      'button[aria-label="Go to next page"]',
+    ) as HTMLButtonElement;
+
+    expect(previousButton.hasAttribute('disabled')).toBe(false);
+    expect(nextButton.hasAttribute('disabled')).toBe(false);
+
+    await fireEvent.click(previousButton);
+    expect(currentPage).toBe(3);
+  });
+
+  test('unknown total last-known page disables next without requiring a final page number', () => {
+    const { container } = render(Pagination, {
+      props: {
+        currentPage: 7,
+        hasPreviousPage: true,
+        hasNextPage: false,
+      },
+    });
+
+    const nextButton = container.querySelector('button[aria-label="Go to next page"]');
+    const pageButtons = container.querySelectorAll('.cinder-pagination__page');
+
+    expect(nextButton?.hasAttribute('disabled')).toBe(true);
+    expect(pageButtons.length).toBe(1);
+    expect(pageButtons[0]?.textContent?.trim()).toBe('7');
+    expect(container.textContent).not.toContain('of');
+  });
+
+  test('unknown total keeps next disabled when next-page availability is unknown', async () => {
+    let currentPage = 3;
+    const { container } = render(Pagination, {
+      props: {
+        get currentPage() {
+          return currentPage;
+        },
+        set currentPage(value: number) {
+          currentPage = value;
+        },
+        hasPreviousPage: true,
+      },
+    });
+
+    const nextButton = container.querySelector(
+      'button[aria-label="Go to next page"]',
+    ) as HTMLButtonElement;
+
+    expect(nextButton.hasAttribute('disabled')).toBe(true);
+    await fireEvent.click(nextButton);
+    expect(currentPage).toBe(3);
+  });
+
+  test('known total behavior ignores direction flags and keeps numbered pages', () => {
+    const { container } = render(Pagination, {
+      props: {
+        currentPage: 3,
+        totalPages: 5,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+    });
+
+    const previousButton = container.querySelector('button[aria-label="Go to previous page"]');
+    const nextButton = container.querySelector('button[aria-label="Go to next page"]');
+    const pageButtons = Array.from(container.querySelectorAll('.cinder-pagination__page')).map(
+      (button) => button.textContent?.trim(),
+    );
+
+    expect(previousButton?.hasAttribute('disabled')).toBe(false);
+    expect(nextButton?.hasAttribute('disabled')).toBe(false);
+    expect(pageButtons).toEqual(['1', '2', '3', '4', '5']);
+  });
 });
