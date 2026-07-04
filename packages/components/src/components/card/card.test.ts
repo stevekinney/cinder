@@ -211,6 +211,21 @@ describe('Card', () => {
     );
   });
 
+  test('generated title preserves caller aria-label ownership', () => {
+    const { container } = render(Card, {
+      props: {
+        title: 'Visible card title',
+        'aria-label': 'Custom region name',
+        children: emptySnippet,
+      } as any,
+    });
+
+    const root = container.querySelector('.cinder-card');
+
+    expect(root?.getAttribute('aria-label')).toBe('Custom region name');
+    expect(root?.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
   test('danger tone preserves custom header ownership', () => {
     const { container } = render(Card, {
       props: {
@@ -307,6 +322,11 @@ describe('Card CSS contract', () => {
     expect(dangerBlock).toContain('border-color');
     expect(dangerBlock).toContain('var(--cinder-color-danger-bg)');
     expect(dangerBlock).toContain('var(--cinder-color-danger-border)');
+    expect(css).toContain(".cinder-card[data-cinder-tone='danger'] > .cinder-card__header");
+    expect(css).toContain(
+      ".cinder-card[data-cinder-tone='danger'] > .cinder-card__header .cinder-card__title",
+    );
+    expect(css).toContain(".cinder-card[data-cinder-tone='danger'] > .cinder-card__footer");
     expect(iconBlock).toContain('var(--cinder-danger)');
   });
 });

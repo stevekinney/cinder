@@ -64,7 +64,8 @@
   );
   const hasExternalRole = $derived(typeof rest.role === 'string' && rest.role.trim().length > 0);
   const hasExternalLabel = $derived(
-    typeof rest['aria-labelledby'] === 'string' && rest['aria-labelledby'].trim().length > 0,
+    (typeof rest['aria-labelledby'] === 'string' && rest['aria-labelledby'].trim().length > 0) ||
+      (typeof rest['aria-label'] === 'string' && rest['aria-label'].trim().length > 0),
   );
   const describedBy = $derived(composeDescribedBy(descriptionId, rest['aria-describedby']));
   const labelAttributes = $derived(
