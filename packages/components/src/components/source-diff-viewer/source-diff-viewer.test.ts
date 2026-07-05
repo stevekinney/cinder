@@ -74,6 +74,28 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.textContent).toContain("Removed line 2: const label = 'old';");
   });
 
+  test('forwards native attributes while preserving the component region role', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch,
+      id: 'review-diff',
+      'data-testid': 'source-diff',
+      role: 'presentation',
+    });
+
+    const root = container.querySelector('.cinder-source-diff-viewer');
+    expect(root?.getAttribute('id')).toBe('review-diff');
+    expect(root?.getAttribute('data-testid')).toBe('source-diff');
+    expect(root?.getAttribute('role')).toBe('region');
+  });
+
+  test('omits an empty aria label instead of rendering a blank accessible name', () => {
+    const { container } = render(SourceDiffViewer, { patch, ariaLabel: '   ' });
+
+    expect(container.querySelector('.cinder-source-diff-viewer')?.hasAttribute('aria-label')).toBe(
+      false,
+    );
+  });
+
   test('can hide line-number gutters while preserving line-state labels', () => {
     const { container } = render(SourceDiffViewer, { patch, lineNumbers: false });
 
@@ -92,6 +114,14 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.textContent).toContain('Showing first 3 of 8 diff lines.');
   });
 
+  test('does not keep empty file sections when truncation stops before later hunks', () => {
+    const parsed = parseUnifiedPatch(patch, { maxLines: 5 });
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.newPath).toBe('src/one.ts');
+    expect(parsed.truncated).toBe(true);
+  });
+
   test('renders the configured empty message when there are no diff rows', () => {
     const { container } = render(SourceDiffViewer, {
       patch: '',
@@ -101,6 +131,18 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.querySelector('.cinder-source-diff-viewer__empty')?.textContent).toBe(
       'Nothing changed.',
     );
+  });
+
+  test('renders metadata-only patch content instead of the empty state', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch: `diff --git a/assets/icon.png b/assets/icon.png
+new file mode 100644
+Binary files /dev/null and b/assets/icon.png differ
+`,
+    });
+
+    expect(container.querySelector('.cinder-source-diff-viewer__empty')).toBeNull();
+    expect(container.textContent).toContain('Binary files /dev/null and b/assets/icon.png differ');
   });
 
   test('parses patches without git headers and preserves non-diff hunk metadata', () => {
@@ -116,6 +158,73 @@ diff --git a/src/two.ts b/src/two.ts
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/old-name.ts -> src/new-name.ts');
     expect(parsed.files[0]?.metadata).toContain('! not a diff row');
     expect(parsed.files[0]?.hunks[0]?.lines).toHaveLength(2);
+  });
+
+  test('parses multi-file unified patches without diff git separators', () => {
+    const parsed = parseUnifiedPatch(`--- a/src/one.ts
++++ b/src/one.ts
+@@ -1 +1 @@
+-one();
++oneUpdated();
+--- a/src/two.ts
++++ b/src/two.ts
+@@ -1 +1 @@
+-two();
++twoUpdated();
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[0]?.newPath).toBe('src/one.ts');
+    expect(parsed.files[1]?.newPath).toBe('src/two.ts');
+    expect(parsed.files[1]?.hunks[0]?.lines[1]?.content).toBe('twoUpdated();');
+  });
+
+  test('treats hunk rows that start with --- or +++ as source lines', () => {
+    const parsed = parseUnifiedPatch(`--- a/src/comments.sql
++++ b/src/comments.sql
+@@ -1,2 +1,2 @@
+--- old comment
++++ new comment
+ SELECT 1;
+`);
+
+    const lines = parsed.files[0]?.hunks[0]?.lines ?? [];
+    expect(lines).toMatchObject([
+      { kind: 'removal', content: '-- old comment' },
+      { kind: 'addition', content: '++ new comment' },
+      { kind: 'context', content: 'SELECT 1;' },
+    ]);
+    expect(parsed.files[0]?.oldPath).toBe('src/comments.sql');
+    expect(parsed.files[0]?.newPath).toBe('src/comments.sql');
+  });
+
+  test('treats /dev/null as a missing side of added and removed files', () => {
+    const added = parseUnifiedPatch(`--- /dev/null
++++ b/src/added.ts
+@@ -0,0 +1 @@
++added();
+`);
+    const removed = parseUnifiedPatch(`--- a/src/removed.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-removed();
+`);
+
+    expect(added.files[0]?.oldPath).toBeNull();
+    expect(getSourceDiffFileLabel(added.files[0]!)).toBe('src/added.ts');
+    expect(removed.files[0]?.newPath).toBeNull();
+    expect(getSourceDiffFileLabel(removed.files[0]!)).toBe('src/removed.ts');
+  });
+
+  test('ignores only the terminal split line from trailing newlines', () => {
+    const parsed = parseUnifiedPatch(`--- a/src/example.ts
++++ b/src/example.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.metadata).toEqual([]);
   });
 
   test('uses unknown line labels when a malformed hunk has no numeric cursor', () => {

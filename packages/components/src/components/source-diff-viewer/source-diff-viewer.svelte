@@ -44,18 +44,21 @@
     lineNumbers = true,
     emptyMessage = 'No patch lines to display.',
     class: className,
+    ...rest
   }: SourceDiffViewerProps = $props();
 
   const parsedPatch = $derived(parseUnifiedPatch(patch, { maxLines }));
-  const hasDiffRows = $derived(parsedPatch.renderedLineCount > 0);
+  const hasPatchContent = $derived(parsedPatch.files.length > 0);
+  const normalizedAriaLabel = $derived(ariaLabel.trim() ? ariaLabel.trim() : undefined);
 </script>
 
 <div
+  {...rest}
   class={classNames('cinder-source-diff-viewer', className)}
   role="region"
-  aria-label={ariaLabel}
+  aria-label={normalizedAriaLabel}
 >
-  {#if !hasDiffRows}
+  {#if !hasPatchContent}
     <p class="cinder-source-diff-viewer__empty">{emptyMessage}</p>
   {:else}
     {#if parsedPatch.truncated}

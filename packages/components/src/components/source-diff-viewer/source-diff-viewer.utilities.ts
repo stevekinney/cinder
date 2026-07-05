@@ -18,6 +18,11 @@ function normalizePath(path: string): string {
   return path.replace(/^[ab]\//, '');
 }
 
+function parsePatchPath(path: string): string | null {
+  const normalized = normalizePath(path.trim());
+  return normalized === '/dev/null' ? null : normalized;
+}
+
 function parseDiffGitHeader(line: string): Pick<SourceDiffFile, 'oldPath' | 'newPath' | 'header'> {
   const match = /^diff --git a\/(.+?) b\/(.+)$/.exec(line);
   if (!match) return { oldPath: null, newPath: null, header: line };
@@ -29,19 +34,132 @@ function parseDiffGitHeader(line: string): Pick<SourceDiffFile, 'oldPath' | 'new
   };
 }
 
-function ensureFile(files: SourceDiffFile[], header: string | null = null): SourceDiffFile {
-  const current = files.at(-1);
-  if (current) return current;
-
-  const file: SourceDiffFile = {
+function createFile(header: string | null = null): SourceDiffFile {
+  return {
     oldPath: null,
     newPath: null,
     header,
     metadata: [],
     hunks: [],
   };
+}
+
+function startFile(files: SourceDiffFile[], header: string | null = null): SourceDiffFile {
+  const file = createFile(header);
   files.push(file);
   return file;
+}
+
+function ensureFile(files: SourceDiffFile[], header: string | null = null): SourceDiffFile {
+  return files.at(-1) ?? startFile(files, header);
+}
+
+function ensureFileForOldHeader(files: SourceDiffFile[]): SourceDiffFile {
+  const current = files.at(-1);
+  if (
+    current &&
+    current.hunks.length === 0 &&
+    (current.header?.startsWith('diff --git ') ||
+      (current.oldPath === null && current.newPath === null))
+  ) {
+    return current;
+  }
+
+  return startFile(files);
+}
+
+function hunkHasRenderedContent(hunk: SourceDiffHunk): boolean {
+  return hunk.lines.length > 0;
+}
+
+function fileHasRenderedContent(file: SourceDiffFile): boolean {
+  return file.metadata.length > 0 || file.hunks.some(hunkHasRenderedContent);
+}
+
+function hunkIsComplete(hunk: SourceDiffHunk, cursor: HunkCursor): boolean {
+  if (
+    hunk.oldStart === null ||
+    hunk.oldCount === null ||
+    hunk.newStart === null ||
+    hunk.newCount === null ||
+    cursor.oldLineNumber === null ||
+    cursor.newLineNumber === null
+  ) {
+    return false;
+  }
+
+  return (
+    cursor.oldLineNumber >= hunk.oldStart + hunk.oldCount &&
+    cursor.newLineNumber >= hunk.newStart + hunk.newCount
+  );
+}
+
+function readRawHunkLine(rawLine: string, cursor: HunkCursor): SourceDiffLine | null {
+  const prefix = rawLine[0];
+  const content = rawLine.slice(1);
+  const kind =
+    prefix === '+' ? 'addition' : prefix === '-' ? 'removal' : prefix === ' ' ? 'context' : null;
+
+  if (!kind) return null;
+  return readLine(kind, content, cursor);
+}
+
+function pushMetadata(files: SourceDiffFile[], rawLine: string): void {
+  ensureFile(files).metadata.push(rawLine);
+}
+
+function preparePatchLines(patch: string): string[] {
+  const lines = patch.replace(/\r\n?/g, '\n').split('\n');
+  if (lines.at(-1) === '') lines.pop();
+  return lines;
+}
+
+function pruneFiles(files: SourceDiffFile[]): SourceDiffFile[] {
+  return files
+    .map((file) => ({
+      ...file,
+      hunks: file.hunks.filter(hunkHasRenderedContent),
+    }))
+    .filter(fileHasRenderedContent);
+}
+
+function readHunkLine(
+  files: SourceDiffFile[],
+  hunk: SourceDiffHunk,
+  cursor: HunkCursor,
+  rawLine: string,
+  renderedLineCount: number,
+  maxLines: number,
+): { renderedLineCount: number; lineWasRead: boolean } {
+  const line = readRawHunkLine(rawLine, cursor);
+  if (!line) {
+    pushMetadata(files, rawLine);
+    return { renderedLineCount, lineWasRead: false };
+  }
+
+  if (renderedLineCount < maxLines) {
+    hunk.lines.push(line);
+    return { renderedLineCount: renderedLineCount + 1, lineWasRead: true };
+  }
+
+  return { renderedLineCount, lineWasRead: true };
+}
+
+function createParsedGitFile(rawLine: string): SourceDiffFile {
+  return {
+    ...parseDiffGitHeader(rawLine),
+    metadata: [],
+    hunks: [],
+  };
+}
+
+function createEmptyParseResult(): SourceDiffParseResult {
+  return {
+    files: [],
+    totalLineCount: 0,
+    renderedLineCount: 0,
+    truncated: false,
+  };
 }
 
 function createHunk(header: string): { hunk: SourceDiffHunk; cursor: HunkCursor } {
@@ -138,23 +256,33 @@ export function parseUnifiedPatch(
   let totalLineCount = 0;
   let renderedLineCount = 0;
 
-  for (const rawLine of patch.replace(/\r\n?/g, '\n').split('\n')) {
+  for (const rawLine of preparePatchLines(patch)) {
     if (rawLine === '' && files.length === 0) continue;
 
     if (rawLine.startsWith('diff --git ')) {
-      files.push({
-        ...parseDiffGitHeader(rawLine),
-        metadata: [],
-        hunks: [],
-      });
+      files.push(createParsedGitFile(rawLine));
       currentHunk = null;
       currentCursor = null;
       continue;
     }
 
+    if (currentHunk && currentCursor && !hunkIsComplete(currentHunk, currentCursor)) {
+      const result = readHunkLine(
+        files,
+        currentHunk,
+        currentCursor,
+        rawLine,
+        renderedLineCount,
+        maxLines,
+      );
+      renderedLineCount = result.renderedLineCount;
+      if (result.lineWasRead) totalLineCount += 1;
+      continue;
+    }
+
     if (rawLine.startsWith('--- ')) {
-      const file = ensureFile(files);
-      file.oldPath = normalizePath(rawLine.slice(4).trim());
+      const file = ensureFileForOldHeader(files);
+      file.oldPath = parsePatchPath(rawLine.slice(4));
       currentHunk = null;
       currentCursor = null;
       continue;
@@ -162,7 +290,7 @@ export function parseUnifiedPatch(
 
     if (rawLine.startsWith('+++ ')) {
       const file = ensureFile(files);
-      file.newPath = normalizePath(rawLine.slice(4).trim());
+      file.newPath = parsePatchPath(rawLine.slice(4));
       currentHunk = null;
       currentCursor = null;
       continue;
@@ -178,31 +306,26 @@ export function parseUnifiedPatch(
     }
 
     if (!currentHunk || !currentCursor) {
-      ensureFile(files).metadata.push(rawLine);
+      pushMetadata(files, rawLine);
       continue;
     }
 
-    const prefix = rawLine[0];
-    const content = rawLine.slice(1);
-    const kind =
-      prefix === '+' ? 'addition' : prefix === '-' ? 'removal' : prefix === ' ' ? 'context' : null;
-
-    if (!kind) {
-      ensureFile(files).metadata.push(rawLine);
-      continue;
-    }
-
-    totalLineCount += 1;
-    if (renderedLineCount < maxLines) {
-      currentHunk.lines.push(readLine(kind, content, currentCursor));
-      renderedLineCount += 1;
-    } else {
-      readLine(kind, content, currentCursor);
-    }
+    const result = readHunkLine(
+      files,
+      currentHunk,
+      currentCursor,
+      rawLine,
+      renderedLineCount,
+      maxLines,
+    );
+    renderedLineCount = result.renderedLineCount;
+    if (result.lineWasRead) totalLineCount += 1;
   }
 
+  if (files.length === 0) return createEmptyParseResult();
+
   return {
-    files: files.filter((file) => file.hunks.length > 0 || file.metadata.length > 0),
+    files: pruneFiles(files),
     totalLineCount,
     renderedLineCount,
     truncated: renderedLineCount < totalLineCount,
