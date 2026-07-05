@@ -125,20 +125,21 @@ diff --git a/src/two.ts b/src/two.ts
 
   test('bounds large patch rendering and reports the truncated total', () => {
     const parsed = parseUnifiedPatch(patch, { maxLines: 3 });
-    expect(parsed.totalLineCount).toBe(8);
+    expect(parsed.totalLineCount).toBe(9);
     expect(parsed.renderedLineCount).toBe(3);
     expect(parsed.truncated).toBe(true);
 
     const { container } = render(SourceDiffViewer, { patch, maxLines: 3 });
-    expect(container.querySelectorAll('.cinder-source-diff-viewer__line')).toHaveLength(3);
-    expect(container.textContent).toContain('Showing first 3 of 8 diff lines.');
+    expect(container.querySelectorAll('.cinder-source-diff-viewer__metadata code')).toHaveLength(1);
+    expect(container.querySelectorAll('.cinder-source-diff-viewer__line')).toHaveLength(2);
+    expect(container.textContent).toContain('Showing first 3 of 9 diff lines.');
   });
 
   test('shows truncation rather than the empty state when maxLines is zero', () => {
     const { container } = render(SourceDiffViewer, { patch, maxLines: 0 });
 
     expect(container.querySelector('.cinder-source-diff-viewer__empty')).toBeNull();
-    expect(container.textContent).toContain('Showing first 0 of 8 diff lines.');
+    expect(container.textContent).toContain('Showing first 0 of 9 diff lines.');
   });
 
   test('does not keep empty file sections when truncation stops before later hunks', () => {
@@ -219,6 +220,31 @@ Binary files /dev/null and b/assets/icon.png differ
     expect(parsed.files[0]?.oldPath).toBe('a/foo.ts');
     expect(parsed.files[0]?.newPath).toBe('a/foo.ts');
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('a/foo.ts');
+  });
+
+  test('decodes quoted git paths before stripping synthetic prefixes', () => {
+    const parsed = parseUnifiedPatch(`diff --git "a/caf\\303\\251.ts" "b/caf\\303\\251.ts"
+--- "a/caf\\303\\251.ts"
++++ "b/caf\\303\\251.ts"
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('café.ts');
+    expect(parsed.files[0]?.newPath).toBe('café.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('café.ts');
+  });
+
+  test('parses git headers when paths contain embedded b segments', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/foo b/bar b/foo b/bar
+old mode 100644
+new mode 100755
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('foo b/bar');
+    expect(parsed.files[0]?.newPath).toBe('foo b/bar');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('foo b/bar');
   });
 
   test('preserves a and b roots in non-git unified patch headers', () => {
@@ -319,6 +345,48 @@ Binary files /dev/null and b/assets/icon.png differ
 
     expect(container.textContent).toContain('No newline at end of file');
     expect(container.querySelector('.cinder-source-diff-viewer__metadata')).toBeNull();
+  });
+
+  test('bounds metadata-only patch rendering', () => {
+    const parsed = parseUnifiedPatch(
+      `diff --git a/assets/icon.png b/assets/icon.png
+GIT binary patch
+literal 2
+abc
+def
+`,
+      {
+        maxLines: 2,
+      },
+    );
+
+    expect(parsed.totalLineCount).toBe(4);
+    expect(parsed.renderedLineCount).toBe(2);
+    expect(parsed.truncated).toBe(true);
+    expect(parsed.files[0]?.metadata).toEqual(['GIT binary patch', 'literal 2']);
+  });
+
+  test('starts diff -ru separators with the following file section', () => {
+    const parsed = parseUnifiedPatch(`diff -ru old/one.txt new/one.txt
+--- old/one.txt
++++ new/one.txt
+@@ -1 +1 @@
+-one
++one updated
+diff -ru old/two.txt new/two.txt
+--- old/two.txt
++++ new/two.txt
+@@ -1 +1 @@
+-two
++two updated
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[0]?.header).toBe('diff -ru old/one.txt new/one.txt');
+    expect(parsed.files[1]?.header).toBe('diff -ru old/two.txt new/two.txt');
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
+      'diff -ru old/two.txt new/two.txt',
+    );
   });
 
   test('does not render hunk metadata for rows omitted by truncation', () => {

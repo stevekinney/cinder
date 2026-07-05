@@ -24,9 +24,43 @@ function stripSyntheticDiffPrefix(path: string): string {
   return path.replace(/^[ab]\//, '');
 }
 
+function decodeGitQuotedPath(path: string): string {
+  if (!path.startsWith('"') || !path.endsWith('"')) return path;
+
+  const bytes: number[] = [];
+  const quoted = path.slice(1, -1);
+  for (let index = 0; index < quoted.length; index += 1) {
+    const character = quoted[index];
+    if (character !== '\\') {
+      bytes.push(character?.charCodeAt(0) ?? 0);
+      continue;
+    }
+
+    const next = quoted[index + 1];
+    if (next && /[0-7]/.test(next)) {
+      const octal = quoted.slice(index + 1).match(/^[0-7]{1,3}/)?.[0] ?? '';
+      bytes.push(Number.parseInt(octal, 8));
+      index += octal.length;
+      continue;
+    }
+
+    const escapes: Record<string, number> = {
+      '"': 0x22,
+      '\\': 0x5c,
+      n: 0x0a,
+      r: 0x0d,
+      t: 0x09,
+    };
+    bytes.push(next ? (escapes[next] ?? next.charCodeAt(0)) : 0x5c);
+    if (next) index += 1;
+  }
+
+  return new TextDecoder().decode(new Uint8Array(bytes));
+}
+
 function parsePatchPath(path: string, options: { stripSyntheticPrefix: boolean }): string | null {
   const [pathWithoutTimestamp = path] = path.split('\t');
-  const trimmedPath = pathWithoutTimestamp.trim();
+  const trimmedPath = decodeGitQuotedPath(pathWithoutTimestamp.trim());
   const normalized = options.stripSyntheticPrefix
     ? stripSyntheticDiffPrefix(trimmedPath)
     : trimmedPath;
@@ -34,12 +68,29 @@ function parsePatchPath(path: string, options: { stripSyntheticPrefix: boolean }
 }
 
 function parseDiffGitHeader(line: string): Pick<SourceDiffFile, 'oldPath' | 'newPath' | 'header'> {
-  const match = /^diff --git a\/(.+?) b\/(.+)$/.exec(line);
-  if (!match) return { oldPath: null, newPath: null, header: line };
+  const payload = line.slice('diff --git '.length);
+  if (!payload.startsWith('a/')) {
+    return { oldPath: null, newPath: null, header: line };
+  }
+
+  const separatorIndexes = [...payload.matchAll(/ b\//g)].map((match) => match.index ?? -1);
+  for (const separatorIndex of separatorIndexes) {
+    if (separatorIndex <= 0) continue;
+    const oldPath = parsePatchPath(payload.slice(0, separatorIndex), {
+      stripSyntheticPrefix: true,
+    });
+    const newPath = parsePatchPath(payload.slice(separatorIndex + 1), {
+      stripSyntheticPrefix: true,
+    });
+    if (oldPath && oldPath === newPath) return { oldPath, newPath, header: line };
+  }
+
+  const separatorIndex = separatorIndexes.at(-1) ?? -1;
+  if (separatorIndex <= 0) return { oldPath: null, newPath: null, header: line };
 
   return {
-    oldPath: match[1] ?? null,
-    newPath: match[2] ?? null,
+    oldPath: parsePatchPath(payload.slice(0, separatorIndex), { stripSyntheticPrefix: true }),
+    newPath: parsePatchPath(payload.slice(separatorIndex + 1), { stripSyntheticPrefix: true }),
     header: line,
   };
 }
@@ -138,8 +189,18 @@ function createHunkMetadataLine(
   return line;
 }
 
-function pushMetadata(files: SourceDiffFile[], rawLine: string): void {
-  ensureFile(files).metadata.push(rawLine);
+function pushMetadata(
+  files: SourceDiffFile[],
+  rawLine: string,
+  renderedLineCount: number,
+  maxLines: number,
+): { renderedLineCount: number; lineWasRendered: boolean } {
+  if (renderedLineCount < maxLines) {
+    ensureFile(files).metadata.push(rawLine);
+    return { renderedLineCount: renderedLineCount + 1, lineWasRendered: true };
+  }
+
+  return { renderedLineCount, lineWasRendered: false };
 }
 
 function preparePatchLines(patch: string): string[] {
@@ -324,6 +385,14 @@ export function parseUnifiedPatch(
       continue;
     }
 
+    if (rawLine.startsWith('diff ')) {
+      startFile(files, rawLine);
+      currentHunk = null;
+      currentCursor = null;
+      previousHunkDiffLineWasRendered = false;
+      continue;
+    }
+
     if (
       currentHunk &&
       currentCursor &&
@@ -378,7 +447,9 @@ export function parseUnifiedPatch(
     }
 
     if (!currentHunk || !currentCursor) {
-      pushMetadata(files, rawLine);
+      const result = pushMetadata(files, rawLine, renderedLineCount, maxLines);
+      renderedLineCount = result.renderedLineCount;
+      totalLineCount += 1;
       continue;
     }
 
