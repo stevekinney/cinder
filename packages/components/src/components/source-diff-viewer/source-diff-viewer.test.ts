@@ -389,6 +389,20 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/foo.ts -> lib/foo.ts');
   });
 
+  test('preserves no-prefix git header moves with nested shared suffixes', () => {
+    const parsed = parseUnifiedPatch(`diff --git src/foo/bar.ts lib/foo/bar.ts
+--- src/foo/bar.ts
++++ lib/foo/bar.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('src/foo/bar.ts');
+    expect(parsed.files[0]?.newPath).toBe('lib/foo/bar.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/foo/bar.ts -> lib/foo/bar.ts');
+  });
+
   test('preserves a and b roots in non-git unified patch headers', () => {
     const parsed = parseUnifiedPatch(`--- a/foo.ts
 +++ b/foo.ts

@@ -121,6 +121,8 @@ function normalizeGitHeaderPaths(
 
   if (
     sharedSegments.length >= 2 &&
+    oldPrefix === 'old' &&
+    newPrefix === 'new' &&
     oldSegments.length === sharedSegments.length + 1 &&
     newSegments.length === sharedSegments.length + 1
   ) {
