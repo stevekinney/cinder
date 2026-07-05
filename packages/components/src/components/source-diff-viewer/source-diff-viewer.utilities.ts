@@ -14,13 +14,13 @@ type HunkCursor = {
 const DEFAULT_MAX_LINES = 1000;
 const HUNK_HEADER_PATTERN = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
-function normalizePath(path: string): string {
+function stripSyntheticDiffPrefix(path: string): string {
   return path.replace(/^[ab]\//, '');
 }
 
 function parsePatchPath(path: string): string | null {
   const [pathWithoutTimestamp = path] = path.split('\t');
-  const normalized = normalizePath(pathWithoutTimestamp.trim());
+  const normalized = stripSyntheticDiffPrefix(pathWithoutTimestamp.trim());
   return normalized === '/dev/null' ? null : normalized;
 }
 
@@ -114,6 +114,15 @@ function readRawHunkLine(rawLine: string, cursor: HunkCursor): SourceDiffLine | 
   return readLine(kind, content, cursor);
 }
 
+function createHunkMetadataLine(rawLine: string): SourceDiffLine {
+  return {
+    kind: 'metadata',
+    content: rawLine,
+    oldLineNumber: null,
+    newLineNumber: null,
+  };
+}
+
 function pushMetadata(files: SourceDiffFile[], rawLine: string): void {
   ensureFile(files).metadata.push(rawLine);
 }
@@ -143,7 +152,11 @@ function readHunkLine(
 ): { renderedLineCount: number; lineWasRead: boolean } {
   const line = readRawHunkLine(rawLine, cursor);
   if (!line) {
-    pushMetadata(files, rawLine);
+    if (hunk.lines.length > 0 || renderedLineCount < maxLines) {
+      hunk.lines.push(createHunkMetadataLine(rawLine));
+    } else {
+      pushMetadata(files, rawLine);
+    }
     return { renderedLineCount, lineWasRead: false };
   }
 
@@ -241,10 +254,10 @@ function positiveInteger(value: number | undefined): number {
 
 export function getSourceDiffFileLabel(file: SourceDiffFile): string {
   if (file.newPath && file.oldPath && file.newPath !== file.oldPath) {
-    return `${normalizePath(file.oldPath)} -> ${normalizePath(file.newPath)}`;
+    return `${file.oldPath} -> ${file.newPath}`;
   }
 
-  return normalizePath(file.newPath ?? file.oldPath ?? file.header ?? 'Patch');
+  return file.newPath ?? file.oldPath ?? file.header ?? 'Patch';
 }
 
 export function getSourceDiffLineLabel(line: SourceDiffLine): string {
@@ -258,6 +271,14 @@ export function getSourceDiffLineLabel(line: SourceDiffLine): string {
 
   if (line.kind === 'metadata') {
     return `Diff metadata: ${line.content}`;
+  }
+
+  if (
+    line.oldLineNumber !== null &&
+    line.newLineNumber !== null &&
+    line.oldLineNumber !== line.newLineNumber
+  ) {
+    return `Context old line ${line.oldLineNumber}, new line ${line.newLineNumber}: ${line.content}`;
   }
 
   const lineNumber = line.newLineNumber ?? line.oldLineNumber ?? 'unknown';

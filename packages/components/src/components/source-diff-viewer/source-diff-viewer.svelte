@@ -49,7 +49,9 @@
 
   const parsedPatch = $derived(parseUnifiedPatch(patch, { maxLines }));
   const hasPatchContent = $derived(parsedPatch.files.length > 0 || parsedPatch.totalLineCount > 0);
-  const normalizedAriaLabel = $derived(ariaLabel.trim() ? ariaLabel.trim() : undefined);
+  const normalizedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim() ? ariaLabel.trim() : undefined,
+  );
 
   function getSourceDiffLineText(line: SourceDiffLine): string {
     if (line.kind === 'metadata') return `\\ ${line.content}`;

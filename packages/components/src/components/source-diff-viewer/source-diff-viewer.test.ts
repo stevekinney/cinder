@@ -163,8 +163,26 @@ Binary files /dev/null and b/assets/icon.png differ
 
     expect(parsed.files).toHaveLength(1);
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/old-name.ts -> src/new-name.ts');
-    expect(parsed.files[0]?.metadata).toContain('! not a diff row');
-    expect(parsed.files[0]?.hunks[0]?.lines).toHaveLength(2);
+    expect(parsed.files[0]?.metadata).toEqual([]);
+    expect(parsed.files[0]?.hunks[0]?.lines).toMatchObject([
+      { kind: 'metadata', content: '! not a diff row' },
+      { kind: 'removal', content: 'oldName();' },
+      { kind: 'addition', content: 'newName();' },
+    ]);
+  });
+
+  test('does not strip real a or b path segments from labels after parsing', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/a/foo.ts b/a/foo.ts
+--- a/a/foo.ts
++++ b/a/foo.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('a/foo.ts');
+    expect(parsed.files[0]?.newPath).toBe('a/foo.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('a/foo.ts');
   });
 
   test('strips diff -u timestamps from non-git file headers', () => {
@@ -340,5 +358,14 @@ Binary files /dev/null and b/assets/icon.png differ
         newLineNumber: 7,
       }),
     ).toBe('Context line 7: same();');
+
+    expect(
+      getSourceDiffLineLabel({
+        kind: 'context',
+        content: 'shifted();',
+        oldLineNumber: 10,
+        newLineNumber: 11,
+      }),
+    ).toBe('Context old line 10, new line 11: shifted();');
   });
 });
