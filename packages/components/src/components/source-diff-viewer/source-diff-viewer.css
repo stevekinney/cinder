@@ -80,25 +80,11 @@
 
   .cinder-source-diff-viewer__lines {
     display: grid;
-    overflow-x: auto;
-  }
-
-  .cinder-source-diff-viewer__lines:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
-  }
-
-  @media (forced-colors: active) {
-    .cinder-source-diff-viewer__lines:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: calc(var(--cinder-ring-width) * -1);
-      box-shadow: none;
-    }
   }
 
   .cinder-source-diff-viewer__line {
     display: grid;
-    grid-template-columns: 4.5ch 4.5ch minmax(max-content, 1fr);
+    grid-template-columns: 4.5ch 4.5ch minmax(0, 1fr);
     min-inline-size: 100%;
     border-top: 1px solid transparent;
     font-variant-ligatures: none;
@@ -131,12 +117,13 @@
 
   .cinder-source-diff-viewer__line-code {
     padding: 0 var(--cinder-space-3);
-    white-space: pre;
+    overflow-wrap: anywhere;
+    white-space: break-spaces;
     color: var(--cinder-text);
     font: inherit;
   }
 
   .cinder-source-diff-viewer__line:not(:has(.cinder-source-diff-viewer__line-number)) {
-    grid-template-columns: minmax(max-content, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 }

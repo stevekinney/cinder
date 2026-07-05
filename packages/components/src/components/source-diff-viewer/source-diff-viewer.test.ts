@@ -67,15 +67,19 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.textContent).toContain('src/one.ts');
     expect(container.textContent).toContain('src/two.ts');
     expect(container.textContent).toContain('@@ -1,3 +1,4 @@');
-    expect(container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('role')).toBe(
-      'textbox',
-    );
+    expect(container.querySelector('.cinder-source-diff-viewer__lines')?.tagName).toBe('SECTION');
+    expect(
+      container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('role'),
+    ).toBeNull();
     expect(
       container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('aria-readonly'),
-    ).toBe('true');
+    ).toBeNull();
+    expect(
+      container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('aria-multiline'),
+    ).toBeNull();
     expect(
       container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('tabindex'),
-    ).toBe('0');
+    ).toBeNull();
     expect(
       container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('aria-label'),
     ).toBe('src/one.ts @@ -1,3 +1,4 @@ lines');
@@ -870,6 +874,28 @@ Binary files old/old.bin and new/new.bin differ
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.bin -> new.bin');
   });
 
+  test('keeps custom-prefixed git binary add and delete notices with their diff file metadata', () => {
+    const added = parseUnifiedPatch(`diff --git old/new.bin new/new.bin
+new file mode 100644
+index 0000000..89abcde
+Binary files /dev/null and new/new.bin differ
+`);
+    const deleted = parseUnifiedPatch(`diff --git old/old.bin new/old.bin
+deleted file mode 100644
+index 1234567..0000000
+Binary files old/old.bin and /dev/null differ
+`);
+
+    expect(added.files).toHaveLength(1);
+    expect(added.files[0]?.oldPath).toBeNull();
+    expect(added.files[0]?.newPath).toBe('new.bin');
+    expect(added.files[0]?.metadata).toContain('Binary files /dev/null and new/new.bin differ');
+    expect(deleted.files).toHaveLength(1);
+    expect(deleted.files[0]?.oldPath).toBe('old.bin');
+    expect(deleted.files[0]?.newPath).toBeNull();
+    expect(deleted.files[0]?.metadata).toContain('Binary files old/old.bin and /dev/null differ');
+  });
+
   test('uses binary notices when git headers contain unquoted spaces', () => {
     const parsed = parseUnifiedPatch(`diff --git a/old file.bin b/new file.bin
 index 1234567..89abcde 100644
@@ -1113,6 +1139,21 @@ rename to foo
       newLineNumber: null,
       content: 'removed();',
     });
+  });
+
+  test('classifies zero-count hunk diff rows as additions and removals', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/src/example.ts b/src/example.ts
+--- a/src/example.ts
++++ b/src/example.ts
+@@ -1,0 +1,0 @@
+-removed();
++added();
+`);
+
+    expect(parsed.files[0]?.hunks[0]?.lines).toMatchObject([
+      { kind: 'removal', oldLineNumber: 1, newLineNumber: null, content: 'removed();' },
+      { kind: 'addition', oldLineNumber: null, newLineNumber: 1, content: 'added();' },
+    ]);
   });
 
   test('renders repeated file headers without duplicate keyed blocks', () => {

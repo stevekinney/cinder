@@ -272,6 +272,17 @@ function hunkIsComplete(hunk: SourceDiffHunk, cursor: HunkCursor): boolean {
   );
 }
 
+function hunkCanReadAfterZeroCountComplete(hunk: SourceDiffHunk, rawLine: string): boolean {
+  return (
+    hunk.oldCount === 0 &&
+    hunk.newCount === 0 &&
+    readRawHunkLine(rawLine, {
+      oldLineNumber: null,
+      newLineNumber: null,
+    }) !== null
+  );
+}
+
 function readRawHunkLine(rawLine: string, cursor: HunkCursor): SourceDiffLine | null {
   if (rawLine.startsWith('\\ ')) {
     return {
@@ -327,8 +338,21 @@ function parseBinaryNoticePaths(
       stripSyntheticPrefix: true,
     });
     const normalizedPaths = normalizeGitHeaderPaths(oldPath, newPath);
+    const normalizedOldPath =
+      normalizedPaths.oldPath !== null &&
+      file.oldPath !== null &&
+      normalizedPaths.oldPath.endsWith(`/${file.oldPath}`)
+        ? file.oldPath
+        : normalizedPaths.oldPath;
+    const normalizedNewPath =
+      normalizedPaths.newPath !== null &&
+      file.newPath !== null &&
+      normalizedPaths.newPath.endsWith(`/${file.newPath}`)
+        ? file.newPath
+        : normalizedPaths.newPath;
     candidates.push({
-      ...normalizedPaths,
+      oldPath: normalizedOldPath,
+      newPath: normalizedNewPath,
       hasKnownEndpoints:
         (rawOldPath.startsWith('a/') || rawOldPath === '/dev/null') &&
         (rawNewPath.startsWith('b/') || rawNewPath === '/dev/null'),
@@ -826,7 +850,12 @@ export function parseUnifiedPatch(
       continue;
     }
 
-    if (currentHunk && currentCursor && hunkIsComplete(currentHunk, currentCursor)) {
+    if (
+      currentHunk &&
+      currentCursor &&
+      hunkIsComplete(currentHunk, currentCursor) &&
+      !hunkCanReadAfterZeroCountComplete(currentHunk, rawLine)
+    ) {
       totalLineCount += 1;
       if (renderedLineCount < maxLines) {
         currentHunk.lines.push(createHunkMetadataLine(line));
