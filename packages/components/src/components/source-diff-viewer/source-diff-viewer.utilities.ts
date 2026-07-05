@@ -19,6 +19,7 @@ type HunkLineResult = {
 
 const DEFAULT_MAX_LINES = 1000;
 const HUNK_HEADER_PATTERN = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+const TEXT_ENCODER = new TextEncoder();
 
 function stripSyntheticDiffPrefix(path: string): string {
   return path.replace(/^[ab]\//, '');
@@ -32,7 +33,7 @@ function decodeGitQuotedPath(path: string): string {
   for (let index = 0; index < quoted.length; index += 1) {
     const character = quoted[index];
     if (character !== '\\') {
-      bytes.push(character?.charCodeAt(0) ?? 0);
+      bytes.push(...TEXT_ENCODER.encode(character ?? ''));
       continue;
     }
 
@@ -245,6 +246,20 @@ function applyFileMetadata(file: SourceDiffFile, rawLine: string): void {
     file.newPath = parsePatchPath(rawLine.slice('rename to '.length), {
       stripSyntheticPrefix: false,
     });
+    return;
+  }
+
+  if (rawLine.startsWith('copy from ')) {
+    file.oldPath = parsePatchPath(rawLine.slice('copy from '.length), {
+      stripSyntheticPrefix: false,
+    });
+    return;
+  }
+
+  if (rawLine.startsWith('copy to ')) {
+    file.newPath = parsePatchPath(rawLine.slice('copy to '.length), {
+      stripSyntheticPrefix: false,
+    });
   }
 }
 
@@ -289,18 +304,37 @@ function readHunkLine(
 ): HunkLineResult {
   const line = readRawHunkLine(rawLine, cursor);
   if (!line) {
-    if (
-      previousHunkDiffLineWasRendered ||
-      (hunk.lines.length === 0 && renderedLineCount < maxLines)
-    ) {
+    const shouldPreserveMetadata = previousHunkDiffLineWasRendered || hunk.lines.length === 0;
+    if (shouldPreserveMetadata && renderedLineCount < maxLines) {
       hunk.lines.push(createHunkMetadataLine(rawLine));
+      return {
+        renderedLineCount: renderedLineCount + 1,
+        lineWasRead: true,
+        lineWasRendered: true,
+      };
     }
-    return { renderedLineCount, lineWasRead: false, lineWasRendered: false };
+    return {
+      renderedLineCount,
+      lineWasRead: shouldPreserveMetadata,
+      lineWasRendered: shouldPreserveMetadata,
+    };
   }
 
   if (line.kind === 'metadata') {
-    if (previousHunkDiffLineWasRendered) hunk.lines.push(line);
-    return { renderedLineCount, lineWasRead: false, lineWasRendered: false };
+    const shouldPreserveMetadata = previousHunkDiffLineWasRendered || hunk.lines.length === 0;
+    if (shouldPreserveMetadata && renderedLineCount < maxLines) {
+      hunk.lines.push(line);
+      return {
+        renderedLineCount: renderedLineCount + 1,
+        lineWasRead: true,
+        lineWasRendered: true,
+      };
+    }
+    return {
+      renderedLineCount,
+      lineWasRead: shouldPreserveMetadata,
+      lineWasRendered: shouldPreserveMetadata,
+    };
   }
 
   if (renderedLineCount < maxLines) {

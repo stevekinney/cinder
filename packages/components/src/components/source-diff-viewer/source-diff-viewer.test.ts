@@ -258,11 +258,34 @@ new mode 100755
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('café.sh');
   });
 
+  test('preserves verbatim UTF-8 characters in quoted git paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git "a/café \\"x\\".txt" "b/café \\"x\\".txt"
+old mode 100644
+new mode 100755
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('café "x".txt');
+    expect(parsed.files[0]?.newPath).toBe('café "x".txt');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('café "x".txt');
+  });
+
   test('uses rename metadata for git headers with ambiguous b segments', () => {
     const parsed = parseUnifiedPatch(`diff --git a/one b/two b/bar
 similarity index 100%
 rename from one
 rename to two b/bar
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('one');
+    expect(parsed.files[0]?.newPath).toBe('two b/bar');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('one -> two b/bar');
+  });
+
+  test('uses copy metadata for git headers with ambiguous b segments', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/one b/two b/bar
+similarity index 100%
+copy from one
+copy to two b/bar
 `);
 
     expect(parsed.files[0]?.oldPath).toBe('one');
@@ -428,7 +451,45 @@ diff -ru old/two.txt new/two.txt
     const renderedRows = [
       ...container.querySelectorAll('.cinder-source-diff-viewer__line-code'),
     ].map((element) => element.textContent);
-    expect(renderedRows).toEqual(['-old();', '\\ No newline at end of file']);
+    expect(renderedRows).toEqual(['-old();']);
+  });
+
+  test('counts preserved hunk metadata against maxLines', () => {
+    const parsed = parseUnifiedPatch(
+      `--- src/example.ts
++++ src/example.ts
+@@ -1 +1 @@
+-old();
+! metadata one
+! metadata two
+`,
+      { maxLines: 1 },
+    );
+
+    expect(parsed.totalLineCount).toBe(3);
+    expect(parsed.renderedLineCount).toBe(1);
+    expect(parsed.truncated).toBe(true);
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).toEqual(['old();']);
+  });
+
+  test('renders repeated file headers without duplicate keyed blocks', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch: `diff --git a/src/example.ts b/src/example.ts
+--- a/src/example.ts
++++ b/src/example.ts
+@@ -1 +1 @@
+-one();
++two();
+diff --git a/src/example.ts b/src/example.ts
+--- a/src/example.ts
++++ b/src/example.ts
+@@ -1 +1 @@
+-three();
++four();
+`,
+    });
+
+    expect(container.querySelectorAll('.cinder-source-diff-viewer__file')).toHaveLength(2);
   });
 
   test('renders diff row prefixes adjacent to source text', () => {

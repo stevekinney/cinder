@@ -81,7 +81,7 @@
       </div>
     {/if}
 
-    {#each parsedPatch.files as file, fileIndex (file.header ?? `${file.oldPath ?? ''}:${file.newPath ?? ''}:${fileIndex}`)}
+    {#each parsedPatch.files as file, fileIndex (`${fileIndex}:${file.header ?? `${file.oldPath ?? ''}:${file.newPath ?? ''}`}`)}
       {@const fileLabel = getSourceDiffFileLabel(file)}
       <section class="cinder-source-diff-viewer__file" aria-label={fileLabel}>
         <header class="cinder-source-diff-viewer__file-header">
