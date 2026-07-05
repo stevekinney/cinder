@@ -333,7 +333,7 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('packages/components/foo.ts');
   });
 
-  test('normalizes multi-segment custom git diff prefixes', () => {
+  test('preserves shared path segments after custom git diff prefixes', () => {
     const parsed = parseUnifiedPatch(`diff --git old/root/src/example.ts new/root/src/example.ts
 --- old/root/src/example.ts
 +++ new/root/src/example.ts
@@ -342,9 +342,9 @@ copy to two b/bar
 +new();
 `);
 
-    expect(parsed.files[0]?.oldPath).toBe('src/example.ts');
-    expect(parsed.files[0]?.newPath).toBe('src/example.ts');
-    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
+    expect(parsed.files[0]?.oldPath).toBe('root/src/example.ts');
+    expect(parsed.files[0]?.newPath).toBe('root/src/example.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('root/src/example.ts');
   });
 
   test('parses no-prefix git diff headers without stripping real paths', () => {
@@ -519,6 +519,20 @@ Only in new: extra.txt
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
       'Only in new: extra.txt',
     );
+  });
+
+  test('starts leading recursive-only diff entries as their own files', () => {
+    const parsed = parseUnifiedPatch(`Only in new: extra.txt
+Binary files old/a and new/a differ
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[0]?.header).toBe('Only in new: extra.txt');
+    expect(parsed.files[0]?.metadata).toEqual(['Only in new: extra.txt']);
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('Only in new: extra.txt');
+    expect(parsed.files[1]?.header).toBe('Binary files old/a and new/a differ');
+    expect(parsed.files[1]?.metadata).toEqual(['Binary files old/a and new/a differ']);
+    expect(getSourceDiffFileLabel(parsed.files[1]!)).toBe('Binary files old/a and new/a differ');
   });
 
   test('starts binary recursive diff entries outside completed hunks', () => {

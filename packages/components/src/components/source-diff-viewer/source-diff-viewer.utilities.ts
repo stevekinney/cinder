@@ -46,12 +46,6 @@ function sharedPathSegmentSuffixSegments(firstPath: string, secondPath: string):
 
 function sharedPathSegmentSuffix(firstPath: string, secondPath: string): string | null {
   const sharedSegments = sharedPathSegmentSuffixSegments(firstPath, secondPath);
-  const [firstPrefix] = firstPath.split('/');
-  const [secondPrefix] = secondPath.split('/');
-  if (firstPrefix === 'a' && secondPrefix === 'b') {
-    return sharedSegments.length > 0 ? sharedSegments.join('/') : null;
-  }
-  if (sharedSegments.length > 2) return sharedSegments.slice(1).join('/');
   return sharedSegments.length > 0 ? sharedSegments.join('/') : null;
 }
 
@@ -559,9 +553,7 @@ export function parseUnifiedPatch(
 
     if (
       isStandaloneRecursiveDiffMetadata(rawLine) &&
-      currentHunk &&
-      currentCursor &&
-      hunkIsComplete(currentHunk, currentCursor)
+      (!currentHunk || !currentCursor || hunkIsComplete(currentHunk, currentCursor))
     ) {
       startFile(files, rawLine);
       const result = pushMetadata(files, rawLine, renderedLineCount, maxLines);
