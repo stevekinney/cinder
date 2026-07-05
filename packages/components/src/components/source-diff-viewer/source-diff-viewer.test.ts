@@ -823,6 +823,22 @@ Binary files a/old.bin and b/new.bin differ
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.bin -> new.bin');
   });
 
+  test('keeps custom-prefixed git binary notices with their diff file metadata', () => {
+    const parsed = parseUnifiedPatch(`diff --git old/old.bin new/new.bin
+index 1234567..89abcde 100644
+Binary files old/old.bin and new/new.bin differ
+`);
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.oldPath).toBe('old.bin');
+    expect(parsed.files[0]?.newPath).toBe('new.bin');
+    expect(parsed.files[0]?.metadata).toEqual([
+      'index 1234567..89abcde 100644',
+      'Binary files old/old.bin and new/new.bin differ',
+    ]);
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.bin -> new.bin');
+  });
+
   test('uses binary notices when git headers contain unquoted spaces', () => {
     const parsed = parseUnifiedPatch(`diff --git a/old file.bin b/new file.bin
 index 1234567..89abcde 100644

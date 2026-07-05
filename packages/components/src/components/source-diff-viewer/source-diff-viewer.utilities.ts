@@ -326,9 +326,9 @@ function parseBinaryNoticePaths(
     const newPath = parsePatchPath(rawNewPath, {
       stripSyntheticPrefix: true,
     });
+    const normalizedPaths = normalizeGitHeaderPaths(oldPath, newPath);
     candidates.push({
-      oldPath,
-      newPath,
+      ...normalizedPaths,
       hasKnownEndpoints:
         (rawOldPath.startsWith('a/') || rawOldPath === '/dev/null') &&
         (rawNewPath.startsWith('b/') || rawNewPath === '/dev/null'),
@@ -557,8 +557,13 @@ function isStandaloneRecursiveDiffMetadata(rawLine: string): boolean {
   );
 }
 
-function isGitBinaryNoticeMetadata(rawLine: string): boolean {
-  return /^Binary files (?:a\/|\/dev\/null).+ and (?:b\/|\/dev\/null).+ differ$/.test(rawLine);
+function isGitBinaryNoticeMetadata(file: SourceDiffFile, rawLine: string): boolean {
+  if (/^Binary files (?:a\/|\/dev\/null).+ and (?:b\/|\/dev\/null).+ differ$/.test(rawLine)) {
+    return true;
+  }
+
+  const binaryPaths = parseBinaryNoticePaths(file, rawLine);
+  return binaryPaths?.oldPath === file.oldPath && binaryPaths.newPath === file.newPath;
 }
 
 function readLine(kind: SourceDiffLineKind, content: string, cursor: HunkCursor): SourceDiffLine {
@@ -676,10 +681,14 @@ export function parseUnifiedPatch(
     }
 
     const previousFileIsGitDiff = files[files.length - 1]?.header?.startsWith('diff --git ');
+    const previousFile = files[files.length - 1];
     const previousHunkIsComplete =
       currentHunk && currentCursor && hunkIsComplete(currentHunk, currentCursor);
     const shouldKeepAsGitMetadata =
-      previousFileIsGitDiff && !previousHunkIsComplete && isGitBinaryNoticeMetadata(line);
+      previousFileIsGitDiff &&
+      previousFile !== undefined &&
+      !previousHunkIsComplete &&
+      isGitBinaryNoticeMetadata(previousFile, line);
     if (
       isStandaloneRecursiveDiffMetadata(line) &&
       (!currentHunk || !currentCursor || previousHunkIsComplete) &&
