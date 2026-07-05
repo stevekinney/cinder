@@ -11,6 +11,7 @@ when the row represents the current step, edge, page, or location in a larger se
 set `currentValue` to the matching `aria-current` value.
 
 ActionRow owns the interactive target. Do not put it on an interactive list-item
-root or nest secondary buttons inside the row. If the row navigates to a URL, use
-`StackedListItem` with `href` or `NavigationItem` instead. If the content is static,
+root or nest secondary buttons inside the row. If the full row navigates to a URL,
+use `NavigationItem` instead. Use `StackedListItem` with `href` when only the title
+should be a link and trailing controls remain separate. If the content is static,
 use `DataList` and `StackedListItem`.
