@@ -72,7 +72,7 @@
         </header>
 
         {#if file.metadata.length > 0}
-          <div class="cinder-source-diff-viewer__metadata" aria-label="File metadata">
+          <div class="cinder-source-diff-viewer__metadata" role="group" aria-label="File metadata">
             {#each file.metadata as metadataLine, metadataIndex (`${metadataIndex}:${metadataLine}`)}
               <code>{metadataLine}</code>
             {/each}
@@ -83,13 +83,9 @@
           {#if hunk.lines.length > 0}
             <div class="cinder-source-diff-viewer__hunk">
               <div class="cinder-source-diff-viewer__hunk-header">{hunk.header}</div>
-              <div class="cinder-source-diff-viewer__lines" role="table" aria-label={hunk.header}>
+              <svelte:element this={'div'} class="cinder-source-diff-viewer__lines" tabindex={0}>
                 {#each hunk.lines as line, lineIndex (`${lineIndex}:${line.kind}:${line.oldLineNumber ?? ''}:${line.newLineNumber ?? ''}`)}
-                  <div
-                    class="cinder-source-diff-viewer__line"
-                    data-cinder-line-kind={line.kind}
-                    role="row"
-                  >
+                  <div class="cinder-source-diff-viewer__line" data-cinder-line-kind={line.kind}>
                     {#if lineNumbers}
                       <span class="cinder-source-diff-viewer__line-number" aria-hidden="true">
                         {line.oldLineNumber ?? ''}
@@ -105,7 +101,7 @@
                     </code>
                   </div>
                 {/each}
-              </div>
+              </svelte:element>
             </div>
           {/if}
         {/each}

@@ -80,6 +80,19 @@
     overflow-x: auto;
   }
 
+  .cinder-source-diff-viewer__lines:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-source-diff-viewer__lines:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
+    }
+  }
+
   .cinder-source-diff-viewer__line {
     display: grid;
     grid-template-columns: 4.5ch 4.5ch minmax(max-content, 1fr);
