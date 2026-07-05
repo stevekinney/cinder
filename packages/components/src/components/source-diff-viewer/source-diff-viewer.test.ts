@@ -451,6 +451,20 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.txt -> new.txt');
   });
 
+  test('strips default prefixes from ambiguous spaced text side headers', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/old file.txt b/new file.txt
+--- a/old file.txt
++++ b/new file.txt
+@@ -1 +1 @@
+-old
++new
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('old file.txt');
+    expect(parsed.files[0]?.newPath).toBe('new file.txt');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old file.txt -> new file.txt');
+  });
+
   test('preserves a and b roots in non-git unified patch headers', () => {
     const parsed = parseUnifiedPatch(`--- a/foo.ts
 +++ b/foo.ts
@@ -673,6 +687,24 @@ Only in new: extra.txt
     );
   });
 
+  test('starts recursive-only diff entries after completed git hunks', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/one.txt b/one.txt
+--- a/one.txt
++++ b/one.txt
+@@ -1 +1 @@
+-one
++one updated
+Only in b: extra.txt
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[1]?.header).toBe('Only in b: extra.txt');
+    expect(parsed.files[1]?.metadata).toEqual([]);
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
+      'Only in b: extra.txt',
+    );
+  });
+
   test('starts leading recursive-only diff entries as their own files', () => {
     const parsed = parseUnifiedPatch(`Only in new: extra.txt
 Binary files old/a and new/a differ
@@ -809,6 +841,22 @@ Binary files old/two.bin and new/two.bin differ
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
       'Binary files old/two.bin and new/two.bin differ',
     );
+  });
+
+  test('preserves carriage returns in diff row content', () => {
+    const parsed = parseUnifiedPatch(
+      'diff --git a/src/example.txt b/src/example.txt\n' +
+        '--- a/src/example.txt\n' +
+        '+++ b/src/example.txt\n' +
+        '@@ -1 +1 @@\n' +
+        '-one\n' +
+        '+one\r\n',
+    );
+
+    expect(parsed.files[0]?.hunks[0]?.lines).toMatchObject([
+      { kind: 'removal', content: 'one' },
+      { kind: 'addition', content: 'one\r' },
+    ]);
   });
 
   test('does not render hunk metadata for rows omitted by truncation', () => {

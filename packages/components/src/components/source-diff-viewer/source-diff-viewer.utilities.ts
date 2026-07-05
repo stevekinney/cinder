@@ -356,7 +356,12 @@ function pushMetadata(
 }
 
 function preparePatchLines(patch: string): string[] {
-  const lines = patch.replace(/\r\n?/g, '\n').split('\n');
+  const lines = patch.split('\n').map((line) => {
+    if (!line.endsWith('\r')) return line;
+    if (line.startsWith(' ') || (line.startsWith('+') && !line.startsWith('+++ '))) return line;
+    if (line.startsWith('-') && !line.startsWith('--- ')) return line;
+    return line.slice(0, -1);
+  });
   while (lines[lines.length - 1] === '') lines.pop();
   return lines;
 }
@@ -440,6 +445,7 @@ function parseGitFileSidePath(
   const [prefix] = parsedPath.split('/');
   const hasKnownDiffPrefix =
     prefix === 'a' || prefix === 'b' || prefix === 'old' || prefix === 'new';
+  if (prefix === 'a' || prefix === 'b') return stripSyntheticDiffPrefix(parsedPath);
   if (currentPath && hasKnownDiffPrefix && parsedPath.endsWith(`/${currentPath}`)) {
     return currentPath;
   }
@@ -601,10 +607,13 @@ export function parseUnifiedPatch(
       continue;
     }
 
+    const previousFileIsGitDiff = files[files.length - 1]?.header?.startsWith('diff --git ');
+    const previousHunkIsComplete =
+      currentHunk && currentCursor && hunkIsComplete(currentHunk, currentCursor);
     if (
       isStandaloneRecursiveDiffMetadata(rawLine) &&
-      (!currentHunk || !currentCursor || hunkIsComplete(currentHunk, currentCursor)) &&
-      !files[files.length - 1]?.header?.startsWith('diff --git ')
+      (!currentHunk || !currentCursor || previousHunkIsComplete) &&
+      (previousHunkIsComplete || !previousFileIsGitDiff)
     ) {
       totalLineCount += 1;
       if (renderedLineCount < maxLines) {
