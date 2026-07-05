@@ -146,21 +146,30 @@ svg.cinder-icon-lg {
 
 .cinder-markdown-content
   :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task']) {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: flex-start;
-  gap: var(--cinder-space-2);
+  column-gap: var(--cinder-space-2);
   list-style: none;
 }
 
 .cinder-markdown-content
   :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task'])
   > :where(label, input[type='checkbox']) {
-  flex: 0 0 auto;
+  grid-column: 1;
+  grid-row: 1;
   margin-block-start: 0.25em;
 }
 
+.cinder-markdown-content
+  :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task'])
+  > :where(:not(label):not(input[type='checkbox'])) {
+  grid-column: 2;
+}
+
 .cinder-markdown-content :where(li[data-item-type='task'])::before {
-  flex: 0 0 auto;
+  grid-column: 1;
+  grid-row: 1;
   width: 1em;
   height: 1em;
   margin-block-start: 0.25em;
@@ -214,8 +223,11 @@ svg.cinder-icon-lg {
 .cinder-markdown-content :where(th, td) {
   padding: var(--cinder-space-2);
   border: 1px solid var(--cinder-border);
-  text-align: start;
   vertical-align: top;
+}
+
+.cinder-markdown-content :where(th:not([align]), td:not([align])) {
+  text-align: start;
 }
 
 .cinder-markdown-content :where(th) {

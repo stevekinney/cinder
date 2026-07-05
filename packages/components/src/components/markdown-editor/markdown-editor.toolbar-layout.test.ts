@@ -95,6 +95,7 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
       '.cinder-markdown-content :where(ul, ol)',
       ".cinder-markdown-content :where(ul[data-type='taskList'], ul.contains-task-list, ul:has(> li[data-item-type='task']))",
       ".cinder-markdown-content :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task'])",
+      ".cinder-markdown-content :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task']) > :where(:not(label):not(input[type='checkbox']))",
       ".cinder-markdown-content :where(li[data-item-type='task'])::before",
       ".cinder-markdown-content :where(li[data-item-type='task'][data-checked='true'])::before",
       '.cinder-markdown-content :where(blockquote)',
@@ -103,6 +104,7 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
       '.cinder-markdown-content :where(:not(pre) > code)',
       '.cinder-markdown-content :where(table)',
       '.cinder-markdown-content :where(th, td)',
+      '.cinder-markdown-content :where(th:not([align]), td:not([align]))',
     ]) {
       expect(utilitiesSource).toContain(selector);
     }
