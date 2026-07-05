@@ -180,6 +180,36 @@
       }
     },
     {
+      "name": "ActionRow",
+      "id": "action-row",
+      "import": "@lostgradient/cinder/action-row",
+      "exportName": "ActionRow",
+      "category": "action",
+      "status": "beta",
+      "purpose": "Full-width button row for selectable sidebars, timelines, and master-detail lists with leading, title, description, meta, and trailing regions.",
+      "tags": ["row", "list", "selection"],
+      "useWhen": [
+        "Selecting an item in-place from a vertical list, timeline, run list, or master-detail sidebar.",
+        "A row must behave like a native button while presenting rich row metadata."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Navigating to a URL — use stacked-list-item with href or navigation-item instead."
+        },
+        {
+          "reason": "Showing static record rows without button semantics — use stacked-list-item inside data-list."
+        }
+      ],
+      "related": ["stacked-list-item", "data-list", "button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/action-row/schema",
+        "variables": "@lostgradient/cinder/action-row/variables",
+        "examples": "@lostgradient/cinder/action-row/examples"
+      }
+    },
+    {
       "name": "Alert",
       "id": "alert",
       "import": "@lostgradient/cinder/alert",

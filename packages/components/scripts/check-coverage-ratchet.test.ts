@@ -378,6 +378,13 @@ LF:10
 LH:0
 end_of_record
 TN:
+SF:src/cli/index.ts
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
 SF:src/components/button/button.ts
 FNF:4
 FNH:4
@@ -396,6 +403,7 @@ end_of_record
 
   test('applies runtime scope exclusions to absolute package-local LCOV paths', () => {
     const absoluteScriptsPath = join(packageRoot, 'scripts', 'build.ts').replaceAll('\\', '/');
+    const absoluteCliPath = join(packageRoot, 'src', 'cli', 'index.ts').replaceAll('\\', '/');
     const absoluteTestPath = join(packageRoot, 'src', 'test', 'hydrate.ts').replaceAll('\\', '/');
     const absoluteComponentTestPath = join(
       packageRoot,
@@ -413,6 +421,13 @@ end_of_record
     ).replaceAll('\\', '/');
     const scopedFixture = `${lcovFixture}TN:
 SF:${absoluteScriptsPath}
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
+SF:${absoluteCliPath}
 FNF:10
 FNH:0
 LF:10

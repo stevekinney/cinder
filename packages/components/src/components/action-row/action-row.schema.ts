@@ -1,0 +1,74 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    density: {
+      enum: ['comfortable', 'condensed'],
+      description: 'Density token surfaced as `data-cinder-density`.',
+      default: 'comfortable',
+    },
+    selected: {
+      type: 'boolean',
+      description: 'Whether the row is currently selected.',
+      default: false,
+    },
+    selectedState: {
+      enum: ['pressed', 'current'],
+      description:
+        'Accessible state mapping for selected rows.\nUse `pressed` for in-page selectable rows and `current` for navigation/current-item rows.',
+      default: 'pressed',
+    },
+    currentValue: {
+      enum: ['page', 'step', 'location', 'date', 'time', 'true'],
+      description:
+        '`aria-current` value used when `selectedState="current"` and `selected` is true.',
+      default: 'true',
+    },
+    type: {
+      enum: ['button', 'submit', 'reset'],
+      description: 'Native button type.',
+      default: 'button',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional classes merged with `.cinder-action-row`.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'description',
+        reason: 'function-or-snippet',
+        description: 'Secondary description below the title.',
+      },
+      {
+        name: 'leading',
+        reason: 'function-or-snippet',
+        description: 'Leading visual such as an icon, avatar, marker, or status dot.',
+      },
+      {
+        name: 'meta',
+        reason: 'function-or-snippet',
+        description: 'Tertiary metadata such as timestamp, status text, or a compact badge.',
+      },
+      {
+        name: 'title',
+        reason: 'function-or-snippet',
+        required: true,
+        description:
+          'Primary row label. Required so the row has visible text and an accessible name.',
+      },
+      {
+        name: 'trailing',
+        reason: 'function-or-snippet',
+        description:
+          'Trailing region such as a timestamp, count, badge, chevron, or shortcut hint.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

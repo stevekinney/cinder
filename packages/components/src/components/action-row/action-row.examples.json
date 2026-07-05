@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "action-row",
+  "import": "@lostgradient/cinder/action-row",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Selectable action rows",
+      "description": "Rows with button semantics for master-detail lists and timeline selections.",
+      "code": "<script lang=\"ts\">\n  import ActionRow from '@lostgradient/cinder/action-row';\n\n  let selectedRun = $state('run-2');\n\n  const runs = [\n    { id: 'run-1', title: 'Morning sync', status: 'Queued', time: '09:00' },\n    { id: 'run-2', title: 'Webhook replay', status: 'Running', time: '09:12' },\n    { id: 'run-3', title: 'Cleanup sweep', status: 'Finished', time: '09:18' },\n  ];\n</script>\n\n<div style=\"display: grid; gap: var(--cinder-space-1); max-inline-size: 28rem;\">\n  {#each runs as run (run.id)}\n    <ActionRow\n      selected={selectedRun === run.id}\n      onclick={() => {\n        selectedRun = run.id;\n      }}\n    >\n      {#snippet title()}{run.title}{/snippet}\n      {#snippet description()}{run.status}{/snippet}\n      {#snippet meta()}Run {run.id}{/snippet}\n      {#snippet trailing()}{run.time}{/snippet}\n    </ActionRow>\n  {/each}\n</div>\n"
+    }
+  ]
+}
