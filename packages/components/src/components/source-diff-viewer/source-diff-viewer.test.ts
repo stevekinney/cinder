@@ -68,8 +68,14 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.textContent).toContain('src/two.ts');
     expect(container.textContent).toContain('@@ -1,3 +1,4 @@');
     expect(container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('role')).toBe(
-      'group',
+      'textbox',
     );
+    expect(
+      container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('aria-readonly'),
+    ).toBe('true');
+    expect(
+      container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('tabindex'),
+    ).toBe('0');
     expect(
       container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('aria-label'),
     ).toBe('src/one.ts @@ -1,3 +1,4 @@ lines');

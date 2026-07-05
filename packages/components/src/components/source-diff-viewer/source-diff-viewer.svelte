@@ -107,8 +107,11 @@
               <div class="cinder-source-diff-viewer__hunk-header">{hunk.header}</div>
               <div
                 class="cinder-source-diff-viewer__lines"
-                role="group"
+                role="textbox"
                 aria-label={`${fileLabel} ${hunk.header} lines`}
+                aria-multiline="true"
+                aria-readonly="true"
+                tabindex={0}
               >
                 {#each hunk.lines as line, lineIndex (`${lineIndex}:${line.kind}:${line.oldLineNumber ?? ''}:${line.newLineNumber ?? ''}`)}
                   <div class="cinder-source-diff-viewer__line" data-cinder-line-kind={line.kind}>
