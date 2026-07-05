@@ -1,0 +1,98 @@
+/// <reference lib="dom" />
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import type { EditorConfig, EditorState } from './types.js';
+
+let resolveCreatedEditor: ((state: EditorState) => void) | undefined;
+let rejectCreatedEditor: ((error: unknown) => void) | undefined;
+
+const createEditorMock = mock((_element: HTMLElement, _configuration: EditorConfig) => {
+  return new Promise<EditorState>((resolve, reject) => {
+    resolveCreatedEditor = resolve;
+    rejectCreatedEditor = reject;
+  });
+});
+
+const destroyEditorMock = mock((_state: EditorState) => {});
+
+mock.module('./editor.js', () => ({
+  createEditor: createEditorMock,
+  destroyEditor: destroyEditorMock,
+}));
+
+const { createEditorAttachment } = await import('./attach.js');
+
+function createEditorState(): EditorState {
+  return {
+    editor: { destroy: mock(() => {}) } as unknown as EditorState['editor'],
+    view: {} as EditorState['view'],
+    focus: mock(() => {}),
+    getMarkdown: mock(() => ''),
+    setMarkdown: mock((_content: string) => {}),
+    clearPendingTimers: mock(() => {}),
+    markDestroyed: mock(() => {}),
+  };
+}
+
+function createAttachmentOptions(
+  overrides: Partial<Parameters<typeof createEditorAttachment>[0]> = {},
+) {
+  return {
+    getInitialValue: () => 'Initial markdown',
+    getReadonly: () => false,
+    getAriaLabel: () => 'Markdown editor',
+    ...overrides,
+  };
+}
+
+function createEditorElement(): HTMLElement {
+  return {} as HTMLElement;
+}
+
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+describe('createEditorAttachment', () => {
+  beforeEach(() => {
+    resolveCreatedEditor = undefined;
+    rejectCreatedEditor = undefined;
+    createEditorMock.mockClear();
+    destroyEditorMock.mockClear();
+  });
+
+  test('destroys the editor when initialization resolves after detach', async () => {
+    const onready = mock((_state: EditorState) => {});
+    const attachment = createEditorAttachment(createAttachmentOptions({ onready }));
+    const detach = attachment(createEditorElement());
+
+    detach();
+
+    const editorState = createEditorState();
+    resolveCreatedEditor?.(editorState);
+    await flushMicrotasks();
+
+    expect(onready).not.toHaveBeenCalled();
+    expect(destroyEditorMock).toHaveBeenCalledTimes(1);
+    expect(destroyEditorMock).toHaveBeenCalledWith(editorState);
+  });
+
+  test('does not log initialization failures after detach', async () => {
+    const originalConsoleError = console.error;
+    const consoleErrorMock = mock((_message?: unknown, ..._optionalParameters: unknown[]) => {});
+    console.error = consoleErrorMock;
+
+    try {
+      const attachment = createEditorAttachment(createAttachmentOptions());
+      const detach = attachment(createEditorElement());
+
+      detach();
+      rejectCreatedEditor?.(new Error('late Milkdown initialization failure'));
+      await flushMicrotasks();
+    } finally {
+      console.error = originalConsoleError;
+    }
+
+    expect(consoleErrorMock).not.toHaveBeenCalled();
+  });
+});

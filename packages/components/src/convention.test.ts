@@ -103,7 +103,6 @@ const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([
  */
 const NO_TEST_REQUIRED_ALLOW_LIST = new Set([
   'command-item', // TODO: add tests and remove from allow-list
-  'markdown-editor', // TODO: add tests and remove from allow-list
   'review-editor', // TODO: add tests and remove from allow-list
 ]);
 
