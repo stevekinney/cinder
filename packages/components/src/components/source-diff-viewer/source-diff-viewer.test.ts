@@ -153,6 +153,15 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.textContent).toContain('Showing first 0 of 9 diff lines.');
   });
 
+  test('shows truncation for standalone recursive entries when maxLines is zero', () => {
+    const parsed = parseUnifiedPatch('Only in new: extra.txt\n', { maxLines: 0 });
+
+    expect(parsed.files).toEqual([]);
+    expect(parsed.totalLineCount).toBe(1);
+    expect(parsed.renderedLineCount).toBe(0);
+    expect(parsed.truncated).toBe(true);
+  });
+
   test('does not keep empty file sections when truncation stops before later hunks', () => {
     const parsed = parseUnifiedPatch(patch, { maxLines: 5 });
 
@@ -414,6 +423,20 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/foo/bar.ts -> lib/foo/bar.ts');
   });
 
+  test('strips default prefixes from differing text paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/old.txt b/new.txt
+--- a/old.txt
++++ b/new.txt
+@@ -1 +1 @@
+-old
++new
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('old.txt');
+    expect(parsed.files[0]?.newPath).toBe('new.txt');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.txt -> new.txt');
+  });
+
   test('preserves a and b roots in non-git unified patch headers', () => {
     const parsed = parseUnifiedPatch(`--- a/foo.ts
 +++ b/foo.ts
@@ -529,8 +552,16 @@ copy to two b/bar
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).toEqual([
       'old();',
       'new();',
+      '-- ',
+      '2.50.0',
     ]);
-    expect(parsed.files[0]?.metadata).toEqual(['-- ', '2.50.0']);
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.kind)).toEqual([
+      'removal',
+      'addition',
+      'metadata',
+      'metadata',
+    ]);
+    expect(parsed.files[0]?.metadata).toEqual([]);
   });
 
   test('keeps no-newline markers in hunk order', () => {
@@ -722,6 +753,18 @@ Binary files a/old file.bin and b/new file.bin differ
     expect(parsed.files[0]?.oldPath).toBe('old file.bin');
     expect(parsed.files[0]?.newPath).toBe('new file.bin');
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old file.bin -> new file.bin');
+  });
+
+  test('uses binary notices when destination names contain and delimiters', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/old.bin b/new and x.bin
+index 1234567..89abcde 100644
+Binary files a/old.bin and b/new and x.bin differ
+`);
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.oldPath).toBe('old.bin');
+    expect(parsed.files[0]?.newPath).toBe('new and x.bin');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.bin -> new and x.bin');
   });
 
   test('starts binary recursive diff entries outside completed hunks', () => {

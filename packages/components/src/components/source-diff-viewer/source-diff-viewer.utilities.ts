@@ -112,15 +112,11 @@ function normalizeGitHeaderPaths(
   const sharedSegments = sharedPathSegmentSuffixSegments(oldPath, newPath);
   const [oldPrefix] = oldSegments;
   const [newPrefix] = newSegments;
-  if (
-    sharedSegments.length > 0 &&
-    oldPrefix === 'a' &&
-    newPrefix === 'b' &&
-    oldSegments.length === sharedSegments.length + 1 &&
-    newSegments.length === sharedSegments.length + 1
-  ) {
-    const sharedSuffix = sharedPathSegmentSuffix(oldPath, newPath);
-    return { oldPath: sharedSuffix, newPath: sharedSuffix };
+  if (oldPrefix === 'a' && newPrefix === 'b') {
+    return {
+      oldPath: stripSyntheticDiffPrefix(oldPath),
+      newPath: stripSyntheticDiffPrefix(newPath),
+    };
   }
 
   if (
@@ -306,7 +302,9 @@ function createHunkMetadataLine(
 }
 
 function applyFileMetadata(file: SourceDiffFile, rawLine: string): void {
-  const binaryMatch = rawLine.match(/^Binary files (.+) and (.+) differ$/);
+  const binaryMatch =
+    rawLine.match(/^Binary files (a\/.+?) and (b\/.+) differ$/) ??
+    rawLine.match(/^Binary files (.+) and (.+) differ$/);
   if (binaryMatch) {
     file.oldPath = parsePatchPath(binaryMatch[1] ?? '', { stripSyntheticPrefix: true });
     file.newPath = parsePatchPath(binaryMatch[2] ?? '', { stripSyntheticPrefix: true });
@@ -695,9 +693,13 @@ export function parseUnifiedPatch(
     }
 
     if (currentHunk && currentCursor && hunkIsComplete(currentHunk, currentCursor)) {
-      currentHunk = null;
-      currentCursor = null;
+      totalLineCount += 1;
+      if (renderedLineCount < maxLines) {
+        currentHunk.lines.push(createHunkMetadataLine(rawLine));
+        renderedLineCount += 1;
+      }
       previousHunkDiffLineWasRendered = false;
+      continue;
     }
 
     if (!currentHunk || !currentCursor) {
@@ -722,7 +724,7 @@ export function parseUnifiedPatch(
     }
   }
 
-  if (files.length === 0) return createEmptyParseResult();
+  if (files.length === 0 && totalLineCount === 0) return createEmptyParseResult();
 
   return {
     files: pruneFiles(files),
