@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -8,8 +8,6 @@ const [{ default: MarkdownEditor }, { cleanup, render, waitFor }] = await Promis
   import('./markdown-editor.svelte'),
   import('@testing-library/svelte'),
 ]);
-
-afterEach(() => cleanup());
 
 type NoiseCollector = {
   messages: string[];
@@ -82,8 +80,9 @@ describe('MarkdownEditor teardown', () => {
       });
 
       result.unmount();
-      await drainLateCallbacks();
     } finally {
+      cleanup();
+      await drainLateCallbacks();
       noise.restore();
     }
 
