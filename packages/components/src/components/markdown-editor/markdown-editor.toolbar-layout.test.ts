@@ -3,9 +3,14 @@ import { describe, expect, it } from 'bun:test';
 const markdownEditorPath = new URL('./markdown-editor.svelte', import.meta.url);
 const editorToolbarPath = new URL('./editor-toolbar/editor-toolbar.svelte', import.meta.url);
 const toolbarDropdownPath = new URL('./editor-toolbar/toolbar-dropdown.svelte', import.meta.url);
+const utilitiesCssPath = new URL('../../styles/utilities.css', import.meta.url);
 
 function stripCssComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+function normalizeCssWhitespace(source: string): string {
+  return source.replace(/\s+/g, ' ');
 }
 
 function cssBlock(source: string, selector: string): string {
@@ -68,5 +73,35 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     expect(source).toContain('itemRole="menuitemradio"');
     expect(source).toContain('checked={isActive}');
     expect(source).not.toContain('aria-checked={isActive}');
+  });
+
+  it('does not depend on a consumer-global prose class for the rich editor surface', async () => {
+    const markdownEditorSource = stripCssComments(await Bun.file(markdownEditorPath).text());
+
+    expect(markdownEditorSource).toContain(
+      'class="cinder-markdown-content markdown-editor surface"',
+    );
+    expect(markdownEditorSource).not.toContain('class="cinder-markdown-content prose');
+  });
+
+  it('owns markdown prose and task-list styling through cinder-markdown-content', async () => {
+    const utilitiesSource = normalizeCssWhitespace(
+      stripCssComments(await Bun.file(utilitiesCssPath).text()),
+    );
+
+    for (const selector of [
+      '.cinder-markdown-content :where(p, ul, ol, blockquote, pre, table)',
+      '.cinder-markdown-content :where(h1, h2, h3, h4, h5, h6)',
+      '.cinder-markdown-content :where(ul, ol)',
+      ".cinder-markdown-content :where(ul[data-type='taskList'], ul.contains-task-list)",
+      ".cinder-markdown-content :where(li[data-type='taskItem'], li.task-list-item)",
+      '.cinder-markdown-content :where(blockquote)',
+      '.cinder-markdown-content :where(pre)',
+      '.cinder-markdown-content :where(:not(pre) > code)',
+      '.cinder-markdown-content :where(table)',
+      '.cinder-markdown-content :where(th, td)',
+    ]) {
+      expect(utilitiesSource).toContain(selector);
+    }
   });
 });
