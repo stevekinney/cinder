@@ -280,6 +280,17 @@ new mode 100755
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('café "x".txt');
   });
 
+  test('preserves astral Unicode characters in quoted git paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git "a/😀.txt" "b/😀.txt"
+old mode 100644
+new mode 100755
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('😀.txt');
+    expect(parsed.files[0]?.newPath).toBe('😀.txt');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('😀.txt');
+  });
+
   test('decodes Git C-style control-character escapes in quoted paths', () => {
     const parsed = parseUnifiedPatch(`diff --git "a/bell\\a.txt" "b/bell\\a.txt"
 --- "a/bell\\a.txt"

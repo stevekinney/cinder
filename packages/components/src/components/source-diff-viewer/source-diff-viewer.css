@@ -62,6 +62,7 @@
   .cinder-source-diff-viewer__metadata code {
     font: inherit;
     overflow-wrap: anywhere;
+    white-space: break-spaces;
   }
 
   .cinder-source-diff-viewer__hunk + .cinder-source-diff-viewer__hunk {

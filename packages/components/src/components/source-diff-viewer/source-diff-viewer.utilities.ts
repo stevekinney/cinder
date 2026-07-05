@@ -57,7 +57,11 @@ function decodeGitQuotedPath(path: string): string {
   for (let index = 0; index < quoted.length; index += 1) {
     const character = quoted[index];
     if (character !== '\\') {
-      bytes.push(...TEXT_ENCODER.encode(character ?? ''));
+      const codePoint = quoted.codePointAt(index);
+      if (codePoint !== undefined) {
+        bytes.push(...TEXT_ENCODER.encode(String.fromCodePoint(codePoint)));
+        if (codePoint > 0xffff) index += 1;
+      }
       continue;
     }
 
