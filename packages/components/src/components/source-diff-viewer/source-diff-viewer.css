@@ -113,7 +113,8 @@
     background: var(--cinder-color-danger-bg);
   }
 
-  .cinder-source-diff-viewer__line[data-cinder-line-kind='context'] {
+  .cinder-source-diff-viewer__line[data-cinder-line-kind='context'],
+  .cinder-source-diff-viewer__line[data-cinder-line-kind='metadata'] {
     background: var(--cinder-surface-inset);
   }
 

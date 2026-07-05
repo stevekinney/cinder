@@ -114,6 +114,13 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.textContent).toContain('Showing first 3 of 8 diff lines.');
   });
 
+  test('shows truncation rather than the empty state when maxLines is zero', () => {
+    const { container } = render(SourceDiffViewer, { patch, maxLines: 0 });
+
+    expect(container.querySelector('.cinder-source-diff-viewer__empty')).toBeNull();
+    expect(container.textContent).toContain('Showing first 0 of 8 diff lines.');
+  });
+
   test('does not keep empty file sections when truncation stops before later hunks', () => {
     const parsed = parseUnifiedPatch(patch, { maxLines: 5 });
 
@@ -160,6 +167,19 @@ Binary files /dev/null and b/assets/icon.png differ
     expect(parsed.files[0]?.hunks[0]?.lines).toHaveLength(2);
   });
 
+  test('strips diff -u timestamps from non-git file headers', () => {
+    const parsed = parseUnifiedPatch(`--- src/example.ts\t2026-07-05 10:00:00
++++ src/example.ts\t2026-07-05 10:01:00
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('src/example.ts');
+    expect(parsed.files[0]?.newPath).toBe('src/example.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
+  });
+
   test('parses multi-file unified patches without diff git separators', () => {
     const parsed = parseUnifiedPatch(`--- a/src/one.ts
 +++ b/src/one.ts
@@ -196,6 +216,56 @@ Binary files /dev/null and b/assets/icon.png differ
     ]);
     expect(parsed.files[0]?.oldPath).toBe('src/comments.sql');
     expect(parsed.files[0]?.newPath).toBe('src/comments.sql');
+  });
+
+  test('keeps no-newline markers in hunk order', () => {
+    const parsed = parseUnifiedPatch(`--- a/src/example.ts
++++ b/src/example.ts
+@@ -1 +1 @@
+-old();
+\\ No newline at end of file
++new();
+\\ No newline at end of file
+`);
+
+    expect(parsed.files[0]?.metadata).toEqual([]);
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.kind)).toEqual([
+      'removal',
+      'metadata',
+      'addition',
+      'metadata',
+    ]);
+
+    const { container } = render(SourceDiffViewer, {
+      patch: `--- a/src/example.ts
++++ b/src/example.ts
+@@ -1 +1 @@
+-old();
+\\ No newline at end of file
++new();
+\\ No newline at end of file
+`,
+    });
+
+    expect(container.textContent).toContain('No newline at end of file');
+    expect(container.querySelector('.cinder-source-diff-viewer__metadata')).toBeNull();
+  });
+
+  test('renders diff row prefixes adjacent to source text', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch: `--- a/src/example.ts
++++ b/src/example.ts
+@@ -1 +1 @@
+-old();
++new();
+`,
+    });
+
+    const renderedRows = [
+      ...container.querySelectorAll('.cinder-source-diff-viewer__line-code'),
+    ].map((element) => element.textContent);
+    expect(renderedRows).toContain('-old();');
+    expect(renderedRows).toContain('+new();');
   });
 
   test('treats /dev/null as a missing side of added and removed files', () => {

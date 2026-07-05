@@ -35,7 +35,7 @@
     getSourceDiffLineLabel,
     parseUnifiedPatch,
   } from './source-diff-viewer.utilities.ts';
-  import type { SourceDiffViewerProps } from './source-diff-viewer.types.ts';
+  import type { SourceDiffLine, SourceDiffViewerProps } from './source-diff-viewer.types.ts';
 
   let {
     patch,
@@ -48,8 +48,14 @@
   }: SourceDiffViewerProps = $props();
 
   const parsedPatch = $derived(parseUnifiedPatch(patch, { maxLines }));
-  const hasPatchContent = $derived(parsedPatch.files.length > 0);
+  const hasPatchContent = $derived(parsedPatch.files.length > 0 || parsedPatch.totalLineCount > 0);
   const normalizedAriaLabel = $derived(ariaLabel.trim() ? ariaLabel.trim() : undefined);
+
+  function getSourceDiffLineText(line: SourceDiffLine): string {
+    if (line.kind === 'metadata') return `\\ ${line.content}`;
+    const prefix = line.kind === 'addition' ? '+' : line.kind === 'removal' ? '-' : ' ';
+    return `${prefix}${line.content}`;
+  }
 </script>
 
 <div
@@ -99,8 +105,7 @@
                     {/if}
                     <span class="cinder-sr-only">{getSourceDiffLineLabel(line)}</span>
                     <code class="cinder-source-diff-viewer__line-code" aria-hidden="true">
-                      {line.kind === 'addition' ? '+' : line.kind === 'removal' ? '-' : ' '}
-                      {line.content}
+                      {getSourceDiffLineText(line)}
                     </code>
                   </div>
                 {/each}

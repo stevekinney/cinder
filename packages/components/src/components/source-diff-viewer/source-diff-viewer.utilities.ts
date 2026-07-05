@@ -19,7 +19,8 @@ function normalizePath(path: string): string {
 }
 
 function parsePatchPath(path: string): string | null {
-  const normalized = normalizePath(path.trim());
+  const [pathWithoutTimestamp = path] = path.split('\t');
+  const normalized = normalizePath(pathWithoutTimestamp.trim());
   return normalized === '/dev/null' ? null : normalized;
 }
 
@@ -95,6 +96,15 @@ function hunkIsComplete(hunk: SourceDiffHunk, cursor: HunkCursor): boolean {
 }
 
 function readRawHunkLine(rawLine: string, cursor: HunkCursor): SourceDiffLine | null {
+  if (rawLine.startsWith('\\ ')) {
+    return {
+      kind: 'metadata',
+      content: rawLine.slice(2),
+      oldLineNumber: null,
+      newLineNumber: null,
+    };
+  }
+
   const prefix = rawLine[0];
   const content = rawLine.slice(1);
   const kind =
@@ -134,6 +144,11 @@ function readHunkLine(
   const line = readRawHunkLine(rawLine, cursor);
   if (!line) {
     pushMetadata(files, rawLine);
+    return { renderedLineCount, lineWasRead: false };
+  }
+
+  if (line.kind === 'metadata') {
+    if (hunk.lines.length > 0) hunk.lines.push(line);
     return { renderedLineCount, lineWasRead: false };
   }
 
@@ -239,6 +254,10 @@ export function getSourceDiffLineLabel(line: SourceDiffLine): string {
 
   if (line.kind === 'removal') {
     return `Removed line ${line.oldLineNumber ?? 'unknown'}: ${line.content}`;
+  }
+
+  if (line.kind === 'metadata') {
+    return `Diff metadata: ${line.content}`;
   }
 
   const lineNumber = line.newLineNumber ?? line.oldLineNumber ?? 'unknown';

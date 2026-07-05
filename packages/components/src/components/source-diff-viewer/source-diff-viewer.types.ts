@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from 'svelte/elements';
 
-export type SourceDiffLineKind = 'addition' | 'removal' | 'context';
+export type SourceDiffLineKind = 'addition' | 'removal' | 'context' | 'metadata';
 
 export type SourceDiffLine = {
   kind: SourceDiffLineKind;
