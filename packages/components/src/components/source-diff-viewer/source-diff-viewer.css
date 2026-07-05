@@ -46,6 +46,7 @@
     overflow-wrap: anywhere;
     color: var(--cinder-text);
     font-weight: var(--cinder-font-medium);
+    white-space: break-spaces;
   }
 
   .cinder-source-diff-viewer__metadata {

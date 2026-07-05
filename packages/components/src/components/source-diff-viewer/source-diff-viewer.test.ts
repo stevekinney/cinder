@@ -280,6 +280,20 @@ new mode 100755
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('café "x".txt');
   });
 
+  test('decodes Git C-style control-character escapes in quoted paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git "a/bell\\a.txt" "b/bell\\a.txt"
+--- "a/bell\\a.txt"
++++ "b/bell\\a.txt"
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('bell\u0007.txt');
+    expect(parsed.files[0]?.newPath).toBe('bell\u0007.txt');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('bell\u0007.txt');
+  });
+
   test('uses rename metadata for git headers with ambiguous b segments', () => {
     const parsed = parseUnifiedPatch(`diff --git a/one b/two b/bar
 similarity index 100%
@@ -460,6 +474,22 @@ copy to two b/bar
     expect(parsed.files[0]?.newPath).toBe('src/comments.sql');
   });
 
+  test('keeps header-looking source rows after complete hunk counts', () => {
+    const parsed = parseUnifiedPatch(`--- src/comments.sql
++++ src/comments.sql
+@@ -1,0 +1,0 @@
+--- old comment
++++ new comment
+`);
+
+    const lines = parsed.files[0]?.hunks[0]?.lines ?? [];
+    expect(lines).toMatchObject([
+      { kind: 'removal', content: '-- old comment' },
+      { kind: 'addition', content: '++ new comment' },
+    ]);
+    expect(parsed.files).toHaveLength(1);
+  });
+
   test('keeps no-newline markers in hunk order', () => {
     const parsed = parseUnifiedPatch(`diff --git a/src/example.ts b/src/example.ts
 --- a/src/example.ts
@@ -569,6 +599,38 @@ Binary files old/a and new/a differ
     expect(getSourceDiffFileLabel(parsed.files[1]!)).toBe('Binary files old/a and new/a differ');
   });
 
+  test('starts file-type recursive diagnostics as their own files', () => {
+    const parsed = parseUnifiedPatch(`File old/x is a directory while file new/x is a regular file
+`);
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.header).toBe(
+      'File old/x is a directory while file new/x is a regular file',
+    );
+    expect(parsed.files[0]?.metadata).toEqual([
+      'File old/x is a directory while file new/x is a regular file',
+    ]);
+  });
+
+  test('starts file-type recursive diagnostics outside completed hunks', () => {
+    const parsed = parseUnifiedPatch(`diff -ru old/one.txt new/one.txt
+--- old/one.txt
++++ new/one.txt
+@@ -1 +1 @@
+-one
++one updated
+File old/x is a directory while file new/x is a regular file
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[1]?.header).toBe(
+      'File old/x is a directory while file new/x is a regular file',
+    );
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
+      'File old/x is a directory while file new/x is a regular file',
+    );
+  });
+
   test('keeps git binary notices with their diff file metadata', () => {
     const parsed = parseUnifiedPatch(`diff --git a/file.bin b/file.bin
 index 1234567..89abcde 100644
@@ -668,6 +730,20 @@ rename to foo
     expect(parsed.files[0]?.oldPath).toBe('foo');
     expect(parsed.files[0]?.newPath).toBe('foo ');
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('foo -> foo ');
+  });
+
+  test('renders significant trailing spaces in file labels', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch: `diff --git a/foo b/foo 
+similarity index 100%
+rename from foo
+rename to foo 
+`,
+    });
+
+    expect(container.querySelector('.cinder-source-diff-viewer__file-path')?.textContent).toBe(
+      'foo -> foo ',
+    );
   });
 
   test('parses zero-count hunk headers', () => {

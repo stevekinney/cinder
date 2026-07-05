@@ -72,9 +72,13 @@ function decodeGitQuotedPath(path: string): string {
     const escapes: Record<string, number> = {
       '"': 0x22,
       '\\': 0x5c,
+      a: 0x07,
+      b: 0x08,
+      f: 0x0c,
       n: 0x0a,
       r: 0x0d,
       t: 0x09,
+      v: 0x0b,
     };
     bytes.push(next ? (escapes[next] ?? next.charCodeAt(0)) : 0x5c);
     if (next) index += 1;
@@ -461,7 +465,11 @@ function parseHunkNumber(value: string | undefined): number | null {
 }
 
 function isStandaloneRecursiveDiffMetadata(rawLine: string): boolean {
-  return rawLine.startsWith('Only in ') || rawLine.startsWith('Binary files ');
+  return (
+    rawLine.startsWith('Only in ') ||
+    rawLine.startsWith('Binary files ') ||
+    (rawLine.startsWith('File ') && rawLine.includes(' is a ') && rawLine.includes(' while file '))
+  );
 }
 
 function readLine(kind: SourceDiffLineKind, content: string, cursor: HunkCursor): SourceDiffLine {
@@ -596,6 +604,27 @@ export function parseUnifiedPatch(
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
+    }
+
+    if (
+      currentHunk &&
+      currentCursor &&
+      (rawLine.startsWith('--- ') || rawLine.startsWith('+++ '))
+    ) {
+      const result = readHunkLine(
+        currentHunk,
+        currentCursor,
+        rawLine,
+        renderedLineCount,
+        maxLines,
+        previousHunkDiffLineWasRendered,
+      );
+      renderedLineCount = result.renderedLineCount;
+      if (result.lineWasRead) {
+        totalLineCount += 1;
+        previousHunkDiffLineWasRendered = result.lineWasRendered;
+      }
+      continue;
     }
 
     if (
