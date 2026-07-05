@@ -85,7 +85,7 @@ function decodeGitQuotedPath(path: string): string {
 
 function parsePatchPath(path: string, options: { stripSyntheticPrefix: boolean }): string | null {
   const [pathWithoutTimestamp = path] = path.split('\t');
-  const trimmedPath = decodeGitQuotedPath(pathWithoutTimestamp.trim());
+  const trimmedPath = decodeGitQuotedPath(pathWithoutTimestamp);
   const normalized = options.stripSyntheticPrefix
     ? stripSyntheticDiffPrefix(trimmedPath)
     : trimmedPath;
@@ -99,16 +99,32 @@ function normalizeGitHeaderPaths(
   if (!oldPath || !newPath) return { oldPath, newPath };
   if (oldPath === newPath) return { oldPath, newPath };
 
-  const sharedSuffix = sharedPathSegmentSuffix(oldPath, newPath);
-  if (sharedSuffix) return { oldPath: sharedSuffix, newPath: sharedSuffix };
-
-  const oldWithoutPrefix = stripLeadingPathSegmentPrefix(oldPath);
-  const newWithoutPrefix = stripLeadingPathSegmentPrefix(newPath);
-  if (oldWithoutPrefix === newWithoutPrefix) {
-    return { oldPath: oldWithoutPrefix, newPath: newWithoutPrefix };
+  const oldSegments = oldPath.split('/');
+  const newSegments = newPath.split('/');
+  const sharedSegments = sharedPathSegmentSuffixSegments(oldPath, newPath);
+  const [oldPrefix] = oldSegments;
+  const [newPrefix] = newSegments;
+  if (
+    sharedSegments.length > 0 &&
+    oldPrefix === 'a' &&
+    newPrefix === 'b' &&
+    oldSegments.length === sharedSegments.length + 1 &&
+    newSegments.length === sharedSegments.length + 1
+  ) {
+    const sharedSuffix = sharedPathSegmentSuffix(oldPath, newPath);
+    return { oldPath: sharedSuffix, newPath: sharedSuffix };
   }
 
-  return { oldPath: oldWithoutPrefix, newPath: newWithoutPrefix };
+  if (
+    sharedSegments.length >= 2 &&
+    oldSegments.length === sharedSegments.length + 1 &&
+    newSegments.length === sharedSegments.length + 1
+  ) {
+    const sharedSuffix = sharedPathSegmentSuffix(oldPath, newPath);
+    return { oldPath: sharedSuffix, newPath: sharedSuffix };
+  }
+
+  return { oldPath, newPath };
 }
 
 function readQuotedGitToken(
@@ -356,8 +372,8 @@ function readHunkLine(
     }
     return {
       renderedLineCount,
-      lineWasRead: shouldPreserveMetadata,
-      lineWasRendered: shouldPreserveMetadata,
+      lineWasRead: true,
+      lineWasRendered: false,
     };
   }
 
@@ -373,8 +389,8 @@ function readHunkLine(
     }
     return {
       renderedLineCount,
-      lineWasRead: shouldPreserveMetadata,
-      lineWasRendered: shouldPreserveMetadata,
+      lineWasRead: true,
+      lineWasRendered: false,
     };
   }
 
@@ -531,8 +547,12 @@ export function parseUnifiedPatch(
   let totalLineCount = 0;
   let renderedLineCount = 0;
   let previousHunkDiffLineWasRendered = false;
+  const lines = preparePatchLines(patch);
 
-  for (const rawLine of preparePatchLines(patch)) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index] ?? '';
+    const nextRawLine = lines[index + 1];
+    const nextNextRawLine = lines[index + 2];
     if (rawLine === '' && files.length === 0) continue;
 
     if (rawLine.startsWith('diff --git ')) {
@@ -553,7 +573,8 @@ export function parseUnifiedPatch(
 
     if (
       isStandaloneRecursiveDiffMetadata(rawLine) &&
-      (!currentHunk || !currentCursor || hunkIsComplete(currentHunk, currentCursor))
+      (!currentHunk || !currentCursor || hunkIsComplete(currentHunk, currentCursor)) &&
+      !files[files.length - 1]?.header?.startsWith('diff --git ')
     ) {
       startFile(files, rawLine);
       const result = pushMetadata(files, rawLine, renderedLineCount, maxLines);
@@ -563,6 +584,18 @@ export function parseUnifiedPatch(
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
       continue;
+    }
+
+    if (
+      currentHunk &&
+      currentCursor &&
+      rawLine.startsWith('--- ') &&
+      nextRawLine?.startsWith('+++ ') &&
+      nextNextRawLine?.startsWith('@@ ')
+    ) {
+      currentHunk = null;
+      currentCursor = null;
+      previousHunkDiffLineWasRendered = false;
     }
 
     if (

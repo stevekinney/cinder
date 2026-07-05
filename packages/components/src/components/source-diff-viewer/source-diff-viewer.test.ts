@@ -361,6 +361,20 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
   });
 
+  test('preserves no-prefix git header moves with shared basenames', () => {
+    const parsed = parseUnifiedPatch(`diff --git src/foo.ts lib/foo.ts
+--- src/foo.ts
++++ lib/foo.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('src/foo.ts');
+    expect(parsed.files[0]?.newPath).toBe('lib/foo.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/foo.ts -> lib/foo.ts');
+  });
+
   test('preserves a and b roots in non-git unified patch headers', () => {
     const parsed = parseUnifiedPatch(`--- a/foo.ts
 +++ b/foo.ts
@@ -404,6 +418,26 @@ copy to two b/bar
     expect(parsed.files[0]?.newPath).toBe('src/one.ts');
     expect(parsed.files[1]?.newPath).toBe('src/two.ts');
     expect(parsed.files[1]?.hunks[0]?.lines[1]?.content).toBe('twoUpdated();');
+  });
+
+  test('starts file headers after incomplete hunks instead of swallowing them', () => {
+    const parsed = parseUnifiedPatch(`--- src/one.ts
++++ src/one.ts
+@@ -1,2 +1,2 @@
+-one();
+--- src/two.ts
++++ src/two.ts
+@@ -1 +1 @@
+-two();
++twoUpdated();
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[0]?.newPath).toBe('src/one.ts');
+    expect(parsed.files[1]?.newPath).toBe('src/two.ts');
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
+      '-- src/two.ts',
+    );
   });
 
   test('treats hunk rows that start with --- or +++ as source lines', () => {
@@ -535,6 +569,21 @@ Binary files old/a and new/a differ
     expect(getSourceDiffFileLabel(parsed.files[1]!)).toBe('Binary files old/a and new/a differ');
   });
 
+  test('keeps git binary notices with their diff file metadata', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/file.bin b/file.bin
+index 1234567..89abcde 100644
+Binary files a/file.bin and b/file.bin differ
+`);
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.oldPath).toBe('file.bin');
+    expect(parsed.files[0]?.newPath).toBe('file.bin');
+    expect(parsed.files[0]?.metadata).toEqual([
+      'index 1234567..89abcde 100644',
+      'Binary files a/file.bin and b/file.bin differ',
+    ]);
+  });
+
   test('starts binary recursive diff entries outside completed hunks', () => {
     const parsed = parseUnifiedPatch(`diff -ru old/one.txt new/one.txt
 --- old/one.txt
@@ -588,6 +637,37 @@ Binary files old/two.bin and new/two.bin differ
     expect(parsed.renderedLineCount).toBe(1);
     expect(parsed.truncated).toBe(true);
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).toEqual(['old();']);
+  });
+
+  test('counts unrendered hunk metadata after truncation', () => {
+    const parsed = parseUnifiedPatch(
+      `--- src/example.ts
++++ src/example.ts
+@@ -1,2 +1,2 @@
+-old();
+! metadata one
+! metadata two
++new();
+`,
+      { maxLines: 1 },
+    );
+
+    expect(parsed.totalLineCount).toBe(4);
+    expect(parsed.renderedLineCount).toBe(1);
+    expect(parsed.truncated).toBe(true);
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).toEqual(['old();']);
+  });
+
+  test('preserves significant trailing spaces in rename metadata paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/foo b/foo 
+similarity index 100%
+rename from foo
+rename to foo 
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('foo');
+    expect(parsed.files[0]?.newPath).toBe('foo ');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('foo -> foo ');
   });
 
   test('parses zero-count hunk headers', () => {
