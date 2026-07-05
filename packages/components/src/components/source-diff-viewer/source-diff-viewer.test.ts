@@ -813,6 +813,18 @@ Binary files a/old.bin and b/new and x.bin differ
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.bin -> new and x.bin');
   });
 
+  test('does not let ambiguous binary notices override quoted destination paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git "a/old.bin" "b/new and b/x.bin"
+index 1234567..89abcde 100644
+Binary files a/old.bin and b/new and b/x.bin differ
+`);
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.oldPath).toBe('old.bin');
+    expect(parsed.files[0]?.newPath).toBe('new and b/x.bin');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.bin -> new and b/x.bin');
+  });
+
   test('uses binary notices when source names contain default delimiter text', () => {
     const parsed = parseUnifiedPatch(`diff --git a/a/old and b/x.bin b/b/new.bin
 index 1234567..89abcde 100644
@@ -840,6 +852,49 @@ Binary files old/two.bin and new/two.bin differ
     expect(parsed.files[1]?.metadata).toEqual([]);
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
       'Binary files old/two.bin and new/two.bin differ',
+    );
+  });
+
+  test('marks metadata-only adds and deletes as missing one side', () => {
+    const added = parseUnifiedPatch(`diff --git a/empty.txt b/empty.txt
+new file mode 100644
+`);
+    const deleted = parseUnifiedPatch(`diff --git a/empty.txt b/empty.txt
+deleted file mode 100644
+`);
+
+    expect(added.files[0]?.oldPath).toBeNull();
+    expect(added.files[0]?.newPath).toBe('empty.txt');
+    expect(getSourceDiffFileLabel(added.files[0]!)).toBe('empty.txt');
+    expect(deleted.files[0]?.oldPath).toBe('empty.txt');
+    expect(deleted.files[0]?.newPath).toBeNull();
+    expect(getSourceDiffFileLabel(deleted.files[0]!)).toBe('empty.txt');
+  });
+
+  test('starts GNU directory diagnostics as standalone recursive entries', () => {
+    const parsed = parseUnifiedPatch(`Common subdirectories: old/sub and new/sub
+Symbolic links old/link and new/link differ
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[0]?.header).toBe('Common subdirectories: old/sub and new/sub');
+    expect(parsed.files[1]?.header).toBe('Symbolic links old/link and new/link differ');
+  });
+
+  test('starts GNU directory diagnostics after completed hunks', () => {
+    const parsed = parseUnifiedPatch(`diff -ru old/one.txt new/one.txt
+--- old/one.txt
++++ new/one.txt
+@@ -1 +1 @@
+-one
++one updated
+Common subdirectories: old/sub and new/sub
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[1]?.header).toBe('Common subdirectories: old/sub and new/sub');
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
+      'Common subdirectories: old/sub and new/sub',
     );
   });
 

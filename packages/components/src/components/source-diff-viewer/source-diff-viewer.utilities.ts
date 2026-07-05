@@ -301,13 +301,64 @@ function createHunkMetadataLine(
   return line;
 }
 
+function parseBinaryNoticePaths(
+  file: SourceDiffFile,
+  rawLine: string,
+): Pick<SourceDiffFile, 'oldPath' | 'newPath'> | null {
+  const payload = rawLine.match(/^Binary files (.+) differ$/)?.[1];
+  if (!payload) return null;
+
+  const candidates: (Pick<SourceDiffFile, 'oldPath' | 'newPath'> & {
+    hasKnownEndpoints: boolean;
+  })[] = [];
+  let delimiterIndex = payload.indexOf(' and ');
+  while (delimiterIndex !== -1) {
+    const rawOldPath = payload.slice(0, delimiterIndex);
+    const rawNewPath = payload.slice(delimiterIndex + ' and '.length);
+    const oldPath = parsePatchPath(rawOldPath, {
+      stripSyntheticPrefix: true,
+    });
+    const newPath = parsePatchPath(rawNewPath, {
+      stripSyntheticPrefix: true,
+    });
+    candidates.push({
+      oldPath,
+      newPath,
+      hasKnownEndpoints:
+        (rawOldPath.startsWith('a/') || rawOldPath === '/dev/null') &&
+        (rawNewPath.startsWith('b/') || rawNewPath === '/dev/null'),
+    });
+    delimiterIndex = payload.indexOf(' and ', delimiterIndex + 1);
+  }
+
+  const preferredCandidates = candidates.some((candidate) => candidate.hasKnownEndpoints)
+    ? candidates.filter((candidate) => candidate.hasKnownEndpoints)
+    : candidates;
+
+  if (preferredCandidates.length === 1) return preferredCandidates[0] ?? null;
+
+  return (
+    preferredCandidates.find(
+      (candidate) => candidate.oldPath === file.oldPath && candidate.newPath === file.newPath,
+    ) ?? null
+  );
+}
+
 function applyFileMetadata(file: SourceDiffFile, rawLine: string): void {
-  const binaryMatch =
-    rawLine.match(/^Binary files (a\/.+) and (b\/.+) differ$/) ??
-    rawLine.match(/^Binary files (.+) and (.+) differ$/);
-  if (binaryMatch) {
-    file.oldPath = parsePatchPath(binaryMatch[1] ?? '', { stripSyntheticPrefix: true });
-    file.newPath = parsePatchPath(binaryMatch[2] ?? '', { stripSyntheticPrefix: true });
+  const binaryPaths = parseBinaryNoticePaths(file, rawLine);
+  if (binaryPaths) {
+    file.oldPath = binaryPaths.oldPath;
+    file.newPath = binaryPaths.newPath;
+    return;
+  }
+
+  if (rawLine.startsWith('new file mode ')) {
+    file.oldPath = null;
+    return;
+  }
+
+  if (rawLine.startsWith('deleted file mode ')) {
+    file.newPath = null;
     return;
   }
 
@@ -495,7 +546,9 @@ function parseHunkNumber(value: string | undefined): number | null {
 function isStandaloneRecursiveDiffMetadata(rawLine: string): boolean {
   return (
     rawLine.startsWith('Only in ') ||
+    rawLine.startsWith('Common subdirectories: ') ||
     rawLine.startsWith('Binary files ') ||
+    (rawLine.startsWith('Symbolic links ') && rawLine.endsWith(' differ')) ||
     (rawLine.startsWith('File ') && rawLine.includes(' is a ') && rawLine.includes(' while file '))
   );
 }
