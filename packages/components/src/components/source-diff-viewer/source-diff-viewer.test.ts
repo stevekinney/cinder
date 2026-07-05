@@ -318,6 +318,21 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
   });
 
+  test('preserves real path segments after default git prefixes', () => {
+    const parsed =
+      parseUnifiedPatch(`diff --git a/packages/components/foo.ts b/packages/components/foo.ts
+--- a/packages/components/foo.ts
++++ b/packages/components/foo.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('packages/components/foo.ts');
+    expect(parsed.files[0]?.newPath).toBe('packages/components/foo.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('packages/components/foo.ts');
+  });
+
   test('normalizes multi-segment custom git diff prefixes', () => {
     const parsed = parseUnifiedPatch(`diff --git old/root/src/example.ts new/root/src/example.ts
 --- old/root/src/example.ts
@@ -649,6 +664,20 @@ diff --git a/src/example.ts b/src/example.ts
 +new();
 `);
 
+    expect(parsed.files[0]?.metadata).toEqual([]);
+  });
+
+  test('ignores repeated terminal split lines from trailing newlines', () => {
+    const parsed = parseUnifiedPatch(`--- a/src/example.ts
++++ b/src/example.ts
+@@ -1 +1 @@
+-old();
++new();
+
+
+`);
+
+    expect(parsed.totalLineCount).toBe(2);
     expect(parsed.files[0]?.metadata).toEqual([]);
   });
 

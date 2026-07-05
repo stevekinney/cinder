@@ -46,6 +46,11 @@ function sharedPathSegmentSuffixSegments(firstPath: string, secondPath: string):
 
 function sharedPathSegmentSuffix(firstPath: string, secondPath: string): string | null {
   const sharedSegments = sharedPathSegmentSuffixSegments(firstPath, secondPath);
+  const [firstPrefix] = firstPath.split('/');
+  const [secondPrefix] = secondPath.split('/');
+  if (firstPrefix === 'a' && secondPrefix === 'b') {
+    return sharedSegments.length > 0 ? sharedSegments.join('/') : null;
+  }
   if (sharedSegments.length > 2) return sharedSegments.slice(1).join('/');
   return sharedSegments.length > 0 ? sharedSegments.join('/') : null;
 }
@@ -323,7 +328,7 @@ function pushMetadata(
 
 function preparePatchLines(patch: string): string[] {
   const lines = patch.replace(/\r\n?/g, '\n').split('\n');
-  if (lines[lines.length - 1] === '') lines.pop();
+  while (lines[lines.length - 1] === '') lines.pop();
   return lines;
 }
 
