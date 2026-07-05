@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "source-diff-viewer",
+  "import": "@lostgradient/cinder/source-diff-viewer",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic source diff viewer",
+      "description": "Unified patch output with file headers, hunk headers, and source line states.",
+      "code": "<script lang=\"ts\">\n  import { SourceDiffViewer } from '@lostgradient/cinder/source-diff-viewer';\n\n  const patch = `diff --git a/src/example.ts b/src/example.ts\nindex 1111111..2222222 100644\n--- a/src/example.ts\n+++ b/src/example.ts\n@@ -1,4 +1,5 @@\n export function greet(name: string) {\n-  return \\`Hello, \\${name}.\\`;\n+  const normalizedName = name.trim();\n+  return \\`Hello, \\${normalizedName}.\\`;\n }\n`;\n</script>\n\n<SourceDiffViewer {patch} />\n"
+    },
+    {
+      "id": "bounded",
+      "title": "Bounded source diff viewer",
+      "description": "Large patches can cap rendered diff rows while preserving the total count.",
+      "code": "<script lang=\"ts\">\n  import { SourceDiffViewer } from '@lostgradient/cinder/source-diff-viewer';\n\n  const patch = `diff --git a/src/generated.txt b/src/generated.txt\n--- a/src/generated.txt\n+++ b/src/generated.txt\n@@ -1,6 +1,6 @@\n unchanged\n-old one\n+new one\n-old two\n+new two\n unchanged\n`;\n</script>\n\n<SourceDiffViewer {patch} maxLines={4} />\n"
+    }
+  ]
+}

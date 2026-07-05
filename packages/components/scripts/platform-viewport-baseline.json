@@ -1,10 +1,5 @@
 [
   {
-    "filePath": "src/components/bento-grid/bento-grid.css",
-    "query": "@media (max-width: 48rem)",
-    "allowedCount": 1
-  },
-  {
     "filePath": "src/components/card/card.css",
     "query": "@media (width < 640px)",
     "allowedCount": 1
@@ -25,8 +20,8 @@
     "allowedCount": 1
   },
   {
-    "filePath": "src/components/page-layout/page-layout.css",
-    "query": "@media (min-width: 640px)",
-    "allowedCount": 3
+    "filePath": "src/components/sidebar/sidebar.css",
+    "query": "@media (max-width: 47.99rem)",
+    "allowedCount": 1
   }
 ]

@@ -314,6 +314,11 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'source-diff-viewer') {
+    applySourceDiffViewerSchemaRules(schema);
+    return;
+  }
+
   if (componentName !== 'modal') return;
 
   schema.allOf = [
@@ -421,6 +426,34 @@ function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
     schema.metadata = { unsupportedProps };
   } else {
     delete schema.metadata;
+  }
+}
+
+function applySourceDiffViewerSchemaRules(schema: ComponentSchemaOutput): void {
+  const maxLines = schema.properties['maxLines'];
+  if (maxLines?.type !== 'number') return;
+
+  schema.properties['maxLines'] = {
+    ...maxLines,
+    type: 'integer',
+    minimum: 0,
+    default: 1000,
+  };
+
+  const lineNumbers = schema.properties['lineNumbers'];
+  if (lineNumbers?.type === 'boolean') {
+    schema.properties['lineNumbers'] = {
+      ...lineNumbers,
+      default: true,
+    };
+  }
+
+  const emptyMessage = schema.properties['emptyMessage'];
+  if (emptyMessage?.type === 'string') {
+    schema.properties['emptyMessage'] = {
+      ...emptyMessage,
+      default: 'No patch lines to display.',
+    };
   }
 }
 
