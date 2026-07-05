@@ -579,7 +579,7 @@ Only in new: extra.txt
 
     expect(parsed.files).toHaveLength(2);
     expect(parsed.files[1]?.header).toBe('Only in new: extra.txt');
-    expect(parsed.files[1]?.metadata).toEqual(['Only in new: extra.txt']);
+    expect(parsed.files[1]?.metadata).toEqual([]);
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
       'Only in new: extra.txt',
     );
@@ -592,11 +592,23 @@ Binary files old/a and new/a differ
 
     expect(parsed.files).toHaveLength(2);
     expect(parsed.files[0]?.header).toBe('Only in new: extra.txt');
-    expect(parsed.files[0]?.metadata).toEqual(['Only in new: extra.txt']);
+    expect(parsed.files[0]?.metadata).toEqual([]);
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('Only in new: extra.txt');
     expect(parsed.files[1]?.header).toBe('Binary files old/a and new/a differ');
-    expect(parsed.files[1]?.metadata).toEqual(['Binary files old/a and new/a differ']);
+    expect(parsed.files[1]?.metadata).toEqual([]);
     expect(getSourceDiffFileLabel(parsed.files[1]!)).toBe('Binary files old/a and new/a differ');
+  });
+
+  test('renders standalone recursive entries once', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch: `Only in new: extra.txt
+`,
+    });
+
+    expect(container.querySelector('.cinder-source-diff-viewer__file-path')?.textContent).toBe(
+      'Only in new: extra.txt',
+    );
+    expect(container.querySelector('.cinder-source-diff-viewer__metadata')).toBeNull();
   });
 
   test('starts file-type recursive diagnostics as their own files', () => {
@@ -607,9 +619,7 @@ Binary files old/a and new/a differ
     expect(parsed.files[0]?.header).toBe(
       'File old/x is a directory while file new/x is a regular file',
     );
-    expect(parsed.files[0]?.metadata).toEqual([
-      'File old/x is a directory while file new/x is a regular file',
-    ]);
+    expect(parsed.files[0]?.metadata).toEqual([]);
   });
 
   test('starts file-type recursive diagnostics outside completed hunks', () => {
@@ -626,6 +636,7 @@ File old/x is a directory while file new/x is a regular file
     expect(parsed.files[1]?.header).toBe(
       'File old/x is a directory while file new/x is a regular file',
     );
+    expect(parsed.files[1]?.metadata).toEqual([]);
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
       'File old/x is a directory while file new/x is a regular file',
     );
@@ -658,7 +669,7 @@ Binary files old/two.bin and new/two.bin differ
 
     expect(parsed.files).toHaveLength(2);
     expect(parsed.files[1]?.header).toBe('Binary files old/two.bin and new/two.bin differ');
-    expect(parsed.files[1]?.metadata).toEqual(['Binary files old/two.bin and new/two.bin differ']);
+    expect(parsed.files[1]?.metadata).toEqual([]);
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
       'Binary files old/two.bin and new/two.bin differ',
     );

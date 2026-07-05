@@ -240,7 +240,11 @@ function hunkHasRenderedContent(hunk: SourceDiffHunk): boolean {
 }
 
 function fileHasRenderedContent(file: SourceDiffFile): boolean {
-  return file.metadata.length > 0 || file.hunks.some(hunkHasRenderedContent);
+  return (
+    (file.header !== null && isStandaloneRecursiveDiffMetadata(file.header)) ||
+    file.metadata.length > 0 ||
+    file.hunks.some(hunkHasRenderedContent)
+  );
 }
 
 function hunkIsComplete(hunk: SourceDiffHunk, cursor: HunkCursor): boolean {
@@ -584,10 +588,11 @@ export function parseUnifiedPatch(
       (!currentHunk || !currentCursor || hunkIsComplete(currentHunk, currentCursor)) &&
       !files[files.length - 1]?.header?.startsWith('diff --git ')
     ) {
-      startFile(files, rawLine);
-      const result = pushMetadata(files, rawLine, renderedLineCount, maxLines);
-      renderedLineCount = result.renderedLineCount;
       totalLineCount += 1;
+      if (renderedLineCount < maxLines) {
+        startFile(files, rawLine);
+        renderedLineCount += 1;
+      }
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
