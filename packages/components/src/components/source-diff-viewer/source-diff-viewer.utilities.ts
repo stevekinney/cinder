@@ -566,6 +566,23 @@ function isGitBinaryNoticeMetadata(file: SourceDiffFile, rawLine: string): boole
   return binaryPaths?.oldPath === file.oldPath && binaryPaths.newPath === file.newPath;
 }
 
+function isIndexedUnifiedFilePrelude(
+  line: string,
+  nextLine: string | undefined,
+  nextNextLine: string | undefined,
+  nextNextNextLine: string | undefined,
+  nextNextNextNextLine: string | undefined,
+): boolean {
+  return (
+    line.startsWith('Index: ') &&
+    nextLine !== undefined &&
+    /^={3,}$/.test(nextLine) &&
+    nextNextLine?.startsWith('--- ') === true &&
+    nextNextNextLine?.startsWith('+++ ') === true &&
+    nextNextNextNextLine?.startsWith('@@ ') === true
+  );
+}
+
 function readLine(kind: SourceDiffLineKind, content: string, cursor: HunkCursor): SourceDiffLine {
   if (kind === 'addition') {
     const line = {
@@ -662,6 +679,16 @@ export function parseUnifiedPatch(
       nextNextRawLine === undefined
         ? undefined
         : stripLineTerminatorCarriageReturn(nextNextRawLine);
+    const nextNextNextRawLine = lines[index + 3];
+    const nextNextNextLine =
+      nextNextNextRawLine === undefined
+        ? undefined
+        : stripLineTerminatorCarriageReturn(nextNextNextRawLine);
+    const nextNextNextNextRawLine = lines[index + 4];
+    const nextNextNextNextLine =
+      nextNextNextNextRawLine === undefined
+        ? undefined
+        : stripLineTerminatorCarriageReturn(nextNextNextNextRawLine);
     if (line === '' && files.length === 0) continue;
 
     if (line.startsWith('diff --git ')) {
@@ -752,6 +779,22 @@ export function parseUnifiedPatch(
         totalLineCount += 1;
         previousHunkDiffLineWasRendered = result.lineWasRendered;
       }
+      continue;
+    }
+
+    if (
+      isIndexedUnifiedFilePrelude(
+        line,
+        nextLine,
+        nextNextLine,
+        nextNextNextLine,
+        nextNextNextNextLine,
+      )
+    ) {
+      startFile(files, line);
+      currentHunk = null;
+      currentCursor = null;
+      previousHunkDiffLineWasRendered = false;
       continue;
     }
 

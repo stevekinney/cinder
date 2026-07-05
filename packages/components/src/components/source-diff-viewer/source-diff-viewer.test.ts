@@ -689,6 +689,37 @@ diff -ru old/two.txt new/two.txt
     );
   });
 
+  test('starts indexed unified prelude lines with the following file section', () => {
+    const parsed = parseUnifiedPatch(`Index: src/one.ts
+===================================================================
+--- src/one.ts
++++ src/one.ts
+@@ -1 +1 @@
+-one
++one updated
+Index: src/two.ts
+===================================================================
+--- src/two.ts
++++ src/two.ts
+@@ -1 +1 @@
+-two
++two updated
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[0]?.header).toBe('Index: src/one.ts');
+    expect(parsed.files[0]?.metadata).toEqual([
+      '===================================================================',
+    ]);
+    expect(parsed.files[1]?.header).toBe('Index: src/two.ts');
+    expect(parsed.files[1]?.metadata).toEqual([
+      '===================================================================',
+    ]);
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
+      'Index: src/two.ts',
+    );
+  });
+
   test('starts recursive-only diff entries outside completed hunks', () => {
     const parsed = parseUnifiedPatch(`diff -ru old/one.txt new/one.txt
 --- old/one.txt
