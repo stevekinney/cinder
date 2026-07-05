@@ -385,6 +385,13 @@ LF:10
 LH:0
 end_of_record
 TN:
+SF:src/cli/output.ts
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+TN:
 SF:src/components/button/button.ts
 FNF:4
 FNH:4
@@ -397,6 +404,7 @@ end_of_record
     expect(records.map((record) => record.file)).toEqual([
       'covered.ts',
       'partial.ts',
+      'src/cli/output.ts',
       'src/components/button/button.ts',
     ]);
   });
@@ -404,6 +412,10 @@ end_of_record
   test('applies runtime scope exclusions to absolute package-local LCOV paths', () => {
     const absoluteScriptsPath = join(packageRoot, 'scripts', 'build.ts').replaceAll('\\', '/');
     const absoluteCliPath = join(packageRoot, 'src', 'cli', 'index.ts').replaceAll('\\', '/');
+    const absoluteCliHelperPath = join(packageRoot, 'src', 'cli', 'output.ts').replaceAll(
+      '\\',
+      '/',
+    );
     const absoluteTestPath = join(packageRoot, 'src', 'test', 'hydrate.ts').replaceAll('\\', '/');
     const absoluteComponentTestPath = join(
       packageRoot,
@@ -434,6 +446,13 @@ LF:10
 LH:0
 end_of_record
 TN:
+SF:${absoluteCliHelperPath}
+FNF:4
+FNH:4
+LF:4
+LH:4
+end_of_record
+TN:
 SF:${absoluteTestPath}
 FNF:10
 FNH:0
@@ -460,6 +479,7 @@ end_of_record
     expect(records.map((record) => record.file)).toEqual([
       'covered.ts',
       'partial.ts',
+      absoluteCliHelperPath,
       absoluteRuntimePath,
     ]);
   });

@@ -56,6 +56,12 @@
       color: HighlightText;
       background: Highlight;
     }
+
+    .cinder-action-row[data-cinder-selected] .cinder-action-row__description,
+    .cinder-action-row[data-cinder-selected] .cinder-action-row__meta,
+    .cinder-action-row[data-cinder-selected] .cinder-action-row__trailing {
+      color: HighlightText;
+    }
   }
 
   .cinder-action-row__layout {
