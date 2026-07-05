@@ -134,8 +134,128 @@ svg.cinder-icon-lg {
   margin-block-start: var(--cinder-space-1);
 }
 
+.cinder-markdown-content :where(ul, ol) {
+  padding-inline-start: var(--cinder-space-6);
+}
+
+.cinder-markdown-content
+  :where(
+    ul[data-type='taskList'],
+    ul.contains-task-list,
+    ol.contains-task-list,
+    ul:has(> li[data-item-type='task']),
+    ol:has(> li[data-item-type='task'])
+  ) {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.cinder-markdown-content
+  :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task']) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: flex-start;
+  column-gap: var(--cinder-space-2);
+  list-style: none;
+}
+
+.cinder-markdown-content
+  :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task'])
+  > :where(label, input[type='checkbox']) {
+  grid-column: 1;
+  grid-row: 1;
+  margin-block-start: 0.25em;
+}
+
+.cinder-markdown-content :where(li.task-list-item) > p:first-child > input[type='checkbox'] {
+  margin-inline-start: calc((1em + var(--cinder-space-2)) * -1);
+  margin-inline-end: var(--cinder-space-2);
+}
+
+.cinder-markdown-content
+  :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task'])
+  > :where(:not(label):not(input[type='checkbox'])) {
+  grid-column: 2;
+}
+
+.cinder-markdown-content :where(li[data-item-type='task'])::before {
+  grid-column: 1;
+  grid-row: 1;
+  width: 1em;
+  height: 1em;
+  margin-block-start: 0.25em;
+  border: 1px solid var(--cinder-border-strong);
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface);
+  content: '';
+}
+
+.cinder-markdown-content :where(li[data-item-type='task'][data-checked='true'])::before {
+  border-color: var(--cinder-accent);
+  background:
+    linear-gradient(var(--cinder-surface), var(--cinder-surface)) center / 40% 40% no-repeat,
+    var(--cinder-accent);
+}
+
+.cinder-markdown-content :where(blockquote) {
+  padding-inline-start: var(--cinder-space-4);
+  border-inline-start: 3px solid var(--cinder-border-strong);
+  color: var(--cinder-text-muted);
+}
+
 .cinder-markdown-content :where(pre) {
+  padding: var(--cinder-space-3);
+  overflow-x: auto;
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-inset);
   line-height: var(--cinder-leading-relaxed);
+}
+
+.cinder-markdown-content :where(pre > code) {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 1em;
+}
+
+.cinder-markdown-content :where(:not(pre) > code) {
+  padding: 0.125em 0.375em;
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface-inset);
+  font-family: var(--cinder-font-mono);
+  font-size: 0.9em;
+}
+
+.cinder-markdown-content :where(table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cinder-markdown-content :where(th, td) {
+  padding: var(--cinder-space-2);
+  border: 1px solid var(--cinder-border);
+  vertical-align: top;
+}
+
+.cinder-markdown-content :where(th:not([align]), td:not([align])) {
+  text-align: start;
+}
+
+.cinder-markdown-content :where(th[align='left'], td[align='left']) {
+  text-align: left;
+}
+
+.cinder-markdown-content :where(th[align='center'], td[align='center']) {
+  text-align: center;
+}
+
+.cinder-markdown-content :where(th[align='right'], td[align='right']) {
+  text-align: right;
+}
+
+.cinder-markdown-content :where(th) {
+  background: var(--cinder-surface-inset);
+  font-weight: var(--cinder-font-semibold);
 }
 
 /* INTERNAL — used by Cinder components. Not a public API. May change without notice. */

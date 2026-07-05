@@ -702,7 +702,7 @@
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
         {id}
-        class="cinder-markdown-content prose markdown-editor surface"
+        class="cinder-markdown-content markdown-editor surface"
         data-readonly={readonly || undefined}
         style:--editor-placeholder="'{escapedPlaceholder}'"
         role="application"
@@ -899,10 +899,9 @@
   }
 
   /*
-   * Typography styles for ProseMirror content are provided by the shared
-   * markdown.css file in the design system. That file targets
-   * .markdown-editor .ProseMirror descendants with the same styles used
-   * by MarkdownPreview, ensuring consistent rendering across both modes.
+   * Typography styles for ProseMirror content come from the Cinder-owned
+   * .cinder-markdown-content utility, so consumers do not need a global
+   * .prose stylesheet for MarkdownEditor to render correctly.
    */
 
   /* Template placeholder invalid token decoration (DEP-583) */
