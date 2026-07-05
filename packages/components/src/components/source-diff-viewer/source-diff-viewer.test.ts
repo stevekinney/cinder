@@ -515,6 +515,24 @@ copy to two b/bar
     expect(parsed.files).toHaveLength(1);
   });
 
+  test('keeps format-patch trailers out of completed hunks', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/src/example.ts b/src/example.ts
+--- a/src/example.ts
++++ b/src/example.ts
+@@ -1 +1 @@
+-old();
++new();
+-- 
+2.50.0
+`);
+
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).toEqual([
+      'old();',
+      'new();',
+    ]);
+    expect(parsed.files[0]?.metadata).toEqual(['-- ', '2.50.0']);
+  });
+
   test('keeps no-newline markers in hunk order', () => {
     const parsed = parseUnifiedPatch(`diff --git a/src/example.ts b/src/example.ts
 --- a/src/example.ts
@@ -680,6 +698,30 @@ Binary files a/file.bin and b/file.bin differ
       'index 1234567..89abcde 100644',
       'Binary files a/file.bin and b/file.bin differ',
     ]);
+  });
+
+  test('uses git binary notices to repair differing default-prefixed paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/old.bin b/new.bin
+index 1234567..89abcde 100644
+Binary files a/old.bin and b/new.bin differ
+`);
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.oldPath).toBe('old.bin');
+    expect(parsed.files[0]?.newPath).toBe('new.bin');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.bin -> new.bin');
+  });
+
+  test('uses binary notices when git headers contain unquoted spaces', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/old file.bin b/new file.bin
+index 1234567..89abcde 100644
+Binary files a/old file.bin and b/new file.bin differ
+`);
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.oldPath).toBe('old file.bin');
+    expect(parsed.files[0]?.newPath).toBe('new file.bin');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old file.bin -> new file.bin');
   });
 
   test('starts binary recursive diff entries outside completed hunks', () => {

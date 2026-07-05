@@ -306,6 +306,13 @@ function createHunkMetadataLine(
 }
 
 function applyFileMetadata(file: SourceDiffFile, rawLine: string): void {
+  const binaryMatch = rawLine.match(/^Binary files (.+) and (.+) differ$/);
+  if (binaryMatch) {
+    file.oldPath = parsePatchPath(binaryMatch[1] ?? '', { stripSyntheticPrefix: true });
+    file.newPath = parsePatchPath(binaryMatch[2] ?? '', { stripSyntheticPrefix: true });
+    return;
+  }
+
   if (rawLine.startsWith('rename from ')) {
     file.oldPath = parsePatchPath(rawLine.slice('rename from '.length), {
       stripSyntheticPrefix: false,
@@ -685,6 +692,12 @@ export function parseUnifiedPatch(
       currentCursor = cursor;
       previousHunkDiffLineWasRendered = false;
       continue;
+    }
+
+    if (currentHunk && currentCursor && hunkIsComplete(currentHunk, currentCursor)) {
+      currentHunk = null;
+      currentCursor = null;
+      previousHunkDiffLineWasRendered = false;
     }
 
     if (!currentHunk || !currentCursor) {
