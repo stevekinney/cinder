@@ -119,15 +119,20 @@ function normalizeGitHeaderPaths(
     };
   }
 
-  if (
-    sharedSegments.length >= 2 &&
-    oldPrefix === 'old' &&
-    newPrefix === 'new' &&
-    oldSegments.length === sharedSegments.length + 1 &&
-    newSegments.length === sharedSegments.length + 1
-  ) {
-    const sharedSuffix = sharedPathSegmentSuffix(oldPath, newPath);
-    return { oldPath: sharedSuffix, newPath: sharedSuffix };
+  if (oldPrefix === 'old' && newPrefix === 'new') {
+    if (
+      sharedSegments.length >= 2 &&
+      oldSegments.length === sharedSegments.length + 1 &&
+      newSegments.length === sharedSegments.length + 1
+    ) {
+      const sharedSuffix = sharedPathSegmentSuffix(oldPath, newPath);
+      return { oldPath: sharedSuffix, newPath: sharedSuffix };
+    }
+
+    return {
+      oldPath: stripLeadingPathSegmentPrefix(oldPath),
+      newPath: stripLeadingPathSegmentPrefix(newPath),
+    };
   }
 
   return { oldPath, newPath };
@@ -552,6 +557,10 @@ function isStandaloneRecursiveDiffMetadata(rawLine: string): boolean {
   );
 }
 
+function isGitBinaryNoticeMetadata(rawLine: string): boolean {
+  return /^Binary files (?:a\/|\/dev\/null).+ and (?:b\/|\/dev\/null).+ differ$/.test(rawLine);
+}
+
 function readLine(kind: SourceDiffLineKind, content: string, cursor: HunkCursor): SourceDiffLine {
   if (kind === 'addition') {
     const line = {
@@ -669,10 +678,12 @@ export function parseUnifiedPatch(
     const previousFileIsGitDiff = files[files.length - 1]?.header?.startsWith('diff --git ');
     const previousHunkIsComplete =
       currentHunk && currentCursor && hunkIsComplete(currentHunk, currentCursor);
+    const shouldKeepAsGitMetadata =
+      previousFileIsGitDiff && !previousHunkIsComplete && isGitBinaryNoticeMetadata(line);
     if (
       isStandaloneRecursiveDiffMetadata(line) &&
       (!currentHunk || !currentCursor || previousHunkIsComplete) &&
-      (previousHunkIsComplete || !previousFileIsGitDiff)
+      !shouldKeepAsGitMetadata
     ) {
       totalLineCount += 1;
       if (renderedLineCount < maxLines) {

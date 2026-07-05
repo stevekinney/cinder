@@ -358,6 +358,20 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
   });
 
+  test('strips custom git diff prefixes from differing text paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git old/old.txt new/new.txt
+--- old/old.txt
++++ new/new.txt
+@@ -1 +1 @@
+-old
++new
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('old.txt');
+    expect(parsed.files[0]?.newPath).toBe('new.txt');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.txt -> new.txt');
+  });
+
   test('preserves real path segments after default git prefixes', () => {
     const parsed =
       parseUnifiedPatch(`diff --git a/packages/components/foo.ts b/packages/components/foo.ts
@@ -709,6 +723,20 @@ Only in b: extra.txt
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
       'Only in b: extra.txt',
     );
+  });
+
+  test('starts recursive-only diff entries after metadata-only git files', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/script.sh b/script.sh
+old mode 100644
+new mode 100755
+Only in b: extra.txt
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[0]?.newPath).toBe('script.sh');
+    expect(parsed.files[0]?.metadata).toEqual(['old mode 100644', 'new mode 100755']);
+    expect(parsed.files[1]?.header).toBe('Only in b: extra.txt');
+    expect(parsed.files[1]?.metadata).toEqual([]);
   });
 
   test('starts leading recursive-only diff entries as their own files', () => {
