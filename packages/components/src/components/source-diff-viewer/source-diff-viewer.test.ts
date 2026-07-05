@@ -318,6 +318,20 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
   });
 
+  test('normalizes multi-segment custom git diff prefixes', () => {
+    const parsed = parseUnifiedPatch(`diff --git old/root/src/example.ts new/root/src/example.ts
+--- old/root/src/example.ts
++++ new/root/src/example.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('src/example.ts');
+    expect(parsed.files[0]?.newPath).toBe('src/example.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
+  });
+
   test('parses no-prefix git diff headers without stripping real paths', () => {
     const parsed = parseUnifiedPatch(`diff --git src/example.ts src/example.ts
 --- src/example.ts
@@ -492,6 +506,24 @@ Only in new: extra.txt
     );
   });
 
+  test('starts binary recursive diff entries outside completed hunks', () => {
+    const parsed = parseUnifiedPatch(`diff -ru old/one.txt new/one.txt
+--- old/one.txt
++++ new/one.txt
+@@ -1 +1 @@
+-one
++one updated
+Binary files old/two.bin and new/two.bin differ
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[1]?.header).toBe('Binary files old/two.bin and new/two.bin differ');
+    expect(parsed.files[1]?.metadata).toEqual(['Binary files old/two.bin and new/two.bin differ']);
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
+      'Binary files old/two.bin and new/two.bin differ',
+    );
+  });
+
   test('does not render hunk metadata for rows omitted by truncation', () => {
     const { container } = render(SourceDiffViewer, {
       patch: `--- src/example.ts
@@ -527,6 +559,28 @@ Only in new: extra.txt
     expect(parsed.renderedLineCount).toBe(1);
     expect(parsed.truncated).toBe(true);
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).toEqual(['old();']);
+  });
+
+  test('parses zero-count hunk headers', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/src/removed.ts b/src/removed.ts
+--- a/src/removed.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-removed();
+`);
+
+    const hunk = parsed.files[0]?.hunks[0];
+    expect(hunk).toMatchObject({
+      oldStart: 1,
+      oldCount: 1,
+      newStart: 0,
+      newCount: 0,
+    });
+    expect(hunk?.lines[0]).toMatchObject({
+      oldLineNumber: 1,
+      newLineNumber: null,
+      content: 'removed();',
+    });
   });
 
   test('renders repeated file headers without duplicate keyed blocks', () => {

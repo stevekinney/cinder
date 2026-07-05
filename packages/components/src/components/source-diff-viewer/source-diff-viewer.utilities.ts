@@ -29,6 +29,27 @@ function stripLeadingPathSegmentPrefix(path: string): string {
   return path.replace(/^[^/]+\//, '');
 }
 
+function sharedPathSegmentSuffixSegments(firstPath: string, secondPath: string): string[] {
+  const firstSegments = firstPath.split('/');
+  const secondSegments = secondPath.split('/');
+  const sharedSegments: string[] = [];
+
+  while (firstSegments.length > 0 && secondSegments.length > 0) {
+    const firstSegment = firstSegments.pop();
+    const secondSegment = secondSegments.pop();
+    if (firstSegment !== secondSegment || firstSegment === undefined) break;
+    sharedSegments.unshift(firstSegment);
+  }
+
+  return sharedSegments;
+}
+
+function sharedPathSegmentSuffix(firstPath: string, secondPath: string): string | null {
+  const sharedSegments = sharedPathSegmentSuffixSegments(firstPath, secondPath);
+  if (sharedSegments.length > 2) return sharedSegments.slice(1).join('/');
+  return sharedSegments.length > 0 ? sharedSegments.join('/') : null;
+}
+
 function decodeGitQuotedPath(path: string): string {
   if (!path.startsWith('"') || !path.endsWith('"')) return path;
 
@@ -78,6 +99,9 @@ function normalizeGitHeaderPaths(
 ): Pick<SourceDiffFile, 'oldPath' | 'newPath'> {
   if (!oldPath || !newPath) return { oldPath, newPath };
   if (oldPath === newPath) return { oldPath, newPath };
+
+  const sharedSuffix = sharedPathSegmentSuffix(oldPath, newPath);
+  if (sharedSuffix) return { oldPath: sharedSuffix, newPath: sharedSuffix };
 
   const oldWithoutPrefix = stripLeadingPathSegmentPrefix(oldPath);
   const newWithoutPrefix = stripLeadingPathSegmentPrefix(newPath);
@@ -379,6 +403,7 @@ function parseGitFileSidePath(
   const parsedPath = parsePatchPath(rawPath, { stripSyntheticPrefix: false });
   if (!parsedPath || !file.header?.startsWith('diff --git ')) return parsedPath;
   if (currentPath && parsedPath === currentPath) return currentPath;
+  if (currentPath && parsedPath.endsWith(`/${currentPath}`)) return currentPath;
 
   const pathWithoutPrefix = stripLeadingPathSegmentPrefix(parsedPath);
   return currentPath && pathWithoutPrefix === currentPath ? currentPath : pathWithoutPrefix;
@@ -395,10 +420,10 @@ function createEmptyParseResult(): SourceDiffParseResult {
 
 function createHunk(header: string): { hunk: SourceDiffHunk; cursor: HunkCursor } {
   const match = HUNK_HEADER_PATTERN.exec(header);
-  const oldStart = match?.[1] ? Number(match[1]) : null;
-  const oldCount = match?.[2] ? Number(match[2]) : oldStart === null ? null : 1;
-  const newStart = match?.[3] ? Number(match[3]) : null;
-  const newCount = match?.[4] ? Number(match[4]) : newStart === null ? null : 1;
+  const oldStart = parseHunkNumber(match?.[1]);
+  const oldCount = match?.[2] === undefined ? (oldStart === null ? null : 1) : Number(match[2]);
+  const newStart = parseHunkNumber(match?.[3]);
+  const newCount = match?.[4] === undefined ? (newStart === null ? null : 1) : Number(match[4]);
 
   return {
     hunk: {
@@ -414,6 +439,14 @@ function createHunk(header: string): { hunk: SourceDiffHunk; cursor: HunkCursor 
       newLineNumber: newStart,
     },
   };
+}
+
+function parseHunkNumber(value: string | undefined): number | null {
+  return value === undefined ? null : Number(value);
+}
+
+function isStandaloneRecursiveDiffMetadata(rawLine: string): boolean {
+  return rawLine.startsWith('Only in ') || rawLine.startsWith('Binary files ');
 }
 
 function readLine(kind: SourceDiffLineKind, content: string, cursor: HunkCursor): SourceDiffLine {
@@ -520,7 +553,7 @@ export function parseUnifiedPatch(
     }
 
     if (
-      rawLine.startsWith('Only in ') &&
+      isStandaloneRecursiveDiffMetadata(rawLine) &&
       currentHunk &&
       currentCursor &&
       hunkIsComplete(currentHunk, currentCursor)
