@@ -138,12 +138,14 @@ svg.cinder-icon-lg {
   padding-inline-start: var(--cinder-space-6);
 }
 
-.cinder-markdown-content :where(ul[data-type='taskList'], ul.contains-task-list) {
+.cinder-markdown-content
+  :where(ul[data-type='taskList'], ul.contains-task-list, ul:has(> li[data-item-type='task'])) {
   padding-inline-start: 0;
   list-style: none;
 }
 
-.cinder-markdown-content :where(li[data-type='taskItem'], li.task-list-item) {
+.cinder-markdown-content
+  :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task']) {
   display: flex;
   align-items: flex-start;
   gap: var(--cinder-space-2);
@@ -151,10 +153,28 @@ svg.cinder-icon-lg {
 }
 
 .cinder-markdown-content
-  :where(li[data-type='taskItem'], li.task-list-item)
+  :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task'])
   > :where(label, input[type='checkbox']) {
   flex: 0 0 auto;
   margin-block-start: 0.25em;
+}
+
+.cinder-markdown-content :where(li[data-item-type='task'])::before {
+  flex: 0 0 auto;
+  width: 1em;
+  height: 1em;
+  margin-block-start: 0.25em;
+  border: 1px solid var(--cinder-border-strong);
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface);
+  content: '';
+}
+
+.cinder-markdown-content :where(li[data-item-type='task'][data-checked='true'])::before {
+  border-color: var(--cinder-accent);
+  background:
+    linear-gradient(var(--cinder-surface), var(--cinder-surface)) center / 40% 40% no-repeat,
+    var(--cinder-accent);
 }
 
 .cinder-markdown-content :where(blockquote) {
@@ -169,6 +189,13 @@ svg.cinder-icon-lg {
   border-radius: var(--cinder-radius-md);
   background: var(--cinder-surface-inset);
   line-height: var(--cinder-leading-relaxed);
+}
+
+.cinder-markdown-content :where(pre > code) {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 1em;
 }
 
 .cinder-markdown-content :where(:not(pre) > code) {
