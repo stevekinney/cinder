@@ -77,11 +77,18 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
 
   it('does not depend on a consumer-global prose class for the rich editor surface', async () => {
     const markdownEditorSource = stripCssComments(await Bun.file(markdownEditorPath).text());
-
-    expect(markdownEditorSource).toContain(
-      'class="cinder-markdown-content markdown-editor surface"',
+    const classAttributes = [...markdownEditorSource.matchAll(/class="([^"]*)"/g)].map(
+      (match) => match[1] ?? '',
     );
-    expect(markdownEditorSource).not.toContain('class="cinder-markdown-content prose');
+    const richEditorSurfaceClass = classAttributes.find(
+      (className) =>
+        className.includes('cinder-markdown-content') &&
+        className.includes('markdown-editor') &&
+        className.includes('surface'),
+    );
+
+    expect(richEditorSurfaceClass).toBeDefined();
+    expect(richEditorSurfaceClass).not.toMatch(/\bprose\b/);
   });
 
   it('owns markdown prose and task-list styling through cinder-markdown-content', async () => {
@@ -89,12 +96,13 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
       stripCssComments(await Bun.file(utilitiesCssPath).text()),
     );
 
-    for (const selector of [
+    const requiredSelectors = [
       '.cinder-markdown-content :where(p, ul, ol, blockquote, pre, table)',
       '.cinder-markdown-content :where(h1, h2, h3, h4, h5, h6)',
       '.cinder-markdown-content :where(ul, ol)',
-      ".cinder-markdown-content :where(ul[data-type='taskList'], ul.contains-task-list, ul:has(> li[data-item-type='task']))",
+      ".cinder-markdown-content :where( ul[data-type='taskList'], ul.contains-task-list, ol.contains-task-list, ul:has(> li[data-item-type='task']), ol:has(> li[data-item-type='task']) )",
       ".cinder-markdown-content :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task'])",
+      ".cinder-markdown-content :where(li.task-list-item) > p:first-child > input[type='checkbox']",
       ".cinder-markdown-content :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task']) > :where(:not(label):not(input[type='checkbox']))",
       ".cinder-markdown-content :where(li[data-item-type='task'])::before",
       ".cinder-markdown-content :where(li[data-item-type='task'][data-checked='true'])::before",
@@ -105,8 +113,42 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
       '.cinder-markdown-content :where(table)',
       '.cinder-markdown-content :where(th, td)',
       '.cinder-markdown-content :where(th:not([align]), td:not([align]))',
-    ]) {
+      ".cinder-markdown-content :where(th[align='center'], td[align='center'])",
+      ".cinder-markdown-content :where(th[align='right'], td[align='right'])",
+    ];
+
+    for (const selector of requiredSelectors) {
       expect(utilitiesSource).toContain(selector);
     }
+
+    expectDeclaration(
+      cssBlock(
+        utilitiesSource,
+        ".cinder-markdown-content :where( ul[data-type='taskList'], ul.contains-task-list, ol.contains-task-list, ul:has(> li[data-item-type='task']), ol:has(> li[data-item-type='task']) )",
+      ),
+      'list-style',
+      'none',
+    );
+    expectDeclaration(
+      cssBlock(
+        utilitiesSource,
+        ".cinder-markdown-content :where(li[data-type='taskItem'], li.task-list-item, li[data-item-type='task'])",
+      ),
+      'display',
+      'grid',
+    );
+    expectDeclaration(
+      cssBlock(utilitiesSource, '.cinder-markdown-content :where(pre > code)'),
+      'font-size',
+      '1em',
+    );
+    expectDeclaration(
+      cssBlock(
+        utilitiesSource,
+        ".cinder-markdown-content :where(th[align='right'], td[align='right'])",
+      ),
+      'text-align',
+      'right',
+    );
   });
 });

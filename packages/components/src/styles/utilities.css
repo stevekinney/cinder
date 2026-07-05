@@ -139,7 +139,13 @@ svg.cinder-icon-lg {
 }
 
 .cinder-markdown-content
-  :where(ul[data-type='taskList'], ul.contains-task-list, ul:has(> li[data-item-type='task'])) {
+  :where(
+    ul[data-type='taskList'],
+    ul.contains-task-list,
+    ol.contains-task-list,
+    ul:has(> li[data-item-type='task']),
+    ol:has(> li[data-item-type='task'])
+  ) {
   padding-inline-start: 0;
   list-style: none;
 }
@@ -159,6 +165,11 @@ svg.cinder-icon-lg {
   grid-column: 1;
   grid-row: 1;
   margin-block-start: 0.25em;
+}
+
+.cinder-markdown-content :where(li.task-list-item) > p:first-child > input[type='checkbox'] {
+  margin-inline-start: calc((1em + var(--cinder-space-2)) * -1);
+  margin-inline-end: var(--cinder-space-2);
 }
 
 .cinder-markdown-content
@@ -228,6 +239,18 @@ svg.cinder-icon-lg {
 
 .cinder-markdown-content :where(th:not([align]), td:not([align])) {
   text-align: start;
+}
+
+.cinder-markdown-content :where(th[align='left'], td[align='left']) {
+  text-align: left;
+}
+
+.cinder-markdown-content :where(th[align='center'], td[align='center']) {
+  text-align: center;
+}
+
+.cinder-markdown-content :where(th[align='right'], td[align='right']) {
+  text-align: right;
 }
 
 .cinder-markdown-content :where(th) {
