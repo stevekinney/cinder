@@ -67,6 +67,12 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.textContent).toContain('src/one.ts');
     expect(container.textContent).toContain('src/two.ts');
     expect(container.textContent).toContain('@@ -1,3 +1,4 @@');
+    expect(container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('role')).toBe(
+      'group',
+    );
+    expect(
+      container.querySelector('.cinder-source-diff-viewer__lines')?.getAttribute('aria-label'),
+    ).toBe('src/one.ts @@ -1,3 +1,4 @@ lines');
 
     expect(container.querySelectorAll("[data-cinder-line-kind='addition']")).toHaveLength(3);
     expect(container.querySelectorAll("[data-cinder-line-kind='removal']")).toHaveLength(2);
@@ -92,7 +98,21 @@ diff --git a/src/two.ts b/src/two.ts
     const { container } = render(SourceDiffViewer, { patch, ariaLabel: '   ' });
 
     expect(container.querySelector('.cinder-source-diff-viewer')?.hasAttribute('aria-label')).toBe(
-      false,
+      true,
+    );
+    expect(container.querySelector('.cinder-source-diff-viewer')?.getAttribute('aria-label')).toBe(
+      'Source diff',
+    );
+  });
+
+  test('uses a native aria-label when the custom ariaLabel prop is not supplied', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch,
+      'aria-label': 'Repository patch',
+    });
+
+    expect(container.querySelector('.cinder-source-diff-viewer')?.getAttribute('aria-label')).toBe(
+      'Repository patch',
     );
   });
 
@@ -152,9 +172,9 @@ Binary files /dev/null and b/assets/icon.png differ
     expect(container.textContent).toContain('Binary files /dev/null and b/assets/icon.png differ');
   });
 
-  test('parses patches without git headers and preserves non-diff hunk metadata', () => {
-    const parsed = parseUnifiedPatch(`--- a/src/old-name.ts
-+++ b/src/new-name.ts
+  test('parses patches without git headers and preserves non-diff hunk metadata verbatim', () => {
+    const parsed = parseUnifiedPatch(`--- src/old-name.ts
++++ src/new-name.ts
 @@ -4 +4 @@
 ! not a diff row
 -oldName();
@@ -169,6 +189,22 @@ Binary files /dev/null and b/assets/icon.png differ
       { kind: 'removal', content: 'oldName();' },
       { kind: 'addition', content: 'newName();' },
     ]);
+
+    const { container } = render(SourceDiffViewer, {
+      patch: `--- src/old-name.ts
++++ src/new-name.ts
+@@ -4 +4 @@
+! not a diff row
+-oldName();
++newName();
+`,
+    });
+
+    const renderedRows = [
+      ...container.querySelectorAll('.cinder-source-diff-viewer__line-code'),
+    ].map((element) => element.textContent);
+    expect(renderedRows).toContain('! not a diff row');
+    expect(renderedRows).not.toContain('\\ ! not a diff row');
   });
 
   test('does not strip real a or b path segments from labels after parsing', () => {
@@ -185,6 +221,19 @@ Binary files /dev/null and b/assets/icon.png differ
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('a/foo.ts');
   });
 
+  test('preserves a and b roots in non-git unified patch headers', () => {
+    const parsed = parseUnifiedPatch(`--- a/foo.ts
++++ b/foo.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('a/foo.ts');
+    expect(parsed.files[0]?.newPath).toBe('b/foo.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('a/foo.ts -> b/foo.ts');
+  });
+
   test('strips diff -u timestamps from non-git file headers', () => {
     const parsed = parseUnifiedPatch(`--- src/example.ts\t2026-07-05 10:00:00
 +++ src/example.ts\t2026-07-05 10:01:00
@@ -199,13 +248,13 @@ Binary files /dev/null and b/assets/icon.png differ
   });
 
   test('parses multi-file unified patches without diff git separators', () => {
-    const parsed = parseUnifiedPatch(`--- a/src/one.ts
-+++ b/src/one.ts
+    const parsed = parseUnifiedPatch(`--- src/one.ts
++++ src/one.ts
 @@ -1 +1 @@
 -one();
 +oneUpdated();
---- a/src/two.ts
-+++ b/src/two.ts
+--- src/two.ts
++++ src/two.ts
 @@ -1 +1 @@
 -two();
 +twoUpdated();
@@ -218,7 +267,8 @@ Binary files /dev/null and b/assets/icon.png differ
   });
 
   test('treats hunk rows that start with --- or +++ as source lines', () => {
-    const parsed = parseUnifiedPatch(`--- a/src/comments.sql
+    const parsed = parseUnifiedPatch(`diff --git a/src/comments.sql b/src/comments.sql
+--- a/src/comments.sql
 +++ b/src/comments.sql
 @@ -1,2 +1,2 @@
 --- old comment
@@ -237,7 +287,8 @@ Binary files /dev/null and b/assets/icon.png differ
   });
 
   test('keeps no-newline markers in hunk order', () => {
-    const parsed = parseUnifiedPatch(`--- a/src/example.ts
+    const parsed = parseUnifiedPatch(`diff --git a/src/example.ts b/src/example.ts
+--- a/src/example.ts
 +++ b/src/example.ts
 @@ -1 +1 @@
 -old();
@@ -255,7 +306,8 @@ Binary files /dev/null and b/assets/icon.png differ
     ]);
 
     const { container } = render(SourceDiffViewer, {
-      patch: `--- a/src/example.ts
+      patch: `diff --git a/src/example.ts b/src/example.ts
+--- a/src/example.ts
 +++ b/src/example.ts
 @@ -1 +1 @@
 -old();
@@ -269,9 +321,29 @@ Binary files /dev/null and b/assets/icon.png differ
     expect(container.querySelector('.cinder-source-diff-viewer__metadata')).toBeNull();
   });
 
+  test('does not render hunk metadata for rows omitted by truncation', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch: `--- src/example.ts
++++ src/example.ts
+@@ -1 +1 @@
+-old();
+\\ No newline at end of file
++new();
+\\ No newline at end of file
+`,
+      maxLines: 1,
+    });
+
+    const renderedRows = [
+      ...container.querySelectorAll('.cinder-source-diff-viewer__line-code'),
+    ].map((element) => element.textContent);
+    expect(renderedRows).toEqual(['-old();', '\\ No newline at end of file']);
+  });
+
   test('renders diff row prefixes adjacent to source text', () => {
     const { container } = render(SourceDiffViewer, {
-      patch: `--- a/src/example.ts
+      patch: `diff --git a/src/example.ts b/src/example.ts
+--- a/src/example.ts
 +++ b/src/example.ts
 @@ -1 +1 @@
 -old();
@@ -287,12 +359,14 @@ Binary files /dev/null and b/assets/icon.png differ
   });
 
   test('treats /dev/null as a missing side of added and removed files', () => {
-    const added = parseUnifiedPatch(`--- /dev/null
+    const added = parseUnifiedPatch(`diff --git a/src/added.ts b/src/added.ts
+--- /dev/null
 +++ b/src/added.ts
 @@ -0,0 +1 @@
 +added();
 `);
-    const removed = parseUnifiedPatch(`--- a/src/removed.ts
+    const removed = parseUnifiedPatch(`diff --git a/src/removed.ts b/src/removed.ts
+--- a/src/removed.ts
 +++ /dev/null
 @@ -1 +0,0 @@
 -removed();

@@ -39,7 +39,8 @@
 
   let {
     patch,
-    ariaLabel = 'Source diff',
+    ariaLabel,
+    'aria-label': nativeAriaLabel,
     maxLines = 1000,
     lineNumbers = true,
     emptyMessage = 'No patch lines to display.',
@@ -50,13 +51,18 @@
   const parsedPatch = $derived(parseUnifiedPatch(patch, { maxLines }));
   const hasPatchContent = $derived(parsedPatch.files.length > 0 || parsedPatch.totalLineCount > 0);
   const normalizedAriaLabel = $derived(
-    typeof ariaLabel === 'string' && ariaLabel.trim() ? ariaLabel.trim() : undefined,
+    normalizeAriaLabel(ariaLabel) ?? normalizeAriaLabel(nativeAriaLabel) ?? 'Source diff',
   );
 
   function getSourceDiffLineText(line: SourceDiffLine): string {
-    if (line.kind === 'metadata') return `\\ ${line.content}`;
+    if (line.kind === 'metadata')
+      return line.metadataPrefix ? `${line.metadataPrefix} ${line.content}` : line.content;
     const prefix = line.kind === 'addition' ? '+' : line.kind === 'removal' ? '-' : ' ';
     return `${prefix}${line.content}`;
+  }
+
+  function normalizeAriaLabel(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
   }
 </script>
 
@@ -94,7 +100,13 @@
           {#if hunk.lines.length > 0}
             <div class="cinder-source-diff-viewer__hunk">
               <div class="cinder-source-diff-viewer__hunk-header">{hunk.header}</div>
-              <svelte:element this={'div'} class="cinder-source-diff-viewer__lines" tabindex={0}>
+              <svelte:element
+                this={'div'}
+                class="cinder-source-diff-viewer__lines"
+                role="group"
+                aria-label={`${fileLabel} ${hunk.header} lines`}
+                tabindex={0}
+              >
                 {#each hunk.lines as line, lineIndex (`${lineIndex}:${line.kind}:${line.oldLineNumber ?? ''}:${line.newLineNumber ?? ''}`)}
                   <div class="cinder-source-diff-viewer__line" data-cinder-line-kind={line.kind}>
                     {#if lineNumbers}

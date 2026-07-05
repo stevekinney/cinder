@@ -11,6 +11,12 @@ type HunkCursor = {
   newLineNumber: number | null;
 };
 
+type HunkLineResult = {
+  renderedLineCount: number;
+  lineWasRead: boolean;
+  lineWasRendered: boolean;
+};
+
 const DEFAULT_MAX_LINES = 1000;
 const HUNK_HEADER_PATTERN = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
@@ -18,9 +24,12 @@ function stripSyntheticDiffPrefix(path: string): string {
   return path.replace(/^[ab]\//, '');
 }
 
-function parsePatchPath(path: string): string | null {
+function parsePatchPath(path: string, options: { stripSyntheticPrefix: boolean }): string | null {
   const [pathWithoutTimestamp = path] = path.split('\t');
-  const normalized = stripSyntheticDiffPrefix(pathWithoutTimestamp.trim());
+  const trimmedPath = pathWithoutTimestamp.trim();
+  const normalized = options.stripSyntheticPrefix
+    ? stripSyntheticDiffPrefix(trimmedPath)
+    : trimmedPath;
   return normalized === '/dev/null' ? null : normalized;
 }
 
@@ -102,6 +111,7 @@ function readRawHunkLine(rawLine: string, cursor: HunkCursor): SourceDiffLine | 
       content: rawLine.slice(2),
       oldLineNumber: null,
       newLineNumber: null,
+      metadataPrefix: '\\',
     };
   }
 
@@ -114,13 +124,18 @@ function readRawHunkLine(rawLine: string, cursor: HunkCursor): SourceDiffLine | 
   return readLine(kind, content, cursor);
 }
 
-function createHunkMetadataLine(rawLine: string): SourceDiffLine {
-  return {
+function createHunkMetadataLine(
+  rawLine: string,
+  metadataPrefix?: SourceDiffLine['metadataPrefix'],
+): SourceDiffLine {
+  const line: SourceDiffLine = {
     kind: 'metadata',
     content: rawLine,
     oldLineNumber: null,
     newLineNumber: null,
   };
+  if (metadataPrefix) line.metadataPrefix = metadataPrefix;
+  return line;
 }
 
 function pushMetadata(files: SourceDiffFile[], rawLine: string): void {
@@ -143,34 +158,35 @@ function pruneFiles(files: SourceDiffFile[]): SourceDiffFile[] {
 }
 
 function readHunkLine(
-  files: SourceDiffFile[],
   hunk: SourceDiffHunk,
   cursor: HunkCursor,
   rawLine: string,
   renderedLineCount: number,
   maxLines: number,
-): { renderedLineCount: number; lineWasRead: boolean } {
+  previousHunkDiffLineWasRendered: boolean,
+): HunkLineResult {
   const line = readRawHunkLine(rawLine, cursor);
   if (!line) {
-    if (hunk.lines.length > 0 || renderedLineCount < maxLines) {
+    if (
+      previousHunkDiffLineWasRendered ||
+      (hunk.lines.length === 0 && renderedLineCount < maxLines)
+    ) {
       hunk.lines.push(createHunkMetadataLine(rawLine));
-    } else {
-      pushMetadata(files, rawLine);
     }
-    return { renderedLineCount, lineWasRead: false };
+    return { renderedLineCount, lineWasRead: false, lineWasRendered: false };
   }
 
   if (line.kind === 'metadata') {
-    if (hunk.lines.length > 0) hunk.lines.push(line);
-    return { renderedLineCount, lineWasRead: false };
+    if (previousHunkDiffLineWasRendered) hunk.lines.push(line);
+    return { renderedLineCount, lineWasRead: false, lineWasRendered: false };
   }
 
   if (renderedLineCount < maxLines) {
     hunk.lines.push(line);
-    return { renderedLineCount: renderedLineCount + 1, lineWasRead: true };
+    return { renderedLineCount: renderedLineCount + 1, lineWasRead: true, lineWasRendered: true };
   }
 
-  return { renderedLineCount, lineWasRead: true };
+  return { renderedLineCount, lineWasRead: true, lineWasRendered: false };
 }
 
 function createParsedGitFile(rawLine: string): SourceDiffFile {
@@ -295,6 +311,7 @@ export function parseUnifiedPatch(
   let currentCursor: HunkCursor | null = null;
   let totalLineCount = 0;
   let renderedLineCount = 0;
+  let previousHunkDiffLineWasRendered = false;
 
   for (const rawLine of preparePatchLines(patch)) {
     if (rawLine === '' && files.length === 0) continue;
@@ -303,36 +320,50 @@ export function parseUnifiedPatch(
       files.push(createParsedGitFile(rawLine));
       currentHunk = null;
       currentCursor = null;
+      previousHunkDiffLineWasRendered = false;
       continue;
     }
 
-    if (currentHunk && currentCursor && !hunkIsComplete(currentHunk, currentCursor)) {
+    if (
+      currentHunk &&
+      currentCursor &&
+      (rawLine.startsWith('\\ ') || !hunkIsComplete(currentHunk, currentCursor))
+    ) {
       const result = readHunkLine(
-        files,
         currentHunk,
         currentCursor,
         rawLine,
         renderedLineCount,
         maxLines,
+        previousHunkDiffLineWasRendered,
       );
       renderedLineCount = result.renderedLineCount;
-      if (result.lineWasRead) totalLineCount += 1;
+      if (result.lineWasRead) {
+        totalLineCount += 1;
+        previousHunkDiffLineWasRendered = result.lineWasRendered;
+      }
       continue;
     }
 
     if (rawLine.startsWith('--- ')) {
       const file = ensureFileForOldHeader(files);
-      file.oldPath = parsePatchPath(rawLine.slice(4));
+      file.oldPath = parsePatchPath(rawLine.slice(4), {
+        stripSyntheticPrefix: file.header?.startsWith('diff --git ') ?? false,
+      });
       currentHunk = null;
       currentCursor = null;
+      previousHunkDiffLineWasRendered = false;
       continue;
     }
 
     if (rawLine.startsWith('+++ ')) {
       const file = ensureFile(files);
-      file.newPath = parsePatchPath(rawLine.slice(4));
+      file.newPath = parsePatchPath(rawLine.slice(4), {
+        stripSyntheticPrefix: file.header?.startsWith('diff --git ') ?? false,
+      });
       currentHunk = null;
       currentCursor = null;
+      previousHunkDiffLineWasRendered = false;
       continue;
     }
 
@@ -342,6 +373,7 @@ export function parseUnifiedPatch(
       file.hunks.push(hunk);
       currentHunk = hunk;
       currentCursor = cursor;
+      previousHunkDiffLineWasRendered = false;
       continue;
     }
 
@@ -351,15 +383,18 @@ export function parseUnifiedPatch(
     }
 
     const result = readHunkLine(
-      files,
       currentHunk,
       currentCursor,
       rawLine,
       renderedLineCount,
       maxLines,
+      previousHunkDiffLineWasRendered,
     );
     renderedLineCount = result.renderedLineCount;
-    if (result.lineWasRead) totalLineCount += 1;
+    if (result.lineWasRead) {
+      totalLineCount += 1;
+      previousHunkDiffLineWasRendered = result.lineWasRendered;
+    }
   }
 
   if (files.length === 0) return createEmptyParseResult();

@@ -34,7 +34,7 @@ Use SourceDiffViewer for source-code patches, agent workspace patches, Git outpu
 | `class`        | `string`  | no       | —       | Additional CSS classes merged with `.cinder-source-diff-viewer`.    |
 | `emptyMessage` | `string`  | no       | —       | Message shown when the patch is empty or contains no diffable rows. |
 | `lineNumbers`  | `boolean` | no       | —       | Whether old and new line-number gutters are rendered.               |
-| `maxLines`     | `number`  | no       | —       | Maximum number of diff rows to render before truncating.            |
+| `maxLines`     | `integer` | no       | —       | Maximum number of diff rows to render before truncating.            |
 | `patch`        | `string`  | yes      | —       | Unified patch text to parse and render.                             |
 
 <!-- generated:props:end -->

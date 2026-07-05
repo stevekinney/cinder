@@ -7,6 +7,7 @@ export type SourceDiffLine = {
   content: string;
   oldLineNumber: number | null;
   newLineNumber: number | null;
+  metadataPrefix?: '\\';
 };
 
 export type SourceDiffHunk = {

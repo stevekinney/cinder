@@ -13,8 +13,9 @@ const schema = {
       description: 'Accessible label for the diff region.',
     },
     maxLines: {
-      type: 'number',
+      type: 'integer',
       description: 'Maximum number of diff rows to render before truncating.',
+      minimum: 0,
     },
     lineNumbers: {
       type: 'boolean',
