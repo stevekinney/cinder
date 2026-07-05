@@ -75,6 +75,7 @@
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-xs);
     overflow-wrap: anywhere;
+    white-space: break-spaces;
   }
 
   .cinder-source-diff-viewer__lines {

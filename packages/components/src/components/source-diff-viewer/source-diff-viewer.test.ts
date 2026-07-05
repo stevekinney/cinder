@@ -423,6 +423,20 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/foo/bar.ts -> lib/foo/bar.ts');
   });
 
+  test('preserves no-prefix side-header directories for spaced text paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git src/old file.txt lib/new file.txt
+--- src/old file.txt
++++ lib/new file.txt
+@@ -1 +1 @@
+-old
++new
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('src/old file.txt');
+    expect(parsed.files[0]?.newPath).toBe('lib/new file.txt');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/old file.txt -> lib/new file.txt');
+  });
+
   test('strips default prefixes from differing text paths', () => {
     const parsed = parseUnifiedPatch(`diff --git a/old.txt b/new.txt
 --- a/old.txt
@@ -765,6 +779,18 @@ Binary files a/old.bin and b/new and x.bin differ
     expect(parsed.files[0]?.oldPath).toBe('old.bin');
     expect(parsed.files[0]?.newPath).toBe('new and x.bin');
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('old.bin -> new and x.bin');
+  });
+
+  test('uses binary notices when source names contain default delimiter text', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/a/old and b/x.bin b/b/new.bin
+index 1234567..89abcde 100644
+Binary files a/a/old and b/x.bin and b/b/new.bin differ
+`);
+
+    expect(parsed.files).toHaveLength(1);
+    expect(parsed.files[0]?.oldPath).toBe('a/old and b/x.bin');
+    expect(parsed.files[0]?.newPath).toBe('b/new.bin');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('a/old and b/x.bin -> b/new.bin');
   });
 
   test('starts binary recursive diff entries outside completed hunks', () => {

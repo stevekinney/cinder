@@ -303,7 +303,7 @@ function createHunkMetadataLine(
 
 function applyFileMetadata(file: SourceDiffFile, rawLine: string): void {
   const binaryMatch =
-    rawLine.match(/^Binary files (a\/.+?) and (b\/.+) differ$/) ??
+    rawLine.match(/^Binary files (a\/.+) and (b\/.+) differ$/) ??
     rawLine.match(/^Binary files (.+) and (.+) differ$/);
   if (binaryMatch) {
     file.oldPath = parsePatchPath(binaryMatch[1] ?? '', { stripSyntheticPrefix: true });
@@ -437,10 +437,17 @@ function parseGitFileSidePath(
   const parsedPath = parsePatchPath(rawPath, { stripSyntheticPrefix: false });
   if (!parsedPath || !file.header?.startsWith('diff --git ')) return parsedPath;
   if (currentPath && parsedPath === currentPath) return currentPath;
-  if (currentPath && parsedPath.endsWith(`/${currentPath}`)) return currentPath;
+  const [prefix] = parsedPath.split('/');
+  const hasKnownDiffPrefix =
+    prefix === 'a' || prefix === 'b' || prefix === 'old' || prefix === 'new';
+  if (currentPath && hasKnownDiffPrefix && parsedPath.endsWith(`/${currentPath}`)) {
+    return currentPath;
+  }
 
   const pathWithoutPrefix = stripLeadingPathSegmentPrefix(parsedPath);
-  return currentPath && pathWithoutPrefix === currentPath ? currentPath : pathWithoutPrefix;
+  return currentPath && hasKnownDiffPrefix && pathWithoutPrefix === currentPath
+    ? currentPath
+    : parsedPath;
 }
 
 function createEmptyParseResult(): SourceDiffParseResult {
