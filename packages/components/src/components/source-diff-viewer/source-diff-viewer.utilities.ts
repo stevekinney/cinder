@@ -67,8 +67,52 @@ function parsePatchPath(path: string, options: { stripSyntheticPrefix: boolean }
   return normalized === '/dev/null' ? null : normalized;
 }
 
+function readQuotedGitToken(
+  payload: string,
+  startIndex: number,
+): { token: string; endIndex: number } | null {
+  if (payload[startIndex] !== '"') return null;
+
+  for (let index = startIndex + 1; index < payload.length; index += 1) {
+    if (payload[index] === '\\') {
+      index += 1;
+      continue;
+    }
+
+    if (payload[index] === '"') {
+      return {
+        token: payload.slice(startIndex, index + 1),
+        endIndex: index + 1,
+      };
+    }
+  }
+
+  return null;
+}
+
+function parseQuotedDiffGitHeader(
+  payload: string,
+): Pick<SourceDiffFile, 'oldPath' | 'newPath'> | null {
+  const oldToken = readQuotedGitToken(payload, 0);
+  if (!oldToken) return null;
+
+  const separator = payload.slice(oldToken.endIndex).match(/^ +/);
+  if (!separator) return null;
+
+  const newToken = readQuotedGitToken(payload, oldToken.endIndex + separator[0].length);
+  if (!newToken || newToken.endIndex !== payload.length) return null;
+
+  return {
+    oldPath: parsePatchPath(oldToken.token, { stripSyntheticPrefix: true }),
+    newPath: parsePatchPath(newToken.token, { stripSyntheticPrefix: true }),
+  };
+}
+
 function parseDiffGitHeader(line: string): Pick<SourceDiffFile, 'oldPath' | 'newPath' | 'header'> {
   const payload = line.slice('diff --git '.length);
+  const quotedHeader = parseQuotedDiffGitHeader(payload);
+  if (quotedHeader) return { ...quotedHeader, header: line };
+
   if (!payload.startsWith('a/')) {
     return { oldPath: null, newPath: null, header: line };
   }
@@ -85,7 +129,7 @@ function parseDiffGitHeader(line: string): Pick<SourceDiffFile, 'oldPath' | 'new
     if (oldPath && oldPath === newPath) return { oldPath, newPath, header: line };
   }
 
-  const separatorIndex = separatorIndexes.at(-1) ?? -1;
+  const separatorIndex = separatorIndexes[separatorIndexes.length - 1] ?? -1;
   if (separatorIndex <= 0) return { oldPath: null, newPath: null, header: line };
 
   return {
@@ -112,11 +156,11 @@ function startFile(files: SourceDiffFile[], header: string | null = null): Sourc
 }
 
 function ensureFile(files: SourceDiffFile[], header: string | null = null): SourceDiffFile {
-  return files.at(-1) ?? startFile(files, header);
+  return files[files.length - 1] ?? startFile(files, header);
 }
 
 function ensureFileForOldHeader(files: SourceDiffFile[]): SourceDiffFile {
-  const current = files.at(-1);
+  const current = files[files.length - 1];
   if (
     current &&
     current.hunks.length === 0 &&
@@ -189,12 +233,29 @@ function createHunkMetadataLine(
   return line;
 }
 
+function applyFileMetadata(file: SourceDiffFile, rawLine: string): void {
+  if (rawLine.startsWith('rename from ')) {
+    file.oldPath = parsePatchPath(rawLine.slice('rename from '.length), {
+      stripSyntheticPrefix: false,
+    });
+    return;
+  }
+
+  if (rawLine.startsWith('rename to ')) {
+    file.newPath = parsePatchPath(rawLine.slice('rename to '.length), {
+      stripSyntheticPrefix: false,
+    });
+  }
+}
+
 function pushMetadata(
   files: SourceDiffFile[],
   rawLine: string,
   renderedLineCount: number,
   maxLines: number,
 ): { renderedLineCount: number; lineWasRendered: boolean } {
+  applyFileMetadata(ensureFile(files), rawLine);
+
   if (renderedLineCount < maxLines) {
     ensureFile(files).metadata.push(rawLine);
     return { renderedLineCount: renderedLineCount + 1, lineWasRendered: true };
@@ -205,7 +266,7 @@ function pushMetadata(
 
 function preparePatchLines(patch: string): string[] {
   const lines = patch.replace(/\r\n?/g, '\n').split('\n');
-  if (lines.at(-1) === '') lines.pop();
+  if (lines[lines.length - 1] === '') lines.pop();
   return lines;
 }
 

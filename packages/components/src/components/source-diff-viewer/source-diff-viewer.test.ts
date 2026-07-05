@@ -247,6 +247,29 @@ new mode 100755
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('foo b/bar');
   });
 
+  test('parses quoted git headers without later file headers', () => {
+    const parsed = parseUnifiedPatch(`diff --git "a/caf\\303\\251.sh" "b/caf\\303\\251.sh"
+old mode 100644
+new mode 100755
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('café.sh');
+    expect(parsed.files[0]?.newPath).toBe('café.sh');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('café.sh');
+  });
+
+  test('uses rename metadata for git headers with ambiguous b segments', () => {
+    const parsed = parseUnifiedPatch(`diff --git a/one b/two b/bar
+similarity index 100%
+rename from one
+rename to two b/bar
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('one');
+    expect(parsed.files[0]?.newPath).toBe('two b/bar');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('one -> two b/bar');
+  });
+
   test('preserves a and b roots in non-git unified patch headers', () => {
     const parsed = parseUnifiedPatch(`--- a/foo.ts
 +++ b/foo.ts
