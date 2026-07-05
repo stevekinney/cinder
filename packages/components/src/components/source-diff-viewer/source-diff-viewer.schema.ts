@@ -16,14 +16,17 @@ const schema = {
       type: 'integer',
       description: 'Maximum number of diff rows to render before truncating.',
       minimum: 0,
+      default: 1000,
     },
     lineNumbers: {
       type: 'boolean',
       description: 'Whether old and new line-number gutters are rendered.',
+      default: true,
     },
     emptyMessage: {
       type: 'string',
       description: 'Message shown when the patch is empty or contains no diffable rows.',
+      default: 'No patch lines to display.',
     },
     class: {
       type: 'string',

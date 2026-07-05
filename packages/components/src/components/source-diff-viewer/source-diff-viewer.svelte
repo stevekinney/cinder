@@ -41,6 +41,7 @@
     patch,
     ariaLabel,
     'aria-label': nativeAriaLabel,
+    'aria-labelledby': nativeAriaLabelledBy,
     maxLines = 1000,
     lineNumbers = true,
     emptyMessage = 'No patch lines to display.',
@@ -50,8 +51,11 @@
 
   const parsedPatch = $derived(parseUnifiedPatch(patch, { maxLines }));
   const hasPatchContent = $derived(parsedPatch.files.length > 0 || parsedPatch.totalLineCount > 0);
+  const normalizedAriaLabelledBy = $derived(normalizeAriaLabel(nativeAriaLabelledBy));
   const normalizedAriaLabel = $derived(
-    normalizeAriaLabel(ariaLabel) ?? normalizeAriaLabel(nativeAriaLabel) ?? 'Source diff',
+    normalizedAriaLabelledBy
+      ? undefined
+      : (normalizeAriaLabel(ariaLabel) ?? normalizeAriaLabel(nativeAriaLabel) ?? 'Source diff'),
   );
 
   function getSourceDiffLineText(line: SourceDiffLine): string {
@@ -71,6 +75,7 @@
   class={classNames('cinder-source-diff-viewer', className)}
   role="region"
   aria-label={normalizedAriaLabel}
+  aria-labelledby={normalizedAriaLabelledBy}
 >
   {#if !hasPatchContent}
     <p class="cinder-source-diff-viewer__empty">{emptyMessage}</p>

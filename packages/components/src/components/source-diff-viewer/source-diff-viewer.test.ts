@@ -94,7 +94,7 @@ diff --git a/src/two.ts b/src/two.ts
     expect(root?.getAttribute('role')).toBe('region');
   });
 
-  test('omits an empty aria label instead of rendering a blank accessible name', () => {
+  test('uses the default aria label when the custom label is blank', () => {
     const { container } = render(SourceDiffViewer, { patch, ariaLabel: '   ' });
 
     expect(container.querySelector('.cinder-source-diff-viewer')?.hasAttribute('aria-label')).toBe(
@@ -114,6 +114,17 @@ diff --git a/src/two.ts b/src/two.ts
     expect(container.querySelector('.cinder-source-diff-viewer')?.getAttribute('aria-label')).toBe(
       'Repository patch',
     );
+  });
+
+  test('honors aria-labelledby instead of overriding it with aria-label', () => {
+    const { container } = render(SourceDiffViewer, {
+      patch,
+      'aria-labelledby': 'diff-heading',
+    });
+
+    const root = container.querySelector('.cinder-source-diff-viewer');
+    expect(root?.getAttribute('aria-labelledby')).toBe('diff-heading');
+    expect(root?.hasAttribute('aria-label')).toBe(false);
   });
 
   test('can hide line-number gutters while preserving line-state labels', () => {
@@ -293,6 +304,34 @@ copy to two b/bar
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('one -> two b/bar');
   });
 
+  test('normalizes custom git diff prefixes', () => {
+    const parsed = parseUnifiedPatch(`diff --git old/src/example.ts new/src/example.ts
+--- old/src/example.ts
++++ new/src/example.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('src/example.ts');
+    expect(parsed.files[0]?.newPath).toBe('src/example.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
+  });
+
+  test('parses no-prefix git diff headers without stripping real paths', () => {
+    const parsed = parseUnifiedPatch(`diff --git src/example.ts src/example.ts
+--- src/example.ts
++++ src/example.ts
+@@ -1 +1 @@
+-old();
++new();
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('src/example.ts');
+    expect(parsed.files[0]?.newPath).toBe('src/example.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('src/example.ts');
+  });
+
   test('preserves a and b roots in non-git unified patch headers', () => {
     const parsed = parseUnifiedPatch(`--- a/foo.ts
 +++ b/foo.ts
@@ -432,6 +471,24 @@ diff -ru old/two.txt new/two.txt
     expect(parsed.files[1]?.header).toBe('diff -ru old/two.txt new/two.txt');
     expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
       'diff -ru old/two.txt new/two.txt',
+    );
+  });
+
+  test('starts recursive-only diff entries outside completed hunks', () => {
+    const parsed = parseUnifiedPatch(`diff -ru old/one.txt new/one.txt
+--- old/one.txt
++++ new/one.txt
+@@ -1 +1 @@
+-one
++one updated
+Only in new: extra.txt
+`);
+
+    expect(parsed.files).toHaveLength(2);
+    expect(parsed.files[1]?.header).toBe('Only in new: extra.txt');
+    expect(parsed.files[1]?.metadata).toEqual(['Only in new: extra.txt']);
+    expect(parsed.files[0]?.hunks[0]?.lines.map((line) => line.content)).not.toContain(
+      'Only in new: extra.txt',
     );
   });
 

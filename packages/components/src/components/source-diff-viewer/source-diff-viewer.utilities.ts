@@ -25,6 +25,10 @@ function stripSyntheticDiffPrefix(path: string): string {
   return path.replace(/^[ab]\//, '');
 }
 
+function stripLeadingPathSegmentPrefix(path: string): string {
+  return path.replace(/^[^/]+\//, '');
+}
+
 function decodeGitQuotedPath(path: string): string {
   if (!path.startsWith('"') || !path.endsWith('"')) return path;
 
@@ -68,6 +72,22 @@ function parsePatchPath(path: string, options: { stripSyntheticPrefix: boolean }
   return normalized === '/dev/null' ? null : normalized;
 }
 
+function normalizeGitHeaderPaths(
+  oldPath: string | null,
+  newPath: string | null,
+): Pick<SourceDiffFile, 'oldPath' | 'newPath'> {
+  if (!oldPath || !newPath) return { oldPath, newPath };
+  if (oldPath === newPath) return { oldPath, newPath };
+
+  const oldWithoutPrefix = stripLeadingPathSegmentPrefix(oldPath);
+  const newWithoutPrefix = stripLeadingPathSegmentPrefix(newPath);
+  if (oldWithoutPrefix === newWithoutPrefix) {
+    return { oldPath: oldWithoutPrefix, newPath: newWithoutPrefix };
+  }
+
+  return { oldPath: oldWithoutPrefix, newPath: newWithoutPrefix };
+}
+
 function readQuotedGitToken(
   payload: string,
   startIndex: number,
@@ -103,10 +123,10 @@ function parseQuotedDiffGitHeader(
   const newToken = readQuotedGitToken(payload, oldToken.endIndex + separator[0].length);
   if (!newToken || newToken.endIndex !== payload.length) return null;
 
-  return {
-    oldPath: parsePatchPath(oldToken.token, { stripSyntheticPrefix: true }),
-    newPath: parsePatchPath(newToken.token, { stripSyntheticPrefix: true }),
-  };
+  return normalizeGitHeaderPaths(
+    parsePatchPath(oldToken.token, { stripSyntheticPrefix: false }),
+    parsePatchPath(newToken.token, { stripSyntheticPrefix: false }),
+  );
 }
 
 function parseDiffGitHeader(line: string): Pick<SourceDiffFile, 'oldPath' | 'newPath' | 'header'> {
@@ -114,28 +134,26 @@ function parseDiffGitHeader(line: string): Pick<SourceDiffFile, 'oldPath' | 'new
   const quotedHeader = parseQuotedDiffGitHeader(payload);
   if (quotedHeader) return { ...quotedHeader, header: line };
 
-  if (!payload.startsWith('a/')) {
-    return { oldPath: null, newPath: null, header: line };
-  }
-
-  const separatorIndexes = [...payload.matchAll(/ b\//g)].map((match) => match.index ?? -1);
+  const separatorIndexes = [...payload.matchAll(/ /g)].map((match) => match.index ?? -1);
   for (const separatorIndex of separatorIndexes) {
     if (separatorIndex <= 0) continue;
-    const oldPath = parsePatchPath(payload.slice(0, separatorIndex), {
-      stripSyntheticPrefix: true,
-    });
-    const newPath = parsePatchPath(payload.slice(separatorIndex + 1), {
-      stripSyntheticPrefix: true,
-    });
-    if (oldPath && oldPath === newPath) return { oldPath, newPath, header: line };
+    const parsedPaths = normalizeGitHeaderPaths(
+      parsePatchPath(payload.slice(0, separatorIndex), { stripSyntheticPrefix: false }),
+      parsePatchPath(payload.slice(separatorIndex + 1), { stripSyntheticPrefix: false }),
+    );
+    if (parsedPaths.oldPath && parsedPaths.oldPath === parsedPaths.newPath) {
+      return { ...parsedPaths, header: line };
+    }
   }
 
   const separatorIndex = separatorIndexes[separatorIndexes.length - 1] ?? -1;
   if (separatorIndex <= 0) return { oldPath: null, newPath: null, header: line };
 
   return {
-    oldPath: parsePatchPath(payload.slice(0, separatorIndex), { stripSyntheticPrefix: true }),
-    newPath: parsePatchPath(payload.slice(separatorIndex + 1), { stripSyntheticPrefix: true }),
+    ...normalizeGitHeaderPaths(
+      parsePatchPath(payload.slice(0, separatorIndex), { stripSyntheticPrefix: false }),
+      parsePatchPath(payload.slice(separatorIndex + 1), { stripSyntheticPrefix: false }),
+    ),
     header: line,
   };
 }
@@ -353,6 +371,19 @@ function createParsedGitFile(rawLine: string): SourceDiffFile {
   };
 }
 
+function parseGitFileSidePath(
+  file: SourceDiffFile,
+  rawPath: string,
+  currentPath: string | null,
+): string | null {
+  const parsedPath = parsePatchPath(rawPath, { stripSyntheticPrefix: false });
+  if (!parsedPath || !file.header?.startsWith('diff --git ')) return parsedPath;
+  if (currentPath && parsedPath === currentPath) return currentPath;
+
+  const pathWithoutPrefix = stripLeadingPathSegmentPrefix(parsedPath);
+  return currentPath && pathWithoutPrefix === currentPath ? currentPath : pathWithoutPrefix;
+}
+
 function createEmptyParseResult(): SourceDiffParseResult {
   return {
     files: [],
@@ -489,6 +520,22 @@ export function parseUnifiedPatch(
     }
 
     if (
+      rawLine.startsWith('Only in ') &&
+      currentHunk &&
+      currentCursor &&
+      hunkIsComplete(currentHunk, currentCursor)
+    ) {
+      startFile(files, rawLine);
+      const result = pushMetadata(files, rawLine, renderedLineCount, maxLines);
+      renderedLineCount = result.renderedLineCount;
+      totalLineCount += 1;
+      currentHunk = null;
+      currentCursor = null;
+      previousHunkDiffLineWasRendered = false;
+      continue;
+    }
+
+    if (
       currentHunk &&
       currentCursor &&
       (rawLine.startsWith('\\ ') || !hunkIsComplete(currentHunk, currentCursor))
@@ -511,9 +558,7 @@ export function parseUnifiedPatch(
 
     if (rawLine.startsWith('--- ')) {
       const file = ensureFileForOldHeader(files);
-      file.oldPath = parsePatchPath(rawLine.slice(4), {
-        stripSyntheticPrefix: file.header?.startsWith('diff --git ') ?? false,
-      });
+      file.oldPath = parseGitFileSidePath(file, rawLine.slice(4), file.oldPath);
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
@@ -522,9 +567,7 @@ export function parseUnifiedPatch(
 
     if (rawLine.startsWith('+++ ')) {
       const file = ensureFile(files);
-      file.newPath = parsePatchPath(rawLine.slice(4), {
-        stripSyntheticPrefix: file.header?.startsWith('diff --git ') ?? false,
-      });
+      file.newPath = parseGitFileSidePath(file, rawLine.slice(4), file.newPath);
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;

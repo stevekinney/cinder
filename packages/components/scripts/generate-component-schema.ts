@@ -437,7 +437,24 @@ function applySourceDiffViewerSchemaRules(schema: ComponentSchemaOutput): void {
     ...maxLines,
     type: 'integer',
     minimum: 0,
+    default: 1000,
   };
+
+  const lineNumbers = schema.properties['lineNumbers'];
+  if (lineNumbers?.type === 'boolean') {
+    schema.properties['lineNumbers'] = {
+      ...lineNumbers,
+      default: true,
+    };
+  }
+
+  const emptyMessage = schema.properties['emptyMessage'];
+  if (emptyMessage?.type === 'string') {
+    schema.properties['emptyMessage'] = {
+      ...emptyMessage,
+      default: 'No patch lines to display.',
+    };
+  }
 }
 
 function sortedUniqueStrings(values: string[]): string[] {

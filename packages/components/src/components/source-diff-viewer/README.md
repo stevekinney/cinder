@@ -28,14 +28,14 @@ Use SourceDiffViewer for source-code patches, agent workspace patches, Git outpu
 
 <!-- generated:props:start -->
 
-| Prop           | Type      | Required | Default | Description                                                         |
-| -------------- | --------- | -------- | ------- | ------------------------------------------------------------------- |
-| `ariaLabel`    | `string`  | no       | —       | Accessible label for the diff region.                               |
-| `class`        | `string`  | no       | —       | Additional CSS classes merged with `.cinder-source-diff-viewer`.    |
-| `emptyMessage` | `string`  | no       | —       | Message shown when the patch is empty or contains no diffable rows. |
-| `lineNumbers`  | `boolean` | no       | —       | Whether old and new line-number gutters are rendered.               |
-| `maxLines`     | `integer` | no       | —       | Maximum number of diff rows to render before truncating.            |
-| `patch`        | `string`  | yes      | —       | Unified patch text to parse and render.                             |
+| Prop           | Type      | Required | Default                        | Description                                                         |
+| -------------- | --------- | -------- | ------------------------------ | ------------------------------------------------------------------- |
+| `ariaLabel`    | `string`  | no       | —                              | Accessible label for the diff region.                               |
+| `class`        | `string`  | no       | —                              | Additional CSS classes merged with `.cinder-source-diff-viewer`.    |
+| `emptyMessage` | `string`  | no       | `"No patch lines to display."` | Message shown when the patch is empty or contains no diffable rows. |
+| `lineNumbers`  | `boolean` | no       | `true`                         | Whether old and new line-number gutters are rendered.               |
+| `maxLines`     | `integer` | no       | `1000`                         | Maximum number of diff rows to render before truncating.            |
+| `patch`        | `string`  | yes      | —                              | Unified patch text to parse and render.                             |
 
 <!-- generated:props:end -->
 
