@@ -105,12 +105,10 @@
           {#if hunk.lines.length > 0}
             <div class="cinder-source-diff-viewer__hunk">
               <div class="cinder-source-diff-viewer__hunk-header">{hunk.header}</div>
-              <svelte:element
-                this={'div'}
+              <div
                 class="cinder-source-diff-viewer__lines"
                 role="group"
                 aria-label={`${fileLabel} ${hunk.header} lines`}
-                tabindex={0}
               >
                 {#each hunk.lines as line, lineIndex (`${lineIndex}:${line.kind}:${line.oldLineNumber ?? ''}:${line.newLineNumber ?? ''}`)}
                   <div class="cinder-source-diff-viewer__line" data-cinder-line-kind={line.kind}>
@@ -128,7 +126,7 @@
                     </code>
                   </div>
                 {/each}
-              </svelte:element>
+              </div>
             </div>
           {/if}
         {/each}
