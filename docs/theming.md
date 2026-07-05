@@ -25,7 +25,7 @@ That tells the browser cinder supports both schemes _and_ that the active one sh
 
 To override the OS preference, cinder ships two equivalent paths. Pick one and stick with it inside a given app:
 
-- **`data-theme` attribute**: set `data-theme="light"` or `data-theme="dark"` on `:root` (or any ancestor of the styled element). Cinder's stylesheet maps those attributes to `color-scheme` for you:
+- **`data-theme` attribute**: set `data-theme="light"` or `data-theme="dark"` on `:root` (or any ancestor of the styled element). Cinder's stylesheet maps those attributes to `color-scheme` and pins the core semantic surface, text, border, overlay, interaction, status, and control tokens inside non-root `[data-theme]` scopes:
 
   ```css
   :root[data-theme='dark'] {
@@ -36,18 +36,30 @@ To override the OS preference, cinder ships two equivalent paths. Pick one and s
   }
   [data-theme='dark'] {
     color-scheme: dark;
+    --cinder-surface: oklch(20% 0.04 245);
+    --cinder-surface-raised: oklch(26% 0.045 245);
+    --cinder-text: oklch(92% 0.02 245);
+    --cinder-border: oklch(40% 0.05 245);
+    --cinder-accent: oklch(72% 0.14 270);
+    --cinder-ring-color: oklch(from var(--cinder-accent) 0.7 0.14 h);
   }
   [data-theme='light'] {
     color-scheme: light;
+    --cinder-surface: oklch(98.5% 0.008 245);
+    --cinder-surface-raised: oklch(100% 0.006 245);
+    --cinder-text: oklch(20% 0.018 245);
+    --cinder-border: oklch(79% 0.013 245);
+    --cinder-accent: oklch(50% 0.22 270);
+    --cinder-ring-color: oklch(from var(--cinder-accent) 0.55 0.16 h);
   }
   ```
 
-- **Direct `color-scheme`**: set `color-scheme: light` or `color-scheme: dark` directly via CSS or inline style. Equivalent in outcome; useful when you don't want an attribute on your markup.
+- **Direct `color-scheme`**: set `color-scheme: light` or `color-scheme: dark` directly via CSS or inline style. This drives the `light-dark()` tokens, but it does not get the concrete scoped token redeclarations that Cinder wires to `[data-theme]`.
 
-Both routes drive `light-dark()` identically. The toggle recipe below uses `data-theme` because it's a single attribute mutation, plays nicely with CSS selectors elsewhere in your app, and doesn't leave inline styles lying around after the component unmounts.
+The toggle recipe below uses `data-theme` because it's a single attribute mutation, plays nicely with CSS selectors elsewhere in your app, and doesn't leave inline styles lying around after the component unmounts.
 
 > [!NOTE]
-> The non-root `[data-theme]` selectors mean you can scope a theme override to a subtree — for example, a dark-themed code preview embedded in an otherwise-light page. `light-dark()` resolves against the nearest ancestor with a concrete `color-scheme`, so nested overrides work without fighting global state.
+> The non-root `[data-theme]` selectors mean you can scope a theme override to a subtree — for example, a dark-themed navigation region embedded in an otherwise-light page. Cinder redeclares the core semantic tokens in that subtree, so components such as `Sidebar` and `Drawer` inherit the local dark surface, text, border, active, focus, and variant-control values without app-level token pinning. Nested `[data-theme='light']` scopes can switch those tokens back for a light island. If your app globally replaces Cinder's public tokens for custom branding, repeat those brand overrides in the scoped selector that should use them.
 
 ## Minimal Svelte toggle
 

@@ -136,7 +136,17 @@ html {
 html[data-theme='dark'] {
   color-scheme: dark;
 }
+
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
 ```
+
+Use `[data-theme='dark']` or `[data-theme='light']` on a subtree for scoped theme islands. Cinder pins the core semantic surface, text, border, overlay, interaction, status, and control tokens inside those scopes so components inherit local values without app-level token overrides. If your app replaces Cinder's public tokens for custom branding, set those brand overrides in the same scoped theme selector.
 
 Public tokens use the `--cinder-` prefix. Internal implementation variables use `--_cinder-`; do not redefine those.
 
