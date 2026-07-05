@@ -407,14 +407,13 @@ function pushMetadata(
 }
 
 function preparePatchLines(patch: string): string[] {
-  const lines = patch.split('\n').map((line) => {
-    if (!line.endsWith('\r')) return line;
-    if (line.startsWith(' ') || (line.startsWith('+') && !line.startsWith('+++ '))) return line;
-    if (line.startsWith('-') && !line.startsWith('--- ')) return line;
-    return line.slice(0, -1);
-  });
+  const lines = patch.split('\n');
   while (lines[lines.length - 1] === '') lines.pop();
   return lines;
+}
+
+function stripLineTerminatorCarriageReturn(line: string): string {
+  return line.endsWith('\r') ? line.slice(0, -1) : line;
 }
 
 function pruneFiles(files: SourceDiffFile[]): SourceDiffFile[] {
@@ -640,20 +639,27 @@ export function parseUnifiedPatch(
 
   for (let index = 0; index < lines.length; index += 1) {
     const rawLine = lines[index] ?? '';
+    const line = stripLineTerminatorCarriageReturn(rawLine);
     const nextRawLine = lines[index + 1];
+    const nextLine =
+      nextRawLine === undefined ? undefined : stripLineTerminatorCarriageReturn(nextRawLine);
     const nextNextRawLine = lines[index + 2];
-    if (rawLine === '' && files.length === 0) continue;
+    const nextNextLine =
+      nextNextRawLine === undefined
+        ? undefined
+        : stripLineTerminatorCarriageReturn(nextNextRawLine);
+    if (line === '' && files.length === 0) continue;
 
-    if (rawLine.startsWith('diff --git ')) {
-      files.push(createParsedGitFile(rawLine));
+    if (line.startsWith('diff --git ')) {
+      files.push(createParsedGitFile(line));
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
       continue;
     }
 
-    if (rawLine.startsWith('diff ')) {
-      startFile(files, rawLine);
+    if (line.startsWith('diff ')) {
+      startFile(files, line);
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
@@ -664,13 +670,13 @@ export function parseUnifiedPatch(
     const previousHunkIsComplete =
       currentHunk && currentCursor && hunkIsComplete(currentHunk, currentCursor);
     if (
-      isStandaloneRecursiveDiffMetadata(rawLine) &&
+      isStandaloneRecursiveDiffMetadata(line) &&
       (!currentHunk || !currentCursor || previousHunkIsComplete) &&
       (previousHunkIsComplete || !previousFileIsGitDiff)
     ) {
       totalLineCount += 1;
       if (renderedLineCount < maxLines) {
-        startFile(files, rawLine);
+        startFile(files, line);
         renderedLineCount += 1;
       }
       currentHunk = null;
@@ -682,20 +688,16 @@ export function parseUnifiedPatch(
     if (
       currentHunk &&
       currentCursor &&
-      rawLine.startsWith('--- ') &&
-      nextRawLine?.startsWith('+++ ') &&
-      nextNextRawLine?.startsWith('@@ ')
+      line.startsWith('--- ') &&
+      nextLine?.startsWith('+++ ') &&
+      nextNextLine?.startsWith('@@ ')
     ) {
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
     }
 
-    if (
-      currentHunk &&
-      currentCursor &&
-      (rawLine.startsWith('--- ') || rawLine.startsWith('+++ '))
-    ) {
+    if (currentHunk && currentCursor && (line.startsWith('--- ') || line.startsWith('+++ '))) {
       const result = readHunkLine(
         currentHunk,
         currentCursor,
@@ -715,7 +717,7 @@ export function parseUnifiedPatch(
     if (
       currentHunk &&
       currentCursor &&
-      (rawLine.startsWith('\\ ') || !hunkIsComplete(currentHunk, currentCursor))
+      (line.startsWith('\\ ') || !hunkIsComplete(currentHunk, currentCursor))
     ) {
       const result = readHunkLine(
         currentHunk,
@@ -733,27 +735,27 @@ export function parseUnifiedPatch(
       continue;
     }
 
-    if (rawLine.startsWith('--- ')) {
+    if (line.startsWith('--- ')) {
       const file = ensureFileForOldHeader(files);
-      file.oldPath = parseGitFileSidePath(file, rawLine.slice(4), file.oldPath);
+      file.oldPath = parseGitFileSidePath(file, line.slice(4), file.oldPath);
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
       continue;
     }
 
-    if (rawLine.startsWith('+++ ')) {
+    if (line.startsWith('+++ ')) {
       const file = ensureFile(files);
-      file.newPath = parseGitFileSidePath(file, rawLine.slice(4), file.newPath);
+      file.newPath = parseGitFileSidePath(file, line.slice(4), file.newPath);
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
       continue;
     }
 
-    if (rawLine.startsWith('@@ ')) {
+    if (line.startsWith('@@ ')) {
       const file = ensureFile(files);
-      const { hunk, cursor } = createHunk(rawLine);
+      const { hunk, cursor } = createHunk(line);
       file.hunks.push(hunk);
       currentHunk = hunk;
       currentCursor = cursor;
@@ -764,7 +766,7 @@ export function parseUnifiedPatch(
     if (currentHunk && currentCursor && hunkIsComplete(currentHunk, currentCursor)) {
       totalLineCount += 1;
       if (renderedLineCount < maxLines) {
-        currentHunk.lines.push(createHunkMetadataLine(rawLine));
+        currentHunk.lines.push(createHunkMetadataLine(line));
         renderedLineCount += 1;
       }
       previousHunkDiffLineWasRendered = false;
@@ -772,7 +774,7 @@ export function parseUnifiedPatch(
     }
 
     if (!currentHunk || !currentCursor) {
-      const result = pushMetadata(files, rawLine, renderedLineCount, maxLines);
+      const result = pushMetadata(files, line, renderedLineCount, maxLines);
       renderedLineCount = result.renderedLineCount;
       totalLineCount += 1;
       continue;

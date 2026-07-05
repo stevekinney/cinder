@@ -920,6 +920,22 @@ Common subdirectories: old/sub and new/sub
     ]);
   });
 
+  test('preserves carriage returns in header-looking diff row content', () => {
+    const parsed = parseUnifiedPatch(
+      'diff --git a/src/example.txt b/src/example.txt\n' +
+        '--- a/src/example.txt\n' +
+        '+++ b/src/example.txt\n' +
+        '@@ -1 +1 @@\n' +
+        '--- old\r\n' +
+        '+++ new\r\n',
+    );
+
+    expect(parsed.files[0]?.hunks[0]?.lines).toMatchObject([
+      { kind: 'removal', content: '-- old\r' },
+      { kind: 'addition', content: '++ new\r' },
+    ]);
+  });
+
   test('does not render hunk metadata for rows omitted by truncation', () => {
     const { container } = render(SourceDiffViewer, {
       patch: `--- src/example.ts
