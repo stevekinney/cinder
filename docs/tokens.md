@@ -7,7 +7,7 @@ This file is hand-maintained. It is the source of truth for what cinder exposes;
 All tokens are declared in [`tokens-base.css`](../packages/components/src/styles/tokens-base.css). The aggregator [`tokens.css`](../packages/components/src/styles/tokens.css) imports the base file and is the entry point components consume.
 
 > [!NOTE]
-> Color tokens use [`light-dark()`](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark) keyed off `color-scheme`. The default `:root` sets `color-scheme: light dark`, which means the browser picks based on the user's OS preference. Force a scheme by setting `color-scheme: light` or `color-scheme: dark` on `:root` (or any ancestor) — or use the shorthand `[data-theme='light']` / `[data-theme='dark']` selectors cinder already wires up.
+> Color tokens use [`light-dark()`](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark) keyed off `color-scheme`. The default `:root` sets `color-scheme: light dark`, which means the browser picks based on the user's OS preference. Force a whole-page scheme with `data-theme="light"` or `data-theme="dark"` on `:root`. For scoped theme islands, put `[data-theme='light']` or `[data-theme='dark']` on the subtree; cinder redeclares the core semantic surface, text, border, overlay, and control tokens there so components inherit concrete local values instead of requiring consumer token pinning.
 
 ## Spacing
 

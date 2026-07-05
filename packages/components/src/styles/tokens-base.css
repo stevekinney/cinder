@@ -473,10 +473,60 @@
 
 [data-theme='dark'] {
   color-scheme: dark;
+  --cinder-bg: oklch(15% 0.035 245);
+  --cinder-surface: oklch(20% 0.04 245);
+  --cinder-surface-raised: oklch(26% 0.045 245);
+  --cinder-surface-inset: oklch(11% 0.03 245);
+  --cinder-surface-upcoming-marker: var(--cinder-surface);
+  --cinder-surface-inverse: var(--cinder-surface-raised);
+  --cinder-text-inverse: var(--cinder-text);
+  --cinder-border-inverse: var(--cinder-border-strong);
+  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 3%);
+  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 8%);
+  --cinder-text: oklch(92% 0.02 245);
+  --cinder-text-muted: oklch(82% 0.02 245);
+  --cinder-text-subtle: oklch(72% 0.02 245);
+  --cinder-text-disabled: oklch(64% 0.02 245);
+  --cinder-fill-disabled: oklch(30% 0.015 245);
+  --cinder-border: oklch(40% 0.05 245);
+  --cinder-border-muted: oklch(30% 0.04 245);
+  --cinder-border-strong: oklch(45% 0.06 245);
+  --cinder-toggle-track-off-resting: oklch(45% 0.02 245);
+  --cinder-toggle-track-off-hover-resting: oklch(52% 0.02 245);
+  --cinder-ring-offset-color: var(--cinder-bg);
+  --cinder-button-bg: var(--cinder-surface-raised);
+  --cinder-button-fg: var(--cinder-text);
+  --cinder-button-border: var(--cinder-border-strong);
+  --cinder-overlay-backdrop: oklch(8% 0.02 245 / 0.65);
 }
 
 [data-theme='light'] {
   color-scheme: light;
+  --cinder-bg: oklch(96% 0.01 245);
+  --cinder-surface: oklch(98.5% 0.008 245);
+  --cinder-surface-raised: oklch(100% 0.006 245);
+  --cinder-surface-inset: oklch(95.5% 0.01 245);
+  --cinder-surface-upcoming-marker: var(--cinder-surface-inset);
+  --cinder-surface-inverse: var(--cinder-text);
+  --cinder-text-inverse: var(--cinder-surface);
+  --cinder-border-inverse: transparent;
+  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 3%);
+  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 8%);
+  --cinder-text: oklch(20% 0.018 245);
+  --cinder-text-muted: oklch(32% 0.014 245);
+  --cinder-text-subtle: oklch(42% 0.012 245);
+  --cinder-text-disabled: oklch(52% 0.01 245);
+  --cinder-fill-disabled: oklch(88% 0.01 245);
+  --cinder-border: oklch(79% 0.013 245);
+  --cinder-border-muted: oklch(88% 0.01 245);
+  --cinder-border-strong: oklch(72% 0.014 245);
+  --cinder-toggle-track-off-resting: var(--cinder-border-muted);
+  --cinder-toggle-track-off-hover-resting: var(--cinder-border);
+  --cinder-ring-offset-color: var(--cinder-bg);
+  --cinder-button-bg: var(--cinder-surface-raised);
+  --cinder-button-fg: var(--cinder-text);
+  --cinder-button-border: var(--cinder-border);
+  --cinder-overlay-backdrop: oklch(20% 0.03 245 / 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {
