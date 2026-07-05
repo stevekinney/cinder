@@ -155,6 +155,35 @@
       "types": "./dist/components/accordion-item/accordion-item.css.d.ts",
       "default": "./dist/components/accordion-item/accordion-item.css"
     },
+    "./action-row": {
+      "types": "./dist/components/action-row/index.d.ts",
+      "browser": "./src/components/action-row/index.ts",
+      "node": "./dist/server/components/action-row/index.js",
+      "svelte": "./src/components/action-row/index.ts",
+      "default": "./dist/components/action-row/index.js"
+    },
+    "./action-row/schema": {
+      "types": "./dist/components/action-row/action-row.schema.d.ts",
+      "browser": "./src/components/action-row/action-row.schema.ts",
+      "node": "./dist/server/components/action-row/action-row.schema.js",
+      "svelte": "./src/components/action-row/action-row.schema.ts",
+      "default": "./dist/components/action-row/action-row.schema.js"
+    },
+    "./action-row/variables": {
+      "types": "./dist/components/action-row/action-row.variables.d.ts",
+      "browser": "./src/components/action-row/action-row.variables.ts",
+      "node": "./dist/server/components/action-row/action-row.variables.js",
+      "svelte": "./src/components/action-row/action-row.variables.ts",
+      "default": "./dist/components/action-row/action-row.variables.js"
+    },
+    "./action-row/styles": {
+      "types": "./dist/components/action-row/action-row.css.d.ts",
+      "default": "./dist/components/action-row/action-row.css"
+    },
+    "./action-row/examples": {
+      "import": "./src/components/action-row/action-row.examples.json",
+      "default": "./src/components/action-row/action-row.examples.json"
+    },
     "./alert": {
       "types": "./dist/components/alert/index.d.ts",
       "browser": "./src/components/alert/index.ts",

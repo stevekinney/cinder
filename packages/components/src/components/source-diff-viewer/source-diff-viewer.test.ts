@@ -288,6 +288,17 @@ new mode 100755
     expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('café.sh');
   });
 
+  test('falls back for malformed quoted git headers', () => {
+    const parsed = parseUnifiedPatch(`diff --git "a/unclosed.ts b/unclosed.ts
+old mode 100644
+new mode 100755
+`);
+
+    expect(parsed.files[0]?.oldPath).toBe('"a/unclosed.ts');
+    expect(parsed.files[0]?.newPath).toBe('b/unclosed.ts');
+    expect(parsed.files[0]?.metadata).toEqual(['old mode 100644', 'new mode 100755']);
+  });
+
   test('preserves verbatim UTF-8 characters in quoted git paths', () => {
     const parsed = parseUnifiedPatch(`diff --git "a/café \\"x\\".txt" "b/café \\"x\\".txt"
 old mode 100644

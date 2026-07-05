@@ -7,6 +7,14 @@ export type { AccordionItemProps } from './components/accordion-item/index.ts';
 export { default as Accordion } from './components/accordion/index.ts';
 export type { AccordionContext, AccordionProps } from './components/accordion/index.ts';
 
+export { default as ActionRow } from './components/action-row/index.ts';
+export type {
+  ActionRowCurrentValue,
+  ActionRowDensity,
+  ActionRowProps,
+  ActionRowSelectedState,
+} from './components/action-row/index.ts';
+
 export { default as Alert } from './components/alert/index.ts';
 export type { AlertProps, AlertVariant } from './components/alert/index.ts';
 

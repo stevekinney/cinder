@@ -158,6 +158,10 @@ function toPackageRootRelativePath(file: string): string {
 function isOutsideCoverageScope(file: string, scope: CoverageScope): boolean {
   const normalizedFile = toPackageRootRelativePath(file);
   if (normalizedFile.startsWith('scripts/')) return true;
+  // The CLI entrypoint is tested as a subprocess so process I/O matches the
+  // published binary. Bun does not merge subprocess LCOV into the parent report,
+  // so keep only that entrypoint out of the in-process runtime ratchet.
+  if (normalizedFile === 'src/cli/index.ts') return true;
   if (normalizedFile.endsWith('.test.ts') || normalizedFile.endsWith('.spec.ts')) return true;
   if (normalizedFile.startsWith('src/test/')) return true;
   const isSvelteSource =
