@@ -153,6 +153,42 @@ describe('Portal', () => {
     expect(wrapper?.getAttribute('data-theme')).toBe('contrast');
   });
 
+  test('allows explicit null to clear portal theme attributes during inherited sync', async () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.setAttribute('data-cinder-theme', 'high-contrast');
+
+    const { rerender } = render(Portal, {
+      props: {
+        'data-theme': 'dark',
+        'data-cinder-theme': 'dark',
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+    expect(wrapper?.getAttribute('data-cinder-theme')).toBe('dark');
+
+    await rerender({
+      'data-theme': null,
+      'data-cinder-theme': null,
+      children: childSnippet,
+    });
+    await tick();
+
+    expect(wrapper?.hasAttribute('data-theme')).toBe(false);
+    expect(wrapper?.hasAttribute('data-cinder-theme')).toBe(false);
+
+    document.documentElement.setAttribute('data-theme', 'contrast');
+    document.documentElement.setAttribute('data-cinder-theme', 'light');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.hasAttribute('data-theme')).toBe(false);
+    expect(wrapper?.hasAttribute('data-cinder-theme')).toBe(false);
+  });
+
   test('preserves same-value explicit portal theme attributes during inherited sync', async () => {
     document.documentElement.setAttribute('data-theme', 'dark');
 
@@ -393,6 +429,29 @@ describe('Portal', () => {
 
     expect(container.querySelector('[data-testid="portal-child"]')?.parentElement).toBe(wrapper);
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('allows explicit null to clear portal direction during inherited sync', async () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+
+    const { rerender } = render(Portal, {
+      props: { dir: 'ltr', children: childSnippet },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    await rerender({ dir: null, children: childSnippet });
+    await tick();
+
+    expect(wrapper?.hasAttribute('dir')).toBe(false);
+
+    document.documentElement.setAttribute('dir', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.hasAttribute('dir')).toBe(false);
   });
 
   test('restores initial attributes when a themed portal is disabled inline', async () => {

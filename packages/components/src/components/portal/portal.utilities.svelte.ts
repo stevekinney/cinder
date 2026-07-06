@@ -83,6 +83,8 @@ export function copyInheritedPortalAttributes(
     dataTheme: string | null;
     theme: string | null;
     preserveDirection?: boolean;
+    preserveDataTheme?: boolean;
+    preserveTheme?: boolean;
   } = {
     dir: element.getAttribute('dir'),
     dataTheme: element.getAttribute('data-theme'),
@@ -102,8 +104,12 @@ export function copyInheritedPortalAttributes(
     element.removeAttribute('dir');
   }
 
+  const preservesExplicitDataTheme = fallbackAttributes.preserveDataTheme === true;
   const inheritedDataTheme =
-    inheritAttributes && source && fallbackAttributes.dataTheme === null
+    inheritAttributes &&
+    source &&
+    !preservesExplicitDataTheme &&
+    fallbackAttributes.dataTheme === null
       ? source.closest<HTMLElement>('[data-theme]')?.getAttribute('data-theme')
       : null;
   const nextDataTheme = inheritedDataTheme ?? fallbackAttributes.dataTheme;
@@ -113,8 +119,9 @@ export function copyInheritedPortalAttributes(
     element.removeAttribute('data-theme');
   }
 
+  const preservesExplicitTheme = fallbackAttributes.preserveTheme === true;
   const inheritedTheme =
-    inheritAttributes && source && fallbackAttributes.theme === null
+    inheritAttributes && source && !preservesExplicitTheme && fallbackAttributes.theme === null
       ? source.closest<HTMLElement>('[data-cinder-theme]')?.getAttribute('data-cinder-theme')
       : null;
   const nextTheme = inheritedTheme ?? fallbackAttributes.theme;
@@ -205,12 +212,14 @@ export function createPortalAttachment(
             : dataTheme !== managedAttributes.dataTheme
               ? dataTheme
               : null,
+        preserveDataTheme: explicitDataTheme !== undefined,
         theme:
           explicitTheme !== undefined
             ? explicitTheme
             : theme !== managedAttributes.theme
               ? theme
               : null,
+        preserveTheme: explicitTheme !== undefined,
       };
     }
 
