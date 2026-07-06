@@ -24,6 +24,8 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('!src/components/**/*.test.ts');
     expect(files).toContain('!src/components/**/*.spec.ts');
     expect(files).toContain('!src/components/**/*.type-test.svelte');
+    expect(files).toContain('!src/components/**/*.fixture.ts');
+    expect(files).toContain('!src/components/**/*-fixture.ts');
     expect(files).toContain('!src/components/**/*fixture*.svelte');
   });
 
@@ -213,6 +215,8 @@ describe('buildPublishedManifest', () => {
     expect(files).not.toContain('!dist/server/components/**/*.schema.js');
     expect(files).not.toContain('!dist/server/components/**/*.variables.js');
     expect(files).toContain('!dist/server/**/*.d.ts');
+    expect(files).toContain('!dist/**/*.fixture.*');
+    expect(files).toContain('!dist/**/*-fixture.*');
   });
 
   it('preserves the package-level svelte field as the source root entry', () => {
