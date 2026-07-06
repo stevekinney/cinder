@@ -51,7 +51,7 @@ describe('ChatInput — shortcut accessibility', () => {
   test('textarea composer receives label and shortcut description', () => {
     const textareaMatch = chatInputSource.match(/<textarea[\s\S]*?<\/textarea>/);
     expect(textareaMatch).not.toBeNull();
-    expect(textareaMatch?.[0]).toMatch(/aria-label=\{composerLabel\}/);
+    expect(textareaMatch?.[0]).toMatch(/aria-label=\{resolvedComposerLabel\}/);
     expect(textareaMatch?.[0]).toMatch(/aria-describedby=\{shortcutDescriptionId\}/);
   });
 

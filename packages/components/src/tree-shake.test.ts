@@ -1,6 +1,5 @@
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { join, relative } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
@@ -28,9 +27,15 @@ const FORBIDDEN_CHAT_SERVER_BUNDLE_STRINGS = [
 ] as const;
 
 describe('tree-shake contract', () => {
+  async function createTemporaryFixtureDirectory(prefix: string): Promise<string> {
+    const temporaryRoot = join(process.cwd(), '.tmp');
+    await mkdir(temporaryRoot, { recursive: true });
+    return mkdtemp(join(temporaryRoot, prefix));
+  }
+
   test('a cinder/button-only bundle does not include domain-suite dependencies or legacy tokens', async () => {
-    const temporaryDirectory = await mkdtemp(join(tmpdir(), 'cinder-tree-shake-'));
-    const entrypoint = join(import.meta.dir, '.tree-shake-button-fixture.ts');
+    const temporaryDirectory = await createTemporaryFixtureDirectory('cinder-tree-shake-');
+    const entrypoint = join(temporaryDirectory, 'tree-shake-button-fixture.ts');
 
     await Bun.write(
       entrypoint,
@@ -66,13 +71,17 @@ describe('tree-shake contract', () => {
   });
 
   test('a minimal cinder/chat SSR bundle does not include editor or markdown rendering peers', async () => {
-    const temporaryDirectory = await mkdtemp(join(tmpdir(), 'cinder-chat-ssr-'));
-    const entrypoint = join(import.meta.dir, '.tree-shake-chat-ssr-fixture.ts');
+    const temporaryDirectory = await createTemporaryFixtureDirectory('cinder-chat-ssr-');
+    const entrypoint = join(temporaryDirectory, 'tree-shake-chat-ssr-fixture.ts');
+    const chatSourceEntrypoint = relative(
+      temporaryDirectory,
+      join(process.cwd(), 'src/components/chat/index.ts'),
+    );
 
     await Bun.write(
       entrypoint,
       [
-        "import Chat from '@lostgradient/cinder/chat';",
+        `import Chat from ${JSON.stringify(chatSourceEntrypoint)};`,
         'const componentReference = Chat;',
         'console.log(typeof componentReference);',
         '',
@@ -82,7 +91,7 @@ describe('tree-shake contract', () => {
     try {
       const result = await Bun.build({
         entrypoints: [entrypoint],
-        target: 'browser',
+        target: 'node',
         format: 'esm',
         conditions: ['svelte'],
         plugins: [sveltePlugin({ generate: 'server' })],

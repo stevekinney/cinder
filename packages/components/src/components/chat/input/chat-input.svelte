@@ -140,6 +140,8 @@
     ...rest
   }: ChatInputProps = $props();
 
+  const resolvedComposerLabel = $derived(composerLabel.trim() || 'Message');
+
   // Derived: show stop button when sending and onstop is provided
   const showStopButton = $derived(sending && onstop !== undefined);
 
@@ -499,7 +501,7 @@
       id={`${id}-editor`}
       bind:value
       {placeholder}
-      aria-label={composerLabel}
+      aria-label={resolvedComposerLabel}
       readonly={disabled || sending}
       class="chat-input-editor"
       aria-describedby={shortcutDescriptionId}
