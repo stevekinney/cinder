@@ -23,7 +23,7 @@ color-scheme: light dark;
 
 That tells the browser cinder supports both schemes _and_ that the active one should follow the user's OS preference by default. So a user on macOS with **Dark** appearance sees the dark tokens; a user on **Light** sees the light tokens. No additional configuration required.
 
-To override the OS preference, cinder ships two equivalent paths. Pick one and stick with it inside a given app:
+To override the OS preference, cinder supports two related paths. They both influence `light-dark()` resolution, but only `data-theme` also gets Cinder's scoped semantic token redeclarations:
 
 - **`data-theme` attribute**: set `data-theme="light"` or `data-theme="dark"` on `:root` (or any ancestor of the styled element). Cinder's stylesheet maps those attributes to `color-scheme` and pins the core semantic surface, text, border, overlay, interaction, status, and control tokens wherever the `[data-theme]` selector matches, including scoped subtree themes:
 

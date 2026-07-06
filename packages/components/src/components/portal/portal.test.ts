@@ -25,6 +25,7 @@ afterEach(() => {
   cleanup();
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.removeAttribute('data-cinder-theme');
+  document.documentElement.removeAttribute('dir');
   document.body.replaceChildren();
 });
 
@@ -150,6 +151,31 @@ describe('Portal', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(wrapper?.getAttribute('data-theme')).toBe('contrast');
+  });
+
+  test('preserves same-value explicit portal theme attributes during inherited sync', async () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+
+    const { rerender } = render(Portal, {
+      props: {
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    await rerender({
+      'data-theme': 'dark',
+      children: childSnippet,
+    });
+    await tick();
+    document.documentElement.setAttribute('data-theme', 'light');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
   });
 
   test('omits portal children from SSR when disabled is false', async () => {
@@ -318,6 +344,27 @@ describe('Portal', () => {
     // After disabling: gone from the previous target, present back in the original render container.
     expect(host.querySelector('[data-testid="portal-child"]')).toBeNull();
     expect(container.querySelector('[data-testid="portal-child"]')).not.toBeNull();
+  });
+
+  test('restores current explicit direction when a portal is disabled inline', async () => {
+    const host = document.createElement('div');
+    host.id = 'portal-host';
+    document.body.appendChild(host);
+
+    const { container, rerender } = render(Portal, {
+      props: { target: '#portal-host', dir: 'rtl', disabled: false, children: childSnippet },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    await rerender({ target: '#portal-host', dir: 'ltr', disabled: true, children: childSnippet });
+    await tick();
+
+    expect(container.querySelector('[data-testid="portal-child"]')?.parentElement).toBe(wrapper);
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
   });
 
   test('restores initial attributes when a themed portal is disabled inline', async () => {

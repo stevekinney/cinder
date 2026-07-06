@@ -209,6 +209,12 @@ describe('scoped theme tokens', () => {
     expect(codeBlockCss).toContain(
       "[data-cinder-theme='dark']\n    [data-theme='light']\n    [data-theme='dark']\n    [data-theme='light']\n    [data-theme='dark']",
     );
+    expect(codeBlockCss).toContain(
+      "[data-cinder-theme='system'] [data-theme='light'] .cinder-code-block",
+    );
+    expect(codeBlockCss).toContain(
+      "[data-cinder-theme='system']\n      [data-theme='light']\n      [data-theme='dark']\n      [data-theme='light']",
+    );
     expect(foundationCss).toContain(
       "span[style*='--shiki-dark'] {\n  color: var(--shiki-dark, inherit) !important;",
     );

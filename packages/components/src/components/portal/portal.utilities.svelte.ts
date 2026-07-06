@@ -20,10 +20,26 @@ export type PortalAttachmentOptions = {
    */
   disabled?: boolean | (() => boolean);
   /**
-   * When true (default), copy `dir`, `data-theme`, and `data-cinder-theme` from the nearest
-   * ancestor of `source` before moving the wrapper. Accepts a getter.
+   * When true (default), inherit `dir`, `data-theme`, and `data-cinder-theme` from the nearest
+   * matching ancestor of `source` while mounted. Explicit attributes on the portal wrapper win over
+   * inherited values.
    */
   inheritAttributes?: boolean | (() => boolean);
+  /**
+   * Current public attributes supplied by the Portal component. The attachment uses these to
+   * distinguish explicit attributes from equal inherited values after the wrapper has moved.
+   */
+  explicitAttributes?:
+    | {
+        dir?: string | null | undefined;
+        dataTheme?: string | null | undefined;
+        theme?: string | null | undefined;
+      }
+    | (() => {
+        dir?: string | null | undefined;
+        dataTheme?: string | null | undefined;
+        theme?: string | null | undefined;
+      });
   /**
    * Ancestor used as the lookup root for inherited attributes. Defaults to the wrapper's
    * `parentElement` at attach time — but once portaled the wrapper's parent is the target, so any
@@ -62,13 +78,19 @@ export function copyInheritedPortalAttributes(
   element: HTMLElement,
   source: HTMLElement | null | undefined,
   inheritAttributes: boolean,
-  fallbackAttributes: { dir: string | null; dataTheme: string | null; theme: string | null } = {
+  fallbackAttributes: {
+    dir: string | null;
+    dataTheme: string | null;
+    theme: string | null;
+    preserveDirection?: boolean;
+  } = {
     dir: element.getAttribute('dir'),
     dataTheme: element.getAttribute('data-theme'),
     theme: element.getAttribute('data-cinder-theme'),
   },
 ) {
-  const preservesExplicitDirection = element.dataset['cinderExplicitDirection'] === 'true';
+  const preservesExplicitDirection =
+    fallbackAttributes.preserveDirection || element.dataset['cinderExplicitDirection'] === 'true';
   const inheritedDir =
     inheritAttributes && source && !preservesExplicitDirection
       ? source.closest<HTMLElement>('[dir]')?.getAttribute('dir')
@@ -159,13 +181,28 @@ export function createPortalAttachment(
     };
 
     function currentFallbackAttributes() {
+      const explicitAttributes = readOption(options.explicitAttributes ?? {});
+      const explicitDirection = explicitAttributes.dir;
+      const explicitDataTheme = explicitAttributes.dataTheme;
+      const explicitTheme = explicitAttributes.theme;
       const dataTheme = element.getAttribute('data-theme');
       const theme = element.getAttribute('data-cinder-theme');
 
       return {
-        dir: initialAttributes.dir,
-        dataTheme: dataTheme !== managedAttributes.dataTheme ? dataTheme : null,
-        theme: theme !== managedAttributes.theme ? theme : null,
+        dir: explicitDirection ?? element.getAttribute('dir') ?? initialAttributes.dir,
+        preserveDirection: explicitDirection !== undefined,
+        dataTheme:
+          explicitDataTheme !== undefined
+            ? explicitDataTheme
+            : dataTheme !== managedAttributes.dataTheme
+              ? dataTheme
+              : null,
+        theme:
+          explicitTheme !== undefined
+            ? explicitTheme
+            : theme !== managedAttributes.theme
+              ? theme
+              : null,
       };
     }
 
