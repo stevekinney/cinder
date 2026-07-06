@@ -205,6 +205,8 @@ describe('buildPublishedManifest', () => {
     expect(files).not.toContain('!dist/server/components/**/*.schema.js');
     expect(files).not.toContain('!dist/server/components/**/*.variables.js');
     expect(files).toContain('!dist/server/**/*.d.ts');
+    expect(files).not.toContain('src/components/**/*.ts');
+    expect(files).not.toContain('src/components/**/*.svelte');
   });
 
   it('rewrites the package-level svelte field to the built root entry', () => {

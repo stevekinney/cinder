@@ -1472,13 +1472,15 @@ async function assertSvelteKitClientHydrates(
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
+    if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text());
   });
 
   try {
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, { waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
     await page.getByRole('button', { name: 'subpath button' }).waitFor({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Subpath accordion' }).waitFor({ timeout: 5_000 });
+    await page.waitForLoadState('networkidle', { timeout: 5_000 });
     if (errors.length > 0) {
       fail(
         `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.map((error) => `  ${error}`).join('\n')}`,

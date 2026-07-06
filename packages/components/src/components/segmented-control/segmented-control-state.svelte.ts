@@ -1,6 +1,6 @@
-import { getContext, setContext } from 'svelte';
 import type { SvelteSet } from 'svelte/reactivity';
 
+import { strictStableContext } from '../../_internal/strict-stable-context.ts';
 import { inDocumentOrder } from '../../utilities/document-order.ts';
 import { getFocusableIndex, handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
 
@@ -44,23 +44,11 @@ export type SegmentedControlContextValue = {
   toggle(value: string): void;
 };
 
-const SEGMENTED_CONTROL_CONTEXT_KEY = Symbol.for('@lostgradient/cinder/segmented-control/context');
-
-function setSegmentedControlContext(
-  context: SegmentedControlContextValue,
-): SegmentedControlContextValue {
-  return setContext(SEGMENTED_CONTROL_CONTEXT_KEY, context);
-}
-
-function getSegmentedControlContext(): SegmentedControlContextValue {
-  const context = getContext<SegmentedControlContextValue | undefined>(
-    SEGMENTED_CONTROL_CONTEXT_KEY,
+const [getSegmentedControlContext, setSegmentedControlContext] =
+  strictStableContext<SegmentedControlContextValue>(
+    '@lostgradient/cinder/segmented-control/context',
+    'Segment must be rendered inside a SegmentedControl',
   );
-  if (context === undefined) {
-    throw new Error('missing_context: Segment must be rendered inside a SegmentedControl');
-  }
-  return context;
-}
 
 export { getSegmentedControlContext, setSegmentedControlContext };
 
