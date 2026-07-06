@@ -495,7 +495,11 @@
   --cinder-toggle-track-off-hover-resting: oklch(52% 0.02 245);
   --cinder-accent: oklch(72% 0.14 270);
   --cinder-accent-contrast: oklch(15% 0.035 245);
+  --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
+  --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
+  --cinder-accent-active-on-fill: oklch(from var(--cinder-accent) calc(l - 0.11) c h);
   --cinder-accent-text: oklch(72% 0.14 270);
+  --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
   --cinder-info: oklch(78% 0.13 230);
   --cinder-success: oklch(78% 0.14 145);
   --cinder-warning: oklch(82% 0.156 75);
@@ -518,6 +522,11 @@
   --cinder-color-danger-bg: oklch(28% 0.09 25);
   --cinder-color-danger-fg: oklch(90% 0.12 25);
   --cinder-color-danger-border: oklch(50% 0.11 25);
+  --cinder-color-checker-base: oklch(28% 0.02 245);
+  --cinder-color-checker-tile: oklch(38% 0.02 245);
+  --cinder-scrollbar-track: oklch(100% 0 0 / 0.04);
+  --cinder-scrollbar-thumb: oklch(100% 0 0 / 0.45);
+  --cinder-scrollbar-thumb-hover: oklch(100% 0 0 / 0.65);
   --cinder-ring-offset-color: var(--cinder-bg);
   --cinder-ring-on-accent: oklch(95% 0.01 245);
   --cinder-ring-color: oklch(from var(--cinder-accent) 0.7 0.14 h);
@@ -525,6 +534,14 @@
   --cinder-button-fg: var(--cinder-text);
   --cinder-button-border: var(--cinder-border-strong);
   --cinder-overlay-backdrop: oklch(8% 0.02 245 / 0.65);
+  --cinder-chart-series-1: oklch(58% 0.089 205);
+  --cinder-chart-series-2: oklch(67% 0.275 330);
+  --cinder-chart-series-3: oklch(69% 0.182 44);
+  --cinder-chart-series-4: oklch(70% 0.144 160);
+  --cinder-chart-series-5: oklch(78% 0.12 8);
+  --cinder-chart-series-6: oklch(81% 0.152 80);
+  --cinder-chart-series-7: oklch(85% 0.078 235);
+  --cinder-chart-series-8: oklch(89% 0.19 120);
 }
 
 [data-theme='light'] {
@@ -551,7 +568,11 @@
   --cinder-toggle-track-off-hover-resting: var(--cinder-border);
   --cinder-accent: oklch(50% 0.22 270);
   --cinder-accent-contrast: oklch(100% 0 0);
+  --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
+  --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
+  --cinder-accent-active-on-fill: oklch(from var(--cinder-accent) calc(l - 0.11) c h);
   --cinder-accent-text: oklch(45% 0.22 270);
+  --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
   --cinder-info: oklch(50% 0.098 230);
   --cinder-success: oklch(50% 0.157 145);
   --cinder-warning: oklch(54% 0.113 75);
@@ -574,6 +595,11 @@
   --cinder-color-danger-bg: oklch(96% 0.04 25);
   --cinder-color-danger-fg: oklch(42% 0.16 25);
   --cinder-color-danger-border: oklch(80% 0.06 25);
+  --cinder-color-checker-base: #fff;
+  --cinder-color-checker-tile: #ccc;
+  --cinder-scrollbar-track: oklch(0% 0 0 / 0.04);
+  --cinder-scrollbar-thumb: oklch(0% 0 0 / 0.45);
+  --cinder-scrollbar-thumb-hover: oklch(0% 0 0 / 0.65);
   --cinder-ring-offset-color: var(--cinder-bg);
   --cinder-ring-on-accent: oklch(20% 0.02 245);
   --cinder-ring-color: oklch(from var(--cinder-accent) 0.55 0.16 h);
@@ -581,6 +607,14 @@
   --cinder-button-fg: var(--cinder-text);
   --cinder-button-border: var(--cinder-border);
   --cinder-overlay-backdrop: oklch(20% 0.03 245 / 0.5);
+  --cinder-chart-series-1: oklch(33% 0.121 8);
+  --cinder-chart-series-2: oklch(36% 0.069 80);
+  --cinder-chart-series-3: oklch(40% 0.082 160);
+  --cinder-chart-series-4: oklch(45% 0.087 235);
+  --cinder-chart-series-5: oklch(53% 0.218 330);
+  --cinder-chart-series-6: oklch(56% 0.148 44);
+  --cinder-chart-series-7: oklch(59% 0.126 120);
+  --cinder-chart-series-8: oklch(63% 0.098 205);
 }
 
 @media (prefers-reduced-motion: reduce) {

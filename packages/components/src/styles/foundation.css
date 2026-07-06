@@ -69,6 +69,17 @@
     0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
 }
 
+[data-theme='dark'],
+[data-theme='light'] {
+  --_cinder-focus-ring-shadow:
+    0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+}
+
+[data-theme='dark'] .cinder-code-block :where(pre.shiki) span {
+  color: var(--shiki-dark, inherit) !important;
+}
+
 :focus-visible {
   /* Strategy A is sanctioned ONLY here — the bare global default that paints a
      baseline ring for any element a component CSS file does not own. See

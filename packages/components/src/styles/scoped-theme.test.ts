@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, test } from 'bun:test';
 
 const TOKENS_BASE_PATH = new URL('./tokens-base.css', import.meta.url);
+const FOUNDATION_CSS_PATH = new URL('./foundation.css', import.meta.url);
 const SIDEBAR_CSS_PATH = new URL('../components/sidebar/sidebar.css', import.meta.url);
 const DRAWER_CSS_PATH = new URL('../components/drawer/drawer.css', import.meta.url);
 const BUTTON_CSS_PATH = new URL('../components/button/button.css', import.meta.url);
@@ -58,6 +59,10 @@ describe('scoped theme tokens', () => {
       '--cinder-border-strong': 'oklch(45% 0.06 245)',
       '--cinder-accent': 'oklch(72% 0.14 270)',
       '--cinder-accent-contrast': 'oklch(15% 0.035 245)',
+      '--cinder-accent-hover': 'oklch(from var(--cinder-accent) calc(l - 0.08) c h)',
+      '--cinder-accent-active': 'oklch(from var(--cinder-accent) calc(l - 0.15) c h)',
+      '--cinder-accent-active-on-fill': 'oklch(from var(--cinder-accent) calc(l - 0.11) c h)',
+      '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
       '--cinder-danger': 'oklch(72% 0.172 25)',
       '--cinder-danger-contrast': 'oklch(12% 0.02 25)',
       '--cinder-danger-hover': 'oklch(64% 0.172 25)',
@@ -65,7 +70,13 @@ describe('scoped theme tokens', () => {
       '--cinder-color-danger-bg': 'oklch(28% 0.09 25)',
       '--cinder-color-danger-fg': 'oklch(90% 0.12 25)',
       '--cinder-color-danger-border': 'oklch(50% 0.11 25)',
+      '--cinder-color-checker-base': 'oklch(28% 0.02 245)',
+      '--cinder-color-checker-tile': 'oklch(38% 0.02 245)',
+      '--cinder-scrollbar-track': 'oklch(100% 0 0 / 0.04)',
+      '--cinder-scrollbar-thumb': 'oklch(100% 0 0 / 0.45)',
+      '--cinder-scrollbar-thumb-hover': 'oklch(100% 0 0 / 0.65)',
       '--cinder-ring-color': 'oklch(from var(--cinder-accent) 0.7 0.14 h)',
+      '--cinder-chart-series-1': 'oklch(58% 0.089 205)',
       '--cinder-overlay-backdrop': 'oklch(8% 0.02 245 / 0.65)',
     });
 
@@ -81,6 +92,10 @@ describe('scoped theme tokens', () => {
       '--cinder-border-strong': 'oklch(72% 0.014 245)',
       '--cinder-accent': 'oklch(50% 0.22 270)',
       '--cinder-accent-contrast': 'oklch(100% 0 0)',
+      '--cinder-accent-hover': 'oklch(from var(--cinder-accent) calc(l - 0.08) c h)',
+      '--cinder-accent-active': 'oklch(from var(--cinder-accent) calc(l - 0.15) c h)',
+      '--cinder-accent-active-on-fill': 'oklch(from var(--cinder-accent) calc(l - 0.11) c h)',
+      '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
       '--cinder-danger': 'oklch(50% 0.202 25)',
       '--cinder-danger-contrast': 'oklch(100% 0 0)',
       '--cinder-danger-hover': 'oklch(42% 0.171 25)',
@@ -88,7 +103,13 @@ describe('scoped theme tokens', () => {
       '--cinder-color-danger-bg': 'oklch(96% 0.04 25)',
       '--cinder-color-danger-fg': 'oklch(42% 0.16 25)',
       '--cinder-color-danger-border': 'oklch(80% 0.06 25)',
+      '--cinder-color-checker-base': '#fff',
+      '--cinder-color-checker-tile': '#ccc',
+      '--cinder-scrollbar-track': 'oklch(0% 0 0 / 0.04)',
+      '--cinder-scrollbar-thumb': 'oklch(0% 0 0 / 0.45)',
+      '--cinder-scrollbar-thumb-hover': 'oklch(0% 0 0 / 0.65)',
       '--cinder-ring-color': 'oklch(from var(--cinder-accent) 0.55 0.16 h)',
+      '--cinder-chart-series-1': 'oklch(33% 0.121 8)',
       '--cinder-overlay-backdrop': 'oklch(20% 0.03 245 / 0.5)',
     });
   });
@@ -135,5 +156,17 @@ describe('scoped theme tokens', () => {
     expect(buttonCss).toContain('background: var(--cinder-color-danger-bg);');
     expect(buttonCss).toContain('color: var(--cinder-color-danger-fg);');
     expect(buttonCss).toContain('border-color: var(--cinder-color-danger-border);');
+  });
+
+  test('foundation recomputes scoped focus and Shiki dark overrides', async () => {
+    const foundationCss = await readFile(FOUNDATION_CSS_PATH, 'utf8');
+
+    expect(foundationCss).toContain("[data-theme='dark'],\n[data-theme='light']");
+    expect(
+      extractRuleBlock(
+        foundationCss,
+        "[data-theme='dark'] .cinder-code-block :where(pre.shiki) span",
+      ),
+    ).toContain('color: var(--shiki-dark, inherit) !important;');
   });
 });
