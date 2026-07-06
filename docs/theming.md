@@ -5,7 +5,7 @@ Cinder's color tokens are written with [`light-dark()`][mdn-light-dark]. That me
 This page documents that contract, gives you a minimal Svelte recipe for a user-facing toggle, and shows how to wire the same control into a Storybook toolbar.
 
 > [!NOTE]
-> The toggle recipe uses Svelte 5 — runes (`$state`, `$effect`) plus the `bind:group` directive. Cinder supports `svelte >=5.55.0 <6` as its public peer dependency range, so any cinder consumer is already on Svelte 5.
+> The toggle recipe uses Svelte 5 — runes (`$state`, `$effect`) plus the `bind:group` directive. Cinder supports `svelte >=5.56.0 <6` as its public peer dependency range, so any cinder consumer is already on Svelte 5.
 
 ## The contract
 

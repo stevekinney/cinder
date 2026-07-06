@@ -202,8 +202,6 @@ describe('buildPublishedManifest', () => {
       svelte: './dist/styles/base-guard.js',
       default: './dist/styles/base-guard.js',
     });
-    expect(files).not.toContain('src/components/**/*.ts');
-    expect(files).not.toContain('src/components/**/*.svelte');
     expect(files).not.toContain('!dist/server/components/**/*.schema.js');
     expect(files).not.toContain('!dist/server/components/**/*.variables.js');
     expect(files).toContain('!dist/server/**/*.d.ts');

@@ -1353,6 +1353,8 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         );
       }
 
+      await assertSvelteKitClientHydrates(httpPort, label, '/subpath');
+
       // Subpath page
       const subpathResponse = await fetchWithTimeout(
         `http://127.0.0.1:${httpPort}/subpath`,
@@ -1456,6 +1458,34 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     }
   } finally {
     restoreManifest();
+  }
+}
+
+async function assertSvelteKitClientHydrates(
+  httpPort: number,
+  label: string,
+  routePath: '/subpath',
+): Promise<void> {
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+
+  try {
+    await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'subpath button' }).waitFor({ timeout: 5_000 });
+    if (errors.length > 0) {
+      fail(
+        `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.map((error) => `  ${error}`).join('\n')}`,
+      );
+    }
+  } finally {
+    await browser.close();
   }
 }
 

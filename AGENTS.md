@@ -71,7 +71,7 @@ Run `components:generate` after changing component source metadata, examples, co
 - **Bun workspace:** Use `bun` commands and the root `bun.lock`; do not introduce npm or Yarn lockfiles.
 - **Published package:** `@lostgradient/cinder` lives in `packages/components` and is the only npm-published workspace.
 - **Private packages:** `@cinder/*` packages are private implementation workspaces. Some are packed into the published artifact through `packages/components/scripts/pack-for-publish.ts`.
-- **Svelte 5:** The public peer range is `svelte >=5.55.0 <6`.
+- **Svelte 5:** The public peer range is `svelte >=5.56.0 <6`.
 - **Styles:** The base stylesheet is `@lostgradient/cinder/styles`; component CSS is opt-in through `@lostgradient/cinder/<component>/styles`, or all-in through `@lostgradient/cinder/styles/all`.
 - **Generated metadata:** `packages/components/components.json` is the source for machine-readable component discovery. Component READMEs, schemas, variables, examples, constraints, and package exports are generated from component source and sidecars.
 

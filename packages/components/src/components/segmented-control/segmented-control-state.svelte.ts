@@ -1,4 +1,4 @@
-import { createContext } from 'svelte';
+import { getContext, setContext } from 'svelte';
 import type { SvelteSet } from 'svelte/reactivity';
 
 import { inDocumentOrder } from '../../utilities/document-order.ts';
@@ -44,8 +44,25 @@ export type SegmentedControlContextValue = {
   toggle(value: string): void;
 };
 
-export const [getSegmentedControlContext, setSegmentedControlContext] =
-  createContext<SegmentedControlContextValue>();
+const SEGMENTED_CONTROL_CONTEXT_KEY = Symbol.for('@lostgradient/cinder/segmented-control/context');
+
+function setSegmentedControlContext(
+  context: SegmentedControlContextValue,
+): SegmentedControlContextValue {
+  return setContext(SEGMENTED_CONTROL_CONTEXT_KEY, context);
+}
+
+function getSegmentedControlContext(): SegmentedControlContextValue {
+  const context = getContext<SegmentedControlContextValue | undefined>(
+    SEGMENTED_CONTROL_CONTEXT_KEY,
+  );
+  if (context === undefined) {
+    throw new Error('missing_context: Segment must be rendered inside a SegmentedControl');
+  }
+  return context;
+}
+
+export { getSegmentedControlContext, setSegmentedControlContext };
 
 /**
  * Options for building a SegmentedControlController.
