@@ -43,7 +43,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
