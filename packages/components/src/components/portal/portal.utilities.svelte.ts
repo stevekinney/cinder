@@ -101,18 +101,22 @@ export function copyInheritedPortalAttributes(
   } else {
     element.removeAttribute('data-cinder-theme');
   }
+
+  return {
+    dataTheme: inheritedDataTheme ?? null,
+    theme: inheritedTheme ?? null,
+  };
 }
 
 function observeInheritedPortalAttributes(
-  element: HTMLElement,
   source: HTMLElement | null | undefined,
   inheritAttributes: boolean,
-  fallbackAttributes: { dir: string | null; dataTheme: string | null; theme: string | null },
+  syncAttributes: () => void,
 ): (() => void) | null {
   if (!inheritAttributes || !source || typeof MutationObserver === 'undefined') return null;
 
   const observer = new MutationObserver(() => {
-    copyInheritedPortalAttributes(element, source, inheritAttributes, fallbackAttributes);
+    syncAttributes();
   });
   function observe(elementToObserve: HTMLElement | null | undefined) {
     if (!elementToObserve || observedElements.includes(elementToObserve)) return;
@@ -149,6 +153,36 @@ export function createPortalAttachment(
       dataTheme: element.getAttribute('data-theme'),
       theme: element.getAttribute('data-cinder-theme'),
     };
+    const managedAttributes = {
+      dataTheme: null as string | null,
+      theme: null as string | null,
+    };
+
+    function currentFallbackAttributes() {
+      const dataTheme = element.getAttribute('data-theme');
+      const theme = element.getAttribute('data-cinder-theme');
+
+      return {
+        dir: initialAttributes.dir,
+        dataTheme:
+          dataTheme !== managedAttributes.dataTheme ? dataTheme : initialAttributes.dataTheme,
+        theme: theme !== managedAttributes.theme ? theme : initialAttributes.theme,
+      };
+    }
+
+    function syncInheritedAttributes(
+      source: HTMLElement | null | undefined,
+      inheritAttributes: boolean,
+    ) {
+      const nextManagedAttributes = copyInheritedPortalAttributes(
+        element,
+        source,
+        inheritAttributes,
+        currentFallbackAttributes(),
+      );
+      managedAttributes.dataTheme = nextManagedAttributes.dataTheme;
+      managedAttributes.theme = nextManagedAttributes.theme;
+    }
 
     // Drop a placeholder comment at the wrapper's original location. When `disabled` flips true or
     // the target can no longer be resolved, the wrapper is reinserted at this anchor so children
@@ -180,17 +214,11 @@ export function createPortalAttachment(
       const resolved = disabled ? null : resolvePortalTarget(targetValue);
 
       if (!disabled && resolved?.kind === 'resolved') {
-        copyInheritedPortalAttributes(
-          element,
-          attributeSource,
-          inheritAttributes,
-          initialAttributes,
-        );
+        syncInheritedAttributes(attributeSource, inheritAttributes);
         stopObservingInheritedAttributes = observeInheritedPortalAttributes(
-          element,
           attributeSource,
           inheritAttributes,
-          initialAttributes,
+          () => syncInheritedAttributes(attributeSource, inheritAttributes),
         );
         resolved.target.appendChild(element);
         lastWarnedUnresolvedKey = null;
@@ -198,7 +226,7 @@ export function createPortalAttachment(
         // Target unresolved: keep the wrapper inline at the anchor so children remain rendered
         // (with a dev warning) instead of vanishing from the DOM entirely.
         restoreInline();
-        copyInheritedPortalAttributes(element, null, false, initialAttributes);
+        syncInheritedAttributes(null, false);
         if (lastWarnedUnresolvedKey !== resolved.key) {
           devWarn(
             `[cinder/portal] could not resolve portal target ${JSON.stringify(resolved.key)}.`,
@@ -209,7 +237,7 @@ export function createPortalAttachment(
         // Disabled path: wrapper must stay in (or return to) its original position, not be left
         // detached. The Portal component's template still renders children in this mode.
         restoreInline();
-        copyInheritedPortalAttributes(element, null, false, initialAttributes);
+        syncInheritedAttributes(null, false);
         lastWarnedUnresolvedKey = null;
       }
 

@@ -98,6 +98,32 @@ describe('Portal', () => {
     expect(wrapper?.getAttribute('data-cinder-theme')).toBe('contrast');
   });
 
+  test('keeps updated explicit portal theme attributes during inherited sync', async () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+
+    const { rerender } = render(Portal, {
+      props: {
+        'data-theme': 'dark',
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    await rerender({
+      'data-theme': 'light',
+      children: childSnippet,
+    });
+    await tick();
+    document.documentElement.setAttribute('data-theme', 'dark');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('light');
+  });
+
   test('omits portal children from SSR when disabled is false', async () => {
     const sourcePath = new URL('./portal.svelte', import.meta.url).pathname;
     const result = await renderThenHydrate(Portal, sourcePath, {

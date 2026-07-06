@@ -191,11 +191,12 @@ describe('scoped theme tokens', () => {
 
     expect(foundationCss).toContain("[data-theme='dark'],\n[data-theme='light']");
     expect(foundationCss).not.toContain('@scope');
-    expect(foundationCss).toContain("[data-theme='dark'] .cinder-code-block");
+    expect(foundationCss).toContain("[data-theme='dark']");
+    expect(foundationCss).toContain("[data-theme='dark']\n      [data-theme='light']");
     expect(foundationCss).toContain(
       "span[style*='--shiki-dark'] {\n  color: var(--shiki-dark, inherit) !important;",
     );
-    expect(foundationCss).toContain('color: revert-layer !important;');
+    expect(foundationCss).not.toContain('revert-layer');
     expect(foundationCss).not.toContain('--shiki-light');
   });
 });

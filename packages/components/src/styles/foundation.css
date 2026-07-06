@@ -76,21 +76,22 @@
     0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
 }
 
-[data-theme='dark'] .cinder-code-block :where(pre.shiki) span[style*='--shiki-dark'],
+[data-theme='dark']
+  .cinder-code-block
+  :where(pre.shiki)
+  span[style*='--shiki-dark']:not(
+    [data-theme='dark']
+      [data-theme='light']
+      .cinder-code-block
+      :where(pre.shiki)
+      span[style*='--shiki-dark']
+  ),
 [data-theme='light']
   [data-theme='dark']
   .cinder-code-block
   :where(pre.shiki)
   span[style*='--shiki-dark'] {
   color: var(--shiki-dark, inherit) !important;
-}
-
-[data-theme='dark']
-  [data-theme='light']
-  .cinder-code-block
-  :where(pre.shiki)
-  span[style*='--shiki-dark'] {
-  color: revert-layer !important;
 }
 
 :focus-visible {
