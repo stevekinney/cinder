@@ -79,6 +79,25 @@ describe('Portal', () => {
     expect(wrapper?.querySelector('[data-testid="portal-child"]')).not.toBeNull();
   });
 
+  test('preserves explicit portal theme attributes over inherited root themes', async () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.setAttribute('data-cinder-theme', 'light');
+
+    render(Portal, {
+      props: {
+        'data-theme': 'dark',
+        'data-cinder-theme': 'contrast',
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+    expect(wrapper?.getAttribute('data-cinder-theme')).toBe('contrast');
+  });
+
   test('omits portal children from SSR when disabled is false', async () => {
     const sourcePath = new URL('./portal.svelte', import.meta.url).pathname;
     const result = await renderThenHydrate(Portal, sourcePath, {
@@ -245,5 +264,25 @@ describe('Portal', () => {
     // After disabling: gone from the previous target, present back in the original render container.
     expect(host.querySelector('[data-testid="portal-child"]')).toBeNull();
     expect(container.querySelector('[data-testid="portal-child"]')).not.toBeNull();
+  });
+
+  test('restores initial attributes when a themed portal is disabled inline', async () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+
+    const { container, rerender } = render(Portal, {
+      props: { disabled: false, children: childSnippet },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    document.documentElement.removeAttribute('data-theme');
+    await rerender({ disabled: true, children: childSnippet });
+    await tick();
+
+    expect(container.querySelector('[data-testid="portal-child"]')?.parentElement).toBe(wrapper);
+    expect(wrapper?.hasAttribute('data-theme')).toBe(false);
   });
 });

@@ -81,7 +81,7 @@ export function copyInheritedPortalAttributes(
   }
 
   const inheritedDataTheme =
-    inheritAttributes && source
+    inheritAttributes && source && fallbackAttributes.dataTheme === null
       ? source.closest<HTMLElement>('[data-theme]')?.getAttribute('data-theme')
       : null;
   const nextDataTheme = inheritedDataTheme ?? fallbackAttributes.dataTheme;
@@ -92,7 +92,7 @@ export function copyInheritedPortalAttributes(
   }
 
   const inheritedTheme =
-    inheritAttributes && source
+    inheritAttributes && source && fallbackAttributes.theme === null
       ? source.closest<HTMLElement>('[data-cinder-theme]')?.getAttribute('data-cinder-theme')
       : null;
   const nextTheme = inheritedTheme ?? fallbackAttributes.theme;
@@ -198,6 +198,7 @@ export function createPortalAttachment(
         // Target unresolved: keep the wrapper inline at the anchor so children remain rendered
         // (with a dev warning) instead of vanishing from the DOM entirely.
         restoreInline();
+        copyInheritedPortalAttributes(element, null, false, initialAttributes);
         if (lastWarnedUnresolvedKey !== resolved.key) {
           devWarn(
             `[cinder/portal] could not resolve portal target ${JSON.stringify(resolved.key)}.`,
@@ -208,6 +209,7 @@ export function createPortalAttachment(
         // Disabled path: wrapper must stay in (or return to) its original position, not be left
         // detached. The Portal component's template still renders children in this mode.
         restoreInline();
+        copyInheritedPortalAttributes(element, null, false, initialAttributes);
         lastWarnedUnresolvedKey = null;
       }
 
