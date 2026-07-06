@@ -66,7 +66,7 @@
    * ChatInput is a ChatGPT/Claude-style chat composer.
    *
    * Features:
-   * - Wraps MarkdownEditor in lightweight mode (no toolbar/mode toggle)
+   * - Uses a native textarea composer so Chat does not require the rich editor bundle
    * - Keyboard shortcuts: Enter to send, Shift+Enter for newline
    * - IME-aware: composition input (Japanese/Chinese/Korean) won't trigger send
    * - File attachments (images, code, documents) via paste, drag-drop, or file picker
@@ -92,7 +92,6 @@
   import Square from 'lucide-svelte/icons/square';
   import X from 'lucide-svelte/icons/x';
   import Button from '../../button/button.svelte';
-  import MarkdownEditor from '../../markdown-editor/markdown-editor.svelte';
   import { deriveAttachmentKind } from './attachment-kind.js';
   import ChatAttachmentPreview from './chat-attachment-preview.svelte';
 
@@ -146,7 +145,7 @@
 
   // Refs
   let formElement = $state<HTMLFormElement | null>(null);
-  let editorRef: { focus: () => void; getMarkdown: () => string } | undefined;
+  let editorElement = $state<HTMLTextAreaElement | null>(null);
   let fileInputRef = $state<HTMLInputElement | null>(null);
 
   // Internal state
@@ -344,9 +343,9 @@
       return;
     }
 
-    // Get the latest content directly from the editor to avoid debounce lag.
+    // Get the latest content directly from the textarea to avoid bind update lag.
     // The bound `value` may be stale if the user typed and pressed Enter quickly.
-    const latestContent = editorRef?.getMarkdown() ?? value;
+    const latestContent = editorElement?.value ?? value;
     const trimmedContent = latestContent.trim();
 
     // Re-check for whitespace-only after getting latest content
@@ -377,7 +376,7 @@
       }
 
       // Restore focus to editor
-      editorRef?.focus();
+      editorElement?.focus();
       announcer.announce('Message sent');
     } else {
       // In form action mode, sync the bound value with trimmed content
@@ -425,7 +424,7 @@
   // =========================================================================
 
   export function focus(): void {
-    editorRef?.focus();
+    editorElement?.focus();
   }
 
   export function clear(): void {
@@ -495,18 +494,17 @@
 
   <!-- Editor area -->
   <div class="chat-input-editor-container">
-    <MarkdownEditor
+    <textarea
+      bind:this={editorElement}
       id={`${id}-editor`}
       bind:value
-      bind:this={editorRef}
       {placeholder}
-      label={composerLabel}
+      aria-label={composerLabel}
       readonly={disabled || sending}
-      showToolbar={false}
-      showModeToggle={false}
       class="chat-input-editor"
       aria-describedby={shortcutDescriptionId}
-    />
+      rows="1"
+    ></textarea>
   </div>
 
   <!-- Footer with actions -->
@@ -749,53 +747,37 @@
 
   /* Editor container */
   .chat-input-editor-container {
-    --editor-min-height: 2.5rem;
-    --editor-source-min-height: var(--editor-min-height);
+    min-height: 2.5rem;
   }
 
-  .chat-input-editor-container :global(.markdown-editor-wrapper) {
-    min-height: auto;
-    gap: 0;
-  }
-
-  .chat-input-editor-container :global(.markdown-editor) {
+  .chat-input-editor {
+    display: block;
+    width: 100%;
     min-height: 2.5rem;
     max-height: 12rem;
+    padding: var(--cinder-space-1) var(--cinder-space-3);
+    resize: none;
+    field-sizing: content;
     overflow-y: auto;
-    border: none;
-    padding: 0;
+    font: inherit;
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text);
     background: transparent;
+    border: none;
     border-radius: 0;
   }
 
-  .chat-input-editor-container :global(textarea.markdown-editor),
-  .chat-input-editor-container :global(.ProseMirror) {
-    field-sizing: content;
-    max-height: 12rem;
-    overflow-y: auto;
+  .chat-input-editor::placeholder {
+    color: var(--cinder-text-subtle);
   }
 
-  .chat-input-editor-container :global(.markdown-editor:focus-within) {
-    border-color: transparent;
-    box-shadow: none;
+  .chat-input-editor:focus {
     outline: none;
   }
 
-  /* Remove focus ring from the inner textarea - the container handles focus styling */
-  .chat-input-editor-container :global(textarea.markdown-editor:focus) {
-    border-color: transparent;
-    outline: none;
-    box-shadow: none;
-  }
-
-  /* Remove focus ring from ProseMirror when inside chat input */
-  .chat-input-editor-container :global(.ProseMirror:focus) {
-    outline: none;
-  }
-
-  .chat-input-editor-container :global(.ProseMirror) {
-    padding: var(--cinder-space-1) var(--cinder-space-3);
-    min-height: 2.5rem;
+  .chat-input-editor:read-only {
+    color: var(--cinder-text-muted);
+    cursor: not-allowed;
   }
 
   /* Footer */

@@ -1,12 +1,10 @@
 /**
  * Source-contract regression for the chat tool-payload code block.
  *
- * When `<CinderProvider>` was removed, `tool-payload-code.svelte` had to keep
- * its scoped, `depict`-themed JSON highlighter rather than silently falling
- * through to `<CodeBlock>`'s bundled auto-load default (which would change the
- * JSON theme and Shiki load timing). This test pins that contract: the
- * tool-payload passes its own `highlightJson` highlighter explicitly and does
- * not route through the default.
+ * Chat's server bundle must not import the rich markdown renderer just to make
+ * tool payload JSON readable. `CodeBlock` owns the lazy highlighter boundary,
+ * so the tool payload should delegate to it without its own markdown-rendering
+ * import or explicit highlighter.
  *
  * `ChatMessage`/tool-payload are too heavy to mount usefully in happy-dom for
  * this concern, so we assert against the component source text (matching the
@@ -20,13 +18,15 @@ import { describe, expect, test } from 'bun:test';
 const source = readFileSync(resolve(import.meta.dir, 'tool-payload-code.svelte'), 'utf8');
 
 describe('chat tool-payload code block', () => {
-  test('passes its own explicit highlighter to CodeBlock (not the bundled default)', () => {
-    expect(source).toContain('highlighter={highlightJson}');
-    expect(source).toMatch(/<CodeBlock[^>]*highlighter=\{highlightJson\}/);
+  test('delegates highlighting to CodeBlock without a tool-local highlighter', () => {
+    expect(source).toContain('<CodeBlock {code} language="json" />');
+    expect(source).not.toContain('highlighter={highlightJson}');
+    expect(source).not.toContain('function highlightJson');
   });
 
-  test("highlightJson uses Shiki's depict theme", () => {
-    expect(source).toContain("theme: 'depict'");
+  test('does not import the rich markdown rendering pipeline', () => {
+    expect(source).not.toContain('@lostgradient/cinder/markdown/rendering');
+    expect(source).not.toContain('@cinder/markdown/rendering');
   });
 
   test('does not reintroduce a CinderProvider wrapper', () => {
