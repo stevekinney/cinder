@@ -23,6 +23,9 @@ afterEach(() => {
   // Unmount rendered components (runs Svelte teardown) before clearing the DOM —
   // replaceChildren() alone removes nodes but leaks component effects/subscriptions.
   cleanup();
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('data-cinder-theme');
+  document.documentElement.removeAttribute('dir');
   document.body.replaceChildren();
 });
 
@@ -63,6 +66,7 @@ describe('Portal', () => {
     render(Portal, {
       props: {
         dir: 'rtl',
+        'data-theme': 'dark',
         'data-cinder-theme': 'high-contrast',
         children: childSnippet,
       },
@@ -70,8 +74,144 @@ describe('Portal', () => {
 
     await tick();
 
-    const wrapper = document.body.querySelector('[dir="rtl"][data-cinder-theme="high-contrast"]');
+    const wrapper = document.body.querySelector(
+      '[dir="rtl"][data-theme="dark"][data-cinder-theme="high-contrast"]',
+    );
     expect(wrapper?.querySelector('[data-testid="portal-child"]')).not.toBeNull();
+  });
+
+  test('preserves explicit portal theme attributes over inherited root themes', async () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.setAttribute('data-cinder-theme', 'light');
+
+    render(Portal, {
+      props: {
+        'data-theme': 'dark',
+        'data-cinder-theme': 'contrast',
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+    expect(wrapper?.getAttribute('data-cinder-theme')).toBe('contrast');
+  });
+
+  test('keeps updated explicit portal theme attributes during inherited sync', async () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+
+    const { rerender } = render(Portal, {
+      props: {
+        'data-theme': 'dark',
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    await rerender({
+      'data-theme': 'light',
+      children: childSnippet,
+    });
+    await tick();
+    document.documentElement.setAttribute('data-theme', 'dark');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('light');
+  });
+
+  test('allows clearing explicit portal theme attributes during inherited sync', async () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+
+    const { rerender } = render(Portal, {
+      props: {
+        'data-theme': 'dark',
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    await rerender({
+      'data-theme': undefined,
+      children: childSnippet,
+    });
+    await tick();
+    expect(wrapper?.getAttribute('data-theme')).toBe('light');
+
+    document.documentElement.setAttribute('data-theme', 'contrast');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('contrast');
+  });
+
+  test('allows explicit null to clear portal theme attributes during inherited sync', async () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.setAttribute('data-cinder-theme', 'high-contrast');
+
+    const { rerender } = render(Portal, {
+      props: {
+        'data-theme': 'dark',
+        'data-cinder-theme': 'dark',
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+    expect(wrapper?.getAttribute('data-cinder-theme')).toBe('dark');
+
+    await rerender({
+      'data-theme': null,
+      'data-cinder-theme': null,
+      children: childSnippet,
+    });
+    await tick();
+
+    expect(wrapper?.hasAttribute('data-theme')).toBe(false);
+    expect(wrapper?.hasAttribute('data-cinder-theme')).toBe(false);
+
+    document.documentElement.setAttribute('data-theme', 'contrast');
+    document.documentElement.setAttribute('data-cinder-theme', 'light');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.hasAttribute('data-theme')).toBe(false);
+    expect(wrapper?.hasAttribute('data-cinder-theme')).toBe(false);
+  });
+
+  test('preserves same-value explicit portal theme attributes during inherited sync', async () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+
+    const { rerender } = render(Portal, {
+      props: {
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    await rerender({
+      'data-theme': 'dark',
+      children: childSnippet,
+    });
+    await tick();
+    document.documentElement.setAttribute('data-theme', 'light');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
   });
 
   test('omits portal children from SSR when disabled is false', async () => {
@@ -128,25 +268,104 @@ describe('Portal', () => {
 
     const themedSource = document.createElement('section');
     themedSource.setAttribute('dir', 'rtl');
+    themedSource.setAttribute('data-theme', 'dark');
     themedSource.setAttribute('data-cinder-theme', 'dark');
     const child = document.createElement('span');
     themedSource.appendChild(child);
 
     copyInheritedPortalAttributes(element, child, true, {
       dir: 'ltr',
+      dataTheme: null,
       theme: null,
     });
 
     expect(element.getAttribute('dir')).toBe('rtl');
+    expect(element.getAttribute('data-theme')).toBe('dark');
     expect(element.getAttribute('data-cinder-theme')).toBe('dark');
 
     copyInheritedPortalAttributes(element, null, true, {
       dir: 'ltr',
+      dataTheme: null,
       theme: null,
     });
 
     expect(element.getAttribute('dir')).toBe('ltr');
+    expect(element.hasAttribute('data-theme')).toBe(false);
     expect(element.hasAttribute('data-cinder-theme')).toBe(false);
+  });
+
+  test('keeps inherited portal theme attributes synchronized while mounted', async () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute('dir', 'ltr');
+
+    render(Portal, {
+      props: {
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    document.documentElement.setAttribute('data-theme', 'light');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('light');
+  });
+
+  test('clears inherited portal direction when the source stops providing it', async () => {
+    document.documentElement.removeAttribute('dir');
+
+    const scopedAncestor = document.createElement('section');
+    scopedAncestor.setAttribute('dir', 'rtl');
+    const mountPoint = document.createElement('div');
+    scopedAncestor.appendChild(mountPoint);
+    document.body.appendChild(scopedAncestor);
+
+    const { container } = render(Portal, {
+      target: mountPoint,
+      props: {
+        children: childSnippet,
+      },
+    });
+    scopedAncestor.appendChild(container);
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    scopedAncestor.removeAttribute('dir');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.hasAttribute('dir')).toBe(false);
+  });
+
+  test('follows scoped theme additions on source ancestors while mounted', async () => {
+    const scopedAncestor = document.createElement('section');
+    const mountPoint = document.createElement('div');
+    scopedAncestor.appendChild(mountPoint);
+    document.body.appendChild(scopedAncestor);
+
+    const { container } = render(Portal, {
+      target: mountPoint,
+      props: {
+        children: childSnippet,
+      },
+    });
+    scopedAncestor.appendChild(container);
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.hasAttribute('data-theme')).toBe(false);
+
+    scopedAncestor.setAttribute('data-theme', 'dark');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
   });
 
   test('preserves a protected computed direction over inherited auto direction', () => {
@@ -161,6 +380,7 @@ describe('Portal', () => {
 
     copyInheritedPortalAttributes(element, child, true, {
       dir: 'rtl',
+      dataTheme: null,
       theme: null,
     });
 
@@ -188,5 +408,69 @@ describe('Portal', () => {
     // After disabling: gone from the previous target, present back in the original render container.
     expect(host.querySelector('[data-testid="portal-child"]')).toBeNull();
     expect(container.querySelector('[data-testid="portal-child"]')).not.toBeNull();
+  });
+
+  test('restores current explicit direction when a portal is disabled inline', async () => {
+    const host = document.createElement('div');
+    host.id = 'portal-host';
+    document.body.appendChild(host);
+
+    const { container, rerender } = render(Portal, {
+      props: { target: '#portal-host', dir: 'rtl', disabled: false, children: childSnippet },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    await rerender({ target: '#portal-host', dir: 'ltr', disabled: true, children: childSnippet });
+    await tick();
+
+    expect(container.querySelector('[data-testid="portal-child"]')?.parentElement).toBe(wrapper);
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('allows explicit null to clear portal direction during inherited sync', async () => {
+    document.documentElement.setAttribute('dir', 'rtl');
+
+    const { rerender } = render(Portal, {
+      props: { dir: 'ltr', children: childSnippet },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    await rerender({ dir: null, children: childSnippet });
+    await tick();
+
+    expect(wrapper?.hasAttribute('dir')).toBe(false);
+
+    document.documentElement.setAttribute('dir', 'auto');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.hasAttribute('dir')).toBe(false);
+  });
+
+  test('restores initial attributes when a themed portal is disabled inline', async () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+
+    const { container, rerender } = render(Portal, {
+      props: { disabled: false, children: childSnippet },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    document.documentElement.removeAttribute('data-theme');
+    await rerender({ disabled: true, children: childSnippet });
+    await tick();
+
+    expect(container.querySelector('[data-testid="portal-child"]')?.parentElement).toBe(wrapper);
+    expect(wrapper?.hasAttribute('data-theme')).toBe(false);
   });
 });

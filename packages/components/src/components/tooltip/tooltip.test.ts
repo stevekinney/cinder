@@ -500,7 +500,7 @@ describe('Tooltip', () => {
         text: 'Tooltip content',
         children: createRawSnippet(() => ({
           render: () =>
-            '<div dir="rtl" data-cinder-theme="dark"><button type="button">Hover me</button></div>',
+            '<div dir="rtl" data-theme="dark" data-cinder-theme="dark"><button type="button">Hover me</button></div>',
           setup: () => {},
         })),
       },
@@ -508,6 +508,7 @@ describe('Tooltip', () => {
 
     const tooltip = queryTooltip();
     expect(tooltip?.getAttribute('dir')).toBe('rtl');
+    expect(tooltip?.getAttribute('data-theme')).toBe('dark');
     expect(tooltip?.getAttribute('data-cinder-theme')).toBe('dark');
   });
 

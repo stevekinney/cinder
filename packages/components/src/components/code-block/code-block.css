@@ -126,7 +126,34 @@
    * selector and is (correctly) rejected here. */
 
   /* Explicit dark choice. */
-  [data-cinder-theme='dark'] .cinder-code-block :where(pre.shiki) span {
+  [data-cinder-theme='dark']
+    .cinder-code-block
+    :where(pre.shiki)
+    span:not(
+      [data-cinder-theme='dark'] [data-theme='light'] .cinder-code-block :where(pre.shiki) span
+    ),
+  [data-cinder-theme='dark']
+    [data-theme='light']
+    [data-theme='dark']
+    .cinder-code-block
+    :where(pre.shiki)
+    span:not(
+      [data-cinder-theme='dark']
+        [data-theme='light']
+        [data-theme='dark']
+        [data-theme='light']
+        .cinder-code-block
+        :where(pre.shiki)
+        span
+    ),
+  [data-cinder-theme='dark']
+    [data-theme='light']
+    [data-theme='dark']
+    [data-theme='light']
+    [data-theme='dark']
+    .cinder-code-block
+    :where(pre.shiki)
+    span {
     color: var(--shiki-dark, inherit) !important;
   }
 
@@ -134,7 +161,34 @@
    * `data-cinder-theme="system"` and leaves `color-scheme: light dark` to follow
    * `prefers-color-scheme`, so we mirror that here for the inline-style swap. */
   @media (prefers-color-scheme: dark) {
-    [data-cinder-theme='system'] .cinder-code-block :where(pre.shiki) span {
+    [data-cinder-theme='system']
+      .cinder-code-block
+      :where(pre.shiki)
+      span:not(
+        [data-cinder-theme='system'] [data-theme='light'] .cinder-code-block :where(pre.shiki) span
+      ),
+    [data-cinder-theme='system']
+      [data-theme='light']
+      [data-theme='dark']
+      .cinder-code-block
+      :where(pre.shiki)
+      span:not(
+        [data-cinder-theme='system']
+          [data-theme='light']
+          [data-theme='dark']
+          [data-theme='light']
+          .cinder-code-block
+          :where(pre.shiki)
+          span
+      ),
+    [data-cinder-theme='system']
+      [data-theme='light']
+      [data-theme='dark']
+      [data-theme='light']
+      [data-theme='dark']
+      .cinder-code-block
+      :where(pre.shiki)
+      span {
       color: var(--shiki-dark, inherit) !important;
     }
   }

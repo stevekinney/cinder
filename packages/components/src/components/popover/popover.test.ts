@@ -320,6 +320,7 @@ describe('Popover — portal and arrow', () => {
   test('copies inherited dir and theme attributes before portaling', async () => {
     const wrapper = document.createElement('div');
     wrapper.setAttribute('dir', 'rtl');
+    wrapper.setAttribute('data-theme', 'dark');
     wrapper.setAttribute('data-cinder-theme', 'midnight');
 
     const triggerButton = document.createElement('button');
@@ -342,6 +343,7 @@ describe('Popover — portal and arrow', () => {
 
     const panel = queryPopoverPanel()!;
     expect(panel.getAttribute('dir')).toBe('rtl');
+    expect(panel.getAttribute('data-theme')).toBe('dark');
     expect(panel.getAttribute('data-cinder-theme')).toBe('midnight');
   });
 

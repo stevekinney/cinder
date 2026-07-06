@@ -20,10 +20,26 @@ export type PortalAttachmentOptions = {
    */
   disabled?: boolean | (() => boolean);
   /**
-   * When true (default), copy `dir` and `data-cinder-theme` from the nearest ancestor of `source`
-   * before moving the wrapper. Accepts a getter.
+   * When true (default), inherit `dir`, `data-theme`, and `data-cinder-theme` from the nearest
+   * matching ancestor of `source` while mounted. Explicit attributes on the portal wrapper win over
+   * inherited values.
    */
   inheritAttributes?: boolean | (() => boolean);
+  /**
+   * Current public attributes supplied by the Portal component. The attachment uses these to
+   * distinguish explicit attributes from equal inherited values after the wrapper has moved.
+   */
+  explicitAttributes?:
+    | {
+        dir?: string | null | undefined;
+        dataTheme?: string | null | undefined;
+        theme?: string | null | undefined;
+      }
+    | (() => {
+        dir?: string | null | undefined;
+        dataTheme?: string | null | undefined;
+        theme?: string | null | undefined;
+      });
   /**
    * Ancestor used as the lookup root for inherited attributes. Defaults to the wrapper's
    * `parentElement` at attach time — but once portaled the wrapper's parent is the target, so any
@@ -62,12 +78,21 @@ export function copyInheritedPortalAttributes(
   element: HTMLElement,
   source: HTMLElement | null | undefined,
   inheritAttributes: boolean,
-  fallbackAttributes: { dir: string | null; theme: string | null } = {
+  fallbackAttributes: {
+    dir: string | null;
+    dataTheme: string | null;
+    theme: string | null;
+    preserveDirection?: boolean;
+    preserveDataTheme?: boolean;
+    preserveTheme?: boolean;
+  } = {
     dir: element.getAttribute('dir'),
+    dataTheme: element.getAttribute('data-theme'),
     theme: element.getAttribute('data-cinder-theme'),
   },
 ) {
-  const preservesExplicitDirection = element.dataset['cinderExplicitDirection'] === 'true';
+  const preservesExplicitDirection =
+    fallbackAttributes.preserveDirection || element.dataset['cinderExplicitDirection'] === 'true';
   const inheritedDir =
     inheritAttributes && source && !preservesExplicitDirection
       ? source.closest<HTMLElement>('[dir]')?.getAttribute('dir')
@@ -79,8 +104,24 @@ export function copyInheritedPortalAttributes(
     element.removeAttribute('dir');
   }
 
+  const preservesExplicitDataTheme = fallbackAttributes.preserveDataTheme === true;
+  const inheritedDataTheme =
+    inheritAttributes &&
+    source &&
+    !preservesExplicitDataTheme &&
+    fallbackAttributes.dataTheme === null
+      ? source.closest<HTMLElement>('[data-theme]')?.getAttribute('data-theme')
+      : null;
+  const nextDataTheme = inheritedDataTheme ?? fallbackAttributes.dataTheme;
+  if (nextDataTheme) {
+    element.setAttribute('data-theme', nextDataTheme);
+  } else {
+    element.removeAttribute('data-theme');
+  }
+
+  const preservesExplicitTheme = fallbackAttributes.preserveTheme === true;
   const inheritedTheme =
-    inheritAttributes && source
+    inheritAttributes && source && !preservesExplicitTheme && fallbackAttributes.theme === null
       ? source.closest<HTMLElement>('[data-cinder-theme]')?.getAttribute('data-cinder-theme')
       : null;
   const nextTheme = inheritedTheme ?? fallbackAttributes.theme;
@@ -89,6 +130,42 @@ export function copyInheritedPortalAttributes(
   } else {
     element.removeAttribute('data-cinder-theme');
   }
+
+  return {
+    dir: inheritedDir ?? null,
+    dataTheme: inheritedDataTheme ?? null,
+    theme: inheritedTheme ?? null,
+  };
+}
+
+function observeInheritedPortalAttributes(
+  source: HTMLElement | null | undefined,
+  inheritAttributes: boolean,
+  syncAttributes: () => void,
+): (() => void) | null {
+  if (!inheritAttributes || !source || typeof MutationObserver === 'undefined') return null;
+
+  const observer = new MutationObserver(() => {
+    syncAttributes();
+  });
+  function observe(elementToObserve: HTMLElement | null | undefined) {
+    if (!elementToObserve || observedElements.includes(elementToObserve)) return;
+    observedElements.push(elementToObserve);
+    observer.observe(elementToObserve, {
+      attributes: true,
+      attributeFilter: ['dir', 'data-theme', 'data-cinder-theme'],
+    });
+  }
+  const observedElements: HTMLElement[] = [];
+
+  let ancestor: HTMLElement | null = source;
+  while (ancestor) {
+    observe(ancestor);
+    ancestor = ancestor.parentElement;
+  }
+  observe(document.documentElement);
+
+  return () => observer.disconnect();
 }
 
 export function createPortalAttachment(
@@ -99,12 +176,67 @@ export function createPortalAttachment(
   return (element) => {
     // Capture the *original* parentElement once, before any mounting moves the wrapper. After
     // `appendChild`, `element.parentElement` becomes the portal target — which would defeat the
-    // "inherit dir/data-cinder-theme from the trigger subtree" contract.
+    // "inherit dir/data-theme/data-cinder-theme from the trigger subtree" contract.
     const initialParent = element.parentElement;
     const initialAttributes = {
       dir: element.getAttribute('dir'),
+      dataTheme: element.getAttribute('data-theme'),
       theme: element.getAttribute('data-cinder-theme'),
     };
+    const managedAttributes = {
+      dir: null as string | null,
+      dataTheme: null as string | null,
+      theme: null as string | null,
+    };
+
+    function currentFallbackAttributes() {
+      const explicitAttributes = readOption(options.explicitAttributes ?? {});
+      const explicitDirection = explicitAttributes.dir;
+      const explicitDataTheme = explicitAttributes.dataTheme;
+      const explicitTheme = explicitAttributes.theme;
+      const direction = element.getAttribute('dir');
+      const dataTheme = element.getAttribute('data-theme');
+      const theme = element.getAttribute('data-cinder-theme');
+
+      return {
+        dir:
+          explicitDirection !== undefined
+            ? explicitDirection
+            : direction !== managedAttributes.dir
+              ? direction
+              : initialAttributes.dir,
+        preserveDirection: explicitDirection !== undefined,
+        dataTheme:
+          explicitDataTheme !== undefined
+            ? explicitDataTheme
+            : dataTheme !== managedAttributes.dataTheme
+              ? dataTheme
+              : null,
+        preserveDataTheme: explicitDataTheme !== undefined,
+        theme:
+          explicitTheme !== undefined
+            ? explicitTheme
+            : theme !== managedAttributes.theme
+              ? theme
+              : null,
+        preserveTheme: explicitTheme !== undefined,
+      };
+    }
+
+    function syncInheritedAttributes(
+      source: HTMLElement | null | undefined,
+      inheritAttributes: boolean,
+    ) {
+      const nextManagedAttributes = copyInheritedPortalAttributes(
+        element,
+        source,
+        inheritAttributes,
+        currentFallbackAttributes(),
+      );
+      managedAttributes.dir = nextManagedAttributes.dir;
+      managedAttributes.dataTheme = nextManagedAttributes.dataTheme;
+      managedAttributes.theme = nextManagedAttributes.theme;
+    }
 
     // Drop a placeholder comment at the wrapper's original location. When `disabled` flips true or
     // the target can no longer be resolved, the wrapper is reinserted at this anchor so children
@@ -128,6 +260,7 @@ export function createPortalAttachment(
     // detaches the previous mount before re-resolving — this guards against the wrapper being
     // stranded in the old target when `target` changes or `disabled` flips true.
     $effect(() => {
+      let stopObservingInheritedAttributes: (() => void) | null = null;
       const disabled = readOption(options.disabled ?? false);
       const inheritAttributes = readOption(options.inheritAttributes ?? true);
       const targetValue = readOption(options.target ?? null);
@@ -135,11 +268,11 @@ export function createPortalAttachment(
       const resolved = disabled ? null : resolvePortalTarget(targetValue);
 
       if (!disabled && resolved?.kind === 'resolved') {
-        copyInheritedPortalAttributes(
-          element,
+        syncInheritedAttributes(attributeSource, inheritAttributes);
+        stopObservingInheritedAttributes = observeInheritedPortalAttributes(
           attributeSource,
           inheritAttributes,
-          initialAttributes,
+          () => syncInheritedAttributes(attributeSource, inheritAttributes),
         );
         resolved.target.appendChild(element);
         lastWarnedUnresolvedKey = null;
@@ -147,6 +280,7 @@ export function createPortalAttachment(
         // Target unresolved: keep the wrapper inline at the anchor so children remain rendered
         // (with a dev warning) instead of vanishing from the DOM entirely.
         restoreInline();
+        syncInheritedAttributes(null, false);
         if (lastWarnedUnresolvedKey !== resolved.key) {
           devWarn(
             `[cinder/portal] could not resolve portal target ${JSON.stringify(resolved.key)}.`,
@@ -157,10 +291,12 @@ export function createPortalAttachment(
         // Disabled path: wrapper must stay in (or return to) its original position, not be left
         // detached. The Portal component's template still renders children in this mode.
         restoreInline();
+        syncInheritedAttributes(null, false);
         lastWarnedUnresolvedKey = null;
       }
 
       return () => {
+        stopObservingInheritedAttributes?.();
         // Idempotent: only remove if still connected somewhere. Tolerates external removal of the
         // wrapper between mount and cleanup. The anchor stays put so the next re-run can reinsert.
         if (element.isConnected) {

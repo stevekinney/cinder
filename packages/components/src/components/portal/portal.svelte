@@ -45,6 +45,11 @@
     target: () => target,
     disabled: () => disabled,
     inheritAttributes: () => inheritAttributes,
+    explicitAttributes: () => ({
+      dir: rest.dir,
+      dataTheme: rest['data-theme'],
+      theme: rest['data-cinder-theme'],
+    }),
   })}
   class={classNames(className)}
   {...rest}
