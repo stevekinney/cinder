@@ -125,6 +125,7 @@ export function copyInheritedPortalAttributes(
   }
 
   return {
+    dir: inheritedDir ?? null,
     dataTheme: inheritedDataTheme ?? null,
     theme: inheritedTheme ?? null,
   };
@@ -176,6 +177,7 @@ export function createPortalAttachment(
       theme: element.getAttribute('data-cinder-theme'),
     };
     const managedAttributes = {
+      dir: null as string | null,
       dataTheme: null as string | null,
       theme: null as string | null,
     };
@@ -185,11 +187,17 @@ export function createPortalAttachment(
       const explicitDirection = explicitAttributes.dir;
       const explicitDataTheme = explicitAttributes.dataTheme;
       const explicitTheme = explicitAttributes.theme;
+      const direction = element.getAttribute('dir');
       const dataTheme = element.getAttribute('data-theme');
       const theme = element.getAttribute('data-cinder-theme');
 
       return {
-        dir: explicitDirection ?? element.getAttribute('dir') ?? initialAttributes.dir,
+        dir:
+          explicitDirection !== undefined
+            ? explicitDirection
+            : direction !== managedAttributes.dir
+              ? direction
+              : initialAttributes.dir,
         preserveDirection: explicitDirection !== undefined,
         dataTheme:
           explicitDataTheme !== undefined
@@ -216,6 +224,7 @@ export function createPortalAttachment(
         inheritAttributes,
         currentFallbackAttributes(),
       );
+      managedAttributes.dir = nextManagedAttributes.dir;
       managedAttributes.dataTheme = nextManagedAttributes.dataTheme;
       managedAttributes.theme = nextManagedAttributes.theme;
     }

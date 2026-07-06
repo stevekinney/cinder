@@ -279,6 +279,34 @@ describe('Portal', () => {
     expect(wrapper?.getAttribute('data-theme')).toBe('light');
   });
 
+  test('clears inherited portal direction when the source stops providing it', async () => {
+    document.documentElement.removeAttribute('dir');
+
+    const scopedAncestor = document.createElement('section');
+    scopedAncestor.setAttribute('dir', 'rtl');
+    const mountPoint = document.createElement('div');
+    scopedAncestor.appendChild(mountPoint);
+    document.body.appendChild(scopedAncestor);
+
+    const { container } = render(Portal, {
+      target: mountPoint,
+      props: {
+        children: childSnippet,
+      },
+    });
+    scopedAncestor.appendChild(container);
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    scopedAncestor.removeAttribute('dir');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.hasAttribute('dir')).toBe(false);
+  });
+
   test('follows scoped theme additions on source ancestors while mounted', async () => {
     const scopedAncestor = document.createElement('section');
     const mountPoint = document.createElement('div');
