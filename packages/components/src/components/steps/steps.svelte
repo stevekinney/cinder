@@ -36,7 +36,7 @@
 
   const stepStates = $derived<StepItemState[]>(
     steps.map((step, index) => {
-      if (step.state !== undefined) return step.state;
+      if (step.state === 'skipped') return 'skipped';
       if (clampedCurrent === undefined) return 'upcoming';
       if (index < clampedCurrent) return 'complete';
       if (index === clampedCurrent) return 'current';
@@ -55,6 +55,8 @@
       {@const state = stepStates[index] ?? 'upcoming'}
       {@const isCurrent = state === 'current'}
       {@const isComplete = state === 'complete'}
+      {@const connectorState =
+        clampedCurrent !== undefined && index < clampedCurrent ? 'complete' : 'upcoming'}
       {@const hasHref = step.href !== undefined}
       {@const isInteractive = hasHref || step.onclick !== undefined}
       {@const stepLabel = step.label}
@@ -97,7 +99,7 @@
         {#if index < steps.length - 1}
           <span
             class="cinder-steps__connector"
-            data-cinder-state={isComplete ? 'complete' : 'upcoming'}
+            data-cinder-state={connectorState}
             aria-hidden="true"
           ></span>
         {/if}

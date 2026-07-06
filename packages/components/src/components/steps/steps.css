@@ -204,9 +204,16 @@
   }
 
   [data-cinder-state='skipped'] .cinder-steps__marker {
-    background: transparent;
+    background: var(--cinder-surface);
     box-shadow: inset 0 0 0 1px var(--cinder-border-muted);
     color: var(--cinder-text-muted);
+  }
+
+  @media (forced-colors: active) {
+    [data-cinder-state='skipped'] .cinder-steps__marker {
+      outline: 1px solid ButtonText;
+      box-shadow: none;
+    }
   }
 
   [data-cinder-state='upcoming'] .cinder-steps__marker {
