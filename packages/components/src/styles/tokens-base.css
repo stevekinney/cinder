@@ -473,6 +473,12 @@
 
 [data-theme='dark'] {
   color-scheme: dark;
+  --cinder-shadow-sm: 0 1px 2px oklch(100% 0 0 / 0.09), 0 1px 1px oklch(100% 0 0 / 0.05);
+  --cinder-shadow-md: 0 4px 6px -1px oklch(100% 0 0 / 0.09), 0 2px 4px -2px oklch(100% 0 0 / 0.06);
+  --cinder-shadow-lg:
+    0 10px 15px -3px oklch(100% 0 0 / 0.11), 0 4px 6px -4px oklch(100% 0 0 / 0.07);
+  --cinder-shadow-overlay:
+    0 10px 15px -3px oklch(0% 0 0 / 0.45), 0 4px 6px -4px oklch(0% 0 0 / 0.32);
   --cinder-bg: oklch(15% 0.035 245);
   --cinder-surface: oklch(20% 0.04 245);
   --cinder-surface-raised: oklch(26% 0.045 245);
@@ -546,6 +552,11 @@
 
 [data-theme='light'] {
   color-scheme: light;
+  --cinder-shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.1), 0 1px 1px oklch(0% 0 0 / 0.06);
+  --cinder-shadow-md: 0 4px 6px -1px oklch(0% 0 0 / 0.12), 0 2px 4px -2px oklch(0% 0 0 / 0.1);
+  --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
+  --cinder-shadow-overlay:
+    0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
   --cinder-bg: oklch(96% 0.01 245);
   --cinder-surface: oklch(98.5% 0.008 245);
   --cinder-surface-raised: oklch(100% 0.006 245);

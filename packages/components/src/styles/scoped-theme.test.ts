@@ -46,8 +46,23 @@ function expectDeclarations(block: string, declarations: Record<string, string>)
 describe('scoped theme tokens', () => {
   test('data-theme dark and light scopes pin core semantic tokens locally', async () => {
     const css = await readFile(TOKENS_BASE_PATH, 'utf8');
+    const darkBlock = extractRuleBlock(css, "[data-theme='dark']");
+    const lightBlock = extractRuleBlock(css, "[data-theme='light']");
 
-    expectDeclarations(extractRuleBlock(css, "[data-theme='dark']"), {
+    expect(darkBlock).toContain(
+      '--cinder-shadow-sm: 0 1px 2px oklch(100% 0 0 / 0.09), 0 1px 1px oklch(100% 0 0 / 0.05);',
+    );
+    expect(darkBlock).toContain(
+      '--cinder-shadow-md: 0 4px 6px -1px oklch(100% 0 0 / 0.09), 0 2px 4px -2px oklch(100% 0 0 / 0.06);',
+    );
+    expect(darkBlock).toContain(
+      '--cinder-shadow-lg:\n    0 10px 15px -3px oklch(100% 0 0 / 0.11), 0 4px 6px -4px oklch(100% 0 0 / 0.07);',
+    );
+    expect(darkBlock).toContain(
+      '--cinder-shadow-overlay:\n    0 10px 15px -3px oklch(0% 0 0 / 0.45), 0 4px 6px -4px oklch(0% 0 0 / 0.32);',
+    );
+
+    expectDeclarations(darkBlock, {
       'color-scheme': 'dark',
       '--cinder-bg': 'oklch(15% 0.035 245)',
       '--cinder-surface': 'oklch(20% 0.04 245)',
@@ -80,7 +95,20 @@ describe('scoped theme tokens', () => {
       '--cinder-overlay-backdrop': 'oklch(8% 0.02 245 / 0.65)',
     });
 
-    expectDeclarations(extractRuleBlock(css, "[data-theme='light']"), {
+    expect(lightBlock).toContain(
+      '--cinder-shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.1), 0 1px 1px oklch(0% 0 0 / 0.06);',
+    );
+    expect(lightBlock).toContain(
+      '--cinder-shadow-md: 0 4px 6px -1px oklch(0% 0 0 / 0.12), 0 2px 4px -2px oklch(0% 0 0 / 0.1);',
+    );
+    expect(lightBlock).toContain(
+      '--cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);',
+    );
+    expect(lightBlock).toContain(
+      '--cinder-shadow-overlay:\n    0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);',
+    );
+
+    expectDeclarations(lightBlock, {
       'color-scheme': 'light',
       '--cinder-bg': 'oklch(96% 0.01 245)',
       '--cinder-surface': 'oklch(98.5% 0.008 245)',
@@ -168,5 +196,11 @@ describe('scoped theme tokens', () => {
         "[data-theme='dark'] .cinder-code-block :where(pre.shiki) span",
       ),
     ).toContain('color: var(--shiki-dark, inherit) !important;');
+    expect(
+      extractRuleBlock(
+        foundationCss,
+        "[data-theme='light'] .cinder-code-block :where(pre.shiki) span",
+      ),
+    ).toContain('color: var(--shiki-light, inherit) !important;');
   });
 });

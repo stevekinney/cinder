@@ -20,8 +20,8 @@ export type PortalAttachmentOptions = {
    */
   disabled?: boolean | (() => boolean);
   /**
-   * When true (default), copy `dir` and `data-cinder-theme` from the nearest ancestor of `source`
-   * before moving the wrapper. Accepts a getter.
+   * When true (default), copy `dir`, `data-theme`, and `data-cinder-theme` from the nearest
+   * ancestor of `source` before moving the wrapper. Accepts a getter.
    */
   inheritAttributes?: boolean | (() => boolean);
   /**
@@ -62,8 +62,9 @@ export function copyInheritedPortalAttributes(
   element: HTMLElement,
   source: HTMLElement | null | undefined,
   inheritAttributes: boolean,
-  fallbackAttributes: { dir: string | null; theme: string | null } = {
+  fallbackAttributes: { dir: string | null; dataTheme: string | null; theme: string | null } = {
     dir: element.getAttribute('dir'),
+    dataTheme: element.getAttribute('data-theme'),
     theme: element.getAttribute('data-cinder-theme'),
   },
 ) {
@@ -77,6 +78,17 @@ export function copyInheritedPortalAttributes(
     element.setAttribute('dir', nextDir);
   } else {
     element.removeAttribute('dir');
+  }
+
+  const inheritedDataTheme =
+    inheritAttributes && source
+      ? source.closest<HTMLElement>('[data-theme]')?.getAttribute('data-theme')
+      : null;
+  const nextDataTheme = inheritedDataTheme ?? fallbackAttributes.dataTheme;
+  if (nextDataTheme) {
+    element.setAttribute('data-theme', nextDataTheme);
+  } else {
+    element.removeAttribute('data-theme');
   }
 
   const inheritedTheme =
@@ -99,10 +111,11 @@ export function createPortalAttachment(
   return (element) => {
     // Capture the *original* parentElement once, before any mounting moves the wrapper. After
     // `appendChild`, `element.parentElement` becomes the portal target — which would defeat the
-    // "inherit dir/data-cinder-theme from the trigger subtree" contract.
+    // "inherit dir/data-theme/data-cinder-theme from the trigger subtree" contract.
     const initialParent = element.parentElement;
     const initialAttributes = {
       dir: element.getAttribute('dir'),
+      dataTheme: element.getAttribute('data-theme'),
       theme: element.getAttribute('data-cinder-theme'),
     };
 

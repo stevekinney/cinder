@@ -63,6 +63,7 @@ describe('Portal', () => {
     render(Portal, {
       props: {
         dir: 'rtl',
+        'data-theme': 'dark',
         'data-cinder-theme': 'high-contrast',
         children: childSnippet,
       },
@@ -70,7 +71,9 @@ describe('Portal', () => {
 
     await tick();
 
-    const wrapper = document.body.querySelector('[dir="rtl"][data-cinder-theme="high-contrast"]');
+    const wrapper = document.body.querySelector(
+      '[dir="rtl"][data-theme="dark"][data-cinder-theme="high-contrast"]',
+    );
     expect(wrapper?.querySelector('[data-testid="portal-child"]')).not.toBeNull();
   });
 
@@ -128,24 +131,29 @@ describe('Portal', () => {
 
     const themedSource = document.createElement('section');
     themedSource.setAttribute('dir', 'rtl');
+    themedSource.setAttribute('data-theme', 'dark');
     themedSource.setAttribute('data-cinder-theme', 'dark');
     const child = document.createElement('span');
     themedSource.appendChild(child);
 
     copyInheritedPortalAttributes(element, child, true, {
       dir: 'ltr',
+      dataTheme: null,
       theme: null,
     });
 
     expect(element.getAttribute('dir')).toBe('rtl');
+    expect(element.getAttribute('data-theme')).toBe('dark');
     expect(element.getAttribute('data-cinder-theme')).toBe('dark');
 
     copyInheritedPortalAttributes(element, null, true, {
       dir: 'ltr',
+      dataTheme: null,
       theme: null,
     });
 
     expect(element.getAttribute('dir')).toBe('ltr');
+    expect(element.hasAttribute('data-theme')).toBe(false);
     expect(element.hasAttribute('data-cinder-theme')).toBe(false);
   });
 
@@ -161,6 +169,7 @@ describe('Portal', () => {
 
     copyInheritedPortalAttributes(element, child, true, {
       dir: 'rtl',
+      dataTheme: null,
       theme: null,
     });
 

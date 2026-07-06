@@ -80,6 +80,10 @@
   color: var(--shiki-dark, inherit) !important;
 }
 
+[data-theme='light'] .cinder-code-block :where(pre.shiki) span {
+  color: var(--shiki-light, inherit) !important;
+}
+
 :focus-visible {
   /* Strategy A is sanctioned ONLY here — the bare global default that paints a
      baseline ring for any element a component CSS file does not own. See
