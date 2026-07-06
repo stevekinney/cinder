@@ -4,7 +4,7 @@
  * Runs `tsc --noEmit` against the two consumer tsconfigs under
  * `fixtures/resolver-matrix/typescript-consumer/`, one with
  * `moduleResolution: nodenext`, one with `moduleResolution: bundler`. Both
- * must succeed for the condition ordering (`types`/`browser`/`node`/`svelte`/`default`)
+ * must succeed for the condition ordering (`types`/`browser`/`node`/`svelte`/`import`/`default`)
  * to be considered safe.
  *
  * Exits non-zero on the first failure. Invoked via `bun run validate:resolver-matrix`.
