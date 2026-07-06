@@ -750,6 +750,7 @@
   /* Editor container */
   .chat-input-editor-container {
     --editor-min-height: 2.5rem;
+    --editor-source-min-height: var(--editor-min-height);
   }
 
   .chat-input-editor-container :global(.markdown-editor-wrapper) {

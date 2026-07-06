@@ -748,6 +748,7 @@
   .markdown-editor-wrapper {
     /* Configurable minimum height for the editor content area */
     --editor-min-height: 200px;
+    --editor-source-min-height: max(var(--editor-min-height), 16rem);
 
     display: flex;
     flex-direction: column;
@@ -766,7 +767,6 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    min-height: var(--editor-min-height);
     gap: var(--cinder-space-2);
     container-name: cinder-markdown-editor;
     container-type: inline-size;
@@ -860,7 +860,7 @@
     /* Use flex: 1 instead of height: 100% for consistent sizing with WYSIWYG mode */
     flex: 1;
     color: var(--cinder-text);
-    min-height: max(var(--editor-min-height), 16rem);
+    min-height: var(--editor-source-min-height);
   }
 
   @container cinder-markdown-editor (max-width: 42rem) {

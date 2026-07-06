@@ -66,6 +66,7 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     const editorLayoutBlock = cssBlock(markdownEditorSource, '.markdown-editor-layout');
     expectDeclaration(editorLayoutBlock, 'container-name', 'cinder-markdown-editor');
     expectDeclaration(editorLayoutBlock, 'container-type', 'inline-size');
+    expect(editorLayoutBlock).not.toContain('min-height');
 
     const nestedToolbarBlock = cssBlock(
       markdownEditorSource,
@@ -123,7 +124,11 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
   it('keeps the fixed-position link popover outside the query container', async () => {
     const markdownEditorSource = await Bun.file(markdownEditorPath).text();
     const layoutStartIndex = markdownEditorSource.indexOf('<div class="markdown-editor-layout">');
-    const layoutEndIndex = markdownEditorSource.indexOf('</div>\n\n  {#if linkPopoverOpen');
+    const layoutCloseBeforePopover = /<\/div>\s*\{#if linkPopoverOpen/.exec(
+      markdownEditorSource.slice(layoutStartIndex),
+    );
+    const layoutEndIndex =
+      layoutCloseBeforePopover === null ? -1 : layoutStartIndex + layoutCloseBeforePopover.index;
     const popoverIndex = markdownEditorSource.indexOf('<LinkPopover');
 
     expect(layoutStartIndex).toBeGreaterThanOrEqual(0);
@@ -134,8 +139,17 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
   it('gives raw source mode a usable minimum editing height', async () => {
     const markdownEditorSource = stripCssComments(await Bun.file(markdownEditorPath).text());
 
+    const wrapperBlock = cssBlock(markdownEditorSource, '.markdown-editor-wrapper');
+    expectDeclaration(wrapperBlock, '--editor-min-height', '200px');
+    expectDeclaration(
+      wrapperBlock,
+      '--editor-source-min-height',
+      'max(var(--editor-min-height), 16rem)',
+    );
+
     const sourceModeBlock = cssBlock(markdownEditorSource, 'textarea.markdown-editor.source-mode');
-    expectDeclaration(sourceModeBlock, 'min-height', 'max(var(--editor-min-height), 16rem)');
+    expectDeclaration(sourceModeBlock, 'min-height', 'var(--editor-source-min-height)');
+    expect(sourceModeBlock).not.toContain('max(');
   });
 
   it('wires block-type radio menu state through DropdownItem checked', async () => {
