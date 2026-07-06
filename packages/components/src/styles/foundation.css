@@ -77,7 +77,7 @@
 }
 
 @scope ([data-theme='dark']) to ([data-theme='light']) {
-  .cinder-code-block :where(pre.shiki) span {
+  .cinder-code-block :where(pre.shiki) span[style*='--shiki-dark'] {
     color: var(--shiki-dark, inherit) !important;
   }
 }
