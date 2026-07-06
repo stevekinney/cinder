@@ -10,6 +10,7 @@
       "browser": "./src/index.ts",
       "node": "./dist/server/index.js",
       "svelte": "./src/index.ts",
+      "import": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json",
@@ -18,6 +19,7 @@
       "browser": "./src/components/button/index.ts",
       "node": "./dist/server/components/button/index.js",
       "svelte": "./src/components/button/index.ts",
+      "import": "./src/components/button/index.ts",
       "default": "./dist/components/button/index.js"
     },
     "./styles/guard": {
@@ -25,6 +27,7 @@
       "browser": "./src/styles/base-guard.ts",
       "node": "./dist/server/styles/base-guard.js",
       "svelte": "./src/styles/base-guard.ts",
+      "import": "./src/styles/base-guard.ts",
       "default": "./dist/styles/base-guard.js"
     }
   }

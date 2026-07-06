@@ -2,9 +2,9 @@
  * Generates subpath exports for every directory-shaped component under
  * `src/components/`. Each component contributes up to six subpaths:
  *
- *   ./<name>             → component (types/browser/node/svelte/default conditions)
- *   ./<name>/schema      → schema module (types/browser/node/svelte/default conditions)
- *   ./<name>/variables   → variables module (types/browser/node/svelte/default conditions)
+ *   ./<name>             → component (types/browser/node/svelte/import/default conditions)
+ *   ./<name>/schema      → schema module (types/browser/node/svelte/import/default conditions)
+ *   ./<name>/variables   → variables module (types/browser/node/svelte/import/default conditions)
  *   ./<name>/styles      → layer-wrapped CSS sidecar (`types` + `default`; emitted when the component ships a source <name>.css). Compound parents (tabs/table/accordion/side-navigation) @import their leaves' sidecars so the family arrives together.
  *   ./<name>/examples    → examples JSON (import/default only; emitted when file exists)
  *   ./<name>/constraints → constraints JSON (import/default only; emitted when file exists)
@@ -15,8 +15,9 @@
  * requirements and SSR safety: `types` MUST be first within any conditional
  * object, followed by `browser` (source for browser/Svelte tooling that also
  * activates Bun's built-in `node` condition), `node` (per-component SSR build),
- * `svelte` (source for Svelte-aware browser tooling), and `default`
- * (per-component browser ESM build) last.
+ * `svelte` (source for Svelte-aware browser tooling), `import` (source for
+ * Vite/esbuild dependency optimization that does not activate `browser` or
+ * `svelte`), and `default` (per-component browser ESM build) last.
  *
  * Additionally, a package-level `./manifest` entry is emitted pointing at
  * `./components.json` with `import`/`default` conditions only (no `svelte` or
@@ -181,6 +182,7 @@ function highlightersShikiExport(): ExportEntry {
     browser: './src/highlighters/shiki/index.ts',
     svelte: './src/highlighters/shiki/index.ts',
     node: './dist/server/highlighters/shiki/index.js',
+    import: './src/highlighters/shiki/index.ts',
     default: './dist/highlighters/shiki/index.js',
   });
 }
@@ -198,6 +200,7 @@ export function stylesGuardExport(): ExportEntry {
     browser: './src/styles/base-guard.ts',
     svelte: './src/styles/base-guard.ts',
     node: './dist/server/styles/base-guard.js',
+    import: './src/styles/base-guard.ts',
     default: './dist/styles/base-guard.js',
   });
 }
@@ -227,7 +230,8 @@ export const FORBIDDEN_EXPORT_KEY_PATTERN =
  *   2. `browser`
  *   3. `node`
  *   4. `svelte`
- *   5. `default`
+ *   5. `import`
+ *   6. `default`
  *
  * Returns a fresh object so callers can rely on JSON.stringify output order.
  */
@@ -237,6 +241,7 @@ export function orderedExportEntry(entry: ExportEntry): ExportEntry {
   if (entry.browser !== undefined) out.browser = entry.browser;
   if (entry.node !== undefined) out.node = entry.node;
   if (entry.svelte !== undefined) out.svelte = entry.svelte;
+  if (entry.import !== undefined) out.import = entry.import;
   if (entry.default !== undefined) out.default = entry.default;
   return out;
 }
@@ -252,6 +257,7 @@ export function computeRootExport(): ExportEntry {
     browser: './src/index.ts',
     svelte: './src/index.ts',
     node: './dist/server/index.js',
+    import: './src/index.ts',
     default: './dist/index.js',
   });
 }
@@ -324,6 +330,7 @@ export function computeDeprecatedExperimentalAliases(
       browser: `${shimSrcDir}/index.ts`,
       svelte: `${shimSrcDir}/index.ts`,
       node: `${shimServerDistDir}/index.js`,
+      import: `${shimSrcDir}/index.ts`,
       default: `${shimDistDir}/index.js`,
     });
 
@@ -336,6 +343,7 @@ export function computeDeprecatedExperimentalAliases(
       browser: `${newSrcDir}/${name}.schema.ts`,
       svelte: `${newSrcDir}/${name}.schema.ts`,
       node: `${newServerDistDir}/${name}.schema.js`,
+      import: `${newSrcDir}/${name}.schema.ts`,
       default: `${newDistDir}/${name}.schema.js`,
     });
     out[`${aliasPrefix}/variables`] = orderedExportEntry({
@@ -343,6 +351,7 @@ export function computeDeprecatedExperimentalAliases(
       browser: `${newSrcDir}/${name}.variables.ts`,
       svelte: `${newSrcDir}/${name}.variables.ts`,
       node: `${newServerDistDir}/${name}.variables.js`,
+      import: `${newSrcDir}/${name}.variables.ts`,
       default: `${newDistDir}/${name}.variables.js`,
     });
 
@@ -401,13 +410,16 @@ export function computeExports(
     // Component subpath: full conditional shape. `types` first for TypeScript
     // `nodenext`, `browser` second so browser/Bun source workflows that also
     // activate `node` still get source, `node` third so Node SSR wins when both
-    // `node` and `svelte` are active, `svelte` next so Svelte tooling still gets
-    // source, `default` last as the catch-all for Vite/Rollup/esbuild/Webpack.
+    // `node` and source conditions are active, `svelte` next so Svelte tooling
+    // still gets source, `import` next so Vite/esbuild optimizeDeps resolves
+    // source before falling through to compiled output, `default` last as the
+    // catch-all for non-source-aware bundlers.
     out[prefix] = orderedExportEntry({
       types: `${distDir}/index.d.ts`,
       browser: `${srcDir}/index.ts`,
       svelte: `${srcDir}/index.ts`,
       node: `${serverDistDir}/index.js`,
+      import: `${srcDir}/index.ts`,
       default: `${distDir}/index.js`,
     });
 
@@ -417,6 +429,7 @@ export function computeExports(
     //   • `browser` → the `.ts` source for browser/source test workflows
     //   • `node`    → the per-component SSR build `<name>.schema.js`
     //   • `svelte`  → the `.ts` source (so browser Svelte tooling resolves source)
+    //   • `import`  → the `.ts` source for Vite/esbuild optimizeDeps
     //   • `default` → the per-component browser build `<name>.schema.js`
     //
     // The build (scripts/build.ts) compiles each `<name>.schema.ts` /
@@ -435,6 +448,7 @@ export function computeExports(
       browser: `${srcDir}/${name}.schema.ts`,
       svelte: `${srcDir}/${name}.schema.ts`,
       node: `${serverDistDir}/${name}.schema.js`,
+      import: `${srcDir}/${name}.schema.ts`,
       default: `${distDir}/${name}.schema.js`,
     });
     out[`${prefix}/variables`] = orderedExportEntry({
@@ -442,6 +456,7 @@ export function computeExports(
       browser: `${srcDir}/${name}.variables.ts`,
       svelte: `${srcDir}/${name}.variables.ts`,
       node: `${serverDistDir}/${name}.variables.js`,
+      import: `${srcDir}/${name}.variables.ts`,
       default: `${distDir}/${name}.variables.js`,
     });
 

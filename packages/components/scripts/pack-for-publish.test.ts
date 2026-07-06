@@ -351,8 +351,12 @@ describe('buildPublishedManifest', () => {
   it('strips TypeScript syntax from staged .svelte.ts modules while preserving runes', () => {
     const source = [
       "import type { Snippet } from 'svelte';",
+      "import { classNames } from './class-names.ts';",
+      "type ResizeCallback = import('./use-resize-observer.types.ts').ResizeCallback;",
       'export function createState(label: string): { value: string } {',
+      '  const callback: ResizeCallback | null = null;',
       '  let value = $state(label);',
+      '  void callback;',
       '  return {',
       '    get value() {',
       '      return value;',
@@ -366,6 +370,8 @@ describe('buildPublishedManifest', () => {
     expect(transformed).not.toContain('import type');
     expect(transformed).not.toContain(': string');
     expect(transformed).not.toContain(': { value: string }');
+    expect(transformed).not.toContain("import('./use-resize-observer.types.ts')");
+    expect(transformed).toContain("import { classNames } from './class-names.ts';");
     expect(transformed).toContain('$state(label)');
     expect(transformed).toContain('export function createState(label)');
   });
