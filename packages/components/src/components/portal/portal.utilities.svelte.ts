@@ -114,18 +114,22 @@ function observeInheritedPortalAttributes(
   const observer = new MutationObserver(() => {
     copyInheritedPortalAttributes(element, source, inheritAttributes, fallbackAttributes);
   });
-  const observedElements: HTMLElement[] = [];
-
-  function observe(elementToObserve: HTMLElement | null | undefined, attributeFilter: string[]) {
+  function observe(elementToObserve: HTMLElement | null | undefined) {
     if (!elementToObserve || observedElements.includes(elementToObserve)) return;
     observedElements.push(elementToObserve);
-    observer.observe(elementToObserve, { attributes: true, attributeFilter });
+    observer.observe(elementToObserve, {
+      attributes: true,
+      attributeFilter: ['dir', 'data-theme', 'data-cinder-theme'],
+    });
   }
+  const observedElements: HTMLElement[] = [];
 
-  observe(source.closest<HTMLElement>('[dir]'), ['dir']);
-  observe(source.closest<HTMLElement>('[data-theme]'), ['data-theme']);
-  observe(source.closest<HTMLElement>('[data-cinder-theme]'), ['data-cinder-theme']);
-  observe(document.documentElement, ['dir', 'data-theme', 'data-cinder-theme']);
+  let ancestor: HTMLElement | null = source;
+  while (ancestor) {
+    observe(ancestor);
+    ancestor = ancestor.parentElement;
+  }
+  observe(document.documentElement);
 
   return () => observer.disconnect();
 }

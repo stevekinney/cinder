@@ -161,6 +161,7 @@ describe('Portal', () => {
 
   test('keeps inherited portal theme attributes synchronized while mounted', async () => {
     document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute('dir', 'ltr');
 
     render(Portal, {
       props: {
@@ -177,6 +178,31 @@ describe('Portal', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(wrapper?.getAttribute('data-theme')).toBe('light');
+  });
+
+  test('follows scoped theme additions on source ancestors while mounted', async () => {
+    const scopedAncestor = document.createElement('section');
+    const mountPoint = document.createElement('div');
+    scopedAncestor.appendChild(mountPoint);
+    document.body.appendChild(scopedAncestor);
+
+    const { container } = render(Portal, {
+      target: mountPoint,
+      props: {
+        children: childSnippet,
+      },
+    });
+    scopedAncestor.appendChild(container);
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.hasAttribute('data-theme')).toBe(false);
+
+    scopedAncestor.setAttribute('data-theme', 'dark');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
   });
 
   test('preserves a protected computed direction over inherited auto direction', () => {
