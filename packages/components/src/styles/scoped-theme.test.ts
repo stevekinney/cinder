@@ -186,21 +186,15 @@ describe('scoped theme tokens', () => {
     expect(buttonCss).toContain('border-color: var(--cinder-color-danger-border);');
   });
 
-  test('foundation recomputes scoped focus and Shiki dark overrides', async () => {
+  test('foundation recomputes scoped focus and scoped Shiki dark overrides', async () => {
     const foundationCss = await readFile(FOUNDATION_CSS_PATH, 'utf8');
 
     expect(foundationCss).toContain("[data-theme='dark'],\n[data-theme='light']");
-    expect(
-      extractRuleBlock(
-        foundationCss,
-        "[data-theme='dark'] .cinder-code-block :where(pre.shiki) span",
-      ),
-    ).toContain('color: var(--shiki-dark, inherit) !important;');
-    expect(
-      extractRuleBlock(
-        foundationCss,
-        "[data-theme='light'] .cinder-code-block :where(pre.shiki) span",
-      ),
-    ).toContain('color: var(--shiki-light, inherit) !important;');
+    expect(foundationCss).toContain("[data-theme='dark']");
+    expect(foundationCss).toContain(
+      "span:not([data-theme='dark'] [data-theme='light'] .cinder-code-block :where(pre.shiki) span)",
+    );
+    expect(foundationCss).toContain('color: var(--shiki-dark, inherit) !important;');
+    expect(foundationCss).not.toContain('--shiki-light');
   });
 });

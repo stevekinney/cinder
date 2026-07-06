@@ -103,6 +103,33 @@ export function copyInheritedPortalAttributes(
   }
 }
 
+function observeInheritedPortalAttributes(
+  element: HTMLElement,
+  source: HTMLElement | null | undefined,
+  inheritAttributes: boolean,
+  fallbackAttributes: { dir: string | null; dataTheme: string | null; theme: string | null },
+): (() => void) | null {
+  if (!inheritAttributes || !source || typeof MutationObserver === 'undefined') return null;
+
+  const observer = new MutationObserver(() => {
+    copyInheritedPortalAttributes(element, source, inheritAttributes, fallbackAttributes);
+  });
+  const observedElements: HTMLElement[] = [];
+
+  function observe(elementToObserve: HTMLElement | null | undefined, attributeFilter: string[]) {
+    if (!elementToObserve || observedElements.includes(elementToObserve)) return;
+    observedElements.push(elementToObserve);
+    observer.observe(elementToObserve, { attributes: true, attributeFilter });
+  }
+
+  observe(source.closest<HTMLElement>('[dir]'), ['dir']);
+  observe(source.closest<HTMLElement>('[data-theme]'), ['data-theme']);
+  observe(source.closest<HTMLElement>('[data-cinder-theme]'), ['data-cinder-theme']);
+  observe(document.documentElement, ['dir', 'data-theme', 'data-cinder-theme']);
+
+  return () => observer.disconnect();
+}
+
 export function createPortalAttachment(
   options: PortalAttachmentOptions = {},
 ): Attachment<HTMLElement> {
@@ -141,6 +168,7 @@ export function createPortalAttachment(
     // detaches the previous mount before re-resolving — this guards against the wrapper being
     // stranded in the old target when `target` changes or `disabled` flips true.
     $effect(() => {
+      let stopObservingInheritedAttributes: (() => void) | null = null;
       const disabled = readOption(options.disabled ?? false);
       const inheritAttributes = readOption(options.inheritAttributes ?? true);
       const targetValue = readOption(options.target ?? null);
@@ -149,6 +177,12 @@ export function createPortalAttachment(
 
       if (!disabled && resolved?.kind === 'resolved') {
         copyInheritedPortalAttributes(
+          element,
+          attributeSource,
+          inheritAttributes,
+          initialAttributes,
+        );
+        stopObservingInheritedAttributes = observeInheritedPortalAttributes(
           element,
           attributeSource,
           inheritAttributes,
@@ -174,6 +208,7 @@ export function createPortalAttachment(
       }
 
       return () => {
+        stopObservingInheritedAttributes?.();
         // Idempotent: only remove if still connected somewhere. Tolerates external removal of the
         // wrapper between mount and cleanup. The anchor stays put so the next re-run can reinsert.
         if (element.isConnected) {

@@ -76,12 +76,11 @@
     0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
 }
 
-[data-theme='dark'] .cinder-code-block :where(pre.shiki) span {
+[data-theme='dark']
+  .cinder-code-block
+  :where(pre.shiki)
+  span:not([data-theme='dark'] [data-theme='light'] .cinder-code-block :where(pre.shiki) span) {
   color: var(--shiki-dark, inherit) !important;
-}
-
-[data-theme='light'] .cinder-code-block :where(pre.shiki) span {
-  color: var(--shiki-light, inherit) !important;
 }
 
 :focus-visible {

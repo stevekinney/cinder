@@ -23,6 +23,8 @@ afterEach(() => {
   // Unmount rendered components (runs Svelte teardown) before clearing the DOM —
   // replaceChildren() alone removes nodes but leaks component effects/subscriptions.
   cleanup();
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('data-cinder-theme');
   document.body.replaceChildren();
 });
 
@@ -155,6 +157,26 @@ describe('Portal', () => {
     expect(element.getAttribute('dir')).toBe('ltr');
     expect(element.hasAttribute('data-theme')).toBe(false);
     expect(element.hasAttribute('data-cinder-theme')).toBe(false);
+  });
+
+  test('keeps inherited portal theme attributes synchronized while mounted', async () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+
+    render(Portal, {
+      props: {
+        children: childSnippet,
+      },
+    });
+
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    document.documentElement.setAttribute('data-theme', 'light');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('light');
   });
 
   test('preserves a protected computed direction over inherited auto direction', () => {
