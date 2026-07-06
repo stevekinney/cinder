@@ -34,10 +34,9 @@ for (const theme of THEMES) {
         viewport,
       });
 
-      // The example's editor id is namespaced per mount (#399), so this test
-      // locates the editor by its component wrapper class instead of a hardcoded
-      // id. Snapshot mode renders exactly one example, so the wrapper is unique.
-      const editorWrapper = page.locator('.markdown-editor-wrapper').first();
+      // The editor id is namespaced per mount (#399), so this scopes to the
+      // stable scenario container before locating the component wrapper.
+      const editorWrapper = page.locator('#example-mount-basic .markdown-editor-wrapper');
       await expect(editorWrapper).toBeVisible();
 
       const toolbarWrapper = editorWrapper.locator('.editor-toolbar-wrapper');
