@@ -5066,7 +5066,7 @@
       "exportName": "Steps",
       "category": "navigation",
       "status": "stable",
-      "purpose": "Ordered progress indicator that visualizes a fixed sequence of steps with completed, current, and upcoming states.",
+      "purpose": "Ordered progress indicator that visualizes a fixed sequence of steps with completed, current, skipped, and upcoming states.",
       "tags": ["navigation", "progress"],
       "useWhen": [
         "Walking the user through a multi-step wizard or checkout flow with strict ordering.",

@@ -3,7 +3,7 @@
    * @cinder
    * @category navigation
    * @status stable
-   * @purpose Ordered progress indicator that visualizes a fixed sequence of steps with completed, current, and upcoming states.
+   * @purpose Ordered progress indicator that visualizes a fixed sequence of steps with completed, current, skipped, and upcoming states.
    * @tag navigation
    * @tag progress
    * @useWhen Walking the user through a multi-step wizard or checkout flow with strict ordering.
@@ -12,11 +12,11 @@
    * @avoidWhen Showing ancestor hierarchy of the current page — use breadcrumbs instead.
    * @related tabs, breadcrumbs, pagination
    */
-  export type { StepItem, StepsOrientation, StepsProps } from './steps.types.ts';
+  export type { StepItem, StepItemState, StepsOrientation, StepsProps } from './steps.types.ts';
 </script>
 
 <script lang="ts">
-  import type { StepsProps } from './steps.types.ts';
+  import type { StepItemState, StepsProps } from './steps.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Check from 'lucide-svelte/icons/check';
 
@@ -26,6 +26,7 @@
     orientation = 'horizontal',
     label = 'Progress',
     completedLabel = 'Completed',
+    skippedLabel = 'Skipped',
     class: className,
   }: StepsProps = $props();
 
@@ -33,10 +34,9 @@
     steps.length === 0 ? undefined : Math.max(0, Math.min(steps.length, currentStep)),
   );
 
-  type StepState = 'complete' | 'current' | 'upcoming';
-
-  const stepStates = $derived<StepState[]>(
-    steps.map((_, index) => {
+  const stepStates = $derived<StepItemState[]>(
+    steps.map((step, index) => {
+      if (step.state !== undefined) return step.state;
       if (clampedCurrent === undefined) return 'upcoming';
       if (index < clampedCurrent) return 'complete';
       if (index === clampedCurrent) return 'current';
@@ -52,7 +52,7 @@
 >
   <ol class="cinder-steps__list">
     {#each steps as step, index (step.id)}
-      {@const state = stepStates[index]}
+      {@const state = stepStates[index] ?? 'upcoming'}
       {@const isCurrent = state === 'current'}
       {@const isComplete = state === 'complete'}
       {@const hasHref = step.href !== undefined}
@@ -78,7 +78,7 @@
             onclick={step.onclick}
             aria-current={isCurrent ? 'step' : undefined}
           >
-            {@render stepBody(stepLabel, stepDescription, isComplete, completedLabel)}
+            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
           </a>
         {:else if step.onclick}
           <button
@@ -87,11 +87,11 @@
             onclick={step.onclick}
             aria-current={isCurrent ? 'step' : undefined}
           >
-            {@render stepBody(stepLabel, stepDescription, isComplete, completedLabel)}
+            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
           </button>
         {:else}
           <span class="cinder-steps__body">
-            {@render stepBody(stepLabel, stepDescription, isComplete, completedLabel)}
+            {@render stepBody(stepLabel, stepDescription, state, completedLabel, skippedLabel)}
           </span>
         {/if}
         {#if index < steps.length - 1}
@@ -109,12 +109,16 @@
 {#snippet stepBody(
   bodyLabel: string,
   bodyDescription: string | undefined,
-  bodyIsComplete: boolean,
+  bodyState: StepItemState,
   bodyCompletedLabel: string,
+  bodySkippedLabel: string,
 )}
   <span class="cinder-steps__body-content">
-    {#if bodyIsComplete}
+    {#if bodyState === 'complete'}
       <span class="cinder-steps__sr-only">{bodyCompletedLabel}</span>
+      <span class="cinder-steps__sr-only-separator"> </span>
+    {:else if bodyState === 'skipped'}
+      <span class="cinder-steps__sr-only">{bodySkippedLabel}</span>
       <span class="cinder-steps__sr-only-separator"> </span>
     {/if}
     <span class="cinder-steps__label">{bodyLabel}</span>

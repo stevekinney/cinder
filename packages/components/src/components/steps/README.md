@@ -41,6 +41,22 @@ SPA routing interception, analytics, or confirmation). For the current step,
 `aria-current="step"` moves onto the interactive element; static steps keep it
 on the list item.
 
+## Skipped steps
+
+By default, state is derived from `currentStep`: earlier steps are complete,
+the matching index is current, and later steps are upcoming. Set
+`state: 'skipped'` on a `StepItem` when a flow advances past a step without
+completing it. Skipped steps keep their numeric marker, use neutral styling,
+and announce the `skippedLabel` text instead of the completed label.
+
+```svelte
+const steps = [
+  { id: 'account', label: 'Account' },
+  { id: 'profile', label: 'Profile', state: 'skipped' },
+  { id: 'review', label: 'Review' },
+];
+```
+
 ## Props
 
 <!-- generated:props:start -->
@@ -52,6 +68,7 @@ on the list item.
 | `currentStep`    | `number`                       | yes      | —       | Zero-based index of the active step. Steps with index < currentStep are "completed". Pass `steps.length` to mark every step as complete (terminal "done" state). |
 | `label`          | `string`                       | no       | —       | Accessible name for the wrapping nav landmark. Defaults to 'Progress'.                                                                                           |
 | `orientation`    | `"horizontal"` \| `"vertical"` | no       | —       | Layout direction. Defaults to 'horizontal'.                                                                                                                      |
+| `skippedLabel`   | `string`                       | no       | —       | Visually-hidden text prepended to skipped steps so screen readers announce state + label. Defaults to 'Skipped'.                                                 |
 | `steps`          | `(opaque)`                     | yes      | —       | Ordered list of step entries from first to last. Not expressible in JSON Schema; see the component types for the signature.                                      |
 
 <!-- generated:props:end -->

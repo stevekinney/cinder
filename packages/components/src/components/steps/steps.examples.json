@@ -16,6 +16,12 @@
       "code": "<script lang=\"ts\">\n  import { Steps } from '@lostgradient/cinder/steps';\n  import type { StepItem } from '@lostgradient/cinder/steps';\n\n  let current = $state(1);\n\n  const steps: StepItem[] = [\n    { id: 'account', label: 'Account', description: 'Create your login', href: '#account' },\n    {\n      id: 'profile',\n      label: 'Profile',\n      description: 'Jump back to edit',\n      onclick: () => (current = 1),\n    },\n    { id: 'review', label: 'Review', description: 'Confirm and submit' },\n  ];\n</script>\n\n<Steps {steps} currentStep={current} label=\"Onboarding\" />\n"
     },
     {
+      "id": "skipped",
+      "title": "Skipped step",
+      "description": "Use `state: \"skipped\"` when a flow advances past a step without completing it.",
+      "code": "<script lang=\"ts\">\n  import { Steps } from '@lostgradient/cinder/steps';\n  import type { StepItem } from '@lostgradient/cinder/steps';\n\n  const steps: StepItem[] = [\n    { id: 'account', label: 'Account', description: 'Create your login' },\n    {\n      id: 'profile',\n      label: 'Profile',\n      description: 'Optional details were skipped',\n      state: 'skipped',\n    },\n    { id: 'review', label: 'Review', description: 'Confirm and submit' },\n  ];\n</script>\n\n<Steps {steps} currentStep={2} label=\"Onboarding\" />\n"
+    },
+    {
       "id": "vertical",
       "title": "Vertical orientation",
       "description": "Set `orientation=\"vertical\"` to stack the steps top-to-bottom with the connector running down the side — useful in narrow side panels or wizards.",

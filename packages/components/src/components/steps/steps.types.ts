@@ -1,4 +1,5 @@
 export type StepsOrientation = 'horizontal' | 'vertical';
+export type StepItemState = 'complete' | 'current' | 'upcoming' | 'skipped';
 export type StepItem = {
   /** Stable identifier used as the keyed-each key. Must be unique. */
   id: string;
@@ -6,6 +7,12 @@ export type StepItem = {
   label: string;
   /** Optional secondary text shown beneath the label. */
   description?: string;
+  /**
+   * Optional state override for this step. When omitted, state is derived from
+   * `currentStep`. Use `skipped` for a past step that was advanced past without
+   * completing.
+   */
+  state?: StepItemState;
   /**
    * When set, the step body renders as a link (`<a>`) to this href. The marker
    * and connector stay decorative; only the body (label + description) is the
@@ -37,6 +44,11 @@ export type StepsProps = {
    * announce state + label. Defaults to 'Completed'.
    */
   completedLabel?: string;
+  /**
+   * Visually-hidden text prepended to skipped steps so screen readers announce
+   * state + label. Defaults to 'Skipped'.
+   */
+  skippedLabel?: string;
   /** Additional class names merged with `.cinder-steps`. */
   class?: string;
 };

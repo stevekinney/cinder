@@ -113,6 +113,31 @@ describe('Steps', () => {
     expect(firstItem?.textContent).toMatch(/Finished\s+Set up profile/);
   });
 
+  test('explicit skipped steps do not inherit completed styling or completed accessible text', () => {
+    const { container } = render(Steps, {
+      steps: [
+        { id: 'a', label: 'Account' },
+        { id: 'b', label: 'Optional profile', state: 'skipped' },
+        { id: 'c', label: 'Review' },
+      ],
+      currentStep: 2,
+      skippedLabel: 'Skipped',
+    });
+
+    const items = Array.from(container.querySelectorAll('.cinder-steps__item'));
+    expect(items.map((item) => item.getAttribute('data-cinder-state'))).toEqual([
+      'complete',
+      'skipped',
+      'current',
+    ]);
+
+    const skipped = items[1];
+    expect(skipped?.querySelector('.cinder-steps__check')).toBeNull();
+    expect(skipped?.querySelector('.cinder-steps__index')?.textContent).toBe('2');
+    expect(skipped?.textContent).not.toContain('Completed');
+    expect(skipped?.textContent).toMatch(/Skipped\s+Optional profile/);
+  });
+
   test('orientation prop drives layout via data-cinder-orientation', () => {
     const { container: hContainer } = render(Steps, {
       steps: defaultSteps,
