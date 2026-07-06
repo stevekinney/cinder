@@ -190,14 +190,9 @@ describe('scoped theme tokens', () => {
     const foundationCss = await readFile(FOUNDATION_CSS_PATH, 'utf8');
 
     expect(foundationCss).toContain("[data-theme='dark'],\n[data-theme='light']");
+    expect(foundationCss).toContain("@scope ([data-theme='dark']) to ([data-theme='light'])");
     expect(foundationCss).toContain(
-      "[data-theme='dark'] {\n  --_cinder-shiki-token-color: var(--shiki-dark, inherit);",
-    );
-    expect(foundationCss).toContain(
-      "[data-theme='light'] {\n  --_cinder-shiki-token-color: var(--_cinder-shiki-preserve-inline-color);",
-    );
-    expect(foundationCss).toContain(
-      '.cinder-code-block :where(pre.shiki) span {\n  color: var(--_cinder-shiki-token-color) !important;',
+      '.cinder-code-block :where(pre.shiki) span {\n    color: var(--shiki-dark, inherit) !important;',
     );
     expect(foundationCss).not.toContain('--shiki-light');
   });

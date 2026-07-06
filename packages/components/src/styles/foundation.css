@@ -76,16 +76,10 @@
     0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
 }
 
-[data-theme='dark'] {
-  --_cinder-shiki-token-color: var(--shiki-dark, inherit);
-}
-
-[data-theme='light'] {
-  --_cinder-shiki-token-color: var(--_cinder-shiki-preserve-inline-color);
-}
-
-.cinder-code-block :where(pre.shiki) span {
-  color: var(--_cinder-shiki-token-color) !important;
+@scope ([data-theme='dark']) to ([data-theme='light']) {
+  .cinder-code-block :where(pre.shiki) span {
+    color: var(--shiki-dark, inherit) !important;
+  }
 }
 
 :focus-visible {
