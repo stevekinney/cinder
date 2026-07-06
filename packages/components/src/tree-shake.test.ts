@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
@@ -25,6 +25,31 @@ const FORBIDDEN_CHAT_SERVER_BUNDLE_STRINGS = [
   'remark-gfm',
   'shiki/wasm',
 ] as const;
+
+async function collectRelativeJavaScriptGraph(entrypoint: string): Promise<string[]> {
+  const visited = new Set<string>();
+  const texts: string[] = [];
+  const pending = [entrypoint];
+  const relativeImportPattern =
+    /(?:import\s*(?:[^'"]*?\sfrom\s*)?|export\s*[^'"]*?\sfrom\s*)["'](\.{1,2}\/[^"']+\.js)["']/g;
+
+  while (pending.length > 0) {
+    const filePath = pending.pop();
+    if (filePath === undefined || visited.has(filePath)) continue;
+    visited.add(filePath);
+
+    const text = await Bun.file(filePath).text();
+    texts.push(text);
+
+    for (const match of text.matchAll(relativeImportPattern)) {
+      const specifier = match[1];
+      if (specifier === undefined) continue;
+      pending.push(resolve(dirname(filePath), specifier));
+    }
+  }
+
+  return texts;
+}
 
 describe('tree-shake contract', () => {
   async function createTemporaryFixtureDirectory(prefix: string): Promise<string> {
@@ -71,43 +96,18 @@ describe('tree-shake contract', () => {
   });
 
   test('a minimal cinder/chat SSR bundle does not include editor or markdown rendering peers', async () => {
-    const temporaryDirectory = await createTemporaryFixtureDirectory('cinder-chat-ssr-');
-    const entrypoint = join(temporaryDirectory, 'tree-shake-chat-ssr-fixture.ts');
-    const chatSourceEntrypoint = relative(
-      temporaryDirectory,
-      join(process.cwd(), 'src/components/chat/index.ts'),
-    );
+    const packageManifest = (await Bun.file(join(process.cwd(), 'package.json')).json()) as {
+      exports?: Record<string, { node?: string }>;
+    };
+    const chatNodeExport = packageManifest.exports?.['./chat']?.node;
+    expect(chatNodeExport).toBe('./dist/server/components/chat/index.js');
+    const entrypoint = join(process.cwd(), chatNodeExport ?? '');
 
-    await Bun.write(
-      entrypoint,
-      [
-        `import Chat from ${JSON.stringify(chatSourceEntrypoint)};`,
-        'const componentReference = Chat;',
-        'console.log(typeof componentReference);',
-        '',
-      ].join('\n'),
-    );
+    const outputTexts = await collectRelativeJavaScriptGraph(entrypoint);
+    const bundledText = outputTexts.join('\n');
 
-    try {
-      const result = await Bun.build({
-        entrypoints: [entrypoint],
-        target: 'node',
-        format: 'esm',
-        conditions: ['svelte'],
-        plugins: [sveltePlugin({ generate: 'server' })],
-      });
-
-      expect(result.success).toBe(true);
-
-      const outputTexts = await Promise.all(result.outputs.map(async (output) => output.text()));
-      const bundledText = outputTexts.join('\n');
-
-      for (const forbidden of FORBIDDEN_CHAT_SERVER_BUNDLE_STRINGS) {
-        expect(bundledText).not.toContain(forbidden);
-      }
-    } finally {
-      await Bun.file(entrypoint).delete();
-      await rm(temporaryDirectory, { recursive: true, force: true });
+    for (const forbidden of FORBIDDEN_CHAT_SERVER_BUNDLE_STRINGS) {
+      expect(bundledText).not.toContain(forbidden);
     }
   });
 });
