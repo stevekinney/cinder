@@ -53,6 +53,7 @@ describe('review-editor public entrypoint', () => {
       browser: './src/components/review-editor/index.ts',
       node: './dist/server/components/review-editor/index.js',
       svelte: './src/components/review-editor/index.ts',
+      import: './src/components/review-editor/index.ts',
       default: './dist/components/review-editor/index.js',
     });
     expect(ReviewEditor).toBeDefined();
