@@ -1,5 +1,21 @@
 # @lostgradient/cinder
 
+## 0.6.0
+
+### Minor Changes
+
+- [#638](https://github.com/stevekinney/cinder/pull/638) [`f0a6ac2`](https://github.com/stevekinney/cinder/commit/f0a6ac23c75a2ee8361f27a67649418452d550c3) Thanks [@stevekinney](https://github.com/stevekinney)! - Move rich editor, markdown rendering, and syntax-highlighting packages out of the base install path. Styles-only and lightweight component consumers no longer install Milkdown, ProseMirror, Shiki, remark, or rehype trees unless they opt into the rich feature surfaces.
+
+  Consumers importing `@lostgradient/cinder/chat` with the default composer, `@lostgradient/cinder/markdown-editor`, `@lostgradient/cinder/review-editor`, `@lostgradient/cinder/markdown`, `@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`, `@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`, `@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relying on `Chat` built-in markdown/tool message rendering or `CodeBlock` automatic highlighting should install the listed optional peer dependencies, including the public markdown AST type packages, for those rich features. `MarkdownEditor` and `ReviewEditor` are now subpath-only imports so the root barrel can stay usable without rich optional peers.
+
+### Patch Changes
+
+- [#646](https://github.com/stevekinney/cinder/pull/646) [`a5dc7c0`](https://github.com/stevekinney/cinder/commit/a5dc7c04cee27f18b20470f3d6edc669fcb9045e) Thanks [@stevekinney](https://github.com/stevekinney)! - Add `ActionRow`, a selectable full-width button row primitive for master-detail lists, timelines, and sidebar selection surfaces.
+
+- [#642](https://github.com/stevekinney/cinder/pull/642) [`a51a733`](https://github.com/stevekinney/cinder/commit/a51a733c8ef7a48719bded3b64c9e876ea2d68e5) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep the collapsible NavigationBar menu toggle grouped with trailing actions on narrow bars.
+
+- [#643](https://github.com/stevekinney/cinder/pull/643) [`5322ca3`](https://github.com/stevekinney/cinder/commit/5322ca376874cf637b8bbb4649aa78b02fedd7e4) Thanks [@stevekinney](https://github.com/stevekinney)! - Add SourceDiffViewer for bounded, accessible unified source patches.
+
 ## 0.5.0
 
 ### Minor Changes
