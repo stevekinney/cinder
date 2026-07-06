@@ -37,7 +37,7 @@ for (const theme of THEMES) {
       // The example's editor id is namespaced per mount (#399), so this test
       // locates the editor by its component wrapper class instead of a hardcoded
       // id. Snapshot mode renders exactly one example, so the wrapper is unique.
-      const editorWrapper = page.locator('.markdown-editor-wrapper');
+      const editorWrapper = page.locator('.markdown-editor-wrapper').first();
       await expect(editorWrapper).toBeVisible();
 
       const toolbarWrapper = editorWrapper.locator('.editor-toolbar-wrapper');
@@ -106,6 +106,61 @@ for (const theme of THEMES) {
     });
   }
 }
+
+test('MarkdownEditor settings card keeps toolbar and raw mode usable in a constrained column', async ({
+  componentPage,
+}) => {
+  const page = await componentPage.open({
+    entry: markdownEditorEntry,
+    theme: 'light',
+    viewport: VIEWPORTS.find((viewport) => viewport.name === 'tablet')!,
+  });
+
+  const settingsCard = page.getByTestId('markdown-editor-settings-card');
+  await expect(settingsCard).toBeVisible();
+
+  const editorWrapper = settingsCard.locator('.markdown-editor-wrapper');
+  await expect(editorWrapper).toBeVisible();
+
+  const toolbarWrapper = editorWrapper.locator('.editor-toolbar-wrapper');
+  const toolbar = toolbarWrapper.locator('.editor-toolbar');
+  const modeToggle = toolbarWrapper.getByRole('radiogroup', { name: 'Editor mode' });
+  const sourceTextarea = editorWrapper.locator('textarea.markdown-editor.source-mode');
+
+  await expect(toolbar).toBeVisible();
+  await expect(modeToggle).toBeVisible();
+  await expect(sourceTextarea).toBeVisible();
+
+  const metrics = await toolbarWrapper.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      width: rect.width,
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+    };
+  });
+
+  expect(metrics.width).toBeGreaterThanOrEqual(600);
+  expect(metrics.width).toBeLessThanOrEqual(900);
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+
+  const toolbarBox = await toolbar.boundingBox();
+  const modeToggleBox = await modeToggle.boundingBox();
+  const textareaBox = await sourceTextarea.boundingBox();
+
+  expect(toolbarBox).not.toBeNull();
+  expect(modeToggleBox).not.toBeNull();
+  expect(textareaBox).not.toBeNull();
+
+  expectInsideContentBox(toolbarBox as Box, metrics);
+  expectInsideContentBox(modeToggleBox as Box, metrics);
+  expect(
+    (modeToggleBox as Box).y - ((toolbarBox as Box).y + (toolbarBox as Box).height),
+  ).toBeLessThanOrEqual(12);
+  expect((textareaBox as Box).height).toBeGreaterThanOrEqual(256);
+});
 
 test('MarkdownEditor names its ProseMirror textbox before accessibility checks run', async ({
   componentPage,

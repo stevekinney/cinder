@@ -759,12 +759,14 @@
        (see tokens-base.css), every region inside (toolbar wrapper, editor
        body) inherits — they must not redeclare `background:`. */
     background: var(--cinder-surface-raised);
+    container-name: cinder-markdown-editor;
+    container-type: inline-size;
   }
 
   /* Toolbar wrapper for extension points */
   .editor-toolbar-wrapper {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--cinder-space-2);
     /* The wrapper owns nested toolbar padding; EditorToolbar keeps standalone chrome. */
     padding: var(--cinder-space-2) var(--cinder-space-3);
@@ -774,8 +776,8 @@
   }
 
   .editor-toolbar-wrapper :global(.editor-toolbar) {
-    flex: 1 1 auto;
-    min-width: min(16rem, 100%);
+    flex: 1 1 32rem;
+    min-width: min(20rem, 100%);
     padding: 0;
     border: 0;
     border-radius: 0;
@@ -784,9 +786,12 @@
      * rule in editor-toolbar.svelte cannot cross the component boundary, so
      * we override here where the rendered element lives. */
     flex-wrap: wrap;
+    row-gap: var(--cinder-space-1);
   }
 
   .toolbar-mode-toggle {
+    display: flex;
+    justify-content: flex-end;
     flex: 0 0 auto;
     margin-inline-start: auto;
   }
@@ -846,6 +851,22 @@
     /* Use flex: 1 instead of height: 100% for consistent sizing with WYSIWYG mode */
     flex: 1;
     color: var(--cinder-text);
+    min-height: max(var(--editor-min-height), 16rem);
+  }
+
+  @container cinder-markdown-editor (max-width: 42rem) {
+    .editor-toolbar-wrapper :global(.editor-toolbar) {
+      flex-basis: 100%;
+    }
+
+    .editor-toolbar-wrapper :global(.toolbar-separator) {
+      display: none;
+    }
+
+    .toolbar-mode-toggle {
+      flex-basis: 100%;
+      margin-inline-start: 0;
+    }
   }
 
   textarea.markdown-editor.source-mode::placeholder {
