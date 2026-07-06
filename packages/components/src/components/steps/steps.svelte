@@ -36,10 +36,10 @@
 
   const stepStates = $derived<StepItemState[]>(
     steps.map((step, index) => {
-      if (step.state === 'skipped') return 'skipped';
       if (clampedCurrent === undefined) return 'upcoming';
-      if (index < clampedCurrent) return 'complete';
       if (index === clampedCurrent) return 'current';
+      if (step.state === 'skipped' && index < clampedCurrent) return 'skipped';
+      if (index < clampedCurrent) return 'complete';
       return 'upcoming';
     }),
   );

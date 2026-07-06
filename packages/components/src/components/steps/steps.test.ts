@@ -138,12 +138,13 @@ describe('Steps', () => {
     expect(skipped?.textContent).toMatch(/Skipped\s+Optional profile/);
   });
 
-  test('state override only honors skipped so currentStep remains authoritative', () => {
+  test('state override only honors skipped after currentStep marks past/current states', () => {
     const { container } = render(Steps, {
       steps: [
         { id: 'a', label: 'Account' },
-        { id: 'b', label: 'Profile', state: 'current' },
-        { id: 'c', label: 'Review' },
+        { id: 'b', label: 'Profile', state: 'skipped' },
+        { id: 'c', label: 'Review', state: 'skipped' },
+        { id: 'd', label: 'Confirm', state: 'current' as never },
       ],
       currentStep: 2,
     });
@@ -151,8 +152,9 @@ describe('Steps', () => {
     const items = Array.from(container.querySelectorAll('.cinder-steps__item'));
     expect(items.map((item) => item.getAttribute('data-cinder-state'))).toEqual([
       'complete',
-      'complete',
+      'skipped',
       'current',
+      'upcoming',
     ]);
     expect(container.querySelectorAll('[aria-current="step"]').length).toBe(1);
     expect(container.querySelector('[aria-current="step"]')?.textContent).toContain('Review');

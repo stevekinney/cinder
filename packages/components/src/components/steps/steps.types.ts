@@ -12,7 +12,7 @@ export type StepItem = {
    * `currentStep`. Use `skipped` for a past step that was advanced past without
    * completing.
    */
-  state?: StepItemState;
+  state?: 'skipped';
   /**
    * When set, the step body renders as a link (`<a>`) to this href. The marker
    * and connector stay decorative; only the body (label + description) is the
