@@ -25,7 +25,7 @@ That tells the browser cinder supports both schemes _and_ that the active one sh
 
 To override the OS preference, cinder ships two equivalent paths. Pick one and stick with it inside a given app:
 
-- **`data-theme` attribute**: set `data-theme="light"` or `data-theme="dark"` on `:root` (or any ancestor of the styled element). Cinder's stylesheet maps those attributes to `color-scheme` and pins the core semantic surface, text, border, overlay, interaction, status, and control tokens inside non-root `[data-theme]` scopes:
+- **`data-theme` attribute**: set `data-theme="light"` or `data-theme="dark"` on `:root` (or any ancestor of the styled element). Cinder's stylesheet maps those attributes to `color-scheme` and pins the core semantic surface, text, border, overlay, interaction, status, and control tokens wherever the `[data-theme]` selector matches, including scoped subtree themes:
 
   ```css
   :root[data-theme='dark'] {
@@ -59,7 +59,7 @@ To override the OS preference, cinder ships two equivalent paths. Pick one and s
 The toggle recipe below uses `data-theme` because it's a single attribute mutation, plays nicely with CSS selectors elsewhere in your app, and doesn't leave inline styles lying around after the component unmounts.
 
 > [!NOTE]
-> The non-root `[data-theme]` selectors mean you can scope a theme override to a subtree — for example, a dark-themed navigation region embedded in an otherwise-light page. Cinder redeclares the core semantic tokens in that subtree, so components such as `Sidebar` and `Drawer` inherit the local dark surface, text, border, active, focus, and variant-control values without app-level token pinning. Nested `[data-theme='light']` scopes can switch those tokens back for a light island. If your app globally replaces Cinder's public tokens for custom branding, repeat those brand overrides in the scoped selector that should use them.
+> Because these `[data-theme]` selectors are not limited to `:root`, you can scope a theme override to a subtree — for example, a dark-themed navigation region embedded in an otherwise-light page. Cinder redeclares the core semantic tokens in that subtree, so components such as `Sidebar` and `Drawer` inherit the local dark surface, text, border, active, focus, and variant-control values without app-level token pinning. Nested `[data-theme='light']` scopes can switch those tokens back for a light island. If your app globally replaces Cinder's public tokens for custom branding, repeat those brand overrides in the scoped selector that should use them.
 
 ## Minimal Svelte toggle
 
