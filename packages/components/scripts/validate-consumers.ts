@@ -322,7 +322,7 @@ function assertPackedExportConditionOrder(
     fail(`packed exports["${exportKey}"] must be a conditional export object`);
   }
 
-  const expectedOrder = ['types', 'browser', 'node', 'svelte', 'default'];
+  const expectedOrder = ['types', 'browser', 'node', 'svelte', 'import', 'default'];
   const actualOrder = Object.keys(entry);
   if (actualOrder.join(',') !== expectedOrder.join(',')) {
     fail(

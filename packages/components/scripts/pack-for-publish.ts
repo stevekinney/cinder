@@ -33,6 +33,7 @@ import { existsSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 import { deriveUpstreamReexports, type UpstreamReexport } from './lib/derive-upstream-reexports.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
@@ -46,6 +47,7 @@ type ExportConditional = {
   browser?: string;
   svelte?: string;
   node?: string;
+  import?: string;
   default?: string;
 };
 
@@ -76,8 +78,6 @@ export type SourceMapReference = {
   line: number;
   reference: string;
 };
-
-const svelteTypeScriptTranspiler = new Bun.Transpiler({ loader: 'ts' });
 
 /**
  * Read the source manifest. Throws if the file is missing.
@@ -335,7 +335,13 @@ export function stripDanglingSourceMapUrlComments(
 }
 
 export function transpileSvelteTypeScriptModuleForPublish(source: string): string {
-  return svelteTypeScriptTranspiler.transformSync(source);
+  return ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ESNext,
+      verbatimModuleSyntax: true,
+    },
+  }).outputText;
 }
 
 export function transpileSvelteComponentScriptsForPublish(source: string): string {
@@ -343,7 +349,7 @@ export function transpileSvelteComponentScriptsForPublish(source: string): strin
     /<script(?<attributes>[^>]*)>(?<content>[\s\S]*?)<\/script>/gu,
     (match: string, attributes: string, content: string) => {
       if (!/\blang\s*=\s*["']ts["']/u.test(attributes)) return match;
-      const transformed = svelteTypeScriptTranspiler.transformSync(content).trimEnd();
+      const transformed = transpileSvelteTypeScriptModuleForPublish(content).trimEnd();
       return `<script${attributes}>${transformed.length > 0 ? `\n${transformed}\n` : '\n'}</script>`;
     },
   );
@@ -545,14 +551,25 @@ export async function packForPublish(): Promise<PackForPublishResult> {
 
 async function main(): Promise<void> {
   const { tarballPath } = await packForPublish();
-  process.stdout.write(`pack-for-publish — emitted ${tarballPath}\n`);
+  await new Promise<void>((resolve, reject) => {
+    process.stdout.write(`pack-for-publish — emitted ${tarballPath}\n`, (error) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 if (import.meta.main) {
-  main().catch((error: unknown) => {
+  try {
+    await main();
+    process.exit(0);
+  } catch (error: unknown) {
     console.error('pack-for-publish failed:', error);
     process.exit(1);
-  });
+  }
 }
 
 // Re-export helpers used by `validate-consumers.ts` invariants.
