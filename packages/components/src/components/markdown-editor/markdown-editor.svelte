@@ -643,89 +643,91 @@
   data-snapshot-mode={snapshotMode || undefined}
   {...rest}
 >
-  {#if toolbarVisible}
-    {#if toolbar}
-      <!-- Full custom toolbar override -->
-      {@render toolbar(toolbarContext)}
-    {:else}
-      <!-- Default toolbar with optional extension points -->
-      <div class="editor-toolbar-wrapper">
-        {#if toolbarLeading}
-          <div class="toolbar-leading">
-            {@render toolbarLeading(toolbarContext)}
-          </div>
-        {/if}
+  <div class="markdown-editor-layout">
+    {#if toolbarVisible}
+      {#if toolbar}
+        <!-- Full custom toolbar override -->
+        {@render toolbar(toolbarContext)}
+      {:else}
+        <!-- Default toolbar with optional extension points -->
+        <div class="editor-toolbar-wrapper">
+          {#if toolbarLeading}
+            <div class="toolbar-leading">
+              {@render toolbarLeading(toolbarContext)}
+            </div>
+          {/if}
 
-        <EditorToolbar
-          id={`${id}-toolbar`}
-          editorId={id}
-          {editorContext}
-          {activeMarks}
-          {activeBlockType}
-          {canUndo}
-          {canRedo}
-          {linkPopoverOpen}
-          disabled={!editorContext}
-          onLinkClick={handleLinkClick}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-        />
+          <EditorToolbar
+            id={`${id}-toolbar`}
+            editorId={id}
+            {editorContext}
+            {activeMarks}
+            {activeBlockType}
+            {canUndo}
+            {canRedo}
+            {linkPopoverOpen}
+            disabled={!editorContext}
+            onLinkClick={handleLinkClick}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+          />
 
-        {#if toolbarActions}
-          <div class="toolbar-actions">
-            {@render toolbarActions(toolbarContext)}
-          </div>
-        {/if}
+          {#if toolbarActions}
+            <div class="toolbar-actions">
+              {@render toolbarActions(toolbarContext)}
+            </div>
+          {/if}
 
-        {#if showModeToggle}
-          <div class="toolbar-mode-toggle">
-            <SegmentedControl
-              id={`${id}-mode-toggle`}
-              selectionMode="single"
-              size="sm"
-              bind:value={mode}
-              label={modeLabel}
-              hideLabel
-            >
-              <Segment value="wysiwyg">Rich</Segment>
-              <Segment value="source">Raw</Segment>
-            </SegmentedControl>
-          </div>
-        {/if}
-      </div>
+          {#if showModeToggle}
+            <div class="toolbar-mode-toggle">
+              <SegmentedControl
+                id={`${id}-mode-toggle`}
+                selectionMode="single"
+                size="sm"
+                bind:value={mode}
+                label={modeLabel}
+                hideLabel
+              >
+                <Segment value="wysiwyg">Rich</Segment>
+                <Segment value="source">Raw</Segment>
+              </SegmentedControl>
+            </div>
+          {/if}
+        </div>
+      {/if}
     {/if}
-  {/if}
 
-  {#if browser}
-    {#if mode === 'wysiwyg'}
-      <!-- eslint-disable-next-line svelte/no-unused-svelte-ignore -- ESLint doesn't see Svelte's a11y warning -->
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-      <div
-        {id}
-        class="cinder-markdown-content markdown-editor surface"
-        data-readonly={readonly || undefined}
-        style:--editor-placeholder="'{escapedPlaceholder}'"
-        role="application"
-        aria-label={accessibleEditorLabel}
-        tabindex="0"
-        {@attach editorAttachment}
-      ></div>
+    {#if browser}
+      {#if mode === 'wysiwyg'}
+        <!-- eslint-disable-next-line svelte/no-unused-svelte-ignore -- ESLint doesn't see Svelte's a11y warning -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div
+          {id}
+          class="cinder-markdown-content markdown-editor surface"
+          data-readonly={readonly || undefined}
+          style:--editor-placeholder="'{escapedPlaceholder}'"
+          role="application"
+          aria-label={accessibleEditorLabel}
+          tabindex="0"
+          {@attach editorAttachment}
+        ></div>
+      {:else}
+        <textarea
+          {id}
+          class="markdown-editor surface source-mode"
+          bind:value
+          oninput={(e) => onchange?.(e.currentTarget.value)}
+          {placeholder}
+          readonly={readonly || undefined}
+          aria-label={accessibleEditorLabel}
+          aria-describedby={ariaDescribedby}
+          aria-multiline="true"
+        ></textarea>
+      {/if}
     {:else}
-      <textarea
-        {id}
-        class="markdown-editor surface source-mode"
-        bind:value
-        oninput={(e) => onchange?.(e.currentTarget.value)}
-        {placeholder}
-        readonly={readonly || undefined}
-        aria-label={accessibleEditorLabel}
-        aria-describedby={ariaDescribedby}
-        aria-multiline="true"
-      ></textarea>
+      <EditorSkeleton class="markdown-editor" />
     {/if}
-  {:else}
-    <EditorSkeleton class="markdown-editor" />
-  {/if}
+  </div>
 
   {#if linkPopoverOpen && mode === 'wysiwyg'}
     <LinkPopover
@@ -750,7 +752,6 @@
     display: flex;
     flex-direction: column;
     min-height: var(--editor-min-height);
-    gap: var(--cinder-space-2);
     /* Single outer border for the whole editor card */
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -759,6 +760,14 @@
        (see tokens-base.css), every region inside (toolbar wrapper, editor
        body) inherits — they must not redeclare `background:`. */
     background: var(--cinder-surface-raised);
+  }
+
+  .markdown-editor-layout {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: var(--editor-min-height);
+    gap: var(--cinder-space-2);
     container-name: cinder-markdown-editor;
     container-type: inline-size;
   }
@@ -814,7 +823,7 @@
   }
 
   /* When toolbar is present, collapse the gap so toolbar and editor are flush */
-  .markdown-editor-wrapper[data-has-toolbar] {
+  .markdown-editor-wrapper[data-has-toolbar] .markdown-editor-layout {
     gap: 0;
   }
 

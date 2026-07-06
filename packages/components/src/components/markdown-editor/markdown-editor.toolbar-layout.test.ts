@@ -61,8 +61,11 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     expectDeclaration(wrapperBlock, 'align-items', 'flex-start');
 
     const editorWrapperBlock = cssBlock(markdownEditorSource, '.markdown-editor-wrapper');
-    expectDeclaration(editorWrapperBlock, 'container-name', 'cinder-markdown-editor');
-    expectDeclaration(editorWrapperBlock, 'container-type', 'inline-size');
+    expect(editorWrapperBlock).not.toContain('container-type');
+
+    const editorLayoutBlock = cssBlock(markdownEditorSource, '.markdown-editor-layout');
+    expectDeclaration(editorLayoutBlock, 'container-name', 'cinder-markdown-editor');
+    expectDeclaration(editorLayoutBlock, 'container-type', 'inline-size');
 
     const nestedToolbarBlock = cssBlock(
       markdownEditorSource,
@@ -115,6 +118,17 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
     );
     expectDeclaration(narrowModeToggleBlock, 'flex-basis', '100%');
     expectDeclaration(narrowModeToggleBlock, 'margin-inline-start', '0');
+  });
+
+  it('keeps the fixed-position link popover outside the query container', async () => {
+    const markdownEditorSource = await Bun.file(markdownEditorPath).text();
+    const layoutStartIndex = markdownEditorSource.indexOf('<div class="markdown-editor-layout">');
+    const layoutEndIndex = markdownEditorSource.indexOf('</div>\n\n  {#if linkPopoverOpen');
+    const popoverIndex = markdownEditorSource.indexOf('<LinkPopover');
+
+    expect(layoutStartIndex).toBeGreaterThanOrEqual(0);
+    expect(layoutEndIndex).toBeGreaterThan(layoutStartIndex);
+    expect(popoverIndex).toBeGreaterThan(layoutEndIndex);
   });
 
   it('gives raw source mode a usable minimum editing height', async () => {
