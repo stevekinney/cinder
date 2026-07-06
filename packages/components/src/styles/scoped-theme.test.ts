@@ -4,6 +4,7 @@ import { describe, expect, test } from 'bun:test';
 
 const TOKENS_BASE_PATH = new URL('./tokens-base.css', import.meta.url);
 const FOUNDATION_CSS_PATH = new URL('./foundation.css', import.meta.url);
+const CODE_BLOCK_CSS_PATH = new URL('../components/code-block/code-block.css', import.meta.url);
 const SIDEBAR_CSS_PATH = new URL('../components/sidebar/sidebar.css', import.meta.url);
 const DRAWER_CSS_PATH = new URL('../components/drawer/drawer.css', import.meta.url);
 const BUTTON_CSS_PATH = new URL('../components/button/button.css', import.meta.url);
@@ -187,12 +188,27 @@ describe('scoped theme tokens', () => {
   });
 
   test('foundation recomputes scoped focus and scoped Shiki dark overrides', async () => {
-    const foundationCss = await readFile(FOUNDATION_CSS_PATH, 'utf8');
+    const [foundationCss, codeBlockCss] = await Promise.all([
+      readFile(FOUNDATION_CSS_PATH, 'utf8'),
+      readFile(CODE_BLOCK_CSS_PATH, 'utf8'),
+    ]);
 
     expect(foundationCss).toContain("[data-theme='dark'],\n[data-theme='light']");
     expect(foundationCss).not.toContain('@scope');
     expect(foundationCss).toContain("[data-theme='dark']");
     expect(foundationCss).toContain("[data-theme='dark']\n      [data-theme='light']");
+    expect(foundationCss).toContain(
+      "[data-theme='light']\n      [data-theme='dark']\n      [data-theme='light']",
+    );
+    expect(foundationCss).toContain(
+      "[data-theme='light']\n  [data-theme='dark']\n  [data-theme='light']\n  [data-theme='dark']",
+    );
+    expect(codeBlockCss).toContain(
+      "[data-cinder-theme='dark']\n        [data-theme='light']\n        [data-theme='dark']\n        [data-theme='light']",
+    );
+    expect(codeBlockCss).toContain(
+      "[data-cinder-theme='dark']\n    [data-theme='light']\n    [data-theme='dark']\n    [data-theme='light']\n    [data-theme='dark']",
+    );
     expect(foundationCss).toContain(
       "span[style*='--shiki-dark'] {\n  color: var(--shiki-dark, inherit) !important;",
     );

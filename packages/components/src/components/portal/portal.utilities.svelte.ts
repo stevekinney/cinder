@@ -164,9 +164,8 @@ export function createPortalAttachment(
 
       return {
         dir: initialAttributes.dir,
-        dataTheme:
-          dataTheme !== managedAttributes.dataTheme ? dataTheme : initialAttributes.dataTheme,
-        theme: theme !== managedAttributes.theme ? theme : initialAttributes.theme,
+        dataTheme: dataTheme !== managedAttributes.dataTheme ? dataTheme : null,
+        theme: theme !== managedAttributes.theme ? theme : null,
       };
     }
 
