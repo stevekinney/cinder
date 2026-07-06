@@ -551,7 +551,15 @@ export async function packForPublish(): Promise<PackForPublishResult> {
 
 async function main(): Promise<void> {
   const { tarballPath } = await packForPublish();
-  process.stdout.write(`pack-for-publish — emitted ${tarballPath}\n`);
+  await new Promise<void>((resolve, reject) => {
+    process.stdout.write(`pack-for-publish — emitted ${tarballPath}\n`, (error) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 if (import.meta.main) {
