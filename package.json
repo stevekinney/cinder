@@ -73,7 +73,7 @@
       "prettier --write"
     ],
     "**/*.{json,md,scss}": [
-      "prettier --write"
+      "prettier --write --with-node-modules"
     ],
     "package.json": [
       "sort-package-json"

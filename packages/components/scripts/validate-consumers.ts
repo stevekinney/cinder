@@ -322,7 +322,7 @@ function assertPackedExportConditionOrder(
     fail(`packed exports["${exportKey}"] must be a conditional export object`);
   }
 
-  const expectedOrder = ['types', 'browser', 'node', 'svelte', 'default'];
+  const expectedOrder = ['types', 'browser', 'node', 'svelte', 'import', 'default'];
   const actualOrder = Object.keys(entry);
   if (actualOrder.join(',') !== expectedOrder.join(',')) {
     fail(
@@ -336,8 +336,8 @@ function assertPackedExportConditionOrder(
  *   - No `workspace:` substrings anywhere (the dep flip would otherwise
  *     leak through `bun pm pack`).
  *   - No `@cinder/*` in any dep field or exports condition.
- *   - Runtime exports resolve to `dist/`; only CSS and generated JSON artifact
- *     exports may target `src/`.
+ *   - Svelte-aware runtime exports may resolve to shipped `src/`; upstream
+ *     re-export paths whose source is not published must resolve to `dist/`.
  */
 async function assertPackedManifestInvariants(extractedRoot: string): Promise<void> {
   const packedManifestPath = join(extractedRoot, 'package', 'package.json');
@@ -364,11 +364,11 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
       )}, expected "./dist/cli/index.js"`,
     );
   }
-  if (packedManifest.svelte !== './dist/index.js') {
+  if (packedManifest.svelte !== './src/index.ts') {
     fail(
       `packed manifest svelte is ${JSON.stringify(
         packedManifest.svelte,
-      )}, expected "./dist/index.js"`,
+      )}, expected "./src/index.ts"`,
     );
   }
 
@@ -432,9 +432,12 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
         !target.endsWith('.css.d.ts') &&
         !target.endsWith('.json')
       ) {
-        fail(
-          `packed exports["${key}"]["${condition}"] points at "${target}" — published runtime exports must resolve to \`./dist/\``,
-        );
+        const sourceTargetPath = join(extractedRoot, 'package', target.slice(2));
+        if (!existsSync(sourceTargetPath)) {
+          fail(
+            `packed exports["${key}"]["${condition}"] points at "${target}", but the tarball does not contain that source target`,
+          );
+        }
       }
     }
   }

@@ -33,6 +33,7 @@ import { existsSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 import { deriveUpstreamReexports, type UpstreamReexport } from './lib/derive-upstream-reexports.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
@@ -46,6 +47,7 @@ type ExportConditional = {
   browser?: string;
   svelte?: string;
   node?: string;
+  import?: string;
   default?: string;
 };
 
@@ -143,30 +145,6 @@ function rewriteUpstreamReexportEntry(
 }
 
 /**
- * Rewrite a source-backed runtime entry so published consumers resolve the
- * compiled browser build instead of raw `src/**` TypeScript. The source
- * manifest keeps `browser`/`svelte` on `src/**` for in-repo tooling; the
- * tarball should route those conditions to the compiled `default` target.
- */
-function rewritePublishedRuntimeEntry(entry: ExportConditional): ExportConditional {
-  const result: ExportConditional = {};
-  if (entry.types !== undefined) result.types = entry.types;
-  if (entry.browser !== undefined) result.browser = entry.default ?? entry.browser;
-  if (entry.node !== undefined) result.node = entry.node;
-  if (entry.svelte !== undefined) result.svelte = entry.default ?? entry.svelte;
-  if (entry.default !== undefined) result.default = entry.default;
-  return result;
-}
-
-function isSourceBackedRuntimeEntry(entry: ExportConditional): boolean {
-  return (
-    entry.default !== undefined &&
-    ((entry.browser !== undefined && entry.browser.startsWith('./src/')) ||
-      (entry.svelte !== undefined && entry.svelte.startsWith('./src/')))
-  );
-}
-
-/**
  * Build the transformed manifest written into staging.
  */
 function buildPublishedManifest(
@@ -182,10 +160,6 @@ function buildPublishedManifest(
       const reexport = reexportByKey.get(key);
       if (!reexport) throw new Error(`Internal error: missing reexport for ${key}`);
       transformedExports[key] = rewriteUpstreamReexportEntry(entry, reexport);
-      continue;
-    }
-    if (typeof entry === 'object' && isSourceBackedRuntimeEntry(entry)) {
-      transformedExports[key] = rewritePublishedRuntimeEntry(entry);
       continue;
     }
     transformedExports[key] = entry;
@@ -214,13 +188,12 @@ function buildPublishedManifest(
   // Husky / dev-only fields.
   delete published.husky;
   delete published['lint-staged'];
-  if (published.svelte?.startsWith('./src/')) {
-    published.svelte = './dist/index.js';
-  }
   // The published tarball ships:
   //   - `dist/` — every component / upstream / server build target plus the CLI.
-  //   - `src/index.ts` and `src/schema-types.ts` — retained source entry
-  //     points for package-level type tooling.
+  //   - `src/index.ts`, `src/schema-types.ts`, and `src/components/**` —
+  //     retained source entry points for Svelte-aware consumers. Shipping
+  //     component source avoids coupling compiled component output to one
+  //     specific Svelte internal runtime shape.
   //   - `src/utilities/**/*.ts` and `src/_internal/**/*.ts` — runtime
   //     helpers and the constraints DSL the components import.
   //   - `src/styles/**/*.css` and `src/components/**/*.css` — hand-authored
@@ -236,6 +209,8 @@ function buildPublishedManifest(
     '!dist/**/*.js.map',
     '!dist/server/**/*.d.ts',
     '!dist/**/*.type-test.*',
+    '!dist/**/*.fixture.*',
+    '!dist/**/*-fixture.*',
     '!dist/**/*-fixtures.*',
     '!dist/**/*fixtures.*',
     '!dist/**/*fixture*.svelte.d.ts',
@@ -243,6 +218,19 @@ function buildPublishedManifest(
     '!dist/**/test/**',
     'src/index.ts',
     'src/schema-types.ts',
+    'src/components/**/*.ts',
+    'src/components/**/*.svelte',
+    '!src/components/**/*.test.ts',
+    '!src/components/**/*.spec.ts',
+    '!src/components/**/*.type-test.ts',
+    '!src/components/**/*.type-test.svelte',
+    '!src/components/**/*.fixture.ts',
+    '!src/components/**/*-fixture.ts',
+    '!src/components/**/*-fixtures.ts',
+    '!src/components/**/*fixtures.ts',
+    '!src/components/**/*fixture*.svelte',
+    '!src/components/**/_*-test-harness.svelte',
+    '!src/components/**/test/**',
     'src/components/**/*.schema.json',
     'src/components/**/*.variables.json',
     'src/components/**/*.examples.json',
@@ -346,6 +334,27 @@ export function stripDanglingSourceMapUrlComments(
   return { text: outputText, strippedCount };
 }
 
+export function transpileSvelteTypeScriptModuleForPublish(source: string): string {
+  return ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ESNext,
+      verbatimModuleSyntax: true,
+    },
+  }).outputText;
+}
+
+export function transpileSvelteComponentScriptsForPublish(source: string): string {
+  return source.replace(
+    /<script(?<attributes>[^>]*)>(?<content>[\s\S]*?)<\/script>/gu,
+    (match: string, attributes: string, content: string) => {
+      if (!/\blang\s*=\s*["']ts["']/u.test(attributes)) return match;
+      const transformed = transpileSvelteTypeScriptModuleForPublish(content).trimEnd();
+      return `<script${attributes}>${transformed.length > 0 ? `\n${transformed}\n` : '\n'}</script>`;
+    },
+  );
+}
+
 async function stripDanglingSourceMapCommentsInStaging(): Promise<number> {
   const scriptGlob = new Glob('dist/**/*.{js,mjs,cjs}');
   let strippedCount = 0;
@@ -362,6 +371,32 @@ async function stripDanglingSourceMapCommentsInStaging(): Promise<number> {
     strippedCount += stripped.strippedCount;
   }
   return strippedCount;
+}
+
+async function transpileStagedSvelteTypeScriptModules(): Promise<number> {
+  const moduleGlob = new Glob('src/**/*.svelte.ts');
+  let transpiledCount = 0;
+  for await (const relative of moduleGlob.scan({ cwd: stagingRoot })) {
+    const filePath = join(stagingRoot, relative);
+    const source = await Bun.file(filePath).text();
+    await Bun.write(filePath, transpileSvelteTypeScriptModuleForPublish(source));
+    transpiledCount += 1;
+  }
+  return transpiledCount;
+}
+
+async function transpileStagedSvelteComponentScripts(): Promise<number> {
+  const componentGlob = new Glob('src/**/*.svelte');
+  let transpiledCount = 0;
+  for await (const relative of componentGlob.scan({ cwd: stagingRoot })) {
+    const filePath = join(stagingRoot, relative);
+    const source = await Bun.file(filePath).text();
+    const transformed = transpileSvelteComponentScriptsForPublish(source);
+    if (transformed === source) continue;
+    await Bun.write(filePath, transformed);
+    transpiledCount += 1;
+  }
+  return transpiledCount;
 }
 
 /**
@@ -431,6 +466,17 @@ async function stageFiles(manifest: SourceManifest): Promise<void> {
   // dangling source-map references from staged JS files so consumer bundlers
   // do not warn about missing map files.
   await stripDanglingSourceMapCommentsInStaging();
+
+  // Vite's dependency optimizer parses dependency modules before Svelte's
+  // compileModule pass. Keep `.svelte.ts` file names so source imports stay
+  // stable, but strip TypeScript-only syntax so the optimizer can parse the
+  // staged modules and then hand the remaining runes to the Svelte plugin.
+  await transpileStagedSvelteTypeScriptModules();
+
+  // The same optimizer path scans component script blocks before the full
+  // Svelte compiler pass. Strip TypeScript-only syntax from staged component
+  // scripts while preserving the component markup and Svelte source shape.
+  await transpileStagedSvelteComponentScripts();
 
   // Always include README and LICENSE if present, regardless of `files`.
   for (const additional of ['README.md', 'LICENSE', 'LICENSE.md', 'CHANGELOG.md']) {
@@ -505,14 +551,25 @@ export async function packForPublish(): Promise<PackForPublishResult> {
 
 async function main(): Promise<void> {
   const { tarballPath } = await packForPublish();
-  process.stdout.write(`pack-for-publish — emitted ${tarballPath}\n`);
+  await new Promise<void>((resolve, reject) => {
+    process.stdout.write(`pack-for-publish — emitted ${tarballPath}\n`, (error) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 if (import.meta.main) {
-  main().catch((error: unknown) => {
+  try {
+    await main();
+    process.exit(0);
+  } catch (error: unknown) {
     console.error('pack-for-publish failed:', error);
     process.exit(1);
-  });
+  }
 }
 
 // Re-export helpers used by `validate-consumers.ts` invariants.
