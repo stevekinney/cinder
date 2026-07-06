@@ -192,7 +192,7 @@ test.describe('chat input shortcut', () => {
     }
   });
 
-  test('editor and send button both expose shortcut description via aria-describedby', async ({
+  test('composer and send button both expose shortcut description via aria-describedby', async ({
     page,
   }) => {
     // A11y wiring is viewport-independent; use the default desktop context so
@@ -212,17 +212,14 @@ test.describe('chat input shortcut', () => {
           .join(' ');
       });
 
-    // The focusable WYSIWYG surface (ProseMirror contenteditable / textbox).
-    const editorSurface = page
-      .locator('.chat-input-editor [contenteditable], .chat-input-editor [role="textbox"]')
-      .first();
-    await expect(editorSurface).toBeVisible();
-    await editorSurface.focus();
+    const composer = page.locator('textarea.chat-input-editor').first();
+    await expect(composer).toBeVisible();
+    await composer.focus();
 
-    const editorDescribedby = await describedbyText(editorSurface);
-    expect(editorDescribedby).toBeTruthy();
-    expect(editorDescribedby).toMatch(/Enter/);
-    expect(editorDescribedby).toMatch(/Shift\s*\+?\s*Enter/i);
+    const composerDescribedby = await describedbyText(composer);
+    expect(composerDescribedby).toBeTruthy();
+    expect(composerDescribedby).toMatch(/Enter/);
+    expect(composerDescribedby).toMatch(/Shift\s*\+?\s*Enter/i);
 
     // The send button references the same shortcut description.
     const sendButton = page
