@@ -3,11 +3,13 @@ import { describe, expect, it } from 'bun:test';
 import {
   buildPublishedManifest,
   stripDanglingSourceMapUrlComments,
+  transpileSvelteComponentScriptsForPublish,
+  transpileSvelteTypeScriptModuleForPublish,
   type SourceManifest,
 } from './pack-for-publish.ts';
 
 describe('buildPublishedManifest', () => {
-  it('does not publish source component Svelte or TypeScript runtime files', () => {
+  it('publishes source component Svelte and TypeScript runtime files for Svelte-aware consumers', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -17,8 +19,14 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest, []);
     const files = published.files ?? [];
 
-    expect(files).not.toContain('src/components/**/*.ts');
-    expect(files).not.toContain('src/components/**/*.svelte');
+    expect(files).toContain('src/components/**/*.ts');
+    expect(files).toContain('src/components/**/*.svelte');
+    expect(files).toContain('!src/components/**/*.test.ts');
+    expect(files).toContain('!src/components/**/*.spec.ts');
+    expect(files).toContain('!src/components/**/*.type-test.svelte');
+    expect(files).toContain('!src/components/**/*.fixture.ts');
+    expect(files).toContain('!src/components/**/*-fixture.ts');
+    expect(files).toContain('!src/components/**/*fixture*.svelte');
   });
 
   it('includes src/styles/**/*.css.d.ts so reserved styles type stubs are published', () => {
@@ -121,7 +129,7 @@ describe('buildPublishedManifest', () => {
     expect(stripped.text).toBe('export const value = 1;\n');
   });
 
-  it('rewrites source-backed runtime exports to built browser artifacts in the published manifest', () => {
+  it('preserves source-backed runtime exports in the published manifest', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -169,47 +177,49 @@ describe('buildPublishedManifest', () => {
 
     expect(published.exports['.']).toEqual({
       types: './dist/index.d.ts',
-      browser: './dist/index.js',
+      browser: './src/index.ts',
       node: './dist/server/index.js',
-      svelte: './dist/index.js',
+      svelte: './src/index.ts',
       default: './dist/index.js',
     });
     expect(published.exports['./button']).toEqual({
       types: './dist/components/button/index.d.ts',
-      browser: './dist/components/button/index.js',
+      browser: './src/components/button/index.ts',
       node: './dist/server/components/button/index.js',
-      svelte: './dist/components/button/index.js',
+      svelte: './src/components/button/index.ts',
       default: './dist/components/button/index.js',
     });
     expect(published.exports['./button/schema']).toEqual({
       types: './dist/components/button/button.schema.d.ts',
-      browser: './dist/components/button/button.schema.js',
+      browser: './src/components/button/button.schema.ts',
       node: './dist/server/components/button/button.schema.js',
-      svelte: './dist/components/button/button.schema.js',
+      svelte: './src/components/button/button.schema.ts',
       default: './dist/components/button/button.schema.js',
     });
     expect(published.exports['./button/variables']).toEqual({
       types: './dist/components/button/button.variables.d.ts',
-      browser: './dist/components/button/button.variables.js',
+      browser: './src/components/button/button.variables.ts',
       node: './dist/server/components/button/button.variables.js',
-      svelte: './dist/components/button/button.variables.js',
+      svelte: './src/components/button/button.variables.ts',
       default: './dist/components/button/button.variables.js',
     });
     expect(published.exports['./styles/guard']).toEqual({
       types: './dist/styles/base-guard.d.ts',
-      browser: './dist/styles/base-guard.js',
+      browser: './src/styles/base-guard.ts',
       node: './dist/server/styles/base-guard.js',
-      svelte: './dist/styles/base-guard.js',
+      svelte: './src/styles/base-guard.ts',
       default: './dist/styles/base-guard.js',
     });
-    expect(files).not.toContain('src/components/**/*.ts');
-    expect(files).not.toContain('src/components/**/*.svelte');
+    expect(files).toContain('src/components/**/*.ts');
+    expect(files).toContain('src/components/**/*.svelte');
     expect(files).not.toContain('!dist/server/components/**/*.schema.js');
     expect(files).not.toContain('!dist/server/components/**/*.variables.js');
     expect(files).toContain('!dist/server/**/*.d.ts');
+    expect(files).toContain('!dist/**/*.fixture.*');
+    expect(files).toContain('!dist/**/*-fixture.*');
   });
 
-  it('rewrites the package-level svelte field to the built root entry', () => {
+  it('preserves the package-level svelte field as the source root entry', () => {
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
@@ -219,7 +229,7 @@ describe('buildPublishedManifest', () => {
 
     const published = buildPublishedManifest(manifest, []);
 
-    expect(published.svelte).toBe('./dist/index.js');
+    expect(published.svelte).toBe('./src/index.ts');
   });
 
   it('does not publish unexported server declaration files', () => {
@@ -336,6 +346,54 @@ describe('buildPublishedManifest', () => {
     const stripped = stripDanglingSourceMapUrlComments(input, () => true);
     expect(stripped.strippedCount).toBe(0);
     expect(stripped.text).toBe(input);
+  });
+
+  it('strips TypeScript syntax from staged .svelte.ts modules while preserving runes', () => {
+    const source = [
+      "import type { Snippet } from 'svelte';",
+      'export function createState(label: string): { value: string } {',
+      '  let value = $state(label);',
+      '  return {',
+      '    get value() {',
+      '      return value;',
+      '    },',
+      '  };',
+      '}',
+    ].join('\n');
+
+    const transformed = transpileSvelteTypeScriptModuleForPublish(source);
+
+    expect(transformed).not.toContain('import type');
+    expect(transformed).not.toContain(': string');
+    expect(transformed).not.toContain(': { value: string }');
+    expect(transformed).toContain('$state(label)');
+    expect(transformed).toContain('export function createState(label)');
+  });
+
+  it('strips TypeScript syntax from staged Svelte component script blocks', () => {
+    const source = [
+      '<script lang="ts" module>',
+      '  export type Example = { value: string };',
+      '</script>',
+      '<script lang="ts">',
+      '  let value = $state("ready");',
+      '  function emit(event?: MouseEvent): void {',
+      '    value = event?.type ?? value;',
+      '  }',
+      '</script>',
+      '<button onclick={emit}>{value}</button>',
+    ].join('\n');
+
+    const transformed = transpileSvelteComponentScriptsForPublish(source);
+
+    expect(transformed).toContain('<script lang="ts" module>');
+    expect(transformed).toContain('<script lang="ts">');
+    expect(transformed).not.toContain('export type Example');
+    expect(transformed).not.toContain('event?: MouseEvent');
+    expect(transformed).not.toContain(': void');
+    expect(transformed).toContain('$state("ready")');
+    expect(transformed).toContain('function emit(event)');
+    expect(transformed).toContain('<button onclick={emit}>{value}</button>');
   });
 
   it('strips dangling block sourceMappingURL comments when corresponding .map files are absent', () => {
