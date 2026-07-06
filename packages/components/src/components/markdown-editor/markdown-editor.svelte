@@ -643,89 +643,91 @@
   data-snapshot-mode={snapshotMode || undefined}
   {...rest}
 >
-  {#if toolbarVisible}
-    {#if toolbar}
-      <!-- Full custom toolbar override -->
-      {@render toolbar(toolbarContext)}
-    {:else}
-      <!-- Default toolbar with optional extension points -->
-      <div class="editor-toolbar-wrapper">
-        {#if toolbarLeading}
-          <div class="toolbar-leading">
-            {@render toolbarLeading(toolbarContext)}
-          </div>
-        {/if}
+  <div class="markdown-editor-layout">
+    {#if toolbarVisible}
+      {#if toolbar}
+        <!-- Full custom toolbar override -->
+        {@render toolbar(toolbarContext)}
+      {:else}
+        <!-- Default toolbar with optional extension points -->
+        <div class="editor-toolbar-wrapper">
+          {#if toolbarLeading}
+            <div class="toolbar-leading">
+              {@render toolbarLeading(toolbarContext)}
+            </div>
+          {/if}
 
-        <EditorToolbar
-          id={`${id}-toolbar`}
-          editorId={id}
-          {editorContext}
-          {activeMarks}
-          {activeBlockType}
-          {canUndo}
-          {canRedo}
-          {linkPopoverOpen}
-          disabled={!editorContext}
-          onLinkClick={handleLinkClick}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-        />
+          <EditorToolbar
+            id={`${id}-toolbar`}
+            editorId={id}
+            {editorContext}
+            {activeMarks}
+            {activeBlockType}
+            {canUndo}
+            {canRedo}
+            {linkPopoverOpen}
+            disabled={!editorContext}
+            onLinkClick={handleLinkClick}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+          />
 
-        {#if toolbarActions}
-          <div class="toolbar-actions">
-            {@render toolbarActions(toolbarContext)}
-          </div>
-        {/if}
+          {#if toolbarActions}
+            <div class="toolbar-actions">
+              {@render toolbarActions(toolbarContext)}
+            </div>
+          {/if}
 
-        {#if showModeToggle}
-          <div class="toolbar-mode-toggle">
-            <SegmentedControl
-              id={`${id}-mode-toggle`}
-              selectionMode="single"
-              size="sm"
-              bind:value={mode}
-              label={modeLabel}
-              hideLabel
-            >
-              <Segment value="wysiwyg">Rich</Segment>
-              <Segment value="source">Raw</Segment>
-            </SegmentedControl>
-          </div>
-        {/if}
-      </div>
+          {#if showModeToggle}
+            <div class="toolbar-mode-toggle">
+              <SegmentedControl
+                id={`${id}-mode-toggle`}
+                selectionMode="single"
+                size="sm"
+                bind:value={mode}
+                label={modeLabel}
+                hideLabel
+              >
+                <Segment value="wysiwyg">Rich</Segment>
+                <Segment value="source">Raw</Segment>
+              </SegmentedControl>
+            </div>
+          {/if}
+        </div>
+      {/if}
     {/if}
-  {/if}
 
-  {#if browser}
-    {#if mode === 'wysiwyg'}
-      <!-- eslint-disable-next-line svelte/no-unused-svelte-ignore -- ESLint doesn't see Svelte's a11y warning -->
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-      <div
-        {id}
-        class="cinder-markdown-content markdown-editor surface"
-        data-readonly={readonly || undefined}
-        style:--editor-placeholder="'{escapedPlaceholder}'"
-        role="application"
-        aria-label={accessibleEditorLabel}
-        tabindex="0"
-        {@attach editorAttachment}
-      ></div>
+    {#if browser}
+      {#if mode === 'wysiwyg'}
+        <!-- eslint-disable-next-line svelte/no-unused-svelte-ignore -- ESLint doesn't see Svelte's a11y warning -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div
+          {id}
+          class="cinder-markdown-content markdown-editor surface"
+          data-readonly={readonly || undefined}
+          style:--editor-placeholder="'{escapedPlaceholder}'"
+          role="application"
+          aria-label={accessibleEditorLabel}
+          tabindex="0"
+          {@attach editorAttachment}
+        ></div>
+      {:else}
+        <textarea
+          {id}
+          class="markdown-editor surface source-mode"
+          bind:value
+          oninput={(e) => onchange?.(e.currentTarget.value)}
+          {placeholder}
+          readonly={readonly || undefined}
+          aria-label={accessibleEditorLabel}
+          aria-describedby={ariaDescribedby}
+          aria-multiline="true"
+        ></textarea>
+      {/if}
     {:else}
-      <textarea
-        {id}
-        class="markdown-editor surface source-mode"
-        bind:value
-        oninput={(e) => onchange?.(e.currentTarget.value)}
-        {placeholder}
-        readonly={readonly || undefined}
-        aria-label={accessibleEditorLabel}
-        aria-describedby={ariaDescribedby}
-        aria-multiline="true"
-      ></textarea>
+      <EditorSkeleton class="markdown-editor" />
     {/if}
-  {:else}
-    <EditorSkeleton class="markdown-editor" />
-  {/if}
+  </div>
 
   {#if linkPopoverOpen && mode === 'wysiwyg'}
     <LinkPopover
@@ -746,11 +748,11 @@
   .markdown-editor-wrapper {
     /* Configurable minimum height for the editor content area */
     --editor-min-height: 200px;
+    --editor-source-min-height: max(var(--editor-min-height), 16rem);
 
     display: flex;
     flex-direction: column;
     min-height: var(--editor-min-height);
-    gap: var(--cinder-space-2);
     /* Single outer border for the whole editor card */
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -761,10 +763,19 @@
     background: var(--cinder-surface-raised);
   }
 
+  .markdown-editor-layout {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    container-name: cinder-markdown-editor;
+    container-type: inline-size;
+  }
+
   /* Toolbar wrapper for extension points */
   .editor-toolbar-wrapper {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--cinder-space-2);
     /* The wrapper owns nested toolbar padding; EditorToolbar keeps standalone chrome. */
     padding: var(--cinder-space-2) var(--cinder-space-3);
@@ -774,8 +785,8 @@
   }
 
   .editor-toolbar-wrapper :global(.editor-toolbar) {
-    flex: 1 1 auto;
-    min-width: min(16rem, 100%);
+    flex: 1 1 32rem;
+    min-width: min(20rem, 100%);
     padding: 0;
     border: 0;
     border-radius: 0;
@@ -784,9 +795,12 @@
      * rule in editor-toolbar.svelte cannot cross the component boundary, so
      * we override here where the rendered element lives. */
     flex-wrap: wrap;
+    row-gap: var(--cinder-space-1);
   }
 
   .toolbar-mode-toggle {
+    display: flex;
+    justify-content: flex-end;
     flex: 0 0 auto;
     margin-inline-start: auto;
   }
@@ -809,7 +823,7 @@
   }
 
   /* When toolbar is present, collapse the gap so toolbar and editor are flush */
-  .markdown-editor-wrapper[data-has-toolbar] {
+  .markdown-editor-wrapper[data-has-toolbar] .markdown-editor-layout {
     gap: 0;
   }
 
@@ -846,6 +860,22 @@
     /* Use flex: 1 instead of height: 100% for consistent sizing with WYSIWYG mode */
     flex: 1;
     color: var(--cinder-text);
+    min-height: var(--editor-source-min-height);
+  }
+
+  @container cinder-markdown-editor (max-width: 42rem) {
+    .editor-toolbar-wrapper :global(.editor-toolbar) {
+      flex-basis: 100%;
+    }
+
+    .editor-toolbar-wrapper :global(.toolbar-separator) {
+      display: none;
+    }
+
+    .toolbar-mode-toggle {
+      flex-basis: 100%;
+      margin-inline-start: 0;
+    }
   }
 
   textarea.markdown-editor.source-mode::placeholder {

@@ -80,9 +80,12 @@ describe('MarkdownEditor SSR contract (source-level verification)', () => {
     // browser/server boundary.
     const ifBrowserStart = SVELTE_SOURCE.indexOf('{#if browser}');
     expect(ifBrowserStart).toBeGreaterThan(-1);
-    // The EditorSkeleton {:else} is: {:else}\n    <EditorSkeleton — find this sequence.
-    const elseSkeletonMarker = '{:else}\n    <EditorSkeleton';
-    const elseStart = SVELTE_SOURCE.indexOf(elseSkeletonMarker, ifBrowserStart);
+    // The EditorSkeleton {:else} is the server branch; match it without
+    // depending on indentation so layout wrappers can move around it.
+    const elseSkeletonMatch = /\{:else\}\s*\n\s*<EditorSkeleton/.exec(
+      SVELTE_SOURCE.slice(ifBrowserStart),
+    );
+    const elseStart = elseSkeletonMatch === null ? -1 : ifBrowserStart + elseSkeletonMatch.index;
     expect(elseStart).toBeGreaterThan(ifBrowserStart);
     const browserBranch = SVELTE_SOURCE.slice(ifBrowserStart + '{#if browser}'.length, elseStart);
     expect(browserBranch).toContain('role="application"');

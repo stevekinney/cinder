@@ -8,6 +8,12 @@
       "title": "Basic markdown editor",
       "description": "A Milkdown-backed editor with toolbar and source mode toggle.",
       "code": "<script lang=\"ts\">\n  import { MarkdownEditor } from '@lostgradient/cinder/markdown-editor';\n\n  let value = $state(`# Release notes\n\nThis editor supports **rich markdown editing**, toolbar actions, and a source mode.\n\n- Write in markdown\n- Switch between rendered and source modes\n- Keep the value bindable`);\n</script>\n\n<div style=\"display: grid; gap: 0.75rem;\">\n  <MarkdownEditor id=\"editor\" bind:value showToolbar showModeToggle />\n  <p style=\"margin: 0; color: var(--cinder-text-muted);\">\n    Characters: {value.length}\n  </p>\n</div>\n"
+    },
+    {
+      "id": "settings-card",
+      "title": "Settings card prompt editor",
+      "description": "MarkdownEditor embedded in a constrained settings card, with the toolbar and Rich/Raw toggle sharing one editor header.",
+      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n  import { MarkdownEditor, type EditorMode } from '@lostgradient/cinder/markdown-editor';\n\n  let mode = $state<EditorMode>('source');\n  let prompt = $state(`You are a careful review agent.\n\n## Instructions\n\n- Read the patch before commenting.\n- Prefer specific line-level feedback.\n- Separate blocking issues from suggestions.`);\n</script>\n\n<div data-testid=\"markdown-editor-settings-card\" style=\"max-width: 46rem; margin-inline: auto;\">\n  <Card\n    title=\"Agent prompt\"\n    description=\"The prompt is stored as Markdown and shown in a constrained settings column.\"\n  >\n    <MarkdownEditor\n      id=\"agent-prompt\"\n      bind:value={prompt}\n      bind:mode\n      label=\"Agent prompt\"\n      showToolbar\n      showModeToggle\n    />\n  </Card>\n</div>\n"
     }
   ]
 }

@@ -14,7 +14,17 @@ function normalizeCssWhitespace(source: string): string {
 }
 
 function cssBlock(source: string, selector: string): string {
-  const selectorIndex = source.indexOf(selector);
+  return cssBlockFromIndex(source, selector, 0);
+}
+
+function cssBlockAfter(source: string, anchor: string, selector: string): string {
+  const anchorIndex = source.indexOf(anchor);
+  expect(anchorIndex, `Missing CSS anchor: ${anchor}`).toBeGreaterThanOrEqual(0);
+  return cssBlockFromIndex(source, selector, anchorIndex);
+}
+
+function cssBlockFromIndex(source: string, selector: string, startIndex: number): string {
+  const selectorIndex = source.indexOf(selector, startIndex);
   expect(selectorIndex, `Missing CSS selector: ${selector}`).toBeGreaterThanOrEqual(0);
 
   const openingBraceIndex = source.indexOf('{', selectorIndex);
@@ -48,16 +58,31 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
 
     const wrapperBlock = cssBlock(markdownEditorSource, '.editor-toolbar-wrapper');
     expectDeclaration(wrapperBlock, 'padding', 'var(--cinder-space-2) var(--cinder-space-3)');
+    expectDeclaration(wrapperBlock, 'align-items', 'flex-start');
+
+    const editorWrapperBlock = cssBlock(markdownEditorSource, '.markdown-editor-wrapper');
+    expect(editorWrapperBlock).not.toContain('container-type');
+
+    const editorLayoutBlock = cssBlock(markdownEditorSource, '.markdown-editor-layout');
+    expectDeclaration(editorLayoutBlock, 'container-name', 'cinder-markdown-editor');
+    expectDeclaration(editorLayoutBlock, 'container-type', 'inline-size');
+    expect(editorLayoutBlock).not.toContain('min-height');
 
     const nestedToolbarBlock = cssBlock(
       markdownEditorSource,
       '.editor-toolbar-wrapper :global(.editor-toolbar)',
     );
-    expectDeclaration(nestedToolbarBlock, 'min-width', 'min(16rem, 100%)');
+    expectDeclaration(nestedToolbarBlock, 'flex', '1 1 32rem');
+    expectDeclaration(nestedToolbarBlock, 'min-width', 'min(20rem, 100%)');
     expectDeclaration(nestedToolbarBlock, 'padding', '0');
     expectDeclaration(nestedToolbarBlock, 'border', '0');
     expectDeclaration(nestedToolbarBlock, 'border-radius', '0');
     expectDeclaration(nestedToolbarBlock, 'background', 'transparent');
+    expectDeclaration(nestedToolbarBlock, 'row-gap', 'var(--cinder-space-1)');
+
+    const modeToggleBlock = cssBlock(markdownEditorSource, '.toolbar-mode-toggle');
+    expectDeclaration(modeToggleBlock, 'display', 'flex');
+    expectDeclaration(modeToggleBlock, 'justify-content', 'flex-end');
 
     const standaloneToolbarBlock = cssBlock(editorToolbarSource, '.editor-toolbar');
     expectDeclaration(
@@ -65,6 +90,66 @@ describe('MarkdownEditor toolbar layout CSS ownership', () => {
       'padding',
       'var(--cinder-space-1) var(--cinder-space-2)',
     );
+  });
+
+  it('collapses the toolbar toggle and separators by editor container width', async () => {
+    const markdownEditorSource = stripCssComments(await Bun.file(markdownEditorPath).text());
+    const narrowContainer = '@container cinder-markdown-editor (max-width: 42rem)';
+
+    expect(markdownEditorSource).toContain(narrowContainer);
+
+    const narrowToolbarBlock = cssBlockAfter(
+      markdownEditorSource,
+      narrowContainer,
+      '.editor-toolbar-wrapper :global(.editor-toolbar)',
+    );
+    expectDeclaration(narrowToolbarBlock, 'flex-basis', '100%');
+
+    const narrowSeparatorBlock = cssBlockAfter(
+      markdownEditorSource,
+      narrowContainer,
+      '.editor-toolbar-wrapper :global(.toolbar-separator)',
+    );
+    expectDeclaration(narrowSeparatorBlock, 'display', 'none');
+
+    const narrowModeToggleBlock = cssBlockAfter(
+      markdownEditorSource,
+      narrowContainer,
+      '.toolbar-mode-toggle',
+    );
+    expectDeclaration(narrowModeToggleBlock, 'flex-basis', '100%');
+    expectDeclaration(narrowModeToggleBlock, 'margin-inline-start', '0');
+  });
+
+  it('keeps the fixed-position link popover outside the query container', async () => {
+    const markdownEditorSource = await Bun.file(markdownEditorPath).text();
+    const layoutStartIndex = markdownEditorSource.indexOf('<div class="markdown-editor-layout">');
+    const layoutCloseBeforePopover = /<\/div>\s*\{#if linkPopoverOpen/.exec(
+      markdownEditorSource.slice(layoutStartIndex),
+    );
+    const layoutEndIndex =
+      layoutCloseBeforePopover === null ? -1 : layoutStartIndex + layoutCloseBeforePopover.index;
+    const popoverIndex = markdownEditorSource.indexOf('<LinkPopover');
+
+    expect(layoutStartIndex).toBeGreaterThanOrEqual(0);
+    expect(layoutEndIndex).toBeGreaterThan(layoutStartIndex);
+    expect(popoverIndex).toBeGreaterThan(layoutEndIndex);
+  });
+
+  it('gives raw source mode a usable minimum editing height', async () => {
+    const markdownEditorSource = stripCssComments(await Bun.file(markdownEditorPath).text());
+
+    const wrapperBlock = cssBlock(markdownEditorSource, '.markdown-editor-wrapper');
+    expectDeclaration(wrapperBlock, '--editor-min-height', '200px');
+    expectDeclaration(
+      wrapperBlock,
+      '--editor-source-min-height',
+      'max(var(--editor-min-height), 16rem)',
+    );
+
+    const sourceModeBlock = cssBlock(markdownEditorSource, 'textarea.markdown-editor.source-mode');
+    expectDeclaration(sourceModeBlock, 'min-height', 'var(--editor-source-min-height)');
+    expect(sourceModeBlock).not.toContain('max(');
   });
 
   it('wires block-type radio menu state through DropdownItem checked', async () => {
