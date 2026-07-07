@@ -1356,6 +1356,8 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         );
       }
 
+      await assertSvelteKitClientHydrates(httpPort, label, '/subpath');
+
       // Subpath page
       const subpathResponse = await fetchWithTimeout(
         `http://127.0.0.1:${httpPort}/subpath`,
@@ -1460,6 +1462,72 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
   } finally {
     restoreManifest();
   }
+}
+
+async function assertSvelteKitClientHydrates(
+  httpPort: number,
+  label: string,
+  routePath: '/subpath',
+): Promise<void> {
+  const { chromium } = await import('@playwright/test');
+  const browser = await promiseWithTimeout(
+    chromium.launch(),
+    15_000,
+    'launching Chromium for SvelteKit hydration validation',
+  );
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    const text = message.text();
+    if (
+      message.type() === 'error' ||
+      (message.type() === 'warning' && isHydrationConsoleWarning(text))
+    ) {
+      errors.push(text);
+    }
+  });
+
+  try {
+    await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('load', { timeout: 5_000 });
+    await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'subpath button' }).waitFor({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Subpath accordion' }).waitFor({ timeout: 5_000 });
+    if (errors.length > 0) {
+      fail(
+        `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.map((error) => `  ${error}`).join('\n')}`,
+      );
+    }
+  } finally {
+    await promiseWithTimeout(
+      browser.close(),
+      5_000,
+      'closing Chromium after SvelteKit hydration validation',
+    );
+  }
+}
+
+function isHydrationConsoleWarning(message: string): boolean {
+  const normalizedMessage = message.toLowerCase();
+  return (
+    normalizedMessage.includes('hydration') ||
+    normalizedMessage.includes('hydrate') ||
+    normalizedMessage.includes('hydrating')
+  );
+}
+
+async function promiseWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  description: string,
+): Promise<T> {
+  return await Promise.race([
+    promise,
+    Bun.sleep(timeoutMs).then(() =>
+      fail(`${description} timed out after ${timeoutMs}ms`),
+    ) as Promise<never>,
+  ]);
 }
 
 type CssArtifact = {

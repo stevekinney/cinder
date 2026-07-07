@@ -1,6 +1,6 @@
-import { createContext } from 'svelte';
 import type { SvelteSet } from 'svelte/reactivity';
 
+import { strictStableContext } from '../../_internal/strict-stable-context.ts';
 import { inDocumentOrder } from '../../utilities/document-order.ts';
 import { getFocusableIndex, handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
 
@@ -44,8 +44,13 @@ export type SegmentedControlContextValue = {
   toggle(value: string): void;
 };
 
-export const [getSegmentedControlContext, setSegmentedControlContext] =
-  createContext<SegmentedControlContextValue>();
+const [getSegmentedControlContext, setSegmentedControlContext] =
+  strictStableContext<SegmentedControlContextValue>(
+    '@lostgradient/cinder/segmented-control/context',
+    'Segment must be rendered inside a SegmentedControl',
+  );
+
+export { getSegmentedControlContext, setSegmentedControlContext };
 
 /**
  * Options for building a SegmentedControlController.

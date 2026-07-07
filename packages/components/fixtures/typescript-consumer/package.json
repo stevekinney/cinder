@@ -19,7 +19,7 @@
     "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz"
   },
   "devDependencies": {
-    "svelte": "~5.55.0",
+    "svelte": "~5.56.0",
     "svelte-check": "^4.4.6",
     "typescript": "^5.9.0"
   },

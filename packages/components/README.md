@@ -2,7 +2,7 @@
 
 Svelte 5 components for product interfaces: accessible primitives, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling.
 
-Use cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data fetching layer, global state provider, or theme provider. The package is SSR-safe and targets Svelte `>=5.55.0 <6`.
+Use cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data fetching layer, global state provider, or theme provider. The package is SSR-safe and targets Svelte `>=5.56.0 <6`.
 
 ## Install
 

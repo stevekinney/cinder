@@ -94,6 +94,9 @@ jobs:
           TAG_NAME: ${{ inputs.tag }}
         run: bun run scripts/verify-release-version.ts
 
+      - name: Install Chromium for consumer validation
+        run: bunx playwright install --with-deps chromium
+
       - name: Validate package artifact
         run: bun run --filter=@lostgradient/cinder validate:consumer
 

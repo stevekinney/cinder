@@ -9,11 +9,11 @@ const packageRoot = join(scriptDirectory, '..');
 const workspaceRoot = join(packageRoot, '..', '..');
 
 export const sveltePeerContract = {
-  minimum: '5.55.0',
-  workspace: '~5.55.0',
+  minimum: '5.56.0',
+  workspace: '~5.56.0',
   latest: '^5',
-  peerRange: '>=5.55.0 <6',
-  legacyPeerRange: '>=5.55.0 <5.56.0',
+  peerRange: '>=5.56.0 <6',
+  legacyPeerRange: '>=5.55.0 <6',
 } as const;
 
 type PackageManifest = {

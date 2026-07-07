@@ -14,7 +14,7 @@ sections:
 
 `@lostgradient/cinder` is a Svelte 5 component library with more than 160 public
 component entries across accessible primitives and opinionated domain suites.
-It targets Svelte `>=5.55.0 <6` and is SSR-safe out of the box. Everything ships
+It targets Svelte `>=5.56.0 <6` and is SSR-safe out of the box. Everything ships
 with a JSON Schema, CSS variable list, and (where it matters) a constraints
 sidecar and runnable examples.
 

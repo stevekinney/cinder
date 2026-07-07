@@ -88,7 +88,7 @@ function renderItem(options: {
 // ---------------------------------------------------------------------------
 
 test('throws if rendered outside an Accordion', () => {
-  // No Accordion context set — createContext strict getter throws
+  // No Accordion context set — the required context getter throws.
   expect(() => {
     render(AccordionItem, {
       props: {
