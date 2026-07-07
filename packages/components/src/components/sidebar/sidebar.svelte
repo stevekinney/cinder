@@ -59,10 +59,11 @@
   // on Firefox and Safari.
   // Keep the fallback explicit for SSR-contract test environments that resolve
   // the client MediaQuery build while `window.matchMedia` is unavailable.
-  const mobile =
-    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
-      ? { current: false }
-      : new MediaQuery('(max-width: 47.99rem)', false);
+  const hasMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  const usesSsrResponsiveFallback = !hasMatchMedia;
+  const mobile = hasMatchMedia
+    ? new MediaQuery('(max-width: 47.99rem)', false)
+    : { current: false };
 
   const context: SidebarContextValue = {
     get collapsed() {
@@ -121,6 +122,7 @@
     class={classNames('cinder-sidebar', 'cinder-sidebar--desktop', className)}
     aria-label={validatedLabel}
     data-cinder-collapsed={collapsed ? '' : undefined}
+    data-cinder-ssr-mobile-fallback={usesSsrResponsiveFallback ? '' : undefined}
   >
     {@render sidebarContents(false)}
   </aside>
