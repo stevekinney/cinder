@@ -230,11 +230,16 @@ describe('parsePlaygroundFingerprintHeader', () => {
 });
 
 describe('shouldRefuseStaleServerReuse', () => {
-  test('allows reuse when there is no fingerprint to compare (custom server)', () => {
-    expect(shouldRefuseStaleServerReuse(null, 500)).toBe(false);
+  test('refuses reuse when the running server reports no fingerprint at all', () => {
+    // A server started before the fingerprint header existed still responds
+    // to /ping and /ready, but never emits the header. Treat that as stale
+    // rather than as "nothing to compare, assume fresh" — that is exactly
+    // the previous-session server this guard exists to catch.
+    expect(shouldRefuseStaleServerReuse(null, 500)).toBe(true);
+    expect(shouldRefuseStaleServerReuse(null, null)).toBe(true);
   });
 
-  test('allows reuse when the running server is at least as new as current source', () => {
+  test('allows reuse when the running server reports a fingerprint at least as new as current source', () => {
     expect(shouldRefuseStaleServerReuse({ startedAtMs: 0, newestSourceMtimeMs: 500 }, 500)).toBe(
       false,
     );

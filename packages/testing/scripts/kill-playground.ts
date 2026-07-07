@@ -59,7 +59,9 @@ export function parsePlaygroundWatchProcesses(psOutput: string): number[] {
 }
 
 export function mergeUniquePids(...pidLists: number[][]): number[] {
-  return [...new Set(pidLists.flat())].toSorted((a, b) => a - b);
+  const pids = [...new Set(pidLists.flat())];
+  pids.sort((a, b) => a - b);
+  return pids;
 }
 
 function runCommand(command: string, args: readonly string[]): { status: number; stdout: string } {

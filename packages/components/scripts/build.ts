@@ -103,7 +103,10 @@ if (checkResult.exitCode !== 0) {
   process.exit(1);
 }
 
-const upstreamPackageNames = ['markdown', 'editor', 'commentary', 'diff'] as const;
+// Dependency order: diff → markdown → editor → commentary. `markdown` vendors
+// `diff`'s dist, `editor` vendors `markdown`'s, `commentary` vendors both —
+// so the list MUST stay topologically sorted (upstream before its dependents).
+const upstreamPackageNames = ['diff', 'markdown', 'editor', 'commentary'] as const;
 
 // Build each upstream package so its `dist/` is fresh — hoisted ABOVE the
 // skip check below. Each upstream build.ts has its own skip check, so this is
@@ -113,22 +116,25 @@ const upstreamPackageNames = ['markdown', 'editor', 'commentary', 'diff'] as con
 // upstream output, not whatever was on disk before this invocation. Skipping
 // this step first would let a stale upstream hash match this package's
 // recorded marker and skip a rebuild that a changed upstream (e.g. `diff`)
-// actually requires. The four packages are independent (no upstream depends
-// on another), so the builds run in parallel — this cuts ~30s off every
-// `bun run build` on warm caches.
-await Promise.all(
-  upstreamPackageNames.map(async (upstreamName) => {
-    const upstreamRoot = `${workspaceRoot}/packages/${upstreamName}`;
-    const buildResult = await $`bun run --cwd ${upstreamRoot} build`.nothrow();
-    if (buildResult.exitCode !== 0) {
-      process.stderr.write(
-        `Build aborted: upstream @cinder/${upstreamName} build failed (exit ${buildResult.exitCode}).\n` +
-          `${buildResult.stderr.toString()}\n`,
-      );
-      process.exit(1);
-    }
-  }),
-);
+// actually requires.
+//
+// Built SERIALLY in dependency order, NOT in parallel: each upstream build's
+// own hash-skip reads its upstream deps' `dist/` bytes, so a dependent (e.g.
+// `editor`) must not compute its skip hash while its upstream (`markdown`) is
+// mid-rebuild — that would hash against a half-written or stale tree and
+// wrongly skip, leaving a downstream `dist/` stale (the issue #364 race).
+// Warm builds still skip in milliseconds each, so serial costs little.
+for (const upstreamName of upstreamPackageNames) {
+  const upstreamRoot = `${workspaceRoot}/packages/${upstreamName}`;
+  const buildResult = await $`bun run --cwd ${upstreamRoot} build`.nothrow();
+  if (buildResult.exitCode !== 0) {
+    process.stderr.write(
+      `Build aborted: upstream @cinder/${upstreamName} build failed (exit ${buildResult.exitCode}).\n` +
+        `${buildResult.stderr.toString()}\n`,
+    );
+    process.exit(1);
+  }
+}
 
 const buildCacheInputs = {
   packageRoot: repositoryRoot,
@@ -137,6 +143,12 @@ const buildCacheInputs = {
     `${repositoryRoot}/package.json`,
     `${repositoryRoot}/tsconfig.json`,
     `${repositoryRoot}/tsconfig.build.json`,
+    // Workspace-level inputs that still affect the emitted output: `bun.lock`
+    // pins bundled dependency versions and the root base tsconfig supplies
+    // compiler options this package extends. Omitting them would let a
+    // lockfile-only or root-config change skip a stale build.
+    `${workspaceRoot}/bun.lock`,
+    `${workspaceRoot}/tsconfig.base.json`,
   ],
   upstreamDistDirectories: upstreamPackageNames.map(
     (upstreamName) => `${workspaceRoot}/packages/${upstreamName}/dist`,

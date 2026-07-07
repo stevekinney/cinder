@@ -9,6 +9,7 @@ import {
 } from './lib/build-cache.ts';
 
 const packageRoot = process.cwd();
+const workspaceRoot = `${packageRoot}/../..`;
 const distributionDirectory = `${packageRoot}/dist`;
 
 const buildCacheInputs = {
@@ -18,6 +19,12 @@ const buildCacheInputs = {
     `${packageRoot}/package.json`,
     `${packageRoot}/tsconfig.json`,
     `${packageRoot}/tsconfig.build.json`,
+    // Workspace-level inputs that still affect this package's emitted bundle:
+    // `bun.lock` pins bundled third-party dependency versions, and the root
+    // base tsconfig supplies compiler options every package extends. Omitting
+    // them would let a lockfile-only or root-config change skip a stale build.
+    `${workspaceRoot}/bun.lock`,
+    `${workspaceRoot}/tsconfig.base.json`,
   ],
   upstreamDistDirectories: [],
 };
@@ -95,7 +102,7 @@ for (const outputPath of expectedOutputs) {
 // present — there is a sub-millisecond window in the rebuild path where `dist/`
 // is absent — so it is not, on its own, sufficient for fully concurrent
 // rebuilds; the test-gate serialization is what makes the hook path safe.
-atomicSwapDist(stagingDirectory, distributionDirectory);
+const installedDist = atomicSwapDist(stagingDirectory, distributionDirectory);
 
 // The hash MUST be computed before the swap started, from the source tree
 // that produced THIS build's output — the `skipDecision.hash` computed at the
@@ -104,7 +111,14 @@ atomicSwapDist(stagingDirectory, distributionDirectory);
 // wasted work regardless). Written only now that the atomic swap has
 // succeeded, so the marker never claims a half-written or failed build is up
 // to date.
-const finalHash = skipDecision.hash ?? (await computeBuildInputHash(buildCacheInputs));
-await writeBuildInputHash(distributionDirectory, finalHash);
+// Record the input hash ONLY when this build actually installed its own
+// staging tree. When a concurrent same-package build won the swap,
+// `installedDist` is false and `dist` holds THAT build's output (from
+// possibly different inputs); stamping our hash onto it could let a later
+// build skip against a tree we never produced. The winner records its own.
+if (installedDist) {
+  const finalHash = skipDecision.hash ?? (await computeBuildInputHash(buildCacheInputs));
+  await writeBuildInputHash(distributionDirectory, finalHash);
+}
 
 process.stdout.write('Build complete.\n');

@@ -71,6 +71,13 @@ const DESTINATION_EXISTS_CODES = new Set(['ENOTEMPTY', 'EEXIST']);
  *      package with no `dist` at all, since the only copy is in `old`.)
  *   4. We own the installed dist. Remove the vacated `old` tree.
  *
+ * @returns `true` when THIS call installed its own staging tree as the live
+ *   `dist` (steps 1 and 4); `false` when a concurrent same-package build's dist
+ *   won and this call's staging tree was discarded (steps 2 and 3 race paths).
+ *   Callers use this to avoid stamping their own build-cache marker onto a
+ *   `dist` another build produced from potentially different inputs — only the
+ *   build that actually installed a tree may record its input hash for it.
+ *
  * The success and concurrent-loser paths remove `temp` / `old` synchronously
  * before returning. A `process.on('exit')` handler is also registered as a
  * backstop that removes the staging tree (`temp`) if the process exits between
@@ -91,7 +98,7 @@ export function atomicSwapDist(
   tempDirectory: string,
   distributionDirectory: string,
   fileSystem: FileSystemOperations = { renameSync, rmSync },
-): void {
+): boolean {
   // Unique per invocation so two concurrent builds (different pid OR same pid
   // reused across non-overlapping runs) never collide on, or clean up, each
   // other's vacated tree.
@@ -112,7 +119,7 @@ export function atomicSwapDist(
   // Step 1: optimistic — first build, or dist is absent.
   try {
     fileSystem.renameSync(tempDirectory, distributionDirectory);
-    return;
+    return true;
   } catch (error) {
     if (!isErrnoException(error) || !DESTINATION_EXISTS_CODES.has(error.code ?? '')) {
       throw error;
@@ -129,7 +136,7 @@ export function atomicSwapDist(
       // installed a complete dist. Ours is redundant — clean up our staging
       // tree now (don't lean on the exit handler, which won't fire on SIGKILL).
       fileSystem.rmSync(tempDirectory, { recursive: true, force: true });
-      return;
+      return false;
     }
     throw error;
   }
@@ -144,7 +151,7 @@ export function atomicSwapDist(
       // tree immediately rather than waiting for the exit handler.
       fileSystem.rmSync(oldDirectory, { recursive: true, force: true });
       fileSystem.rmSync(tempDirectory, { recursive: true, force: true });
-      return;
+      return false;
     }
     // Unexpected install failure (ENOSPC / EIO / EPERM / …) after we already
     // vacated the live tree to `oldDirectory`. Best-effort rollback: move the
@@ -165,6 +172,7 @@ export function atomicSwapDist(
 
   // Step 4: we installed dist. Remove the vacated old tree.
   fileSystem.rmSync(oldDirectory, { recursive: true, force: true });
+  return true;
 }
 
 /**

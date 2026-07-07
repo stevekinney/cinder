@@ -11,6 +11,14 @@ import { join } from 'node:path';
 export const FINGERPRINT_SOURCE_DIRECTORIES = [
   'packages/playground/src',
   'packages/components/src',
+  // The playground server prebuilds and imports these private upstream
+  // packages (see `playgroundBundleDependencyPackages` in start-server.ts).
+  // An edit to one of them must invalidate the fingerprint too, or a
+  // running server built from stale upstream code looks fresh.
+  'packages/diff/src',
+  'packages/markdown/src',
+  'packages/editor/src',
+  'packages/commentary/src',
 ] as const;
 
 /**

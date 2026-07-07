@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  FINGERPRINT_SOURCE_DIRECTORIES,
   isFingerprintStale,
   newestFileMtimeMs,
   newestSourceMtimeMs,
@@ -76,6 +77,51 @@ describe('newestSourceMtimeMs', () => {
   test('resolves a real newest mtime against the actual repo root', () => {
     const repoRoot = join(import.meta.dirname, '../../..');
     expect(newestSourceMtimeMs(repoRoot)).not.toBeNull();
+  });
+
+  test('includes the private upstream packages the playground bundle depends on', () => {
+    // start-server.ts prebuilds and the playground server imports these
+    // packages (@cinder/diff, @cinder/markdown, @cinder/editor,
+    // @cinder/commentary). An edit to one of them must move the fingerprint,
+    // or a running server built from stale upstream code looks fresh.
+    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/diff/src');
+    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/markdown/src');
+    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/editor/src');
+    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/commentary/src');
+  });
+
+  test('picks up a change to an upstream package source over the playground/components sources', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'source-fingerprint-upstream-'));
+    try {
+      const playgroundSourceDirectory = join(repoRoot, 'packages/playground/src');
+      const componentsSourceDirectory = join(repoRoot, 'packages/components/src');
+      const diffSourceDirectory = join(repoRoot, 'packages/diff/src');
+      mkdirSync(playgroundSourceDirectory, { recursive: true });
+      mkdirSync(componentsSourceDirectory, { recursive: true });
+      mkdirSync(diffSourceDirectory, { recursive: true });
+
+      const playgroundFile = join(playgroundSourceDirectory, 'a.ts');
+      writeFileSync(playgroundFile, 'a');
+      const past = new Date(Date.now() - 60_000);
+      utimesSync(playgroundFile, past, past);
+
+      const baseline = newestSourceMtimeMs(repoRoot);
+      expect(baseline).not.toBeNull();
+
+      // Editing @cinder/diff's source after the "baseline" server started
+      // must be visible as a newer fingerprint input.
+      const diffFile = join(diffSourceDirectory, 'index.ts');
+      writeFileSync(diffFile, 'diff');
+      const future = new Date(Date.now() + 60_000);
+      utimesSync(diffFile, future, future);
+
+      const afterUpstreamEdit = newestSourceMtimeMs(repoRoot);
+      expect(afterUpstreamEdit).not.toBeNull();
+      expect(afterUpstreamEdit! > baseline!).toBe(true);
+      expect(afterUpstreamEdit).toBe(statSync(diffFile).mtimeMs);
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true });
+    }
   });
 });
 

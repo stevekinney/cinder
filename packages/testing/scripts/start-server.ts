@@ -143,6 +143,14 @@ export function stalePlaygroundServerMessage(playgroundUrl: string): string {
  * running stale code — refuse reuse rather than silently testing against it
  * (stale servers have produced both false passes and false fails).
  *
+ * This is only called for the local default playground URL, i.e. a server
+ * this wrapper is entitled to distrust and restart. A `null` fingerprint
+ * there does not mean "nothing to compare, assume fresh" — it means the
+ * running server predates the fingerprint header entirely (a server left
+ * over from before this freshness check existed), which is exactly the
+ * stale-reuse case this guard exists to catch. Treat it as stale rather than
+ * fresh.
+ *
  * Pure function over already-fetched inputs so it is unit-testable without a
  * live server.
  */
@@ -150,7 +158,7 @@ export function shouldRefuseStaleServerReuse(
   runningServerFingerprint: PlaygroundFreshnessFingerprint | null,
   currentNewestSourceMtimeMs: number | null,
 ): boolean {
-  if (runningServerFingerprint === null) return false;
+  if (runningServerFingerprint === null) return true;
   return isFingerprintStale(runningServerFingerprint, currentNewestSourceMtimeMs);
 }
 

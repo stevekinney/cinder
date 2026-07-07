@@ -73,7 +73,8 @@ describe('atomicSwapDist (injected fake filesystem — race branches)', () => {
   it('step 1 success: first build installs temp as dist, no further work', () => {
     // rename #1 (temp→dist) succeeds; no other rename should run.
     const fake = makeFakeFileSystem(new Map());
-    atomicSwapDist(TEMP, DIST, fake.fileSystem);
+    // Returns true: this call installed its own tree.
+    expect(atomicSwapDist(TEMP, DIST, fake.fileSystem)).toBe(true);
     expect(fake.renameCallCount()).toBe(1);
     // Success path removes nothing eagerly (the moved temp IS the new dist).
     expect(fake.rmTargets).toHaveLength(0);
@@ -82,7 +83,8 @@ describe('atomicSwapDist (injected fake filesystem — race branches)', () => {
   it('rebuild success: dist exists → vacate → install → remove old', () => {
     // #1 temp→dist fails (dist exists), #2 dist→old ok, #3 temp→dist ok.
     const fake = makeFakeFileSystem(new Map([[1, 'ENOTEMPTY']]));
-    atomicSwapDist(TEMP, DIST, fake.fileSystem);
+    // Returns true: this call vacated the old tree and installed its own.
+    expect(atomicSwapDist(TEMP, DIST, fake.fileSystem)).toBe(true);
     expect(fake.renameCallCount()).toBe(3);
     // Step 4 removes exactly the vacated `old` tree.
     expect(fake.rmTargets).toHaveLength(1);
@@ -97,7 +99,9 @@ describe('atomicSwapDist (injected fake filesystem — race branches)', () => {
         [2, 'ENOENT'],
       ]),
     );
-    expect(() => atomicSwapDist(TEMP, DIST, fake.fileSystem)).not.toThrow();
+    // Returns false: a concurrent winner's dist is live; we installed nothing,
+    // so the caller must NOT stamp its input hash onto that dist.
+    expect(atomicSwapDist(TEMP, DIST, fake.fileSystem)).toBe(false);
     expect(fake.renameCallCount()).toBe(2); // never reaches step 3
     // Our now-redundant staging tree is cleaned synchronously.
     expect(fake.rmTargets).toContain(TEMP);
@@ -111,7 +115,9 @@ describe('atomicSwapDist (injected fake filesystem — race branches)', () => {
         [3, 'ENOTEMPTY'],
       ]),
     );
-    expect(() => atomicSwapDist(TEMP, DIST, fake.fileSystem)).not.toThrow();
+    // Returns false: a concurrent winner reinstalled dist after we vacated;
+    // our tree was discarded, so the caller must NOT record its hash.
+    expect(atomicSwapDist(TEMP, DIST, fake.fileSystem)).toBe(false);
     expect(fake.renameCallCount()).toBe(3);
     // Both the vacated old tree and our redundant staging tree are removed.
     expect(fake.rmTargets.some((path) => path.includes(`${DIST}.old-`))).toBe(true);

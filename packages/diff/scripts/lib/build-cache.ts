@@ -68,7 +68,8 @@ async function collectFilesSorted(root: string, readDirectory: DirectoryReader):
   const files = entries
     .filter((entry) => entry.isFile())
     .map((entry) => join(entry.parentPath, entry.name));
-  return files.toSorted();
+  files.sort();
+  return files;
 }
 
 /**
@@ -97,10 +98,14 @@ export async function computeBuildInputHash(
       labeledFiles.push({ absolute, label: `root:${relative(inputs.packageRoot, absolute)}` });
     }
   }
-  for (const absolute of inputs.extraFiles.toSorted()) {
+  const extraFiles = [...inputs.extraFiles];
+  extraFiles.sort();
+  for (const absolute of extraFiles) {
     labeledFiles.push({ absolute, label: `file:${relative(inputs.packageRoot, absolute)}` });
   }
-  for (const distDirectory of inputs.upstreamDistDirectories.toSorted()) {
+  const upstreamDistDirectories = [...inputs.upstreamDistDirectories];
+  upstreamDistDirectories.sort();
+  for (const distDirectory of upstreamDistDirectories) {
     const files = await collectFilesSorted(distDirectory, readDirectory);
     for (const absolute of files) {
       labeledFiles.push({

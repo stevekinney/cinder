@@ -62,7 +62,8 @@ describe('atomicSwapDist (real filesystem)', () => {
     const distributionDirectory = join(testRoot, 'dist');
 
     expect(existsSync(distributionDirectory)).toBe(false);
-    atomicSwapDist(tempDirectory, distributionDirectory);
+    // Returns true: this call installed its own tree (step 1).
+    expect(atomicSwapDist(tempDirectory, distributionDirectory)).toBe(true);
 
     expect(existsSync(distributionDirectory)).toBe(true);
     expect(existsSync(tempDirectory)).toBe(false);
@@ -76,7 +77,9 @@ describe('atomicSwapDist (real filesystem)', () => {
     renameSync(priorDist, distributionDirectory);
 
     const tempDirectory = await makeDir(stagingDirectoryName(), 'new-build');
-    atomicSwapDist(tempDirectory, distributionDirectory);
+    // Returns true: this call vacated the prior dist and installed its own
+    // tree (steps 2 → 3 → 4).
+    expect(atomicSwapDist(tempDirectory, distributionDirectory)).toBe(true);
 
     expect(existsSync(distributionDirectory)).toBe(true);
     expect(existsSync(tempDirectory)).toBe(false);
