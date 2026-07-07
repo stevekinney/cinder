@@ -155,10 +155,16 @@ function collectViolations(statements: AstNode[]): {
 // Load and parse the MarkdownEditor source
 // ---------------------------------------------------------------------------
 const SOURCE_PATH = new URL('./markdown-editor.svelte', import.meta.url).pathname;
+const README_PATH = new URL('./README.md', import.meta.url).pathname;
 const source = await Bun.file(SOURCE_PATH)
   .text()
   .catch(() => {
     throw new Error(`[import-boundary] Cannot read ${SOURCE_PATH} — failing hard per plan`);
+  });
+const readme = await Bun.file(README_PATH)
+  .text()
+  .catch(() => {
+    throw new Error(`[import-boundary] Cannot read ${README_PATH} — failing hard per plan`);
   });
 
 const svelteAst = parse(source, { filename: SOURCE_PATH }) as unknown as AstNode;
@@ -189,6 +195,15 @@ describe('MarkdownEditor import-boundary invariant', () => {
 
   it('has no non-literal dynamic import specifiers in the script', () => {
     expect(nonLiteralDynamicViolations).toEqual([]);
+  });
+});
+
+describe('MarkdownEditor peer dependency documentation', () => {
+  it('documents the optional editor peer install path for fresh consumers', () => {
+    expect(readme).toContain('@lostgradient/cinder/markdown-editor');
+    expect(readme).toContain('bun add @milkdown/ctx @milkdown/kit @milkdown/prose');
+    expect(readme).toContain('prosemirror-state');
+    expect(readme).toContain('__vite-optional-peer-dep:*');
   });
 });
 

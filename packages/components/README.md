@@ -18,6 +18,11 @@ Rich editor, markdown rendering, editor/commentary re-exports, and syntax-highli
 bun add @milkdown/ctx @milkdown/kit @milkdown/prose @shikijs/engine-oniguruma @shikijs/langs @shikijs/rehype @shikijs/types @types/hast @types/mdast @types/unist comlink hast-util-sanitize js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view rehype-katex rehype-sanitize rehype-stringify remark-gfm remark-html remark-math remark-parse remark-rehype remark-stringify shiki unified unist-util-remove unist-util-visit
 ```
 
+`@lostgradient/cinder/markdown-editor` needs the editor and Markdown pipeline subset from that
+list at build time. If `prosemirror-state`, `prosemirror-view`, `@milkdown/kit`, or another editor
+peer is missing, Vite may report the failure through its optional-peer placeholder module instead
+of naming this install step.
+
 ## Quickstart
 
 Load the base stylesheet once at your app entry:
