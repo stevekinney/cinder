@@ -23,7 +23,11 @@ describe('component artifact import boundaries', () => {
   it('does not re-export lightweight discovery from the heavy CLI entrypoint', async () => {
     const source = await readScript('generate-component-artifacts.ts');
 
-    expect(source).not.toMatch(/export\s+\{[^}]*discoverComponentDirectories/s);
-    expect(source).not.toMatch(/export\s+async\s+function\s+checkComponentArtifacts/);
+    expect(source).not.toMatch(
+      /export\s+(?:\*\s+from\s+['"].*discover-component-directories|(?:type\s+)?\{[^}]*discoverComponentDirectories)/s,
+    );
+    expect(source).not.toMatch(
+      /export\s+(?:\*\s+from\s+['"].*component-artifact-operations|(?:async\s+function|(?:type\s+)?\{[^}]*checkComponentArtifacts))/s,
+    );
   });
 });
