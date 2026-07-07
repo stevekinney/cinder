@@ -10,9 +10,12 @@ import {
   changedFilesForRange,
   cleanupForHookSignal,
   cleanupHookProcesses,
+  defaultGateLockPath,
   expandToDependents,
   formatFailureSummary,
+  gateLockPathForCommonDirectory,
   getTouchedPackages,
+  gitCommonDirectory,
   hasRootConfigurationChanges,
   inferFailureScope,
   isIgnorableDoc,
@@ -24,6 +27,7 @@ import {
   parsePushRefs,
   phaseMaxConcurrency,
   prePushPackageScript,
+  REPO_ROOT,
   runHookCommand,
   runWithConcurrencyPool,
   summarizeFailures,
@@ -1322,6 +1326,15 @@ describe('withGateLock', () => {
       await rm(directory, { force: true, recursive: true });
     }
   }
+
+  it('derives the default lock path from the shared Git common directory', () => {
+    const commonDirectory = gitCommonDirectory();
+    const expectedPath = gateLockPathForCommonDirectory(commonDirectory);
+
+    expect(commonDirectory).toBe(gitCommonDirectory(REPO_ROOT));
+    expect(defaultGateLockPath()).toBe(expectedPath);
+    expect(defaultGateLockPath()).not.toContain(REPO_ROOT);
+  });
 
   it('creates a lock while the protected function runs and removes it after success', async () => {
     await withTemporaryLockPath(async (lockPath) => {
