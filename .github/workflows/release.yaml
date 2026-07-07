@@ -89,6 +89,17 @@ jobs:
             echo "pending=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Runs on EVERY push, independent of the validate-skip decision below.
+      # The full `bun run validate` (which contains this same guard via
+      # `validate:workflow`) is skipped on the pending-changesets path, but the
+      # ignored-package changeset check must not be: an illegal changeset for an
+      # ignored package (e.g. @cinder/playground) would otherwise sit unconsumed
+      # while `changesets/action` keeps re-opening the Version Packages PR,
+      # instead of failing here with the actionable error.
+      - name: Guard against ignored-package changesets
+        if: github.event_name == 'push'
+        run: bun run --filter=@lostgradient/cinder validate:release-workflow
+
       # Chromium is only needed by validate:consumer, which runs inside
       # `bun run validate` — gate it identically so the no-publish path
       # skips the browser download too.

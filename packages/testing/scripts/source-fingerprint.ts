@@ -11,6 +11,16 @@ import { join } from 'node:path';
 export const FINGERPRINT_SOURCE_DIRECTORIES = [
   'packages/playground/src',
   'packages/components/src',
+  // The playground server itself and its build helpers live under these
+  // `scripts` trees (playground-server.ts imports e.g. components'
+  // scripts/svelte-plugin.ts and scripts/lib/visual-fixtures/loader.ts). An
+  // edit to the SERVER/bundler code must invalidate the fingerprint too, or a
+  // running server with the old server code loaded looks fresh. Whole-dir
+  // coverage over-refreshes on unrelated script edits, which is the safe
+  // direction — a spurious rebuild costs seconds; a stale reuse silently tests
+  // the wrong bytes.
+  'packages/components/scripts',
+  'packages/playground/scripts',
   // The playground server prebuilds and imports these private upstream
   // packages (see `playgroundBundleDependencyPackages` in start-server.ts).
   // An edit to one of them must invalidate the fingerprint too, or a

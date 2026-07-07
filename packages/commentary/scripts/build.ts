@@ -1,12 +1,7 @@
 import { $ } from 'bun';
 
 import { atomicSwapDist, stagingDirectoryName } from './lib/atomic-swap-dist.ts';
-import {
-  computeBuildInputHash,
-  shortHash,
-  shouldSkipBuild,
-  writeBuildInputHash,
-} from './lib/build-cache.ts';
+import { shortHash, shouldSkipBuild, writeBuildInputHash } from './lib/build-cache.ts';
 import { getExpectedBuildOutputs, readPackageExports } from './package-exports.js';
 
 const packageRoot = process.cwd();
@@ -97,9 +92,8 @@ const installedDist = atomicSwapDist(stagingDirectory, distributionDirectory);
 // `installedDist` is false and `dist` holds THAT build's output (from
 // possibly different inputs); stamping our hash onto it could let a later
 // build skip against a tree we never produced. The winner records its own.
-if (installedDist) {
-  const finalHash = skipDecision.hash ?? (await computeBuildInputHash(buildCacheInputs));
-  await writeBuildInputHash(distributionDirectory, finalHash);
+if (installedDist && skipDecision.hash !== null) {
+  await writeBuildInputHash(distributionDirectory, skipDecision.hash);
 }
 
 process.stdout.write('Build complete.\n');

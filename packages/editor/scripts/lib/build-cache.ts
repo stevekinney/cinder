@@ -174,19 +174,28 @@ export async function shouldSkipBuild(
   inputs: BuildCacheInputs,
   readDirectory: DirectoryReader = readdir,
 ): Promise<BuildCacheDecision> {
-  if (process.env['CINDER_FORCE_BUILD'] === '1') {
-    return { skip: false, hash: null, reason: `${FORCE_BUILD_ENV_VAR}=1 set` };
-  }
+  const forceBuild = process.env['CINDER_FORCE_BUILD'] === '1';
 
   const distributionDirectory = join(inputs.packageRoot, 'dist');
   const recorded = await readRecordedHash(distributionDirectory);
 
+  // Compute the input hash NOW — before the build reads any source — even when
+  // forcing. The caller records THIS pre-build hash after a successful build;
+  // recomputing post-build could observe sources mutated mid-build (a save
+  // after the compiler already read them) and stamp output with a hash it was
+  // not produced from, letting a later build wrongly skip stale `dist`.
   let currentHash: string;
   try {
     currentHash = await computeBuildInputHash(inputs, readDirectory);
   } catch (error) {
     const message = isErrnoException(error) ? (error.code ?? error.message) : String(error);
     return { skip: false, hash: null, reason: `hash computation failed (${message})` };
+  }
+
+  // The escape hatch refuses to SKIP, but still returns the pre-build hash so
+  // the forced rebuild records an accurate marker.
+  if (forceBuild) {
+    return { skip: false, hash: currentHash, reason: `${FORCE_BUILD_ENV_VAR}=1 set` };
   }
 
   if (recorded === null) {

@@ -90,6 +90,16 @@ describe('newestSourceMtimeMs', () => {
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/commentary/src');
   });
 
+  test('includes the server and bundler script trees the playground server runs', () => {
+    // The playground server itself and its build helpers live under these
+    // `scripts` trees (playground-server.ts imports components'
+    // scripts/svelte-plugin.ts and scripts/lib/visual-fixtures/loader.ts). An
+    // edit to the server/bundler code must move the fingerprint too, or a
+    // running server with the old server code loaded looks fresh.
+    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/components/scripts');
+    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/playground/scripts');
+  });
+
   test('picks up a change to an upstream package source over the playground/components sources', () => {
     const repoRoot = mkdtempSync(join(tmpdir(), 'source-fingerprint-upstream-'));
     try {

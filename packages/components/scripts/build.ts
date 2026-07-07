@@ -7,12 +7,7 @@ import { emitDts } from 'svelte2tsx';
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
 import { componentStylesSpecifier, cssImportPlugin } from './css-import-plugin.ts';
 import { DEPRECATED_EXPERIMENTAL_ALIASES } from './generate-exports.ts';
-import {
-  computeBuildInputHash,
-  shortHash,
-  shouldSkipBuild,
-  writeBuildInputHash,
-} from './lib/build-cache.ts';
+import { shortHash, shouldSkipBuild, writeBuildInputHash } from './lib/build-cache.ts';
 import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
@@ -1015,8 +1010,9 @@ await assertServerComponentBoundariesPreserveIdentity();
 // rebuilt upstream dists) that produced THIS build's output; recomputing here
 // could observe a different filesystem state (this build script overwrites
 // `dist/` throughout) and is wasted work regardless.
-const finalHash = skipDecision.hash ?? (await computeBuildInputHash(buildCacheInputs));
-await writeBuildInputHash(distributionDirectory, finalHash);
+if (skipDecision.hash !== null) {
+  await writeBuildInputHash(distributionDirectory, skipDecision.hash);
+}
 
 process.stdout.write(
   `Build complete. ${components.length} components, ${copiedSidecars.length} CSS sidecars copied.\n`,
