@@ -138,7 +138,7 @@ describe('Steps', () => {
     expect(skipped?.textContent).toMatch(/Skipped\s+Optional profile/);
   });
 
-  test('state override only honors skipped after currentStep marks past/current states', () => {
+  test('only honors skipped overrides before currentStep and ignores active or future overrides', () => {
     const { container } = render(Steps, {
       steps: [
         { id: 'a', label: 'Account' },
