@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  buildableForwardClosure,
   changedCssLikeFiles,
   changedFilesForRange,
   cleanupForHookSignal,
@@ -583,6 +584,43 @@ describe('expandToDependents', () => {
   });
 });
 
+describe('buildableForwardClosure', () => {
+  // Pins the exact prefixes of BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER so a
+  // future reorder of that list (breaking the "every dependency points
+  // strictly backward" invariant `buildableForwardClosure` relies on) fails
+  // loudly here instead of silently under-building the pre-push pre-build
+  // step and reopening the #364 race as a CI flake.
+  it('closes @cinder/editor to diff + markdown + editor (its upstream chain)', () => {
+    expect(buildableForwardClosure(new Set(['@cinder/editor']))).toEqual([
+      '@cinder/diff',
+      '@cinder/markdown',
+      '@cinder/editor',
+    ]);
+  });
+
+  it('closes @lostgradient/cinder to the full five-package chain', () => {
+    expect(buildableForwardClosure(new Set(['@lostgradient/cinder']))).toEqual([
+      '@cinder/diff',
+      '@cinder/markdown',
+      '@cinder/editor',
+      '@cinder/commentary',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('does not over-build past the latest touched package', () => {
+    expect(buildableForwardClosure(new Set(['@cinder/diff', '@cinder/markdown']))).toEqual([
+      '@cinder/diff',
+      '@cinder/markdown',
+    ]);
+  });
+
+  it('returns an empty list when no buildable package is touched', () => {
+    expect(buildableForwardClosure(new Set())).toEqual([]);
+    expect(buildableForwardClosure(new Set(['@cinder/testing']))).toEqual([]);
+  });
+});
+
 describe('isNewBranch', () => {
   it('is true when the remote sha is all zeros', () => {
     expect(isNewBranch({ localSha: 'a'.repeat(40), remoteSha: '0'.repeat(40) })).toBe(true);
@@ -1110,67 +1148,67 @@ describe('formatFailureSummary', () => {
 });
 
 /**
- * Regression test for issue #364 — pre-push and pre-commit test phases race shared-dist rebuilds.
+ * Regression test for issue #364 — pre-push and pre-commit test phases raced
+ * shared-dist rebuilds.
  *
  * `phaseMaxConcurrency` is the side-effect-free seam extracted from pre-push.ts
  * so this test can assert the policy without importing the gate entry path
  * (which has module-scope side effects: isContinuousIntegration → process.exit,
- * stdin read, gate lock). The assertion would fail on origin/main (before this PR)
- * because the concurrency was an inline literal at the call site, not an
- * exported function that could be independently verified. The pre-commit hook
- * originally used a single flat pool for both typecheck and test — this fix
- * applies the same two-phase execution (typecheck parallel, test serialized) as
- * the pre-push hook already uses after #365.
+ * stdin read, gate lock). The race is now closed upstream: pre-push pre-builds
+ * the full dependency closure once, in dependency order, before dispatching
+ * the test phase (see `preBuildDependencyClosure` in pre-push.ts), so every
+ * package's inline `bun run --filter=<dep> build` step hash-skips against
+ * unchanged inputs instead of racing a rebuild. With nothing left to race, the
+ * test phase shares the same bounded concurrency as lint and typecheck.
  */
 describe('phaseMaxConcurrency', () => {
-  it('returns 1 for the test phase to prevent the shared-dist rebuild race', () => {
-    // This is the key regression guard for issue #364. Each package's `test`
-    // script does inline `bun run --filter=<dep> build` steps that wipe and
-    // re-emit shared upstream `dist/` directories. Running two test jobs
-    // concurrently races those rm -rf + write cycles against a third job's
-    // bundler reading the same dist mid-write. Concurrency must be exactly 1.
-    expect(phaseMaxConcurrency('test')).toBe(1);
+  function withHardwareConcurrency(value: number, run: () => void): void {
+    // Pin hardwareConcurrency so the assertion is environment-independent: on
+    // a real 1-vCPU host Math.max(1, Math.min(1, 4)) === 1, which would make
+    // toBeGreaterThan(1) fail. The fixture value must be ≥ 2 and ≤ 4 (the cap
+    // in the implementation) so the mocked result equals min(value, 4).
+    const original = navigator.hardwareConcurrency;
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      value,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      run();
+    } finally {
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        value: original,
+        configurable: true,
+        writable: true,
+      });
+    }
+  }
+
+  it('returns a value greater than 1 for test (dependency closure is pre-built, so inline rebuilds hash-skip)', () => {
+    withHardwareConcurrency(2, () => {
+      expect(phaseMaxConcurrency('test')).toBeGreaterThan(1);
+    });
   });
 
   it('returns a value greater than 1 for lint (read-only, safe to parallelize)', () => {
-    // Pin hardwareConcurrency to 2 so the assertion is environment-independent:
-    // on a real 1-vCPU host Math.max(1, Math.min(1, 4)) === 1, which would
-    // make toBeGreaterThan(1) fail.  The fixture value must be ≥ 2 and ≤ 4
-    // (the cap in the implementation) so the mocked result equals min(2,4)=2.
-    const original = navigator.hardwareConcurrency;
-    Object.defineProperty(navigator, 'hardwareConcurrency', {
-      value: 2,
-      configurable: true,
-      writable: true,
-    });
-    try {
+    withHardwareConcurrency(2, () => {
       expect(phaseMaxConcurrency('lint')).toBeGreaterThan(1);
-    } finally {
-      Object.defineProperty(navigator, 'hardwareConcurrency', {
-        value: original,
-        configurable: true,
-        writable: true,
-      });
-    }
+    });
   });
 
   it('returns a value greater than 1 for typecheck (read-only, safe to parallelize)', () => {
-    // Same pin as the lint test above — see that comment.
-    const original = navigator.hardwareConcurrency;
-    Object.defineProperty(navigator, 'hardwareConcurrency', {
-      value: 2,
-      configurable: true,
-      writable: true,
-    });
-    try {
+    withHardwareConcurrency(2, () => {
       expect(phaseMaxConcurrency('typecheck')).toBeGreaterThan(1);
-    } finally {
-      Object.defineProperty(navigator, 'hardwareConcurrency', {
-        value: original,
-        configurable: true,
-        writable: true,
-      });
-    }
+    });
+  });
+
+  it('returns the same concurrency for every gate script', () => {
+    withHardwareConcurrency(2, () => {
+      const concurrencies = (['lint', 'typecheck', 'test'] as const).map((script) =>
+        phaseMaxConcurrency(script),
+      );
+      expect(new Set(concurrencies).size).toBe(1);
+    });
   });
 
   it('returns a finite positive integer for every gate script', () => {
@@ -1185,13 +1223,13 @@ describe('phaseMaxConcurrency', () => {
 
 /**
  * `runWithConcurrencyPool` is the *mechanism* the `phaseMaxConcurrency` policy
- * feeds. The policy test above only proves the test phase asks for concurrency
- * 1 — it does NOT prove the runner honors it. Both hooks' `runJobs` now delegate
- * to this pool, so a future edit that passed a hardcoded `4` instead of
- * `phaseMaxConcurrency('test')` would still leave the policy test green. These
- * tests close that gap: they instrument the worker to record the maximum number
- * of overlapping invocations and assert the pool never exceeds the cap. With
- * `maxConcurrency === 1` the overlap is strictly 1 — the actual #364 guarantee.
+ * feeds. The policy tests above only prove each phase asks for a given
+ * concurrency — they do NOT prove the runner honors it. Both hooks' `runJobs`
+ * delegate to this pool, so a future edit that passed a hardcoded literal
+ * instead of `phaseMaxConcurrency(script)` would still leave the policy tests
+ * green. These tests close that gap: they instrument the worker to record the
+ * maximum number of overlapping invocations and assert the pool never exceeds
+ * the cap — with `maxConcurrency === 1` the overlap is strictly 1.
  */
 describe('runWithConcurrencyPool', () => {
   /**

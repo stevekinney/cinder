@@ -189,7 +189,7 @@ function registerTools(
     },
     async ({ topic }) => {
       try {
-        const selectedTopic = (topic ?? 'all') as BestPracticeTopic;
+        const selectedTopic: BestPracticeTopic = topic ?? 'all';
         const data = knowledge.bestPractices(selectedTopic);
         return textResult(jsonText(data), { sections: data });
       } catch (error: unknown) {

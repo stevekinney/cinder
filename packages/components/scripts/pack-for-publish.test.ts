@@ -1,12 +1,70 @@
-import { describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it } from 'bun:test';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
+import { BUILD_INPUT_HASH_MARKER } from './lib/build-cache.ts';
 import {
   buildPublishedManifest,
+  removeBuildCacheMarker,
   stripDanglingSourceMapUrlComments,
   transpileSvelteComponentScriptsForPublish,
   transpileSvelteTypeScriptModuleForPublish,
   type SourceManifest,
 } from './pack-for-publish.ts';
+
+describe('removeBuildCacheMarker', () => {
+  // Regression guard for a previously shipped bug: the build-cache marker
+  // file `dist/.build-input-hash` leaked into the published npm tarball
+  // because `node:fs` `cp(..., { recursive: true })` does not skip dotfiles
+  // during staging. Fixed by an explicit `rm` in `stageFiles`; nothing
+  // previously pinned the fix, so it could regress silently. This test
+  // exercises the REAL exported removal helper (not a reimplementation of the
+  // `rm` call) against a synthetic staged tree.
+  const fixtureRoots: string[] = [];
+  afterEach(() => {
+    while (fixtureRoots.length > 0) {
+      rmSync(fixtureRoots.pop()!, { recursive: true, force: true });
+    }
+  });
+
+  function makeStagedDistFixture(): string {
+    const root = mkdtempSync(join(tmpdir(), 'cinder-pack-for-publish-'));
+    fixtureRoots.push(root);
+    const distDirectory = join(root, 'dist');
+    mkdirSync(distDirectory, { recursive: true });
+    writeFileSync(join(distDirectory, BUILD_INPUT_HASH_MARKER), 'sha256:deadbeef');
+    writeFileSync(join(distDirectory, 'index.js'), 'export const value = 1;\n');
+    return root;
+  }
+
+  it('removes the build-input-hash marker from a staged dist tree', async () => {
+    const stagingRoot = makeStagedDistFixture();
+    const markerPath = join(stagingRoot, 'dist', BUILD_INPUT_HASH_MARKER);
+    expect(existsSync(markerPath)).toBe(true);
+
+    await removeBuildCacheMarker(stagingRoot);
+
+    expect(existsSync(markerPath)).toBe(false);
+  });
+
+  it('leaves a normal neighbor file in the staged dist tree untouched', async () => {
+    const stagingRoot = makeStagedDistFixture();
+    const neighborPath = join(stagingRoot, 'dist', 'index.js');
+
+    await removeBuildCacheMarker(stagingRoot);
+
+    expect(existsSync(neighborPath)).toBe(true);
+  });
+
+  it('does not throw when the marker is already absent', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'cinder-pack-for-publish-'));
+    fixtureRoots.push(root);
+    mkdirSync(join(root, 'dist'), { recursive: true });
+
+    await expect(removeBuildCacheMarker(root)).resolves.toBeUndefined();
+  });
+});
 
 describe('buildPublishedManifest', () => {
   it('publishes source component Svelte and TypeScript runtime files for Svelte-aware consumers', () => {

@@ -1,9 +1,35 @@
 import { $ } from 'bun';
 
 import { atomicSwapDist, stagingDirectoryName } from './lib/atomic-swap-dist.ts';
+import { shortHash, shouldSkipBuild, writeBuildInputHash } from './lib/build-cache.ts';
 
 const packageRoot = process.cwd();
+const workspaceRoot = `${packageRoot}/../..`;
 const distributionDirectory = `${packageRoot}/dist`;
+
+const buildCacheInputs = {
+  packageRoot,
+  sourceGlobRoots: [`${packageRoot}/src`, `${packageRoot}/scripts`],
+  extraFiles: [
+    `${packageRoot}/package.json`,
+    `${packageRoot}/tsconfig.json`,
+    `${packageRoot}/tsconfig.build.json`,
+    // Workspace-level inputs that still affect this package's emitted bundle:
+    // `bun.lock` pins bundled third-party dependency versions, and the root
+    // base tsconfig supplies compiler options every package extends. Omitting
+    // them would let a lockfile-only or root-config change skip a stale build.
+    `${workspaceRoot}/bun.lock`,
+    `${workspaceRoot}/tsconfig.base.json`,
+  ],
+  upstreamDistDirectories: [],
+};
+
+const skipDecision = await shouldSkipBuild(buildCacheInputs);
+if (skipDecision.skip) {
+  process.stdout.write(`[build] up to date (hash ${shortHash(skipDecision.hash)}), skipping\n`);
+  process.exit(0);
+}
+
 // Unique-per-invocation staging directory (a `dist.tmp-*` sibling of `dist`, so
 // the same filesystem `atomicSwapDist`'s rename requires). Each build owns its
 // own staging dir, so two concurrent same-package builds never collide on it.
@@ -71,6 +97,22 @@ for (const outputPath of expectedOutputs) {
 // present — there is a sub-millisecond window in the rebuild path where `dist/`
 // is absent — so it is not, on its own, sufficient for fully concurrent
 // rebuilds; the test-gate serialization is what makes the hook path safe.
-atomicSwapDist(stagingDirectory, distributionDirectory);
+const installedDist = atomicSwapDist(stagingDirectory, distributionDirectory);
+
+// The hash MUST be computed before the swap started, from the source tree
+// that produced THIS build's output — the `skipDecision.hash` computed at the
+// very top already IS that value, so we reuse it verbatim rather than
+// recomputing (which could observe a different filesystem state, and is
+// wasted work regardless). Written only now that the atomic swap has
+// succeeded, so the marker never claims a half-written or failed build is up
+// to date.
+// Record the input hash ONLY when this build actually installed its own
+// staging tree. When a concurrent same-package build won the swap,
+// `installedDist` is false and `dist` holds THAT build's output (from
+// possibly different inputs); stamping our hash onto it could let a later
+// build skip against a tree we never produced. The winner records its own.
+if (installedDist && skipDecision.hash !== null) {
+  await writeBuildInputHash(distributionDirectory, skipDecision.hash);
+}
 
 process.stdout.write('Build complete.\n');

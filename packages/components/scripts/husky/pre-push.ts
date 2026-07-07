@@ -10,6 +10,8 @@ import {
   type ScopeDecision,
 } from '../component-graph.ts';
 import {
+  BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER,
+  buildableForwardClosure,
   changedCssLikeFiles,
   changedFilesForRange,
   error,
@@ -18,6 +20,7 @@ import {
   getTouchedPackages,
   hasRootConfigurationChanges,
   header,
+  hookDurationWarning,
   inferFailureScope,
   info,
   installHookProcessCleanup,
@@ -29,6 +32,7 @@ import {
   parsePushRefs,
   phaseMaxConcurrency,
   prePushPackageScript,
+  readHookDurationBaseline,
   REPO_ROOT,
   runHookCommand,
   runWithConcurrencyPool,
@@ -50,6 +54,22 @@ if (isContinuousIntegration()) {
 // Install descendant-process cleanup so an interrupted push (Ctrl-C) doesn't
 // leave orphaned `bun run` children behind.
 installHookProcessCleanup();
+
+// Soft duration budget: warns (never fails) when the hook runs slower than the
+// committed baseline. Started here, before any scoping/build/test work, so the
+// total elapsed time on every exit path is captured.
+const hookStartedAt = Date.now();
+const durationBaseline = await readHookDurationBaseline();
+if (durationBaseline !== undefined) {
+  process.on('exit', () => {
+    const message = hookDurationWarning(
+      Date.now() - hookStartedAt,
+      durationBaseline.prePushWarnMilliseconds,
+      'pre-push',
+    );
+    if (message !== null) warning(message);
+  });
+}
 
 const SCRIPTS = ['lint', 'typecheck', 'test'] as const;
 const PLAYGROUND_EXAMPLE_PATTERN = /^packages\/playground\/src\/examples\/([a-z0-9][a-z0-9-]*)\//;
@@ -107,24 +127,39 @@ const git: GitRunner = {
  * Run one `bun run --filter` invocation, capturing output for later display.
  * Routed through `runHookCommand` (not `$`) so an interrupted push tears down
  * descendant processes instead of orphaning them.
+ *
+ * Test jobs always force `CINDER_FORCE_BUILD=''` (unset, not merely absent).
+ * `preBuildDependencyClosure` may have run with `CINDER_FORCE_BUILD=1` in the
+ * hook's own environment (a developer bypassing the build cache); without this
+ * override, `runHookCommand`'s `{ ...Bun.env, ...environment }` spread would
+ * pass that same `1` through to a test job's inline
+ * `bun run --filter=<dep> build` step, forcing it to rebuild instead of
+ * hash-skipping — reopening the #364 race across the now-parallel test phase.
+ * Explicitly unsetting it here keeps the dependency closure's dist output
+ * (freshly force-built once, up front) authoritative for every test job.
  */
 async function runJob(job: Job): Promise<JobResult> {
   const packageScript = prePushPackageScript(job.packageName, job.script);
-  const componentTestEnvironment =
-    packageScript === 'test:changed' && job.componentTestScope !== undefined
+  const testEnvironment =
+    packageScript === 'test:changed' || packageScript === 'test'
       ? {
-          CINDER_TEST_MODE: job.componentTestScope.mode,
-          CINDER_TEST_COMPONENTS:
-            job.componentTestScope.mode === 'filtered'
-              ? job.componentTestScope.components.join(',')
-              : '',
+          CINDER_FORCE_BUILD: '',
+          ...(job.componentTestScope === undefined
+            ? {}
+            : {
+                CINDER_TEST_MODE: job.componentTestScope.mode,
+                CINDER_TEST_COMPONENTS:
+                  job.componentTestScope.mode === 'filtered'
+                    ? job.componentTestScope.components.join(',')
+                    : '',
+              }),
         }
       : undefined;
   const options = {
     cwd: REPO_ROOT,
     stderr: 'pipe' as const,
     stdout: 'pipe' as const,
-    ...(componentTestEnvironment === undefined ? {} : { environment: componentTestEnvironment }),
+    ...(testEnvironment === undefined ? {} : { environment: testEnvironment }),
   };
   const result = await runHookCommand(
     'bun',
@@ -137,6 +172,42 @@ async function runJob(job: Job): Promise<JobResult> {
     stdout: result.stdout,
     stderr: result.stderr,
   };
+}
+
+/**
+ * Pre-build the buildable dependency closure of `testPackageNames`, once, in
+ * dependency order, before the test phase runs any jobs. This is the actual
+ * #364 fix as of this change: every package's `test` script still runs an
+ * inline `bun run --filter=<dep> build` step, but because the full closure was
+ * just built from the SAME source tree the test phase is about to validate,
+ * that inline step's `shouldSkipBuild` hash check matches and it exits almost
+ * instantly (see `scripts/lib/build-cache.ts` in each package) — there is
+ * nothing left for concurrent test jobs to race over. Only packages that are
+ * both buildable AND upstream of (or in) `testPackageNames` are built, so a
+ * push that only touches leaf packages doesn't pay for the whole chain.
+ *
+ * Builds run strictly serially (never parallel) and in dependency order:
+ * parallelizing this step would reopen the exact #364 race it exists to close
+ * (a downstream package building while an upstream package's dist is mid-swap
+ * would see a torn tree). A build failure here throws immediately — the
+ * caller must not proceed to the test phase against a half-built `dist/`.
+ */
+async function preBuildDependencyClosure(testPackageNames: ReadonlySet<string>): Promise<void> {
+  const toBuild = buildableForwardClosure(testPackageNames);
+  if (toBuild.length === 0) return;
+
+  info(`Pre-building dependency closure (${toBuild.join(' -> ')})…`);
+  for (const packageName of toBuild) {
+    const result = await runHookCommand('bun', ['run', `--filter=${packageName}`, 'build'], {
+      cwd: REPO_ROOT,
+      stderr: 'inherit',
+      stdout: 'inherit',
+    });
+    if (result.exitCode !== 0) {
+      throw new Error(`Pre-build failed for ${packageName} (exit ${result.exitCode})`);
+    }
+  }
+  success('Pre-build complete');
 }
 
 /**
@@ -156,15 +227,15 @@ type BatchOutcome = {
  * the full log.
  *
  * `maxConcurrency` caps the pool; callers should derive it from
- * {@link phaseMaxConcurrency} so the per-script policy lives in one place. The
- * test phase uses `1` to serialize — see `phaseMaxConcurrency` in utilities.ts
- * for the full rationale.
+ * {@link phaseMaxConcurrency} so the per-script policy lives in one place —
+ * all three phases now share the same bounded cap (see `phaseMaxConcurrency`
+ * in utilities.ts for the full rationale, including why the test phase no
+ * longer needs to serialize).
  */
 async function runJobs(jobs: readonly Job[], maxConcurrency: number): Promise<BatchOutcome> {
   if (jobs.length === 0) return { ok: true, failures: [], output: '' };
   // The bounded pool (and its non-finite-concurrency floor) lives in
-  // `runWithConcurrencyPool`; the test phase passes `maxConcurrency === 1` so
-  // builds never overlap (the #364 race). This runner only shapes results.
+  // `runWithConcurrencyPool`. This runner only shapes results.
   const results = await runWithConcurrencyPool(
     jobs,
     maxConcurrency,
@@ -296,20 +367,29 @@ async function runFull(): Promise<boolean> {
   let ok = true;
   const failures: GateFailure[] = [];
   for (const script of SCRIPTS) {
+    // The root `test` script is `bun run --filter='*' test`, which fans out
+    // every package's tests concurrently through Bun's workspace filter. Each
+    // package's inline `bun run --filter=<dep> build` step previously raced
+    // concurrent `rm -rf dist` + write cycles against sibling test jobs
+    // (issue #364). Pre-building the full buildable closure here, once and in
+    // dependency order, means every one of those inline steps hash-skips
+    // against unchanged inputs instead of racing a rebuild — see
+    // `preBuildDependencyClosure` above.
+    if (script === 'test') {
+      await preBuildDependencyClosure(new Set(BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER));
+    }
     info(`Running ${script}…`);
     // The full-suite path can produce very large output. Stream it directly so
     // Bun never keeps the hook alive waiting on captured pipe readers after the
     // command has exited.
-    // NOTE: the root `test` script is `bun run --filter='*' test`, which fans
-    // out every package's tests concurrently through Bun's workspace filter.
-    // Each package's inline `bun run --filter=<dep> build` previously raced
-    // concurrent `rm -rf dist` + write cycles (issue #364). The atomic-build
-    // fix in each `packages/*/scripts/build.ts` (build to dist.tmp, then
-    // rename over dist) removes the write window for this path too.
     const result = await runHookCommand('bun', ['run', script], {
       cwd: REPO_ROOT,
       stderr: 'inherit',
       stdout: 'inherit',
+      // See the `runJob` doc comment: force-unset so a developer's
+      // CINDER_FORCE_BUILD=1 doesn't leak into the now-parallel per-package
+      // test jobs' inline build steps and reopen the #364 race.
+      ...(script === 'test' ? { environment: { CINDER_FORCE_BUILD: '' } } : {}),
     });
     if (result.exitCode === 0) {
       success(`${script} passed`);
@@ -523,14 +603,23 @@ async function runScoped(
     }
 
     if (phaseJobs.length === 0) continue;
+
+    if (script === 'test') {
+      // Pre-build the buildable dependency closure of the test-job set, once,
+      // in dependency order, BEFORE dispatching any test job. This is what
+      // makes running the test phase at the same concurrency as lint/typecheck
+      // safe (see `preBuildDependencyClosure` above and `phaseMaxConcurrency`
+      // in utilities.ts): every test job's inline `bun run --filter=<dep>
+      // build` step then hash-skips against this freshly-built dist instead of
+      // racing a rebuild against its siblings (issue #364). A pre-build
+      // failure throws here, so the caller never runs tests against a
+      // half-built dist.
+      await preBuildDependencyClosure(new Set(phaseJobs.map((job) => job.packageName)));
+    }
+
     info(`Running ${script} (${phaseJobs.map((job) => job.packageName).join(', ')})…`);
     // Per-phase concurrency is determined by `phaseMaxConcurrency` (see
-    // utilities.ts). The test phase runs at concurrency 1 to prevent the
-    // shared-dist rebuild race — each package's test script does inline
-    // `bun run --filter=<dep> build` steps that `rm -rf dist` and re-emit
-    // shared upstream `dist/` dirs (e.g. `@cinder/markdown`, `@cinder/diff`).
-    // Atomic build output (dist.tmp → dist rename) removes the write window and
-    // is the root fix; serialization is the belt. Both defences are kept.
+    // utilities.ts) — all three phases now share the same bounded cap.
     const phase = await runJobs(phaseJobs, phaseMaxConcurrency(script));
     fullOutput += phase.output;
     allFailures.push(...phase.failures);

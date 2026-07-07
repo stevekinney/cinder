@@ -1,5 +1,7 @@
+import type { ChildProcess } from 'node:child_process';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
 import {
   buildPlaywrightDockerImage,
   dockerBrowserCommand,
@@ -37,11 +39,27 @@ export function dockerBrowserEnvironment(
  * cinder-playwright Docker image used to author committed baselines.
  */
 async function main(): Promise<void> {
+  let activeChild: ChildProcess | null = null;
+  installSignalCleanupHandlers(async () => {
+    if (activeChild !== null) {
+      await terminateChildProcess({
+        childProcess: activeChild,
+        name: 'docker',
+        killProcessGroup: false,
+      });
+    }
+  });
+
   const playwrightVersion = readPinnedPlaywrightVersion();
   const imageTag = dockerImageTagForVersion(playwrightVersion);
 
   console.log(`Building Docker image ${imageTag}...`);
-  const buildExit = await buildPlaywrightDockerImage(playwrightVersion, imageTag);
+  const buildExit = await buildPlaywrightDockerImage(
+    playwrightVersion,
+    imageTag,
+    (child) => (activeChild = child),
+  );
+  activeChild = null;
   if (buildExit !== 0) {
     console.error(`docker build failed with exit code ${buildExit}`);
     process.exit(buildExit);
@@ -59,8 +77,9 @@ async function main(): Promise<void> {
       containerCommand: browserCommand,
       environment: dockerBrowserEnvironment(process.env),
     }),
-    { cwd: repoRoot },
+    { cwd: repoRoot, onSpawn: (child) => (activeChild = child) },
   );
+  activeChild = null;
 
   process.exit(runExit);
 }

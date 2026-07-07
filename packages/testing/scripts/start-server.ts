@@ -6,6 +6,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playground-server-url';
+import {
+  isFingerprintStale,
+  newestSourceMtimeMs,
+  type PlaygroundFreshnessFingerprint,
+} from './source-fingerprint.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
@@ -80,6 +85,81 @@ async function playgroundPathResponds(
 
 async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolean> {
   return playgroundPathResponds(livenessPath, playgroundUrl);
+}
+
+const PLAYGROUND_FINGERPRINT_HEADER = 'X-Cinder-Playground-Fingerprint';
+
+export function parsePlaygroundFingerprintHeader(
+  headerValue: string | null,
+): PlaygroundFreshnessFingerprint | null {
+  if (headerValue === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(headerValue);
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'startedAtMs' in parsed &&
+      'newestSourceMtimeMs' in parsed &&
+      typeof (parsed as { startedAtMs: unknown }).startedAtMs === 'number' &&
+      (typeof (parsed as { newestSourceMtimeMs: unknown }).newestSourceMtimeMs === 'number' ||
+        (parsed as { newestSourceMtimeMs: unknown }).newestSourceMtimeMs === null)
+    ) {
+      return parsed as PlaygroundFreshnessFingerprint;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchRunningServerFingerprint(
+  playgroundUrl: string = targetPlaygroundUrl,
+): Promise<PlaygroundFreshnessFingerprint | null> {
+  try {
+    const response = await fetch(playgroundUrlForPath(warmReadinessPath, playgroundUrl), {
+      signal: AbortSignal.timeout(PLAYGROUND_PORT_PROBE_TIMEOUT_MS),
+    });
+    return parsePlaygroundFingerprintHeader(response.headers.get(PLAYGROUND_FINGERPRINT_HEADER));
+  } catch {
+    return null;
+  }
+}
+
+export function stalePlaygroundServerMessage(playgroundUrl: string): string {
+  return (
+    `Playground server at ${playgroundUrl} is running stale code from a previous session ` +
+    '(source files have changed since it started). Refusing to reuse it. Stop it with ' +
+    '`bun run kill:playground` (in packages/testing) and rerun, or set ' +
+    'PLAYWRIGHT_REUSE_SERVER=0 to always start a fresh server.'
+  );
+}
+
+/**
+ * Decide whether an already-running playground server is safe to reuse.
+ *
+ * Compares the fingerprint the running server reported at its own startup
+ * against the newest source mtime in the CURRENT checkout. If the checkout
+ * has files newer than what that server saw when it started, the server is
+ * running stale code — refuse reuse rather than silently testing against it
+ * (stale servers have produced both false passes and false fails).
+ *
+ * This is only called for the local default playground URL, i.e. a server
+ * this wrapper is entitled to distrust and restart. A `null` fingerprint
+ * there does not mean "nothing to compare, assume fresh" — it means the
+ * running server predates the fingerprint header entirely (a server left
+ * over from before this freshness check existed), which is exactly the
+ * stale-reuse case this guard exists to catch. Treat it as stale rather than
+ * fresh.
+ *
+ * Pure function over already-fetched inputs so it is unit-testable without a
+ * live server.
+ */
+export function shouldRefuseStaleServerReuse(
+  runningServerFingerprint: PlaygroundFreshnessFingerprint | null,
+  currentNewestSourceMtimeMs: number | null,
+): boolean {
+  if (runningServerFingerprint === null) return true;
+  return isFingerprintStale(runningServerFingerprint, currentNewestSourceMtimeMs);
 }
 
 export function localPlaygroundUrlForReportedPort(port: number | null): string | null {
@@ -159,6 +239,38 @@ export function shouldStartManagedChildProcess(shutdownExitCode: number | null):
   return shutdownExitCode === null;
 }
 
+/**
+ * Register SIGINT/SIGTERM handlers that run `cleanup` at most once, then
+ * exit with the signal's conventional exit code (130 for SIGINT, 143 for
+ * SIGTERM). Shared by every wrapper script that spawns children of its own
+ * so an interrupt always tears down the child before the wrapper exits,
+ * instead of leaving it orphaned.
+ */
+export function installSignalCleanupHandlers(runCleanup: () => Promise<void>): void {
+  let cleanupPromise: Promise<void> | null = null;
+
+  const cleanupOnce = async (): Promise<void> => {
+    cleanupPromise ??= runCleanup();
+    await cleanupPromise;
+  };
+
+  const exitAfterCleanup = async (code: number): Promise<never> => {
+    try {
+      await cleanupOnce();
+    } catch (error) {
+      console.error('Cleanup failed during shutdown:', error);
+    }
+    process.exit(code);
+  };
+
+  process.on('SIGINT', () => {
+    void exitAfterCleanup(130);
+  });
+  process.on('SIGTERM', () => {
+    void exitAfterCleanup(143);
+  });
+}
+
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
@@ -219,7 +331,17 @@ function signalChildProcess(
   }
 }
 
-async function terminateChildProcess(managedChildProcess: ManagedChildProcess): Promise<void> {
+/**
+ * SIGTERM a managed child process, escalating to SIGKILL if it does not exit
+ * within `CHILD_PROCESS_TERMINATION_GRACE_MS`. Exported so other wrapper
+ * scripts (run-browser-docker.ts, update-snapshots.ts,
+ * update-snapshots-docker.ts) can give their own spawned children the same
+ * SIGINT/SIGTERM cleanup this script relies on, rather than reimplementing
+ * the escalation policy.
+ */
+export async function terminateChildProcess(
+  managedChildProcess: ManagedChildProcess,
+): Promise<void> {
   const { childProcess, name } = managedChildProcess;
   if (childProcessHasFinished(childProcess)) return;
 
@@ -385,6 +507,18 @@ async function main(): Promise<void> {
       `Playground server already responding at ${targetPlaygroundUrl}, but PLAYWRIGHT_REUSE_SERVER=0 is set. Stop the running server or unset that variable.`,
     );
     process.exit(1);
+  }
+
+  if (alreadyUp && isLocalDefault) {
+    // Only the local default server is ours to distrust here — a custom
+    // PLAYGROUND_URL points at something we did not start and have no
+    // fingerprint contract with.
+    const runningServerFingerprint = await fetchRunningServerFingerprint();
+    const currentNewestSourceMtimeMs = newestSourceMtimeMs(repoRoot);
+    if (shouldRefuseStaleServerReuse(runningServerFingerprint, currentNewestSourceMtimeMs)) {
+      console.error(stalePlaygroundServerMessage(targetPlaygroundUrl));
+      process.exit(1);
+    }
   }
 
   if (alreadyUp) {
