@@ -185,6 +185,24 @@ function iconNavigationSnippet(clicks: Record<string, number>) {
   }));
 }
 
+function cancelingNavigationSnippet(clicks: Record<string, number>) {
+  return createRawSnippet(() => ({
+    render: () => `
+      <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="docs">Docs</button>
+    `,
+    setup(element: Element) {
+      const button = element.matches('.cinder-navigation-item')
+        ? (element as HTMLButtonElement)
+        : element.querySelector<HTMLButtonElement>('.cinder-navigation-item');
+      button?.addEventListener('click', (event) => {
+        event.preventDefault();
+        const key = button.dataset['key'];
+        if (key) clicks[key] = (clicks[key] ?? 0) + 1;
+      });
+    },
+  }));
+}
+
 describe('NavigationBar', () => {
   // ── Legacy tests (preserved) ────────────────────────────────────────────
 
@@ -835,6 +853,24 @@ describe('NavigationBar', () => {
           event.preventDefault();
         },
       } as any);
+
+      await openCollapsedMobileMenu(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      await fireEvent.click(docs);
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+    });
+  });
+
+  test('cancelled item click keeps an open collapsed mobile menu open', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: cancelingNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+      });
 
       await openCollapsedMobileMenu(container);
 

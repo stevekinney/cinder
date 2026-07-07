@@ -200,11 +200,10 @@
   }
 
   function handleClick(event: MouseEvent): void {
-    const wasDefaultPrevented = event.defaultPrevented;
     if (consumerOnClick) {
       (consumerOnClick as (e: MouseEvent) => void)(event);
     }
-    if (!wasDefaultPrevented && event.defaultPrevented) return;
+    if (event.defaultPrevented) return;
 
     const navigationItem = getEventNavigationItem(event);
     if (!navigationItem || !canCloseAfterItemActivation(navigationItem, event)) return;
