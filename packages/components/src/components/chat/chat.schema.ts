@@ -192,6 +192,12 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
+        name: 'oncomposerinput',
+        reason: 'function-or-snippet',
+        description:
+          "Called with the composer's current plain-text value on every composer\ninput event. Lets a consumer build slash-command, mention, or autocomplete\nUX without reaching into `.chat-input-editor` DOM directly.",
+      },
+      {
         name: 'ondeny',
         reason: 'function-or-snippet',
         description:

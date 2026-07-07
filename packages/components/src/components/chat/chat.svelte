@@ -66,6 +66,16 @@
   export function focusInput(): void {
     impl?.focusInput();
   }
+
+  /** Clear the composer's current content. No-op until mounted. */
+  export function clearInput(): void {
+    impl?.clearInput();
+  }
+
+  /** Read the composer's current plain-text value. Returns '' until mounted. */
+  export function getComposerValue(): string {
+    return impl?.getComposerValue() ?? '';
+  }
 </script>
 
 <ChatImplementation bind:this={impl} class={mergedClassName} {...rest} />

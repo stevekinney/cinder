@@ -48,6 +48,8 @@
     onsubmit?: (message: MessageInput, attachments: ChatAttachment[]) => void;
     /** Called when stop is requested (transforms send button into stop button when sending=true) */
     onstop?: (() => void) | undefined;
+    /** Called with the composer's current plain-text value on every input event. */
+    oncomposerinput?: ((value: string) => void) | undefined;
     /** Called when an attachment is added */
     onattachmentadd?: ((attachment: ChatAttachment) => void) | undefined;
     /** Called when an attachment is removed */
@@ -133,6 +135,7 @@
     ],
     onsubmit,
     onstop,
+    oncomposerinput,
     onattachmentadd,
     onattachmentremove,
     onattachmentfailure,
@@ -421,6 +424,13 @@
     isComposing = false;
   }
 
+  // Fires after `bind:value` has already applied the textarea's new value
+  // (Svelte merges the binding's own input listener with this handler on the
+  // same event), so `value` here is always current — never one keystroke stale.
+  function handleInput(): void {
+    oncomposerinput?.(value);
+  }
+
   // =========================================================================
   // Imperative API
   // =========================================================================
@@ -437,6 +447,10 @@
 
   export function getAttachments(): ChatAttachment[] {
     return [...attachments];
+  }
+
+  export function getValue(): string {
+    return value;
   }
 
   export function addFiles(files: File[]): void {
@@ -500,6 +514,7 @@
       bind:this={editorElement}
       id={`${id}-editor`}
       bind:value
+      oninput={handleInput}
       {placeholder}
       aria-label={resolvedComposerLabel}
       {disabled}
