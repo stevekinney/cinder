@@ -49,6 +49,7 @@
     'data-cinder-placement': _dataCinderPlacement,
     'data-cinder-label-visibility': _dataCinderLabelVisibility,
     'data-cinder-menu-toggle-placement': _dataCinderMenuTogglePlacement,
+    onclick: consumerOnClick,
     onkeydown: consumerOnKeyDown,
     ...rest
   }: NavigationBarProps = $props();
@@ -155,14 +156,49 @@
     return item.getAttribute('aria-disabled') !== 'true' && !item.hasAttribute('disabled');
   }
 
-  function getEventNavigationItem(event: KeyboardEvent): HTMLElement | null {
+  function getEventNavigationItem(event: Event): HTMLElement | null {
     if (!(event.target instanceof HTMLElement) || !itemsRegionElement) return null;
 
     const navigationItem = event.target.closest<HTMLElement>(navigationItemSelector);
     if (!navigationItem || !itemsRegionElement.contains(navigationItem)) return null;
-    if (navigationItem !== event.target) return null;
 
     return navigationItem;
+  }
+
+  function isModifiedClick(event: MouseEvent): boolean {
+    return event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+  }
+
+  function opensOutsideCurrentPage(item: HTMLElement): boolean {
+    if (!(item instanceof HTMLAnchorElement)) return false;
+
+    const target = item.getAttribute('target');
+    return (
+      item.hasAttribute('download') ||
+      (target !== null && target.trim() !== '' && target.trim().toLowerCase() !== '_self')
+    );
+  }
+
+  function canCloseAfterItemActivation(item: HTMLElement, event: MouseEvent): boolean {
+    return (
+      isCollapsible &&
+      isMobileLayout &&
+      mobileMenuOpen &&
+      isEnabledNavigationItem(item) &&
+      !isModifiedClick(event) &&
+      !opensOutsideCurrentPage(item)
+    );
+  }
+
+  function handleClick(event: MouseEvent): void {
+    if (consumerOnClick) {
+      (consumerOnClick as (e: MouseEvent) => void)(event);
+    }
+
+    const navigationItem = getEventNavigationItem(event);
+    if (!navigationItem || !canCloseAfterItemActivation(navigationItem, event)) return;
+
+    mobileMenuOpen = false;
   }
 
   function focusAdjacentNavigationItem(currentItem: HTMLElement, direction: -1 | 1): void {
@@ -197,7 +233,7 @@
     }
 
     const navigationItem = getEventNavigationItem(event);
-    if (!navigationItem) return;
+    if (!navigationItem || navigationItem !== event.target) return;
 
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
@@ -223,6 +259,7 @@
   data-cinder-placement={placement}
   data-cinder-label-visibility={showLabels}
   data-cinder-menu-toggle-placement={menuTogglePlacement}
+  onclick={handleClick}
   onkeydown={handleKeyDown}
 >
   {#if isCollapsible && menuToggle && menuTogglePlacement === 'before-brand'}
