@@ -50,6 +50,26 @@
       "type": "string",
       "description": "Optional status label displayed in the typing indicator while `streaming` is `true` and no streaming content has arrived yet (e.g. `\"Thinking…\"` or `\"Analyzing file…\"`). When omitted, three animated dots are shown."
     },
+    "composerRole": {
+      "type": "string",
+      "description": "Explicit role for the composer textarea, for overlay patterns such as ARIA comboboxes."
+    },
+    "composerAriaExpanded": {
+      "enum": [false, true, "true", "false"],
+      "description": "`aria-expanded` passed to the composer textarea for overlays such as slash-command menus."
+    },
+    "composerAriaControls": {
+      "type": "string",
+      "description": "`aria-controls` passed to the composer textarea for overlays such as slash-command menus."
+    },
+    "composerAriaActiveDescendant": {
+      "type": "string",
+      "description": "`aria-activedescendant` passed to the composer textarea for overlays such as slash-command menus."
+    },
+    "composerAriaAutocomplete": {
+      "enum": ["none", "inline", "list", "both"],
+      "description": "`aria-autocomplete` passed to the composer textarea for overlays such as slash-command menus."
+    },
     "virtualized": {
       "type": "boolean",
       "description": "Use the virtualized message render path for long transcripts. The complete `ConversationHistory` remains unchanged; only the DOM window is reduced. Default `false`."
@@ -168,6 +188,11 @@
         "name": "oncomposerinput",
         "reason": "function-or-snippet",
         "description": "Called with the composer's current plain-text value on every composer\ninput event. Lets a consumer build slash-command, mention, or autocomplete\nUX without reaching into `.chat-input-editor` DOM directly."
+      },
+      {
+        "name": "oncomposerkeydown",
+        "reason": "function-or-snippet",
+        "description": "Called before Chat's internal composer key handling when a keydown\noriginates from the composer textarea. Call `event.preventDefault()` to\nlet an overlay consume Arrow keys, Enter, or Escape before Enter-to-send.\nThe internal handler still ignores IME composition events when the callback\ndoes not prevent the default."
       },
       {
         "name": "ondeny",

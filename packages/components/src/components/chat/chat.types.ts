@@ -127,6 +127,16 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    * rather than as five separate boolean props.
    */
   capabilities?: ChatCapabilities;
+  /** Explicit role for the composer textarea, for overlay patterns such as ARIA comboboxes. */
+  composerRole?: string | undefined;
+  /** `aria-expanded` passed to the composer textarea for overlays such as slash-command menus. */
+  composerAriaExpanded?: boolean | 'true' | 'false' | undefined;
+  /** `aria-controls` passed to the composer textarea for overlays such as slash-command menus. */
+  composerAriaControls?: string | undefined;
+  /** `aria-activedescendant` passed to the composer textarea for overlays such as slash-command menus. */
+  composerAriaActiveDescendant?: string | undefined;
+  /** `aria-autocomplete` passed to the composer textarea for overlays such as slash-command menus. */
+  composerAriaAutocomplete?: 'none' | 'inline' | 'list' | 'both' | undefined;
   /** Use the virtualized message render path for long transcripts. The complete `ConversationHistory` remains unchanged; only the DOM window is reduced. Default `false`. */
   virtualized?: boolean;
   /** Estimated row height in pixels for virtualized message rows. Default `88`. */
@@ -249,4 +259,12 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    * UX without reaching into `.chat-input-editor` DOM directly.
    */
   oncomposerinput?: (value: string) => void;
+  /**
+   * Called before Chat's internal composer key handling when a keydown
+   * originates from the composer textarea. Call `event.preventDefault()` to
+   * let an overlay consume Arrow keys, Enter, or Escape before Enter-to-send.
+   * The internal handler still ignores IME composition events when the callback
+   * does not prevent the default.
+   */
+  oncomposerkeydown?: (event: KeyboardEvent) => void;
 };

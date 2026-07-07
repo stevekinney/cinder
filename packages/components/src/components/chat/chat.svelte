@@ -76,6 +76,11 @@
   export function getComposerValue(): string {
     return impl?.getComposerValue() ?? '';
   }
+
+  /** Read the composer textarea element. Returns null until mounted. */
+  export function getEditorElement(): HTMLTextAreaElement | null {
+    return impl?.getEditorElement() ?? null;
+  }
 </script>
 
 <ChatImplementation bind:this={impl} class={mergedClassName} {...rest} />
