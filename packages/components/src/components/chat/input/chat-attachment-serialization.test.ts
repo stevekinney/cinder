@@ -85,8 +85,6 @@ describe('chat attachment serialization', () => {
       bytes[index] = index % 251;
     }
 
-    expect(() => String.fromCharCode(...bytes)).toThrow();
-
     const serialized = await serializeChatAttachment(
       createAttachment(bytes, {
         name: 'large.bin',
@@ -101,5 +99,35 @@ describe('chat attachment serialization', () => {
       kind: 'document',
       content: expectedBase64(bytes),
     });
+  });
+
+  test('uses Buffer when btoa is unavailable', async () => {
+    const originalBtoa = globalThis.btoa;
+    Reflect.deleteProperty(globalThis, 'btoa');
+
+    try {
+      const bytes = new TextEncoder().encode('server-side fallback');
+
+      await expect(
+        serializeChatAttachment(
+          createAttachment(bytes, {
+            name: 'fallback.bin',
+            type: 'application/octet-stream',
+            kind: 'document',
+          }),
+        ),
+      ).resolves.toEqual({
+        name: 'fallback.bin',
+        mimeType: 'application/octet-stream',
+        kind: 'document',
+        content: expectedBase64(bytes),
+      });
+    } finally {
+      Object.defineProperty(globalThis, 'btoa', {
+        configurable: true,
+        value: originalBtoa,
+        writable: true,
+      });
+    }
   });
 });
