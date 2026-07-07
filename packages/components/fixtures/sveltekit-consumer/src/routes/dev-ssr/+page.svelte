@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { SideNavigation, SideNavigationItem, Sidebar } from '@lostgradient/cinder';
   import Card from '@lostgradient/cinder/card';
+  import SideNavigation from '@lostgradient/cinder/side-navigation';
+  import SideNavigationItem from '@lostgradient/cinder/side-navigation-item';
+  import Sidebar from '@lostgradient/cinder/sidebar';
   import Tab from '@lostgradient/cinder/tab';
   import TabList from '@lostgradient/cinder/tab-list';
   import TabPanel from '@lostgradient/cinder/tab-panel';

@@ -10,6 +10,25 @@ Rich Markdown editing surface bundling a Milkdown-powered ProseMirror editor, to
 </script>
 ```
 
+## Peer Dependencies
+
+MarkdownEditor keeps its Milkdown, ProseMirror, and Markdown pipeline stack as optional peer
+dependencies so a base Cinder install does not pull the rich editor graph into apps that never
+import it.
+
+Install the rich editor peer set before importing `@lostgradient/cinder/markdown-editor` in a
+fresh consumer:
+
+```bash
+bun add @milkdown/ctx @milkdown/kit @milkdown/prose @types/mdast @types/unist js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view remark-gfm remark-parse remark-stringify unified unist-util-visit
+```
+
+`@lostgradient/cinder/review-editor` and `@lostgradient/cinder/chat` with the default composer also
+use this editor stack. If a peer is missing, Vite can surface the failure as an
+`__vite-optional-peer-dep:*` export error, such as a missing `PluginKey` export from
+`prosemirror-state`; install the peer set above instead of debugging the generated placeholder
+module.
+
 ## Guidance
 
 ### Use When

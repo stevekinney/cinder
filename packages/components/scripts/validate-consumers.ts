@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parse } from 'postcss';
 
+import { waitForReadyHtml } from './consumer-readiness.ts';
 import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
@@ -1033,6 +1034,9 @@ const SVELTEKIT_DEV_SSR_MARKERS = [
   'data-dev-ssr-tabs-direct-panel',
 ];
 
+const SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS = 25_000;
+const SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS = 200;
+
 function formatHtmlExcerpt(body: string): string {
   return body.replace(/\s+/g, ' ').trim().slice(0, 1_000);
 }
@@ -1073,19 +1077,17 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     : Promise.resolve('');
 
   try {
-    await waitForUrl(`http://127.0.0.1:${httpPort}/`, 15_000, devServer);
     const routeUrl = `http://127.0.0.1:${httpPort}/dev-ssr`;
-    const response = await fetchWithTimeout(
-      routeUrl,
-      10_000,
-      `sveltekit-consumer ${label} /dev-ssr dev SSR`,
-    );
-    const body = await response.text();
-    if (response.status !== 200) {
-      fail(
-        `sveltekit-consumer ${label} /dev-ssr dev SSR returned ${response.status}, want 200:\n${formatHtmlExcerpt(body)}`,
-      );
-    }
+    const body = await waitForReadyHtml({
+      url: routeUrl,
+      timeoutMs: SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS,
+      pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
+      runningServer: devServer,
+      isReady: (html) => SVELTEKIT_DEV_SSR_MARKERS.every((marker) => html.includes(marker)),
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      fail(`sveltekit-consumer ${label} /dev-ssr dev SSR readiness failed: ${message}`);
+    });
 
     const missingMarkers = SVELTEKIT_DEV_SSR_MARKERS.filter((marker) => !body.includes(marker));
     if (missingMarkers.length > 0) {
