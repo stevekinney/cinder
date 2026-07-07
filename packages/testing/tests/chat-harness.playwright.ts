@@ -89,15 +89,8 @@ test.describe('chat harness — submit and reply', () => {
   test('a composer submit appends a user message and an auto-reply lands', async ({ browser }) => {
     const { harness, dispose } = await openHarness(browser);
     try {
-      // The composer is a Milkdown/ProseMirror contenteditable. ProseMirror only
-      // updates its document model from REAL key events, so use
-      // pressSequentially (per-key keydown/input) — execCommand/keyboard.type do
-      // not reliably reach the editor model. Submit via the send button.
-      const editor = harness
-        .locator('.chat-input-editor [contenteditable], .chat-input-editor [role="textbox"]')
-        .first();
-      await editor.click();
-      await editor.pressSequentially('What is alpha?');
+      const composer = harness.locator('textarea.chat-input-editor').first();
+      await composer.fill('What is alpha?');
       await harness.locator('.chat-input-send').click();
 
       await expect(harness.locator('[data-role="user"]')).toContainText('What is alpha?');

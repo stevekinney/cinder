@@ -161,11 +161,8 @@ async function seedDenseChatSurface(harness: Locator): Promise<void> {
   await expect.poll(async () => timeline.evaluate((element) => element.scrollTop)).toBe(0);
   await expect(harness.locator('.chat-jump-button')).toBeVisible({ timeout: 5_000 });
 
-  const editor = harness
-    .locator('.chat-input-editor [contenteditable], .chat-input-editor [role="textbox"]')
-    .first();
-  await editor.click();
-  await editor.pressSequentially('Keyboard focus ring check');
+  const composer = harness.locator('textarea.chat-input-editor').first();
+  await composer.fill('Keyboard focus ring check');
   await expect(harness.locator('.chat-input-send')).toBeEnabled();
 }
 
@@ -181,14 +178,12 @@ test.describe('domain focus rings -- chat harness', () => {
       const messageCopy = harness.locator('.chat-message-action-button.chat-message-copy').first();
       const jumpToLatest = harness.locator('.chat-jump-button');
       const sendButton = harness.locator('.chat-input-send');
-      const editor = harness
-        .locator('.chat-input-editor [contenteditable], .chat-input-editor [role="textbox"]')
-        .first();
+      const composer = harness.locator('textarea.chat-input-editor').first();
 
       await expect(timeline).toBeVisible();
       await expect(messageCopy).toBeAttached();
       await expect(jumpToLatest).toBeVisible();
-      await expect(editor).toBeVisible();
+      await expect(composer).toBeVisible();
       await expect(sendButton).toBeEnabled();
 
       await blurToBody(page);
@@ -201,12 +196,12 @@ test.describe('domain focus rings -- chat harness', () => {
       await expect(messageCopy).toBeFocused();
       await assertSharedOuterRing(messageCopy, 'message copy action');
 
-      await editor.click();
+      await composer.click();
       await tabUntilFocused(page, jumpToLatest, 'jump to latest', 8, 'backward');
       await expect(jumpToLatest).toBeFocused();
       await assertSharedOuterRing(jumpToLatest, 'jump to latest');
 
-      await editor.click();
+      await composer.click();
       await tabUntilFocused(page, sendButton, 'send button', 8);
       await expect(sendButton).toBeFocused();
       await assertSharedOuterRing(sendButton, 'send button');

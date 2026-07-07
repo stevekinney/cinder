@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
 const chatInputPath = new URL('./chat-input.svelte', import.meta.url);
-const markdownEditorPath = new URL('../../markdown-editor/markdown-editor.svelte', import.meta.url);
 
 function stripCssComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -50,31 +49,25 @@ function expectDeclaration(block: string, property: string, value: string): void
 }
 
 describe('ChatInput layout CSS', () => {
-  test('gives the embedded ProseMirror surface non-zero tokenized horizontal padding', async () => {
+  test('gives the native textarea composer non-zero tokenized horizontal padding', async () => {
     const chatInputSource = stripCssComments(await Bun.file(chatInputPath).text());
-    const proseMirrorBlocks = cssBlocks(
-      chatInputSource,
-      '.chat-input-editor-container :global(.ProseMirror)',
-    );
+    const editorBlocks = cssBlocks(chatInputSource, '.chat-input-editor {');
 
     expectDeclaration(
-      proseMirrorBlocks.at(-1) ?? '',
+      editorBlocks.at(-1) ?? '',
       'padding',
       'var(--cinder-space-1) var(--cinder-space-3)',
     );
   });
 
-  test('keeps MarkdownEditor inner layout from forcing the compact composer height', async () => {
+  test('keeps the composer height compact without editor wrapper variables', async () => {
     const chatInputSource = stripCssComments(await Bun.file(chatInputPath).text());
-    const markdownEditorSource = stripCssComments(await Bun.file(markdownEditorPath).text());
 
     const chatContainerBlock =
       cssBlocks(chatInputSource, '.chat-input-editor-container').at(0) ?? '';
-    expectDeclaration(chatContainerBlock, '--editor-min-height', '2.5rem');
-    expectDeclaration(chatContainerBlock, '--editor-source-min-height', 'var(--editor-min-height)');
-
-    const markdownEditorLayoutBlock =
-      cssBlocks(markdownEditorSource, '.markdown-editor-layout').at(0) ?? '';
-    expect(markdownEditorLayoutBlock).not.toContain('min-height');
+    expectDeclaration(chatContainerBlock, 'min-height', '2.5rem');
+    expect(chatInputSource).not.toContain('--editor-min-height');
+    expect(chatInputSource).not.toContain('markdown-editor');
+    expect(chatInputSource).not.toContain('ProseMirror');
   });
 });
