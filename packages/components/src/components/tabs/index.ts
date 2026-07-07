@@ -17,5 +17,8 @@ const Tabs = Object.assign(TabsRoot, {
 });
 
 export default Tabs;
+export type { TabListProps } from '../tab-list/tab-list.types.ts';
+export type { TabPanelProps } from '../tab-panel/tab-panel.types.ts';
+export type { TabProps } from '../tab/tab.types.ts';
 export type { TabsContext, TabsOrientation, TabsProps } from './tabs.types.ts';
-export { Tabs };
+export { Tab, TabList, TabPanel, Tabs };

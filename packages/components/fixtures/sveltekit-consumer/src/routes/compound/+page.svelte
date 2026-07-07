@@ -24,9 +24,19 @@
   } from '@lostgradient/cinder';
   import Tab from '@lostgradient/cinder/tab';
   import { Dropdown } from '@lostgradient/cinder/dropdown';
+  import { Segment, SegmentedControl } from '@lostgradient/cinder/segmented-control';
+  import {
+    Tab as SubpathTab,
+    TabList,
+    TabPanel,
+    Tabs as SubpathTabs,
+  } from '@lostgradient/cinder/tabs';
   import Table from '@lostgradient/cinder/table';
+  import { ToastRegion, useToast } from '@lostgradient/cinder/toast-region';
 
   let active = $state('overview');
+  let subpathActive = $state('code');
+  let workbenchView = $state('source');
   let expandedIds = $state<string[]>([]);
   let expandedTreeIds = $state<string[]>(['fruit']);
 </script>
@@ -43,6 +53,38 @@
       <Tabs.Panel value="overview">Project overview.</Tabs.Panel>
       <Tabs.Panel value="activity">Recent activity.</Tabs.Panel>
     </Tabs>
+  </section>
+
+  <section aria-label="Tabs named leaves from parent subpath">
+    <SubpathTabs bind:value={subpathActive}>
+      <TabList label="Subpath tabs">
+        <SubpathTab value="code">Code</SubpathTab>
+        <SubpathTab value="preview">Preview</SubpathTab>
+      </TabList>
+      <TabPanel value="code">Code panel.</TabPanel>
+      <TabPanel value="preview">Preview panel.</TabPanel>
+    </SubpathTabs>
+  </section>
+
+  <section aria-label="SegmentedControl named leaf from parent subpath">
+    <SegmentedControl
+      id="compound-workbench-view"
+      selectionMode="single"
+      bind:value={workbenchView}
+      label="Workbench view"
+    >
+      <Segment value="source">Source</Segment>
+      <Segment value="rendered">Rendered</Segment>
+    </SegmentedControl>
+  </section>
+
+  <section aria-label="ToastRegion helper from parent subpath">
+    <ToastRegion>
+      {@const toast = useToast()}
+      <button type="button" onclick={() => toast.show('Saved.', { variant: 'success' })}>
+        Show toast
+      </button>
+    </ToastRegion>
   </section>
 
   <section aria-label="Namespaced Table (parent subpath default)">

@@ -192,14 +192,14 @@ describe('buildPublishedManifest', () => {
     expect(published.exports['./button/schema']).toEqual({
       types: './dist/components/button/button.schema.d.ts',
       browser: './src/components/button/button.schema.ts',
-      node: './dist/server/components/button/button.schema.js',
+      node: './dist/components/button/button.schema.js',
       svelte: './src/components/button/button.schema.ts',
       default: './dist/components/button/button.schema.js',
     });
     expect(published.exports['./button/variables']).toEqual({
       types: './dist/components/button/button.variables.d.ts',
       browser: './src/components/button/button.variables.ts',
-      node: './dist/server/components/button/button.variables.js',
+      node: './dist/components/button/button.variables.js',
       svelte: './src/components/button/button.variables.ts',
       default: './dist/components/button/button.variables.js',
     });
@@ -212,8 +212,8 @@ describe('buildPublishedManifest', () => {
     });
     expect(files).toContain('src/components/**/*.ts');
     expect(files).toContain('src/components/**/*.svelte');
-    expect(files).not.toContain('!dist/server/components/**/*.schema.js');
-    expect(files).not.toContain('!dist/server/components/**/*.variables.js');
+    expect(files).toContain('!dist/server/components/**/*.schema.js');
+    expect(files).toContain('!dist/server/components/**/*.variables.js');
     expect(files).toContain('!dist/server/**/*.d.ts');
     expect(files).toContain('!dist/**/*.fixture.*');
     expect(files).toContain('!dist/**/*-fixture.*');
