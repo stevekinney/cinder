@@ -5,6 +5,9 @@ import { describe, expect, test } from 'bun:test';
 
 import { sveltePlugin } from '../scripts/svelte-plugin.ts';
 
+const packageRoot = resolve(import.meta.dir, '..');
+const sourceRoot = join(packageRoot, 'src');
+
 const FORBIDDEN_BUTTON_BUNDLE_STRINGS = [
   'shiki',
   'unified',
@@ -102,7 +105,7 @@ async function collectRelativeJavaScriptGraph(entrypoint: string): Promise<strin
 
 describe('tree-shake contract', () => {
   async function createTemporaryFixtureDirectory(prefix: string): Promise<string> {
-    const temporaryRoot = join(process.cwd(), '.tmp');
+    const temporaryRoot = join(packageRoot, '.tmp');
     await mkdir(temporaryRoot, { recursive: true });
     return mkdtemp(join(temporaryRoot, prefix));
   }
@@ -146,7 +149,7 @@ describe('tree-shake contract', () => {
 
   test('a minimal cinder/chat SSR bundle does not include editor or markdown rendering peers', async () => {
     const temporaryDirectory = await createTemporaryFixtureDirectory('cinder-chat-server-');
-    const packageManifest = (await Bun.file(join(process.cwd(), 'package.json')).json()) as {
+    const packageManifest = (await Bun.file(join(packageRoot, 'package.json')).json()) as {
       exports?: Record<string, { node?: string }>;
     };
     const chatNodeExport = packageManifest.exports?.['./chat']?.node;
@@ -154,9 +157,9 @@ describe('tree-shake contract', () => {
 
     try {
       const result = await Bun.build({
-        entrypoints: [join(process.cwd(), 'src/components/chat/index.ts')],
+        entrypoints: [join(sourceRoot, 'components/chat/index.ts')],
         outdir: join(temporaryDirectory, 'dist/server'),
-        root: join(process.cwd(), 'src'),
+        root: sourceRoot,
         target: 'node',
         format: 'esm',
         splitting: true,

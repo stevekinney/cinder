@@ -502,7 +502,8 @@
       bind:value
       {placeholder}
       aria-label={resolvedComposerLabel}
-      readonly={disabled || sending}
+      {disabled}
+      readonly={sending}
       class="chat-input-editor"
       aria-describedby={shortcutDescriptionId}
       rows="1"
@@ -777,7 +778,8 @@
     outline: none;
   }
 
-  .chat-input-editor:read-only {
+  .chat-input-editor:read-only,
+  .chat-input-editor:disabled {
     color: var(--cinder-text-muted);
     cursor: not-allowed;
   }

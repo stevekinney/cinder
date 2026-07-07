@@ -18,4 +18,26 @@ describe('ChatInput', () => {
     const composer = container.querySelector('textarea.chat-input-editor');
     expect(composer?.getAttribute('aria-label')).toBe('Message');
   });
+
+  test('uses native disabled only for the disabled prop', () => {
+    const { container } = render(ChatInput, {
+      id: 'disabled-composer',
+      disabled: true,
+    });
+
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor');
+    expect(composer?.disabled).toBe(true);
+    expect(composer?.readOnly).toBe(false);
+  });
+
+  test('keeps the composer read-only but focusable while sending', () => {
+    const { container } = render(ChatInput, {
+      id: 'sending-composer',
+      sending: true,
+    });
+
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor');
+    expect(composer?.disabled).toBe(false);
+    expect(composer?.readOnly).toBe(true);
+  });
 });
