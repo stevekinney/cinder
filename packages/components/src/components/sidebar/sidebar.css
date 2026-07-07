@@ -40,6 +40,10 @@
       border-inline-end: none;
     }
 
+    .cinder-sidebar--desktop[data-cinder-ssr-mobile-fallback] {
+      display: none;
+    }
+
     .cinder-sidebar--desktop[data-cinder-collapsed] {
       display: none;
     }

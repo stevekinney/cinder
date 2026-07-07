@@ -3,11 +3,13 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Sidebar } = await import('./sidebar.svelte');
+const SIDEBAR_SOURCE = new URL('./sidebar.svelte', import.meta.url).pathname;
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -198,10 +200,14 @@ describe('Sidebar (desktop / inline aside)', () => {
 });
 
 describe('Sidebar SSR responsive fallback', () => {
-  test('falls back to the desktop aside without matchMedia', () => {
+  test('marks the no-matchMedia desktop aside as a mobile first-paint fallback', () => {
     const hadMatchMedia = 'matchMedia' in window;
     const originalMatchMedia = window.matchMedia;
-    delete (window as { matchMedia?: typeof window.matchMedia }).matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
     try {
       const { container } = render(Sidebar, {
         props: { id: 'workspace-sidebar', label: 'Workspace', navigation: listSnippet('items') },
@@ -210,22 +216,39 @@ describe('Sidebar SSR responsive fallback', () => {
       expect(asides).toHaveLength(1);
       expect(asides[0]?.id).toBe('workspace-sidebar');
       expect(asides[0]?.classList.contains('cinder-sidebar--desktop')).toBe(true);
-      expect(container.querySelector('.cinder-sidebar--ssr-mobile')).toBeNull();
+      expect(asides[0]?.hasAttribute('data-cinder-ssr-mobile-fallback')).toBe(true);
     } finally {
       if (hadMatchMedia) {
-        window.matchMedia = originalMatchMedia;
+        Object.defineProperty(window, 'matchMedia', {
+          value: originalMatchMedia,
+          configurable: true,
+          writable: true,
+        });
       } else {
         delete (window as { matchMedia?: typeof window.matchMedia }).matchMedia;
       }
     }
   });
 
-  test('component CSS hides the desktop fallback on mobile first paint', async () => {
+  test('server output marks the desktop aside for mobile first-paint hiding', async () => {
+    const html = await renderToServerHtml(SIDEBAR_SOURCE, {
+      id: 'workspace-sidebar',
+      label: 'Workspace',
+    });
+
+    expect(html).toContain('id="workspace-sidebar"');
+    expect(html).toContain('class="cinder-sidebar cinder-sidebar--desktop"');
+    expect(html).toContain('data-cinder-ssr-mobile-fallback');
+  });
+
+  test('component CSS hides only the SSR fallback on mobile first paint', async () => {
     const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
     expect(css).toMatch(
-      /@media\s*\(\s*max-width:\s*47\.99rem\s*\)[\s\S]*?\.cinder-sidebar--desktop\s*{[\s\S]*?display:\s*flex;[\s\S]*?inline-size:\s*100%;[\s\S]*?block-size:\s*100%;[\s\S]*?background:\s*transparent;[\s\S]*?border-inline-end:\s*none;[\s\S]*?\.cinder-sidebar--desktop\[data-cinder-collapsed\]\s*{\s*display:\s*none;\s*}/,
+      /@media\s*\(\s*max-width:\s*47\.99rem\s*\)[\s\S]*?\.cinder-sidebar--desktop\[data-cinder-ssr-mobile-fallback\]\s*{\s*display:\s*none;\s*}/,
     );
-    expect(css).not.toContain('.cinder-sidebar--ssr-mobile');
+    expect(css).toMatch(
+      /\.cinder-sidebar--desktop\[data-cinder-collapsed\]\s*{\s*display:\s*none;\s*}/,
+    );
   });
 });
 
