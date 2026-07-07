@@ -1,5 +1,19 @@
 # @lostgradient/cinder
 
+## 0.8.0
+
+### Minor Changes
+
+- [`9686390`](https://github.com/stevekinney/cinder/commit/9686390483ce91eebe82f2f28852e436c1f2724a) Thanks [@stevekinney](https://github.com/stevekinney)! - `Chat` composer public API: added `clearInput()`, `getComposerValue()`, and an `oncomposerinput` callback prop so consumers can read, clear, and observe the composer's plain-text value without reaching into `.chat-input-editor` DOM directly (useful for building slash-command, mention, or autocomplete UX layered on top of the composer).
+
+  Also re-exported the `ChatAttachment` type from the public `@lostgradient/cinder/chat` entry — previously consumers had to derive it from `ChatSubmitEvent['attachments'][number]`.
+
+### Patch Changes
+
+- [#675](https://github.com/stevekinney/cinder/pull/675) [`e55561d`](https://github.com/stevekinney/cinder/commit/e55561db6d348573e29df711c095b2ec18e197ef) Thanks [@stevekinney](https://github.com/stevekinney)! - Close a collapsed top NavigationBar mobile menu after enabled item activation.
+
+- [#667](https://github.com/stevekinney/cinder/pull/667) [`d9ce2c3`](https://github.com/stevekinney/cinder/commit/d9ce2c3660805d8b6a7e964f3f671174c61ca819) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal build and validation overhaul: content-hash build caching (with the cache marker excluded from the published tarball), global test cleanup registration, and a lint script split into `lint` and `lint:invariants`.
+
 ## 0.7.0
 
 ### Minor Changes
