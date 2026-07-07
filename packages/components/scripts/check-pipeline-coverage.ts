@@ -53,6 +53,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptDirectory, '..');
 const repoRoot = resolve(packageRoot, '..', '..');
 const workflowsDirectory = join(repoRoot, '.github', 'workflows');
+const componentsPackageName = '@lostgradient/cinder';
 
 export const LAYERS = [
   'pre-commit',
@@ -275,17 +276,22 @@ function layerInvokesExternalBinary(
 ): boolean {
   if (invokesExternalBinaryToken(layerText, command)) return true;
 
-  const pattern = /\bbun\s+run\s+(?:--filter=\S+\s+)?([A-Za-z0-9:_.-]+)/g;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(layerText)) !== null) {
-    const entryPoint = match[1];
-    if (entryPoint === undefined) continue;
-    for (const scripts of [packageScripts, rootScripts]) {
-      if (!Object.hasOwn(scripts, entryPoint)) continue;
-      const chain = resolveScriptChain(entryPoint, scripts);
-      for (const scriptName of chain) {
-        if (invokesExternalBinaryToken(scripts[scriptName] ?? '', command)) return true;
-      }
+  for (const invocation of extractBunRunInvocations(layerText)) {
+    const scope = scopeForWorkflowInvocation(invocation);
+    if (scope === undefined) continue;
+    const chains = resolveScriptChainsAcrossScopes(
+      invocation.name,
+      scope,
+      packageScripts,
+      rootScripts,
+    );
+
+    for (const scriptName of chains.packageScripts) {
+      if (invokesExternalBinaryToken(packageScripts[scriptName] ?? '', command)) return true;
+    }
+
+    for (const scriptName of chains.rootScripts) {
+      if (invokesExternalBinaryToken(rootScripts[scriptName] ?? '', command)) return true;
     }
   }
 
@@ -297,8 +303,8 @@ type ParsedSources = {
   packageScripts: Record<string, string>;
   /**
    * name -> resolved script body, the workspace ROOT package.json scripts.
-   * Only consulted for commands in {@link EXTERNAL_BINARY_COMMANDS} — see
-   * {@link loadRootScripts}.
+   * Workflow `bun run <name>` entry points resolve through this root scope
+   * unless they explicitly cross into a package with `--filter`.
    */
   rootScripts: Record<string, string>;
   /**
@@ -346,6 +352,88 @@ export function resolveScriptChain(
   return seen;
 }
 
+type ScriptScope = 'package' | 'root';
+
+type BunRunInvocation = {
+  filter: string | undefined;
+  name: string;
+};
+
+function normalizeFilter(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return value.replace(/^['"]|['"]$/gu, '');
+}
+
+function filterTargetsComponentsPackage(filter: string | undefined): boolean {
+  if (filter === undefined) return false;
+  return filter === componentsPackageName || filter === '*';
+}
+
+function extractBunRunInvocations(body: string): BunRunInvocation[] {
+  const found: BunRunInvocation[] = [];
+  const pattern =
+    /\bbun\s+run\s+(?:(?:--filter(?:=|\s+)(?:"([^"]+)"|'([^']+)'|(\S+)))\s+)?([A-Za-z0-9:_.-]+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(body)) !== null) {
+    const name = match[4];
+    if (name === undefined) continue;
+    found.push({ filter: normalizeFilter(match[1] ?? match[2] ?? match[3]), name });
+  }
+  return found;
+}
+
+function scopeForWorkflowInvocation(invocation: BunRunInvocation): ScriptScope | undefined {
+  if (invocation.filter === undefined) return 'root';
+  if (filterTargetsComponentsPackage(invocation.filter)) return 'package';
+  return undefined;
+}
+
+function scopeForNestedInvocation(
+  invocation: BunRunInvocation,
+  currentScope: ScriptScope,
+): ScriptScope | undefined {
+  if (invocation.filter === undefined) return currentScope;
+  if (filterTargetsComponentsPackage(invocation.filter)) return 'package';
+  return undefined;
+}
+
+function resolveScriptChainsAcrossScopes(
+  scriptName: string,
+  initialScope: ScriptScope,
+  packageScripts: Record<string, string>,
+  rootScripts: Record<string, string>,
+  seen: Set<string> = new Set(),
+): { packageScripts: Set<string>; rootScripts: Set<string> } {
+  const packageChain = new Set<string>();
+  const rootChain = new Set<string>();
+
+  function visit(name: string, scope: ScriptScope): void {
+    const key = `${scope}:${name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    const scripts = scope === 'package' ? packageScripts : rootScripts;
+    const body = scripts[name];
+    if (body === undefined) return;
+
+    if (scope === 'package') {
+      packageChain.add(name);
+    } else {
+      rootChain.add(name);
+    }
+
+    for (const invocation of extractBunRunInvocations(body)) {
+      const nextScope = scopeForNestedInvocation(invocation, scope);
+      if (nextScope === undefined) continue;
+      visit(invocation.name, nextScope);
+    }
+  }
+
+  visit(scriptName, initialScope);
+
+  return { packageScripts: packageChain, rootScripts: rootChain };
+}
+
 /**
  * Extract every `bun run <name>` (optionally `--filter=<pkg> <name>`) token
  * from a script body that corresponds to a KNOWN script name in the given
@@ -355,32 +443,10 @@ export function resolveScriptChain(
  */
 function extractInvokedScriptNames(body: string, packageScripts: Record<string, string>): string[] {
   const found: string[] = [];
-  // Matches `bun run [--filter=...] <name>` where <name> is greedily the
-  // longest run of non-whitespace, non-`&|;` characters — script names can
-  // contain `:` and `-`.
-  const pattern = /\bbun\s+run\s+(?:--filter=\S+\s+)?([A-Za-z0-9:_.-]+)/g;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(body)) !== null) {
-    const name = match[1];
-    if (name !== undefined && Object.hasOwn(packageScripts, name)) {
-      found.push(name);
-    }
+  for (const invocation of extractBunRunInvocations(body)) {
+    if (Object.hasOwn(packageScripts, invocation.name)) found.push(invocation.name);
   }
   return found;
-}
-
-/**
- * Does a script body's own text (not its transitive chain) invoke `command`
- * as a token — either as a workflow step's shell command or a package.json
- * script fragment?
- */
-function invokesCommandToken(text: string, command: string): boolean {
-  const escaped = escapeRegExp(command);
-  const pattern = new RegExp(
-    `\\bbun\\s+run\\s+(?:--filter=\\S+\\s+)?${escaped}(?![A-Za-z0-9:_.-])`,
-    'u',
-  );
-  return pattern.test(text);
 }
 
 function escapeRegExp(value: string): string {
@@ -437,19 +503,22 @@ function layerInvokesCommand(
   layerText: string,
   command: string,
   packageScripts: Record<string, string>,
+  rootScripts: Record<string, string>,
 ): boolean {
-  if (invokesCommandToken(layerText, command)) return true;
   if (invokesDirectScriptPath(layerText, command, packageScripts)) return true;
 
   // Resolve every `bun run <name>` entry point in the workflow text into its
   // transitive chain and check membership.
-  const pattern = /\bbun\s+run\s+(?:--filter=\S+\s+)?([A-Za-z0-9:_.-]+)/g;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(layerText)) !== null) {
-    const entryPoint = match[1];
-    if (entryPoint === undefined || !Object.hasOwn(packageScripts, entryPoint)) continue;
-    const chain = resolveScriptChain(entryPoint, packageScripts);
-    if (chain.has(command)) return true;
+  for (const invocation of extractBunRunInvocations(layerText)) {
+    const scope = scopeForWorkflowInvocation(invocation);
+    if (scope === undefined) continue;
+    const chain = resolveScriptChainsAcrossScopes(
+      invocation.name,
+      scope,
+      packageScripts,
+      rootScripts,
+    );
+    if (chain.packageScripts.has(command)) return true;
   }
 
   return false;
@@ -540,9 +609,8 @@ async function loadPackageScripts(): Promise<Record<string, string>> {
  * (unqualified, no `--filter`) invokes the ROOT `lint` script — `bun run
  * --filter='*' lint && stylelint "…"` — not the components-package `lint`
  * (plain `oxlint`). The two manifests define distinct scripts under the same
- * name, so `stylelint` coverage (reached only through the root chain) needs
- * this separate resolution scope; every other declared command in this file
- * genuinely lives in the components-package chain and does not need it.
+ * name, so workflow-layer script resolution starts in this root scope and
+ * crosses into the components-package scope only at `--filter` boundaries.
  */
 async function loadRootScripts(): Promise<Record<string, string>> {
   return loadManifestScripts(join(repoRoot, 'package.json'));
@@ -627,7 +695,7 @@ export function checkPipelineCoverage(
             )
         : isHookLayer
           ? hookInvokesCommand(layerText, command)
-          : layerInvokesCommand(layerText, command, sources.packageScripts);
+          : layerInvokesCommand(layerText, command, sources.packageScripts, sources.rootScripts);
       const isDeclared = declared.has(layer);
 
       if (actuallyRuns && !isDeclared) {

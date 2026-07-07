@@ -84,7 +84,7 @@ describe('checkPipelineCoverage', () => {
     };
     const result = checkPipelineCoverage(table, {
       packageScripts,
-      rootScripts: {},
+      rootScripts: { lint: 'bun run --filter=@lostgradient/cinder lint' },
       workflowText: { 'main-green': 'bun run lint' },
       hookText: {},
     });
@@ -119,7 +119,7 @@ describe('checkPipelineCoverage', () => {
     };
     const result = checkPipelineCoverage(table, {
       packageScripts,
-      rootScripts: {},
+      rootScripts: { validate: 'bun run --filter=@lostgradient/cinder validate' },
       workflowText: {
         'unit-tests': '',
         'browser-tests': '',
@@ -131,6 +131,35 @@ describe('checkPipelineCoverage', () => {
     });
 
     expect(result.violations).toEqual([]);
+  });
+
+  it('does not let an unqualified root entry point falsely cover a package gate', () => {
+    const table: Record<string, DeclarationRow> = {
+      'components:check': {
+        layers: ['release'],
+        reason: 'test fixture — package validate would reach it, but root validate no longer does',
+      },
+    };
+    const result = checkPipelineCoverage(table, {
+      packageScripts,
+      rootScripts: { validate: 'bun run validate:playground' },
+      workflowText: {
+        'unit-tests': '',
+        'browser-tests': '',
+        'main-green': '',
+        release: 'bun run validate',
+        'changeset-guard': '',
+      },
+      hookText: {},
+    });
+
+    expect(result.violations).toContainEqual(
+      expect.objectContaining({
+        command: 'components:check',
+        kind: 'missing',
+        layer: 'release',
+      }),
+    );
   });
 
   it('resolves an external-binary command (e.g. stylelint) through the ROOT script chain, not just the package chain', () => {
