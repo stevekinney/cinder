@@ -836,7 +836,12 @@ export { default as Sparkbar } from './components/sparkbar/index.ts';
 export type { SparkbarProps, SparkbarSize, SparkbarVariant } from './components/sparkbar/index.ts';
 
 export { default as Steps } from './components/steps/index.ts';
-export type { StepItem, StepsOrientation, StepsProps } from './components/steps/index.ts';
+export type {
+  StepItem,
+  StepItemState,
+  StepsOrientation,
+  StepsProps,
+} from './components/steps/index.ts';
 
 export { default as Stat } from './components/stat/index.ts';
 export type { StatChange, StatChangeDirection, StatProps } from './components/stat/index.ts';

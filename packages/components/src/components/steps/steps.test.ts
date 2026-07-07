@@ -113,6 +113,70 @@ describe('Steps', () => {
     expect(firstItem?.textContent).toMatch(/Finished\s+Set up profile/);
   });
 
+  test('explicit skipped steps do not inherit completed styling or completed accessible text', () => {
+    const { container } = render(Steps, {
+      steps: [
+        { id: 'a', label: 'Account' },
+        { id: 'b', label: 'Optional profile', state: 'skipped' },
+        { id: 'c', label: 'Review' },
+      ],
+      currentStep: 2,
+      skippedLabel: 'Skipped',
+    });
+
+    const items = Array.from(container.querySelectorAll('.cinder-steps__item'));
+    expect(items.map((item) => item.getAttribute('data-cinder-state'))).toEqual([
+      'complete',
+      'skipped',
+      'current',
+    ]);
+
+    const skipped = items[1];
+    expect(skipped?.querySelector('.cinder-steps__check')).toBeNull();
+    expect(skipped?.querySelector('.cinder-steps__index')?.textContent).toBe('2');
+    expect(skipped?.textContent).not.toContain('Completed');
+    expect(skipped?.textContent).toMatch(/Skipped\s+Optional profile/);
+  });
+
+  test('only honors skipped overrides before currentStep and ignores active or future overrides', () => {
+    const { container } = render(Steps, {
+      steps: [
+        { id: 'a', label: 'Account' },
+        { id: 'b', label: 'Profile', state: 'skipped' },
+        { id: 'c', label: 'Review', state: 'skipped' },
+        { id: 'd', label: 'Confirm', state: 'current' as never },
+      ],
+      currentStep: 2,
+    });
+
+    const items = Array.from(container.querySelectorAll('.cinder-steps__item'));
+    expect(items.map((item) => item.getAttribute('data-cinder-state'))).toEqual([
+      'complete',
+      'skipped',
+      'current',
+      'upcoming',
+    ]);
+    expect(container.querySelectorAll('[aria-current="step"]').length).toBe(1);
+    expect(container.querySelector('[aria-current="step"]')?.textContent).toContain('Review');
+  });
+
+  test('connectors behind skipped past steps still show completed progress', () => {
+    const { container } = render(Steps, {
+      steps: [
+        { id: 'a', label: 'Account' },
+        { id: 'b', label: 'Optional profile', state: 'skipped' },
+        { id: 'c', label: 'Review' },
+      ],
+      currentStep: 2,
+    });
+
+    const connectors = Array.from(container.querySelectorAll('.cinder-steps__connector'));
+    expect(connectors.map((connector) => connector.getAttribute('data-cinder-state'))).toEqual([
+      'complete',
+      'complete',
+    ]);
+  });
+
   test('orientation prop drives layout via data-cinder-orientation', () => {
     const { container: hContainer } = render(Steps, {
       steps: defaultSteps,
@@ -478,6 +542,20 @@ describe('Steps — horizontal layout geometry (CSS contract)', () => {
     );
     expect(connector).toBeLessThan(interactiveBody);
     expect(interactiveBody).toBeLessThan(marker);
+  });
+
+  test('skipped marker uses an opaque surface and forced-colors outline', () => {
+    const skippedMarkerBody = ruleBody(
+      /\[data-cinder-state='skipped'\]\s*\.cinder-steps__marker\s*\{/,
+    );
+    expect(skippedMarkerBody).toMatch(/background:\s*var\(--cinder-surface\);/);
+    expect(skippedMarkerBody).toMatch(
+      /box-shadow:\s*inset 0 0 0 1px var\(--cinder-border-muted\);/,
+    );
+
+    expect(stepsCss).toMatch(
+      /@media \(forced-colors: active\)[\s\S]*?\[data-cinder-state='skipped'\]\s*\.cinder-steps__marker\s*\{[\s\S]*?outline:\s*1px solid ButtonText;[\s\S]*?box-shadow:\s*none;/,
+    );
   });
 });
 

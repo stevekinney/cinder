@@ -203,6 +203,19 @@
     }
   }
 
+  [data-cinder-state='skipped'] .cinder-steps__marker {
+    background: var(--cinder-surface);
+    box-shadow: inset 0 0 0 1px var(--cinder-border-muted);
+    color: var(--cinder-text-muted);
+  }
+
+  @media (forced-colors: active) {
+    [data-cinder-state='skipped'] .cinder-steps__marker {
+      outline: 1px solid ButtonText;
+      box-shadow: none;
+    }
+  }
+
   [data-cinder-state='upcoming'] .cinder-steps__marker {
     color: var(--cinder-text-muted);
   }
@@ -301,6 +314,7 @@
     font-weight: var(--cinder-font-semibold);
   }
 
+  [data-cinder-state='skipped'] .cinder-steps__label,
   [data-cinder-state='upcoming'] .cinder-steps__label {
     color: var(--cinder-text-muted);
   }
@@ -326,7 +340,7 @@
   }
 
   /* ----------------------------------------
- * Visually-hidden text for completed steps
+ * Visually-hidden text for completed and skipped steps
  * ---------------------------------------- */
 
   .cinder-steps__sr-only,

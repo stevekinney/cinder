@@ -29,13 +29,15 @@ Completed steps render a visually-hidden `<span class="cinder-steps__sr-only">` 
 
 The `completedLabel` prop (default `'Completed'`) lets consuming teams localize or override this text without forking the component.
 
+Skipped steps use the same hidden-text placement with `skippedLabel` (default `'Skipped'`). They keep their numeric marker and do not render the completed checkmark or completed label, so a past-but-incomplete step is not announced as finished.
+
 **Current step:** state is conveyed solely by `aria-current="step"` on the `<li>`. No additional visually-hidden text is added to avoid duplicate announcements.
 
 **Upcoming steps:** no state text — the visible label alone is sufficient.
 
-## `completedLabel` contract
+## State label contract
 
-The prop value is rendered verbatim with no punctuation added by the component. If the caller wants a trailing comma for pause cuing (e.g., "Completed, Set up profile"), they should pass `completedLabel="Completed,"`.
+The `completedLabel` and `skippedLabel` prop values are rendered verbatim with no punctuation added by the component. If the caller wants a trailing comma for pause cuing (e.g., "Completed, Set up profile"), they should pass `completedLabel="Completed,"`.
 
 ## Default `label` value
 

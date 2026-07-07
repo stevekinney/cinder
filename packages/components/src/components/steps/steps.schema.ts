@@ -22,6 +22,11 @@ const schema = {
       description:
         "Visually-hidden text prepended to completed steps so screen readers\nannounce state + label. Defaults to 'Completed'.",
     },
+    skippedLabel: {
+      type: 'string',
+      description:
+        "Visually-hidden text prepended to skipped steps so screen readers announce\nstate + label. Defaults to 'Skipped'.",
+    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-steps`.',
