@@ -33,6 +33,12 @@ import {
   loadSourceFiles,
   type ScopeDecision,
 } from './component-graph.ts';
+import {
+  error,
+  installHookProcessCleanup,
+  runHookCommand,
+  withLocalValidationGateLock,
+} from './husky/utilities.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptDirectory, '..');
@@ -239,7 +245,9 @@ function parseBaseRef(argv: string[]): string {
   return 'origin/main';
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<number> {
+  installHookProcessCleanup();
+
   const baseRef = parseBaseRef(process.argv.slice(2));
   const decision = await resolveScope(baseRef);
   const paths = testPathsForScope(decision);
@@ -252,15 +260,15 @@ async function main(): Promise<void> {
 
     for (const [index, group] of groups.entries()) {
       process.stderr.write(`test-changed: full suite chunk ${index + 1}/${groups.length}\n`);
-      const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...group], {
+      const result = await runHookCommand('bun', ['test', ...BUN_TEST_FLAGS, ...group], {
         cwd: packageRoot,
-        stdio: ['inherit', 'inherit', 'inherit'],
-        env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+        environment: { TZ: 'UTC', LANG: 'en_US.UTF-8' },
+        stderr: 'inherit',
+        stdout: 'inherit',
       });
-      const exitCode = await child.exited;
-      if (exitCode !== 0) process.exit(exitCode);
+      if (result.exitCode !== 0) return result.exitCode;
     }
-    return;
+    return 0;
   } else {
     process.stderr.write(
       `test-changed: ${decision.mode === 'filtered' ? decision.slugs.length : 0} component(s): ` +
@@ -268,18 +276,21 @@ async function main(): Promise<void> {
     );
   }
 
-  const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...paths], {
+  const result = await runHookCommand('bun', ['test', ...BUN_TEST_FLAGS, ...paths], {
     cwd: packageRoot,
-    stdio: ['inherit', 'inherit', 'inherit'],
-    env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+    environment: { TZ: 'UTC', LANG: 'en_US.UTF-8' },
+    stderr: 'inherit',
+    stdout: 'inherit',
   });
-  const exitCode = await child.exited;
-  process.exit(exitCode);
+  return result.exitCode;
 }
 
 if (import.meta.main) {
-  main().catch((error: unknown) => {
-    process.stderr.write(`test-changed failed: ${String(error)}\n`);
+  try {
+    const exitCode = await withLocalValidationGateLock(main);
+    process.exit(exitCode);
+  } catch (caught) {
+    error(`test-changed failed: ${String(caught)}`);
     process.exit(1);
-  });
+  }
 }

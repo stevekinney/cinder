@@ -10,9 +10,12 @@ import {
   changedFilesForRange,
   cleanupForHookSignal,
   cleanupHookProcesses,
+  defaultGateLockPath,
   expandToDependents,
   formatFailureSummary,
+  gateLockPathForCommonDirectory,
   getTouchedPackages,
+  gitCommonDirectory,
   hasRootConfigurationChanges,
   inferFailureScope,
   isIgnorableDoc,
@@ -20,13 +23,16 @@ import {
   isSourceFile,
   isUnderWorkspace,
   loadWorkspacePackages,
+  LOCAL_VALIDATION_GATE_LOCK_HELD_ENV,
   parsePushRefs,
   phaseMaxConcurrency,
   prePushPackageScript,
+  REPO_ROOT,
   runHookCommand,
   runWithConcurrencyPool,
   summarizeFailures,
   withGateLock,
+  withLocalValidationGateLock,
   type GitRunner,
   type PushRefUpdate,
   type WorkspacePackage,
@@ -1321,6 +1327,15 @@ describe('withGateLock', () => {
     }
   }
 
+  it('derives the default lock path from the shared Git common directory', () => {
+    const commonDirectory = gitCommonDirectory();
+    const expectedPath = gateLockPathForCommonDirectory(commonDirectory);
+
+    expect(commonDirectory).toBe(gitCommonDirectory(REPO_ROOT));
+    expect(defaultGateLockPath()).toBe(expectedPath);
+    expect(defaultGateLockPath()).not.toContain(REPO_ROOT);
+  });
+
   it('creates a lock while the protected function runs and removes it after success', async () => {
     await withTemporaryLockPath(async (lockPath) => {
       let lockContents = '';
@@ -1572,4 +1587,76 @@ describe('withGateLock', () => {
       });
     });
   }
+});
+
+describe('withLocalValidationGateLock', () => {
+  async function withTemporaryLockPath<T>(test: (lockPath: string) => Promise<T>): Promise<T> {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-local-validation-lock-'));
+    try {
+      return await test(join(directory, 'local-validation.lock'));
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  }
+
+  it('marks the lock as held while the protected function runs and restores the environment', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      const previousValue = Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+      delete Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+      try {
+        let markerInsideRun: string | undefined;
+
+        await withLocalValidationGateLock(
+          async () => {
+            markerInsideRun = Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+          },
+          { lockPath },
+        );
+
+        expect(markerInsideRun).toBe('1');
+        expect(Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV]).toBeUndefined();
+      } finally {
+        if (previousValue === undefined) {
+          delete Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+        } else {
+          Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] = previousValue;
+        }
+      }
+    });
+  });
+
+  it('does not re-acquire the lock when a parent validation gate already holds it', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(
+        lockPath,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          pid: process.pid,
+          repositoryRoot: 'parent-gate',
+          token: 'already-held',
+        }),
+      );
+
+      const previousValue = Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+      Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] = '1';
+      try {
+        const result = await withLocalValidationGateLock(async () => 'skipped nested acquire', {
+          lockPath,
+          isProcessAlive: () => true,
+          retryMilliseconds: 1,
+          waitMilliseconds: 1,
+        });
+
+        expect(result).toBe('skipped nested acquire');
+        expect(await Bun.file(lockPath).exists()).toBe(true);
+      } finally {
+        if (previousValue === undefined) {
+          delete Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+        } else {
+          Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] = previousValue;
+        }
+        await rm(lockPath, { force: true });
+      }
+    });
+  });
 });

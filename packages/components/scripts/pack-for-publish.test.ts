@@ -7,6 +7,7 @@ import { BUILD_INPUT_HASH_MARKER } from './lib/build-cache.ts';
 import {
   buildPublishedManifest,
   removeBuildCacheMarker,
+  runPackCommand,
   stripDanglingSourceMapUrlComments,
   transpileSvelteComponentScriptsForPublish,
   transpileSvelteTypeScriptModuleForPublish,
@@ -63,6 +64,36 @@ describe('removeBuildCacheMarker', () => {
     mkdirSync(join(root, 'dist'), { recursive: true });
 
     await expect(removeBuildCacheMarker(root)).resolves.toBeUndefined();
+  });
+});
+
+describe('runPackCommand', () => {
+  it('runs bun pm pack from the staging directory into the destination directory', () => {
+    const calls: Array<{
+      command: readonly string[];
+      options: { readonly cwd: string; readonly stderr: 'pipe'; readonly stdout: 'pipe' };
+    }> = [];
+
+    runPackCommand('/tmp/staging', '/tmp/output', (command, options) => {
+      calls.push({ command, options });
+      return { exitCode: 0, stderr: Buffer.from('') };
+    });
+
+    expect(calls).toEqual([
+      {
+        command: ['bun', 'pm', 'pack', '--destination', '/tmp/output'],
+        options: { cwd: '/tmp/staging', stderr: 'pipe', stdout: 'pipe' },
+      },
+    ]);
+  });
+
+  it('throws with stderr when bun pm pack fails', () => {
+    expect(() =>
+      runPackCommand('/tmp/staging', '/tmp/output', () => ({
+        exitCode: 1,
+        stderr: Buffer.from('pack failed'),
+      })),
+    ).toThrow('bun pm pack failed: pack failed');
   });
 });
 

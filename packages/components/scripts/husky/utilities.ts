@@ -1,8 +1,11 @@
 import { $ } from 'bun';
 import chalk from 'chalk';
 import { capitalCase } from 'change-case';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, rmSync } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -509,10 +512,39 @@ type GateLockOptions = {
   readonly waitMilliseconds?: number;
 };
 
-const DEFAULT_GATE_LOCK_PATH = join(REPO_ROOT, 'tmp', 'pre-push-gate.lock');
 const DEFAULT_MALFORMED_GATE_LOCK_GRACE_MILLISECONDS = 30_000;
 const DEFAULT_GATE_LOCK_RETRY_MILLISECONDS = 1_000;
 const DEFAULT_GATE_LOCK_WAIT_MILLISECONDS = 5 * 60 * 1_000;
+export const LOCAL_VALIDATION_GATE_LOCK_HELD_ENV = 'CINDER_LOCAL_VALIDATION_GATE_LOCK_HELD';
+
+export function gitCommonDirectory(repositoryRoot = REPO_ROOT): string {
+  try {
+    const commonDirectory = execFileSync(
+      'git',
+      ['-C', repositoryRoot, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    ).trim();
+    if (commonDirectory.length > 0) return commonDirectory;
+  } catch {
+    // Fall through to the repository-local path for non-Git test fixtures.
+  }
+  return join(repositoryRoot, '.git');
+}
+
+export function gateLockPathForCommonDirectory(commonDirectory: string): string {
+  const commonDirectoryHash = createHash('sha256')
+    .update(commonDirectory)
+    .digest('hex')
+    .slice(0, 16);
+  return join(tmpdir(), 'cinder-local-validation-gates', `${commonDirectoryHash}.lock`);
+}
+
+export function defaultGateLockPath(repositoryRoot = REPO_ROOT): string {
+  return gateLockPathForCommonDirectory(gitCommonDirectory(repositoryRoot));
+}
 
 function createGateLockFile(token: string): GateLockFile {
   return {
@@ -581,14 +613,15 @@ function releaseGateLockSync(lockPath: string, token: string) {
 }
 
 /**
- * Run a hook gate under a repository-local lock so duplicate pushes do not
- * stack full workspace validations on top of one another.
+ * Run a hook gate under a shared repository lock so duplicate pushes from
+ * linked worktrees do not stack full workspace validations on top of one
+ * another.
  */
 export async function withGateLock<T>(
   run: () => Promise<T>,
   options: GateLockOptions = {},
 ): Promise<T> {
-  const lockPath = options.lockPath ?? DEFAULT_GATE_LOCK_PATH;
+  const lockPath = options.lockPath ?? defaultGateLockPath();
   const malformedLockGraceMilliseconds =
     options.malformedLockGraceMilliseconds ?? DEFAULT_MALFORMED_GATE_LOCK_GRACE_MILLISECONDS;
   const retryMilliseconds = options.retryMilliseconds ?? DEFAULT_GATE_LOCK_RETRY_MILLISECONDS;
@@ -677,7 +710,8 @@ export async function withGateLock<T>(
 
       if (!waitingMessagePrinted) {
         warning(
-          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…`,
+          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…\n` +
+            `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command`,
         );
         waitingMessagePrinted = true;
       }
@@ -692,6 +726,35 @@ export async function withGateLock<T>(
       await Bun.sleep(retryMilliseconds);
     }
   }
+}
+
+/**
+ * Serialize expensive local validation gates across worktrees.
+ *
+ * `pre-push` holds this lock around the entire gate. Child scripts such as
+ * `test:changed`, `components:check`, and `validate:consumer` inherit the
+ * marker below, so they do not deadlock by trying to re-acquire the same lock.
+ * Direct invocations still acquire the repository-local lock.
+ */
+export async function withLocalValidationGateLock<T>(
+  run: () => Promise<T>,
+  options: GateLockOptions = {},
+): Promise<T> {
+  if (Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] === '1') return await run();
+
+  return await withGateLock(async () => {
+    const previousValue = Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+    Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] = '1';
+    try {
+      return await run();
+    } finally {
+      if (previousValue === undefined) {
+        delete Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+      } else {
+        Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] = previousValue;
+      }
+    }
+  }, options);
 }
 
 export async function getStagedFiles(): Promise<string[]> {

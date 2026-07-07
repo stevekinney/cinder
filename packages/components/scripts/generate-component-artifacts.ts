@@ -136,7 +136,8 @@ async function main(): Promise<void> {
     for (const issue of allIssues) {
       process.stderr.write(`  • ${issue}\n`);
     }
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // Generate mode.
@@ -155,7 +156,8 @@ async function main(): Promise<void> {
         ? `No component named "${targetName}"\n`
         : 'No directory-shaped components found\n',
     );
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // Stage 1: per-component schema/variables/README.
@@ -194,7 +196,8 @@ async function main(): Promise<void> {
     if (examplesResult.errors.length > 10) {
       process.stderr.write(`  … and ${examplesResult.errors.length - 10} more\n`);
     }
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   await writeExampleArtifacts(examplesResult);
   process.stdout.write(
@@ -208,5 +211,6 @@ async function main(): Promise<void> {
 }
 
 if (import.meta.main) {
-  await main();
+  const { withLocalValidationGateLock } = await import('./husky/utilities.ts');
+  await withLocalValidationGateLock(main);
 }

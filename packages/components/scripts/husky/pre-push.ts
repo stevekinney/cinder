@@ -39,7 +39,7 @@ import {
   success,
   summarizeFailures,
   warning,
-  withGateLock,
+  withLocalValidationGateLock,
   writePrePushLog,
   type GateFailure,
   type GitRunner,
@@ -660,7 +660,7 @@ if (plan.kind === 'skip') {
 let ok = false;
 
 try {
-  ok = await withGateLock(() =>
+  ok = await withLocalValidationGateLock(() =>
     plan.kind === 'full' ? runFull() : runScoped(plan.jobs, plan.stylelintFiles, plan.summary),
   );
 } catch (caught) {

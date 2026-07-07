@@ -28,7 +28,7 @@
  * transformed tarball, not a raw `bun pm pack` against the source manifest.
  */
 
-import { $, Glob } from 'bun';
+import { Glob } from 'bun';
 import { existsSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -536,6 +536,36 @@ export type PackForPublishResult = {
   stagingDirectory: string;
 };
 
+type PackCommandResult = {
+  readonly exitCode: number | null;
+  readonly stderr: { toString(): string };
+};
+
+type PackCommandRunner = (
+  command: readonly string[],
+  options: { readonly cwd: string; readonly stderr: 'pipe'; readonly stdout: 'pipe' },
+) => PackCommandResult;
+
+export function runPackCommand(
+  stagingDirectory: string,
+  destinationDirectory: string,
+  runner: PackCommandRunner = (command, options) =>
+    Bun.spawnSync([...command], {
+      cwd: options.cwd,
+      stderr: options.stderr,
+      stdout: options.stdout,
+    }),
+): void {
+  const result = runner(['bun', 'pm', 'pack', '--destination', destinationDirectory], {
+    cwd: stagingDirectory,
+    stderr: 'pipe',
+    stdout: 'pipe',
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(`bun pm pack failed: ${result.stderr.toString()}`);
+  }
+}
+
 /**
  * Stage, transform, pack, and return the path to the emitted tarball.
  * Asserts that the source `package.json` is byte-identical pre- and
@@ -562,13 +592,7 @@ export async function packForPublish(): Promise<PackForPublishResult> {
     await Bun.file(tarballPath).delete();
   }
 
-  const result = await $`bun pm pack --destination ${packageRoot}`
-    .cwd(stagingRoot)
-    .nothrow()
-    .quiet();
-  if (result.exitCode !== 0) {
-    throw new Error(`bun pm pack failed: ${result.stderr.toString()}`);
-  }
+  runPackCommand(stagingRoot, packageRoot);
   if (!existsSync(tarballPath)) {
     throw new Error(`Expected tarball at ${tarballPath} after pack`);
   }

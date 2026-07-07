@@ -34,7 +34,7 @@ describe('waitForReadyHtml', () => {
     expect(html).toContain('data-ready');
   });
 
-  test('lets the first SSR request use the remaining readiness budget', async () => {
+  test('caps individual SSR requests so one hung response cannot consume the readiness budget', async () => {
     const observedTimeouts: number[] = [];
     const fetcher: ReadinessFetch = async (_url, timeoutMs) => {
       observedTimeouts.push(timeoutMs);
@@ -44,6 +44,7 @@ describe('waitForReadyHtml', () => {
     await waitForReadyHtml({
       url: 'http://127.0.0.1:5173/dev-ssr',
       timeoutMs: 1_000,
+      requestTimeoutMs: 250,
       pollIntervalMs: 0,
       runningServer: { exitCode: null },
       fetcher,
@@ -51,7 +52,33 @@ describe('waitForReadyHtml', () => {
     });
 
     expect(observedTimeouts).toHaveLength(1);
-    expect(observedTimeouts[0]).toBeGreaterThan(900);
+    expect(observedTimeouts[0]).toBe(250);
+  });
+
+  test('retries after a per-request timeout while the overall readiness budget remains open', async () => {
+    const observedTimeouts: number[] = [];
+    let attempts = 0;
+    const fetcher: ReadinessFetch = async (_url, timeoutMs) => {
+      observedTimeouts.push(timeoutMs);
+      attempts += 1;
+      if (attempts === 1) {
+        throw new Error('The operation timed out.');
+      }
+      return response('<main data-ready>ready</main>');
+    };
+
+    const html = await waitForReadyHtml({
+      url: 'http://127.0.0.1:5173/dev-ssr',
+      timeoutMs: 1_000,
+      requestTimeoutMs: 250,
+      pollIntervalMs: 0,
+      runningServer: { exitCode: null },
+      fetcher,
+      isReady: (body) => body.includes('data-ready'),
+    });
+
+    expect(html).toContain('data-ready');
+    expect(observedTimeouts).toEqual([250, 250]);
   });
 
   test('fails immediately when the server exits before the target route is ready', async () => {
