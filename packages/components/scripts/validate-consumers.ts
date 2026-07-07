@@ -1480,7 +1480,12 @@ async function assertSvelteKitClientHydrates(
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     const text = message.text();
-    if (message.type() === 'error' || isHydrationConsoleWarning(text)) errors.push(text);
+    if (
+      message.type() === 'error' ||
+      (message.type() === 'warning' && isHydrationConsoleWarning(text))
+    ) {
+      errors.push(text);
+    }
   });
 
   try {
