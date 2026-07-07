@@ -237,7 +237,9 @@ describe('Sidebar SSR responsive fallback', () => {
     });
 
     expect(html).toContain('id="workspace-sidebar"');
-    expect(html).toContain('class="cinder-sidebar cinder-sidebar--desktop"');
+    expect(html).toMatch(
+      /\bclass="(?=[^"]*\bcinder-sidebar\b)(?=[^"]*\bcinder-sidebar--desktop\b)[^"]*"/,
+    );
     expect(html).toContain('data-cinder-ssr-mobile-fallback');
   });
 
