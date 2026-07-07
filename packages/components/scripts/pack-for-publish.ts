@@ -144,6 +144,17 @@ function rewriteUpstreamReexportEntry(
   return result;
 }
 
+function rewriteComponentMetadataNodeEntry(
+  key: string,
+  entry: ExportConditional,
+): ExportConditional {
+  if (!/\/(?:schema|variables)$/u.test(key)) return entry;
+  if (entry.node === undefined || entry.default === undefined) return entry;
+  if (!entry.node.startsWith('./dist/server/components/')) return entry;
+  if (!entry.default.startsWith('./dist/components/')) return entry;
+  return { ...entry, node: entry.default };
+}
+
 /**
  * Build the transformed manifest written into staging.
  */
@@ -162,7 +173,8 @@ function buildPublishedManifest(
       transformedExports[key] = rewriteUpstreamReexportEntry(entry, reexport);
       continue;
     }
-    transformedExports[key] = entry;
+    transformedExports[key] =
+      typeof entry === 'object' ? rewriteComponentMetadataNodeEntry(key, entry) : entry;
   }
 
   // Shallow clone, then strip `@cinder/*` from every dep field and replace
@@ -208,6 +220,8 @@ function buildPublishedManifest(
     'dist',
     '!dist/**/*.js.map',
     '!dist/server/**/*.d.ts',
+    '!dist/server/components/**/*.schema.js',
+    '!dist/server/components/**/*.variables.js',
     '!dist/**/*.type-test.*',
     '!dist/**/*.fixture.*',
     '!dist/**/*-fixture.*',
