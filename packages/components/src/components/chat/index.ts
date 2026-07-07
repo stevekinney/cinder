@@ -81,7 +81,7 @@ export {
 
 // Input
 export { ChatAttachmentPreview, ChatInput, deriveAttachmentKind } from './input';
-export type { AttachmentKind } from './input';
+export type { AttachmentKind, ChatAttachment } from './input';
 
 // Message
 export {

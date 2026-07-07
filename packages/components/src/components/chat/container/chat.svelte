@@ -123,6 +123,7 @@
     onattachmentadd,
     onattachmentremove,
     onattachmentfailure,
+    oncomposerinput,
     ...rest
   }: ChatProps = $props();
 
@@ -138,6 +139,7 @@
         clear: () => void;
         addFiles: (files: File[]) => void;
         getAttachments: () => ChatAttachment[];
+        getValue: () => string;
       }
     | undefined;
   let searchBarRef = $state<{ focusInput: () => void } | undefined>(undefined);
@@ -1357,6 +1359,16 @@
     inputRef?.focus();
   }
 
+  /** Clear the composer's current content. */
+  export function clearInput(): void {
+    inputRef?.clear();
+  }
+
+  /** Read the composer's current plain-text value. */
+  export function getComposerValue(): string {
+    return inputRef?.getValue() ?? '';
+  }
+
   /**
    * Begin streaming content for a specific message.
    * The message should already exist in the conversation.
@@ -1707,6 +1719,7 @@
         sending={streaming}
         {allowAttachments}
         onstop={streaming ? handleStopGenerating : undefined}
+        {oncomposerinput}
         {onattachmentadd}
         {onattachmentremove}
         {onattachmentfailure}

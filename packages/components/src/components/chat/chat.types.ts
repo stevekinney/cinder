@@ -243,4 +243,10 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   onattachmentadd?: (attachment: ChatAttachment) => void;
   onattachmentremove?: (attachment: ChatAttachment) => void;
   onattachmentfailure?: (file: File, error: string) => void;
+  /**
+   * Called with the composer's current plain-text value on every composer
+   * input event. Lets a consumer build slash-command, mention, or autocomplete
+   * UX without reaching into `.chat-input-editor` DOM directly.
+   */
+  oncomposerinput?: (value: string) => void;
 };

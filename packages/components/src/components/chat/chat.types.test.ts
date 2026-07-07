@@ -17,7 +17,7 @@ import { expect, test } from 'bun:test';
 import type { ComponentProps } from 'svelte';
 
 import Chat from './chat.svelte';
-import type { ChatProps, ConversationHistory } from './index.ts';
+import type { ChatAttachment, ChatProps, ChatSubmitEvent, ConversationHistory } from './index.ts';
 
 type Assignable<A, B> = A extends B ? true : false;
 
@@ -65,4 +65,34 @@ test('Chat publicly accepts a ConversationHistory conversation prop', () => {
   expect(conversationPropIsHistory).toBe(true);
   expect(historyAssignableToProp).toBe(true);
   expect(props.conversation.id).toBe('consumer-conversation');
+});
+
+// `ChatAttachment` was previously importable only by deriving it from
+// `ChatSubmitEvent['attachments'][number]` — the public `./index.ts` barrel
+// (the `@lostgradient/cinder/chat` entry) did not re-export the type on its
+// own. This asserts the two forms are the same type and that `ChatAttachment`
+// is directly importable from the public barrel.
+type SubmitEventAttachment = ChatSubmitEvent['attachments'][number];
+const chatAttachmentMatchesSubmitEventAttachment: Assignable<
+  ChatAttachment,
+  SubmitEventAttachment
+> = true;
+const submitEventAttachmentMatchesChatAttachment: Assignable<
+  SubmitEventAttachment,
+  ChatAttachment
+> = true;
+
+test('ChatAttachment is directly importable from the public chat barrel', () => {
+  expect(chatAttachmentMatchesSubmitEventAttachment).toBe(true);
+  expect(submitEventAttachmentMatchesChatAttachment).toBe(true);
+
+  const attachment = {
+    id: 'attachment-1',
+    file: new File(['content'], 'note.txt', { type: 'text/plain' }),
+    previewUrl: 'blob:attachment-1',
+    kind: 'document',
+    status: 'ready',
+  } satisfies ChatAttachment;
+
+  expect(attachment.id).toBe('attachment-1');
 });
