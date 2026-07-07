@@ -190,6 +190,15 @@
     );
   }
 
+  function moveFocusBeforeClosingItemsRegion(): void {
+    if (!browser || !itemsRegionElement) return;
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof Element && itemsRegionElement.contains(activeElement)) {
+      toggleElement?.focus();
+    }
+  }
+
   function handleClick(event: MouseEvent): void {
     const wasDefaultPrevented = event.defaultPrevented;
     if (consumerOnClick) {
@@ -200,6 +209,7 @@
     const navigationItem = getEventNavigationItem(event);
     if (!navigationItem || !canCloseAfterItemActivation(navigationItem, event)) return;
 
+    moveFocusBeforeClosingItemsRegion();
     mobileMenuOpen = false;
   }
 

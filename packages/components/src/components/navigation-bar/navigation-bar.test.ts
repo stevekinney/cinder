@@ -862,6 +862,7 @@ describe('NavigationBar', () => {
 
       expect(clicks['docs']).toBe(1);
       expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+      expect(document.activeElement).toBe(container.querySelector('#toggle-btn'));
     });
   });
 
