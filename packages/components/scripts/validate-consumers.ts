@@ -1524,9 +1524,7 @@ async function promiseWithTimeout<T>(
 ): Promise<T> {
   return await Promise.race([
     promise,
-    Bun.sleep(timeoutMs).then(() =>
-      fail(`${description} timed out after ${timeoutMs}ms`),
-    ) as Promise<never>,
+    Bun.sleep(timeoutMs).then(() => fail(`${description} timed out after ${timeoutMs}ms`)),
   ]);
 }
 
