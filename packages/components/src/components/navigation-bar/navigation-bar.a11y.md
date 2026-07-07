@@ -44,7 +44,9 @@ Consumer `onkeydown` handlers passed via rest props are also respected: the cons
 
 ## Focus Return
 
-When the user presses Escape to close the menu, focus is returned to the toggle button that opened it. This focus-return guarantee requires that, on the client, the consumer's `menuToggle` snippet spreads `toggleAttributes.onclick` onto a native `<button>` element so `event.currentTarget` is a real focusable DOM element.
+When the user presses Escape to close the menu, focus is returned to the toggle button that opened it. When the mobile menu closes after item activation, focus also moves back to the toggle before the items region is hidden. Controlled menus that start open use the rendered toggle button as the fallback focus target.
+
+This focus-return guarantee requires that, on the client, the consumer's `menuToggle` snippet spreads `toggleAttributes.onclick` onto a native `<button>` element so `event.currentTarget` is a real focusable DOM element.
 
 If a consumer wraps the toggle in a custom component without ensuring the native button receives `onclick` directly, Escape still closes the menu but focus does not move. This is a documented degradation, not a bug.
 
@@ -57,7 +59,11 @@ If a consumer wraps the toggle in a custom component without ensuring the native
 
 ## Route-Change Auto-Close
 
-The component has no router dependency. Consumers using a client-side router ([SvelteKit](https://kit.svelte.dev), etc.) should subscribe to route-change events and set `bind:mobileMenuOpen` to `false` when the route changes. Example:
+When a top navigation bar is in its collapsed mobile layout, activating an enabled navigation item closes the menu automatically unless the click event has been cancelled with `event.preventDefault()`. This includes click, Enter, and Space activation because keyboard activation dispatches a click on the focused item.
+
+Use `preventDefault()` from an item click handler or a bar-level `onclick` handler when navigation is guarded, delayed, or handled by local state and the menu should remain open.
+
+The component has no router dependency. Consumers using a client-side router ([SvelteKit](https://kit.svelte.dev), etc.) can still subscribe to route-change events and set `bind:mobileMenuOpen` to `false` when the route changes. Example:
 
 ```svelte
 <script>

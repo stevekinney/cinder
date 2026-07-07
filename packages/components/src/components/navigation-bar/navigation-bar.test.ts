@@ -65,6 +65,31 @@ function emitNavigationBarResize(target: Element, width: number): void {
   CapturingResizeObserver.lastCallback?.([entry], CapturingResizeObserver.lastObserver!);
 }
 
+function getItemsRegion(container: HTMLElement): HTMLElement {
+  return container.querySelector('.cinder-navigation-bar__items') as HTMLElement;
+}
+
+async function openCollapsedMobileMenu(container: HTMLElement): Promise<HTMLElement> {
+  await tick();
+  const nav = container.querySelector('nav') as HTMLElement;
+  const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+
+  emitNavigationBarResize(nav, 640);
+  await tick();
+
+  await fireEvent.click(toggle);
+  expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+
+  return nav;
+}
+
+async function setCollapsedMobileLayout(container: HTMLElement): Promise<void> {
+  await tick();
+  const nav = container.querySelector('nav') as HTMLElement;
+  emitNavigationBarResize(nav, 640);
+  await tick();
+}
+
 /** Creates a Svelte 5 Snippet that renders text content. */
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -141,6 +166,46 @@ function keyboardNavigationSnippet(clicks: Record<string, number>) {
           if (key) clicks[key] = (clicks[key] ?? 0) + 1;
         });
       }
+    },
+  }));
+}
+
+function iconNavigationSnippet(clicks: Record<string, number>) {
+  return createRawSnippet(() => ({
+    render: () => `
+      <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="home">
+        <svg data-testid="home-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 2 2 7h2v7h8V7h2z"></path>
+        </svg>
+        <span>Home</span>
+      </button>
+    `,
+    setup(element: Element) {
+      const button = element.matches('.cinder-navigation-item')
+        ? (element as HTMLButtonElement)
+        : element.querySelector<HTMLButtonElement>('.cinder-navigation-item');
+      button?.addEventListener('click', () => {
+        const key = button.dataset['key'];
+        if (key) clicks[key] = (clicks[key] ?? 0) + 1;
+      });
+    },
+  }));
+}
+
+function cancelingNavigationSnippet(clicks: Record<string, number>) {
+  return createRawSnippet(() => ({
+    render: () => `
+      <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="docs">Docs</button>
+    `,
+    setup(element: Element) {
+      const button = element.matches('.cinder-navigation-item')
+        ? (element as HTMLButtonElement)
+        : element.querySelector<HTMLButtonElement>('.cinder-navigation-item');
+      button?.addEventListener('click', (event) => {
+        event.preventDefault();
+        const key = button.dataset['key'];
+        if (key) clicks[key] = (clicks[key] ?? 0) + 1;
+      });
     },
   }));
 }
@@ -747,6 +812,164 @@ describe('NavigationBar', () => {
     await fireEvent.keyDown(docsLabel, { key: ' ' });
 
     expect(clicks['docs']).toBeUndefined();
+  });
+
+  test('enabled item click closes an open collapsed mobile menu', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      await fireEvent.click(docs);
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+    });
+  });
+
+  test('enabled item descendant click closes an open collapsed mobile menu', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: iconNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+
+      const icon = container.querySelector('[data-testid="home-icon"]') as SVGElement;
+      await fireEvent.click(icon);
+
+      expect(clicks['home']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+    });
+  });
+
+  test('consumer onclick can prevent the automatic collapsed mobile menu close', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+        onclick: function (this: HTMLElement, event: MouseEvent) {
+          const nav = container.querySelector('nav') as HTMLElement;
+          expect(this).toBe(nav);
+          event.preventDefault();
+        },
+      } as any);
+
+      await openCollapsedMobileMenu(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      await fireEvent.click(docs);
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+    });
+  });
+
+  test('cancelled item click keeps an open collapsed mobile menu open', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: cancelingNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      await fireEvent.click(docs);
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+    });
+  });
+
+  test('Enter activation closes an open collapsed mobile menu', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      docs.focus();
+      await fireEvent.keyDown(docs, { key: 'Enter' });
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+      expect(document.activeElement).toBe(container.querySelector('#toggle-btn'));
+    });
+  });
+
+  test('Enter activation returns focus to the toggle when the collapsed mobile menu starts open', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+        mobileMenuOpen: true,
+      });
+
+      await setCollapsedMobileLayout(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      docs.focus();
+      await fireEvent.keyDown(docs, { key: 'Enter' });
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+      expect(document.activeElement).toBe(container.querySelector('#toggle-btn'));
+    });
+  });
+
+  test('Space activation closes an open collapsed mobile menu', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      docs.focus();
+      await fireEvent.keyDown(docs, { key: ' ' });
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+    });
+  });
+
+  test('disabled item activation leaves an open collapsed mobile menu open', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+
+      const billing = container.querySelector('[data-key="billing"]') as HTMLElement;
+      await fireEvent.click(billing);
+      billing.focus();
+      await fireEvent.keyDown(billing, { key: 'Enter' });
+      await fireEvent.keyDown(billing, { key: ' ' });
+
+      expect(clicks['billing']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+    });
   });
 });
 

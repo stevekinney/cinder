@@ -49,10 +49,13 @@
     'data-cinder-placement': _dataCinderPlacement,
     'data-cinder-label-visibility': _dataCinderLabelVisibility,
     'data-cinder-menu-toggle-placement': _dataCinderMenuTogglePlacement,
+    onclick: consumerOnClick,
     onkeydown: consumerOnKeyDown,
     ...rest
   }: NavigationBarProps = $props();
   const navigationItemSelector = '[data-cinder-navigation-item]';
+  const toggleFocusSelector =
+    '.cinder-navigation-bar__menu-toggle button, .cinder-navigation-bar__menu-toggle [href], .cinder-navigation-bar__menu-toggle input, .cinder-navigation-bar__menu-toggle select, .cinder-navigation-bar__menu-toggle textarea, .cinder-navigation-bar__menu-toggle [tabindex]:not([tabindex="-1"])';
 
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
   let isMobileLayout = $state(false);
@@ -155,14 +158,71 @@
     return item.getAttribute('aria-disabled') !== 'true' && !item.hasAttribute('disabled');
   }
 
-  function getEventNavigationItem(event: KeyboardEvent): HTMLElement | null {
-    if (!(event.target instanceof HTMLElement) || !itemsRegionElement) return null;
+  function getEventNavigationItem(event: Event): HTMLElement | null {
+    if (!(event.target instanceof Element) || !itemsRegionElement) return null;
 
     const navigationItem = event.target.closest<HTMLElement>(navigationItemSelector);
     if (!navigationItem || !itemsRegionElement.contains(navigationItem)) return null;
-    if (navigationItem !== event.target) return null;
 
     return navigationItem;
+  }
+
+  function isModifiedClick(event: MouseEvent): boolean {
+    return event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+  }
+
+  function opensOutsideCurrentPage(item: HTMLElement): boolean {
+    if (!(item instanceof HTMLAnchorElement)) return false;
+
+    const target = item.getAttribute('target');
+    return (
+      item.hasAttribute('download') ||
+      (target !== null && target.trim() !== '' && target.trim().toLowerCase() !== '_self')
+    );
+  }
+
+  function canCloseAfterItemActivation(item: HTMLElement, event: MouseEvent): boolean {
+    return (
+      isCollapsible &&
+      isMobileLayout &&
+      mobileMenuOpen &&
+      isEnabledNavigationItem(item) &&
+      !isModifiedClick(event) &&
+      !opensOutsideCurrentPage(item)
+    );
+  }
+
+  function moveFocusBeforeClosingItemsRegion(): void {
+    if (!browser || !itemsRegionElement) return;
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof Element && itemsRegionElement.contains(activeElement)) {
+      focusMenuToggle();
+    }
+  }
+
+  function focusMenuToggle(): void {
+    const focusTarget =
+      toggleElement ?? navigationBarElement?.querySelector<HTMLElement>(toggleFocusSelector);
+    focusTarget?.focus();
+  }
+
+  function handleClick(event: MouseEvent): void {
+    if (consumerOnClick) {
+      const currentTarget =
+        event.currentTarget instanceof HTMLElement ? event.currentTarget : navigationBarElement;
+      (consumerOnClick as (this: HTMLElement | null, e: MouseEvent) => void).call(
+        currentTarget,
+        event,
+      );
+    }
+    if (event.defaultPrevented) return;
+
+    const navigationItem = getEventNavigationItem(event);
+    if (!navigationItem || !canCloseAfterItemActivation(navigationItem, event)) return;
+
+    moveFocusBeforeClosingItemsRegion();
+    mobileMenuOpen = false;
   }
 
   function focusAdjacentNavigationItem(currentItem: HTMLElement, direction: -1 | 1): void {
@@ -191,13 +251,12 @@
 
     if (event.key === 'Escape' && isCollapsible && isMobileLayout && mobileMenuOpen) {
       mobileMenuOpen = false;
-      // Return focus synchronously — toggleElement is captured on each click.
-      toggleElement?.focus();
+      focusMenuToggle();
       return;
     }
 
     const navigationItem = getEventNavigationItem(event);
-    if (!navigationItem) return;
+    if (!navigationItem || navigationItem !== event.target) return;
 
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
@@ -223,6 +282,7 @@
   data-cinder-placement={placement}
   data-cinder-label-visibility={showLabels}
   data-cinder-menu-toggle-placement={menuTogglePlacement}
+  onclick={handleClick}
   onkeydown={handleKeyDown}
 >
   {#if isCollapsible && menuToggle && menuTogglePlacement === 'before-brand'}
