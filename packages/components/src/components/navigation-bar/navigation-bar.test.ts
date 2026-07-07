@@ -83,6 +83,13 @@ async function openCollapsedMobileMenu(container: HTMLElement): Promise<HTMLElem
   return nav;
 }
 
+async function setCollapsedMobileLayout(container: HTMLElement): Promise<void> {
+  await tick();
+  const nav = container.querySelector('nav') as HTMLElement;
+  emitNavigationBarResize(nav, 640);
+  await tick();
+}
+
 /** Creates a Svelte 5 Snippet that renders text content. */
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -891,6 +898,27 @@ describe('NavigationBar', () => {
       });
 
       await openCollapsedMobileMenu(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      docs.focus();
+      await fireEvent.keyDown(docs, { key: 'Enter' });
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+      expect(document.activeElement).toBe(container.querySelector('#toggle-btn'));
+    });
+  });
+
+  test('Enter activation returns focus to the toggle when the collapsed mobile menu starts open', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+        mobileMenuOpen: true,
+      });
+
+      await setCollapsedMobileLayout(container);
 
       const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
       docs.focus();

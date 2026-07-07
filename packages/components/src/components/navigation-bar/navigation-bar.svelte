@@ -54,6 +54,8 @@
     ...rest
   }: NavigationBarProps = $props();
   const navigationItemSelector = '[data-cinder-navigation-item]';
+  const toggleFocusSelector =
+    '.cinder-navigation-bar__menu-toggle button, .cinder-navigation-bar__menu-toggle [href], .cinder-navigation-bar__menu-toggle input, .cinder-navigation-bar__menu-toggle select, .cinder-navigation-bar__menu-toggle textarea, .cinder-navigation-bar__menu-toggle [tabindex]:not([tabindex="-1"])';
 
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
   let isMobileLayout = $state(false);
@@ -195,8 +197,14 @@
 
     const activeElement = document.activeElement;
     if (activeElement instanceof Element && itemsRegionElement.contains(activeElement)) {
-      toggleElement?.focus();
+      focusMenuToggle();
     }
+  }
+
+  function focusMenuToggle(): void {
+    const focusTarget =
+      toggleElement ?? navigationBarElement?.querySelector<HTMLElement>(toggleFocusSelector);
+    focusTarget?.focus();
   }
 
   function handleClick(event: MouseEvent): void {
@@ -238,8 +246,7 @@
 
     if (event.key === 'Escape' && isCollapsible && isMobileLayout && mobileMenuOpen) {
       mobileMenuOpen = false;
-      // Return focus synchronously — toggleElement is captured on each click.
-      toggleElement?.focus();
+      focusMenuToggle();
       return;
     }
 
