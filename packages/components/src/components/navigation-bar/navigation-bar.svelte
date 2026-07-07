@@ -157,7 +157,7 @@
   }
 
   function getEventNavigationItem(event: Event): HTMLElement | null {
-    if (!(event.target instanceof HTMLElement) || !itemsRegionElement) return null;
+    if (!(event.target instanceof Element) || !itemsRegionElement) return null;
 
     const navigationItem = event.target.closest<HTMLElement>(navigationItemSelector);
     if (!navigationItem || !itemsRegionElement.contains(navigationItem)) return null;
@@ -191,9 +191,11 @@
   }
 
   function handleClick(event: MouseEvent): void {
+    const wasDefaultPrevented = event.defaultPrevented;
     if (consumerOnClick) {
       (consumerOnClick as (e: MouseEvent) => void)(event);
     }
+    if (!wasDefaultPrevented && event.defaultPrevented) return;
 
     const navigationItem = getEventNavigationItem(event);
     if (!navigationItem || !canCloseAfterItemActivation(navigationItem, event)) return;

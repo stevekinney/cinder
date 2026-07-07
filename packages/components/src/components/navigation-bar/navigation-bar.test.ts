@@ -163,6 +163,28 @@ function keyboardNavigationSnippet(clicks: Record<string, number>) {
   }));
 }
 
+function iconNavigationSnippet(clicks: Record<string, number>) {
+  return createRawSnippet(() => ({
+    render: () => `
+      <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="home">
+        <svg data-testid="home-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 2 2 7h2v7h8V7h2z"></path>
+        </svg>
+        <span>Home</span>
+      </button>
+    `,
+    setup(element: Element) {
+      const button = element.matches('.cinder-navigation-item')
+        ? (element as HTMLButtonElement)
+        : element.querySelector<HTMLButtonElement>('.cinder-navigation-item');
+      button?.addEventListener('click', () => {
+        const key = button.dataset['key'];
+        if (key) clicks[key] = (clicks[key] ?? 0) + 1;
+      });
+    },
+  }));
+}
+
 describe('NavigationBar', () => {
   // ── Legacy tests (preserved) ────────────────────────────────────────────
 
@@ -782,6 +804,45 @@ describe('NavigationBar', () => {
 
       expect(clicks['docs']).toBe(1);
       expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+    });
+  });
+
+  test('enabled item descendant click closes an open collapsed mobile menu', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: iconNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+
+      const icon = container.querySelector('[data-testid="home-icon"]') as SVGElement;
+      await fireEvent.click(icon);
+
+      expect(clicks['home']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+    });
+  });
+
+  test('consumer onclick can prevent the automatic collapsed mobile menu close', async () => {
+    await withResizeObserver(async () => {
+      const clicks: Record<string, number> = {};
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet(clicks),
+        menuToggle: toggleSnippet(),
+        onclick: (event: MouseEvent) => {
+          event.preventDefault();
+        },
+      } as any);
+
+      await openCollapsedMobileMenu(container);
+
+      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      await fireEvent.click(docs);
+
+      expect(clicks['docs']).toBe(1);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
     });
   });
 
