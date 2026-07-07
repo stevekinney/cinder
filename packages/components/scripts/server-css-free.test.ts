@@ -64,10 +64,10 @@ async function nodeConditionJsTargets(): Promise<string[]> {
  * `from`/dynamic forms with the specifier at the line's import position.
  */
 const CSS_IMPORT_LINE =
-  /^\s*import\s*(?:[\w*${},\s]+\s+from\s*)?['"](?:[^'"]*\.css|cinder\/(?:experimental\/)?[a-z0-9-]+\/styles)['"]|^\s*import\s*\(\s*['"](?:[^'"]*\.css|cinder\/(?:experimental\/)?[a-z0-9-]+\/styles)['"]/;
+  /^\s*import\s*(?:[\w*${},\s]+\s+from\s*)?['"](?:[^'"]*\.css|cinder\/(?:experimental\/)?[a-z0-9-]+\/styles)['"]|^\s*import\s*\(\s*['"](?:[^'"]*\.css|cinder\/(?:experimental\/)?[a-z0-9-]+\/styles)['"]/m;
 
 function hasCssImportLine(source: string): boolean {
-  return source.split('\n').some((line) => CSS_IMPORT_LINE.test(line));
+  return CSS_IMPORT_LINE.test(source);
 }
 
 describe.skipIf(!existsSync(distributionRoot))('server entries are CSS-free', () => {

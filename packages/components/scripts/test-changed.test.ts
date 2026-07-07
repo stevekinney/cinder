@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 
-import { fullSuiteTestPathGroups, parseEnvSlugs, testPathsForScope } from './test-changed.ts';
+import {
+  fullSuiteTestPathGroups,
+  parseEnvSlugs,
+  parseFullSuiteChunk,
+  testPathsForScope,
+} from './test-changed.ts';
 
 describe('parseEnvSlugs', () => {
   it('returns an empty list when unset', () => {
@@ -14,6 +19,26 @@ describe('parseEnvSlugs', () => {
 
   it('parses, trims, and drops empties', () => {
     expect(parseEnvSlugs('button, badge ,, dialog')).toEqual(['button', 'badge', 'dialog']);
+  });
+});
+
+describe('parseFullSuiteChunk', () => {
+  it('returns null when unset', () => {
+    expect(parseFullSuiteChunk(undefined, 4)).toBeNull();
+    expect(parseFullSuiteChunk('', 4)).toBeNull();
+    expect(parseFullSuiteChunk('   ', 4)).toBeNull();
+  });
+
+  it('accepts a one-based chunk number inside the group count', () => {
+    expect(parseFullSuiteChunk('1', 4)).toBe(1);
+    expect(parseFullSuiteChunk('4', 4)).toBe(4);
+  });
+
+  it('rejects invalid chunk selections instead of silently running the wrong slice', () => {
+    expect(() => parseFullSuiteChunk('0', 4)).toThrow('must be an integer from 1 to 4');
+    expect(() => parseFullSuiteChunk('5', 4)).toThrow('must be an integer from 1 to 4');
+    expect(() => parseFullSuiteChunk('2.5', 4)).toThrow('must be an integer from 1 to 4');
+    expect(() => parseFullSuiteChunk('two', 4)).toThrow('must be an integer from 1 to 4');
   });
 });
 
