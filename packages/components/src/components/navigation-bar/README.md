@@ -40,6 +40,11 @@ the app shell:
 </div>
 ```
 
+When a top navigation bar collapses behind a `menuToggle`, activating an enabled
+navigation item closes the mobile menu and returns focus to the toggle. Item or
+bar-level click handlers can call `event.preventDefault()` to keep the menu open
+for guarded navigation, local state changes, or custom routing.
+
 ## Props
 
 <!-- generated:props:start -->
