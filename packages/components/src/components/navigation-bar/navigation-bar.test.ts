@@ -856,7 +856,9 @@ describe('NavigationBar', () => {
       const { container } = render(NavigationBar, {
         items: keyboardNavigationSnippet(clicks),
         menuToggle: toggleSnippet(),
-        onclick: (event: MouseEvent) => {
+        onclick: function (this: HTMLElement, event: MouseEvent) {
+          const nav = container.querySelector('nav') as HTMLElement;
+          expect(this).toBe(nav);
           event.preventDefault();
         },
       } as any);

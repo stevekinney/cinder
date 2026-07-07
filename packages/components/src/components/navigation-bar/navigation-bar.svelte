@@ -209,7 +209,12 @@
 
   function handleClick(event: MouseEvent): void {
     if (consumerOnClick) {
-      (consumerOnClick as (e: MouseEvent) => void)(event);
+      const currentTarget =
+        event.currentTarget instanceof HTMLElement ? event.currentTarget : navigationBarElement;
+      (consumerOnClick as (this: HTMLElement | null, e: MouseEvent) => void).call(
+        currentTarget,
+        event,
+      );
     }
     if (event.defaultPrevented) return;
 
