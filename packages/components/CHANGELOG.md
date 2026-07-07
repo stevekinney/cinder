@@ -1,5 +1,21 @@
 # @lostgradient/cinder
 
+## 0.7.0
+
+### Minor Changes
+
+- [#662](https://github.com/stevekinney/cinder/pull/662) [`e7c9eac`](https://github.com/stevekinney/cinder/commit/e7c9eac23f572d5068fb723df96fc17e2443c4ed) Thanks [@stevekinney](https://github.com/stevekinney)! - Raise the Svelte peer dependency floor to 5.56 and fix packed SvelteKit client hydration for public component exports.
+
+### Patch Changes
+
+- [#661](https://github.com/stevekinney/cinder/pull/661) [`96cad34`](https://github.com/stevekinney/cinder/commit/96cad34315a2cc4daa3b6ba53d7622bbb3316436) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep chat server bundles from pulling rich editor and markdown peer dependencies by default.
+
+- [#660](https://github.com/stevekinney/cinder/pull/660) [`cfa3d5d`](https://github.com/stevekinney/cinder/commit/cfa3d5dcc7816a170339bf889276ab309d20288b) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix the published package manifest so Svelte-aware consumers resolve Cinder component source instead of compiled component output, while stripping TypeScript-only syntax from staged Svelte source files so Vite can optimize the package.
+
+- [#663](https://github.com/stevekinney/cinder/pull/663) [`3fc860b`](https://github.com/stevekinney/cinder/commit/3fc860bd9cc3cc3640fbe43def3e1a726a23d3bf) Thanks [@stevekinney](https://github.com/stevekinney)! - Add skipped state support to Steps items.
+
+- [#668](https://github.com/stevekinney/cinder/pull/668) [`ba2a5ba`](https://github.com/stevekinney/cinder/commit/ba2a5baa931b1549b2d4233f6f66c5b35a01e25b) Thanks [@stevekinney](https://github.com/stevekinney)! - Re-export paired component leaves from their parent subpaths and trim duplicate server metadata artifacts from the published package.
+
 ## 0.6.0
 
 ### Minor Changes
