@@ -1,9 +1,34 @@
 import { $ } from 'bun';
 
 import { atomicSwapDist, stagingDirectoryName } from './lib/atomic-swap-dist.ts';
+import {
+  computeBuildInputHash,
+  shortHash,
+  shouldSkipBuild,
+  writeBuildInputHash,
+} from './lib/build-cache.ts';
 
 const packageRoot = process.cwd();
+const workspaceRoot = `${packageRoot}/../..`;
 const distributionDirectory = `${packageRoot}/dist`;
+
+const buildCacheInputs = {
+  packageRoot,
+  sourceGlobRoots: [`${packageRoot}/src`, `${packageRoot}/scripts`],
+  extraFiles: [
+    `${packageRoot}/package.json`,
+    `${packageRoot}/tsconfig.json`,
+    `${packageRoot}/tsconfig.build.json`,
+  ],
+  upstreamDistDirectories: [`${workspaceRoot}/packages/diff/dist`],
+};
+
+const skipDecision = await shouldSkipBuild(buildCacheInputs);
+if (skipDecision.skip) {
+  process.stdout.write(`[build] up to date (hash ${shortHash(skipDecision.hash)}), skipping\n`);
+  process.exit(0);
+}
+
 // Unique-per-invocation staging directory (a `dist.tmp-*` sibling of `dist`, so
 // the same filesystem `atomicSwapDist`'s rename requires). Each build owns its
 // own staging dir, so two concurrent same-package builds never collide on it.
@@ -93,5 +118,15 @@ for (const outputPath of expectedOutputs) {
 // same-package build winning the race; never exposes a partial tree). See
 // `./lib/atomic-swap-dist.ts` for the exact guarantees and limits.
 atomicSwapDist(stagingDirectory, distributionDirectory);
+
+// The hash MUST be computed before the swap started, from the source tree
+// that produced THIS build's output — the `skipDecision.hash` computed at the
+// very top already IS that value, so we reuse it verbatim rather than
+// recomputing (which could observe a different filesystem state, and is
+// wasted work regardless). Written only now that the atomic swap has
+// succeeded, so the marker never claims a half-written or failed build is up
+// to date.
+const finalHash = skipDecision.hash ?? (await computeBuildInputHash(buildCacheInputs));
+await writeBuildInputHash(distributionDirectory, finalHash);
 
 process.stdout.write('Build complete.\n');

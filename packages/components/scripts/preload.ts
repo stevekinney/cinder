@@ -1,6 +1,7 @@
 import { plugin } from 'bun';
 
 import { setupHappyDom } from '../src/test/happy-dom.ts';
+import { registerGlobalCleanup } from '../src/test/register-global-cleanup.ts';
 import { sveltePlugin } from './svelte-plugin.ts';
 
 // Install happy-dom DOM globals BEFORE any test file's static imports resolve.
@@ -21,3 +22,8 @@ import { sveltePlugin } from './svelte-plugin.ts';
 setupHappyDom();
 
 await plugin(sveltePlugin({ generate: 'client' }));
+
+// Register ONE global afterEach(cleanup) here, before any test file loads, so
+// every component test's render() is unmounted without each file needing its
+// own cleanup boilerplate. See register-global-cleanup.ts for the full why.
+await registerGlobalCleanup();

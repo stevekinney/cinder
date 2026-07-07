@@ -1,7 +1,8 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
@@ -24,13 +25,14 @@ export function readPinnedPlaywrightVersion(): string {
 export function run(
   command: string,
   args: readonly string[],
-  options: { cwd?: string } = {},
+  options: { cwd?: string; onSpawn?: (child: ChildProcess) => void } = {},
 ): Promise<number> {
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
       stdio: 'inherit',
     });
+    options.onSpawn?.(child);
     child.once('exit', (code) => resolve(code ?? 1));
     child.once('error', (error) => {
       console.error(`Failed to spawn ${command}:`, error);
@@ -95,6 +97,7 @@ export function dockerRunArguments(options: DockerRunArgumentsOptions): string[]
 export async function buildPlaywrightDockerImage(
   playwrightVersion: string,
   imageTag: string,
+  onSpawn?: (child: ChildProcess) => void,
 ): Promise<number> {
   return run(
     'docker',
@@ -108,7 +111,7 @@ export async function buildPlaywrightDockerImage(
       resolvePath(packageRoot, 'Dockerfile'),
       packageRoot,
     ],
-    { cwd: repoRoot },
+    { cwd: repoRoot, ...(onSpawn !== undefined ? { onSpawn } : {}) },
   );
 }
 
@@ -121,11 +124,27 @@ export async function buildPlaywrightDockerImage(
  * forbidden by the plan.
  */
 async function main(): Promise<void> {
+  let activeChild: ChildProcess | null = null;
+  installSignalCleanupHandlers(async () => {
+    if (activeChild !== null) {
+      await terminateChildProcess({
+        childProcess: activeChild,
+        name: 'docker',
+        killProcessGroup: false,
+      });
+    }
+  });
+
   const playwrightVersion = readPinnedPlaywrightVersion();
   const imageTag = dockerImageTagForVersion(playwrightVersion);
 
   console.log(`Building Docker image ${imageTag}...`);
-  const buildExit = await buildPlaywrightDockerImage(playwrightVersion, imageTag);
+  const buildExit = await buildPlaywrightDockerImage(
+    playwrightVersion,
+    imageTag,
+    (child) => (activeChild = child),
+  );
+  activeChild = null;
   if (buildExit !== 0) {
     console.error(`docker build failed with exit code ${buildExit}`);
     process.exit(buildExit);
@@ -145,8 +164,9 @@ async function main(): Promise<void> {
         CINDER_TEST_COMPONENTS: process.env['CINDER_TEST_COMPONENTS'],
       },
     }),
-    { cwd: repoRoot },
+    { cwd: repoRoot, onSpawn: (child) => (activeChild = child) },
   );
+  activeChild = null;
 
   process.exit(runExit);
 }

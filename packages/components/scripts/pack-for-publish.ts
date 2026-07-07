@@ -35,6 +35,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
+import { BUILD_INPUT_HASH_MARKER } from './lib/build-cache.ts';
 import { deriveUpstreamReexports, type UpstreamReexport } from './lib/derive-upstream-reexports.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
 
@@ -85,6 +86,24 @@ export type SourceMapReference = {
 async function readSourceManifest(): Promise<SourceManifest> {
   const path = join(packageRoot, 'package.json');
   return readJsonFile<SourceManifest>(path);
+}
+
+/**
+ * Remove the build cache's `dist/.build-input-hash` marker from a staged
+ * tarball tree. `node:fs` `cp(..., { recursive: true })` (used to stage the
+ * `files` field's `dist` directory) — unlike the `Bun.Glob` scans used
+ * elsewhere for dist vendoring — does not skip dotfiles, so the marker gets
+ * staged along with everything else. It is a build-cache implementation
+ * detail, not a publishable artifact — remove it deterministically rather
+ * than via a `!`-prefixed glob pattern (which shares the same dotfile-
+ * skipping behavior as the vendoring scan and would silently match nothing).
+ *
+ * Exported and parameterized over `stagingDirectory` so a regression test can
+ * exercise the real removal logic against a synthetic staged tree, rather
+ * than reimplementing the `rm` call and proving nothing about production code.
+ */
+export async function removeBuildCacheMarker(stagingDirectory: string): Promise<void> {
+  await rm(join(stagingDirectory, 'dist', BUILD_INPUT_HASH_MARKER), { force: true });
 }
 
 /**
@@ -474,6 +493,8 @@ async function stageFiles(manifest: SourceManifest): Promise<void> {
       await rm(join(stagingRoot, relative), { force: true, recursive: true });
     }
   }
+
+  await removeBuildCacheMarker(stagingRoot);
 
   // `build.ts` emits `//# sourceMappingURL=*.map` comments for dist JS outputs,
   // while the publish manifest intentionally excludes `dist/**/*.js.map`. Strip

@@ -10,6 +10,7 @@ import {
   writeBaselineProvenance,
 } from './baseline-provenance.ts';
 import { checkDockerAuthenticity, formatFailures } from './docker-authenticity.ts';
+import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
@@ -80,6 +81,14 @@ async function main(): Promise<void> {
     // than writing legacy review screenshots under screenshots/.
     env: snapshotUpdateEnvironment(process.env),
   });
+
+  installSignalCleanupHandlers(() =>
+    terminateChildProcess({
+      childProcess: child,
+      name: 'start-server.ts',
+      killProcessGroup: false,
+    }),
+  );
 
   const exitCode = await new Promise<number>((resolve) => {
     child.once('exit', (code) => resolve(code ?? 1));

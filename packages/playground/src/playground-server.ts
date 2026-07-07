@@ -42,6 +42,10 @@ import {
   type VisualFixture,
 } from '../../components/scripts/lib/visual-fixtures/schema.ts';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
+import {
+  newestSourceMtimeMs,
+  type PlaygroundFreshnessFingerprint,
+} from '../../testing/scripts/source-fingerprint.ts';
 import { analyzeAll, resetProject } from './analyze.ts';
 import { validateComponentDocumentationPayload } from './component-documentation-reference.ts';
 import {
@@ -104,6 +108,17 @@ const MAX_PORT_SCAN_ATTEMPTS = 100;
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
 const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
+const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..'); // repo root
+
+/**
+ * Startup identity reported by `/ready` so `start-server.ts` can refuse to
+ * reuse a server that predates the current source tree — see
+ * `source-fingerprint.ts` for the staleness comparison.
+ */
+const STARTUP_FINGERPRINT: PlaygroundFreshnessFingerprint = {
+  startedAtMs: Date.now(),
+  newestSourceMtimeMs: newestSourceMtimeMs(REPO_ROOT),
+};
 
 /**
  * Page-bundle entries: keyed by component name → entry artifact path
@@ -1598,7 +1613,12 @@ export async function handleRequest(request: Request): Promise<Response> {
 
   // GET /ready
   if (pathname === '/ready') {
-    return new Response('ready', { headers: { 'Content-Type': 'text/plain' } });
+    return new Response('ready', {
+      headers: {
+        'Content-Type': 'text/plain',
+        'X-Cinder-Playground-Fingerprint': JSON.stringify(STARTUP_FINGERPRINT),
+      },
+    });
   }
 
   // GET /events

@@ -7,6 +7,12 @@ import { emitDts } from 'svelte2tsx';
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
 import { componentStylesSpecifier, cssImportPlugin } from './css-import-plugin.ts';
 import { DEPRECATED_EXPERIMENTAL_ALIASES } from './generate-exports.ts';
+import {
+  computeBuildInputHash,
+  shortHash,
+  shouldSkipBuild,
+  writeBuildInputHash,
+} from './lib/build-cache.ts';
 import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
@@ -95,6 +101,52 @@ const checkResult = await $`bun run exports:check`.nothrow();
 if (checkResult.exitCode !== 0) {
   process.stderr.write('Build aborted: exports are out of sync. Run `bun run exports:generate`.\n');
   process.exit(1);
+}
+
+const upstreamPackageNames = ['markdown', 'editor', 'commentary', 'diff'] as const;
+
+// Build each upstream package so its `dist/` is fresh — hoisted ABOVE the
+// skip check below. Each upstream build.ts has its own skip check, so this is
+// near-free once every upstream is already up to date, but it MUST run before
+// `shouldSkipBuild` computes this package's input hash: this package vendors
+// all four upstream `dist/` trees (step 5b), so the hash needs to see FRESH
+// upstream output, not whatever was on disk before this invocation. Skipping
+// this step first would let a stale upstream hash match this package's
+// recorded marker and skip a rebuild that a changed upstream (e.g. `diff`)
+// actually requires. The four packages are independent (no upstream depends
+// on another), so the builds run in parallel — this cuts ~30s off every
+// `bun run build` on warm caches.
+await Promise.all(
+  upstreamPackageNames.map(async (upstreamName) => {
+    const upstreamRoot = `${workspaceRoot}/packages/${upstreamName}`;
+    const buildResult = await $`bun run --cwd ${upstreamRoot} build`.nothrow();
+    if (buildResult.exitCode !== 0) {
+      process.stderr.write(
+        `Build aborted: upstream @cinder/${upstreamName} build failed (exit ${buildResult.exitCode}).\n` +
+          `${buildResult.stderr.toString()}\n`,
+      );
+      process.exit(1);
+    }
+  }),
+);
+
+const buildCacheInputs = {
+  packageRoot: repositoryRoot,
+  sourceGlobRoots: [sourceRoot, `${repositoryRoot}/scripts`],
+  extraFiles: [
+    `${repositoryRoot}/package.json`,
+    `${repositoryRoot}/tsconfig.json`,
+    `${repositoryRoot}/tsconfig.build.json`,
+  ],
+  upstreamDistDirectories: upstreamPackageNames.map(
+    (upstreamName) => `${workspaceRoot}/packages/${upstreamName}/dist`,
+  ),
+};
+
+const skipDecision = await shouldSkipBuild(buildCacheInputs);
+if (skipDecision.skip) {
+  process.stdout.write(`[build] up to date (hash ${shortHash(skipDecision.hash)}), skipping\n`);
+  process.exit(0);
 }
 
 await $`rm -rf dist`;
@@ -596,24 +648,10 @@ await emitDts({
 //     `scripts/lib/derive-upstream-reexports.ts`.
 // -----------------------------------------------------------------------------
 
-const upstreamPackageNames = ['markdown', 'editor', 'commentary', 'diff'] as const;
-
-// Build each upstream package so its `dist/` is fresh. The four packages
-// are independent (no upstream depends on another), so the builds run in
-// parallel — this cuts ~30s off every `bun run build` on warm caches.
-await Promise.all(
-  upstreamPackageNames.map(async (upstreamName) => {
-    const upstreamRoot = `${workspaceRoot}/packages/${upstreamName}`;
-    const buildResult = await $`bun run --cwd ${upstreamRoot} build`.nothrow();
-    if (buildResult.exitCode !== 0) {
-      process.stderr.write(
-        `Build aborted: upstream @cinder/${upstreamName} build failed (exit ${buildResult.exitCode}).\n` +
-          `${buildResult.stderr.toString()}\n`,
-      );
-      process.exit(1);
-    }
-  }),
-);
+// `upstreamPackageNames` and the upstream builds themselves were hoisted above
+// the `shouldSkipBuild` check near the top of this file — see the comment
+// there for why order matters (this package's input hash must observe FRESH
+// upstream `dist/` output, not stale bytes from before this invocation).
 
 /**
  * Rewrite every `@cinder/<pkg>[/subpath]` import specifier in a file's
@@ -956,6 +994,17 @@ for (const component of components) {
 }
 
 await assertServerComponentBoundariesPreserveIdentity();
+
+// This package builds `dist/` in place (`rm -rf dist` above, not a staged
+// atomic swap like the four upstream packages), so the marker is written only
+// now — after every acceptance check above has passed — so it never claims a
+// half-written or failed build is up to date. The hash MUST be the same value
+// `shouldSkipBuild` computed at the top, from the source tree (and freshly
+// rebuilt upstream dists) that produced THIS build's output; recomputing here
+// could observe a different filesystem state (this build script overwrites
+// `dist/` throughout) and is wasted work regardless.
+const finalHash = skipDecision.hash ?? (await computeBuildInputHash(buildCacheInputs));
+await writeBuildInputHash(distributionDirectory, finalHash);
 
 process.stdout.write(
   `Build complete. ${components.length} components, ${copiedSidecars.length} CSS sidecars copied.\n`,

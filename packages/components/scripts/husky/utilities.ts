@@ -57,29 +57,24 @@ export function prePushPackageScript(
 /**
  * The maximum number of jobs that may run concurrently for a given gate
  * script. This is the side-effect-free seam the regression test imports to
- * assert the test phase runs at concurrency 1 without triggering the gate
- * entry path's process.exit / stdin-read / lock side effects.
+ * assert each phase's concurrency policy without triggering the gate entry
+ * path's process.exit / stdin-read / lock side effects.
  *
- * Why `test` must be 1: each package's `test` script runs inline
- * `bun run --filter=<dep> build` steps that wipe and re-emit the shared
- * upstream `dist/` directories (e.g. `@cinder/markdown`, `@cinder/diff`).
- * Running two test jobs in parallel races those `rm -rf dist` + write cycles
- * against each other (and against a third job's bundler that reads the same
- * dist mid-write), yielding non-deterministic
- * `error: "<name>" is not declared in this file`. Lint (oxlint) and typecheck
- * (`tsc --noEmit`) are read-only, so they stay parallel.
- *
- * This serialization is the actual #364 fix. The companion atomic-build change
- * (each package builds into a private staging dir then renames over `dist/`,
- * see each package's `scripts/build.ts` and `scripts/lib/atomic-swap-dist.ts`)
- * is defense-in-depth: it stops a reader seeing a half-written tree, but the
- * rebuild path still has a sub-millisecond window where `dist/` is absent, so
- * it does NOT make this serialization redundant. Keep both. Relaxing this to
- * run the test phase in parallel would reopen that ENOENT window and needs its
- * own PR backed by a concurrency stress test that proves it safe.
+ * All three gate scripts — lint, typecheck, and test — now share the same
+ * CPU-bound cap. Issue #364 was a race between concurrent test jobs' inline
+ * `bun run --filter=<dep> build` steps, which wiped and re-emitted the shared
+ * upstream `dist/` directories (e.g. `@cinder/markdown`, `@cinder/diff`) out
+ * from under each other, yielding non-deterministic
+ * `error: "<name>" is not declared in this file`. That race is closed at the
+ * source now: the caller pre-builds the full dependency closure once, in
+ * dependency order, before dispatching the test phase (see
+ * `preBuildDependencyClosure` in pre-push.ts), so every inline rebuild inside
+ * a test script observes unchanged inputs and hash-skips near-instantly (see
+ * `shouldSkipBuild` in each package's `scripts/lib/build-cache.ts`) — there is
+ * nothing left to race. The test phase can therefore run at the same
+ * concurrency as the read-only lint/typecheck phases.
  */
-export function phaseMaxConcurrency(script: GateScript): number {
-  if (script === 'test') return 1;
+export function phaseMaxConcurrency(_script: GateScript): number {
   // CPU-bound default (up to 4 workers). The `?? 1` guards environments where
   // `navigator.hardwareConcurrency` is undefined; `Math.max(1, …)` ensures the
   // floor stays at 1 so a zero / negative value never silently skips all jobs.
@@ -90,8 +85,11 @@ export function phaseMaxConcurrency(script: GateScript): number {
  * Run `items` through a bounded async pool, invoking `worker(item, index)` for
  * each and returning the results in input order. At most `maxConcurrency`
  * workers run at once — this is the *mechanism* that {@link phaseMaxConcurrency}
- * feeds: with `maxConcurrency === 1` the pool is strictly serial, so the test
- * phase never overlaps two `dist/`-rewriting build steps (the #364 race).
+ * feeds. The historical #364 race (concurrent test jobs' inline builds
+ * fighting over shared `dist/` directories) is now closed upstream by
+ * pre-building the dependency closure once before the test phase runs, so this
+ * pool can run the test phase at the same bounded concurrency as lint and
+ * typecheck.
  *
  * The concurrency floor is defensive. A non-finite `maxConcurrency` — e.g. a
  * caller computing `Math.min(navigator.hardwareConcurrency, 4)` where
@@ -857,6 +855,59 @@ export function expandToDependents(
   return closure;
 }
 
+/**
+ * The workspace packages with a hash-skippable `build` script (each has its
+ * own `scripts/build.ts` + `scripts/lib/build-cache.ts`), listed in dependency
+ * order: `@cinder/diff` has no internal workspace dependencies, `@cinder/markdown`
+ * depends on `@cinder/diff`, `@cinder/editor` depends on `@cinder/markdown`,
+ * `@cinder/commentary` depends on `@cinder/editor` and `@cinder/markdown`, and
+ * `@lostgradient/cinder` (components) depends on all four. `@cinder/testing`
+ * and `@cinder/playground` have no `build` script and are excluded.
+ *
+ * This list is explicit rather than derived from {@link loadWorkspacePackages}
+ * because `WorkspacePackage` does not track which packages are buildable, and
+ * the dependency chain here is small and fixed — deriving it generically would
+ * add a `hasBuild` field and a topo-sort for a five-node chain that has not
+ * changed since #364.
+ */
+export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
+  '@cinder/diff',
+  '@cinder/markdown',
+  '@cinder/editor',
+  '@cinder/commentary',
+  '@lostgradient/cinder',
+];
+
+/**
+ * Given the packages a pre-push test phase is about to run against, return
+ * the buildable **forward-dependency closure** — those packages plus every
+ * buildable package upstream of them (the packages they depend on) — in
+ * dependency order. This is the mirror of {@link expandToDependents}: that
+ * function walks *downstream* to find what a change might break;
+ * this one walks *upstream* to find what must be built first so a test job's
+ * inline rebuild step has nothing left to do.
+ *
+ * Because {@link BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER} is already a valid
+ * topological order for this fixed five-package chain (verified against each
+ * package's actual `dependencies`: diff has none, markdown depends only on
+ * diff, editor only on markdown, commentary on editor+markdown, and
+ * components on all four), the forward closure of any subset of it is exactly
+ * the list's prefix ending at the latest touched package's index — no graph
+ * walk needed. If that invariant ever breaks (a future package reorders its
+ * dependencies against this list), the fix is to update
+ * `BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER` to match the new topological order;
+ * the tests for this function pin the current chain's exact prefixes so a
+ * silent mismatch would fail loudly instead of quietly under-building.
+ */
+export function buildableForwardClosure(testPackageNames: ReadonlySet<string>): readonly string[] {
+  let lastTouchedIndex = -1;
+  for (const [index, name] of BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER.entries()) {
+    if (testPackageNames.has(name)) lastTouchedIndex = index;
+  }
+  if (lastTouchedIndex === -1) return [];
+  return BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER.slice(0, lastTouchedIndex + 1);
+}
+
 // Extensions that trigger typecheck/test when modified. `.svelte` and `.css`
 // are project-specific (Svelte components, component-scoped styles); `.json`
 // catches in-package config such as tsconfig.json. Markdown is excluded
@@ -1160,4 +1211,57 @@ export function isIgnorableDoc(path: string, packages: readonly WorkspacePackage
     }
   }
   return false;
+}
+
+/**
+ * Return a warning message when `elapsedMilliseconds` exceeds `budgetMilliseconds`,
+ * or `null` when the hook stayed within budget. Pure so both hooks' `process.on('exit', …)`
+ * reporters and this module's own test suite can exercise the comparison without
+ * timing anything for real — a hook duration budget must warn, never gate, and
+ * never depend on wall-clock flakiness in its own tests.
+ *
+ * `label` names the hook in the message (e.g. `"pre-commit"`) so a developer
+ * seeing the warning knows which baseline entry to raise.
+ */
+export function hookDurationWarning(
+  elapsedMilliseconds: number,
+  budgetMilliseconds: number,
+  label: string,
+): string | null {
+  if (elapsedMilliseconds <= budgetMilliseconds) return null;
+  return (
+    `${label} took ${elapsedMilliseconds}ms, over the ${budgetMilliseconds}ms budget in ` +
+    `hook-duration-baseline.json. Fix the slowdown, or if the extra time is expected, raise the ` +
+    `budget in the same PR.`
+  );
+}
+
+export type HookDurationBaseline = {
+  readonly preCommitWarnMilliseconds: number;
+  readonly prePushWarnMilliseconds: number;
+};
+
+function isHookDurationBaseline(value: unknown): value is HookDurationBaseline {
+  if (!isObjectRecord(value)) return false;
+  return (
+    typeof value['preCommitWarnMilliseconds'] === 'number' &&
+    typeof value['prePushWarnMilliseconds'] === 'number'
+  );
+}
+
+/**
+ * Read and validate `hook-duration-baseline.json`. Returns `undefined` (rather
+ * than throwing) on a missing or malformed baseline so a warn-only budget can
+ * never become a hard failure — the caller simply skips the duration check for
+ * that run.
+ */
+export async function readHookDurationBaseline(
+  path: string = join(REPO_ROOT, 'packages/components/scripts/husky/hook-duration-baseline.json'),
+): Promise<HookDurationBaseline | undefined> {
+  try {
+    const raw: unknown = await Bun.file(path).json();
+    return isHookDurationBaseline(raw) ? raw : undefined;
+  } catch {
+    return undefined;
+  }
 }

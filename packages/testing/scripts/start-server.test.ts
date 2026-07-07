@@ -6,7 +6,9 @@ import {
   appendServerOutputBuffer,
   childProcessHasFinished,
   finalPlaywrightExitCode,
+  installSignalCleanupHandlers,
   localPlaygroundUrlForReportedPort,
+  parsePlaygroundFingerprintHeader,
   parsePlaygroundListeningPort,
   playgroundBundleDependencyBuildArguments,
   playgroundBundleDependencyBuildPackages,
@@ -16,8 +18,10 @@ import {
   playgroundUrlForPath,
   playgroundWarmReadinessEndpointPath,
   playgroundWarmReadinessMissingEndpointMessage,
+  shouldRefuseStaleServerReuse,
   shouldStartManagedChildProcess,
   shutdownExitCodeAfterRequest,
+  stalePlaygroundServerMessage,
 } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
@@ -192,5 +196,89 @@ describe('warm playground readiness', () => {
     expect(playgroundWarmReadinessMissingEndpointMessage('http://localhost:5555')).toContain(
       'PLAYWRIGHT_REUSE_SERVER=0',
     );
+  });
+});
+
+describe('parsePlaygroundFingerprintHeader', () => {
+  test('parses a well-formed fingerprint header', () => {
+    expect(
+      parsePlaygroundFingerprintHeader(
+        JSON.stringify({ startedAtMs: 1000, newestSourceMtimeMs: 500 }),
+      ),
+    ).toEqual({ startedAtMs: 1000, newestSourceMtimeMs: 500 });
+  });
+
+  test('accepts a null newestSourceMtimeMs', () => {
+    expect(
+      parsePlaygroundFingerprintHeader(
+        JSON.stringify({ startedAtMs: 1000, newestSourceMtimeMs: null }),
+      ),
+    ).toEqual({ startedAtMs: 1000, newestSourceMtimeMs: null });
+  });
+
+  test('returns null when the header is missing', () => {
+    expect(parsePlaygroundFingerprintHeader(null)).toBeNull();
+  });
+
+  test('returns null for malformed JSON', () => {
+    expect(parsePlaygroundFingerprintHeader('not json')).toBeNull();
+  });
+
+  test('returns null when required fields are missing', () => {
+    expect(parsePlaygroundFingerprintHeader(JSON.stringify({ startedAtMs: 1000 }))).toBeNull();
+  });
+});
+
+describe('shouldRefuseStaleServerReuse', () => {
+  test('allows reuse when there is no fingerprint to compare (custom server)', () => {
+    expect(shouldRefuseStaleServerReuse(null, 500)).toBe(false);
+  });
+
+  test('allows reuse when the running server is at least as new as current source', () => {
+    expect(shouldRefuseStaleServerReuse({ startedAtMs: 0, newestSourceMtimeMs: 500 }, 500)).toBe(
+      false,
+    );
+  });
+
+  test('refuses reuse when current source is newer than what the server saw at startup', () => {
+    expect(shouldRefuseStaleServerReuse({ startedAtMs: 0, newestSourceMtimeMs: 500 }, 600)).toBe(
+      true,
+    );
+  });
+});
+
+describe('stalePlaygroundServerMessage', () => {
+  test('names the kill script and the reuse opt-out', () => {
+    const message = stalePlaygroundServerMessage('http://localhost:5555');
+    expect(message).toContain('kill:playground');
+    expect(message).toContain('PLAYWRIGHT_REUSE_SERVER=0');
+    expect(message).toContain('stale');
+  });
+});
+
+describe('installSignalCleanupHandlers', () => {
+  test('registers exactly one SIGINT and one SIGTERM handler', () => {
+    const sigintCountBefore = process.listenerCount('SIGINT');
+    const sigtermCountBefore = process.listenerCount('SIGTERM');
+
+    const sigintListenersBefore = process.listeners('SIGINT');
+    const sigtermListenersBefore = process.listeners('SIGTERM');
+
+    installSignalCleanupHandlers(async () => {});
+
+    const addedSigint = process
+      .listeners('SIGINT')
+      .filter((listener) => !sigintListenersBefore.includes(listener));
+    const addedSigterm = process
+      .listeners('SIGTERM')
+      .filter((listener) => !sigtermListenersBefore.includes(listener));
+
+    expect(process.listenerCount('SIGINT')).toBe(sigintCountBefore + 1);
+    expect(process.listenerCount('SIGTERM')).toBe(sigtermCountBefore + 1);
+
+    // Clean up so this test does not leak listeners into the rest of the
+    // suite (repeated runs would otherwise trip Node's max-listener warning).
+    for (const listener of addedSigint) process.off('SIGINT', listener);
+    for (const listener of addedSigterm) process.off('SIGTERM', listener);
   });
 });

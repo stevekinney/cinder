@@ -46,6 +46,9 @@ jobs:
       - name: Lint workspace
         run: bun run lint
 
+      - name: Lint invariants (cinder)
+        run: bun run --filter=@lostgradient/cinder lint:invariants
+
       - name: Typecheck workspace
         run: bun run typecheck
 
@@ -70,3 +73,14 @@ jobs:
 
       - name: Test workspace
         run: bun run test
+
+      # Non-blocking trend signal, not a gate: always exits 0 for the RSS
+      # number itself (only a genuine test failure inside the canary's own
+      # slice would non-zero it). `continue-on-error: true` is belt-and-
+      # suspenders on top of that — a flaky sampling hiccup here must never
+      # turn main red. The script itself appends its one-line summary to
+      # $GITHUB_STEP_SUMMARY (in addition to printing it to the job log), so
+      # no output redirection is needed here.
+      - name: Memory canary (non-blocking)
+        continue-on-error: true
+        run: bun run --filter=@lostgradient/cinder test:memory-canary

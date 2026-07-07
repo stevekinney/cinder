@@ -205,6 +205,26 @@ jobs:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
 
+      # Unconditional whole-repo gate: lint previously ran only in main-green
+      # (post-merge) and local hooks (skippable via --no-verify), so a lint
+      # failure could merge and turn main red. `--filter='*' lint` covers the
+      # fast oxlint-only pass for every workspace package (measured ~4s across
+      # all 7 packages locally, well under CI budget), so it is cheap enough to
+      # run unconditionally rather than trying to scope it to changed packages.
+      # `lint:invariants` is called out explicitly (not folded into the `--filter='*'`
+      # sweep) because `@lostgradient/cinder`'s 7 custom tree-walk invariant checks
+      # (no-cycle-imports, no-bare-console-warn, no-inline-match-media,
+      # svelte-ts-runtime-types, data-cinder-boolean-attributes, test-cleanup,
+      # tokens:literals --strict) live in that script, not in `lint` itself — so
+      # this step keeps gating them even if `lint`'s composition changes later.
+      # stylelint runs across all package CSS/Svelte sources, mirroring the
+      # invocation in the root package.json `lint` script.
+      - name: Lint (workspace)
+        run: |
+          bun run --filter='*' lint
+          bun run --filter=@lostgradient/cinder lint:invariants
+          bunx stylelint 'packages/**/src/**/*.{css,svelte}'
+
       # Unconditional whole-repo invariant: every component CSS partial must be
       # reachable from the aggregate styles/components.css @import chain, or the
       # component ships UNSTYLED to `/styles` consumers. Runs regardless of scope

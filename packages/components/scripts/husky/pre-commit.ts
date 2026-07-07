@@ -7,11 +7,13 @@ import {
   getTouchedPackages,
   hasRootConfigurationChanges,
   header,
+  hookDurationWarning,
   info,
   installHookProcessCleanup,
   isContinuousIntegration,
   loadWorkspacePackages,
   phaseMaxConcurrency,
+  readHookDurationBaseline,
   REPO_ROOT,
   runHookCommand,
   runWithConcurrencyPool,
@@ -25,6 +27,22 @@ if (isContinuousIntegration()) {
 }
 
 installHookProcessCleanup();
+
+// Soft duration budget: warns (never fails) when the hook runs slower than the
+// committed baseline. Started here, before any real work, so the total elapsed
+// time on every exit path — including early returns below — is captured.
+const hookStartedAt = Date.now();
+const durationBaseline = await readHookDurationBaseline();
+if (durationBaseline !== undefined) {
+  process.on('exit', () => {
+    const message = hookDurationWarning(
+      Date.now() - hookStartedAt,
+      durationBaseline.preCommitWarnMilliseconds,
+      'pre-commit',
+    );
+    if (message !== null) warning(message);
+  });
+}
 
 header('Pre-commit checks');
 
@@ -65,8 +83,8 @@ if (stagedForLockCheck.includes('package.json')) {
   }
 }
 
-// 2) Run lint-staged FIRST so formatters write to disk before typecheck/test
-// observe the source.
+// 2) Run lint-staged FIRST so formatters write to disk before typecheck
+// observes the source.
 info('Running lint-staged…');
 const lintStagedResult = await runHookCommand('bunx', ['lint-staged'], {
   cwd: REPO_ROOT,
@@ -83,37 +101,20 @@ if (lintStagedResult.exitCode === 0) {
 // 3) Recompute staged files (lint-staged may have re-staged formatted files).
 const staged = await getStagedFiles();
 
-// 4) Root config escalation → full workspace validate.
+// 4) Root config escalation → full workspace typecheck.
+// Tests are not run at commit time: pre-push runs a properly scoped suite
+// (test:changed, dependency-closure aware) and CI runs the full suite, so
+// commit only needs to catch type errors fast.
 if (hasRootConfigurationChanges(staged)) {
-  warning('Root config file staged; escalating to full workspace typecheck + test');
-  let escalationOk = true;
-  try {
-    info('Running workspace typecheck…');
-    const typecheckResult = await runHookCommand('bun', ['run', 'typecheck'], {
-      cwd: REPO_ROOT,
-      stderr: 'inherit',
-      stdout: 'inherit',
-    });
-    if (typecheckResult.exitCode !== 0) throw new Error('typecheck failed');
-    success('typecheck passed');
-  } catch {
+  warning('Root config file staged; escalating to full workspace typecheck');
+  info('Running workspace typecheck…');
+  const typecheckResult = await runHookCommand('bun', ['run', 'typecheck'], {
+    cwd: REPO_ROOT,
+    stderr: 'inherit',
+    stdout: 'inherit',
+  });
+  if (typecheckResult.exitCode !== 0) {
     error('typecheck failed');
-    escalationOk = false;
-  }
-  try {
-    info('Running workspace test…');
-    const testResult = await runHookCommand('bun', ['run', 'test'], {
-      cwd: REPO_ROOT,
-      stderr: 'inherit',
-      stdout: 'inherit',
-    });
-    if (testResult.exitCode !== 0) throw new Error('test failed');
-    success('test passed');
-  } catch {
-    error('test failed');
-    escalationOk = false;
-  }
-  if (!escalationOk) {
     error('Pre-commit checks failed');
     process.exit(1);
   }
@@ -121,12 +122,15 @@ if (hasRootConfigurationChanges(staged)) {
   process.exit(0);
 }
 
-// 5) Scoped per-package validate.
+// 5) Scoped per-package typecheck.
+// Tests are intentionally not run here — pre-push runs a scoped,
+// dependency-closure-aware suite (test:changed) and CI runs the full suite,
+// so commit stays fast: lockfile-sync + lint-staged + typecheck only.
 const workspace = await loadWorkspacePackages();
 const touched = getTouchedPackages(workspace, staged);
 
 if (touched.length === 0) {
-  success('No source files staged; skipping typecheck/test');
+  success('No source files staged; skipping typecheck');
   process.exit(0);
 }
 
@@ -134,25 +138,19 @@ info(`Touched packages: ${touched.map((p) => p.name).join(', ')}`);
 
 type Job = {
   readonly packageName: string;
-  readonly script: 'typecheck' | 'test';
+  readonly script: 'typecheck';
 };
 
 const typecheckJobs: Job[] = [];
-const testJobs: Job[] = [];
 for (const pkg of touched) {
   if (pkg.hasTypecheck) {
     typecheckJobs.push({ packageName: pkg.name, script: 'typecheck' });
   } else {
     info(`${pkg.name}: no typecheck script; skipping`);
   }
-  if (pkg.hasTest) {
-    testJobs.push({ packageName: pkg.name, script: 'test' });
-  } else {
-    info(`${pkg.name}: no test script; skipping`);
-  }
 }
 
-if (typecheckJobs.length === 0 && testJobs.length === 0) {
+if (typecheckJobs.length === 0) {
   success('No applicable scripts for touched packages; nothing to run');
   process.exit(0);
 }
@@ -193,52 +191,25 @@ async function runJob(job: Job): Promise<JobResult> {
  * Run a batch of jobs through a small async pool capped at `maxConcurrency`.
  * Returns the full result list in job-index order.
  *
- * Concurrency should be derived from {@link phaseMaxConcurrency}: typecheck and
- * lint are read-only and safe to run in parallel; the test phase runs at
- * concurrency 1 to prevent the shared-dist rebuild race described in issue #364.
- * Each package's test script contains inline `bun run --filter=<dep> build`
- * steps that rewrite a shared dep's `dist/` directory; running two such tests
- * concurrently means one may be reading a dep's `dist/` while another rebuild
- * has it half-written, so the reader observes a partial tree and fails
- * non-deterministically with `"<name>" is not declared in this file`.
+ * Typecheck is read-only and safe to run in parallel across packages.
  */
 async function runJobs(jobs: readonly Job[], maxConcurrency: number): Promise<JobResult[]> {
   return runWithConcurrencyPool(jobs, maxConcurrency, (job) => runJob(job));
 }
 
-// Phase 1: typecheck (read-only — safe to run in parallel).
+// Typecheck (read-only — safe to run in parallel).
 const typecheckResults = await runJobs(typecheckJobs, phaseMaxConcurrency('typecheck'));
 
-const typecheckFailures = typecheckResults.filter((r) => r.exitCode !== 0);
-if (typecheckFailures.length > 0) {
-  for (const failure of typecheckFailures) {
-    error(`\n--- ${failure.job.packageName} ${failure.job.script} (exit ${failure.exitCode}) ---`);
-    if (failure.stdout.trim().length > 0) console.log(failure.stdout);
-    if (failure.stderr.trim().length > 0) console.error(failure.stderr);
-  }
-  // Don't run tests when typecheck already failed — surface failures fast and
-  // avoid spending minutes on tests that will likely also fail.
-  error(
-    `Pre-commit checks failed (${typecheckFailures.length} of ${typecheckResults.length} typecheck jobs)`,
-  );
-  process.exit(1);
-}
-
-// Phase 2: test (serialized at concurrency 1 to prevent the shared-dist race —
-// see phaseMaxConcurrency in utilities.ts for the full rationale).
-const testResults = await runJobs(testJobs, phaseMaxConcurrency('test'));
-
-const allResults = [...typecheckResults, ...testResults];
-const failures = allResults.filter((r) => r.exitCode !== 0);
+const failures = typecheckResults.filter((r) => r.exitCode !== 0);
 if (failures.length > 0) {
   for (const failure of failures) {
     error(`\n--- ${failure.job.packageName} ${failure.job.script} (exit ${failure.exitCode}) ---`);
     if (failure.stdout.trim().length > 0) console.log(failure.stdout);
     if (failure.stderr.trim().length > 0) console.error(failure.stderr);
   }
-  error(`Pre-commit checks failed (${failures.length} of ${allResults.length} jobs)`);
+  error(`Pre-commit checks failed (${failures.length} of ${typecheckResults.length} jobs)`);
   process.exit(1);
 }
 
-success(`All pre-commit checks passed (${allResults.length} jobs in ${elapsed()}ms)`);
+success(`All pre-commit checks passed (${typecheckResults.length} jobs in ${elapsed()}ms)`);
 process.exit(0);
