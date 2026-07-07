@@ -7,6 +7,7 @@ export type ReadinessFetch = (url: string, timeoutMs: number) => Promise<Respons
 type WaitForReadyHtmlInput = {
   url: string;
   timeoutMs: number;
+  requestTimeoutMs?: number;
   pollIntervalMs: number;
   runningServer: RunningServerStatus;
   isReady: (html: string) => boolean;
@@ -19,6 +20,7 @@ async function defaultFetch(url: string, timeoutMs: number): Promise<Response> {
 
 export async function waitForReadyHtml(input: WaitForReadyHtmlInput): Promise<string> {
   const fetcher = input.fetcher ?? defaultFetch;
+  const requestTimeoutMs = input.requestTimeoutMs ?? 5_000;
   const startTime = Date.now();
   let lastStatus: number | null = null;
   let lastError: string | null = null;
@@ -35,7 +37,7 @@ export async function waitForReadyHtml(input: WaitForReadyHtmlInput): Promise<st
     if (remainingTimeoutMs <= 0) break;
 
     try {
-      const response = await fetcher(input.url, remainingTimeoutMs);
+      const response = await fetcher(input.url, Math.min(requestTimeoutMs, remainingTimeoutMs));
       lastStatus = response.status;
       if (response.status === 200) {
         const html = await response.text();

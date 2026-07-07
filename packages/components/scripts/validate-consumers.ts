@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'postcss';
 
 import { waitForReadyHtml } from './consumer-readiness.ts';
+import { installHookProcessCleanup, withLocalValidationGateLock } from './husky/utilities.ts';
 import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
@@ -1996,7 +1997,8 @@ async function runExamplesConsumerFixture(): Promise<void> {
   }
 }
 
-try {
+async function main(): Promise<void> {
+  installHookProcessCleanup();
   ensureSupportedPlatform();
   await ensureNodeOnPath();
   await runBuild();
@@ -2040,6 +2042,10 @@ try {
   await runSveltekitFixture('latest Svelte 5', sveltePeerContract.latest);
   await runExamplesConsumerFixture();
   process.stdout.write('[validate-consumers] all checks passed.\n');
+}
+
+try {
+  await withLocalValidationGateLock(main);
 } catch (error) {
   if (error instanceof ValidationError) {
     process.stderr.write(`[validate-consumers] ${error.message}\n`);

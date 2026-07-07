@@ -513,6 +513,7 @@ const DEFAULT_GATE_LOCK_PATH = join(REPO_ROOT, 'tmp', 'pre-push-gate.lock');
 const DEFAULT_MALFORMED_GATE_LOCK_GRACE_MILLISECONDS = 30_000;
 const DEFAULT_GATE_LOCK_RETRY_MILLISECONDS = 1_000;
 const DEFAULT_GATE_LOCK_WAIT_MILLISECONDS = 5 * 60 * 1_000;
+export const LOCAL_VALIDATION_GATE_LOCK_HELD_ENV = 'CINDER_LOCAL_VALIDATION_GATE_LOCK_HELD';
 
 function createGateLockFile(token: string): GateLockFile {
   return {
@@ -677,7 +678,8 @@ export async function withGateLock<T>(
 
       if (!waitingMessagePrinted) {
         warning(
-          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…`,
+          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…\n` +
+            `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command`,
         );
         waitingMessagePrinted = true;
       }
@@ -692,6 +694,35 @@ export async function withGateLock<T>(
       await Bun.sleep(retryMilliseconds);
     }
   }
+}
+
+/**
+ * Serialize expensive local validation gates across worktrees.
+ *
+ * `pre-push` holds this lock around the entire gate. Child scripts such as
+ * `test:changed`, `components:check`, and `validate:consumer` inherit the
+ * marker below, so they do not deadlock by trying to re-acquire the same lock.
+ * Direct invocations still acquire the repository-local lock.
+ */
+export async function withLocalValidationGateLock<T>(
+  run: () => Promise<T>,
+  options: GateLockOptions = {},
+): Promise<T> {
+  if (Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] === '1') return await run();
+
+  return await withGateLock(async () => {
+    const previousValue = Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+    Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] = '1';
+    try {
+      return await run();
+    } finally {
+      if (previousValue === undefined) {
+        delete Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV];
+      } else {
+        Bun.env[LOCAL_VALIDATION_GATE_LOCK_HELD_ENV] = previousValue;
+      }
+    }
+  }, options);
 }
 
 export async function getStagedFiles(): Promise<string[]> {
