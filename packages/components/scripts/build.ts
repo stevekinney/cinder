@@ -191,6 +191,8 @@ const runtimeDependencyExternals = [
   'ajv',
   'ajv/*',
   'comlink',
+  'conversationalist',
+  'conversationalist/*',
   'diff-match-patch',
   'hast-util-sanitize',
   'js-yaml',

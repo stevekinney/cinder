@@ -115,7 +115,7 @@ const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
   (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
 );
 
-const REQUIRED_PEER_DEPENDENCY_NAMES = ['conversationalist'] as const;
+const REQUIRED_PEER_DEPENDENCY_NAMES = ['conversationalist', 'zod'] as const;
 
 function collectInstalledPackageNamesFromNodeModulesTree(
   nodeModulesDirectory: string,

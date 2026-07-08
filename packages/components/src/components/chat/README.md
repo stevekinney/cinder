@@ -34,10 +34,11 @@ Opinionated conversation surface bundling message list, composer, attachments, a
 ## Conversation data contract
 
 Chat uses [`conversationalist`](https://www.npmjs.com/package/conversationalist)
-as its transcript model. Install `conversationalist@^0.2.1` in the host
-application alongside `@lostgradient/cinder`; Cinder declares it as a required
-peer dependency so application code, server-side model-context builders, and
-Chat all share one package instance and one `CURRENT_SCHEMA_VERSION`.
+as its transcript model. Install `conversationalist@^0.2.1` and `zod@4.4.1` in
+the host application alongside `@lostgradient/cinder`; Cinder declares both as
+required peer dependencies so application code, server-side model-context
+builders, and Chat all share one package instance and one
+`CURRENT_SCHEMA_VERSION`.
 
 Cinder re-exports the conversationalist types and delegates conversation
 builders/utilities to the installed peer. The schema-version rendering policy is
