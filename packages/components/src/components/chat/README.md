@@ -31,6 +31,28 @@ Opinionated conversation surface bundling message list, composer, attachments, a
 > `height: 100dvh`—or the message viewport collapses and Chat renders as a
 > small card instead of filling its space. See [Layout and sizing](#layout-and-sizing).
 
+## Conversation data contract
+
+Chat uses [`conversationalist`](https://www.npmjs.com/package/conversationalist)
+as its transcript model. Install `conversationalist@^0.2.1` in the host
+application alongside `@lostgradient/cinder`; Cinder declares it as a required
+peer dependency so application code, server-side model-context builders, and
+Chat all share one package instance and one `CURRENT_SCHEMA_VERSION`.
+
+Cinder re-exports the conversationalist types and delegates conversation
+builders/utilities to the installed peer. The schema-version rendering policy is
+therefore tied to that peer:
+
+- Histories produced by any supported `conversationalist@^0.2.1` version render
+  as-is.
+- Older histories render when the installed conversationalist version can still
+  read that schema shape.
+- Newer histories are not guaranteed to render on an older installed
+  conversationalist version. Upgrade `conversationalist` within Cinder's peer
+  range first; when Cinder widens the peer range for a new
+  `CURRENT_SCHEMA_VERSION`, the changeset and release notes will call out the
+  rendering contract change.
+
 ## Layout and sizing
 
 Chat's root (`.chat-container`) is `height: 100%`. When no ancestor on the

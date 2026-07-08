@@ -115,6 +115,8 @@ const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
   (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
 );
 
+const REQUIRED_PEER_DEPENDENCY_NAMES = ['conversationalist'] as const;
+
 function collectInstalledPackageNamesFromNodeModulesTree(
   nodeModulesDirectory: string,
 ): Set<string> {
@@ -400,6 +402,17 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
     }
     if (packedManifest.peerDependenciesMeta?.[dependencyName]?.optional !== true) {
       fail(`packed manifest peerDependenciesMeta["${dependencyName}"].optional must be true`);
+    }
+  }
+  for (const dependencyName of REQUIRED_PEER_DEPENDENCY_NAMES) {
+    if (packedManifest.dependencies?.[dependencyName] !== undefined) {
+      fail(`packed manifest dependencies["${dependencyName}"] must be a peer dependency`);
+    }
+    if (packedManifest.peerDependencies?.[dependencyName] === undefined) {
+      fail(`packed manifest is missing required peer dependency "${dependencyName}"`);
+    }
+    if (packedManifest.peerDependenciesMeta?.[dependencyName]?.optional === true) {
+      fail(`packed manifest peerDependenciesMeta["${dependencyName}"].optional must not be true`);
     }
   }
 
@@ -801,6 +814,13 @@ function injectTarballIntoFixture(
   }>(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')).peerDependencies;
 
   dependencies['@lostgradient/cinder'] = `file:${tarballFilePath}`;
+  for (const dependencyName of REQUIRED_PEER_DEPENDENCY_NAMES) {
+    const version = rawPeerDependencies?.[dependencyName];
+    if (version === undefined) {
+      fail(`@lostgradient/cinder/package.json is missing peer dependency "${dependencyName}"`);
+    }
+    dependencies[dependencyName] = version;
+  }
   if (options.svelteVersion !== undefined || options.typescriptVersion !== undefined) {
     const rawDevDependencies = parsed['devDependencies'];
     if (!isObjectRecord(rawDevDependencies)) {
