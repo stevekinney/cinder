@@ -21,26 +21,39 @@
     onDismissed?: () => void;
     onSubmitted?: (message: MessageInput) => void;
     replaceWithSelectedCommand?: boolean;
+    throwOnSelected?: boolean;
   };
 
-  const props: Props = $props();
+  let {
+    commands: commandItems,
+    initialValue = '',
+    onSelected = () => {},
+    onDismissed = () => {},
+    onSubmitted = () => {},
+    replaceWithSelectedCommand = false,
+    throwOnSelected = false,
+  }: Props = $props();
   const commands = $derived(
-    props.commands ?? [
+    commandItems ?? [
       { value: 'help', label: 'Help', description: 'Show help' },
       { value: 'new', label: 'New conversation', description: 'Start over' },
       { value: 'tools', label: 'Tools', description: 'Manage tools' },
       { value: 'stop', label: 'Stop', description: 'Stop generation' },
     ],
   );
-  const onSelected = $derived(props.onSelected ?? (() => {}));
-  const onDismissed = $derived(props.onDismissed ?? (() => {}));
-  const onSubmitted = $derived(props.onSubmitted ?? (() => {}));
 
-  let value = $state(props.initialValue ?? '');
+  function initialComposerValue(): string {
+    return initialValue;
+  }
+
+  let value = $state(initialComposerValue());
 
   function handleSelected(selection: ChatComposerPopoverSelection<TestComposerCommand>): void {
     onSelected(selection);
-    if (props.replaceWithSelectedCommand) {
+    if (throwOnSelected) {
+      throw new Error('Selection failed');
+    }
+    if (replaceWithSelectedCommand) {
       value = `/${selection.item.value}`;
     }
   }
@@ -82,3 +95,6 @@
 </ChatComposerPopover>
 
 <button type="button" data-testid="outside">Outside</button>
+<button type="button" data-testid="external-clear" onclick={() => (value = '')}
+  >External clear</button
+>

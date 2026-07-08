@@ -267,10 +267,10 @@
     activeMatch = null;
     anchor?.focus();
     suppressNextValueSync = true;
-    onselect?.(detail);
     queueMicrotask(() => {
       suppressNextValueSync = false;
     });
+    onselect?.(detail);
   }
 </script>
 

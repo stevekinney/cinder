@@ -59,7 +59,7 @@ const schema = {
       {
         name: 'empty',
         reason: 'function-or-snippet',
-        description: 'Optional empty state rendered when filtering produces no enabled rows.',
+        description: 'Optional empty state rendered when filtering produces no matching rows.',
       },
       {
         name: 'filter',

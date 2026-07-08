@@ -71,7 +71,7 @@ export type ChatComposerPopoverProps<TItem extends ChatComposerPopoverItem> = {
   composer: Snippet<[ChatComposerPopoverComposerProps]>;
   /** Optional custom row contents. Defaults to the item label and description. */
   item?: Snippet<[ChatComposerPopoverItemSnippetContext<TItem>]>;
-  /** Optional empty state rendered when filtering produces no enabled rows. */
+  /** Optional empty state rendered when filtering produces no matching rows. */
   empty?: Snippet;
   /** Override trigger detection. */
   detectTrigger?: (

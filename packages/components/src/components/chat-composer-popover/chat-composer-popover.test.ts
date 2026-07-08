@@ -131,6 +131,22 @@ describe('ChatComposerPopover', () => {
     expect(composer.getAttribute('aria-expanded')).toBe('false');
   });
 
+  test('resyncs external value changes after a throwing selection handler', async () => {
+    const { getByTestId } = render(ChatComposerPopoverFixture, { throwOnSelected: true });
+    await typeComposer('/h');
+
+    await waitFor(() => expect(queryListbox()).not.toBeNull());
+
+    await fireEvent.keyDown(getComposer(), { key: 'Enter' });
+    await tick();
+
+    await fireEvent.click(getByTestId('external-clear'));
+    await tick();
+
+    expect(queryListbox()).toBeNull();
+    expect(getComposer().getAttribute('aria-expanded')).toBe('false');
+  });
+
   test('Escape dismisses the popover and clears composer ARIA', async () => {
     render(ChatComposerPopoverFixture);
     const composer = await typeComposer('/h');
