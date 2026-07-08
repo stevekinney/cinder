@@ -110,6 +110,36 @@ of overflowing the page.
 - Rendering a one-off message list — compose lighter primitives directly instead of pulling the full suite.
 - The transcript is read-only and needs no composer — a simple list of message bubbles is a better fit.
 
+## Attachment serialization
+
+When `capabilities.attachments` is enabled, `onsubmit` receives ready
+`ChatAttachment[]` values. Use `serializeChatAttachment()` or
+`serializeChatAttachments()` from `@lostgradient/cinder/chat` to convert those
+files into transportable base64 payloads without spreading the full byte array
+onto the JavaScript stack.
+
+```ts
+import { serializeChatAttachments } from '@lostgradient/cinder/chat';
+
+const attachments = await serializeChatAttachments(chatAttachments);
+```
+
+Each serialized attachment has this shape:
+
+```ts
+type SerializedChatAttachment = {
+  name: string;
+  mimeType: string;
+  kind: ChatAttachment['kind'];
+  content: string;
+};
+```
+
+The output is intentionally the base64 source payload for conversationalist's
+proposed `DocumentContent` bridge in `stevekinney/agent-bureau#153`. A consumer
+can wrap it as `{ type: 'document', name, mimeType, source: { kind: 'base64',
+data: content } }` when adding composer attachments to conversation state.
+
 ## Props
 
 <!-- generated:props:start -->

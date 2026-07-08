@@ -80,8 +80,14 @@ export {
 } from './utilities';
 
 // Input
-export { ChatAttachmentPreview, ChatInput, deriveAttachmentKind } from './input';
-export type { AttachmentKind, ChatAttachment } from './input';
+export {
+  ChatAttachmentPreview,
+  ChatInput,
+  deriveAttachmentKind,
+  serializeChatAttachment,
+  serializeChatAttachments,
+} from './input';
+export type { AttachmentKind, ChatAttachment, SerializedChatAttachment } from './input';
 
 // Message
 export {
