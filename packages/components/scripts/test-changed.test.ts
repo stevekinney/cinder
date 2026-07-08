@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 
-import { fullSuiteTestPathGroups, parseEnvSlugs, testPathsForScope } from './test-changed.ts';
+import {
+  fullSuiteTestPathGroups,
+  parseEnvSlugs,
+  testPathsForScope,
+  testRunnerArgumentsForPaths,
+} from './test-changed.ts';
 
 describe('parseEnvSlugs', () => {
   it('returns an empty list when unset', () => {
@@ -97,5 +102,15 @@ describe('fullSuiteTestPathGroups', () => {
     expect(() => fullSuiteTestPathGroups(['definitely-missing-component'])).toThrow(
       'full-suite chunk 1 references missing test path(s): src/components/definitely-missing-component/',
     );
+  });
+});
+
+describe('testRunnerArgumentsForPaths', () => {
+  it('routes path-filtered runs through the progress runner', () => {
+    expect(testRunnerArgumentsForPaths(['src/components/button/'])).toEqual([
+      'run',
+      'scripts/run-test-with-progress.ts',
+      'src/components/button/',
+    ]);
   });
 });

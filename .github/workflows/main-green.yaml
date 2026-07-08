@@ -71,8 +71,21 @@ jobs:
           --filter=@cinder/commentary
           build
 
-      - name: Test workspace
-        run: bun run test
+      - name: Test non-component workspace packages
+        run: >-
+          bun run
+          --filter=@cinder/diff
+          --filter=@cinder/markdown
+          --filter=@cinder/editor
+          --filter=@cinder/commentary
+          --filter=@cinder/playground
+          --filter=@cinder/testing
+          test
+
+      - name: Test component package in full-suite chunks
+        env:
+          CINDER_TEST_MODE: full
+        run: bun run --filter=@lostgradient/cinder test:changed
 
       # Non-blocking trend signal, not a gate: always exits 0 for the RSS
       # number itself (only a genuine test failure inside the canary's own

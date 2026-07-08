@@ -108,14 +108,15 @@ const FULL_SUITE_PRIVATE_COMPONENT_TESTS = [
   'src/components/svg-data-uri-color-literals.test.ts',
 ] as const;
 
-/** The `bun test` flags the components package uses (browser+svelte conditions). */
-const BUN_TEST_FLAGS = [
-  '--conditions',
-  'browser',
-  '--conditions',
-  'svelte',
-  '--parallel=1',
-] as const;
+/**
+ * The package test runner wraps `bun test` with the browser+svelte conditions,
+ * serial execution, and progress heartbeats used by long full-suite chunks.
+ */
+const TEST_RUNNER_COMMAND = ['run', 'scripts/run-test-with-progress.ts'] as const;
+
+export function testRunnerArgumentsForPaths(paths: readonly string[]): string[] {
+  return [...TEST_RUNNER_COMMAND, ...paths];
+}
 
 const FULL_SUITE_CHUNK_COUNT = 4;
 
@@ -260,9 +261,8 @@ async function main(): Promise<number> {
 
     for (const [index, group] of groups.entries()) {
       process.stderr.write(`test-changed: full suite chunk ${index + 1}/${groups.length}\n`);
-      const result = await runHookCommand('bun', ['test', ...BUN_TEST_FLAGS, ...group], {
+      const result = await runHookCommand('bun', testRunnerArgumentsForPaths(group), {
         cwd: packageRoot,
-        environment: { TZ: 'UTC', LANG: 'en_US.UTF-8' },
         stderr: 'inherit',
         stdout: 'inherit',
       });
@@ -276,9 +276,8 @@ async function main(): Promise<number> {
     );
   }
 
-  const result = await runHookCommand('bun', ['test', ...BUN_TEST_FLAGS, ...paths], {
+  const result = await runHookCommand('bun', testRunnerArgumentsForPaths(paths), {
     cwd: packageRoot,
-    environment: { TZ: 'UTC', LANG: 'en_US.UTF-8' },
     stderr: 'inherit',
     stdout: 'inherit',
   });
