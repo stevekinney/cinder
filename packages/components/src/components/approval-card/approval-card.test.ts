@@ -368,6 +368,38 @@ describe('ApprovalCard', () => {
     });
   });
 
+  test('preserves in-progress reason text and remember state across an unrelated host re-render', async () => {
+    const onresolve = mock();
+    const view = render(ApprovalCard, {
+      ...approvalCardProps({ onresolve, idempotencyKey: 'approval-one' }),
+    });
+
+    await fireEvent.input(view.getByLabelText('Reason'), {
+      target: { value: 'Still drafting this reason.' },
+    });
+    await fireEvent.click(
+      view.getByRole('checkbox', { name: "Don't ask again for operations like this" }),
+    );
+
+    // Same idempotencyKey — the host re-rendered for some unrelated reason
+    // (e.g. a countdown tick elsewhere on the page), not because a new
+    // approval request arrived. The draft must survive this.
+    await view.rerender({
+      ...approvalCardProps({ onresolve, idempotencyKey: 'approval-one', snapshotId: 'snap-2' }),
+    });
+
+    expect((view.getByLabelText('Reason') as HTMLTextAreaElement).value).toBe(
+      'Still drafting this reason.',
+    );
+    expect(
+      (
+        view.getByRole('checkbox', {
+          name: "Don't ask again for operations like this",
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(true);
+  });
+
   test('edits arguments as JSON before approving with edits', async () => {
     const onresolve = mock();
     const { getByLabelText, getByRole, queryByRole } = render(ApprovalCard, {
@@ -471,6 +503,38 @@ describe('ApprovalCard', () => {
       editedArgs: null,
       remember: false,
     });
+  });
+
+  test('hides the edit panel and blocks the resolution when editableArgs is disabled after the editor was opened', async () => {
+    const onresolve = mock();
+    const view = render(ApprovalCard, {
+      ...approvalCardProps({
+        editableArgs: true,
+        onresolve,
+        operation: {
+          kind: 'other',
+          argsPreview: { force: false },
+        },
+      }),
+    });
+
+    await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
+    expect(view.getByLabelText('Edited arguments JSON')).toBeTruthy();
+
+    await view.rerender({
+      ...approvalCardProps({
+        editableArgs: false,
+        onresolve,
+        operation: {
+          kind: 'other',
+          argsPreview: { force: false },
+        },
+      }),
+    });
+
+    expect(view.queryByLabelText('Edited arguments JSON')).toBeNull();
+    expect(view.queryByRole('button', { name: 'Confirm edited approval' })).toBeNull();
+    expect(onresolve).not.toHaveBeenCalled();
   });
 
   test('does not offer edited approval when no preview is provided', () => {

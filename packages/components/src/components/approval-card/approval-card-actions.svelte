@@ -25,24 +25,28 @@
   const editDescriptionId = $derived(`${idBase}-edit-description`);
   const editErrorId = $derived(`${idBase}-edit-error`);
 
-  // Writable deriveds: user input overrides the value, and a change to
-  // `requestKey` re-evaluates each one back to its initial state — resetting
-  // the form when a different approval request arrives.
-  let resolutionReason = $derived.by(() => {
-    void requestKey;
-    return '';
-  });
-  let rememberResolution = $derived.by(() => {
-    void requestKey;
-    return false;
-  });
-  let editingArguments = $derived.by(() => {
-    void requestKey;
-    return false;
-  });
-  let editedArgumentsText = $derived.by(() => {
-    void requestKey;
-    return '';
+  let resolutionReason = $state('');
+  let rememberResolution = $state(false);
+  let editingArguments = $state(false);
+  let editedArgumentsText = $state('');
+
+  // A writable `$derived` that reads `requestKey` looked like the simpler
+  // reset mechanism, but a $derived re-runs whenever ANY parent prop update
+  // touches its host — not only when the tracked value actually changes —
+  // so it silently wiped in-progress reason text / edits on every unrelated
+  // host re-render. `{#key requestKey}` has the same intent but was
+  // unreliable in practice here (a fresh DOM node with a stale value).
+  // Comparing the previous value explicitly, inside the effect, is the
+  // one thing that's actually gated on requestKey CHANGING, not merely
+  // being re-touched.
+  let previousRequestKey = requestKey;
+  $effect(() => {
+    if (requestKey === previousRequestKey) return;
+    previousRequestKey = requestKey;
+    resolutionReason = '';
+    rememberResolution = false;
+    editingArguments = false;
+    editedArgumentsText = '';
   });
 
   const editParseResult = $derived(parseJsonText(editedArgumentsText));
@@ -73,7 +77,7 @@
   }
 
   function handleConfirmEditedApproval(): void {
-    if (!editParseResult.ok) return;
+    if (!canEditArguments || !editParseResult.ok) return;
     emitResolution('approve_with_edits', editParseResult.value);
   }
 </script>
@@ -124,7 +128,7 @@
     </div>
   </div>
 
-  {#if editingArguments}
+  {#if editingArguments && canEditArguments}
     <div id={editRegionId} class="cinder-approval-card__editor">
       <label class="cinder-approval-card__control-label" for={editorId}>
         Edited arguments JSON
