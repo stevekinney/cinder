@@ -103,16 +103,6 @@ Pass a `parse` function to support alternative serialization formats:
 
 <!-- generated:props:end -->
 
-### PayloadInspectorMeta type
-
-```ts
-type PayloadInspectorMeta = {
-  contentType?: string; // e.g. "application/json"
-  source?: string; // e.g. workflow name or endpoint path
-  timestamp?: string; // ISO 8601 string
-};
-```
-
 ## CSS Variables
 
 <!-- generated:variables:start -->
@@ -123,8 +113,14 @@ This component does not declare any local CSS variables.
 
 ## Accessibility
 
-`PayloadInspector` follows the WAI-ARIA Tabs pattern (via the `Tabs`, `TabList`, `Tab`, and `TabPanel` cinder primitives) for view switching. See [tabs accessibility documentation](../tabs/tabs.a11y.md) for the full keyboard contract.
+The root element is a plain `<div>` — not a landmark — so a dashboard
+rendering many inspectors adds nothing to the screen reader's landmark list.
+The visible `label` names the panel, and the JSON tree is cinder's
+`JsonViewer`, a WAI-ARIA tree composite; see
+[json-viewer accessibility documentation](../json-viewer/json-viewer.a11y.md)
+for its keyboard contract.
 
-The root element is a `<section>` with `aria-label` set to the `label` prop ("Payload inspector" by default), providing a landmark for screen reader navigation.
-
-Parse errors render with `role="alert"` for immediate announcement. Empty states use `role="status"`. The byte size span carries an `aria-label` like "13 B payload size" for screen readers that skip the visual context.
+Parse errors render with `role="alert"` for immediate announcement. Empty
+states use `role="status"`. The byte size span carries an `aria-label` like
+"13 B payload size" for screen readers that skip the visual context. See
+[payload-inspector.a11y.md](./payload-inspector.a11y.md) for the full pattern.
