@@ -13,7 +13,7 @@ export type CommandListKeyboardOptions = {
 
 export class CommandListState {
   readonly #getListboxId: () => string;
-  #registeredListboxId = '';
+  #registeredListboxId = $state('');
   registrations = $state<RegistrationRecord[]>([]);
   registrationsReady = $state(false);
   #itemCounter = 0;
@@ -34,13 +34,14 @@ export class CommandListState {
 
   constructor(listboxId: string | (() => string)) {
     this.#getListboxId = typeof listboxId === 'function' ? listboxId : () => listboxId;
+    this.#registeredListboxId = this.#getListboxId();
   }
 
   get listboxId(): string {
-    return this.#getListboxId();
+    return this.#registeredListboxId;
   }
 
-  syncListboxId(nextListboxId: string = this.listboxId): void {
+  syncListboxId(nextListboxId: string = this.#getListboxId()): void {
     const listboxId = nextListboxId;
     if (this.#registeredListboxId === listboxId) return;
     this.#registeredListboxId = listboxId;
