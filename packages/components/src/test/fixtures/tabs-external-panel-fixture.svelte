@@ -26,18 +26,19 @@
   }: TabsExternalPanelFixtureProps = $props();
 
   const activeItem = $derived(items.find((item) => item.value === value) ?? items[0]);
+  const controlledPanelId = $derived(controls?.trim() || panelId);
 </script>
 
 <Tabs bind:value>
   <TabList label="Editor files">
     {#each items as item (item.value)}
-      <Tab value={item.value} id={item.id} controls={controls ?? panelId}>{item.title}</Tab>
+      <Tab value={item.value} id={item.id} controls={controlledPanelId}>{item.title}</Tab>
     {/each}
   </TabList>
 </Tabs>
 
 {#if activeItem}
-  <div id={panelId} role="tabpanel" aria-labelledby={activeItem.id} tabindex="0">
+  <div id={controlledPanelId} role="tabpanel" aria-labelledby={activeItem.id} tabindex="0">
     {activeItem.body}
   </div>
 {/if}
