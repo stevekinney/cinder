@@ -7,10 +7,10 @@ Use cinder when you want UI building blocks without adopting a framework-level r
 ## Install
 
 ```bash
-bun add @lostgradient/cinder svelte lucide-svelte
+bun add @lostgradient/cinder svelte lucide-svelte conversationalist zod
 ```
 
-`svelte` and `lucide-svelte` are peer dependencies. Cinder uses Lucide for its own component chrome, but it does not provide a general icon library for your application-specific icons.
+`svelte`, `lucide-svelte`, `conversationalist`, and `zod` are required peer dependencies. Cinder uses Lucide for its own component chrome, but it does not provide a general icon library for your application-specific icons. `@lostgradient/cinder/chat` expects your app to provide `conversationalist@^0.2.1` and `zod@4.4.1` so Chat data contracts resolve through the same package instances as the host application.
 
 Rich editor, markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces use optional peer dependencies. Install them only when your app imports `@lostgradient/cinder/chat` with the default composer, `@lostgradient/cinder/markdown-editor`, `@lostgradient/cinder/review-editor`, `@lostgradient/cinder/markdown`, `@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`, `@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`, `@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relies on `Chat` built-in markdown/tool message rendering or `CodeBlock` automatic highlighting:
 
