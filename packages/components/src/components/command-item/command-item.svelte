@@ -50,8 +50,9 @@
   // because this is a one-time discard, not a reactive dependency.
   void untrack(() => selectionMode);
 
-  // Stable id assigned by the palette on registration.
-  let itemId = $state<string | null>(null);
+  // Live id assigned by the parent command list on registration.
+  let registrationHandle = $state<{ readonly id: string; unregister: () => void } | null>(null);
+  const itemId = $derived(registrationHandle?.id ?? null);
 
   // Register with the palette at attach time, unregister on detach. Using an
   // attachment (rather than onMount) means the DOM node is available at
@@ -62,7 +63,7 @@
     // call mutates the palette's $state registrations list, which feeds derived
     // values the attachment indirectly depends on — producing an update cycle.
     return untrack(() => {
-      const { id, unregister } = commandList.register(
+      const registeredItem = commandList.register(
         {
           getValue: () => value,
           getOnselect: () => onselect,
@@ -70,10 +71,10 @@
         },
         node,
       );
-      itemId = id;
+      registrationHandle = registeredItem;
       return () => {
-        unregister();
-        itemId = null;
+        registeredItem.unregister();
+        registrationHandle = null;
       };
     });
   };

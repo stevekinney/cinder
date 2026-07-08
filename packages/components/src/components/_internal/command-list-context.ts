@@ -34,18 +34,18 @@ export type CommandItemRegistrationInput = {
  * Context provided by CommandPalette and consumed by CommandItem.
  */
 export type CommandListContext = {
-  /** Stable id for the listbox; items compose their own ids from this. */
+  /** Live id for the listbox; items keep their ids in sync with it. */
   readonly listboxId: string;
   /** Id of the currently active (virtually focused) item, or null. */
   readonly activeItemId: string | null;
   /**
    * Called by each CommandItem when it mounts.
-   * Returns a stable id and an unregister function.
+   * Returns a live id handle and an unregister function.
    */
   register: (
     input: CommandItemRegistrationInput,
     node: HTMLElement,
-  ) => { id: string; unregister: () => void };
+  ) => { readonly id: string; unregister: () => void };
   /** Called by items on pointerenter to sync hover with arrow-key navigation. */
   setActiveById: (id: string) => void;
   /** Called by items and owners to activate the current item by id. */

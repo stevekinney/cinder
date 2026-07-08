@@ -86,6 +86,9 @@ const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([
   // the consumer `class` flows through `{...rest}` to schema-form-body.svelte, whose
   // `<form>` root merges it via `classNames('cinder-schema-form', customClassName)`.
   'schema-form',
+  // chat-composer-popover.svelte renders the consumer-provided composer snippet
+  // and a CommandMenu instance. It has no class-bearing root element of its own.
+  'chat-composer-popover',
 ]);
 
 /**

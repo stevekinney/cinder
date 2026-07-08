@@ -951,6 +951,56 @@
       }
     },
     {
+      "name": "ChatComposerPopover",
+      "id": "chat-composer-popover",
+      "import": "@lostgradient/cinder/chat-composer-popover",
+      "exportName": "ChatComposerPopover",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Chat composer-bound slash-command and mention listbox primitive.",
+      "tags": ["chat", "command", "overlay"],
+      "useWhen": [
+        "Adding slash commands, mentions, or autocomplete to ChatInput without re-implementing combobox ARIA.",
+        "Composer suggestions should stay anchored to the active token and leave command definitions in application code."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Opening a global command launcher detached from the composer — use command-palette instead."
+        },
+        {
+          "reason": "Anchoring a generic command menu to an arbitrary input — use command-menu instead."
+        }
+      ],
+      "related": ["chat", "command-menu", "command-item", "command-palette"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/chat-composer-popover/schema",
+        "variables": "@lostgradient/cinder/chat-composer-popover/variables",
+        "examples": "@lostgradient/cinder/chat-composer-popover/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Combobox with Listbox Popup",
+        "keyboard": [
+          {
+            "keys": "ArrowUp / ArrowDown",
+            "action": "Moves the active suggestion."
+          },
+          {
+            "keys": "Enter",
+            "action": "Selects the active suggestion."
+          },
+          {
+            "keys": "Escape",
+            "action": "Dismisses the suggestion popover."
+          }
+        ],
+        "notes": [
+          "Passes combobox role and aria-expanded, aria-controls, aria-activedescendant, and aria-autocomplete through to ChatInput's composer overlay API."
+        ]
+      }
+    },
+    {
       "name": "ChatConversationHeader",
       "id": "chat-conversation-header",
       "import": "@lostgradient/cinder/chat-conversation-header",

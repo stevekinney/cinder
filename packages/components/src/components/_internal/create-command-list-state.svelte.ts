@@ -12,7 +12,8 @@ export type CommandListKeyboardOptions = {
 };
 
 export class CommandListState {
-  readonly listboxId: string;
+  readonly #getListboxId: () => string;
+  #registeredListboxId = '';
   registrations = $state<RegistrationRecord[]>([]);
   registrationsReady = $state(false);
   #itemCounter = 0;
@@ -31,8 +32,25 @@ export class CommandListState {
       : (this.enabledIds[0] ?? null),
   );
 
-  constructor(listboxId: string) {
-    this.listboxId = listboxId;
+  constructor(listboxId: string | (() => string)) {
+    this.#getListboxId = typeof listboxId === 'function' ? listboxId : () => listboxId;
+  }
+
+  get listboxId(): string {
+    return this.#getListboxId();
+  }
+
+  syncListboxId(nextListboxId: string = this.listboxId): void {
+    const listboxId = nextListboxId;
+    if (this.#registeredListboxId === listboxId) return;
+    this.#registeredListboxId = listboxId;
+    this.#intendedActiveId = null;
+    this.registrations = this.registrations.map((registration, index) => ({
+      ...registration,
+      id: `${listboxId}-item-${index + 1}`,
+    }));
+    this.#itemCounter = this.registrations.length;
+    this.refreshRegistrationsReady();
   }
 
   resetActiveItem(): void {
@@ -58,18 +76,26 @@ export class CommandListState {
   }
 
   register(input: CommandItemRegistrationInput, node: HTMLElement) {
+    this.syncListboxId();
     const id = `${this.listboxId}-item-${++this.#itemCounter}`;
-    this.registrations.push({
+    const getRegisteredId = () =>
+      this.registrations.find((registeredItem) => registeredItem.node === node)?.id ?? id;
+    const registration: RegistrationRecord = {
       id,
       node,
       getValue: input.getValue,
       getOnselect: input.getOnselect,
       getDisabled: input.getDisabled,
-    });
+    };
+    this.registrations.push(registration);
     return {
-      id,
+      get id() {
+        return getRegisteredId();
+      },
       unregister: () => {
-        const index = this.registrations.findIndex((registration) => registration.id === id);
+        const index = this.registrations.findIndex(
+          (registeredItem) => registeredItem.node === node,
+        );
         if (index !== -1) this.registrations.splice(index, 1);
       },
     };
@@ -146,7 +172,7 @@ export class CommandListState {
   }
 
   createContext(activateItemById: (id: string) => void = (id) => void this.activateItemById(id)) {
-    const listboxId = this.listboxId;
+    const getListboxId = () => this.listboxId;
     const getActiveItemId = () => this.activeItemId;
     const register = (input: CommandItemRegistrationInput, node: HTMLElement) =>
       this.register(input, node);
@@ -154,7 +180,7 @@ export class CommandListState {
 
     return {
       get listboxId() {
-        return listboxId;
+        return getListboxId();
       },
       get activeItemId() {
         return getActiveItemId();
@@ -166,6 +192,6 @@ export class CommandListState {
   }
 }
 
-export function createCommandListState(listboxId: string): CommandListState {
+export function createCommandListState(listboxId: string | (() => string)): CommandListState {
   return new CommandListState(listboxId);
 }

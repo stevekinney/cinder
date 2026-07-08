@@ -4,6 +4,10 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    listboxId: {
+      type: 'string',
+      description: 'Stable listbox id. Defaults to a generated component id.',
+    },
     open: {
       type: 'boolean',
       description: 'Open state. Bindable. Default `false`.',

@@ -40,6 +40,7 @@
   let open = $state(initialOpen);
   let caretIndex = $state(initialValue.length);
   let textareaElement: HTMLTextAreaElement | null = $state(null);
+  let listboxId = $state('fixture-command-listbox');
 </script>
 
 <textarea bind:this={textareaElement} bind:value data-testid="anchor"></textarea>
@@ -53,9 +54,17 @@
 <button type="button" data-testid="advance-caret" onclick={() => (caretIndex += 1)}>
   Advance caret
 </button>
+<button
+  type="button"
+  data-testid="change-listbox-id"
+  onclick={() => (listboxId = 'changed-listbox')}
+>
+  Change listbox id
+</button>
 <button type="button" data-testid="outside">Outside</button>
 
 <CommandMenu
+  {listboxId}
   bind:open
   bind:query
   anchor={textareaElement}

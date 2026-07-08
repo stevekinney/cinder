@@ -155,6 +155,22 @@ export type {
 export { default as Chat } from './components/chat/index.ts';
 export type { ChatProps } from './components/chat/index.ts';
 
+export {
+  default as ChatComposerPopover,
+  filterFuzzySubsequence,
+  fuzzySubsequenceScore,
+} from './components/chat-composer-popover/index.ts';
+export type {
+  ChatComposerPopoverComposerProps,
+  ChatComposerPopoverItem,
+  ChatComposerPopoverItemSnippetContext,
+  ChatComposerPopoverProps,
+  ChatComposerPopoverSelection,
+  ChatComposerPopoverTriggerMatch,
+  FuzzyFilterItem,
+  FuzzyFilterResult,
+} from './components/chat-composer-popover/index.ts';
+
 export { default as ChatConversationHeader } from './components/chat-conversation-header/index.ts';
 export type {
   ChatConversationHeaderHeadingLevel,

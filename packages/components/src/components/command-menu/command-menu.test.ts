@@ -100,6 +100,28 @@ describe('CommandMenu', () => {
     expect(computePositionSpy.mock.calls.length).toBeGreaterThan(1);
   });
 
+  test('updates listbox and option ids when the listboxId prop changes', async () => {
+    const states: Array<{ activeItemId: string | null; listboxId: string }> = [];
+    const { getByTestId } = render(CommandMenuFixture, {
+      onStateChanged: (activeItemId: string | null, listboxId: string) => {
+        states.push({ activeItemId, listboxId });
+      },
+    });
+    await waitFor(() => expect(queryListbox()).not.toBeNull());
+    expect(queryListbox()?.id).toBe('fixture-command-listbox');
+    expect(queryListbox()?.querySelector('[role="option"]')?.id).toStartWith(
+      'fixture-command-listbox-item-',
+    );
+
+    await fireEvent.click(getByTestId('change-listbox-id'));
+    await waitFor(() => expect(queryListbox()?.id).toBe('changed-listbox'));
+
+    expect(queryListbox()?.querySelector('[role="option"]')?.id).toStartWith(
+      'changed-listbox-item-',
+    );
+    expect(states.at(-1)).toMatchObject({ listboxId: 'changed-listbox' });
+  });
+
   test('captures the current anchor for lazy virtual element reads', async () => {
     const { getByTestId } = render(CommandMenuFixture);
     await waitFor(() => expect(autoUpdateSpy).toHaveBeenCalledTimes(1));

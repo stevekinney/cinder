@@ -217,16 +217,28 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
+        name: 'oncomposerblur',
+        reason: 'function-or-snippet',
+        description:
+          'Called when focus leaves the composer textarea. Overlay primitives can use\nthis to dismiss without preventing native focus movement.',
+      },
+      {
         name: 'oncomposerinput',
         reason: 'function-or-snippet',
         description:
-          "Called with the composer's current plain-text value on every composer\ninput event. Lets a consumer build slash-command, mention, or autocomplete\nUX without reaching into `.chat-input-editor` DOM directly.",
+          "Called with the composer's current plain-text value on every composer\ninput event. The optional event exposes the textarea for composer-bound\noverlays without reaching into `.chat-input-editor` DOM directly.",
       },
       {
         name: 'oncomposerkeydown',
         reason: 'function-or-snippet',
         description:
           "Called before Chat's internal composer key handling when a keydown\noriginates from the composer textarea. Call `event.preventDefault()` to\nlet an overlay consume Arrow keys, Enter, or Escape before Enter-to-send.\nChat does not call this hook during IME composition, so Enter can still\nconfirm the active candidate instead of sending.",
+      },
+      {
+        name: 'oncomposerselectionchange',
+        reason: 'function-or-snippet',
+        description:
+          'Called after pointer or selection activity may have moved the composer\ncaret without changing text. Overlay primitives can resync their active\ntoken from the textarea selection.',
       },
       {
         name: 'ondeny',

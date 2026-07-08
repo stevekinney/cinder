@@ -279,6 +279,51 @@ describe('ChatInput', () => {
     });
   });
 
+  describe('composer overlay caret hooks', () => {
+    test('fires oncomposerselectionchange for pointer and selection activity', async () => {
+      const events: string[] = [];
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'composer-selection-change',
+          oncomposerselectionchange: (event: Event) => events.push(event.type),
+        },
+      });
+
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.pointerUp(composer);
+      await fireEvent.select(composer);
+
+      expect(events).toEqual(['pointerup', 'select']);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('fires oncomposerblur when focus leaves the composer', async () => {
+      const events: string[] = [];
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'composer-blur',
+          oncomposerblur: (event: FocusEvent) => events.push(event.type),
+        },
+      });
+
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.blur(composer);
+
+      expect(events).toEqual(['blur']);
+
+      unmount(instance);
+      target.remove();
+    });
+  });
+
   describe('composer ARIA pass-through', () => {
     test('renders overlay ARIA attributes on the composer textarea', () => {
       const { container } = render(ChatInput, {

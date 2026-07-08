@@ -33,9 +33,10 @@
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
-  const listboxId = $props.id();
+  const fallbackListboxId = $props.id();
 
   let {
+    listboxId = fallbackListboxId,
     open = $bindable(false),
     anchor,
     caretIndex,
@@ -59,7 +60,7 @@
 
   let mounted = $state(false);
   let listElement: HTMLElement | undefined = $state();
-  const commandList = createCommandListState(listboxId);
+  const commandList = createCommandListState(() => listboxId);
 
   const showEmpty = $derived(
     mounted && open && commandList.registrationsReady && commandList.registrations.length === 0,
@@ -91,6 +92,10 @@
   });
 
   $effect(() => {
+    commandList.syncListboxId(listboxId);
+  });
+
+  $effect(() => {
     if (!open) {
       commandList.resetActiveItem();
       return;
@@ -103,7 +108,10 @@
   });
 
   $effect(() => {
-    onstatechange?.({ listboxId, activeItemId: open ? commandList.activeItemId : null });
+    onstatechange?.({
+      listboxId: commandList.listboxId,
+      activeItemId: open ? commandList.activeItemId : null,
+    });
   });
 
   $effect(() => {
@@ -167,7 +175,12 @@
     data-cinder-position-ready={anchoredOverlay.positionReady}
     style={anchoredOverlay.positionStyle}
   >
-    <ul id={listboxId} role="listbox" aria-label={label} class="cinder-command-menu__listbox">
+    <ul
+      id={commandList.listboxId}
+      role="listbox"
+      aria-label={label}
+      class="cinder-command-menu__listbox"
+    >
       {@render items({ query })}
     </ul>
     {#if showEmpty && empty}
