@@ -28,6 +28,7 @@
     highlight,
     highlighter,
     copyable = false,
+    showLanguageLabel = true,
     class: className,
   }: CodeBlockProps = $props();
 
@@ -94,9 +95,9 @@
 </script>
 
 <div class={classNames('cinder-code-block', className)}>
-  {#if language || copyable}
+  {#if (language && showLanguageLabel) || copyable}
     <header class="cinder-code-block__header">
-      {#if language}
+      {#if language && showLanguageLabel}
         <span class="cinder-code-block__language">{language}</span>
       {/if}
       {#if copyable}

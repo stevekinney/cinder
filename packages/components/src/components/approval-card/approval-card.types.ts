@@ -2,6 +2,9 @@ import type { HTMLAttributes } from 'svelte/elements';
 
 export type ApprovalToolRisk = 'low' | 'medium' | 'high';
 
+/** Heading level rendered for the card title. Section headings render one level deeper. */
+export type ApprovalCardHeadingLevel = 2 | 3 | 4 | 5 | 6;
+
 /** @schemaObject */
 export type ApprovalTool = {
   /** Human-readable tool name requesting approval. */
@@ -28,7 +31,7 @@ export type ApprovalCommandOperation = {
   kind: 'command';
   /** Shell command for command approvals. */
   command: string;
-  /** File paths that the operation may read or write. */
+  /** File paths that the operation may read or write. Duplicate paths are collapsed for display. */
   filesTouched?: string[];
   /**
    * JSON-like argument preview shown to the approver.
@@ -42,7 +45,7 @@ export type ApprovalCommandOperation = {
 export type ApprovalFileWriteOperation = {
   /** Operation family being approved. */
   kind: 'file-write';
-  /** File paths that the operation may read or write. File-write approvals require at least one path. */
+  /** File paths that the operation may read or write. File-write approvals require at least one path. Duplicate paths are collapsed for display. */
   filesTouched: string[];
   /**
    * JSON-like argument preview shown to the approver.
@@ -56,7 +59,7 @@ export type ApprovalFileWriteOperation = {
 export type ApprovalPatchOperation = {
   /** Operation family being approved. */
   kind: 'patch';
-  /** File paths that the operation may read or write. */
+  /** File paths that the operation may read or write. Duplicate paths are collapsed for display. */
   filesTouched?: string[];
   /**
    * JSON-like argument preview shown to the approver.
@@ -72,7 +75,7 @@ export type ApprovalPatchOperation = {
 export type ApprovalOtherOperation = {
   /** Operation family being approved. */
   kind: 'other';
-  /** File paths that the operation may read or write. */
+  /** File paths that the operation may read or write. Duplicate paths are collapsed for display. */
   filesTouched?: string[];
   /**
    * JSON-like argument preview shown to the approver.
@@ -117,18 +120,8 @@ export type ApprovalResolution = {
 };
 
 export type ApprovalCardCallbacks = {
-  /** Called for approve, approve-with-edits, deny, and cancel with the complete resolution payload. */
+  /** Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload. */
   onresolve?: (resolution: ApprovalResolution) => void;
-  /** Called when the approver accepts the operation as presented. */
-  onapprove?: () => void;
-  /** Called with parsed JSON arguments when the approver accepts edited arguments. */
-  onapprovewithedits?: (editedArgs: unknown) => void;
-  /** Called when the approver denies the operation. */
-  ondeny?: () => void;
-  /** Called when the approver asks the host application to remember the decision. */
-  onremember?: () => void;
-  /** Called when the approver cancels the approval prompt. */
-  oncancel?: () => void;
 };
 
 /** Props for the ApprovalCard component. */
@@ -154,6 +147,8 @@ export type ApprovalCardProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'chi
     state: ApprovalState;
     /** Whether approving with edited JSON arguments is available. Default `false`. */
     editableArgs?: boolean;
+    /** Heading level for the card title; section headings render one level deeper. Default `3`. */
+    headingLevel?: ApprovalCardHeadingLevel;
     /** Additional CSS classes applied to the root element. */
     class?: string;
   };
@@ -161,8 +156,8 @@ export type ApprovalCardProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'chi
 /**
  * Cinder-specific schema surface for ApprovalCard.
  *
- * Callback props are documented but marked unsupported because functions cannot
- * be represented as JSON Schema controls.
+ * The resolution callback is documented but marked unsupported because
+ * functions cannot be represented as JSON Schema controls.
  */
 export type ApprovalCardSchemaProps = {
   /** Tool requesting approval. */
@@ -185,18 +180,10 @@ export type ApprovalCardSchemaProps = {
   state: ApprovalState;
   /** Whether approving with edited JSON arguments is available. Default `false`. */
   editableArgs?: boolean;
-  /** Called when the approver accepts the operation as presented. */
-  onapprove?: () => void;
-  /** Called for approve, approve-with-edits, deny, and cancel with the complete resolution payload. */
+  /** Heading level for the card title; section headings render one level deeper. Default `3`. */
+  headingLevel?: ApprovalCardHeadingLevel;
+  /** Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload. */
   onresolve?: (resolution: ApprovalResolution) => void;
-  /** Called with parsed JSON arguments when the approver accepts edited arguments. */
-  onapprovewithedits?: (editedArgs: unknown) => void;
-  /** Called when the approver denies the operation. */
-  ondeny?: () => void;
-  /** Called when the approver asks the host application to remember the decision. */
-  onremember?: () => void;
-  /** Called when the approver cancels the approval prompt. */
-  oncancel?: () => void;
   /** Additional CSS classes applied to the root element. */
   class?: string;
 };

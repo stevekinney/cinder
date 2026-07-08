@@ -94,6 +94,30 @@ describe('CodeBlock — static structure', () => {
     expect(container.querySelector('.cinder-code-block__header')).toBeNull();
   });
 
+  test('showLanguageLabel=false suppresses the header while keeping language semantics', () => {
+    const { container } = render(CodeBlock, {
+      code: 'const x',
+      language: 'ts',
+      highlight: false,
+      showLanguageLabel: false,
+    });
+    expect(container.querySelector('.cinder-code-block__header')).toBeNull();
+    expect(container.querySelector('.cinder-code-block__language')).toBeNull();
+  });
+
+  test('showLanguageLabel=false keeps the header when copyable is set', () => {
+    const { container } = render(CodeBlock, {
+      code: 'const x',
+      language: 'ts',
+      highlight: false,
+      copyable: true,
+      showLanguageLabel: false,
+    });
+    expect(container.querySelector('.cinder-code-block__header')).not.toBeNull();
+    expect(container.querySelector('.cinder-code-block__language')).toBeNull();
+    expect(container.querySelector('.cinder-copy-button')).not.toBeNull();
+  });
+
   test('copyable=true renders a copy button in the header', () => {
     const { container } = render(CodeBlock, { code: 'x', copyable: true });
     expect(container.querySelector('.cinder-code-block__header')).not.toBeNull();

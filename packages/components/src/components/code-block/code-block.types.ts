@@ -49,6 +49,12 @@ export type CodeBlockProps = {
   highlighter?: Highlighter;
   /** When true, render a copy button in the header. */
   copyable?: boolean;
+  /**
+   * Whether to render the language label in the header. Default `true`.
+   * Pass `false` to keep `language`-driven highlighting without the visible
+   * header chip; with `copyable` also unset, no header renders at all.
+   */
+  showLanguageLabel?: boolean;
   /** Additional class names merged with `.cinder-code-block`. */
   class?: string;
 };

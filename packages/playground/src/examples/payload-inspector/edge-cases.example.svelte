@@ -36,9 +36,5 @@
     {/each}
   </div>
 
-  <PayloadInspector
-    value={current.value}
-    truncated={current.truncated ?? false}
-    meta={{ source: 'edge-case-demo' }}
-  />
+  <PayloadInspector value={current.value} truncated={current.truncated ?? false} />
 </div>

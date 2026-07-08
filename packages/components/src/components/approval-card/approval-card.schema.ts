@@ -58,7 +58,8 @@ const schema = {
               items: {
                 type: 'string',
               },
-              description: 'File paths that the operation may read or write.',
+              description:
+                'File paths that the operation may read or write. Duplicate paths are collapsed for display.',
             },
             argsPreview: {
               description: 'JSON-like argument preview shown to the approver.',
@@ -80,7 +81,7 @@ const schema = {
                 type: 'string',
               },
               description:
-                'File paths that the operation may read or write. File-write approvals require at least one path.',
+                'File paths that the operation may read or write. File-write approvals require at least one path. Duplicate paths are collapsed for display.',
               minItems: 1,
             },
             argsPreview: {
@@ -102,7 +103,8 @@ const schema = {
               items: {
                 type: 'string',
               },
-              description: 'File paths that the operation may read or write.',
+              description:
+                'File paths that the operation may read or write. Duplicate paths are collapsed for display.',
             },
             argsPreview: {
               description: 'JSON-like argument preview shown to the approver.',
@@ -127,7 +129,8 @@ const schema = {
               items: {
                 type: 'string',
               },
-              description: 'File paths that the operation may read or write.',
+              description:
+                'File paths that the operation may read or write. Duplicate paths are collapsed for display.',
             },
             argsPreview: {
               description: 'JSON-like argument preview shown to the approver.',
@@ -171,6 +174,11 @@ const schema = {
       type: 'boolean',
       description: 'Whether approving with edited JSON arguments is available. Default `false`.',
     },
+    headingLevel: {
+      enum: [2, 3, 4, 5, 6],
+      description:
+        'Heading level for the card title; section headings render one level deeper. Default `3`.',
+    },
     class: {
       type: 'string',
       description: 'Additional CSS classes applied to the root element.',
@@ -181,36 +189,10 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onapprove',
-        reason: 'function-or-snippet',
-        description: 'Called when the approver accepts the operation as presented.',
-      },
-      {
-        name: 'onapprovewithedits',
-        reason: 'function-or-snippet',
-        description:
-          'Called with parsed JSON arguments when the approver accepts edited arguments.',
-      },
-      {
-        name: 'oncancel',
-        reason: 'function-or-snippet',
-        description: 'Called when the approver cancels the approval prompt.',
-      },
-      {
-        name: 'ondeny',
-        reason: 'function-or-snippet',
-        description: 'Called when the approver denies the operation.',
-      },
-      {
-        name: 'onremember',
-        reason: 'function-or-snippet',
-        description: 'Called when the approver asks the host application to remember the decision.',
-      },
-      {
         name: 'onresolve',
         reason: 'function-or-snippet',
         description:
-          'Called for approve, approve-with-edits, deny, and cancel with the complete resolution payload.',
+          'Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload.',
       },
     ],
   },

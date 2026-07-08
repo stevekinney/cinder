@@ -32,7 +32,7 @@ const schema = {
     padding: {
       enum: ['none', 'default'],
       description:
-        'Body padding. `none` removes all padding for flush or full-bleed content (e.g. an image).',
+        'Region padding. `none` removes body, header, and footer padding for flush or full-bleed content (e.g. an image).',
     },
     headingLevel: {
       enum: [2, 3, 4, 5, 6],

@@ -24,6 +24,7 @@ export type { AlertDialogProps } from './components/alert-dialog/index.ts';
 export { default as ApprovalCard } from './components/approval-card/index.ts';
 export type {
   ApprovalCardCallbacks,
+  ApprovalCardHeadingLevel,
   ApprovalCardProps,
   ApprovalCardSchemaProps,
   ApprovalOperation,
@@ -629,11 +630,7 @@ export { default as PageHeader } from './components/page-header/index.ts';
 export type { PageHeaderProps } from './components/page-header/index.ts';
 
 export { default as PayloadInspector } from './components/payload-inspector/index.ts';
-export type {
-  PayloadInspectorMeta,
-  PayloadInspectorProps,
-  PayloadInspectorView,
-} from './components/payload-inspector/index.ts';
+export type { PayloadInspectorProps } from './components/payload-inspector/index.ts';
 
 export { default as PermissionMatrix } from './components/permission-matrix/index.ts';
 export type {

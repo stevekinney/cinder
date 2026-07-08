@@ -95,6 +95,11 @@
     padding: 0;
   }
 
+  .cinder-card[data-cinder-padding='none'] > .cinder-card__header,
+  .cinder-card[data-cinder-padding='none'] > .cinder-card__footer {
+    padding: 0;
+  }
+
   .cinder-card[data-cinder-variant='well'] > .cinder-card__body {
     background: var(--cinder-surface-inset);
   }
