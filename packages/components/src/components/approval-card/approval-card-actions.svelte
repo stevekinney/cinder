@@ -45,6 +45,12 @@
     previousRequestKey = requestKey;
     resolutionReason = '';
     rememberResolution = false;
+    // A new request must never leave a stale editor open, even if its
+    // arguments happen to serialize identically to the previous request's
+    // (the separate snapshot effect below wouldn't see a change in that
+    // case) — an edit must never be confirmed against the wrong request.
+    editingArguments = false;
+    editedArgumentsText = '';
   });
 
   // Separate from the identity reset above: a host can revise

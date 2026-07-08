@@ -635,6 +635,42 @@ describe('ApprovalCard', () => {
     expect(reopenedTextarea.value).toContain('"force": true');
   });
 
+  test('closes the edit panel when the request changes even if the new arguments serialize identically', async () => {
+    const onresolve = mock();
+    const view = render(ApprovalCard, {
+      ...approvalCardProps({
+        editableArgs: true,
+        onresolve,
+        idempotencyKey: 'approval-one',
+        operation: {
+          kind: 'other',
+          argsPreview: { force: false },
+        },
+      }),
+    });
+
+    await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
+    expect(view.getByLabelText('Edited arguments JSON')).toBeTruthy();
+
+    // A genuinely NEW request (different idempotencyKey) whose arguments
+    // happen to serialize to the exact same text as the previous request's.
+    // The argumentsValue-snapshot comparison alone wouldn't see a change
+    // here — the identity change itself must still close the editor.
+    await view.rerender({
+      ...approvalCardProps({
+        editableArgs: true,
+        onresolve,
+        idempotencyKey: 'approval-two',
+        operation: {
+          kind: 'other',
+          argsPreview: { force: false },
+        },
+      }),
+    });
+
+    expect(view.queryByLabelText('Edited arguments JSON')).toBeNull();
+  });
+
   test('displays and copies a string argsPreview as the original, un-quoted value', async () => {
     const writeText = mock(async () => undefined);
     const originalClipboard = navigator.clipboard;
