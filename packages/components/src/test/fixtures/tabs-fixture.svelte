@@ -5,7 +5,13 @@
     orientation?: 'horizontal' | 'vertical';
     fill?: boolean;
     activateOnFocus?: boolean;
-    items: Array<{ value: string; title: string; body: string; disabled?: boolean }>;
+    items: Array<{
+      value: string;
+      title: string;
+      body: string;
+      controls?: string;
+      disabled?: boolean;
+    }>;
   };
 </script>
 
@@ -28,7 +34,15 @@
   <TabList label="Test tabs">
     {#each items as item (item.value)}
       {#if item.disabled !== undefined}
-        <Tab value={item.value} disabled={item.disabled}>{item.title}</Tab>
+        {#if item.controls !== undefined}
+          <Tab value={item.value} controls={item.controls} disabled={item.disabled}
+            >{item.title}</Tab
+          >
+        {:else}
+          <Tab value={item.value} disabled={item.disabled}>{item.title}</Tab>
+        {/if}
+      {:else if item.controls !== undefined}
+        <Tab value={item.value} controls={item.controls}>{item.title}</Tab>
       {:else}
         <Tab value={item.value}>{item.title}</Tab>
       {/if}

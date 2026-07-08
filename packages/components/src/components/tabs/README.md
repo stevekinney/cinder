@@ -30,6 +30,34 @@ leaves via the namespace API: `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
 The leaves remain importable individually for à-la-carte builds — see
 `@lostgradient/cinder/tab`, `@lostgradient/cinder/tab-list`, and `@lostgradient/cinder/tab-panel`.
 
+## Caller-owned panels
+
+Use `Tabs.Panel` for ordinary tabs where each trigger owns one rendered panel.
+When the selected value controls one stable external surface, pass that panel
+id through `Tabs.Trigger`'s `controls` prop and render the panel yourself:
+
+```svelte
+<script lang="ts">
+  import { Tabs } from '@lostgradient/cinder/tabs';
+
+  let active = $state('index.ts');
+</script>
+
+<Tabs bind:value={active}>
+  <Tabs.List label="Editor files">
+    <Tabs.Trigger value="index.ts" controls="editor-panel">index.ts</Tabs.Trigger>
+    <Tabs.Trigger value="app.svelte" controls="editor-panel">app.svelte</Tabs.Trigger>
+  </Tabs.List>
+</Tabs>
+
+<div id="editor-panel" role="tabpanel" aria-label="Active editor file" tabindex="0">
+  {active}
+</div>
+```
+
+This keeps Cinder in charge of roving tabindex, activation, disabled state, and
+tab styling while the caller owns an imperative or stateful panel element.
+
 ## Trailing badges and counts
 
 Each `Tabs.Trigger` accepts a `trailing` snippet for badges, counts, or status

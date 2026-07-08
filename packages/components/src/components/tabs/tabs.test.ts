@@ -69,6 +69,34 @@ describe('Tabs ARIA structure', () => {
     const panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.getAttribute('aria-labelledby')).toBe(tab?.getAttribute('id'));
   });
+
+  test('tabs can control a caller-owned panel id', async () => {
+    const itemsWithControls = items.map((item) => ({ ...item, controls: 'editor-panel' }));
+    const { container } = render(Wrapper, {
+      value: 'a',
+      items: itemsWithControls,
+    });
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    let panel = container.querySelector('[role="tabpanel"]');
+
+    expect(tabs).toHaveLength(3);
+    expect(tabs.map((tab) => tab.getAttribute('aria-controls'))).toEqual([
+      'editor-panel',
+      'editor-panel',
+      'editor-panel',
+    ]);
+    expect(tabs[0]?.getAttribute('tabindex')).toBe('0');
+    expect(tabs[1]?.getAttribute('tabindex')).toBe('-1');
+    expect(panel?.textContent).toContain('A body');
+
+    await fireEvent.click(tabs[1] as Element);
+
+    expect(tabs[0]?.getAttribute('tabindex')).toBe('-1');
+    expect(tabs[1]?.getAttribute('tabindex')).toBe('0');
+    panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('B body');
+  });
 });
 
 describe('Tabs responsive CSS', () => {

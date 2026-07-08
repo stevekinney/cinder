@@ -74,4 +74,13 @@ describe('Tab', () => {
     // that need escaping in a CSS selector, so escape before querying.
     expect(container.querySelector(`#${CSS.escape(ariaControls!)}`)).not.toBeNull();
   });
+
+  test('aria-controls can point at a caller-owned panel id', () => {
+    const { container } = render(Wrapper, {
+      value: 'a',
+      items: [{ value: 'a', title: 'A tab', body: 'A body', controls: 'external-panel' }],
+    });
+    const tab = container.querySelector('[role="tab"][aria-selected="true"]');
+    expect(tab?.getAttribute('aria-controls')).toBe('external-panel');
+  });
 });
