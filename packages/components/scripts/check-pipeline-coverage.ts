@@ -218,19 +218,22 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'pending-changesets publish path.',
   },
   test: {
-    layers: ['pre-push', 'main-green'],
+    layers: ['pre-push'],
     reason:
       'The component package test suite. NOT run at commit time by design — pre-commit.ts is ' +
       'explicit that tests are deferred to pre-push (which owns a scoped, dependency-closure-aware ' +
-      'run) and CI. Only pre-push and main-green run the bare `test` script. release reaches ' +
-      'coverage via `test:coverage`, and unit-tests.yaml runs the scoped `test:changed` variant, not ' +
-      'this literal script name.',
+      'run). main-green must NOT call this bare full-suite script because it serializes the whole ' +
+      'workspace test graph into one timeout-prone step; it runs the chunkable `test:changed` full ' +
+      'suite instead. release reaches coverage via `test:coverage`, and unit-tests.yaml runs the ' +
+      'scoped `test:changed` variant, not this literal script name.',
   },
   'test:changed': {
-    layers: ['pre-push', 'unit-tests'],
+    layers: ['pre-push', 'unit-tests', 'main-green'],
     reason:
       'The dependency-closure-scoped test runner. pre-push always calls it via `prePushPackageScript` ' +
-      'for the components package; unit-tests.yaml calls it directly in "Run component unit tests (scoped)".',
+      'for the components package; unit-tests.yaml calls it directly in "Run component unit tests (scoped)"; ' +
+      'main-green calls it with CINDER_TEST_MODE=full and a four-way chunk matrix so the full component ' +
+      'suite stays authoritative without reintroducing a single long-running workspace test step.',
   },
   'test:coverage': {
     layers: ['release'],

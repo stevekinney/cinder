@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 
-import { fullSuiteTestPathGroups, parseEnvSlugs, testPathsForScope } from './test-changed.ts';
+import {
+  fullSuiteTestPathGroups,
+  parseEnvSlugs,
+  parseFullSuiteChunk,
+  testPathsForScope,
+} from './test-changed.ts';
 
 describe('parseEnvSlugs', () => {
   it('returns an empty list when unset', () => {
@@ -14,6 +19,26 @@ describe('parseEnvSlugs', () => {
 
   it('parses, trims, and drops empties', () => {
     expect(parseEnvSlugs('button, badge ,, dialog')).toEqual(['button', 'badge', 'dialog']);
+  });
+});
+
+describe('parseFullSuiteChunk', () => {
+  it('returns null when unset', () => {
+    expect(parseFullSuiteChunk(undefined, 4)).toBeNull();
+    expect(parseFullSuiteChunk('', 4)).toBeNull();
+    expect(parseFullSuiteChunk('   ', 4)).toBeNull();
+  });
+
+  it('accepts a one-based chunk number inside the group count', () => {
+    expect(parseFullSuiteChunk('1', 4)).toBe(1);
+    expect(parseFullSuiteChunk('4', 4)).toBe(4);
+  });
+
+  it('rejects invalid chunk selections instead of silently running the wrong slice', () => {
+    expect(() => parseFullSuiteChunk('0', 4)).toThrow('must be an integer from 1 to 4');
+    expect(() => parseFullSuiteChunk('5', 4)).toThrow('must be an integer from 1 to 4');
+    expect(() => parseFullSuiteChunk('2.5', 4)).toThrow('must be an integer from 1 to 4');
+    expect(() => parseFullSuiteChunk('two', 4)).toThrow('must be an integer from 1 to 4');
   });
 });
 
@@ -59,10 +84,14 @@ describe('fullSuiteTestPathGroups', () => {
   it('keeps full-suite package tests in the first chunk', () => {
     const groups = fullSuiteTestPathGroups([]);
     expect(groups[0]).toContain('scripts');
+    expect(groups[0]).toContain('src/cli');
     expect(groups[0]).toContain('src/test');
     expect(groups[0]).toContain('src/exports-drift.test.ts');
     expect(groups[0]).toContain('src/root-type-exports.test.ts');
     expect(groups[0]).toContain('src/components/svg-data-uri-color-literals.test.ts');
+    expect(groups[0]).toContain(
+      'src/components/_internal/create-command-list-state.svelte.test.ts',
+    );
     expect(groups[0]).toContain('src/components/_internal/create-sliding-dialog-state.test.ts');
     expect(groups[0]).toContain('src/components/_radio/radio.test.ts');
     expect(groups[0]).toContain('src/components/_timeline-item/timeline-item.test.ts');

@@ -98,6 +98,7 @@ const ALWAYS_RUN_ROOT_TESTS = [
  * slugs returned from `loadKnownSlugs()`. They still belong to the full suite.
  */
 const FULL_SUITE_PRIVATE_COMPONENT_TESTS = [
+  'src/components/_internal/create-command-list-state.svelte.test.ts',
   'src/components/_internal/create-sliding-dialog-state.test.ts',
   'src/components/_radio/radio.test.ts',
   'src/components/_timeline-item/timeline-item.test.ts',
@@ -118,9 +119,11 @@ const BUN_TEST_FLAGS = [
 ] as const;
 
 const FULL_SUITE_CHUNK_COUNT = 4;
+const FULL_SUITE_CHUNK_ENV = 'CINDER_TEST_FULL_SUITE_CHUNK';
 
 const FULL_SUITE_NON_COMPONENT_PATHS = [
   'scripts',
+  'src/cli',
   ...ALWAYS_RUN_PATHS,
   ...ALWAYS_RUN_ROOT_TESTS,
   ...FULL_SUITE_PRIVATE_COMPONENT_TESTS,
@@ -169,6 +172,19 @@ export function fullSuiteTestPathGroups(componentSlugs: string[]): string[][] {
   return groups
     .map((group, index) => assertExistingTestPaths(group, `full-suite chunk ${index + 1}`))
     .filter((group) => group.length > 0);
+}
+
+export function parseFullSuiteChunk(raw: string | undefined, groupCount: number): number | null {
+  if (raw === undefined || raw.trim().length === 0) return null;
+
+  const chunk = Number(raw);
+  if (!Number.isInteger(chunk) || chunk < 1 || chunk > groupCount) {
+    throw new Error(
+      `${FULL_SUITE_CHUNK_ENV} must be an integer from 1 to ${groupCount}; received ${JSON.stringify(raw)}`,
+    );
+  }
+
+  return chunk;
 }
 
 /** Parse the `CINDER_TEST_COMPONENTS` env var into a slug list (empty = unset). */
@@ -257,8 +273,13 @@ async function main(): Promise<number> {
     process.stderr.write(`test-changed: full suite (${reason})\n`);
     const componentSlugs = [...(await loadKnownSlugs())];
     const groups = fullSuiteTestPathGroups(componentSlugs);
+    const selectedChunk = parseFullSuiteChunk(process.env[FULL_SUITE_CHUNK_ENV], groups.length);
+    const groupsToRun =
+      selectedChunk === null
+        ? groups.map((group, index) => ({ group, index }))
+        : [{ group: groups[selectedChunk - 1]!, index: selectedChunk - 1 }];
 
-    for (const [index, group] of groups.entries()) {
+    for (const { index, group } of groupsToRun) {
       process.stderr.write(`test-changed: full suite chunk ${index + 1}/${groups.length}\n`);
       const result = await runHookCommand('bun', ['test', ...BUN_TEST_FLAGS, ...group], {
         cwd: packageRoot,
