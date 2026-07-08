@@ -3,11 +3,12 @@
    * @cinder
    * @category navigation
    * @status stable
-   * @purpose Single selectable tab trigger inside a tabs composite that registers with the parent context and controls a matching tab-panel.
+   * @purpose Single selectable tab trigger inside a tabs composite that registers with the parent context and controls a matching tab-panel or caller-owned panel id.
    * @tag navigation
    * @tag tabs
    * @useWhen Declaring one tab heading inside a tabs ancestor with a stable value identifier.
    * @useWhen Pairing one-to-one with a tab-panel that shares the same value to wire aria-controls.
+   * @useWhen Pointing multiple tab triggers at a caller-owned panel with the controls prop.
    * @avoidWhen Used outside a tabs ancestor — the component throws at construction.
    * @avoidWhen Rendering a generic action button — use button instead.
    * @related tabs, tab-list, tab-panel
@@ -27,14 +28,22 @@
   import { getTabsContext } from '../tabs/tabs-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
-  let { value, id, disabled = false, class: className, children, trailing }: TabProps = $props();
+  let {
+    value,
+    id,
+    controls,
+    disabled = false,
+    class: className,
+    children,
+    trailing,
+  }: TabProps = $props();
 
   const tabs = getTabsContext();
 
   // Derive both ids from the root's baseId and the tab's value so that two
-  // Tabs instances sharing the same value produce distinct DOM ids. The panel
-  // id is always computed from baseId and value; it does not track a custom
-  // `id` prop on this Tab.
+  // Tabs instances sharing the same value produce distinct DOM ids. The default
+  // panel id does not track a custom `id` prop on this Tab. `controls` can
+  // intentionally override the controlled panel id for caller-owned panels.
   //
   // ⚠️  Custom-id wiring: if you supply a custom `id` prop to override this
   // Tab's element id, the paired TabPanel's default `aria-labelledby` still
@@ -43,7 +52,11 @@
   // to the paired TabPanel's `ariaLabelledby` prop. Removing the custom `id`
   // override restores fully automatic wiring.
   const tabId = $derived(id ?? `${tabs.baseId}-tab-${value}`);
-  const panelId = $derived(`${tabs.baseId}-panel-${value}`);
+  const panelId = $derived.by(() => {
+    // Caller-owned panels can provide a non-empty aria-controls override.
+    const controlsId = controls?.trim();
+    return controlsId ? controlsId : `${tabs.baseId}-panel-${value}`;
+  });
 
   const isActive = $derived(tabs.isActive(value));
   const isFocusable = $derived(tabs.isFocusable(value));

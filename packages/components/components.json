@@ -5169,11 +5169,12 @@
       "exportName": "Tab",
       "category": "navigation",
       "status": "stable",
-      "purpose": "Single selectable tab trigger inside a tabs composite that registers with the parent context and controls a matching tab-panel.",
+      "purpose": "Single selectable tab trigger inside a tabs composite that registers with the parent context and controls a matching tab-panel or caller-owned panel id.",
       "tags": ["navigation", "tabs"],
       "useWhen": [
         "Declaring one tab heading inside a tabs ancestor with a stable value identifier.",
-        "Pairing one-to-one with a tab-panel that shares the same value to wire aria-controls."
+        "Pairing one-to-one with a tab-panel that shares the same value to wire aria-controls.",
+        "Pointing multiple tab triggers at a caller-owned panel with the controls prop."
       ],
       "avoidWhen": [
         {

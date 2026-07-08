@@ -1,10 +1,16 @@
 import type { Snippet } from 'svelte';
 export type TabProps = {
-  /** Identifier — matches the value of the corresponding TabPanel. */
+  /** Stable identifier used for tab selection; matches TabPanel in the default pattern. */
   value: string;
   /** Optional explicit id override; auto-generated otherwise for ARIA wiring. */
   id?: string;
-  /** Disables this single tab. The panel content is hidden but its DOM stays. */
+  /**
+   * Optional non-empty `aria-controls` target for caller-owned panels. Empty or
+   * whitespace-only strings are treated as omitted. By default, Cinder points
+   * at the matching TabPanel id (`${baseId}-panel-${value}`).
+   */
+  controls?: string;
+  /** Disables this single tab and removes it from keyboard activation. */
   disabled?: boolean;
   /** Additional class names merged with `.cinder-tab`. */
   class?: string;

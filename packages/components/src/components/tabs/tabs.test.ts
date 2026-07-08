@@ -15,6 +15,8 @@ afterEach(() => {
 });
 
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
+const { default: ExternalPanelWrapper } =
+  await import('../../test/fixtures/tabs-external-panel-fixture.svelte');
 const { default: TrailingWrapper } =
   await import('../../test/fixtures/tabs-trailing-fixture.svelte');
 const { default: SiblingWrapper } = await import('../../test/fixtures/tabs-sibling-fixture.svelte');
@@ -68,6 +70,37 @@ describe('Tabs ARIA structure', () => {
     const tab = container.querySelector('[role="tab"][aria-selected="true"]');
     const panel = container.querySelector('[role="tabpanel"]');
     expect(panel?.getAttribute('aria-labelledby')).toBe(tab?.getAttribute('id'));
+  });
+
+  test('tabs can control a caller-owned panel id', async () => {
+    const itemsWithIds = items.map((item) => ({ ...item, id: `editor-tab-${item.value}` }));
+    const { container } = render(ExternalPanelWrapper, {
+      value: 'a',
+      panelId: 'editor-panel',
+      items: itemsWithIds,
+    });
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'));
+    let panel = container.querySelector('[role="tabpanel"]');
+
+    expect(tabs).toHaveLength(3);
+    expect(tabs.map((tab) => tab.getAttribute('aria-controls'))).toEqual([
+      'editor-panel',
+      'editor-panel',
+      'editor-panel',
+    ]);
+    expect(tabs[0]?.getAttribute('tabindex')).toBe('0');
+    expect(tabs[1]?.getAttribute('tabindex')).toBe('-1');
+    expect(panel?.textContent).toContain('A body');
+    expect(panel?.getAttribute('aria-labelledby')).toBe('editor-tab-a');
+
+    await fireEvent.click(tabs[1] as Element);
+
+    expect(tabs[0]?.getAttribute('tabindex')).toBe('-1');
+    expect(tabs[1]?.getAttribute('tabindex')).toBe('0');
+    panel = container.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toContain('B body');
+    expect(panel?.getAttribute('aria-labelledby')).toBe('editor-tab-b');
   });
 });
 

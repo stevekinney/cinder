@@ -4,15 +4,19 @@
   "properties": {
     "value": {
       "type": "string",
-      "description": "Identifier — matches the value of the corresponding TabPanel."
+      "description": "Stable identifier used for tab selection; matches TabPanel in the default pattern."
     },
     "id": {
       "type": "string",
       "description": "Optional explicit id override; auto-generated otherwise for ARIA wiring."
     },
+    "controls": {
+      "type": "string",
+      "description": "Optional non-empty `aria-controls` target for caller-owned panels. Empty or\nwhitespace-only strings are treated as omitted. By default, Cinder points\nat the matching TabPanel id (`${baseId}-panel-${value}`)."
+    },
     "disabled": {
       "type": "boolean",
-      "description": "Disables this single tab. The panel content is hidden but its DOM stays."
+      "description": "Disables this single tab and removes it from keyboard activation."
     },
     "class": {
       "type": "string",

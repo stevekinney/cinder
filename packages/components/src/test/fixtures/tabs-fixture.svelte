@@ -5,7 +5,12 @@
     orientation?: 'horizontal' | 'vertical';
     fill?: boolean;
     activateOnFocus?: boolean;
-    items: Array<{ value: string; title: string; body: string; disabled?: boolean }>;
+    items: Array<{
+      value: string;
+      title: string;
+      body: string;
+      disabled?: boolean;
+    }>;
   };
 </script>
 

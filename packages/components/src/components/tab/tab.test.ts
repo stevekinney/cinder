@@ -8,6 +8,10 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svelte');
+const { default: ControlsFallbackWrapper } =
+  await import('../../test/fixtures/tabs-controls-fallback-fixture.svelte');
+const { default: ExternalPanelWrapper } =
+  await import('../../test/fixtures/tabs-external-panel-fixture.svelte');
 const { default: Tab } = await import('./tab.svelte');
 
 const items = [
@@ -73,5 +77,28 @@ describe('Tab', () => {
     // ids include a $props.id()-generated baseId which can contain characters
     // that need escaping in a CSS selector, so escape before querying.
     expect(container.querySelector(`#${CSS.escape(ariaControls!)}`)).not.toBeNull();
+  });
+
+  test('aria-controls can point at a caller-owned panel id', () => {
+    const { container } = render(ExternalPanelWrapper, {
+      value: 'a',
+      panelId: 'external-panel',
+      items: [{ value: 'a', id: 'tab-a', title: 'A tab', body: 'A body' }],
+    });
+    const tab = container.querySelector('[role="tab"][aria-selected="true"]');
+    const panel = container.querySelector('[role="tabpanel"]');
+    expect(tab?.getAttribute('aria-controls')).toBe('external-panel');
+    expect(panel?.getAttribute('id')).toBe('external-panel');
+    expect(panel?.getAttribute('aria-labelledby')).toBe(tab?.getAttribute('id'));
+  });
+
+  test('blank aria-controls falls back to the matching panel id', () => {
+    const { container } = render(ControlsFallbackWrapper, { controls: '   ' });
+    const tab = container.querySelector('[role="tab"][aria-selected="true"]');
+    const panel = container.querySelector('[role="tabpanel"]');
+    const ariaControls = tab?.getAttribute('aria-controls');
+
+    expect(ariaControls).toBeTruthy();
+    expect(ariaControls).toBe(panel?.getAttribute('id'));
   });
 });
