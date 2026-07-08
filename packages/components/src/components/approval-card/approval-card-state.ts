@@ -100,10 +100,11 @@ export function prepareArgumentsPreview(value: unknown): { value: unknown; trunc
   try {
     const serialized = JSON.stringify(value);
     if (typeof serialized !== 'string' || serialized.length <= ARGUMENTS_PREVIEW_MAX_CHARACTERS) {
-      return {
-        value: typeof value === 'string' ? serialized : value,
-        truncated: false,
-      };
+      // Pass the original value through unchanged — including strings.
+      // PayloadInspector does its own parsing/display/copy handling for
+      // strings; re-serializing here would hand it an already-quoted JSON
+      // string, which displays unquoted but copies quoted (a mismatch).
+      return { value, truncated: false };
     }
     return {
       value: {

@@ -597,6 +597,77 @@ describe('ApprovalCard', () => {
     expect(nextTextarea.value).not.toContain('"force": true');
   });
 
+  test('closes the edit panel when argsPreview changes for the SAME approval request', async () => {
+    const onresolve = mock();
+    const view = render(ApprovalCard, {
+      ...approvalCardProps({
+        editableArgs: true,
+        onresolve,
+        idempotencyKey: 'approval-one',
+        operation: {
+          kind: 'other',
+          argsPreview: { force: false },
+        },
+      }),
+    });
+
+    await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
+    expect(view.getByLabelText('Edited arguments JSON')).toBeTruthy();
+
+    // Same idempotencyKey — the host revised the live arguments (e.g. a
+    // websocket update) while the editor was open, not a new request.
+    await view.rerender({
+      ...approvalCardProps({
+        editableArgs: true,
+        onresolve,
+        idempotencyKey: 'approval-one',
+        operation: {
+          kind: 'other',
+          argsPreview: { force: true },
+        },
+      }),
+    });
+
+    expect(view.queryByLabelText('Edited arguments JSON')).toBeNull();
+
+    await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
+    const reopenedTextarea = view.getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    expect(reopenedTextarea.value).toContain('"force": true');
+  });
+
+  test('displays and copies a string argsPreview as the original, un-quoted value', async () => {
+    const writeText = mock(async () => undefined);
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    try {
+      const { container, getByRole } = render(ApprovalCard, {
+        ...approvalCardProps({
+          operation: {
+            kind: 'other',
+            argsPreview: '--force',
+          },
+        }),
+      });
+
+      const primitive = container.querySelector('.cinder-payload-inspector__primitive');
+      expect(primitive?.textContent?.trim()).toBe('--force');
+      expect(container.textContent).not.toContain('"--force"');
+
+      const copyButton = getByRole('button', { name: 'Copy Arguments' });
+      await fireEvent.click(copyButton);
+      expect(writeText).toHaveBeenCalledWith('--force');
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      });
+    }
+  });
+
   test('truncates large argument previews and renders every touched file', () => {
     const filesTouched = Array.from({ length: 8 }, (_, index) => `src/file-${index + 1}.ts`);
     const { container } = render(ApprovalCard, {

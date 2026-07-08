@@ -56,9 +56,11 @@ limits), set `truncated` to signal this to the reader:
 
 ### Copy behavior
 
-The header copy button copies pretty-printed JSON of the parsed value, or the
-original string verbatim when the payload is a plain string. It is hidden for
-empty and unserializable payloads.
+The header copy button copies pretty-printed JSON of the parsed value. When
+the payload itself is a string — including a JSON-encoded string primitive
+like `'"hello"'` — it copies that original string verbatim instead, so the
+copied text always matches what was actually passed as `value`. It is hidden
+for empty and unserializable payloads.
 
 ### Redacting sensitive fields
 

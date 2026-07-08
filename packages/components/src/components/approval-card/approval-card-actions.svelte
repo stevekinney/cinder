@@ -45,6 +45,20 @@
     previousRequestKey = requestKey;
     resolutionReason = '';
     rememberResolution = false;
+  });
+
+  // Separate from the identity reset above: a host can revise
+  // `operation.argsPreview` for the SAME request (e.g. a live update) while
+  // the edit panel is open. Comparing the formatted snapshot — not object
+  // identity, which changes on unrelated re-renders too — closes a stale
+  // editor whenever the underlying arguments actually change, so a confirmed
+  // edit can never be based on arguments older than what PayloadInspector is
+  // currently showing. Re-opening reseeds from the current value.
+  let previousArgumentsSnapshot = formatEditableArguments(argumentsValue);
+  $effect(() => {
+    const snapshot = formatEditableArguments(argumentsValue);
+    if (snapshot === previousArgumentsSnapshot) return;
+    previousArgumentsSnapshot = snapshot;
     editingArguments = false;
     editedArgumentsText = '';
   });
