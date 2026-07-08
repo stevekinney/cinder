@@ -146,12 +146,14 @@ export function parseJsonText(
  * supplied as `NAME=value` are stripped so no secret material is rendered.
  */
 export function sanitizeEnvironmentNames(names: string[]): string[] {
+  const seen = new Set<string>();
   const sanitizedNames: string[] = [];
 
   for (const name of names) {
     const [firstPart] = name.split('=');
     const sanitizedName = firstPart?.trim() ?? '';
-    if (!sanitizedName || sanitizedNames.includes(sanitizedName)) continue;
+    if (!sanitizedName || seen.has(sanitizedName)) continue;
+    seen.add(sanitizedName);
     sanitizedNames.push(sanitizedName);
   }
 
@@ -160,10 +162,13 @@ export function sanitizeEnvironmentNames(names: string[]): string[] {
 
 /** Collapses duplicate file paths while preserving first-seen order. */
 export function dedupeFilePaths(paths: string[]): string[] {
+  const seen = new Set<string>();
   const uniquePaths: string[] = [];
 
   for (const path of paths) {
-    if (!uniquePaths.includes(path)) uniquePaths.push(path);
+    if (seen.has(path)) continue;
+    seen.add(path);
+    uniquePaths.push(path);
   }
 
   return uniquePaths;
