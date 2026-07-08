@@ -35,6 +35,7 @@ describe('testPathsForScope', () => {
     const paths = testPathsForScope({ mode: 'filtered', slugs: ['button', 'badge'] });
     // Shared-source dirs whose own tests must run when a shared change widens slugs.
     expect(paths).toContain('src/test');
+    expect(paths).toContain('src/cli');
     expect(paths).toContain('src/utilities');
     expect(paths).toContain('src/_internal');
     expect(paths).toContain('src/highlighters');
@@ -65,9 +66,13 @@ describe('fullSuiteTestPathGroups', () => {
     const groups = fullSuiteTestPathGroups([]);
     expect(groups[0]).toContain('scripts');
     expect(groups[0]).toContain('src/test');
+    expect(groups[0]).toContain('src/cli');
     expect(groups[0]).toContain('src/exports-drift.test.ts');
     expect(groups[0]).toContain('src/root-type-exports.test.ts');
     expect(groups[0]).toContain('src/components/svg-data-uri-color-literals.test.ts');
+    expect(groups[0]).toContain(
+      'src/components/_internal/create-command-list-state.svelte.test.ts',
+    );
     expect(groups[0]).toContain('src/components/_internal/create-sliding-dialog-state.test.ts');
     expect(groups[0]).toContain('src/components/_radio/radio.test.ts');
     expect(groups[0]).toContain('src/components/_timeline-item/timeline-item.test.ts');

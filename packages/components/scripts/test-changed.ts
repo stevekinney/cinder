@@ -64,6 +64,7 @@ const workspaceRoot = resolve(packageRoot, '..', '..');
  */
 const ALWAYS_RUN_PATHS = [
   'src/test',
+  'src/cli',
   'src/utilities',
   'src/_internal',
   'src/highlighters',
@@ -98,6 +99,7 @@ const ALWAYS_RUN_ROOT_TESTS = [
  * slugs returned from `loadKnownSlugs()`. They still belong to the full suite.
  */
 const FULL_SUITE_PRIVATE_COMPONENT_TESTS = [
+  'src/components/_internal/create-command-list-state.svelte.test.ts',
   'src/components/_internal/create-sliding-dialog-state.test.ts',
   'src/components/_radio/radio.test.ts',
   'src/components/_timeline-item/timeline-item.test.ts',
