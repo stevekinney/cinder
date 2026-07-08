@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 export type TabProps = {
-  /** Identifier — matches the value of the corresponding TabPanel. */
+  /** Stable identifier used for tab selection; matches TabPanel in the default pattern. */
   value: string;
   /** Optional explicit id override; auto-generated otherwise for ARIA wiring. */
   id?: string;

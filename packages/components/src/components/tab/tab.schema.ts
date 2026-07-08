@@ -6,7 +6,8 @@ const schema = {
   properties: {
     value: {
       type: 'string',
-      description: 'Identifier — matches the value of the corresponding TabPanel.',
+      description:
+        'Stable identifier used for tab selection; matches TabPanel in the default pattern.',
     },
     id: {
       type: 'string',
