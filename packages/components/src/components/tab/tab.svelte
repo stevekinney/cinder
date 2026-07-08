@@ -53,6 +53,7 @@
   // override restores fully automatic wiring.
   const tabId = $derived(id ?? `${tabs.baseId}-tab-${value}`);
   const panelId = $derived.by(() => {
+    // Caller-owned panels can provide a non-empty aria-controls override.
     const controlsId = controls?.trim();
     return controlsId ? controlsId : `${tabs.baseId}-panel-${value}`;
   });
