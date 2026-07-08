@@ -117,6 +117,10 @@
   const isActionable = $derived(
     isApprovalActionable(approvalState, expirationTimestamp, currentTime),
   );
+  // Guards against a non-function truthy value reaching a JS (non-typechecked)
+  // or schema-driven caller — `onresolve?.()` alone would still throw on a
+  // truthy non-function.
+  const hasResolutionCallback = $derived(typeof onresolve === 'function');
 
   const riskLabel = $derived(RISK_LABELS[tool.risk]);
   const RiskIcon = $derived(RISK_ICONS[tool.risk]);
@@ -187,7 +191,7 @@
       }
       return;
     }
-    onresolve?.(resolution);
+    if (typeof onresolve === 'function') onresolve(resolution);
   }
 </script>
 
@@ -348,7 +352,7 @@
         </div>
       </Collapsible>
 
-      {#if isActionable && onresolve}
+      {#if isActionable && hasResolutionCallback}
         <ApprovalCardActions
           idBase={rootId}
           requestKey={idempotencyKey}

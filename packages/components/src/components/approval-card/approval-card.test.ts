@@ -247,6 +247,15 @@ describe('ApprovalCard', () => {
     expect(queryByRole('checkbox')).toBeNull();
   });
 
+  test('renders no action buttons and does not throw when onresolve is a truthy non-function', () => {
+    const { queryByRole } = render(ApprovalCard, {
+      ...approvalCardProps({ onresolve: 'not-a-function' as unknown as () => void }),
+    });
+
+    expect(queryByRole('group', { name: 'Approval actions' })).toBeNull();
+    expect(queryByRole('button', { name: 'Approve' })).toBeNull();
+  });
+
   test('orders actions with the primary decision last, matching the dialog convention', () => {
     const { getByRole } = render(ApprovalCard, {
       ...approvalCardProps({ editableArgs: true }),

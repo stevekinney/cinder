@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import Ajv2020 from 'ajv/dist/2020';
@@ -10,7 +10,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, cleanup } = await import('@testing-library/svelte');
+const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: PayloadInspector } = await import('./payload-inspector.svelte');
 const { default: payloadInspectorSchema } = await import('./payload-inspector.schema.ts');
 
@@ -154,6 +154,31 @@ describe('PayloadInspector', () => {
     test('parses a valid JSON array string into a tree', () => {
       const { container } = renderInspector({ value: '[1,2,3]' });
       expect(container.querySelector('.cinder-json-viewer')).not.toBeNull();
+    });
+
+    test('copies a JSON-encoded string payload as the original quoted input, not the unquoted parsed result', async () => {
+      const writeText = mock(async () => undefined);
+      const originalClipboard = navigator.clipboard;
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText },
+      });
+
+      try {
+        const { container } = renderInspector({ value: '"hello"' });
+        const copyButton = container.querySelector<HTMLButtonElement>('.cinder-copy-button');
+        expect(copyButton).not.toBeNull();
+
+        await fireEvent.click(copyButton as HTMLButtonElement);
+
+        expect(writeText).toHaveBeenCalledWith('"hello"');
+        expect(writeText).not.toHaveBeenCalledWith('hello');
+      } finally {
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: originalClipboard,
+        });
+      }
     });
 
     test('preserves a plain string as an inspectable value', () => {

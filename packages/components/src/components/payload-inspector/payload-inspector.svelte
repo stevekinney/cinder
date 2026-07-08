@@ -123,11 +123,14 @@
       typeof parsedValue === 'string',
   );
 
-  // Copy target: the original string verbatim when the payload was a string
-  // that did not parse into structure; otherwise pretty-printed JSON.
+  // Copy target: the original string verbatim whenever the payload itself was
+  // a string — including a JSON-encoded string primitive like '"hello"',
+  // which parses to the bare string `hello` but should still copy as the
+  // original input, not the unquoted parsed result. Everything else copies
+  // as pretty-printed JSON of the parsed value.
   const copyText = $derived.by((): string => {
     if (!parseResult.ok) return typeof value === 'string' ? value : '';
-    if (typeof parsedValue === 'string') return parsedValue;
+    if (typeof value === 'string') return value;
     try {
       return JSON.stringify(parsedValue, null, 2) ?? '';
     } catch {
