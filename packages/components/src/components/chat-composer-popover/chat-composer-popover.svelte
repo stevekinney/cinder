@@ -261,9 +261,9 @@
     anchor?.focus();
     suppressNextValueSync = true;
     onselect?.(detail);
-    setTimeout(() => {
+    queueMicrotask(() => {
       suppressNextValueSync = false;
-    }, 0);
+    });
   }
 </script>
 
