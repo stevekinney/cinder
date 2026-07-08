@@ -9,7 +9,6 @@
       value: string;
       title: string;
       body: string;
-      controls?: string;
       disabled?: boolean;
     }>;
   };
@@ -34,15 +33,7 @@
   <TabList label="Test tabs">
     {#each items as item (item.value)}
       {#if item.disabled !== undefined}
-        {#if item.controls !== undefined}
-          <Tab value={item.value} controls={item.controls} disabled={item.disabled}
-            >{item.title}</Tab
-          >
-        {:else}
-          <Tab value={item.value} disabled={item.disabled}>{item.title}</Tab>
-        {/if}
-      {:else if item.controls !== undefined}
-        <Tab value={item.value} controls={item.controls}>{item.title}</Tab>
+        <Tab value={item.value} disabled={item.disabled}>{item.title}</Tab>
       {:else}
         <Tab value={item.value}>{item.title}</Tab>
       {/if}

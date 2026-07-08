@@ -52,7 +52,10 @@
   // to the paired TabPanel's `ariaLabelledby` prop. Removing the custom `id`
   // override restores fully automatic wiring.
   const tabId = $derived(id ?? `${tabs.baseId}-tab-${value}`);
-  const panelId = $derived(controls ?? `${tabs.baseId}-panel-${value}`);
+  const panelId = $derived.by(() => {
+    const controlsId = controls?.trim();
+    return controlsId ? controlsId : `${tabs.baseId}-panel-${value}`;
+  });
 
   const isActive = $derived(tabs.isActive(value));
   const isFocusable = $derived(tabs.isFocusable(value));

@@ -5,8 +5,9 @@ export type TabProps = {
   /** Optional explicit id override; auto-generated otherwise for ARIA wiring. */
   id?: string;
   /**
-   * Optional explicit `aria-controls` target for caller-owned panels. By default,
-   * Cinder points at the matching TabPanel id (`${baseId}-panel-${value}`).
+   * Optional non-empty `aria-controls` target for caller-owned panels. Empty or
+   * whitespace-only strings are treated as omitted. By default, Cinder points
+   * at the matching TabPanel id (`${baseId}-panel-${value}`).
    */
   controls?: string;
   /** Disables this single tab. The panel content is hidden but its DOM stays. */

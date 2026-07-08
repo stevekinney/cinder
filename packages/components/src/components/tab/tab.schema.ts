@@ -15,7 +15,7 @@ const schema = {
     controls: {
       type: 'string',
       description:
-        'Optional explicit `aria-controls` target for caller-owned panels. By default,\nCinder points at the matching TabPanel id (`${baseId}-panel-${value}`).',
+        'Optional non-empty `aria-controls` target for caller-owned panels. Empty or\nwhitespace-only strings are treated as omitted. By default, Cinder points\nat the matching TabPanel id (`${baseId}-panel-${value}`).',
     },
     disabled: {
       type: 'boolean',

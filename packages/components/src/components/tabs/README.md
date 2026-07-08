@@ -41,22 +41,31 @@ id through `Tabs.Trigger`'s `controls` prop and render the panel yourself:
   import { Tabs } from '@lostgradient/cinder/tabs';
 
   let active = $state('index.ts');
+  const tabIds = {
+    'index.ts': 'editor-tab-index',
+    'app.svelte': 'editor-tab-app',
+  };
 </script>
 
 <Tabs bind:value={active}>
   <Tabs.List label="Editor files">
-    <Tabs.Trigger value="index.ts" controls="editor-panel">index.ts</Tabs.Trigger>
-    <Tabs.Trigger value="app.svelte" controls="editor-panel">app.svelte</Tabs.Trigger>
+    <Tabs.Trigger id={tabIds['index.ts']} value="index.ts" controls="editor-panel">
+      index.ts
+    </Tabs.Trigger>
+    <Tabs.Trigger id={tabIds['app.svelte']} value="app.svelte" controls="editor-panel">
+      app.svelte
+    </Tabs.Trigger>
   </Tabs.List>
 </Tabs>
 
-<div id="editor-panel" role="tabpanel" aria-label="Active editor file" tabindex="0">
+<div id="editor-panel" role="tabpanel" aria-labelledby={tabIds[active]} tabindex="0">
   {active}
 </div>
 ```
 
 This keeps Cinder in charge of roving tabindex, activation, disabled state, and
-tab styling while the caller owns an imperative or stateful panel element.
+tab styling while the caller owns an imperative or stateful panel element. Give
+the tabs explicit ids so the external panel can label itself with the active tab.
 
 ## Trailing badges and counts
 

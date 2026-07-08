@@ -16,8 +16,10 @@ When the selected tab controls one stable caller-owned panel, such as a Monaco
 editor host whose contents change without replacing the panel element, pass the
 panel element's id to each `Tab` via `controls`. In that external-panel pattern,
 the consumer owns the panel element, `role="tabpanel"`, and labelling from the
-active tab. Cinder still owns tab registration, disabled state, roving tabindex,
-activation, and visual tab styling.
+active tab. Provide explicit tab ids and set the caller-owned panel's
+`aria-labelledby` to the active tab id so its accessible name changes with the
+selected tab. Cinder still owns tab registration, disabled state, roving
+tabindex, activation, and visual tab styling.
 
 ## Roving tabindex
 
