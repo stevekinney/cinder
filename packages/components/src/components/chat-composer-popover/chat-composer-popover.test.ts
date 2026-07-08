@@ -211,6 +211,27 @@ describe('ChatComposerPopover', () => {
     expect(composer.getAttribute('aria-activedescendant')).toBeNull();
   });
 
+  test('does not reopen from a pending caret sync after dismissal', async () => {
+    const onDismissed = mock(() => {});
+    render(ChatComposerPopoverFixture, { onDismissed });
+    const composer = await typeComposer('hello /h');
+
+    await waitFor(() => expect(queryListbox()).not.toBeNull());
+
+    composer.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }),
+    );
+    composer.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    expect(queryListbox()).toBeNull();
+    expect(onDismissed).toHaveBeenCalledTimes(1);
+    expect(composer.getAttribute('aria-expanded')).toBe('false');
+  });
+
   test('lets Enter submit when the filtered list has no active suggestion', async () => {
     const submittedMessages: unknown[] = [];
     render(ChatComposerPopoverFixture, {

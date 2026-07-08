@@ -1,7 +1,12 @@
 import { inDocumentOrder } from '../../utilities/document-order.ts';
 import type { CommandItemRegistrationInput, CommandListContext } from './command-list-context.ts';
 
-type RegistrationRecord = CommandItemRegistrationInput & { id: string; node: HTMLElement };
+type RegistrationHandle = { id: string; unregister: () => void };
+type RegistrationRecord = CommandItemRegistrationInput & {
+  id: string;
+  node: HTMLElement;
+  handle: RegistrationHandle;
+};
 
 export type CommandListKeyboardOptions = {
   event: KeyboardEvent;
@@ -48,7 +53,7 @@ export class CommandListState {
     this.#intendedActiveId = null;
     this.registrations = this.registrations.map((registration, index) => ({
       ...registration,
-      id: `${listboxId}-item-${index + 1}`,
+      id: updateRegistrationHandleId(registration, `${listboxId}-item-${index + 1}`),
     }));
     this.#itemCounter = this.registrations.length;
     this.refreshRegistrationsReady();
@@ -79,27 +84,25 @@ export class CommandListState {
   register(input: CommandItemRegistrationInput, node: HTMLElement) {
     this.syncListboxId();
     const id = `${this.listboxId}-item-${++this.#itemCounter}`;
-    const getRegisteredId = () =>
-      this.registrations.find((registeredItem) => registeredItem.node === node)?.id ?? id;
-    const registration: RegistrationRecord = {
+    const handle = $state<RegistrationHandle>({
       id,
-      node,
-      getValue: input.getValue,
-      getOnselect: input.getOnselect,
-      getDisabled: input.getDisabled,
-    };
-    this.registrations.push(registration);
-    return {
-      get id() {
-        return getRegisteredId();
-      },
       unregister: () => {
         const index = this.registrations.findIndex(
           (registeredItem) => registeredItem.node === node,
         );
         if (index !== -1) this.registrations.splice(index, 1);
       },
+    });
+    const registration: RegistrationRecord = {
+      id,
+      node,
+      handle,
+      getValue: input.getValue,
+      getOnselect: input.getOnselect,
+      getDisabled: input.getDisabled,
     };
+    this.registrations.push(registration);
+    return handle;
   }
 
   activateItemById(id: string): RegistrationRecord | null {
@@ -195,4 +198,9 @@ export class CommandListState {
 
 export function createCommandListState(listboxId: string | (() => string)): CommandListState {
   return new CommandListState(listboxId);
+}
+
+function updateRegistrationHandleId(registration: RegistrationRecord, id: string): string {
+  registration.handle.id = id;
+  return id;
 }

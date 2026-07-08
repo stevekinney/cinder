@@ -142,6 +142,7 @@
 
   function dismiss({ restoreFocus = true }: { restoreFocus?: boolean } = {}): void {
     if (!open && !activeMatch && !activeItemId) return;
+    clearComposerSyncTimer();
     open = false;
     activeItemId = null;
     activeMatch = null;
@@ -170,11 +171,17 @@
   function syncComposerSelectionAfterNativeNavigation(
     composerElement: HTMLTextAreaElement | HTMLInputElement,
   ): void {
-    if (composerSyncTimer !== null) clearTimeout(composerSyncTimer);
+    clearComposerSyncTimer();
     composerSyncTimer = setTimeout(() => {
       composerSyncTimer = null;
       updateFromComposer(composerElement, composerElement.value);
     }, 0);
+  }
+
+  function clearComposerSyncTimer(): void {
+    if (composerSyncTimer === null) return;
+    clearTimeout(composerSyncTimer);
+    composerSyncTimer = null;
   }
 
   function handleComposerKeydown(event: KeyboardEvent): void {
@@ -223,7 +230,7 @@
   }
 
   onDestroy(() => {
-    if (composerSyncTimer !== null) clearTimeout(composerSyncTimer);
+    clearComposerSyncTimer();
   });
 
   $effect(() => {
