@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Basic payload inspector';
   export const description =
-    'Inspect a structured object payload with summary metadata, interactive tree, and raw JSON views.';
+    'Inspect a structured object payload as an interactive tree with a copy action and byte size.';
 </script>
 
 <script lang="ts">
@@ -22,11 +22,4 @@
   };
 </script>
 
-<PayloadInspector
-  value={payload}
-  meta={{
-    contentType: 'application/json',
-    source: 'checkout-workflow',
-    timestamp: '2026-06-11T14:22:00Z',
-  }}
-/>
+<PayloadInspector value={payload} label="Checkout payload" />

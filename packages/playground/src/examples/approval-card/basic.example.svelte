@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Command approval';
   export const description =
-    'A pending command approval with sandbox, policy, arguments, and masked environment names.';
+    'A pending command approval with sandbox context, arguments, environment names, and editable arguments.';
 </script>
 
 <script lang="ts">

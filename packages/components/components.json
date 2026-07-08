@@ -290,14 +290,7 @@
           "reason": "Collecting arbitrary form input for a workflow — compose form controls directly instead."
         }
       ],
-      "related": [
-        "card",
-        "badge",
-        "status-dot",
-        "payload-inspector",
-        "secret-value-field",
-        "code-block"
-      ],
+      "related": ["card", "badge", "status-dot", "payload-inspector", "code-block", "collapsible"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -307,7 +300,7 @@
       },
       "a11y": {
         "notes": [
-          "Uses a named region and native button controls so approval actions are discoverable by assistive technology.",
+          "Renders as an article with native button controls so approval actions are discoverable without polluting the landmark list.",
           "Expiration changes update the visible state but do not fire approval callbacks automatically."
         ]
       }
@@ -3695,11 +3688,11 @@
       "exportName": "PayloadInspector",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Composed inspector for structured payloads with summary, tree, and raw views, copy actions, and size/truncation status.",
+      "purpose": "Compact inspector for structured payloads: a labeled tree view with a copy action and size/truncation status.",
       "tags": ["json", "inspector", "payload"],
       "useWhen": [
         "Inspecting workflow inputs, signal payloads, activity results, or API response bodies in a dashboard.",
-        "Displaying a structured payload with metadata like content type, source, and timestamp."
+        "Displaying a structured payload with a visible label, byte size, and copy affordance."
       ],
       "avoidWhen": [
         {
@@ -3709,7 +3702,7 @@
           "reason": "Needing search, filtering, or virtualization over large collections — compose a custom viewer."
         }
       ],
-      "related": ["json-viewer", "code-block", "description-list", "copy-button"],
+      "related": ["json-viewer", "code-block", "copy-button"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

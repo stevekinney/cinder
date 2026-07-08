@@ -18,6 +18,10 @@
       "type": "boolean",
       "description": "When true, render a copy button in the header."
     },
+    "showLanguageLabel": {
+      "type": "boolean",
+      "description": "Whether to render the language label in the header. Default `true`.\nPass `false` to keep `language`-driven highlighting without the visible\nheader chip; with `copyable` also unset, no header renders at all."
+    },
     "class": {
       "type": "string",
       "description": "Additional class names merged with `.cinder-code-block`."

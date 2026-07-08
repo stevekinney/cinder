@@ -7,38 +7,15 @@
     },
     "truncated": {
       "type": "boolean",
-      "description": "When true, the payload has been truncated by the producer (e.g. because it\nexceeded a wire size limit). The inspector renders a truncation badge in the\nsummary and a notice above the raw view."
+      "description": "When true, the payload has been truncated by the producer (e.g. because it\nexceeded a wire size limit). The inspector renders a truncation badge in\nthe header."
     },
     "maxBytes": {
       "type": "number",
-      "description": "Maximum byte size before the tree view is replaced with an oversize\nplaceholder. Defaults to 1,048,576 (1 MB). Does not affect the raw view."
-    },
-    "meta": {
-      "type": "object",
-      "properties": {
-        "contentType": {
-          "type": "string",
-          "description": "Content type or serializer label, e.g. \"application/json\" or \"Protobuf\"."
-        },
-        "source": {
-          "type": "string",
-          "description": "Optional source label, e.g. a workflow name, activity name, or endpoint path."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "Optional ISO 8601 timestamp string rendered in the summary."
-        }
-      },
-      "additionalProperties": false,
-      "description": "Structured metadata shown in the summary panel. Pass contentType, source,\nand/or timestamp to populate the description list rows."
-    },
-    "activeView": {
-      "enum": ["summary", "tree", "raw"],
-      "description": "Initially active view tab. Defaults to \"summary\". Bind to control\nthe active tab from outside."
+      "description": "Maximum byte size before the tree view is replaced with an oversize\nplaceholder. Defaults to 1,048,576 (1 MB)."
     },
     "label": {
       "type": "string",
-      "description": "Label for the inspector region, used as the accessible name for the\ncontaining section. Defaults to \"Payload inspector\"."
+      "description": "Visible header label for the inspector. Defaults to \"Payload inspector\"."
     },
     "class": {
       "type": "string",
@@ -48,11 +25,6 @@
   "additionalProperties": false,
   "metadata": {
     "unsupportedProps": [
-      {
-        "name": "format",
-        "reason": "function-or-snippet",
-        "description": "Custom serializer for the Raw view display text. Receives the parsed value\nand must return a string. Defaults to JSON.stringify with 2-space\nindentation. Use this to customize key ordering, indentation, or\nalternative serialization formats. Does not affect the Summary or Tree\nviews, or the copy buttons. For redaction, transform the value upstream and\npass the already-redacted value as `value`."
-      },
       {
         "name": "parse",
         "reason": "function-or-snippet",

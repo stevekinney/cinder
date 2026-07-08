@@ -85,6 +85,7 @@
   data-cinder-variant={variant}
   data-cinder-tone={tone}
   data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
+  data-cinder-padding={padding}
   {...labelAttributes}
 >
   {#if header}

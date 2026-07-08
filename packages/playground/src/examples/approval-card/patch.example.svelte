@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Patch approval';
   export const description =
-    'A high-risk patch approval that previews touched files, arguments, and the proposed diff.';
+    'A high-risk patch approval that previews the proposed diff, touched files, and arguments.';
 </script>
 
 <script lang="ts">
@@ -38,8 +38,5 @@
   policyVersion="policy-2026-06"
   idempotencyKey="approval-patch-01"
   state="pending"
-  onapprove={() => undefined}
-  ondeny={() => undefined}
-  onremember={() => undefined}
-  oncancel={() => undefined}
+  onresolve={() => undefined}
 />

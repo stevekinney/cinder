@@ -34,11 +34,4 @@
   };
 </script>
 
-<PayloadInspector
-  value={workflowInput}
-  meta={{
-    contentType: 'application/json',
-    source: 'order-service',
-    timestamp: '2026-06-11T09:15:42Z',
-  }}
-/>
+<PayloadInspector value={workflowInput} label="Workflow input" />

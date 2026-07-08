@@ -25,11 +25,4 @@
   };
 </script>
 
-<PayloadInspector
-  value={signalPayload}
-  meta={{
-    contentType: 'application/json',
-    source: 'payment-service',
-    timestamp: '2026-06-11T14:23:01Z',
-  }}
-/>
+<PayloadInspector value={signalPayload} label="Signal payload" />

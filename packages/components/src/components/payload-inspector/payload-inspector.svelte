@@ -3,48 +3,36 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Composed inspector for structured payloads with summary, tree, and raw views, copy actions, and size/truncation status.
+   * @purpose Compact inspector for structured payloads: a labeled tree view with a copy action and size/truncation status.
    * @tag json
    * @tag inspector
    * @tag payload
    * @useWhen Inspecting workflow inputs, signal payloads, activity results, or API response bodies in a dashboard.
-   * @useWhen Displaying a structured payload with metadata like content type, source, and timestamp.
+   * @useWhen Displaying a structured payload with a visible label, byte size, and copy affordance.
    * @avoidWhen Rendering a raw code block only — use code-block directly instead.
    * @avoidWhen Needing search, filtering, or virtualization over large collections — compose a custom viewer.
-   * @related json-viewer, code-block, description-list, copy-button
+   * @related json-viewer, code-block, copy-button
    */
   export type {
-    PayloadInspectorMeta,
     PayloadInspectorProps,
     PayloadInspectorSchemaProps,
     PayloadInspectorSchemaValue,
-    PayloadInspectorView,
   } from './payload-inspector.types.ts';
 </script>
 
 <script lang="ts">
   import type { PayloadInspectorProps } from './payload-inspector.types.ts';
-  import type { DescriptionListItem } from '../description-list/description-list.types.ts';
 
   import Badge from '../badge/badge.svelte';
-  import CodeBlock from '../code-block/code-block.svelte';
   import CopyButton from '../copy-button/copy-button.svelte';
-  import DescriptionList from '../description-list/description-list.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
-  import Tabs from '../tabs/tabs.svelte';
-  import TabList from '../tab-list/tab-list.svelte';
-  import Tab from '../tab/tab.svelte';
-  import TabPanel from '../tab-panel/tab-panel.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
   let {
     value,
     truncated = false,
     maxBytes = 1_048_576,
-    meta,
-    format,
     parse,
-    activeView = $bindable('summary'),
     label = 'Payload inspector',
     class: className,
     ...rest
@@ -113,28 +101,6 @@
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   });
 
-  // --------------------------------------------------------------------------
-  // Formatted raw text for the raw view.
-  //
-  // `format` controls how the raw view *displays* the payload — it is a
-  // serializer (e.g. sorted keys, custom indentation) not a redaction hook.
-  // Redaction should happen upstream: pass the already-redacted object as
-  // `value` so every view (Summary, Tree, Raw) sees the redacted form.
-  // --------------------------------------------------------------------------
-
-  const rawText = $derived.by((): string => {
-    if (!parseResult.ok) {
-      // Show the original string if we have one (so the user can see what failed to parse).
-      return typeof value === 'string' ? value : '';
-    }
-    try {
-      const formatter = format ?? ((v: unknown) => JSON.stringify(v, null, 2));
-      return formatter(parsedValue) ?? '';
-    } catch {
-      return typeof value === 'string' ? value : '';
-    }
-  });
-
   // True when the in-memory value cannot be round-tripped through JSON.stringify
   // (e.g. circular references, BigInt). Only fires for non-string values that
   // parsed successfully — string parse errors are handled by parseResult.ok.
@@ -148,128 +114,35 @@
     }
   });
 
-  // --------------------------------------------------------------------------
-  // Summary metadata items for DescriptionList.
-  // --------------------------------------------------------------------------
-
-  const summaryItems = $derived.by((): DescriptionListItem[] => {
-    const items: DescriptionListItem[] = [];
-    items.push({ term: 'Size', definition: byteLabel });
-
-    if (meta?.contentType) {
-      items.push({ term: 'Content type', definition: meta.contentType });
-    }
-    if (meta?.source) {
-      items.push({ term: 'Source', definition: meta.source });
-    }
-    if (meta?.timestamp) {
-      // Attempt to format as a locale string; fall back to raw string.
-      let displayTime = meta.timestamp;
-      try {
-        displayTime = new Date(meta.timestamp).toLocaleString();
-      } catch {
-        // leave as-is
-      }
-      items.push({ term: 'Timestamp', definition: displayTime });
-    }
-    return items;
-  });
-
-  // --------------------------------------------------------------------------
-  // Type classification for the summary type badge.
-  // --------------------------------------------------------------------------
-
-  type ValueKind =
-    | 'null'
-    | 'undefined'
-    | 'boolean'
-    | 'number'
-    | 'string'
-    | 'array'
-    | 'object'
-    | 'invalid';
-
-  const valueKind = $derived.by((): ValueKind => {
-    if (!parseResult.ok) return 'invalid';
-    const v = parsedValue;
-    if (v === null) return 'null';
-    if (v === undefined) return 'undefined';
-    if (typeof v === 'boolean') return 'boolean';
-    if (typeof v === 'number') return 'number';
-    if (typeof v === 'string') return 'string';
-    if (Array.isArray(v)) return 'array';
-    return 'object';
-  });
-
-  // --------------------------------------------------------------------------
-  // Whether the value is a primitive (shown inline in the summary).
-  // --------------------------------------------------------------------------
-
-  const isPrimitive = $derived(
-    valueKind === 'null' ||
-      valueKind === 'undefined' ||
-      valueKind === 'boolean' ||
-      valueKind === 'number' ||
-      valueKind === 'string',
-  );
-
   const isEmpty = $derived(parsedValue === undefined && value === undefined);
 
-  // --------------------------------------------------------------------------
-  // Copy targets for the header copy buttons.
-  //
-  // copy-raw  → "payload as received": the original string verbatim if value
-  //             was a string, otherwise compact JSON (one-liner, no spaces).
-  //             This is what you would paste into a message bus or log query.
-  //
-  // copy-formatted → pretty-printed JSON of the parsed value (2-space indent).
-  //                  Ignores the `format` prop so it is always valid JSON.
-  //                  This is what you would read or diff in an editor.
-  // --------------------------------------------------------------------------
+  const isPrimitive = $derived(
+    parsedValue === null ||
+      typeof parsedValue === 'boolean' ||
+      typeof parsedValue === 'number' ||
+      typeof parsedValue === 'string',
+  );
 
-  const copyRawText = $derived.by((): string => {
+  // Copy target: the original string verbatim whenever the payload itself was
+  // a string — including a JSON-encoded string primitive like '"hello"',
+  // which parses to the bare string `hello` but should still copy as the
+  // original input, not the unquoted parsed result. Everything else copies
+  // as pretty-printed JSON of the parsed value.
+  const copyText = $derived.by((): string => {
+    if (!parseResult.ok) return typeof value === 'string' ? value : '';
     if (typeof value === 'string') return value;
-    if (!parseResult.ok) return '';
     try {
-      return JSON.stringify(parsedValue) ?? '';
+      return JSON.stringify(parsedValue, null, 2) ?? '';
     } catch {
       return '';
     }
   });
 
-  const copyFormattedText = $derived.by((): string => {
-    if (!parseResult.ok) return rawText;
-    try {
-      return JSON.stringify(parsedValue, null, 2) ?? '';
-    } catch {
-      return rawText;
-    }
-  });
-
-  const canCopyFormatted = $derived(!isEmpty && parseResult.ok && !unserializable);
-  const canCopyRaw = $derived(!isEmpty && (typeof value === 'string' || canCopyFormatted));
-
-  // --------------------------------------------------------------------------
-  // Helper: badge variant for the type tag.
-  // --------------------------------------------------------------------------
-
-  function kindVariant(kind: ValueKind): 'neutral' | 'info' | 'success' | 'warning' | 'danger' {
-    if (kind === 'invalid') return 'danger';
-    if (kind === 'null' || kind === 'undefined') return 'warning';
-    if (kind === 'object' || kind === 'array') return 'info';
-    return 'neutral';
-  }
-
-  // --------------------------------------------------------------------------
-  // Computed active view binding — keep activeView in sync with $bindable.
-  // Because Tabs uses bind:value internally, we forward the $bindable to it
-  // directly. The Tabs bind creates a two-way link that keeps activeView
-  // updated when the user switches tabs, and respects external changes too.
-  // --------------------------------------------------------------------------
+  const canCopy = $derived(!isEmpty && copyText !== '');
 </script>
 
-<section {...rest} class={classNames('cinder-payload-inspector', className)} aria-label={label}>
-  <!-- Header bar: label, size, copy actions -->
+<div {...rest} class={classNames('cinder-payload-inspector', className)}>
+  <!-- Header bar: label, size, copy action -->
   <div class="cinder-payload-inspector__header">
     <span class="cinder-payload-inspector__label">{label}</span>
     <div class="cinder-payload-inspector__header-actions">
@@ -281,124 +154,40 @@
       {#if truncated}
         <Badge variant="warning" size="xs">Truncated</Badge>
       {/if}
-      {#if canCopyFormatted}
+      {#if canCopy}
         <CopyButton
-          value={copyFormattedText}
-          label="Copy formatted"
-          copiedLabel="Formatted copied"
-          title="Copy formatted payload"
-          iconOnly
-        />
-      {/if}
-      {#if canCopyRaw}
-        <CopyButton
-          value={copyRawText}
-          label="Copy raw"
-          copiedLabel="Raw copied"
-          title="Copy raw payload"
+          value={copyText}
+          label={`Copy ${label}`}
+          copiedLabel="Copied"
+          title={`Copy ${label}`}
           iconOnly
         />
       {/if}
     </div>
   </div>
 
-  <!-- Tab switcher: Summary / Tree / Raw -->
-  <div class="cinder-payload-inspector__tabs">
-    <Tabs bind:value={activeView}>
-      <TabList label="Inspector views">
-        <Tab value="summary">Summary</Tab>
-        <Tab value="tree">Tree</Tab>
-        <Tab value="raw">Raw</Tab>
-      </TabList>
-
-      <!-- Summary panel -->
-      <TabPanel value="summary">
-        <div class="cinder-payload-inspector__panel">
-          {#if isEmpty}
-            <div class="cinder-payload-inspector__empty" role="status">No payload</div>
-          {/if}
-          {#if !isEmpty}
-            <div class="cinder-payload-inspector__summary">
-              <div class="cinder-payload-inspector__summary-badges">
-                <Badge variant={kindVariant(valueKind)} size="xs" mono>{valueKind}</Badge>
-                {#if truncated}
-                  <Badge variant="warning" size="xs">Truncated</Badge>
-                {/if}
-              </div>
-              {#if summaryItems.length > 0}
-                <DescriptionList items={summaryItems} variant="two-column" />
-              {/if}
-              {#if !parseResult.ok}
-                <div
-                  class="cinder-payload-inspector__notice cinder-payload-inspector__notice--warning"
-                  role="alert"
-                >
-                  Parse error: {parseResult.error}
-                </div>
-              {/if}
-              {#if parseResult.ok && isPrimitive}
-                <div class="cinder-payload-inspector__summary-value">
-                  <span class="cinder-payload-inspector__summary-value-label">Value</span>
-                  <span class="cinder-payload-inspector__primitive">{String(parsedValue)}</span>
-                </div>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      </TabPanel>
-
-      <!-- Tree panel -->
-      <TabPanel value="tree">
-        <div class="cinder-payload-inspector__panel">
-          {#if isEmpty}
-            <div class="cinder-payload-inspector__empty" role="status">No payload</div>
-          {/if}
-          {#if !isEmpty && !parseResult.ok}
-            <div
-              class="cinder-payload-inspector__notice cinder-payload-inspector__notice--warning"
-              role="alert"
-            >
-              Cannot render tree: {parseResult.error}
-            </div>
-          {/if}
-          {#if !isEmpty && parseResult.ok && unserializable}
-            <div class="cinder-payload-inspector__notice" role="status">
-              This value can't be serialized as JSON (it may contain circular references or BigInt
-              values).
-            </div>
-          {/if}
-          {#if !isEmpty && parseResult.ok && !unserializable}
-            <JsonViewer value={parsedValue} {maxBytes} />
-          {/if}
-        </div>
-      </TabPanel>
-
-      <!-- Raw panel -->
-      <TabPanel value="raw">
-        <div class="cinder-payload-inspector__panel cinder-payload-inspector__panel--code">
-          {#if isEmpty}
-            <div class="cinder-payload-inspector__empty" role="status">No payload</div>
-          {/if}
-          {#if !isEmpty && truncated}
-            <div class="cinder-payload-inspector__notice cinder-payload-inspector__notice--warning">
-              This payload has been truncated by the producer. The raw view shows only the received
-              portion.
-            </div>
-          {/if}
-          {#if !isEmpty && unserializable}
-            <div class="cinder-payload-inspector__notice" role="status">
-              This value can't be serialized as JSON (it may contain circular references or BigInt
-              values).
-            </div>
-          {/if}
-          {#if !isEmpty && !unserializable}
-            <!-- highlight={false} is an absolute off-switch: no Shiki import,
-                 guaranteed-escaped plaintext. Consumers who want highlighting can
-                 pass a `format` function and swap in a custom view. -->
-            <CodeBlock code={rawText} highlight={false} class="cinder-payload-inspector__raw" />
-          {/if}
-        </div>
-      </TabPanel>
-    </Tabs>
+  <div class="cinder-payload-inspector__panel">
+    {#if isEmpty}
+      <div class="cinder-payload-inspector__empty" role="status">No payload</div>
+    {:else if !parseResult.ok}
+      <div
+        class="cinder-payload-inspector__notice cinder-payload-inspector__notice--warning"
+        role="alert"
+      >
+        Parse error: {parseResult.error}
+      </div>
+      {#if typeof value === 'string'}
+        <pre class="cinder-payload-inspector__primitive">{value}</pre>
+      {/if}
+    {:else if unserializable}
+      <div class="cinder-payload-inspector__notice" role="status">
+        This value can't be serialized as JSON (it may contain circular references or BigInt
+        values).
+      </div>
+    {:else if isPrimitive}
+      <pre class="cinder-payload-inspector__primitive">{String(parsedValue)}</pre>
+    {:else}
+      <JsonViewer value={parsedValue} {maxBytes} />
+    {/if}
   </div>
-</section>
+</div>

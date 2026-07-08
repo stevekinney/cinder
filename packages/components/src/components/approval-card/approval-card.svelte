@@ -11,12 +11,13 @@
    * @useWhen Showing policy, sandbox, idempotency, environment-name, and argument context for an approval request.
    * @avoidWhen The action has already completed and only needs historical display — use event-stream-viewer or run-step-timeline instead.
    * @avoidWhen Collecting arbitrary form input for a workflow — compose form controls directly instead.
-   * @related card, badge, status-dot, payload-inspector, secret-value-field, code-block
-   * @a11yNote Uses a named region and native button controls so approval actions are discoverable by assistive technology.
+   * @related card, badge, status-dot, payload-inspector, code-block, collapsible
+   * @a11yNote Renders as an article with native button controls so approval actions are discoverable without polluting the landmark list.
    * @a11yNote Expiration changes update the visible state but do not fire approval callbacks automatically.
    */
   export type {
     ApprovalCardCallbacks,
+    ApprovalCardHeadingLevel,
     ApprovalCardProps,
     ApprovalCardSchemaProps,
     ApprovalOperation,
@@ -31,30 +32,47 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import SignalHigh from 'lucide-svelte/icons/signal-high';
+  import SignalLow from 'lucide-svelte/icons/signal-low';
+  import SignalMedium from 'lucide-svelte/icons/signal-medium';
 
   import { classNames } from '../../utilities/class-names.ts';
   import Badge from '../badge/badge.svelte';
-  import Button from '../button/button.svelte';
-  import ButtonGroup from '../button-group/button-group.svelte';
   import Card from '../card/card.svelte';
   import CodeBlock from '../code-block/code-block.svelte';
+  import Collapsible from '../collapsible/collapsible.svelte';
+  import CopyButton from '../copy-button/copy-button.svelte';
   import PayloadInspector from '../payload-inspector/payload-inspector.svelte';
-  import SecretValueField from '../secret-value-field/secret-value-field.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
-  import type { BadgeVariant } from '../badge/badge.types.ts';
-  import type { StatusDotStatus } from '../status-dot/status-dot.types.ts';
-  import { isApprovalActionable, resolveEffectiveApprovalState } from './approval-card-state.ts';
+  import Tooltip from '../tooltip/tooltip.svelte';
+  import ApprovalCardActions from './approval-card-actions.svelte';
+  import {
+    RISK_LABELS,
+    STATE_DOT_STATUS,
+    STATE_LABELS,
+    dedupeFilePaths,
+    formatRemainingTime,
+    isApprovalActionable,
+    normalizeArgumentsPreviewValue,
+    parseExpirationTimestamp,
+    prepareArgumentsPreview,
+    resolveEffectiveApprovalState,
+    sanitizeEnvironmentNames,
+  } from './approval-card-state.ts';
   import type {
     ApprovalCardProps,
-    ApprovalOperationKind,
     ApprovalResolution,
-    ApprovalResolutionDecision,
     ApprovalState,
-    ApprovalToolRisk,
   } from './approval-card.types.ts';
 
-  const ARGUMENTS_PREVIEW_MAX_CHARACTERS = 4_096;
+  // Stacked-bar signal icon in place of a text badge: the shape itself scans
+  // faster than reading "Medium risk", and the tooltip/aria-label carries the
+  // same word for anyone who needs it named explicitly.
+  const RISK_ICONS = {
+    low: SignalLow,
+    medium: SignalMedium,
+    high: SignalHigh,
+  } as const;
 
   const generatedId = $props.id();
 
@@ -69,12 +87,8 @@
     expiresAt,
     state: approvalState,
     editableArgs = false,
+    headingLevel = 3,
     onresolve,
-    onapprove,
-    onapprovewithedits,
-    ondeny,
-    onremember,
-    oncancel,
     id,
     class: customClassName,
     ...rest
@@ -82,17 +96,18 @@
 
   const rootId = $derived(id ?? generatedId);
   const titleId = $derived(`${rootId}-title`);
-  const descriptionId = $derived(`${rootId}-description`);
-  const resolutionDescriptionId = $derived(`${rootId}-resolution-description`);
-  const editDescriptionId = $derived(`${rootId}-edit-description`);
-  const editErrorId = $derived(`${rootId}-edit-error`);
+
+  // Coerce + clamp like Card: schema-driven callers can pass out-of-range or
+  // non-numeric levels, and `h${level}` must never emit invalid markup.
+  const resolvedHeadingLevel = $derived(
+    Number.isFinite(Math.trunc(Number(headingLevel)))
+      ? Math.min(6, Math.max(2, Math.trunc(Number(headingLevel))))
+      : 3,
+  );
+  const titleTag = $derived(`h${resolvedHeadingLevel}`);
+  const sectionTag = $derived(`h${Math.min(6, resolvedHeadingLevel + 1)}`);
 
   let currentTime = $state<number | undefined>();
-  let resolutionReason = $state('');
-  let rememberResolution = $state(false);
-  let resolutionSeedKey = $state<string | null>(null);
-  let editingArgumentsSeedKey = $state<string | null>(null);
-  let editedArgumentsDrafts = $state<Record<string, string>>({});
   let expirationTimer: ReturnType<typeof setTimeout> | undefined;
 
   const expirationTimestamp = $derived(parseExpirationTimestamp(expiresAt));
@@ -102,18 +117,23 @@
   const isActionable = $derived(
     isApprovalActionable(approvalState, expirationTimestamp, currentTime),
   );
-  const operationKindLabel = $derived(formatOperationKind(operation.kind));
-  const riskLabel = $derived(formatRisk(tool.risk));
-  const stateText = $derived(formatState(effectiveState));
-  const stateDescription = $derived(
-    isActionable
-      ? `${operationKindLabel} approval is waiting for a decision.`
-      : `No approval actions are available because this request is ${stateText.toLowerCase()}.`,
+  // Guards against a non-function truthy value reaching a JS (non-typechecked)
+  // or schema-driven caller — `onresolve?.()` alone would still throw on a
+  // truthy non-function.
+  const hasResolutionCallback = $derived(typeof onresolve === 'function');
+
+  const riskLabel = $derived(RISK_LABELS[tool.risk]);
+  const RiskIcon = $derived(RISK_ICONS[tool.risk]);
+  const stateText = $derived(STATE_LABELS[effectiveState]);
+  const readonlySummary = $derived(
+    `No approval actions are available because this request is ${stateText.toLowerCase()}.`,
   );
+  // Only a live countdown is shown. Once the state itself reads "Expired" (via
+  // StatusDot's label), a second "Expired" badge would just repeat the same word.
   const expirationText = $derived.by(() => {
-    if (effectiveState === 'expired') return 'Expired';
     if (
       approvalState !== 'pending' ||
+      effectiveState !== 'pending' ||
       expirationTimestamp === undefined ||
       currentTime === undefined
     ) {
@@ -121,39 +141,16 @@
     }
     return `Expires in ${formatRemainingTime(expirationTimestamp - currentTime)}`;
   });
+
   const hasArgumentsPreview = $derived(operation.argsPreview !== undefined);
   const editableArgumentsValue = $derived(normalizeArgumentsPreviewValue(operation.argsPreview));
   const argumentsPreview = $derived(prepareArgumentsPreview(editableArgumentsValue));
-  const filesTouched = $derived(operation.filesTouched ?? []);
+  const canEditArguments = $derived(editableArgs && hasArgumentsPreview);
+  const filesTouched = $derived(dedupeFilePaths(operation.filesTouched ?? []));
   const filesTouchedLabel = $derived(
     `${filesTouched.length} file${filesTouched.length === 1 ? '' : 's'}`,
   );
   const environmentNames = $derived(sanitizeEnvironmentNames(env));
-  const currentEditedArgumentsText = $derived(formatEditableArguments(editableArgumentsValue));
-  const currentEditedArgumentsSeedKey = $derived(
-    `${idempotencyKey}\u0000${currentEditedArgumentsText}`,
-  );
-  const currentResolutionSeedKey = $derived(`${idempotencyKey}\u0000${operation.kind}`);
-  const canEditArguments = $derived(editableArgs && hasArgumentsPreview);
-  const editingArguments = $derived(
-    canEditArguments && editingArgumentsSeedKey === currentEditedArgumentsSeedKey,
-  );
-  const editedArgumentsText = $derived(
-    editedArgumentsDrafts[currentEditedArgumentsSeedKey] ?? currentEditedArgumentsText,
-  );
-  const editParseResult = $derived(parseJsonText(editedArgumentsText));
-  const canConfirmEditedApproval = $derived(
-    canEditArguments &&
-      editParseResult.ok &&
-      (typeof onapprovewithedits === 'function' || typeof onresolve === 'function'),
-  );
-  const hasResolutionCallback = $derived(typeof onresolve === 'function');
-  const canResolveApproval = $derived(typeof onapprove === 'function' || hasResolutionCallback);
-  const canResolveEditedApproval = $derived(
-    typeof onapprovewithedits === 'function' || hasResolutionCallback,
-  );
-  const canResolveDenial = $derived(typeof ondeny === 'function' || hasResolutionCallback);
-  const canResolveCancellation = $derived(typeof oncancel === 'function' || hasResolutionCallback);
 
   $effect(() => {
     clearExpirationTimer();
@@ -177,16 +174,6 @@
     return clearExpirationTimer;
   });
 
-  $effect(() => {
-    if (resolutionSeedKey !== currentResolutionSeedKey) {
-      resolutionSeedKey = currentResolutionSeedKey;
-      resolutionReason = '';
-      rememberResolution = false;
-    }
-  });
-
-  onDestroy(clearExpirationTimer);
-
   function clearExpirationTimer(): void {
     if (expirationTimer !== undefined) {
       clearTimeout(expirationTimer);
@@ -194,253 +181,25 @@
     }
   }
 
-  function parseExpirationTimestamp(value: string | undefined): number | undefined {
-    if (!value) return undefined;
-    const timestamp = Date.parse(value);
-    return Number.isFinite(timestamp) ? timestamp : undefined;
-  }
-
-  function formatRemainingTime(milliseconds: number): string {
-    const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1_000));
-    const hours = Math.floor(totalSeconds / 3_600);
-    const minutes = Math.floor((totalSeconds % 3_600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    if (minutes > 0) return `${minutes}m ${seconds}s`;
-    return `${seconds}s`;
-  }
-
-  function formatRisk(risk: ApprovalToolRisk): string {
-    switch (risk) {
-      case 'low':
-        return 'Low risk';
-      case 'medium':
-        return 'Medium risk';
-      case 'high':
-        return 'High risk';
-    }
-  }
-
-  function riskBadgeVariant(risk: ApprovalToolRisk): BadgeVariant {
-    switch (risk) {
-      case 'low':
-        return 'success';
-      case 'medium':
-        return 'warning';
-      case 'high':
-        return 'danger';
-    }
-  }
-
-  function formatOperationKind(kind: ApprovalOperationKind): string {
-    switch (kind) {
-      case 'command':
-        return 'Command';
-      case 'file-write':
-        return 'File write';
-      case 'patch':
-        return 'Patch';
-      case 'other':
-        return 'Operation';
-    }
-  }
-
-  function formatState(approvalState: ApprovalState): string {
-    switch (approvalState) {
-      case 'pending':
-        return 'Pending';
-      case 'approved':
-        return 'Approved';
-      case 'approved_with_edits':
-        return 'Approved with edits';
-      case 'denied':
-        return 'Denied';
-      case 'expired':
-        return 'Expired';
-      case 'cancelled':
-        return 'Cancelled';
-    }
-  }
-
-  function stateDotStatus(approvalState: ApprovalState): StatusDotStatus {
-    switch (approvalState) {
-      case 'pending':
-        return 'pending';
-      case 'approved':
-      case 'approved_with_edits':
-        return 'success';
-      case 'denied':
-        return 'danger';
-      case 'expired':
-        return 'neutral';
-      case 'cancelled':
-        return 'offline';
-    }
-  }
-
-  function normalizeArgumentsPreviewValue(value: unknown): unknown {
-    if (typeof value !== 'string') return value;
-
-    try {
-      return JSON.parse(value);
-    } catch {
-      return value;
-    }
-  }
-
-  function prepareArgumentsPreview(value: unknown): { value: unknown; truncated: boolean } {
-    try {
-      const serialized = JSON.stringify(value);
-      if (typeof serialized !== 'string' || serialized.length <= ARGUMENTS_PREVIEW_MAX_CHARACTERS) {
-        return {
-          value: typeof value === 'string' ? serialized : value,
-          truncated: false,
-        };
-      }
-      return {
-        value: {
-          notice: 'Arguments preview truncated',
-          originalCharacters: serialized.length,
-          displayedCharacters: ARGUMENTS_PREVIEW_MAX_CHARACTERS,
-          excerpt: serialized.slice(0, ARGUMENTS_PREVIEW_MAX_CHARACTERS),
-        },
-        truncated: true,
-      };
-    } catch {
-      return { value, truncated: false };
-    }
-  }
-
-  function formatEditableArguments(value: unknown): string {
-    try {
-      const serialized = JSON.stringify(value, null, 2);
-      return serialized ?? 'null';
-    } catch {
-      return '{}';
-    }
-  }
-
-  function parseJsonText(
-    text: string,
-  ): { ok: true; value: unknown } | { ok: false; message: string } {
-    try {
-      return { ok: true, value: JSON.parse(text) };
-    } catch {
-      return { ok: false, message: 'Edited arguments must be valid JSON.' };
-    }
-  }
-
-  function sanitizeEnvironmentName(name: string): string {
-    const [firstPart] = name.split('=');
-    return firstPart?.trim() ?? '';
-  }
-
-  function sanitizeEnvironmentNames(names: string[]): string[] {
-    const seen: string[] = [];
-    const sanitizedNames: string[] = [];
-
-    for (const name of names) {
-      const sanitizedName = sanitizeEnvironmentName(name);
-      if (!sanitizedName || seen.includes(sanitizedName)) continue;
-      seen.push(sanitizedName);
-      sanitizedNames.push(sanitizedName);
-    }
-
-    return sanitizedNames;
-  }
-
-  function currentApprovalIsActionable(): boolean {
+  function resolveIfActionable(resolution: ApprovalResolution): void {
+    // Re-check against the wall clock: the countdown timer only ticks once per
+    // second, so a click can land after the deadline but before the next tick.
     const comparisonTime = expirationTimestamp === undefined ? currentTime : Date.now();
-    const actionable = isApprovalActionable(approvalState, expirationTimestamp, comparisonTime);
-    if (!actionable && approvalState === 'pending' && expirationTimestamp !== undefined) {
-      currentTime = comparisonTime;
+    if (!isApprovalActionable(approvalState, expirationTimestamp, comparisonTime)) {
+      if (approvalState === 'pending' && expirationTimestamp !== undefined) {
+        currentTime = comparisonTime;
+      }
+      return;
     }
-    return actionable;
-  }
-
-  function beginEditingArguments(): void {
-    if (!currentApprovalIsActionable()) return;
-    if (!canEditArguments) return;
-    if (!(currentEditedArgumentsSeedKey in editedArgumentsDrafts)) {
-      editedArgumentsDrafts = {
-        ...editedArgumentsDrafts,
-        [currentEditedArgumentsSeedKey]: currentEditedArgumentsText,
-      };
-    }
-    editingArgumentsSeedKey = currentEditedArgumentsSeedKey;
-  }
-
-  function handleEditedArgumentsInput(event: Event): void {
-    editedArgumentsDrafts = {
-      ...editedArgumentsDrafts,
-      [currentEditedArgumentsSeedKey]: (event.currentTarget as HTMLTextAreaElement).value,
-    };
-  }
-
-  function handleReasonInput(event: Event): void {
-    resolutionReason = (event.currentTarget as HTMLTextAreaElement).value;
-  }
-
-  function handleRememberInput(event: Event): void {
-    rememberResolution = (event.currentTarget as HTMLInputElement).checked;
-  }
-
-  function emitResolution(decision: ApprovalResolutionDecision, editedArgs?: unknown): void {
-    const trimmedReason = resolutionReason.trim();
-    const resolution: ApprovalResolution = {
-      decision,
-      remember: rememberResolution,
-    };
-
-    if (decision === 'approve_with_edits') {
-      resolution.editedArgs = editedArgs;
-    }
-    if (trimmedReason) {
-      resolution.reason = trimmedReason;
-    }
-
-    onresolve?.(resolution);
-  }
-
-  function handleApprove(): void {
-    if (!currentApprovalIsActionable()) return;
-    onapprove?.();
-    emitResolution('approve');
-  }
-
-  function handleApproveWithEdits(): void {
-    if (!currentApprovalIsActionable()) return;
-    if (!canEditArguments) return;
-    if (!editParseResult.ok) return;
-    onapprovewithedits?.(editParseResult.value);
-    emitResolution('approve_with_edits', editParseResult.value);
-  }
-
-  function handleDeny(): void {
-    if (!currentApprovalIsActionable()) return;
-    ondeny?.();
-    emitResolution('deny');
-  }
-
-  function handleRemember(): void {
-    if (!currentApprovalIsActionable()) return;
-    onremember?.();
-  }
-
-  function handleCancel(): void {
-    if (!currentApprovalIsActionable()) return;
-    oncancel?.();
-    emitResolution('cancel');
+    if (typeof onresolve === 'function') onresolve(resolution);
   }
 </script>
 
-<section
+<article
   {...rest}
   id={rootId}
   class={classNames('cinder-approval-card', customClassName)}
   aria-labelledby={titleId}
-  aria-describedby={descriptionId}
   data-cinder-state={effectiveState}
   data-cinder-risk={tool.risk}
 >
@@ -448,19 +207,26 @@
     {#snippet header()}
       <div class="cinder-approval-card__header">
         <div class="cinder-approval-card__title-group">
-          <p class="cinder-approval-card__eyebrow">{operationKindLabel} approval</p>
-          <h3 id={titleId} class="cinder-approval-card__title">
-            Approval required for {tool.name}
-          </h3>
-          <p id={descriptionId} class="cinder-approval-card__description">
-            {stateDescription}
-          </p>
+          <svelte:element this={titleTag} id={titleId} class="cinder-approval-card__title">
+            Approval required for
+            <span class="cinder-approval-card__title-tool">{tool.name}</span>
+          </svelte:element>
         </div>
         <div class="cinder-approval-card__badges" role="group" aria-label="Approval status">
-          <StatusDot status={stateDotStatus(effectiveState)} label={stateText} />
-          <Badge variant={riskBadgeVariant(tool.risk)} size="sm">{riskLabel}</Badge>
+          <StatusDot status={STATE_DOT_STATUS[effectiveState]} label={stateText} size="sm" />
+          <Tooltip text={riskLabel} describe={false}>
+            <span
+              class="cinder-approval-card__risk-icon"
+              role="img"
+              tabindex="0"
+              aria-label={riskLabel}
+              data-cinder-risk={tool.risk}
+            >
+              <RiskIcon size={16} strokeWidth={2.25} aria-hidden="true" />
+            </span>
+          </Tooltip>
           {#if expirationText}
-            <Badge variant={effectiveState === 'expired' ? 'neutral' : 'warning'} size="sm">
+            <Badge variant="warning" size="sm">
               {expirationText}
             </Badge>
           {/if}
@@ -469,213 +235,137 @@
     {/snippet}
 
     <div class="cinder-approval-card__body">
-      <dl class="cinder-approval-card__metadata" aria-label="Approval metadata">
-        <div class="cinder-approval-card__metadata-item">
-          <dt>Policy</dt>
-          <dd>{policyVersion}</dd>
+      {#if operation.kind === 'command' && operation.command}
+        <div class="cinder-approval-card__section">
+          <CodeBlock code={operation.command} language="shell" showLanguageLabel={false} />
         </div>
-        <div class="cinder-approval-card__metadata-item">
-          <dt>Idempotency key</dt>
-          <dd>{idempotencyKey}</dd>
+      {:else if operation.kind === 'patch' && operation.diff}
+        <div class="cinder-approval-card__section">
+          <CodeBlock code={operation.diff} language="diff" showLanguageLabel={false} />
         </div>
-        {#if snapshotId}
-          <div class="cinder-approval-card__metadata-item">
-            <dt>Snapshot</dt>
-            <dd>{snapshotId}</dd>
-          </div>
-        {/if}
-      </dl>
-
-      {#if sandbox}
-        <section class="cinder-approval-card__section" aria-label="Sandbox context">
-          <h4 class="cinder-approval-card__section-title">Sandbox</h4>
-          <dl class="cinder-approval-card__metadata cinder-approval-card__metadata--compact">
-            <div class="cinder-approval-card__metadata-item">
-              <dt>Provider</dt>
-              <dd>{sandbox.provider}</dd>
-            </div>
-            <div class="cinder-approval-card__metadata-item">
-              <dt>Name</dt>
-              <dd>{sandbox.name}</dd>
-            </div>
-            <div class="cinder-approval-card__metadata-item">
-              <dt>Working directory</dt>
-              <dd>{sandbox.workingDir}</dd>
-            </div>
-          </dl>
-        </section>
       {/if}
 
-      <section class="cinder-approval-card__section" aria-label="Operation details">
-        <div class="cinder-approval-card__section-heading">
-          <h4 class="cinder-approval-card__section-title">Operation</h4>
-          <Badge size="sm" mono>{operation.kind}</Badge>
-        </div>
-
-        {#if operation.kind === 'command' && operation.command}
-          <CodeBlock code={operation.command} language="shell" highlight={false} />
-        {:else if operation.kind === 'patch' && operation.diff}
-          <CodeBlock code={operation.diff} language="diff" highlight={false} />
-        {:else if operation.kind === 'file-write'}
-          <p class="cinder-approval-card__muted">
-            Review the touched files and arguments before approving this file write.
-          </p>
-        {:else}
-          <p class="cinder-approval-card__muted">
-            Review the arguments and metadata before approving this operation.
-          </p>
-        {/if}
-
-        {#if filesTouched.length > 0}
-          <div class="cinder-approval-card__files">
-            <div class="cinder-approval-card__section-heading">
-              <h5 class="cinder-approval-card__subsection-title">Files touched</h5>
-              <Badge size="sm">{filesTouchedLabel}</Badge>
-            </div>
-            <ul class="cinder-approval-card__file-list">
-              {#each filesTouched as file, fileIndex (`${fileIndex}:${file}`)}
-                <li>{file}</li>
-              {/each}
-            </ul>
+      {#if filesTouched.length > 0}
+        <div class="cinder-approval-card__section">
+          <div class="cinder-approval-card__section-heading">
+            <svelte:element this={sectionTag} class="cinder-approval-card__section-title">
+              Files touched
+            </svelte:element>
+            <Badge size="sm">{filesTouchedLabel}</Badge>
           </div>
-        {/if}
-      </section>
+          <ul class="cinder-approval-card__file-list">
+            {#each filesTouched as file (file)}
+              <li class="cinder-approval-card__file">
+                <span class="cinder-approval-card__file-path">{file}</span>
+                <CopyButton
+                  value={file}
+                  label={`Copy path ${file}`}
+                  copiedLabel="Path copied"
+                  class="cinder-approval-card__file-copy"
+                  iconOnly
+                />
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
 
-      <section class="cinder-approval-card__section" aria-label="Arguments preview">
-        {#if hasArgumentsPreview}
+      {#if hasArgumentsPreview}
+        <div class="cinder-approval-card__section">
           <PayloadInspector
             value={argumentsPreview.value}
             truncated={argumentsPreview.truncated}
-            label="Arguments preview"
+            label={`${tool.name} arguments`}
           />
-        {:else}
-          <p class="cinder-approval-card__muted">No arguments were provided.</p>
-        {/if}
-      </section>
-
-      {#if environmentNames.length > 0}
-        <section class="cinder-approval-card__section" aria-label="Environment names">
-          <h4 class="cinder-approval-card__section-title">Environment</h4>
-          <div class="cinder-approval-card__environment-list">
-            {#each environmentNames as environmentName, environmentIndex (`${environmentIndex}:${environmentName}`)}
-              <SecretValueField value={environmentName} label={environmentName} />
-            {/each}
-          </div>
-        </section>
+        </div>
       {/if}
 
-      {#if isActionable}
-        <section class="cinder-approval-card__section cinder-approval-card__actions-section">
-          {#if hasResolutionCallback}
-            <div class="cinder-approval-card__resolution-controls">
-              <label class="cinder-approval-card__editor-label" for={`${rootId}-resolution-reason`}>
-                Resolution reason
-              </label>
-              <p id={resolutionDescriptionId} class="cinder-approval-card__muted">
-                Optional context included with the host resolution payload.
-              </p>
-              <textarea
-                id={`${rootId}-resolution-reason`}
-                class="cinder-approval-card__textarea cinder-approval-card__textarea--reason"
-                value={resolutionReason}
-                oninput={handleReasonInput}
-                rows="3"
-                aria-describedby={resolutionDescriptionId}
-              ></textarea>
-              <label class="cinder-approval-card__remember-control">
-                <input
-                  type="checkbox"
-                  checked={rememberResolution}
-                  onchange={handleRememberInput}
-                />
-                <span>Remember this approval boundary</span>
-              </label>
+      <Collapsible trigger="Details" class="cinder-approval-card__details">
+        <div class="cinder-approval-card__details-content">
+          {#if sandbox}
+            <div class="cinder-approval-card__details-group">
+              <p class="cinder-approval-card__details-label">Sandbox</p>
+              <dl class="cinder-approval-card__metadata cinder-approval-card__metadata--compact">
+                <div class="cinder-approval-card__metadata-item">
+                  <dt>Provider</dt>
+                  <dd>{sandbox.provider}</dd>
+                </div>
+                <div class="cinder-approval-card__metadata-item">
+                  <dt>Profile</dt>
+                  <dd>{sandbox.name}</dd>
+                </div>
+                <div class="cinder-approval-card__metadata-item">
+                  <dt>Working directory</dt>
+                  <dd>{sandbox.workingDir}</dd>
+                </div>
+              </dl>
             </div>
           {/if}
 
-          <ButtonGroup label="Approval actions">
-            <Button
-              type="button"
-              variant="primary"
-              onclick={handleApprove}
-              disabled={!canResolveApproval}
-            >
-              Approve
-            </Button>
-            {#if canEditArguments}
-              <Button
-                type="button"
-                variant="secondary"
-                onclick={beginEditingArguments}
-                disabled={!canResolveEditedApproval}
+          {#if environmentNames.length > 0}
+            <div class="cinder-approval-card__details-group">
+              <p class="cinder-approval-card__details-label">Environment</p>
+              <ul
+                class="cinder-approval-card__environment-list"
+                aria-label="Environment variable names only; values are never shown"
               >
-                Approve with edits
-              </Button>
-            {/if}
-            <Button
-              type="button"
-              variant="soft-danger"
-              onclick={handleDeny}
-              disabled={!canResolveDenial}
-            >
-              Deny
-            </Button>
-            <Button type="button" variant="soft" onclick={handleRemember} disabled={!onremember}>
-              Remember
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onclick={handleCancel}
-              disabled={!canResolveCancellation}
-            >
-              Cancel
-            </Button>
-          </ButtonGroup>
-
-          {#if editingArguments}
-            <div class="cinder-approval-card__editor">
-              <label class="cinder-approval-card__editor-label" for={`${rootId}-edited-arguments`}>
-                Edited arguments JSON
-              </label>
-              <p id={editDescriptionId} class="cinder-approval-card__muted">
-                Confirming parses this JSON and sends the parsed value to the approval callback.
-              </p>
-              <textarea
-                id={`${rootId}-edited-arguments`}
-                class="cinder-approval-card__textarea"
-                value={editedArgumentsText}
-                oninput={handleEditedArgumentsInput}
-                rows="8"
-                spellcheck="false"
-                aria-describedby={editParseResult.ok
-                  ? editDescriptionId
-                  : `${editDescriptionId} ${editErrorId}`}
-                aria-invalid={editParseResult.ok ? undefined : 'true'}
-              ></textarea>
-              {#if !editParseResult.ok}
-                <p id={editErrorId} class="cinder-approval-card__error" role="alert">
-                  {editParseResult.message}
-                </p>
-              {/if}
-              <div class="cinder-approval-card__editor-actions">
-                <Button
-                  type="button"
-                  variant="primary"
-                  onclick={handleApproveWithEdits}
-                  disabled={!canConfirmEditedApproval}
-                >
-                  Confirm edited approval
-                </Button>
-              </div>
+                {#each environmentNames as environmentName (environmentName)}
+                  <li>
+                    <Badge size="sm" mono>{environmentName}</Badge>
+                  </li>
+                {/each}
+              </ul>
             </div>
           {/if}
-        </section>
-      {:else}
-        <p class="cinder-approval-card__readonly-summary">
-          No approval actions are available for this request.
+
+          <dl class="cinder-approval-card__metadata">
+            <div class="cinder-approval-card__metadata-item">
+              <dt>Policy version</dt>
+              <dd>
+                {policyVersion}
+                <span class="cinder-approval-card__metadata-help">
+                  Approval policy that produced this request.
+                </span>
+              </dd>
+            </div>
+            <div class="cinder-approval-card__metadata-item">
+              <dt>Idempotency key</dt>
+              <dd>
+                {idempotencyKey}
+                <span class="cinder-approval-card__metadata-help">
+                  Keeps this decision durable if it is submitted more than once.
+                </span>
+              </dd>
+            </div>
+            {#if snapshotId}
+              <div class="cinder-approval-card__metadata-item">
+                <dt>Snapshot</dt>
+                <dd>
+                  {snapshotId}
+                  <span class="cinder-approval-card__metadata-help">
+                    Workspace snapshot this request was captured against.
+                  </span>
+                </dd>
+              </div>
+            {/if}
+          </dl>
+        </div>
+      </Collapsible>
+
+      {#if isActionable && hasResolutionCallback}
+        <ApprovalCardActions
+          idBase={rootId}
+          requestKey={idempotencyKey}
+          {canEditArguments}
+          argumentsValue={editableArgumentsValue}
+          resolve={resolveIfActionable}
+        />
+      {/if}
+      {#if !isActionable}
+        <p class="cinder-approval-card__readonly-summary" data-cinder-state={effectiveState}>
+          {readonlySummary}
         </p>
       {/if}
     </div>
   </Card>
-</section>
+</article>
