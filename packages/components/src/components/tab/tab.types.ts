@@ -10,7 +10,7 @@ export type TabProps = {
    * at the matching TabPanel id (`${baseId}-panel-${value}`).
    */
   controls?: string;
-  /** Disables this single tab. The panel content is hidden but its DOM stays. */
+  /** Disables this single tab and removes it from keyboard activation. */
   disabled?: boolean;
   /** Additional class names merged with `.cinder-tab`. */
   class?: string;

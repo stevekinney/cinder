@@ -20,7 +20,7 @@ const schema = {
     },
     disabled: {
       type: 'boolean',
-      description: 'Disables this single tab. The panel content is hidden but its DOM stays.',
+      description: 'Disables this single tab and removes it from keyboard activation.',
     },
     class: {
       type: 'string',

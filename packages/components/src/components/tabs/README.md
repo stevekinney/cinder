@@ -41,7 +41,7 @@ id through `Tabs.Trigger`'s `controls` prop and render the panel yourself:
   import { Tabs } from '@lostgradient/cinder/tabs';
 
   let active = $state('index.ts');
-  const tabIds = {
+  const tabIds: Record<string, string> = {
     'index.ts': 'editor-tab-index',
     'app.svelte': 'editor-tab-app',
   };

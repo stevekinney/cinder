@@ -41,9 +41,9 @@
   const tabs = getTabsContext();
 
   // Derive both ids from the root's baseId and the tab's value so that two
-  // Tabs instances sharing the same value produce distinct DOM ids. The panel
-  // id is always computed from baseId and value; it does not track a custom
-  // `id` prop on this Tab.
+  // Tabs instances sharing the same value produce distinct DOM ids. The default
+  // panel id does not track a custom `id` prop on this Tab. `controls` can
+  // intentionally override the controlled panel id for caller-owned panels.
   //
   // ⚠️  Custom-id wiring: if you supply a custom `id` prop to override this
   // Tab's element id, the paired TabPanel's default `aria-labelledby` still
