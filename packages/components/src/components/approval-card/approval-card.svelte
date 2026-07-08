@@ -275,7 +275,7 @@
           <PayloadInspector
             value={argumentsPreview.value}
             truncated={argumentsPreview.truncated}
-            label="Arguments"
+            label={`${tool.name} arguments`}
           />
         </div>
       {/if}

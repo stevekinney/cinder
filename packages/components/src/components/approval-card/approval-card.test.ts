@@ -693,7 +693,7 @@ describe('ApprovalCard', () => {
       expect(primitive?.textContent?.trim()).toBe('--force');
       expect(container.textContent).not.toContain('"--force"');
 
-      const copyButton = getByRole('button', { name: 'Copy Arguments' });
+      const copyButton = getByRole('button', { name: 'Copy deploy-cloud arguments' });
       await fireEvent.click(copyButton);
       expect(writeText).toHaveBeenCalledWith('--force');
     } finally {
@@ -702,6 +702,22 @@ describe('ApprovalCard', () => {
         value: originalClipboard,
       });
     }
+  });
+
+  test('scopes the arguments copy button name to the tool, so multiple cards on one page stay unambiguous', () => {
+    render(ApprovalCard, {
+      ...approvalCardProps({ tool: { name: 'deploy-cloud', risk: 'medium' } }),
+    });
+    render(ApprovalCard, {
+      ...approvalCardProps({ tool: { name: 'rotate-secret', risk: 'high' } }),
+    });
+
+    expect(
+      document.body.querySelector('[aria-label="Copy deploy-cloud arguments"]'),
+    ).not.toBeNull();
+    expect(
+      document.body.querySelector('[aria-label="Copy rotate-secret arguments"]'),
+    ).not.toBeNull();
   });
 
   test('truncates large argument previews and renders every touched file', () => {
