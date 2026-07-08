@@ -301,9 +301,10 @@ describe('discoverSidebarComponents', () => {
     // SourceDiffViewer adds one standalone source-patch family with examples,
     // bringing the measured ceiling to 164.
     // ActionRow adds one selectable row primitive with examples, bringing the
-    // measured ceiling to 165.
+    // measured ceiling to 165. ChatComposerPopover adds one standalone composer
+    // suggestion primitive with examples, bringing the measured ceiling to 166.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(165);
+    expect(sidebar.length).toBeLessThanOrEqual(166);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
@@ -342,6 +343,7 @@ describe('discoverSidebarComponents', () => {
     expect(sidebar).toContain('sparkbar');
     expect(sidebar).toContain('event-timeline');
     expect(sidebar).toContain('source-diff-viewer');
+    expect(sidebar).toContain('chat-composer-popover');
   });
 
   it('keeps the sidebar strictly smaller than the full component list', async () => {

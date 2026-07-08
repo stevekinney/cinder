@@ -258,10 +258,10 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   onattachmentfailure?: (file: File, error: string) => void;
   /**
    * Called with the composer's current plain-text value on every composer
-   * input event. Lets a consumer build slash-command, mention, or autocomplete
-   * UX without reaching into `.chat-input-editor` DOM directly.
+   * input event. The optional event exposes the textarea for composer-bound
+   * overlays without reaching into `.chat-input-editor` DOM directly.
    */
-  oncomposerinput?: (value: string) => void;
+  oncomposerinput?: (value: string, event?: Event) => void;
   /**
    * Called before Chat's internal composer key handling when a keydown
    * originates from the composer textarea. Call `event.preventDefault()` to
@@ -270,4 +270,15 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    * confirm the active candidate instead of sending.
    */
   oncomposerkeydown?: (event: KeyboardEvent) => void;
+  /**
+   * Called after pointer or selection activity may have moved the composer
+   * caret without changing text. Overlay primitives can resync their active
+   * token from the textarea selection.
+   */
+  oncomposerselectionchange?: (event: Event) => void;
+  /**
+   * Called when focus leaves the composer textarea. Overlay primitives can use
+   * this to dismiss without preventing native focus movement.
+   */
+  oncomposerblur?: (event: FocusEvent) => void;
 };

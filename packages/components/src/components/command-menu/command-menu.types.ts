@@ -20,6 +20,8 @@ export type CommandMenuState = {
 };
 
 export type CommandMenuProps = {
+  /** Stable listbox id. Defaults to a generated component id. */
+  listboxId?: string;
   /** Open state. Bindable. Default `false`. */
   open?: boolean;
   /** Text field used as the caret-position anchor. */

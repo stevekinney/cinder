@@ -130,4 +130,39 @@ describe('chat attachment serialization', () => {
       });
     }
   });
+
+  test('throws when no base64 encoder is available', async () => {
+    const originalBtoa = globalThis.btoa;
+    const originalBuffer = globalThis.Buffer;
+
+    Reflect.deleteProperty(globalThis, 'btoa');
+    Object.defineProperty(globalThis, 'Buffer', {
+      configurable: true,
+      value: undefined,
+      writable: true,
+    });
+
+    try {
+      await expect(
+        serializeChatAttachment(
+          createAttachment(new TextEncoder().encode('no encoder'), {
+            name: 'unsupported.bin',
+            type: 'application/octet-stream',
+            kind: 'document',
+          }),
+        ),
+      ).rejects.toThrow('serializeChatAttachment requires btoa or Buffer for base64 encoding.');
+    } finally {
+      Object.defineProperty(globalThis, 'btoa', {
+        configurable: true,
+        value: originalBtoa,
+        writable: true,
+      });
+      Object.defineProperty(globalThis, 'Buffer', {
+        configurable: true,
+        value: originalBuffer,
+        writable: true,
+      });
+    }
+  });
 });

@@ -83,4 +83,31 @@ describe('CommandListState', () => {
     registered.unregister();
     expect(state.enabledIds).toEqual([]);
   });
+
+  test('commits listbox id changes together with registered option ids', () => {
+    let listboxId = 'command-list';
+    const state = createCommandListState(() => listboxId);
+    const button = createButton('Only');
+    const registered = state.register(
+      {
+        getValue: () => 'only',
+        getDisabled: () => false,
+        getOnselect: () => () => undefined,
+      },
+      button,
+    );
+
+    expect(state.listboxId).toBe('command-list');
+    expect(registered.id).toBe('command-list-item-1');
+
+    listboxId = 'renamed-list';
+
+    expect(state.listboxId).toBe('command-list');
+    expect(registered.id).toBe('command-list-item-1');
+
+    state.syncListboxId();
+
+    expect(state.listboxId).toBe('renamed-list');
+    expect(registered.id).toBe('renamed-list-item-1');
+  });
 });

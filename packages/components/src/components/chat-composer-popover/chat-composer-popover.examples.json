@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "chat-composer-popover",
+  "import": "@lostgradient/cinder/chat-composer-popover",
+  "examples": [
+    {
+      "id": "slash-commands",
+      "title": "Slash commands in ChatInput",
+      "description": "Wires ChatComposerPopover to ChatInput with consumer-owned command definitions.",
+      "code": "<script lang=\"ts\">\n  import ChatComposerPopover, {\n    type ChatComposerPopoverSelection,\n  } from '@lostgradient/cinder/chat-composer-popover';\n  import { ChatInput } from '@lostgradient/cinder/chat';\n\n  type SlashCommand = {\n    value: string;\n    label: string;\n    description: string;\n    insert: string;\n    keywords?: string[];\n  };\n\n  const commands: SlashCommand[] = [\n    {\n      value: 'help',\n      label: 'Help',\n      description: 'Show available assistant commands',\n      insert: '/help ',\n      keywords: ['docs', 'support'],\n    },\n    {\n      value: 'new',\n      label: 'New conversation',\n      description: 'Start a fresh thread',\n      insert: '/new ',\n      keywords: ['reset', 'fresh'],\n    },\n    {\n      value: 'tools',\n      label: 'Tools',\n      description: 'Open tool controls',\n      insert: '/tools ',\n      keywords: ['integrations', 'actions'],\n    },\n    {\n      value: 'stop',\n      label: 'Stop',\n      description: 'Stop the current response',\n      insert: '/stop',\n      keywords: ['cancel', 'halt'],\n    },\n  ];\n\n  let value = $state('');\n  let selectedCommand = $state('None');\n\n  function handleSelect(selection: ChatComposerPopoverSelection<SlashCommand>) {\n    value = `${value.slice(0, selection.range.start)}${selection.item.insert}${value.slice(\n      selection.range.end,\n    )}`;\n    selectedCommand = selection.item.label;\n  }\n</script>\n\n<ChatComposerPopover id=\"slash-command\" bind:value items={commands} onselect={handleSelect}>\n  {#snippet composer(composerProps)}\n    <ChatInput\n      id=\"chat\"\n      bind:value\n      allowAttachments={false}\n      placeholder=\"Type / for commands\"\n      composerRole={composerProps.composerRole}\n      composerAriaExpanded={composerProps.composerAriaExpanded}\n      composerAriaControls={composerProps.composerAriaControls}\n      composerAriaActiveDescendant={composerProps.composerAriaActiveDescendant}\n      composerAriaAutocomplete={composerProps.composerAriaAutocomplete}\n      oncomposerinput={composerProps.oncomposerinput}\n      oncomposerkeydown={composerProps.oncomposerkeydown}\n      oncomposerselectionchange={composerProps.oncomposerselectionchange}\n      oncomposerblur={composerProps.oncomposerblur}\n    />\n  {/snippet}\n</ChatComposerPopover>\n\n<p>Selected: {selectedCommand}</p>\n"
+    }
+  ]
+}

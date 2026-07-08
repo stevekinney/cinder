@@ -59,13 +59,17 @@
     /** Called when stop is requested (transforms send button into stop button when sending=true) */
     onstop?: (() => void) | undefined;
     /** Called with the composer's current plain-text value on every input event. */
-    oncomposerinput?: ((value: string) => void) | undefined;
+    oncomposerinput?: ((value: string, event?: Event) => void) | undefined;
     /**
      * Called before ChatInput's internal Enter-to-send handling when a keydown
      * originates from the composer textarea. Calling `preventDefault()` skips
      * the internal key handling for that event.
      */
     oncomposerkeydown?: ((event: KeyboardEvent) => void) | undefined;
+    /** Called after pointer or selection activity may have moved the composer caret. */
+    oncomposerselectionchange?: ((event: Event) => void) | undefined;
+    /** Called when focus leaves the composer textarea. */
+    oncomposerblur?: ((event: FocusEvent) => void) | undefined;
     /** Called when an attachment is added */
     onattachmentadd?: ((attachment: ChatAttachment) => void) | undefined;
     /** Called when an attachment is removed */
@@ -158,6 +162,8 @@
     onstop,
     oncomposerinput,
     oncomposerkeydown,
+    oncomposerselectionchange,
+    oncomposerblur,
     onattachmentadd,
     onattachmentremove,
     onattachmentfailure,
@@ -456,8 +462,8 @@
   // Fires after `bind:value` has already applied the textarea's new value
   // (Svelte merges the binding's own input listener with this handler on the
   // same event), so `value` here is always current — never one keystroke stale.
-  function handleInput(): void {
-    oncomposerinput?.(value);
+  function handleInput(event: Event): void {
+    oncomposerinput?.(value, event);
   }
 
   // =========================================================================
@@ -548,6 +554,9 @@
       bind:value
       onkeydown={handleKeyDown}
       oninput={handleInput}
+      onpointerup={oncomposerselectionchange}
+      onselect={oncomposerselectionchange}
+      onblur={oncomposerblur}
       {placeholder}
       role={composerRole}
       aria-label={resolvedComposerLabel}

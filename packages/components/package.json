@@ -967,6 +967,38 @@
       "import": "./src/components/chat/chat.examples.json",
       "default": "./src/components/chat/chat.examples.json"
     },
+    "./chat-composer-popover": {
+      "types": "./dist/components/chat-composer-popover/index.d.ts",
+      "browser": "./src/components/chat-composer-popover/index.ts",
+      "node": "./dist/server/components/chat-composer-popover/index.js",
+      "svelte": "./src/components/chat-composer-popover/index.ts",
+      "import": "./src/components/chat-composer-popover/index.ts",
+      "default": "./dist/components/chat-composer-popover/index.js"
+    },
+    "./chat-composer-popover/schema": {
+      "types": "./dist/components/chat-composer-popover/chat-composer-popover.schema.d.ts",
+      "browser": "./src/components/chat-composer-popover/chat-composer-popover.schema.ts",
+      "node": "./dist/server/components/chat-composer-popover/chat-composer-popover.schema.js",
+      "svelte": "./src/components/chat-composer-popover/chat-composer-popover.schema.ts",
+      "import": "./src/components/chat-composer-popover/chat-composer-popover.schema.ts",
+      "default": "./dist/components/chat-composer-popover/chat-composer-popover.schema.js"
+    },
+    "./chat-composer-popover/variables": {
+      "types": "./dist/components/chat-composer-popover/chat-composer-popover.variables.d.ts",
+      "browser": "./src/components/chat-composer-popover/chat-composer-popover.variables.ts",
+      "node": "./dist/server/components/chat-composer-popover/chat-composer-popover.variables.js",
+      "svelte": "./src/components/chat-composer-popover/chat-composer-popover.variables.ts",
+      "import": "./src/components/chat-composer-popover/chat-composer-popover.variables.ts",
+      "default": "./dist/components/chat-composer-popover/chat-composer-popover.variables.js"
+    },
+    "./chat-composer-popover/styles": {
+      "types": "./dist/components/chat-composer-popover/chat-composer-popover.css.d.ts",
+      "default": "./dist/components/chat-composer-popover/chat-composer-popover.css"
+    },
+    "./chat-composer-popover/examples": {
+      "import": "./src/components/chat-composer-popover/chat-composer-popover.examples.json",
+      "default": "./src/components/chat-composer-popover/chat-composer-popover.examples.json"
+    },
     "./chat-conversation-header": {
       "types": "./dist/components/chat-conversation-header/index.d.ts",
       "browser": "./src/components/chat-conversation-header/index.ts",

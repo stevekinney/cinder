@@ -1,7 +1,12 @@
 import { inDocumentOrder } from '../../utilities/document-order.ts';
 import type { CommandItemRegistrationInput, CommandListContext } from './command-list-context.ts';
 
-type RegistrationRecord = CommandItemRegistrationInput & { id: string; node: HTMLElement };
+type RegistrationHandle = { id: string; unregister: () => void };
+type RegistrationRecord = CommandItemRegistrationInput & {
+  id: string;
+  node: HTMLElement;
+  handle: RegistrationHandle;
+};
 
 export type CommandListKeyboardOptions = {
   event: KeyboardEvent;
@@ -12,7 +17,8 @@ export type CommandListKeyboardOptions = {
 };
 
 export class CommandListState {
-  readonly listboxId: string;
+  readonly #getListboxId: () => string;
+  #registeredListboxId = $state('');
   registrations = $state<RegistrationRecord[]>([]);
   registrationsReady = $state(false);
   #itemCounter = 0;
@@ -31,8 +37,26 @@ export class CommandListState {
       : (this.enabledIds[0] ?? null),
   );
 
-  constructor(listboxId: string) {
-    this.listboxId = listboxId;
+  constructor(listboxId: string | (() => string)) {
+    this.#getListboxId = typeof listboxId === 'function' ? listboxId : () => listboxId;
+    this.#registeredListboxId = this.#getListboxId();
+  }
+
+  get listboxId(): string {
+    return this.#registeredListboxId;
+  }
+
+  syncListboxId(nextListboxId: string = this.#getListboxId()): void {
+    const listboxId = nextListboxId;
+    if (this.#registeredListboxId === listboxId) return;
+    this.#registeredListboxId = listboxId;
+    this.#intendedActiveId = null;
+    this.registrations = this.registrations.map((registration, index) => ({
+      ...registration,
+      id: updateRegistrationHandleId(registration, `${listboxId}-item-${index + 1}`),
+    }));
+    this.#itemCounter = this.registrations.length;
+    this.refreshRegistrationsReady();
   }
 
   resetActiveItem(): void {
@@ -58,21 +82,27 @@ export class CommandListState {
   }
 
   register(input: CommandItemRegistrationInput, node: HTMLElement) {
+    this.syncListboxId();
     const id = `${this.listboxId}-item-${++this.#itemCounter}`;
-    this.registrations.push({
+    const handle = $state<RegistrationHandle>({
+      id,
+      unregister: () => {
+        const index = this.registrations.findIndex(
+          (registeredItem) => registeredItem.node === node,
+        );
+        if (index !== -1) this.registrations.splice(index, 1);
+      },
+    });
+    const registration: RegistrationRecord = {
       id,
       node,
+      handle,
       getValue: input.getValue,
       getOnselect: input.getOnselect,
       getDisabled: input.getDisabled,
-    });
-    return {
-      id,
-      unregister: () => {
-        const index = this.registrations.findIndex((registration) => registration.id === id);
-        if (index !== -1) this.registrations.splice(index, 1);
-      },
     };
+    this.registrations.push(registration);
+    return handle;
   }
 
   activateItemById(id: string): RegistrationRecord | null {
@@ -146,7 +176,7 @@ export class CommandListState {
   }
 
   createContext(activateItemById: (id: string) => void = (id) => void this.activateItemById(id)) {
-    const listboxId = this.listboxId;
+    const getListboxId = () => this.listboxId;
     const getActiveItemId = () => this.activeItemId;
     const register = (input: CommandItemRegistrationInput, node: HTMLElement) =>
       this.register(input, node);
@@ -154,7 +184,7 @@ export class CommandListState {
 
     return {
       get listboxId() {
-        return listboxId;
+        return getListboxId();
       },
       get activeItemId() {
         return getActiveItemId();
@@ -166,6 +196,11 @@ export class CommandListState {
   }
 }
 
-export function createCommandListState(listboxId: string): CommandListState {
+export function createCommandListState(listboxId: string | (() => string)): CommandListState {
   return new CommandListState(listboxId);
+}
+
+function updateRegistrationHandleId(registration: RegistrationRecord, id: string): string {
+  registration.handle.id = id;
+  return id;
 }

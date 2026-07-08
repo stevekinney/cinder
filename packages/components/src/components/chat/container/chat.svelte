@@ -126,6 +126,8 @@
     onattachmentfailure,
     oncomposerinput,
     oncomposerkeydown,
+    oncomposerselectionchange,
+    oncomposerblur,
     composerRole,
     composerAriaExpanded,
     composerAriaControls,
@@ -1800,6 +1802,8 @@
         onstop={streaming ? handleStopGenerating : undefined}
         {oncomposerinput}
         {oncomposerkeydown}
+        {oncomposerselectionchange}
+        {oncomposerblur}
         {composerRole}
         {composerAriaExpanded}
         {composerAriaControls}
