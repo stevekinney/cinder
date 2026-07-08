@@ -263,8 +263,8 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    * Called before Chat's internal composer key handling when a keydown
    * originates from the composer textarea. Call `event.preventDefault()` to
    * let an overlay consume Arrow keys, Enter, or Escape before Enter-to-send.
-   * The internal handler still ignores IME composition events when the callback
-   * does not prevent the default.
+   * Chat does not call this hook during IME composition, so Enter can still
+   * confirm the active candidate instead of sending.
    */
   oncomposerkeydown?: (event: KeyboardEvent) => void;
 };

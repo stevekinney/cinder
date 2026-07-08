@@ -418,17 +418,17 @@
   // =========================================================================
 
   function handleKeyDown(event: KeyboardEvent): void {
+    // Ignore keydown events during IME composition (e.g., Japanese/Chinese/Korean input).
+    // During composition, Enter confirms the candidate, not sends the message.
+    if (event.isComposing || isComposing) {
+      return;
+    }
+
     if (event.target === editorElement) {
       oncomposerkeydown?.(event);
       if (event.defaultPrevented) {
         return;
       }
-    }
-
-    // Ignore keydown events during IME composition (e.g., Japanese/Chinese/Korean input).
-    // During composition, Enter confirms the candidate, not sends the message.
-    if (event.isComposing || isComposing) {
-      return;
     }
 
     // Shift+Enter: Newline (let editor handle it)

@@ -246,6 +246,37 @@ describe('ChatInput', () => {
       unmount(instance);
       target.remove();
     });
+
+    test('does not call the consumer hook during IME composition', async () => {
+      let keydownCount = 0;
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'composer-keydown-ime-hook',
+          oncomposerkeydown: (event: KeyboardEvent) => {
+            keydownCount += 1;
+            event.preventDefault();
+          },
+          onsubmit: () => {
+            submitCount += 1;
+          },
+        },
+      });
+
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'かな' } });
+      await fireEvent.compositionStart(composer);
+      await fireEvent.keyDown(composer, { key: 'Enter', isComposing: true });
+
+      expect(keydownCount).toBe(0);
+      expect(submitCount).toBe(0);
+
+      unmount(instance);
+      target.remove();
+    });
   });
 
   describe('composer ARIA pass-through', () => {

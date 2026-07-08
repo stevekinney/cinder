@@ -226,7 +226,7 @@ const schema = {
         name: 'oncomposerkeydown',
         reason: 'function-or-snippet',
         description:
-          "Called before Chat's internal composer key handling when a keydown\noriginates from the composer textarea. Call `event.preventDefault()` to\nlet an overlay consume Arrow keys, Enter, or Escape before Enter-to-send.\nThe internal handler still ignores IME composition events when the callback\ndoes not prevent the default.",
+          "Called before Chat's internal composer key handling when a keydown\noriginates from the composer textarea. Call `event.preventDefault()` to\nlet an overlay consume Arrow keys, Enter, or Escape before Enter-to-send.\nChat does not call this hook during IME composition, so Enter can still\nconfirm the active candidate instead of sending.",
       },
       {
         name: 'ondeny',
