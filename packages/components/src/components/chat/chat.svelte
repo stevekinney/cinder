@@ -13,13 +13,13 @@
    * @avoidWhen The transcript is read-only and needs no composer — a simple list of message bubbles is a better fit.
    * @related markdown-editor
    */
-  export type { ChatProps } from './chat.types.ts';
+  export type { ChatAnnounceLevel, ChatProps } from './chat.types.ts';
 </script>
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import ChatImplementation from './container/chat.svelte';
-  import type { ChatProps } from './chat.types.ts';
+  import type { ChatAnnounceLevel, ChatProps } from './chat.types.ts';
 
   let { class: className, ...rest }: ChatProps = $props();
 
@@ -50,6 +50,15 @@
   /** End the active streaming session. No-op until mounted. */
   export function endStreaming(): void {
     impl?.endStreaming();
+  }
+
+  /**
+   * Announce consumer-rendered status text through Chat's existing live regions.
+   * No-op until mounted. Built-in tool-approval announcements take precedence
+   * over consumer assertive announcements to avoid duplicate urgent output.
+   */
+  export function announce(message: string, level: ChatAnnounceLevel = 'polite'): void {
+    impl?.announce(message, level);
   }
 
   /** Scroll the message viewport to the bottom. No-op until mounted. */

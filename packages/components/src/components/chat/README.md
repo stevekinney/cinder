@@ -153,6 +153,40 @@ composer-prefixed props:
 />
 ```
 
+## Announcing custom action-required rows
+
+Chat owns always-rendered polite and assertive live regions outside the
+`role="log"` timeline. If you render action-required UI through a custom `row`
+or `messagePart` snippet, announce it through Chat instead of mounting another
+`aria-live` region inside the log:
+
+```svelte
+<script lang="ts">
+  import { Chat } from '@lostgradient/cinder/chat';
+
+  let chat: ReturnType<typeof Chat> | undefined;
+
+  function showCustomApproval() {
+    chat?.announce('Action required: Review the deployment approval.', 'assertive');
+  }
+</script>
+
+<Chat bind:this={chat} id="assistant-chat" {conversation} row={customRow} />
+```
+
+Use the default polite channel for non-urgent status updates:
+
+```ts
+chat?.announce('Attachment scan finished.');
+```
+
+Consumer announcements clear after a short interval so Chat's own history,
+unread, typing, and tool-approval announcements can continue to flow.
+Built-in tool-approval rows keep precedence on the assertive channel. If a
+consumer assertive announcement races with Chat's derived
+`Action required: ...` tool-approval announcement, Chat announces the built-in
+tool approval and drops the consumer assertive text to avoid double output.
+
 ## Guidance
 
 ### Use When

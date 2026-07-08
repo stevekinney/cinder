@@ -23,8 +23,8 @@
  */
 
 /// <reference lib="dom" />
-import { afterAll, afterEach, describe, expect, test } from 'bun:test';
-import { createRawSnippet, mount, unmount } from 'svelte';
+import { afterAll, afterEach, describe, expect, jest, test } from 'bun:test';
+import { createRawSnippet, mount, tick, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { importWithoutDomGlobals } from '../../test/import-without-dom-globals.ts';
@@ -65,6 +65,7 @@ const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/s
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
+  jest.useRealTimers();
   cleanup();
   document.body.replaceChildren();
 });
@@ -76,6 +77,7 @@ const { default: Chat } = await import('./chat.svelte');
 type TestConversation = import('./conversation-model.ts').ConversationHistory;
 type TestMessage = import('./conversation-model.ts').Message;
 type TestRole = import('./conversation-model.ts').MessageRole;
+type TestToolResult = import('./conversation-model.ts').ToolResult;
 
 let testMessageCounter = 0;
 
@@ -123,6 +125,39 @@ const appendUserMessage = (conversation: TestConversation, content: string) =>
   appendMessage(conversation, 'user', content);
 const appendAssistantMessage = (conversation: TestConversation, content: string) =>
   appendMessage(conversation, 'assistant', content);
+
+function appendActionRequiredMessage(
+  conversation: TestConversation,
+  message = 'Deploy to production?',
+): TestConversation {
+  const id = `test-message-${++testMessageCounter}`;
+  const now = new Date().toISOString();
+  const toolResult: TestToolResult = {
+    callId: `call-${testMessageCounter}`,
+    outcome: 'action_required',
+    content: null,
+    action: { type: 'approval', message },
+  };
+
+  return {
+    ...conversation,
+    ids: [...conversation.ids, id],
+    messages: {
+      ...conversation.messages,
+      [id]: {
+        id,
+        role: 'tool-result',
+        content: '',
+        position: conversation.ids.length,
+        createdAt: now,
+        metadata: {},
+        hidden: false,
+        toolResult,
+      },
+    },
+    updatedAt: now,
+  };
+}
 
 /** Build a minimal Svelte snippet that renders a single text node. */
 function textSnippet(text: string) {
@@ -176,6 +211,20 @@ function createDragEvent(type: string, files: File[], types: string[] = ['Files'
   return event;
 }
 
+type ChatAnnouncerApi = {
+  announce: (message: string, level?: 'polite' | 'assertive') => void;
+};
+
+function liveRegion(
+  container: HTMLElement,
+  level: 'polite' | 'assertive',
+): HTMLElement | undefined {
+  const regions = Array.from(
+    container.querySelectorAll<HTMLElement>(`.cinder-sr-only[aria-live="${level}"]`),
+  );
+  return regions.find((region) => region.getAttribute('aria-atomic') === 'true');
+}
+
 describe('Chat — basic render', () => {
   test('mounts the chat container with its accessible region', () => {
     const conversation = createConversation({ id: 'conversation-basic' });
@@ -221,6 +270,137 @@ describe('Chat — basic render', () => {
     const empty = container.querySelector('.chat-empty');
     expect(empty).not.toBeNull();
     expect(empty?.textContent).toContain('No messages yet');
+  });
+});
+
+describe('Chat — announcer API', () => {
+  test('announce() writes polite messages into the registered Chat live region', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const conversation = createConversation({ id: 'conversation-announce-polite' });
+    const mounted = mount(Chat, {
+      target,
+      props: { id: 'chat-announce-polite', conversation },
+    });
+    const instance = mounted as unknown as ChatAnnouncerApi;
+
+    await tick();
+    const polite = liveRegion(target, 'polite');
+    expect(polite).not.toBeUndefined();
+    expect(polite?.textContent).toBe('');
+
+    instance.announce('Custom approval is ready for review');
+    await tick();
+
+    expect(polite?.textContent).toBe('Custom approval is ready for review');
+
+    unmount(mounted);
+    target.remove();
+  });
+
+  test('announce() writes assertive messages unless a built-in tool approval is active', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const conversation = createConversation({ id: 'conversation-announce-assertive' });
+    const mounted = mount(Chat, {
+      target,
+      props: { id: 'chat-announce-assertive', conversation },
+    });
+    const instance = mounted as unknown as ChatAnnouncerApi;
+
+    await tick();
+    const assertive = liveRegion(target, 'assertive');
+    expect(assertive).not.toBeUndefined();
+    expect(assertive?.textContent).toBe('');
+
+    instance.announce('Custom row requires approval', 'assertive');
+    await tick();
+
+    expect(assertive?.textContent).toBe('Custom row requires approval');
+
+    unmount(mounted);
+    target.remove();
+  });
+
+  test('announce() clears consumer messages so built-in live-region messages can resume', async () => {
+    jest.useFakeTimers();
+    const target = document.createElement('div');
+    document.body.append(target);
+    const conversation = createConversation({ id: 'conversation-announce-clear' });
+    const mounted = mount(Chat, {
+      target,
+      props: { id: 'chat-announce-clear', conversation },
+    });
+    const instance = mounted as unknown as ChatAnnouncerApi;
+
+    await tick();
+    const polite = liveRegion(target, 'polite');
+    const assertive = liveRegion(target, 'assertive');
+
+    instance.announce('Custom status finished');
+    instance.announce('Custom action required', 'assertive');
+    await tick();
+
+    expect(polite?.textContent).toBe('Custom status finished');
+    expect(assertive?.textContent).toBe('Custom action required');
+
+    jest.advanceTimersByTime(999);
+    await tick();
+    expect(polite?.textContent).toBe('Custom status finished');
+    expect(assertive?.textContent).toBe('Custom action required');
+
+    jest.advanceTimersByTime(1);
+    await tick();
+    expect(polite?.textContent).toBe('');
+    expect(assertive?.textContent).toBe('');
+
+    unmount(mounted);
+    target.remove();
+  });
+
+  test('conversation changes clear consumer announcements', async () => {
+    const firstConversation = createConversation({ id: 'conversation-announce-reset-a' });
+    const secondConversation = createConversation({ id: 'conversation-announce-reset-b' });
+    const { component, container, rerender } = render(Chat, {
+      props: { id: 'chat-announce-reset', conversation: firstConversation },
+    });
+    const instance = component as unknown as ChatAnnouncerApi;
+
+    await tick();
+    const polite = liveRegion(container, 'polite');
+
+    instance.announce('Custom status from first conversation');
+    await tick();
+    expect(polite?.textContent).toBe('Custom status from first conversation');
+
+    await rerender({ id: 'chat-announce-reset', conversation: secondConversation });
+
+    expect(polite?.textContent).toBe('');
+  });
+
+  test('built-in tool approval wins over racing consumer assertive announcements', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    let conversation = createConversation({ id: 'conversation-announce-race' });
+    conversation = appendActionRequiredMessage(conversation, 'Deploy to production?');
+    const mounted = mount(Chat, {
+      target,
+      props: { id: 'chat-announce-race', conversation },
+    });
+    const instance = mounted as unknown as ChatAnnouncerApi;
+
+    await tick();
+    const assertive = liveRegion(target, 'assertive');
+    expect(assertive?.textContent).toBe('Action required: Deploy to production?');
+
+    instance.announce('Custom row also requires approval', 'assertive');
+    await tick();
+
+    expect(assertive?.textContent).toBe('Action required: Deploy to production?');
+    expect(assertive?.textContent).not.toContain('Custom row also requires approval');
+
+    unmount(mounted);
+    target.remove();
   });
 });
 

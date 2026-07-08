@@ -49,6 +49,9 @@ export type ReadReceipt = {
   readBy?: string[];
 };
 
+/** Live-region channel for imperative Chat announcements. */
+export type ChatAnnounceLevel = 'polite' | 'assertive';
+
 /**
  * Full-row override snippet. Inversion of control: receives the message AND a
  * `renderDefault` snippet that renders the built-in row, so a consumer can wrap
